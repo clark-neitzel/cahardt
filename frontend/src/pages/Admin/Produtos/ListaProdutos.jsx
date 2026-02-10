@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import produtoService from '../../../services/produtoService';
+import { API_URL } from '../../../services/api';
 import StatusBadge from '../../../components/StatusBadge';
 import { Edit, Eye, Search } from 'lucide-react';
 
@@ -93,7 +94,7 @@ const ListaProdutos = () => {
                                         <div className="h-10 w-10 flex-shrink-0">
                                             <img
                                                 className="h-10 w-10 rounded-full object-cover bg-gray-100"
-                                                src={produto.imagens.length > 0 ? `http://localhost:3000${produto.imagens[0].url}` : 'https://via.placeholder.com/40?text=S'}
+                                                src={produto.imagens.length > 0 ? `${API_URL}${produto.imagens[0].url}` : 'https://via.placeholder.com/40?text=S'}
                                                 alt=""
                                             />
                                         </div>

@@ -1,10 +1,9 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import { API_URL } from '../services/api';
 import StatusBadge from './StatusBadge';
 
 const ProductCard = ({ produto }) => {
     const imagemPrincipal = produto.imagens && produto.imagens.length > 0
-        ? `http://localhost:3000${produto.imagens[0].url}`
+        ? `${API_URL}${produto.imagens[0].url}`
         : 'https://via.placeholder.com/150?text=Sem+Imagem';
 
     return (

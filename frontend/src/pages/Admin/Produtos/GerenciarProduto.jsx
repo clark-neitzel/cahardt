@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import produtoService from '../../../services/produtoService';
+import { API_URL } from '../../../services/api';
 import ImageUploader from '../../../components/ImageUploader';
 import { ArrowLeft, Trash2, Star } from 'lucide-react';
 
@@ -104,7 +105,7 @@ const GerenciarProduto = () => {
                     {produto.imagens && produto.imagens.map((img) => (
                         <div key={img.id} className={`relative group border rounded-lg overflow-hidden ${img.principal ? 'ring-2 ring-primary' : ''}`}>
                             <img
-                                src={`http://localhost:3000${img.url}`}
+                                src={`${API_URL}${img.url}`}
                                 alt="Produto"
                                 className="w-full h-32 object-cover"
                             />

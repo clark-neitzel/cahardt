@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import produtoService from '../../services/produtoService';
+import { API_URL } from '../../services/api';
 import { ArrowLeft, ShoppingCart } from 'lucide-react';
 
 const DetalheProduto = () => {
@@ -44,7 +45,7 @@ const DetalheProduto = () => {
                 {/* Galeria de Imagens */}
                 <div className="relative h-64 md:h-96 bg-gray-100">
                     <img
-                        src={`http://localhost:3000${imagens[imagemAtual].url.replace('https://via.placeholder.com', '')}`}
+                        src={`${API_URL}${imagens[imagemAtual].url.replace('https://via.placeholder.com', '')}`}
                         alt={produto.nome}
                         className="w-full h-full object-contain"
                         onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=Erro+Imagem'; }}
