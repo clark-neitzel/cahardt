@@ -79,6 +79,10 @@ Crie um **Project** (ex: `HardtApp`) e adicione 3 serviços:
 - **Build Method**: Dockerfile.
 - **Port**: 80 (HTTP).
 
+### Troubleshooting EasyPanel
+Se o build falhar com `npm ci`, certifique-se de selecionar **Build Method: Dockerfile** nas configurações do serviço, pois o Dockerfile usa `npm install` que é mais robusto.
+
+
 ### Pós-Deploy
 1.  No console do serviço **Backend** no EasyPanel, execute as migrações uma vez:
     ```bash
