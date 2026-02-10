@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+export const API_URL = import.meta.env.VITE_API_URL || 'https://cahardt-hardt-backend.xrqvlq.easypanel.host';
 
 const api = axios.create({
     baseURL: `${API_URL}/api`, // Ajuste conforme a URL da VPS em produção
