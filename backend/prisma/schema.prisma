@@ -1,0 +1,50 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Produto {
+  id            String   @id @default(uuid())
+  contaAzulId   String   @unique @map("conta_azul_id")
+  codigo        String
+  nome          String
+  precoVenda    Decimal  @map("preco_venda") @db.Decimal(10, 2)
+  unidade       String
+  saldoEstoque  Decimal  @map("saldo_estoque") @db.Decimal
+  ativo         Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  imagens       ProdutoImagem[]
+
+  @@map("produtos")
+}
+
+model ProdutoImagem {
+  id         String  @id @default(uuid())
+  produtoId  String  @map("produto_id")
+  url        String
+  principal  Boolean @default(false)
+  ordem      Int     @default(0)
+
+  produto    Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@map("produto_imagens")
+}
+
+model SyncLog {
+  id                  String   @id @default(uuid())
+  tipo                String   // Ex: 'PRODUTOS', 'CLIENTES'
+  status              String   // 'SUCESSO', 'ERRO'
+  mensagem            String?  @db.Text
+  registrosProcessados Int      @map("registros_processados")
+  dataHora            DateTime @default(now()) @map("data_hora")
+
+  @@map("sync_logs")
+}
