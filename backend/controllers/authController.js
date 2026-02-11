@@ -9,7 +9,8 @@ const authController = {
     // Retorna a URL para redirecionar o usuário
     getAuthUrl: (req, res) => {
         const state = 'ESTADO_SEGURANCA'; // Ideal ser aleatório
-        const url = `https://auth.contaazul.com/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=openid+profile+aws.cognito.signin.user.admin`;
+        // URL Oficial da Documentação (Scope sales para Vendas/Produtos/Clientes)
+        const url = `https://api.contaazul.com/auth/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=sales&state=${state}`;
         res.json({ url });
     },
 
