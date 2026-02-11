@@ -1,5 +1,5 @@
-# Build Stage
-FROM node:20-alpine as build
+# Build Stage - Updated for Node 20
+FROM node:20-alpine as build-stage
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ RUN npm run build
 # Production Stage
 FROM nginx:alpine
 
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build-stage /app/dist /usr/share/nginx/html
 
 # Configuração opcional para SPA (React Router)
 RUN echo 'server { \
