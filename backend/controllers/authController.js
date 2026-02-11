@@ -51,7 +51,7 @@ const authController = {
                 data: {
                     accessToken: access_token,
                     refreshToken: refresh_token,
-                    expiresIn: expires_in
+                    expiresIn: expires_in || 3600 // Fallback para 1 hora se não vier
                 }
             });
 
@@ -71,6 +71,23 @@ const authController = {
     status: async (req, res) => {
         const config = await prisma.contaAzulConfig.findFirst();
         res.json({ connected: !!config });
+    },
+
+    // Rota de Debug para entender o que está acontecendo
+    debug: async (req, res) => {
+        try {
+            const count = await prisma.contaAzulConfig.count();
+            const first = await prisma.contaAzulConfig.findFirst();
+            res.json({
+                message: 'Debug Auth',
+                count,
+                hasToken: !!first,
+                tokenStart: first ? first.accessToken.substring(0, 10) + '...' : 'N/A',
+                updatedAt: first ? first.updatedAt : 'N/A'
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
     }
 };
 
