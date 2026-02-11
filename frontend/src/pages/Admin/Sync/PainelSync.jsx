@@ -74,7 +74,12 @@ const PainelSync = () => {
                 <h1 className="text-2xl font-bold text-gray-800">Sincronização Conta Azul</h1>
 
                 <div className="flex gap-3">
-                    {!connected ? (
+                    {connected ? (
+                        <div className="flex items-center px-4 py-2 rounded-md font-medium text-green-700 bg-green-100 border border-green-200">
+                            <CheckCircle className="h-5 w-5 mr-2" />
+                            Conectado
+                        </div>
+                    ) : (
                         <button
                             onClick={handleConnect}
                             className="flex items-center px-4 py-2 rounded-md font-medium text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-colors"
@@ -82,11 +87,6 @@ const PainelSync = () => {
                             <LinkIcon className="h-5 w-5 mr-2" />
                             Conectar Conta Azul
                         </button>
-                    ) : (
-                        <div className="flex items-center px-4 py-2 rounded-md font-medium text-green-700 bg-green-100 border border-green-200">
-                            <CheckCircle className="h-5 w-5 mr-2" />
-                            Conectado
-                        </div>
                     )}
 
                     <button
