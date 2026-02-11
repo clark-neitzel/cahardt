@@ -105,14 +105,14 @@ const ListaProdutos = () => {
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm text-gray-900">R$ {Number(produto.precoVenda).toFixed(2)}</div>
+                                    <div className="text-sm text-gray-900">R$ {Number(produto.valorVenda).toFixed(2)}</div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm text-gray-900">{produto.saldoEstoque} {produto.unidade}</div>
+                                    <div className="text-sm text-gray-900">{produto.estoqueDisponivel} {produto.unidade}</div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <button onClick={() => handleToggleStatus(produto)}>
-                                        <StatusBadge ativo={produto.ativo} estoque={produto.saldoEstoque} />
+                                        <StatusBadge ativo={produto.ativo} estoque={produto.estoqueDisponivel} />
                                     </button>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

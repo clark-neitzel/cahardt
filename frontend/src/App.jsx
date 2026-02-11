@@ -1,8 +1,9 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom';
 import Catalogo from './pages/Produtos/Catalogo';
 import DetalheProduto from './pages/Produtos/DetalheProduto';
 import ListaProdutos from './pages/Admin/Produtos/ListaProdutos';
+import GerenciarProduto from './pages/Admin/Produtos/GerenciarProduto';
 import PainelSync from './pages/Admin/Sync/PainelSync';
 
 // Layout simples para navegação durante desenvolvimento
@@ -16,15 +17,36 @@ const Layout = ({ children }) => (
               Hardt App
             </Link>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <Link to="/" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
+              <NavLink
+                to="/"
+                className={({ isActive }) =>
+                  isActive
+                    ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
+                    : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
+                }
+              >
                 Catálogo
-              </Link>
-              <Link to="/admin/produtos" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
+              </NavLink>
+              <NavLink
+                to="/admin/produtos"
+                className={({ isActive }) =>
+                  isActive
+                    ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
+                    : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
+                }
+              >
                 Admin: Produtos
-              </Link>
-              <Link to="/admin/sync" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
+              </NavLink>
+              <NavLink
+                to="/admin/sync"
+                className={({ isActive }) =>
+                  isActive
+                    ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
+                    : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
+                }
+              >
                 Admin: Sync
-              </Link>
+              </NavLink>
             </div>
           </div>
         </div>
@@ -47,8 +69,8 @@ function App() {
 
           {/* Admin */}
           <Route path="/admin/produtos" element={<ListaProdutos />} />
+          <Route path="/admin/produtos/:id" element={<GerenciarProduto />} />
           <Route path="/admin/sync" element={<PainelSync />} />
-          {/* Faltou GerenciarProduto, adicionaremos depois se necessário no fluxo */}
         </Routes>
       </Layout>
     </Router>
