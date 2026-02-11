@@ -39,7 +39,7 @@ const ListaClientes = () => {
                 <input
                     type="text"
                     className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm shadow-sm"
-                    placeholder="Buscar por nome, documento ou código..."
+                    placeholder="Buscar por nome, fantasia, documento ou código..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                 />
@@ -60,7 +60,10 @@ const ListaClientes = () => {
                         >
                             <div className="p-5">
                                 <div className="flex justify-between items-start mb-2">
-                                    <h3 className="text-lg font-bold text-gray-900 line-clamp-1">{cliente.Nome}</h3>
+                                    <div className="mb-2">
+                                        <h3 className="text-lg font-bold text-gray-900 line-clamp-1">{cliente.Nome}</h3>
+                                        {cliente.NomeFantasia && <p className="text-sm text-gray-600 font-medium">{cliente.NomeFantasia}</p>}
+                                    </div>
                                     <span className={`px-2 py-0.5 text-xs rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                         {cliente.Ativo ? 'Ativo' : 'Inativo'}
                                     </span>

@@ -11,6 +11,11 @@ const clienteService = {
         return response.data;
     },
 
+    atualizar: async (uuid, dados) => {
+        const response = await api.patch(`/clientes/${uuid}`, dados);
+        return response.data;
+    },
+
     sincronizar: async () => {
         const response = await api.post('/clientes/sync');
         return response.data;

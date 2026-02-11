@@ -150,12 +150,14 @@ const contaAzulService = {
             {
                 id: "cli_001",
                 name: "Padaria Doce Sabor Ltda",
+                fantasy_name: "Padaria Doce Sabor",
                 person_type: "JURIDICA",
                 document: "12345678000199",
                 email: "contato@docesabor.com",
                 business_phone: "4733334444",
                 mobile_phone: "47999998888",
                 status: "ATIVO",
+                payment_term: "30 dias",
                 created_at: "2023-01-15T10:00:00Z",
                 address: {
                     street: "Rua das Flores",
@@ -171,11 +173,13 @@ const contaAzulService = {
             {
                 id: "cli_002",
                 name: "Mercado Silva",
+                fantasy_name: "Mercadinho da Esquina",
                 person_type: "JURIDICA",
                 document: "98765432000155",
                 email: "compras@mercadosilva.com.br",
                 business_phone: "4733445566",
                 status: "ATIVO",
+                payment_term: "7/14/21 dias",
                 created_at: "2023-02-20T14:30:00Z",
                 address: {
                     street: "Av. Getúlio Vargas",
@@ -189,10 +193,12 @@ const contaAzulService = {
             {
                 id: "cli_003",
                 name: "Café Colonial Fritz",
+                fantasy_name: "Café Fritz",
                 person_type: "JURIDICA",
                 document: "11222333000199",
                 email: "fritz@cafe.com",
                 status: "INATIVO",
+                payment_term: "À Vista",
                 created_at: "2023-03-10T09:15:00Z",
                 address: {
                     street: "Rua xv de Novembro",
@@ -205,10 +211,12 @@ const contaAzulService = {
             {
                 id: "cli_004",
                 name: "Lanchonete da Rodoviária",
+                fantasy_name: "Lanchonete Rodo",
                 person_type: "JURIDICA",
                 document: "55444333000111",
                 email: null,
                 status: "ATIVO",
+                payment_term: "15 dias",
                 created_at: "2023-05-05T16:00:00Z",
                 address: {
                     street: "Rua Paraíba",
@@ -236,9 +244,30 @@ const contaAzulService = {
             let count = 0;
 
             for (const c of clientesCA) {
+                // Tratamento da Condição de Pagamento (Criar se não existir)
+                let condicaoId = null;
+                if (c.payment_term) {
+                    const condicao = await prisma.condicaoPagamento.upsert({
+                        where: { id: 'temp_mock_' + c.payment_term.replace(/\s+/g, '_') }, // Gambiarra pro mock apenas
+                        create: {
+                            id: 'temp_mock_' + c.payment_term.replace(/\s+/g, '_'), // Usando o nome como ID temporário no mock ou criar um slug
+                            nome: c.payment_term,
+                            ativo: true
+                        },
+                        update: {},
+                    }).catch(async () => {
+                        // Fallback melhor: findFirst e create se não achar
+                        const found = await prisma.condicaoPagamento.findFirst({ where: { nome: c.payment_term } });
+                        if (found) return found;
+                        return await prisma.condicaoPagamento.create({ data: { nome: c.payment_term } });
+                    });
+                    condicaoId = condicao.id;
+                }
+
                 // Mapeamento para o Schema Prisma (Campos Estritos)
                 const dadosCliente = {
                     Nome: c.name,
+                    NomeFantasia: c.fantasy_name,
                     Tipo_Pessoa: c.person_type,
                     Documento: c.document,
                     Email: c.email,
@@ -246,6 +275,9 @@ const contaAzulService = {
                     Telefone_Celular: c.mobile_phone,
                     Ativo: c.status === 'ATIVO',
                     Data_Criacao: c.created_at ? new Date(c.created_at) : new Date(),
+
+                    // Condição de Pagamento
+                    Condicao_de_pagamento: condicaoId,
 
                     // Endereço
                     End_Logradouro: c.address?.street,

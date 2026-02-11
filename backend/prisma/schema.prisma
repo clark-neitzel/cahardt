@@ -70,6 +70,7 @@ model Cliente {
   // Campos Conta Azul (Obrigatórios com nomes estritos)
   UUID                       String    @id @default(uuid())
   Nome                       String
+  NomeFantasia               String?
   Tipo_Pessoa                String?
   Documento                  String?   @unique
   Email                      String?
@@ -114,6 +115,7 @@ model Cliente {
 
   @@map("clientes")
   @@index([Nome])
+  @@index([NomeFantasia])
   @@index([Documento])
   @@index([Codigo])
   @@index([End_Cidade])

@@ -12,6 +12,7 @@ const clienteController = {
             if (search) {
                 where.OR = [
                     { Nome: { contains: search, mode: 'insensitive' } },
+                    { NomeFantasia: { contains: search, mode: 'insensitive' } },
                     { Documento: { contains: search, mode: 'insensitive' } },
                     { Codigo: { contains: search, mode: 'insensitive' } }
                 ];
@@ -60,6 +61,29 @@ const clienteController = {
         } catch (error) {
             console.error('Erro ao detalhar cliente:', error);
             res.status(500).json({ error: 'Erro interno ao buscar cliente' });
+        }
+    },
+
+    // Atualizar dados operacionais (PATCH)
+    atualizar: async (req, res) => {
+        try {
+            const { uuid } = req.params;
+            const { Dia_de_entrega, Dia_de_venda, Ponto_GPS, Observacoes_Gerais } = req.body;
+
+            const cliente = await prisma.cliente.update({
+                where: { UUID: uuid },
+                data: {
+                    Dia_de_entrega,
+                    Dia_de_venda,
+                    Ponto_GPS,
+                    Observacoes_Gerais
+                }
+            });
+
+            res.json(cliente);
+        } catch (error) {
+            console.error('Erro ao atualizar cliente:', error);
+            res.status(500).json({ error: 'Erro ao atualizar dados do cliente' });
         }
     },
 
