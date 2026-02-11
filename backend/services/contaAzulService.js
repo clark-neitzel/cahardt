@@ -140,6 +140,176 @@ const contaAzulService = {
             });
             throw error;
         }
+    },
+    // --- CLIENTES ---
+
+    fetchClientesFromAPI: async () => {
+        console.log("fetching clientes MOCK...");
+        // Dados mockados baseados no padrão Conta Azul
+        return [
+            {
+                id: "cli_001",
+                name: "Padaria Doce Sabor Ltda",
+                person_type: "JURIDICA",
+                document: "12345678000199",
+                email: "contato@docesabor.com",
+                business_phone: "4733334444",
+                mobile_phone: "47999998888",
+                status: "ATIVO",
+                created_at: "2023-01-15T10:00:00Z",
+                address: {
+                    street: "Rua das Flores",
+                    number: "123",
+                    complement: "Sala 01",
+                    neighborhood: "Centro",
+                    city: "Joinville",
+                    state: "SC",
+                    zip_code: "89200000"
+                },
+                notes: "Cliente preferencial, entrega pela manhã."
+            },
+            {
+                id: "cli_002",
+                name: "Mercado Silva",
+                person_type: "JURIDICA",
+                document: "98765432000155",
+                email: "compras@mercadosilva.com.br",
+                business_phone: "4733445566",
+                status: "ATIVO",
+                created_at: "2023-02-20T14:30:00Z",
+                address: {
+                    street: "Av. Getúlio Vargas",
+                    number: "4500",
+                    neighborhood: "Anita Garibaldi",
+                    city: "Joinville",
+                    state: "SC",
+                    zip_code: "89202000"
+                }
+            },
+            {
+                id: "cli_003",
+                name: "Café Colonial Fritz",
+                person_type: "JURIDICA",
+                document: "11222333000199",
+                email: "fritz@cafe.com",
+                status: "INATIVO",
+                created_at: "2023-03-10T09:15:00Z",
+                address: {
+                    street: "Rua xv de Novembro",
+                    number: "100",
+                    city: "Blumenau",
+                    state: "SC",
+                    zip_code: "89010000"
+                }
+            },
+            {
+                id: "cli_004",
+                name: "Lanchonete da Rodoviária",
+                person_type: "JURIDICA",
+                document: "55444333000111",
+                email: null,
+                status: "ATIVO",
+                created_at: "2023-05-05T16:00:00Z",
+                address: {
+                    street: "Rua Paraíba",
+                    number: "50",
+                    neighborhood: "Victor Konder",
+                    city: "Blumenau",
+                    state: "SC",
+                    zip_code: "89012000"
+                }
+            }
+        ];
+    },
+
+    syncClientes: async () => {
+        const log = await prisma.syncLog.create({
+            data: {
+                tipo: 'CLIENTES',
+                status: 'PROCESSANDO',
+                registrosProcessados: 0
+            }
+        });
+
+        try {
+            const clientesCA = await contaAzulService.fetchClientesFromAPI();
+            let count = 0;
+
+            for (const c of clientesCA) {
+                // Mapeamento para o Schema Prisma (Campos Estritos)
+                const dadosCliente = {
+                    Nome: c.name,
+                    Tipo_Pessoa: c.person_type,
+                    Documento: c.document,
+                    Email: c.email,
+                    Telefone: c.business_phone,
+                    Telefone_Celular: c.mobile_phone,
+                    Ativo: c.status === 'ATIVO',
+                    Data_Criacao: c.created_at ? new Date(c.created_at) : new Date(),
+
+                    // Endereço
+                    End_Logradouro: c.address?.street,
+                    End_Numero: c.address?.number,
+                    End_Complemento: c.address?.complement,
+                    End_Bairro: c.address?.neighborhood,
+                    End_Cidade: c.address?.city,
+                    End_Estado: c.address?.state,
+                    End_CEP: c.address?.zip_code,
+                    End_Pais: 'Brasil',
+
+                    Observacoes_Gerais: c.notes,
+
+                    // Campos fixos ou calculados para o mock
+                    Perfil_Filtro: "PADRAO",
+                    updated_at: new Date()
+                };
+
+                // Upsert usando Documento (se existir) ou UUID gerado
+                // Como UUID é PK e gerado pelo app, mas o sync vem de fora com ID do CA...
+                // O schema diz UUID @id @default(uuid()). O ideal seria ter conta_azul_id, 
+                // mas vamos usar o Documento como chave única de negócio para sincronizar se possível,
+                // ou teríamos que adicionar conta_azul_id no schema de clientes.
+                // Vendo o schema: Documento @unique. Vamos usar isso.
+
+                if (c.document) {
+                    await prisma.cliente.upsert({
+                        where: { Documento: c.document },
+                        update: dadosCliente, // Campos internos (GPS, Dias) não são alterados aqui
+                        create: {
+                            ...dadosCliente,
+                            // UUID é gerado automaticamente pelo @default(uuid())
+                        }
+                    });
+                    count++;
+                } else {
+                    console.warn(`Cliente ${c.name} sem documento, pulando sync.`);
+                }
+            }
+
+            await prisma.syncLog.update({
+                where: { id: log.id },
+                data: {
+                    status: 'SUCESSO',
+                    mensagem: 'Sincronização de Clientes concluída.',
+                    registrosProcessados: count,
+                    dataHora: new Date()
+                }
+            });
+
+            return { success: true, count };
+
+        } catch (error) {
+            console.error('Erro no Sync Clientes:', error);
+            await prisma.syncLog.update({
+                where: { id: log.id },
+                data: {
+                    status: 'ERRO',
+                    mensagem: error.message,
+                    dataHora: new Date()
+                }
+            });
+            throw error;
+        }
     }
 };
 

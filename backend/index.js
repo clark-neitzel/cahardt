@@ -4,6 +4,7 @@ const path = require('path');
 require('dotenv').config();
 
 const produtoRoutes = require('./routes/produtoRoutes');
+const clienteRoutes = require('./routes/clienteRoutes');
 const syncRoutes = require('./routes/syncRoutes');
 
 const app = express();
@@ -18,6 +19,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Rotas
 app.use('/api/produtos', produtoRoutes);
+app.use('/api/clientes', clienteRoutes);
 app.use('/api/sync', syncRoutes);
 
 // Rota base
