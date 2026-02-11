@@ -2,13 +2,14 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log('🔄 Iniciando atualização do banco de dados...');
+  console.log('🔄 Iniciando atualização do banco de dados...');
 
-    // 1. MIGRATION: Atualizar estrutura da tabela produtos
-    console.log('📦 1/2 Aplicando alterações na tabela produtos (Schema)...');
-    const migrationSQL = `
-    -- Rename existing columns to match new nomenclature
-    DO $$
+  // 1. MIGRATION: Atualizar estrutura da tabela produtos
+  console.log('📦 1/2 Aplicando alterações na tabela produtos (Schema)...');
+
+  // Array de comandos SQL para rodar sequencialmente (Prisma não suporta múltiplos comandos em string única)
+  const migrationCommands = [
+    `DO $$
     BEGIN
       IF EXISTS(SELECT * FROM information_schema.columns WHERE table_name='produtos' AND column_name='preco_venda') THEN
         ALTER TABLE "produtos" RENAME COLUMN "preco_venda" TO "valor_venda";
@@ -16,33 +17,31 @@ async function main() {
       IF EXISTS(SELECT * FROM information_schema.columns WHERE table_name='produtos' AND column_name='saldo_estoque') THEN
         ALTER TABLE "produtos" RENAME COLUMN "saldo_estoque" TO "estoque_disponivel";
       END IF;
-    END $$;
+    END $$`,
+    `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "ean" TEXT`,
+    `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "status" TEXT`,
+    `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "estoque_reservado" DECIMAL(12,3) DEFAULT 0`,
+    `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "estoque_total" DECIMAL(12,3) DEFAULT 0`,
+    `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "estoque_minimo" DECIMAL(12,3) DEFAULT 0`,
+    `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "categoria" TEXT`,
+    `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "custo_medio" DECIMAL(12,3)`,
+    `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "peso_liquido" DECIMAL(12,3)`,
+    `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "descricao" TEXT`
+  ];
 
-    -- Add new columns (IF NOT EXISTS pattern via exception handling block not needed for ADD COLUMN IF NOT EXISTS in newer PG, but sticking to standard)
-    ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "ean" TEXT;
-    ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "status" TEXT;
-    ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "estoque_reservado" DECIMAL(12,3) DEFAULT 0;
-    ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "estoque_total" DECIMAL(12,3) DEFAULT 0;
-    ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "estoque_minimo" DECIMAL(12,3) DEFAULT 0;
-    ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "categoria" TEXT;
-    ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "custo_medio" DECIMAL(12,3);
-    ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "peso_liquido" DECIMAL(12,3);
-    ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "descricao" TEXT;
-  `;
-
+  for (const cmd of migrationCommands) {
     try {
-        // Split commands by semicolon to run individually if needed, but DO $$ block handles logic
-        // We run the raw commands.
-        await prisma.$executeRawUnsafe(migrationSQL);
-        console.log('✅ Schema atualizado com sucesso.');
+      await prisma.$executeRawUnsafe(cmd);
     } catch (e) {
-        console.log('⚠️ Aviso ao atualizar schema (pode já estar atualizado):', e.message);
+      console.log('⚠️ Aviso na migração (pode já existir):', e.message);
     }
+  }
+  console.log('✅ Schema atualizado com sucesso.');
 
-    // 2. SEED: Popular dados reais
-    console.log('🌱 2/2 Inserindo/Atualizando produtos reais...');
+  // 2. SEED: Popular dados reais
+  console.log('🌱 2/2 Inserindo/Atualizando produtos reais...');
 
-    const seedSQL = `
+  const seedSQL = `
     INSERT INTO "produtos" (
         "conta_azul_id", "nome", "codigo", "ean", "status", "valor_venda", 
         "estoque_disponivel", "estoque_reservado", "estoque_total", "estoque_minimo", 
@@ -100,8 +99,8 @@ async function main() {
     ('4f3f7d75-943f-4675-92e5-bcc7715cbb2b', 'G-MINI BOLINHA QUEIJO 500GR', '5570', '7898620330965', 'ATIVO', 12.99, 10, 0, 10, 5, 'Produto Acabado', 7.64, 1.00, '', '2026-01-20T11:05:22.121802Z', gen_random_uuid(), 'UN'),
     ('bea6d01f-992c-45ba-93aa-83668bc8a9bd', 'G-MINI COXINHA FRANGO 500GR', '5569', '7898620330439', 'ATIVO', 12.99, 10, 0, 10, 5, 'Produto Acabado', 7.64, 1.00, '', '2026-01-20T11:05:34.735322Z', gen_random_uuid(), 'UN'),
     ('5cd42b98-fa5b-407f-b025-c155e88faa5e', 'G-MINI EMPADA FRANGO 500GR', '5568', '7898620330958', 'ATIVO', 19.49, 10, 0, 10, 5, 'Produto Acabado', 7.64, 1.00, '', '2026-01-20T11:05:46.395571Z', gen_random_uuid(), 'UN'),
-    ('7bd52f70-d90c-41c8-b898-939c48b2ad11', 'G-MINI TRAVESSEIRO PIZZA 500GR', '5571', '7898620330972', 'ATIVO', 12.99, 30, 0, 30, 5, 'Produto Acabado', 7.64, 1.00, '', '2026-01-20T11:05:57.878488Z', gen_random_uuid()),
-    ('ON CONFLICT ("conta_azul_id") DO UPDATE SET
+    ('7bd52f70-d90c-41c8-b898-939c48b2ad11', 'G-MINI TRAVESSEIRO PIZZA 500GR', '5571', '7898620330972', 'ATIVO', 12.99, 30, 0, 30, 5, 'Produto Acabado', 7.64, 1.00, '', '2026-01-20T11:05:57.878488Z', gen_random_uuid())
+    ON CONFLICT ("conta_azul_id") DO UPDATE SET
         "nome" = EXCLUDED."nome",
         "codigo" = EXCLUDED."codigo",
         "ean" = EXCLUDED."ean",
@@ -119,14 +118,14 @@ async function main() {
         "unidade" = EXCLUDED."unidade";
   `;
 
-    try {
-        await prisma.$executeRawUnsafe(seedSQL);
-        console.log('✅ Produtos inseridos/atualizados com sucesso!');
-    } catch (e) {
-        console.error('❌ Erro ao inserir dados:', e.message);
-    } finally {
-        await prisma.$disconnect();
-    }
+  try {
+    await prisma.$executeRawUnsafe(seedSQL);
+    console.log('✅ Produtos inseridos/atualizados com sucesso!');
+  } catch (e) {
+    console.error('❌ Erro ao inserir dados:', e.message);
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
 main();
