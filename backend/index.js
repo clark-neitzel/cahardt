@@ -4,8 +4,9 @@ const path = require('path');
 require('dotenv').config();
 
 const produtoRoutes = require('./routes/produtoRoutes');
-const clienteRoutes = require('./routes/clienteRoutes');
 const syncRoutes = require('./routes/syncRoutes');
+const clienteRoutes = require('./routes/clienteRoutes');
+const authRoutes = require('./routes/authRoutes'); // New
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,14 +14,20 @@ const PORT = process.env.PORT || 3000;
 // Middlewares
 app.use(cors());
 app.use(express.json());
+app.use((req, res, next) => {
+    // Log básico para debug
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
 
-// Servir imagens estáticas (Uploads)
+// Arquivos estáticos (Uploads)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Rotas
 app.use('/api/produtos', produtoRoutes);
-app.use('/api/clientes', clienteRoutes);
 app.use('/api/sync', syncRoutes);
+app.use('/api/clientes', clienteRoutes);
+app.use('/api/auth', authRoutes); // New
 
 // Rota base
 app.get('/', (req, res) => {

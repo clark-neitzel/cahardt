@@ -146,3 +146,14 @@ model ClienteArquivo {
 
   @@map("cliente_arquivos")
 }
+
+model ContaAzulConfig {
+  id           String   @id @default(uuid())
+  accessToken  String   @db.Text
+  refreshToken String   @db.Text
+  expiresIn    Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("conta_azul_config")
+}

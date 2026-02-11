@@ -1,58 +1,136 @@
+const axios = require('axios');
 const prisma = require('../config/database');
 
+const CLIENT_ID = process.env.CONTA_AZUL_CLIENT_ID || '6f6gpe5la4bvg6oehqjh2ugp97';
+const CLIENT_SECRET = process.env.CONTA_AZUL_CLIENT_SECRET || '1fvmga9ikj9dk4mkctoqvm2nfna7ht2t60p2qmg7kq04le0gb1ls';
+
 const contaAzulService = {
-    // Simula busca na API do Conta Azul
-    fetchProdutosFromAPI: async () => {
-        // MOCK: Em produção, isso seria uma chamada axios para https://api.contaazul.com/v1/products
-        console.log("fetching produtos MOCK...");
-        return [
-            {
-                id: "a7396475-2759-4386-b26f-5322815b6a7e",
-                name: "1-G-COXINHA AIPIM FRANGO C/20 130GR",
-                code: "1",
-                ean: "789123456001",
-                value: 53.30,
-                available_stock: 112, // Estoque disponível
-                reserved_stock: 10,  // Reservado
-                total_stock: 122,    // Total
-                min_stock: 20,
-                unity_measure: "UN",
-                status: "ativo",
-                category: "Salgados Congelados",
-                average_cost: 35.50,
-                net_weight: 2.6,
-                description: "Coxinha de aipim com recheio de frango, congelada, pacote com 20 unidades de 130g."
-            },
-            {
-                id: "030bfa5e-e7b4-434d-aaab-bd1833056c74",
-                name: "1-G-COXINHA TRADICIONAL FRANGO C/20 130GR",
-                code: "3059",
-                value: 54.50,
-                available_stock: 120,
-                reserved_stock: 0,
-                total_stock: 120,
-                min_stock: 30,
-                unity_measure: "UN",
-                status: "ativo",
-                category: "Salgados Congelados",
-                average_cost: 36.00,
-                net_weight: 2.6,
-                description: "Coxinha tradicional de frango, massa de trigo, congelada."
-            },
-            // ... (outros produtos apenas com campos essenciais para brevidade do mock, mas o código aguenta undefined) ...
-            { id: "b4d36edf-88b1-4b97-953a-a2464785428e", name: "1-G-EMPANADO SALSICHA C/10 140GR", code: "3078", value: 39.18, available_stock: 145, unity_measure: "UN", status: "ativo" },
-            { id: "163a28e9-7233-4085-9016-804c2790d73a", name: "1-GG-COXINHA FRANGO C/10 170GR", code: "5151", value: 40.29, available_stock: 165, unity_measure: "UN", status: "ativo" },
-            { id: "65158d61-d0fe-48ab-b39e-4236ad8d3d7f", name: "1-G-[O]-EMPANADO SALSICHA C/10 140GR", code: "5544", value: 35.28, available_stock: 24, unity_measure: "UN", status: "inativo" }
-        ];
+    // === AUTH HELPER ===
+    getAccessToken: async () => {
+        // Enforce Single Tenant: Get the first config
+        const config = await prisma.contaAzulConfig.findFirst();
+
+        if (!config) {
+            throw new Error('Conta Azul não conectada. Faça a autenticação no Painel.');
+        }
+
+        // Check expiration (Simples: se passou de 55 minutos da criação/update, atualiza)
+        // O ideal é salvar expires_at, mas o expiresIn vem em segundos (geralmente 3600)
+        const now = new Date();
+        const diffSeconds = (now - new config.updatedAt) / 1000;
+
+        // Se o token tem mais de 50 minutos (3000s), renova pra garantir
+        if (diffSeconds > 3000) {
+            console.log('🔄 Renovando Access Token Conta Azul...');
+            try {
+                const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
+                const response = await axios.post('https://api.contaazul.com/oauth2/token',
+                    new URLSearchParams({
+                        grant_type: 'refresh_token',
+                        refresh_token: config.refreshToken
+                    }).toString(),
+                    {
+                        headers: {
+                            'Authorization': `Basic ${credentials}`,
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        }
+                    }
+                );
+
+                const { access_token, refresh_token, expires_in } = response.data;
+
+                // Atualiza no banco
+                await prisma.contaAzulConfig.update({
+                    where: { id: config.id },
+                    data: {
+                        accessToken: access_token,
+                        refreshToken: refresh_token, // O refresh token também gira as vezes
+                        expiresIn: expires_in
+                    }
+                });
+
+                return access_token;
+            } catch (error) {
+                console.error('❌ Erro ao renovar token:', error.response?.data || error.message);
+                throw new Error('Falha ao renovar token. Reconecte o Conta Azul.');
+            }
+        }
+
+        return config.accessToken;
     },
 
+    // === API CALLS ===
+    fetchProdutosFromAPI: async () => {
+        console.log("📥 Buscando produtos do Conta Azul...");
+        const token = await contaAzulService.getAccessToken();
+        let produtos = [];
+        let page = 0;
+        let hasMore = true;
+
+        // Loop de paginação (Safety limit 20 pages)
+        while (hasMore && page < 20) {
+            try {
+                // Endpoint real: GET /v1/products
+                const response = await axios.get(`https://api.contaazul.com/v1/products?size=100&page=${page}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = response.data; // Pode ser array direto ou objeto com lista
+                const lista = Array.isArray(data) ? data : (data.products || []);
+
+                if (lista.length === 0) {
+                    hasMore = false;
+                } else {
+                    produtos = produtos.concat(lista);
+                    console.log(`   - Página ${page}: ${lista.length} produtos.`);
+                    page++;
+                }
+            } catch (error) {
+                console.error(`Erro ao buscar página ${page} de produtos:`, error.response?.data || error.message);
+                hasMore = false;
+            }
+        }
+
+        return produtos;
+    },
+
+    fetchClientesFromAPI: async () => {
+        console.log("📥 Buscando clientes do Conta Azul...");
+        const token = await contaAzulService.getAccessToken();
+        let clientes = [];
+        let page = 0;
+        let hasMore = true;
+
+        while (hasMore && page < 20) {
+            try {
+                // Endpoint real: GET /v1/customers
+                const response = await axios.get(`https://api.contaazul.com/v1/customers?size=100&page=${page}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = response.data;
+                const lista = Array.isArray(data) ? data : (data.customers || []);
+
+                if (lista.length === 0) {
+                    hasMore = false;
+                } else {
+                    clientes = clientes.concat(lista);
+                    console.log(`   - Página ${page}: ${lista.length} clientes.`);
+                    page++;
+                }
+            } catch (error) {
+                console.error(`Erro ao buscar página ${page} de clientes:`, error.response?.data || error.message);
+                hasMore = false;
+            }
+        }
+
+        return clientes;
+    },
+
+    // === SYNC LOGIC (Mantida igual, só chamando os fetches acima) ===
     syncProdutos: async () => {
         const log = await prisma.syncLog.create({
-            data: {
-                tipo: 'PRODUTOS',
-                status: 'PROCESSANDO',
-                registrosProcessados: 0
-            }
+            data: { tipo: 'PRODUTOS', status: 'PROCESSANDO', registrosProcessados: 0 }
         });
 
         try {
@@ -60,183 +138,68 @@ const contaAzulService = {
             let count = 0;
 
             for (const p of produtosCA) {
+                // Mapeamento Real da API
                 const dadosProduto = {
                     contaAzulId: p.id,
                     codigo: p.code,
                     nome: p.name,
                     valorVenda: p.value || 0,
-                    unidade: p.unity_measure,
+                    unidade: p.unity_measure || 'UN',
 
                     // Estoques
                     estoqueDisponivel: p.available_stock || 0,
-                    estoqueReservado: p.reserved_stock || 0,
-                    estoqueTotal: p.total_stock || (p.available_stock || 0), // Fallback se não vier total
-                    estoqueMinimo: p.min_stock || 0,
+                    estoqueReservado: 0, // A API simples não retorna detalhado as vezes
+                    estoqueTotal: p.available_stock || 0,
+                    estoqueMinimo: 0,
 
                     // Detalhes
-                    ean: p.ean,
-                    status: p.status,
-                    categoria: p.category,
+                    ean: p.ean_code || p.ean, // verificar nome exato na doc
+                    status: p.status, // 'ACTIVE' or 'INACTIVE'
+                    categoria: p.category_name || (p.category ? p.category.name : null),
                     descricao: p.description,
-                    custoMedio: p.average_cost,
-                    pesoLiquido: p.net_weight,
+                    custoMedio: p.cost || 0,
+                    pesoLiquido: p.net_weight || 0,
 
-                    // Calculado
-                    ativo: p.status === 'ativo'
+                    ativo: p.status === 'ACTIVE' || p.status === 'ativo'
                 };
 
-                // Upsert: Atualiza se existe, Cria se não existe
                 await prisma.produto.upsert({
                     where: { contaAzulId: p.id },
                     update: {
                         nome: dadosProduto.nome,
                         valorVenda: dadosProduto.valorVenda,
                         unidade: dadosProduto.unidade,
-
                         estoqueDisponivel: dadosProduto.estoqueDisponivel,
-                        estoqueReservado: dadosProduto.estoqueReservado,
                         estoqueTotal: dadosProduto.estoqueTotal,
-                        estoqueMinimo: dadosProduto.estoqueMinimo,
-
-                        ean: dadosProduto.ean,
                         status: dadosProduto.status,
                         categoria: dadosProduto.categoria,
                         descricao: dadosProduto.descricao,
-                        custoMedio: dadosProduto.custoMedio,
-                        pesoLiquido: dadosProduto.pesoLiquido,
-                        ativo: dadosProduto.ativo, // User pediu para atualizar status/ativo
-
+                        ativo: dadosProduto.ativo,
                         updatedAt: new Date()
-                        // NÃO atualizamos 'imagens' para preservar config local
                     },
-                    create: {
-                        ...dadosProduto
-                    }
+                    create: { ...dadosProduto }
                 });
                 count++;
             }
 
             await prisma.syncLog.update({
                 where: { id: log.id },
-                data: {
-                    status: 'SUCESSO',
-                    mensagem: 'Sincronização concluída com sucesso.',
-                    registrosProcessados: count,
-                    dataHora: new Date()
-                }
+                data: { status: 'SUCESSO', mensagem: 'Sync Produtos OK', registrosProcessados: count, dataHora: new Date() }
             });
 
             return { success: true, count };
-
         } catch (error) {
-            console.error('Erro no Sync:', error);
             await prisma.syncLog.update({
                 where: { id: log.id },
-                data: {
-                    status: 'ERRO',
-                    mensagem: error.message,
-                    dataHora: new Date()
-                }
+                data: { status: 'ERRO', mensagem: error.message, dataHora: new Date() }
             });
             throw error;
         }
     },
-    // --- CLIENTES ---
-
-    fetchClientesFromAPI: async () => {
-        console.log("fetching clientes MOCK...");
-        // Dados mockados baseados no padrão Conta Azul
-        return [
-            {
-                id: "cli_001",
-                name: "Padaria Doce Sabor Ltda",
-                fantasy_name: "Padaria Doce Sabor",
-                person_type: "JURIDICA",
-                document: "12345678000199",
-                email: "contato@docesabor.com",
-                business_phone: "4733334444",
-                mobile_phone: "47999998888",
-                status: "ATIVO",
-                payment_term: "30 dias",
-                created_at: "2023-01-15T10:00:00Z",
-                address: {
-                    street: "Rua das Flores",
-                    number: "123",
-                    complement: "Sala 01",
-                    neighborhood: "Centro",
-                    city: "Joinville",
-                    state: "SC",
-                    zip_code: "89200000"
-                },
-                notes: "Cliente preferencial, entrega pela manhã."
-            },
-            {
-                id: "cli_002",
-                name: "Mercado Silva",
-                fantasy_name: "Mercadinho da Esquina",
-                person_type: "JURIDICA",
-                document: "98765432000155",
-                email: "compras@mercadosilva.com.br",
-                business_phone: "4733445566",
-                status: "ATIVO",
-                payment_term: "7/14/21 dias",
-                created_at: "2023-02-20T14:30:00Z",
-                address: {
-                    street: "Av. Getúlio Vargas",
-                    number: "4500",
-                    neighborhood: "Anita Garibaldi",
-                    city: "Joinville",
-                    state: "SC",
-                    zip_code: "89202000"
-                }
-            },
-            {
-                id: "cli_003",
-                name: "Café Colonial Fritz",
-                fantasy_name: "Café Fritz",
-                person_type: "JURIDICA",
-                document: "11222333000199",
-                email: "fritz@cafe.com",
-                status: "INATIVO",
-                payment_term: "À Vista",
-                created_at: "2023-03-10T09:15:00Z",
-                address: {
-                    street: "Rua xv de Novembro",
-                    number: "100",
-                    city: "Blumenau",
-                    state: "SC",
-                    zip_code: "89010000"
-                }
-            },
-            {
-                id: "cli_004",
-                name: "Lanchonete da Rodoviária",
-                fantasy_name: "Lanchonete Rodo",
-                person_type: "JURIDICA",
-                document: "55444333000111",
-                email: null,
-                status: "ATIVO",
-                payment_term: "15 dias",
-                created_at: "2023-05-05T16:00:00Z",
-                address: {
-                    street: "Rua Paraíba",
-                    number: "50",
-                    neighborhood: "Victor Konder",
-                    city: "Blumenau",
-                    state: "SC",
-                    zip_code: "89012000"
-                }
-            }
-        ];
-    },
 
     syncClientes: async () => {
         const log = await prisma.syncLog.create({
-            data: {
-                tipo: 'CLIENTES',
-                status: 'PROCESSANDO',
-                registrosProcessados: 0
-            }
+            data: { tipo: 'CLIENTES', status: 'PROCESSANDO', registrosProcessados: 0 }
         });
 
         try {
@@ -244,101 +207,80 @@ const contaAzulService = {
             let count = 0;
 
             for (const c of clientesCA) {
-                // Tratamento da Condição de Pagamento (Criar se não existir)
+                // Tratamento da Condição de Pagamento
                 let condicaoId = null;
-                if (c.payment_term) {
+                // A API real retorna payment_term como objeto ou string dependendo da versão
+                // Assumindo string ou objeto.name
+                const termName = c.payment_term ? (typeof c.payment_term === 'string' ? c.payment_term : c.payment_term.name) : null;
+
+                if (termName) {
                     const condicao = await prisma.condicaoPagamento.upsert({
-                        where: { id: 'temp_mock_' + c.payment_term.replace(/\s+/g, '_') }, // Gambiarra pro mock apenas
-                        create: {
-                            id: 'temp_mock_' + c.payment_term.replace(/\s+/g, '_'), // Usando o nome como ID temporário no mock ou criar um slug
-                            nome: c.payment_term,
-                            ativo: true
-                        },
-                        update: {},
-                    }).catch(async () => {
-                        // Fallback melhor: findFirst e create se não achar
-                        const found = await prisma.condicaoPagamento.findFirst({ where: { nome: c.payment_term } });
-                        if (found) return found;
-                        return await prisma.condicaoPagamento.create({ data: { nome: c.payment_term } });
+                        where: { nome: termName }, // Onde o nome é unico
+                        create: { nome: termName },
+                        update: {}
+                    }).catch(err => {
+                        // Race condition ignore
+                        return prisma.condicaoPagamento.findUnique({ where: { nome: termName } });
                     });
-                    condicaoId = condicao.id;
+                    condicaoId = condicao?.id;
                 }
 
-                // Mapeamento para o Schema Prisma (Campos Estritos)
+                // Mapeamento
                 const dadosCliente = {
                     Nome: c.name,
                     NomeFantasia: c.fantasy_name,
-                    Tipo_Pessoa: c.person_type,
+                    Tipo_Pessoa: c.person_type, // 'LEGAL' / 'NATURAL'
                     Documento: c.document,
                     Email: c.email,
                     Telefone: c.business_phone,
                     Telefone_Celular: c.mobile_phone,
-                    Ativo: c.status === 'ATIVO',
+                    Ativo: c.status === 'ACTIVE' || c.status === 'ativo',
                     Data_Criacao: c.created_at ? new Date(c.created_at) : new Date(),
 
-                    // Condição de Pagamento
                     Condicao_de_pagamento: condicaoId,
 
-                    // Endereço
                     End_Logradouro: c.address?.street,
                     End_Numero: c.address?.number,
                     End_Complemento: c.address?.complement,
                     End_Bairro: c.address?.neighborhood,
-                    End_Cidade: c.address?.city,
-                    End_Estado: c.address?.state,
+                    End_Cidade: c.address?.city ? c.address.city.name : null, // A API retorna cidade como objeto as vezes
+                    End_Estado: c.address?.state ? c.address.state.name : null,
                     End_CEP: c.address?.zip_code,
                     End_Pais: 'Brasil',
 
                     Observacoes_Gerais: c.notes,
 
-                    // Campos fixos ou calculados para o mock
                     Perfil_Filtro: "PADRAO",
                     updated_at: new Date()
                 };
 
-                // Upsert usando Documento (se existir) ou UUID gerado
-                // Como UUID é PK e gerado pelo app, mas o sync vem de fora com ID do CA...
-                // O schema diz UUID @id @default(uuid()). O ideal seria ter conta_azul_id, 
-                // mas vamos usar o Documento como chave única de negócio para sincronizar se possível,
-                // ou teríamos que adicionar conta_azul_id no schema de clientes.
-                // Vendo o schema: Documento @unique. Vamos usar isso.
+                // Correção Cidades/Estados se vier string direta
+                if (!dadosCliente.End_Cidade && c.address?.city && typeof c.address.city === 'string') dadosCliente.End_Cidade = c.address.city;
+                if (!dadosCliente.End_Estado && c.address?.state && typeof c.address.state === 'string') dadosCliente.End_Estado = c.address.state;
 
+
+                // Upsert por Documento
                 if (c.document) {
                     await prisma.cliente.upsert({
                         where: { Documento: c.document },
-                        update: dadosCliente, // Campos internos (GPS, Dias) não são alterados aqui
-                        create: {
-                            ...dadosCliente,
-                            // UUID é gerado automaticamente pelo @default(uuid())
-                        }
+                        update: dadosCliente,
+                        create: { ...dadosCliente }
                     });
                     count++;
-                } else {
-                    console.warn(`Cliente ${c.name} sem documento, pulando sync.`);
                 }
             }
 
             await prisma.syncLog.update({
                 where: { id: log.id },
-                data: {
-                    status: 'SUCESSO',
-                    mensagem: 'Sincronização de Clientes concluída.',
-                    registrosProcessados: count,
-                    dataHora: new Date()
-                }
+                data: { status: 'SUCESSO', mensagem: 'Sync Clientes OK', registrosProcessados: count, dataHora: new Date() }
             });
 
             return { success: true, count };
 
         } catch (error) {
-            console.error('Erro no Sync Clientes:', error);
             await prisma.syncLog.update({
                 where: { id: log.id },
-                data: {
-                    status: 'ERRO',
-                    mensagem: error.message,
-                    dataHora: new Date()
-                }
+                data: { status: 'ERRO', mensagem: error.message, dataHora: new Date() }
             });
             throw error;
         }

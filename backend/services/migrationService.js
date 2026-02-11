@@ -63,7 +63,18 @@ const migrationService = {
                 "updatedAt" TIMESTAMP(3) NOT NULL,
                 CONSTRAINT "condicoes_pagamento_pkey" PRIMARY KEY ("id")
             );`,
-            `CREATE UNIQUE INDEX IF NOT EXISTS "condicoes_pagamento_nome_key" ON "condicoes_pagamento"("nome");`
+            `CREATE UNIQUE INDEX IF NOT EXISTS "condicoes_pagamento_nome_key" ON "condicoes_pagamento"("nome");`,
+
+            // ContaAzulConfig
+            `CREATE TABLE IF NOT EXISTS "conta_azul_config" (
+                "id" TEXT NOT NULL,
+                "accessToken" TEXT NOT NULL,
+                "refreshToken" TEXT NOT NULL,
+                "expiresIn" INTEGER NOT NULL,
+                "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP(3) NOT NULL,
+                CONSTRAINT "conta_azul_config_pkey" PRIMARY KEY ("id")
+            );`
         ];
 
         for (const [index, cmd] of commands.entries()) {
