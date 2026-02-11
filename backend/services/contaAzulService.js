@@ -14,14 +14,14 @@ const contaAzulService = {
             throw new Error('Conta Azul não conectada. Faça a autenticação no Painel.');
         }
 
-        // Check expiration (Simples: se passou de 55 minutos da criação/update, atualiza)
-        // O ideal é salvar expires_at, mas o expiresIn vem em segundos (geralmente 3600)
+        // Check expiration
+        // O token dura 3600s (60min). Vamos renovar com margem de segurança (ex: > 50 min ou 3000s)
         const now = new Date();
-        const diffSeconds = (now - new config.updatedAt) / 1000;
+        const diffSeconds = (now - new Date(config.updatedAt)) / 1000;
+        const TIME_TO_REFRESH = 3000; // 50 minutos de idade do token
 
-        // Se o token tem mais de 50 minutos (3000s), renova pra garantir
-        if (diffSeconds > 3000) {
-            console.log('🔄 Renovando Access Token Conta Azul...');
+        if (diffSeconds > TIME_TO_REFRESH) {
+            console.log(`🔄 Token expirando (Idade: ${Math.floor(diffSeconds)}s). Renovando...`);
             try {
                 const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
                 const response = await axios.post('https://api.contaazul.com/oauth2/token',
@@ -39,20 +39,24 @@ const contaAzulService = {
 
                 const { access_token, refresh_token, expires_in } = response.data;
 
-                // Atualiza no banco
+                // CRITICAL: Salvar o NOVO refresh_token, pois o antigo é invalidado (Refresh Token Rotation)
                 await prisma.contaAzulConfig.update({
                     where: { id: config.id },
                     data: {
                         accessToken: access_token,
-                        refreshToken: refresh_token, // O refresh token também gira as vezes
-                        expiresIn: expires_in
+                        refreshToken: refresh_token, // Rotation support
+                        expiresIn: expires_in,
+                        updatedAt: new Date() // Reset timer
                     }
                 });
 
+                console.log('✅ Token renovado com sucesso!');
                 return access_token;
+
             } catch (error) {
-                console.error('❌ Erro ao renovar token:', error.response?.data || error.message);
-                throw new Error('Falha ao renovar token. Reconecte o Conta Azul.');
+                console.error('❌ FALHA CRÍTICA AO RENOVAR TOKEN:', error.response?.data || error.message);
+                // Se falhar o refresh (ex: revogado), infelizmente o usuário precisa logar de novo.
+                throw new Error('Sua sessão com a Conta Azul expirou e não pôde ser renovada. Por favor, conecte novamente no painel.');
             }
         }
 
