@@ -24,7 +24,8 @@ const contaAzulService = {
             console.log(`🔄 Token expirando (Idade: ${Math.floor(diffSeconds)}s). Renovando...`);
             try {
                 const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
-                const response = await axios.post('https://api.contaazul.com/oauth2/token',
+                // AJUSTE: Usando auth.contaazul.com (Legacy/Cognito)
+                const response = await axios.post('https://auth.contaazul.com/oauth2/token',
                     new URLSearchParams({
                         grant_type: 'refresh_token',
                         refresh_token: config.refreshToken

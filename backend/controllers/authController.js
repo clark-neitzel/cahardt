@@ -26,7 +26,8 @@ const authController = {
             // Troca code por token (Basic Auth header com client_id:client_secret base64)
             const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
 
-            const response = await axios.post('https://api.contaazul.com/oauth2/token',
+            // AJUSTE: Usando auth.contaazul.com também para o token (Ambiente Legacy/Cognito)
+            const response = await axios.post('https://auth.contaazul.com/oauth2/token',
                 new URLSearchParams({
                     grant_type: 'authorization_code',
                     redirect_uri: REDIRECT_URI,
