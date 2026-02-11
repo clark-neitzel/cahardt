@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-rou
 import Catalogo from './pages/Produtos/Catalogo';
 import DetalheProduto from './pages/Produtos/DetalheProduto';
 import ListaProdutos from './pages/Admin/Produtos/ListaProdutos';
-import ListaProdutos from './pages/Admin/Produtos/ListaProdutos';
 import GerenciarProduto from './pages/Admin/Produtos/GerenciarProduto';
 import PainelSync from './pages/Admin/Sync/PainelSync';
 import ListaClientes from './pages/Clientes/ListaClientes';
