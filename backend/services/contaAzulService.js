@@ -60,18 +60,22 @@ const contaAzulService = {
     },
 
     // === API CALLS ===
-    fetchProdutosFromAPI: async () => {
-        console.log("📥 Buscando produtos do Conta Azul...");
+    fetchProdutosFromAPI: async (lastSyncDate = null) => {
+        console.log(`📥 Buscando produtos do Conta Azul... (Delta: ${lastSyncDate ? lastSyncDate.toISOString() : 'FULL'})`);
         const token = await contaAzulService.getAccessToken();
         let produtos = [];
         let page = 0;
         let hasMore = true;
 
-        // Loop de paginação (Safety limit 20 pages)
-        while (hasMore && page < 20) {
+        // Formatar data para ISO 8601 (São Paulo/GMT-3) se necessário, mas a API aceita ISO UTC
+        const dataAlteracaoDe = lastSyncDate ? `&data_alteracao_de=${lastSyncDate.toISOString()}` : '';
+
+        // Loop de paginação
+        while (hasMore && page < 50) { // Aumentei limite safety
             try {
                 // Endpoint real: GET /v1/products
-                const response = await axios.get(`https://api.contaazul.com/v1/products?size=100&page=${page}`, {
+                const url = `https://api.contaazul.com/v1/products?size=100&page=${page}${dataAlteracaoDe}`;
+                const response = await axios.get(url, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
@@ -94,17 +98,20 @@ const contaAzulService = {
         return produtos;
     },
 
-    fetchClientesFromAPI: async () => {
-        console.log("📥 Buscando clientes do Conta Azul...");
+    fetchClientesFromAPI: async (lastSyncDate = null) => {
+        console.log(`📥 Buscando clientes do Conta Azul... (Delta: ${lastSyncDate ? lastSyncDate.toISOString() : 'FULL'})`);
         const token = await contaAzulService.getAccessToken();
         let clientes = [];
         let page = 0;
         let hasMore = true;
 
-        while (hasMore && page < 20) {
+        const dataAlteracaoDe = lastSyncDate ? `&data_alteracao_de=${lastSyncDate.toISOString()}` : '';
+
+        while (hasMore && page < 50) {
             try {
                 // Endpoint real: GET /v1/customers
-                const response = await axios.get(`https://api.contaazul.com/v1/customers?size=100&page=${page}`, {
+                const url = `https://api.contaazul.com/v1/customers?size=100&page=${page}${dataAlteracaoDe}`;
+                const response = await axios.get(url, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
@@ -134,33 +141,46 @@ const contaAzulService = {
         });
 
         try {
-            const produtosCA = await contaAzulService.fetchProdutosFromAPI();
+            // Delta Sync Strategy
+            const lastSuccessLog = await prisma.syncLog.findFirst({
+                where: { tipo: 'PRODUTOS', status: 'SUCESSO' },
+                orderBy: { dataHora: 'desc' }
+            });
+
+            // Se tiver sucesso anterior, usa a data dele menos um buffer de segurança (ex: 5 min)
+            let lastDate = null;
+            if (lastSuccessLog) {
+                lastDate = new Date(lastSuccessLog.dataHora);
+                lastDate.setMinutes(lastDate.getMinutes() - 10); // Buffer de 10 min
+            }
+
+            const produtosCA = await contaAzulService.fetchProdutosFromAPI(lastDate);
             let count = 0;
 
             for (const p of produtosCA) {
                 // Mapeamento Real da API
                 const dadosProduto = {
                     contaAzulId: p.id,
-                    codigo: p.code,
-                    nome: p.name,
-                    valorVenda: p.value || 0,
-                    unidade: p.unity_measure || 'UN',
+                    codigo: p.code || p.codigo_sku || '', // Fallbacks
+                    nome: p.name || p.nome,
+                    valorVenda: p.value || p.valor_venda || 0,
+                    unidade: p.unity_measure || p.unidade_medida || 'UN',
 
-                    // Estoques
-                    estoqueDisponivel: p.available_stock || 0,
-                    estoqueReservado: 0, // A API simples não retorna detalhado as vezes
-                    estoqueTotal: p.available_stock || 0,
-                    estoqueMinimo: 0,
+                    // Estoques (API v1 pode vir campos diferentes ou objeto estoque)
+                    estoqueDisponivel: p.available_stock || (p.estoque?.estoque_disponivel) || 0,
+                    estoqueReservado: p.reserved_stock || (p.estoque?.quantidade_reservada) || 0,
+                    estoqueTotal: p.total_stock || (p.estoque?.quantidade_total) || 0,
+                    estoqueMinimo: p.min_stock || (p.estoque?.estoque_minimo) || 0,
 
                     // Detalhes
-                    ean: p.ean_code || p.ean, // verificar nome exato na doc
+                    ean: p.ean_code || p.ean || p.codigo_ean,
                     status: p.status, // 'ACTIVE' or 'INACTIVE'
-                    categoria: p.category_name || (p.category ? p.category.name : null),
-                    descricao: p.description,
-                    custoMedio: p.cost || 0,
-                    pesoLiquido: p.net_weight || 0,
+                    categoria: p.category_name || (p.categoria ? p.categoria.descricao : null),
+                    descricao: p.description || p.descricao,
+                    custoMedio: p.cost || p.custo_medio || 0,
+                    pesoLiquido: p.net_weight || (p.pesos_dimensoes?.peso_liquido) || 0,
 
-                    ativo: p.status === 'ACTIVE' || p.status === 'ativo'
+                    ativo: p.status === 'ACTIVE' || p.status === 'ativo' || p.status === 'ATIVO'
                 };
 
                 await prisma.produto.upsert({
@@ -184,7 +204,7 @@ const contaAzulService = {
 
             await prisma.syncLog.update({
                 where: { id: log.id },
-                data: { status: 'SUCESSO', mensagem: 'Sync Produtos OK', registrosProcessados: count, dataHora: new Date() }
+                data: { status: 'SUCESSO', mensagem: `Sync Produtos OK (Delta: ${!!lastDate})`, registrosProcessados: count, dataHora: new Date() }
             });
 
             return { success: true, count };
@@ -203,23 +223,32 @@ const contaAzulService = {
         });
 
         try {
-            const clientesCA = await contaAzulService.fetchClientesFromAPI();
+            // Delta Sync Strategy
+            const lastSuccessLog = await prisma.syncLog.findFirst({
+                where: { tipo: 'CLIENTES', status: 'SUCESSO' },
+                orderBy: { dataHora: 'desc' }
+            });
+
+            let lastDate = null;
+            if (lastSuccessLog) {
+                lastDate = new Date(lastSuccessLog.dataHora);
+                lastDate.setMinutes(lastDate.getMinutes() - 10);
+            }
+
+            const clientesCA = await contaAzulService.fetchClientesFromAPI(lastDate);
             let count = 0;
 
             for (const c of clientesCA) {
                 // Tratamento da Condição de Pagamento
                 let condicaoId = null;
-                // A API real retorna payment_term como objeto ou string dependendo da versão
-                // Assumindo string ou objeto.name
-                const termName = c.payment_term ? (typeof c.payment_term === 'string' ? c.payment_term : c.payment_term.name) : null;
+                const termName = c.payment_term || (c.condicao_pagamento ? c.condicao_pagamento : null); // Adaptação v1/v2
 
                 if (termName) {
                     const condicao = await prisma.condicaoPagamento.upsert({
-                        where: { nome: termName }, // Onde o nome é unico
+                        where: { nome: termName },
                         create: { nome: termName },
                         update: {}
                     }).catch(err => {
-                        // Race condition ignore
                         return prisma.condicaoPagamento.findUnique({ where: { nome: termName } });
                     });
                     condicaoId = condicao?.id;
@@ -227,42 +256,38 @@ const contaAzulService = {
 
                 // Mapeamento
                 const dadosCliente = {
-                    Nome: c.name,
-                    NomeFantasia: c.fantasy_name,
-                    Tipo_Pessoa: c.person_type, // 'LEGAL' / 'NATURAL'
-                    Documento: c.document,
+                    Nome: c.name || c.nome,
+                    NomeFantasia: c.fantasy_name || c.nome_fantasia,
+                    Tipo_Pessoa: c.person_type || c.tipo_pessoa,
+                    Documento: c.document || c.documento,
                     Email: c.email,
-                    Telefone: c.business_phone,
-                    Telefone_Celular: c.mobile_phone,
-                    Ativo: c.status === 'ACTIVE' || c.status === 'ativo',
+                    Telefone: c.business_phone || c.telefone,
+                    Telefone_Celular: c.mobile_phone || c.celular,
+                    Ativo: c.status === 'ACTIVE' || c.status === 'ativo' || c.status === 'ATIVO',
                     Data_Criacao: c.created_at ? new Date(c.created_at) : new Date(),
 
                     Condicao_de_pagamento: condicaoId,
 
-                    End_Logradouro: c.address?.street,
-                    End_Numero: c.address?.number,
-                    End_Complemento: c.address?.complement,
-                    End_Bairro: c.address?.neighborhood,
-                    End_Cidade: c.address?.city ? c.address.city.name : null, // A API retorna cidade como objeto as vezes
-                    End_Estado: c.address?.state ? c.address.state.name : null,
-                    End_CEP: c.address?.zip_code,
+                    End_Logradouro: c.address?.street || c.endereco?.logradouro,
+                    End_Numero: c.address?.number || c.endereco?.numero,
+                    End_Complemento: c.address?.complement || c.endereco?.complemento,
+                    End_Bairro: c.address?.neighborhood || c.endereco?.bairro,
+                    // Cidade/Estado podem vir como objetos ou strings
+                    End_Cidade: (c.address?.city?.name) || (c.address?.city) || (c.endereco?.cidade?.nome) || (c.endereco?.cidade),
+                    End_Estado: (c.address?.state?.name) || (c.address?.state) || (c.endereco?.estado?.nome) || (c.endereco?.estado),
+                    End_CEP: c.address?.zip_code || c.endereco?.cep,
                     End_Pais: 'Brasil',
 
-                    Observacoes_Gerais: c.notes,
+                    Observacoes_Gerais: c.notes || c.observacoes,
 
                     Perfil_Filtro: "PADRAO",
                     updated_at: new Date()
                 };
 
-                // Correção Cidades/Estados se vier string direta
-                if (!dadosCliente.End_Cidade && c.address?.city && typeof c.address.city === 'string') dadosCliente.End_Cidade = c.address.city;
-                if (!dadosCliente.End_Estado && c.address?.state && typeof c.address.state === 'string') dadosCliente.End_Estado = c.address.state;
-
-
                 // Upsert por Documento
-                if (c.document) {
+                if (dadosCliente.Documento) {
                     await prisma.cliente.upsert({
-                        where: { Documento: c.document },
+                        where: { Documento: dadosCliente.Documento },
                         update: dadosCliente,
                         create: { ...dadosCliente }
                     });
@@ -272,7 +297,7 @@ const contaAzulService = {
 
             await prisma.syncLog.update({
                 where: { id: log.id },
-                data: { status: 'SUCESSO', mensagem: 'Sync Clientes OK', registrosProcessados: count, dataHora: new Date() }
+                data: { status: 'SUCESSO', mensagem: `Sync Clientes OK (Delta: ${!!lastDate})`, registrosProcessados: count, dataHora: new Date() }
             });
 
             return { success: true, count };
