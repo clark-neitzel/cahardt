@@ -31,6 +31,16 @@ const Layout = ({ children }) => (
                 Catálogo
               </NavLink>
               <NavLink
+                to="/clientes"
+                className={({ isActive }) =>
+                  isActive
+                    ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
+                    : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
+                }
+              >
+                Clientes
+              </NavLink>
+              <NavLink
                 to="/admin/produtos"
                 className={({ isActive }) =>
                   isActive
