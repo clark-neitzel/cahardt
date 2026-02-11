@@ -4,7 +4,8 @@ const contaAzulService = {
     // Simula busca na API do Conta Azul
     fetchProdutosFromAPI: async () => {
         // MOCK: Em produção, isso seria uma chamada axios para https://api.contaazul.com/v1/products
-        // DADOS REAIS FORNECIDOS PELO USUÁRIO
+        // DADOS REAIS FORNECIDOS PELO USUÁRIO (DEBUG VERSION)
+        console.log("fetching produtos MOCK...");
         return [
             { id: "a7396475-2759-4386-b26f-5322815b6a7e", name: "1-G-COXINHA AIPIM FRANGO C/20 130GR", code: "1", value: 53.30, available_stock: 112, unity_measure: "UN" },
             { id: "030bfa5e-e7b4-434d-aaab-bd1833056c74", name: "1-G-COXINHA TRADICIONAL FRANGO C/20 130GR", code: "3059", value: 54.50, available_stock: 120, unity_measure: "UN" },
