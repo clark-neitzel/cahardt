@@ -22,7 +22,17 @@ app.use('/api/sync', syncRoutes);
 
 // Rota base
 app.get('/', (req, res) => {
-    res.send('API Hardt Salgados - v1.0.0');
+    res.send('API Hardt Salgados - v1.0.1 (Prod Data Fix)');
+});
+
+app.get('/api/debug-version', (req, res) => {
+    const service = require('./services/contaAzulService');
+    res.json({
+        message: 'Debug Code Version',
+        mockDataLength: service.fetchProdutosFromAPI ? 'Function Exists' : 'Missing',
+        // Execute the function to see what it returns without writing to DB
+        previewData: service.fetchProdutosFromAPI().then(data => data.slice(0, 3))
+    });
 });
 
 // Inicialização
