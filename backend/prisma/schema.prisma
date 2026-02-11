@@ -65,3 +65,82 @@ model SyncLog {
 
   @@map("sync_logs")
 }
+
+model Cliente {
+  // Campos Conta Azul (Obrigatórios com nomes estritos)
+  UUID                       String    @id @default(uuid())
+  Nome                       String
+  Tipo_Pessoa                String?
+  Documento                  String?   @unique
+  Email                      String?
+  Telefone                   String?
+  Ativo                      Boolean   @default(true)
+  Perfis                     String?
+  Perfil_Filtro              String?
+  Data_Criacao               DateTime?
+  Data_Alteracao             DateTime?
+  End_Logradouro             String?
+  End_Numero                 String?
+  End_Complemento            String?
+  End_Bairro                 String?
+  End_Cidade                 String?
+  End_Estado                 String?
+  End_CEP                    String?
+  End_Pais                   String?
+  Codigo                     String?
+  Observacoes_Gerais         String?
+  Telefone_Celular           String?
+  Telefone_Comercial         String?
+  Indicador_Inscricao_Estadual String?
+  Outros_Contatos            String?
+  Atrasos_Pagamentos         Decimal?  @db.Decimal(12, 2)
+  Atrasos_Recebimentos       Decimal?  @db.Decimal(12, 2)
+  Pagamentos_Mes_Atual       Decimal?  @db.Decimal(12, 2)
+  Recebimentos_Mes_Atual     Decimal?  @db.Decimal(12, 2)
+  
+  // Campos Internos (App Hardt)
+  Dia_de_entrega             String?   // Ex: "SEG,QUA"
+  Dia_de_venda               String?   // Ex: "TER,QUI"
+  Condicao_de_pagamento      String?   // FK ID para CondicaoPagamento
+  Flex_utilizado             Decimal   @default(0) @db.Decimal(14, 2)
+  Ponto_GPS                  String?   // "lat,lng"
+  Situacao_serasa            String?   // "APROVADO", "NEGADO", "PENDENTE"
+  Serasa_consulta            String?   // URL do arquivo principal
+  
+  updated_at                 DateTime  @updatedAt
+
+  condicaoPagamento          CondicaoPagamento? @relation(fields: [Condicao_de_pagamento], references: [id])
+  arquivos                   ClienteArquivo[]
+
+  @@map("clientes")
+  @@index([Nome])
+  @@index([Documento])
+  @@index([Codigo])
+  @@index([End_Cidade])
+  @@index([Perfil_Filtro])
+}
+
+model CondicaoPagamento {
+  id        String   @id @default(uuid())
+  nome      String
+  codigo    String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clientes  Cliente[]
+
+  @@map("condicoes_pagamento")
+}
+
+model ClienteArquivo {
+  id           String   @id @default(uuid())
+  cliente_uuid String
+  tipo         String   // Ex: "SERASA"
+  url          String
+  criado_em    DateTime @default(now())
+
+  cliente      Cliente  @relation(fields: [cliente_uuid], references: [UUID], onDelete: Cascade)
+
+  @@map("cliente_arquivos")
+}
