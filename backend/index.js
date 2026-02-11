@@ -38,6 +38,18 @@ app.get('/api/debug-version', (req, res) => {
 });
 
 // Inicialização
-app.listen(PORT, () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
-});
+const startServer = async () => {
+    try {
+        // Rodar migrações manuais (Garantia de schema)
+        const migrationService = require('./services/migrationService');
+        await migrationService.run();
+
+        app.listen(PORT, () => {
+            console.log(`Servidor rodando na porta ${PORT}`);
+        });
+    } catch (error) {
+        console.error('Erro fatal ao iniciar servidor:', error);
+    }
+};
+
+startServer();

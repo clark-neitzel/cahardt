@@ -2,7 +2,7 @@ import api from './api';
 
 const syncService = {
     sincronizar: async () => {
-        const response = await api.post('/sync/produtos');
+        const response = await api.post('/sync/tudo');
         return response.data;
     },
 
