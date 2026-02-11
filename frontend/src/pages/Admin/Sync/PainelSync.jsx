@@ -80,19 +80,16 @@ const PainelSync = () => {
                             Conectado
                         </div>
                     ) : (
-                        <button
-                            onClick={handleConnect}
-                            className="flex items-center px-4 py-2 rounded-md font-medium text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-colors"
-                        >
-                            <LinkIcon className="h-5 w-5 mr-2" />
-                            Conectar Conta Azul
-                        </button>
+                        <div className="flex items-center px-4 py-2 rounded-md font-medium text-red-700 bg-red-100 border border-red-200">
+                            <XCircle className="h-5 w-5 mr-2" />
+                            Desconectado
+                        </div>
                     )}
 
                     <button
                         onClick={handleSync}
-                        disabled={syncing || !connected}
-                        className={`flex items-center px-4 py-2 rounded-md font-medium text-white transition-colors ${syncing || !connected ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 shadow-sm'
+                        disabled={syncing}
+                        className={`flex items-center px-4 py-2 rounded-md font-medium text-white transition-colors ${syncing ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 shadow-sm'
                             }`}
                     >
                         <RefreshCw className={`h-5 w-5 mr-2 ${syncing ? 'animate-spin' : ''}`} />
