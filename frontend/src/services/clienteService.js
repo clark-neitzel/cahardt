@@ -16,6 +16,11 @@ const clienteService = {
         return response.data;
     },
 
+    listarCondicoesPagamento: async () => {
+        const response = await api.get('/clientes/condicoes-pagamento');
+        return response.data;
+    },
+
     sincronizar: async () => {
         const response = await api.post('/clientes/sync');
         return response.data;

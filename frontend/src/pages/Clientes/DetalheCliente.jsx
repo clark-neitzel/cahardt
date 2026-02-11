@@ -1,12 +1,52 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import clienteService from '../../services/clienteService';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Edit2, Save, X } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Edit2, Save, X, Check } from 'lucide-react';
+
+const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX']; // Sábado e Domingo opcional se precisar
+
+const DayPicker = ({ label, selected, onChange }) => {
+    const selectedDays = selected ? selected.split(',').map(d => d.trim()) : [];
+
+    const toggleDay = (day) => {
+        let newDays;
+        if (selectedDays.includes(day)) {
+            newDays = selectedDays.filter(d => d !== day);
+        } else {
+            newDays = [...selectedDays, day];
+            // Ordenar dias (opcional, mas bom para UX)
+            newDays.sort((a, b) => DIAS_SEMANA.indexOf(a) - DIAS_SEMANA.indexOf(b));
+        }
+        onChange(newDays.join(', '));
+    };
+
+    return (
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+            <div className="flex flex-wrap gap-2">
+                {DIAS_SEMANA.map(day => (
+                    <button
+                        key={day}
+                        type="button"
+                        onClick={() => toggleDay(day)}
+                        className={`px-3 py-2 text-xs font-bold rounded border transition-colors ${selectedDays.includes(day)
+                                ? 'bg-primary text-white border-primary'
+                                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                            }`}
+                    >
+                        {day}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
 
 const DetalheCliente = () => {
     const { uuid } = useParams();
     const navigate = useNavigate();
     const [cliente, setCliente] = useState(null);
+    const [condicoesPagamento, setCondicoesPagamento] = useState([]);
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState(false);
 
@@ -15,25 +55,34 @@ const DetalheCliente = () => {
         Dia_de_entrega: '',
         Dia_de_venda: '',
         Ponto_GPS: '',
-        Observacoes_Gerais: ''
+        Observacoes_Gerais: '',
+        Condicao_de_pagamento: '' // Agora editável/selecionável
     });
 
     useEffect(() => {
-        fetchDetalhe();
+        fetchData();
     }, [uuid]);
 
-    const fetchDetalhe = async () => {
+    const fetchData = async () => {
         try {
-            const data = await clienteService.detalhar(uuid);
-            setCliente(data);
+            const [clienteData, condicoesData] = await Promise.all([
+                clienteService.detalhar(uuid),
+                clienteService.listarCondicoesPagamento()
+            ]);
+
+            setCliente(clienteData);
+            setCondicoesPagamento(condicoesData);
+
             setFormData({
-                Dia_de_entrega: data.Dia_de_entrega || '',
-                Dia_de_venda: data.Dia_de_venda || '',
-                Ponto_GPS: data.Ponto_GPS || '',
-                Observacoes_Gerais: data.Observacoes_Gerais || ''
+                Dia_de_entrega: clienteData.Dia_de_entrega || '',
+                Dia_de_venda: clienteData.Dia_de_venda || '',
+                Ponto_GPS: clienteData.Ponto_GPS || '',
+                Observacoes_Gerais: clienteData.Observacoes_Gerais || '',
+                Condicao_de_pagamento: clienteData.Condicao_de_pagamento || ''
             });
+
         } catch (error) {
-            console.error('Erro ao carregar cliente:', error);
+            console.error('Erro ao carregar dados:', error);
         } finally {
             setLoading(false);
         }
@@ -43,7 +92,9 @@ const DetalheCliente = () => {
         try {
             await clienteService.atualizar(uuid, formData);
             setEditing(false);
-            fetchDetalhe(); // Recarrega para confirmar
+            // Recarregar dados para atualizar view (especialmente nome da condição)
+            const updated = await clienteService.detalhar(uuid);
+            setCliente(updated);
         } catch (error) {
             alert('Erro ao salvar alterações');
             console.error(error);
@@ -56,206 +107,205 @@ const DetalheCliente = () => {
             Dia_de_entrega: cliente.Dia_de_entrega || '',
             Dia_de_venda: cliente.Dia_de_venda || '',
             Ponto_GPS: cliente.Ponto_GPS || '',
-            Observacoes_Gerais: cliente.Observacoes_Gerais || ''
+            Observacoes_Gerais: cliente.Observacoes_Gerais || '',
+            Condicao_de_pagamento: cliente.Condicao_de_pagamento || ''
         });
     };
 
-    if (loading) return <div className="p-8 text-center">Carregando detalhes...</div>;
-    if (!cliente) return <div className="p-8 text-center">Cliente não encontrado.</div>;
+    // Helper para GPS manual se precisar, mas o foco é o input
+    const getCurrentLocation = () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const gps = `${position.coords.latitude},${position.coords.longitude}`;
+                    setFormData(prev => ({ ...prev, Ponto_GPS: gps }));
+                },
+                (error) => alert('Erro ao obter localização: ' + error.message)
+            );
+        } else {
+            alert('Geolocalização não suportada neste navegador.');
+        }
+    };
+
+    if (loading) return <div className="p-8 text-center text-gray-600">Carregando detalhes...</div>;
+    if (!cliente) return <div className="p-8 text-center text-gray-600">Cliente não encontrado.</div>;
 
     return (
-        <div className="container mx-auto px-4 py-6">
+        <div className="container mx-auto px-4 py-4 max-w-lg md:max-w-4xl"> {/* Container mais estreito em mobile */}
             <button
                 onClick={() => navigate('/clientes')}
                 className="mb-4 flex items-center text-gray-600 hover:text-gray-900"
             >
-                <ArrowLeft className="h-5 w-5 mr-1" /> Voltar para Lista
+                <ArrowLeft className="h-5 w-5 mr-1" /> Voltar
             </button>
 
             {/* Cabeçalho */}
-            <div className="bg-white shadow rounded-lg p-6 mb-6 border-l-4 border-primary">
+            <div className="bg-white shadow rounded-lg p-4 mb-4 border-l-4 border-primary">
                 <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800">{cliente.Nome}</h1>
-                        {cliente.NomeFantasia && <p className="text-lg text-gray-600 font-medium">{cliente.NomeFantasia}</p>}
-                        <p className="text-gray-500 text-sm mt-1">{cliente.Tipo_Pessoa === 'JURIDICA' ? 'CNPJ' : 'CPF'}: {cliente.Documento}</p>
+                    <div className="overflow-hidden">
+                        <h1 className="text-xl font-bold text-gray-900 truncate">{cliente.Nome}</h1>
+                        {cliente.NomeFantasia && <p className="text-base text-gray-600 font-medium truncate">{cliente.NomeFantasia}</p>}
+                        <p className="text-gray-500 text-xs mt-1">
+                            {cliente.Tipo_Pessoa === 'JURIDICA' ? 'CNPJ' : 'CPF'}: {cliente.Documento}
+                        </p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                </div>
+                <div className="mt-2 text-xs">
+                    <span className={`px-2 py-0.5 rounded-full font-medium ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                         {cliente.Ativo ? 'ATIVO' : 'INATIVO'}
                     </span>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Coluna 1: Dados Cadastrais (Conta Azul - Read Only) */}
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-white shadow rounded-lg p-6">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                            <FileText className="h-5 w-5 mr-2 text-primary" />
-                            Dados Cadastrais
+            <div className="grid grid-cols-1 gap-4">
+                {/* Cartão de Edição Operacional (Hardt) - MOVED TO TOP for Mobile Priority */}
+                <div className="bg-white shadow rounded-lg p-4 relative">
+                    <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
+                        <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                            <Calendar className="h-5 w-5 mr-2 text-primary" />
+                            Operacional
                         </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <label className="block text-gray-500 mb-1">E-mail</label>
-                                <div className="flex items-center text-gray-900 font-medium">
-                                    <Mail className="h-4 w-4 mr-2 text-gray-400" />
-                                    {cliente.Email || '-'}
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-gray-500 mb-1">Telefone Principal</label>
-                                <div className="flex items-center text-gray-900 font-medium">
-                                    <Phone className="h-4 w-4 mr-2 text-gray-400" />
-                                    {cliente.Telefone || '-'}
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-gray-500 mb-1">Celular / WhatsApp</label>
-                                <div className="text-gray-900 font-medium">
-                                    {cliente.Telefone_Celular || '-'}
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-gray-500 mb-1">Código Interno</label>
-                                <div className="text-gray-900 font-medium">
-                                    {cliente.Codigo || '-'}
-                                </div>
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="block text-gray-500 mb-1">Condição de Pagamento</label>
-                                <div className="text-gray-900 font-bold bg-gray-50 p-2 rounded border border-gray-100 inline-block">
-                                    {cliente.condicaoPagamento?.nome || 'Não definida'}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-6 pt-4 border-t border-gray-100">
-                            <h3 className="text-md font-medium text-gray-700 mb-3 flex items-center">
-                                <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                                Endereço Principal
-                            </h3>
-                            <p className="text-gray-600 text-sm">
-                                {cliente.End_Logradouro}, {cliente.End_Numero} {cliente.End_Complemento && `- ${cliente.End_Complemento}`}<br />
-                                {cliente.End_Bairro}<br />
-                                {cliente.End_Cidade} / {cliente.End_Estado}<br />
-                                CEP: {cliente.End_CEP}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Coluna 2: Dados Operacionais (Hardt - Editável) */}
-                <div className="space-y-6">
-                    <div className="bg-white shadow rounded-lg p-6 relative">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-                                <Calendar className="h-5 w-5 mr-2 text-primary" />
-                                Operacional (Hardt)
-                            </h2>
-                            {!editing ? (
+                        {!editing ? (
+                            <button
+                                onClick={() => setEditing(true)}
+                                className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 transition-colors"
+                            >
+                                <Edit2 className="h-5 w-5" />
+                            </button>
+                        ) : (
+                            <div className="flex space-x-2">
                                 <button
-                                    onClick={() => setEditing(true)}
-                                    className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 transition-colors"
-                                    title="Editar Dados"
+                                    onClick={handleSave}
+                                    className="bg-green-600 text-white p-2 rounded-full shadow hover:bg-green-700 transition-colors"
                                 >
-                                    <Edit2 className="h-5 w-5" />
+                                    <Save className="h-5 w-5" />
                                 </button>
+                                <button
+                                    onClick={handleCancel}
+                                    className="bg-red-100 text-red-600 p-2 rounded-full hover:bg-red-200 transition-colors"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-5">
+                        {/* Dias - Componente Customizado */}
+                        {editing ? (
+                            <>
+                                <DayPicker
+                                    label="Dia de Entrega"
+                                    selected={formData.Dia_de_entrega}
+                                    onChange={(val) => setFormData({ ...formData, Dia_de_entrega: val })}
+                                />
+                                <DayPicker
+                                    label="Dia de Visita/Venda"
+                                    selected={formData.Dia_de_venda}
+                                    onChange={(val) => setFormData({ ...formData, Dia_de_venda: val })}
+                                />
+                            </>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-500 uppercase">Entrega</label>
+                                    <div className="mt-1 font-medium text-gray-900">{cliente.Dia_de_entrega || '-'}</div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-500 uppercase">Visita</label>
+                                    <div className="mt-1 font-medium text-gray-900">{cliente.Dia_de_venda || '-'}</div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Condição de Pagamento */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Condição de Pagamento</label>
+                            {editing ? (
+                                <select
+                                    className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 text-base focus:ring-primary focus:border-primary"
+                                    value={formData.Condicao_de_pagamento}
+                                    onChange={(e) => setFormData({ ...formData, Condicao_de_pagamento: e.target.value })}
+                                >
+                                    <option value="">Selecione...</option>
+                                    {condicoesPagamento.map(cp => (
+                                        <option key={cp.id} value={cp.id}>{cp.nome}</option>
+                                    ))}
+                                </select>
                             ) : (
-                                <div className="flex space-x-2">
-                                    <button
-                                        onClick={handleSave}
-                                        className="text-green-600 hover:text-green-800 p-1 rounded hover:bg-green-50 transition-colors"
-                                        title="Salvar"
-                                    >
-                                        <Save className="h-5 w-5" />
-                                    </button>
-                                    <button
-                                        onClick={handleCancel}
-                                        className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors"
-                                        title="Cancelar"
-                                    >
-                                        <X className="h-5 w-5" />
-                                    </button>
+                                <div className="text-gray-900 font-medium bg-gray-50 p-2 rounded border border-gray-200">
+                                    {cliente.condicaoPagamento?.nome || 'Não definida'}
                                 </div>
                             )}
                         </div>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Dia de Entrega</label>
-                                {editing ? (
+                        {/* GPS */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Localização GPS</label>
+                            {editing ? (
+                                <div className="flex gap-2">
                                     <input
                                         type="text"
-                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"
-                                        value={formData.Dia_de_entrega}
-                                        onChange={(e) => setFormData({ ...formData, Dia_de_entrega: e.target.value })}
-                                        placeholder="Ex: SEG, QUA"
-                                    />
-                                ) : (
-                                    <div className="mt-1 p-2 bg-gray-50 rounded border border-gray-200 text-gray-800 text-sm min-h-[38px]">
-                                        {cliente.Dia_de_entrega || 'Não definido'}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Dia de Visita/Venda</label>
-                                {editing ? (
-                                    <input
-                                        type="text"
-                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"
-                                        value={formData.Dia_de_venda}
-                                        onChange={(e) => setFormData({ ...formData, Dia_de_venda: e.target.value })}
-                                        placeholder="Ex: TER, QUI"
-                                    />
-                                ) : (
-                                    <div className="mt-1 p-2 bg-gray-50 rounded border border-gray-200 text-gray-800 text-sm min-h-[38px]">
-                                        {cliente.Dia_de_venda || 'Não definido'}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Localização GPS</label>
-                                {editing ? (
-                                    <input
-                                        type="text"
-                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"
+                                        className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 text-sm"
                                         value={formData.Ponto_GPS}
                                         onChange={(e) => setFormData({ ...formData, Ponto_GPS: e.target.value })}
                                         placeholder="lat,lng"
                                     />
-                                ) : (
-                                    <div className="mt-1 p-2 bg-gray-50 rounded border border-gray-200 text-gray-800 text-sm min-h-[38px]">
-                                        {cliente.Ponto_GPS ? (
-                                            <a
-                                                href={`https://www.google.com/maps/search/?api=1&query=${cliente.Ponto_GPS}`}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="text-blue-600 hover:underline flex items-center"
-                                            >
-                                                <MapPin className="h-3 w-3 mr-1" /> Ver no Mapa ({cliente.Ponto_GPS})
-                                            </a>
-                                        ) : 'Não capturado'}
-                                    </div>
-                                )}
-                            </div>
+                                    <button
+                                        type="button"
+                                        onClick={getCurrentLocation}
+                                        className="bg-gray-100 text-gray-600 px-3 py-2 rounded border border-gray-300 hover:bg-gray-200"
+                                        title="Pegar localização atual"
+                                    >
+                                        <MapPin className="h-5 w-5" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="mt-1">
+                                    {cliente.Ponto_GPS ? (
+                                        <a
+                                            href={`https://www.google.com/maps/search/?api=1&query=${cliente.Ponto_GPS}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md inline-flex items-center text-sm shadow-sm"
+                                        >
+                                            <MapPin className="h-4 w-4 mr-2" /> Ver no Google Maps
+                                        </a>
+                                    ) : <span className="text-gray-500 italic">Não capturado</span>}
+                                </div>
+                            )}
                         </div>
 
-                        <div className="mt-6">
-                            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Observações Gerais</h4>
+                        {/* Observações */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Observações Gerais</label>
                             {editing ? (
                                 <textarea
-                                    className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm h-24"
+                                    className="w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 text-sm h-24"
                                     value={formData.Observacoes_Gerais}
                                     onChange={(e) => setFormData({ ...formData, Observacoes_Gerais: e.target.value })}
                                 />
                             ) : (
-                                <p className="text-sm text-gray-600 bg-yellow-50 p-3 rounded border border-yellow-100 italic min-h-[60px]">
+                                <p className="text-sm text-gray-700 bg-yellow-50 p-3 rounded border border-yellow-200 min-h-[60px] whitespace-pre-wrap">
                                     {cliente.Observacoes_Gerais || 'Sem observações.'}
                                 </p>
                             )}
                         </div>
+                    </div>
+                </div>
+
+                {/* Dados Cadastrais (Read Only section moved down) */}
+                <div className="bg-white shadow rounded-lg p-4 collapsed-mobile">
+                    <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <FileText className="h-5 w-5 mr-2 text-gray-400" />
+                        Dados Cadastrais
+                    </h2>
+                    <div className="grid grid-cols-1 gap-2 text-sm text-gray-600">
+                        <p><strong className="font-medium text-gray-900">E-mail:</strong> {cliente.Email || '-'}</p>
+                        <p><strong className="font-medium text-gray-900">Telefone:</strong> {cliente.Telefone || '-'}</p>
+                        <p><strong className="font-medium text-gray-900">Endereço:</strong> <br />
+                            {cliente.End_Logradouro}, {cliente.End_Numero}<br />
+                            {cliente.End_Bairro} - {cliente.End_Cidade}/{cliente.End_Estado}</p>
                     </div>
                 </div>
             </div>
