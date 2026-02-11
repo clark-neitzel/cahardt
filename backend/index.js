@@ -53,6 +53,24 @@ const startServer = async () => {
 
         app.listen(PORT, () => {
             console.log(`Servidor rodando na porta ${PORT}`);
+
+            // === KEEP-ALIVE SYSTEM ===
+            // Garante que o token nunca expire mesmo se o sistema estiver ocioso.
+            // Executa a cada 45 minutos (45 * 60 * 1000 = 2700000 ms)
+            console.log('⏰ Iniciando sistema de Keep-Alive do Token Conta Azul...');
+            const contaAzulService = require('./services/contaAzulService');
+
+            // Primeira execução imediata (async, não bloqueia)
+            contaAzulService.getAccessToken().catch(err => console.error('⚠️ Erro no Keep-Alive inicial:', err.message));
+
+            setInterval(async () => {
+                console.log('⏰ Executando Keep-Alive periódico...');
+                try {
+                    await contaAzulService.getAccessToken();
+                } catch (error) {
+                    console.error('⚠️ Falha no Keep-Alive:', error.message);
+                }
+            }, 2700000); // 45 minutos
         });
     } catch (error) {
         console.error('Erro fatal ao iniciar servidor:', error);
