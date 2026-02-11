@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import clienteService from '../../../services/clienteService';
+import clienteService from '../../services/clienteService';
 import { Search, MapPin, Phone, Truck } from 'lucide-react';
 
 const ListaClientes = () => {
