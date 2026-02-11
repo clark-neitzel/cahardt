@@ -3,7 +3,8 @@ const prisma = require('../config/database');
 
 const CLIENT_ID = process.env.CONTA_AZUL_CLIENT_ID || '6f6gpe5la4bvg6oehqjh2ugp97';
 const CLIENT_SECRET = process.env.CONTA_AZUL_CLIENT_SECRET || '1fvmga9ikj9dk4mkctoqvm2nfna7ht2t60p2qmg7kq04le0gb1ls';
-const REDIRECT_URI = process.env.CONTA_AZUL_REDIRECT_URI || 'https://cahardt-github.xrqvlq.easypanel.host/api/auth/callback';
+// CORREÇÃO: O Redirect deve apontar para o BACKEND, não para o Frontend
+const REDIRECT_URI = process.env.CONTA_AZUL_REDIRECT_URI || 'https://cahardt-hardt-backend.xrqvlq.easypanel.host/api/auth/callback';
 
 const authController = {
     // Retorna a URL para redirecionar o usuário
