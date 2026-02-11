@@ -11,18 +11,34 @@ datasource db {
 }
 
 model Produto {
-  id            String   @id @default(uuid())
-  contaAzulId   String   @unique @map("conta_azul_id")
-  codigo        String
-  nome          String
-  precoVenda    Decimal  @map("preco_venda") @db.Decimal(10, 2)
-  unidade       String
-  saldoEstoque  Decimal  @map("saldo_estoque") @db.Decimal
-  ativo         Boolean  @default(true)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid())
+  contaAzulId       String   @unique @map("conta_azul_id")
+  codigo            String
+  nome              String
+  valorVenda        Decimal  @map("valor_venda") @db.Decimal(10, 2)
+  unidade           String
+  
+  // Estoques
+  estoqueDisponivel Decimal  @default(0) @map("estoque_disponivel") @db.Decimal(12, 3)
+  estoqueReservado  Decimal  @default(0) @map("estoque_reservado") @db.Decimal(12, 3)
+  estoqueTotal      Decimal  @default(0) @map("estoque_total") @db.Decimal(12, 3)
+  estoqueMinimo     Decimal  @default(0) @map("estoque_minimo") @db.Decimal(12, 3)
+  
+  // Detalhes
+  categoria         String?
+  descricao         String?  @db.Text
+  ean               String?
+  status            String?  // Status original do CA (ex: 'ativo', 'inativo')
+  ativo             Boolean  @default(true) // Controle local do App
+  
+  // Custos e Pesos
+  custoMedio        Decimal? @map("custo_medio") @db.Decimal(12, 3)
+  pesoLiquido       Decimal? @map("peso_liquido") @db.Decimal(12, 3)
 
-  imagens       ProdutoImagem[]
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  imagens           ProdutoImagem[]
 
   @@map("produtos")
 }

@@ -17,20 +17,26 @@ const ProductCard = ({ produto }) => {
                         className="w-full h-full object-cover"
                     />
                     <div className="absolute top-2 right-2">
-                        <StatusBadge ativo={produto.ativo} estoque={produto.saldoEstoque} />
+                        <StatusBadge ativo={produto.ativo} estoque={produto.estoqueDisponivel} />
                     </div>
                 </div>
                 <div className="p-4">
                     <p className="text-xs text-gray-500 mb-1">{produto.codigo}</p>
-                    <h3 className="text-sm font-medium text-gray-900 line-clamp-2 h-10">
+                    <h3 className="text-sm font-medium text-gray-900 line-clamp-1">
                         {produto.nome}
                     </h3>
+                    {produto.categoria && (
+                        <p className="text-xs text-gray-400 mt-0.5">{produto.categoria}</p>
+                    )}
+                    {produto.descricao && (
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{produto.descricao}</p>
+                    )}
                     <div className="mt-2 flex items-center justify-between">
                         <span className="text-lg font-bold text-primary">
-                            R$ {Number(produto.precoVenda).toFixed(2).replace('.', ',')}
+                            R$ {Number(produto.valorVenda || 0).toFixed(2).replace('.', ',')}
                         </span>
                         <span className="text-xs text-gray-500">
-                            Est: {produto.saldoEstoque} {produto.unidade}
+                            Disp: {produto.estoqueDisponivel} {produto.unidade}
                         </span>
                     </div>
                 </div>
