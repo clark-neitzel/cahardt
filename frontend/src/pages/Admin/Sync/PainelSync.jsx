@@ -18,13 +18,16 @@ const PainelSync = () => {
         }
     };
 
-    const handleConnect = async () => {
-        try {
-            const url = await authService.getAuthUrl();
-            window.location.href = url;
-        } catch (error) {
-            alert('Erro ao obter URL de conexão.');
-        }
+    const handleConnect = () => {
+        // Geração de URL movida para o Frontend para garantir disponibilidade imediata
+        // Consultar skill: contaazul-autenticacao
+        const CLIENT_ID = '6f6gpe5la4bvg6oehqjh2ugp97';
+        const REDIRECT_URI = 'https://cahardt-hardt-backend.xrqvlq.easypanel.host/api/auth/callback';
+        const STATE = 'ESTADO_SEGURANCA';
+
+        const url = `https://auth.contaazul.com/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${STATE}&scope=openid+profile+aws.cognito.signin.user.admin`;
+
+        window.location.href = url;
     };
 
     const fetchLogs = async () => {
@@ -128,7 +131,7 @@ const PainelSync = () => {
                                         <td className="p-3 font-medium">{log.tipo}</td>
                                         <td className="p-3">
                                             <span className={`px-2 py-1 rounded text-xs font-bold ${log.status === 'SUCESSO' ? 'bg-green-100 text-green-700' :
-                                                    log.status === 'ERRO' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                                                log.status === 'ERRO' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
                                                 }`}>
                                                 {log.status}
                                             </span>
