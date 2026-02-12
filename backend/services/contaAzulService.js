@@ -56,17 +56,16 @@ const contaAzulService = {
 
             refreshPromise = (async () => {
                 try {
-                    // CONFIGURAÇÃO LEGACY: api.contaazul.com
-                    // Envia credenciais no BODY para evitar invalid_client
-                    const response = await axios.post('https://api.contaazul.com/oauth2/token',
+                    const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
+                    // VOLTA PARA AUTH MODERNO: auth.contaazul.com
+                    const response = await axios.post('https://auth.contaazul.com/oauth2/token',
                         new URLSearchParams({
                             grant_type: 'refresh_token',
-                            refresh_token: config.refreshToken,
-                            client_id: CLIENT_ID,
-                            client_secret: CLIENT_SECRET
+                            refresh_token: config.refreshToken
                         }).toString(),
                         {
                             headers: {
+                                'Authorization': `Basic ${credentials}`,
                                 'Content-Type': 'application/x-www-form-urlencoded'
                             }
                         }

@@ -10,12 +10,12 @@ const authController = {
     // Retorna a URL para redirecionar o usuário
     getAuthUrl: (req, res) => {
         const state = 'ESTADO_SEGURANCA';
-        // CONFIGURAÇÃO LEGACY (Compatível com api.contaazul.com)
+        // CONFIGURAÇÃO HÍBRIDA (Modern Auth + Legacy Scope)
         // O redirect URI deve ser Exatamente: https://cahardt-hardt-backend.xrqvlq.easypanel.host/api/auth/callback
         const redirectUri = 'https://cahardt-hardt-backend.xrqvlq.easypanel.host/api/auth/callback';
 
-        // MUDANÇA: Usando api.contaazul.com/auth/authorize e scope=sales
-        const url = `https://api.contaazul.com/auth/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=sales`;
+        // TENTATIVA CRÍTICA: Modern Auth com Scope SALES
+        const url = `https://auth.contaazul.com/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=openid+profile+sales`;
         res.json({ url });
     },
 
@@ -28,18 +28,20 @@ const authController = {
         }
 
         try {
-            // TROCA DE CÓDIGO (Legacy)
-            // Envia credenciais no BODY para evitar invalid_client
-            const response = await axios.post('https://api.contaazul.com/oauth2/token',
+            // Troca code por token (Basic Auth header com client_id:client_secret base64)
+            const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
+
+            // VOLTA PARA AUTH MODERNO (auth.contaazul.com)
+            // Mas agora teremos o escopo 'sales' no token
+            const response = await axios.post('https://auth.contaazul.com/oauth2/token',
                 new URLSearchParams({
                     grant_type: 'authorization_code',
                     redirect_uri: REDIRECT_URI,
-                    code: code,
-                    client_id: CLIENT_ID,
-                    client_secret: CLIENT_SECRET
+                    code: code
                 }).toString(),
                 {
                     headers: {
+                        'Authorization': `Basic ${credentials}`,
                         'Content-Type': 'application/x-www-form-urlencoded'
                     }
                 }
