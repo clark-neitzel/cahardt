@@ -57,9 +57,9 @@ const contaAzulService = {
             refreshPromise = (async () => {
                 try {
                     const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
-                    // CONFIGURAÇÃO VERIFICADA: auth.contaazul.com (Legacy/Cognito)
-                    // Consultar skill: contaazul-autenticacao
-                    const response = await axios.post('https://auth.contaazul.com/oauth2/token',
+                    // CONFIGURAÇÃO LEGACY: api.contaazul.com
+                    // Necessário pois a API V2 (auth.contaazul.com) retorna 404 para endpoints de dados
+                    const response = await axios.post('https://api.contaazul.com/oauth2/token',
                         new URLSearchParams({
                             grant_type: 'refresh_token',
                             refresh_token: config.refreshToken

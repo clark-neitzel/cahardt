@@ -10,11 +10,12 @@ const authController = {
     // Retorna a URL para redirecionar o usuário
     getAuthUrl: (req, res) => {
         const state = 'ESTADO_SEGURANCA';
-        // CONFIGURAÇÃO VERIFICADA E FUNCIONANDO (Legacy/Cognito)
-        // Consultar skill: contaazul-autenticacao
+        // CONFIGURAÇÃO LEGACY (Compatível com api.contaazul.com)
         // O redirect URI deve ser Exatamente: https://cahardt-hardt-backend.xrqvlq.easypanel.host/api/auth/callback
         const redirectUri = 'https://cahardt-hardt-backend.xrqvlq.easypanel.host/api/auth/callback';
-        const url = `https://auth.contaazul.com/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=openid+profile+aws.cognito.signin.user.admin`;
+
+        // MUDANÇA: Usando api.contaazul.com/auth/authorize e scope=sales
+        const url = `https://api.contaazul.com/auth/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=sales`;
         res.json({ url });
     },
 
@@ -30,8 +31,8 @@ const authController = {
             // Troca code por token (Basic Auth header com client_id:client_secret base64)
             const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
 
-            // AJUSTE: Usando auth.contaazul.com também para o token (Ambiente Legacy/Cognito)
-            const response = await axios.post('https://auth.contaazul.com/oauth2/token',
+            // AJUSTE: Usando api.contaazul.com para o token (Legacy)
+            const response = await axios.post('https://api.contaazul.com/oauth2/token',
                 new URLSearchParams({
                     grant_type: 'authorization_code',
                     redirect_uri: REDIRECT_URI,
