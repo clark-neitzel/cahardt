@@ -63,6 +63,8 @@ model SyncLog {
   registrosProcessados Int      @default(0) @map("registros_processados")
   dataHora            DateTime @default(now()) @map("data_hora")
 
+  @@map("sync_logs")
+
   // Detalhes Debug
   requestUrl          String?  @map("request_url")
   requestMethod       String?  @map("request_method")
