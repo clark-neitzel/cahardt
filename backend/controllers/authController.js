@@ -10,9 +10,8 @@ const authController = {
     // Retorna a URL para redirecionar o usuário
     getAuthUrl: (req, res) => {
         const state = 'ESTADO_SEGURANCA'; // Ideal ser aleatório
-        // Revertendo para URL de Login (Cognito/Legacy) pois as credenciais parecem não ser de App Developer
-        // ADICIONADO: scope=sales para permitir acesso a Vendas/Produtos/Clientes
-        const url = `https://auth.contaazul.com/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=openid+profile+aws.cognito.signin.user.admin+sales`;
+        // Endpoint moderno da Conta Azul (api.contaazul.com/auth/authorize)
+        const url = `https://api.contaazul.com/auth/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=sales`;
         res.json({ url });
     },
 
