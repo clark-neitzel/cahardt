@@ -314,6 +314,40 @@ const contaAzulService = {
             });
             throw error;
         }
+    },
+
+    // === DIAGNOSTIC TOOL ===
+    verifySyncProdutos: async () => {
+        const token = await contaAzulService.getAccessToken();
+        const url = 'https://api.contaazul.com/v1/products?size=5&sort=name';
+
+        const response = await axios.get(url, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const caProducts = response.data.products || response.data || [];
+        const comparison = [];
+
+        for (const caProd of caProducts) {
+            const localProd = await prisma.produto.findUnique({
+                where: { contaAzulId: caProd.id }
+            });
+
+            const caPrice = Number(caProd.value || caProd.valor_venda || 0).toFixed(2);
+            const dbPrice = localProd ? Number(localProd.valorVenda).toFixed(2) : 'N/A';
+            const dbStock = localProd ? Number(localProd.estoqueDisponivel).toFixed(3) : 'N/A';
+            const status = localProd ? (caPrice === dbPrice ? 'OK' : 'DIFF') : 'MISSING';
+
+            comparison.push({
+                name: caProd.name || caProd.nome,
+                ca_id: caProd.id,
+                ca_price: caPrice,
+                db_price: dbPrice,
+                db_stock: dbStock,
+                status: status
+            });
+        }
+        return comparison;
     }
 };
 

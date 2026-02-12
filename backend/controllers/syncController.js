@@ -47,6 +47,16 @@ const syncController = {
         } catch (error) {
             res.status(500).json({ error: 'Erro ao buscar logs.' });
         }
+    },
+
+    // Verificar Sincronização (Debug)
+    verificarSync: async (req, res) => {
+        try {
+            const comparison = await contaAzulService.verifySyncProdutos();
+            res.json(comparison);
+        } catch (error) {
+            res.status(500).json({ error: 'Erro ao verificar sync: ' + error.message });
+        }
     }
 };
 
