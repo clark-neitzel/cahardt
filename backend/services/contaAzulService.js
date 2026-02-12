@@ -6,7 +6,7 @@ const CLIENT_SECRET = process.env.CONTA_AZUL_CLIENT_SECRET || '1fvmga9ikj9dk4mkc
 
 const contaAzulService = {
     // === AUTH HELPER ===
-    getAccessToken: async () => {
+    getAccessToken: async (forceRefresh = false) => {
         // Enforce Single Tenant: Get the first config
         const config = await prisma.contaAzulConfig.findFirst();
 
@@ -15,13 +15,12 @@ const contaAzulService = {
         }
 
         // Check expiration
-        // O token dura 3600s (60min). Vamos renovar com margem de segurança (ex: > 50 min ou 3000s)
         const now = new Date();
         const diffSeconds = (now - new Date(config.updatedAt)) / 1000;
         const TIME_TO_REFRESH = 3000; // 50 minutos de idade do token
 
-        if (diffSeconds > TIME_TO_REFRESH) {
-            console.log(`🔄 Token expirando (Idade: ${Math.floor(diffSeconds)}s). Renovando...`);
+        if (forceRefresh || diffSeconds > TIME_TO_REFRESH) {
+            console.log(`🔄 Token ${forceRefresh ? 'INVÁLIDO' : 'EXPIRANDO'} (Idade: ${Math.floor(diffSeconds)}s). Renovando...`);
             try {
                 const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
                 // AJUSTE: Usando auth.contaazul.com (Legacy/Cognito)
@@ -64,10 +63,24 @@ const contaAzulService = {
         return config.accessToken;
     },
 
+    // === OBS: Helper interno para API calls com Retry ===
+    _axiosGet: async (url) => {
+        let token = await contaAzulService.getAccessToken();
+        try {
+            return await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        } catch (error) {
+            if (error.response?.status === 401) {
+                console.warn('⚠️ Token recusado (401). Tentando renovar e refazer request...');
+                token = await contaAzulService.getAccessToken(true); // Force Refresh
+                return await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            }
+            throw error;
+        }
+    },
+
     // === API CALLS ===
     fetchProdutosFromAPI: async (lastSyncDate = null) => {
         console.log(`📥 Buscando produtos do Conta Azul... (Delta: ${lastSyncDate ? lastSyncDate.toISOString() : 'FULL'})`);
-        const token = await contaAzulService.getAccessToken();
         let produtos = [];
         let page = 0;
         let hasMore = true;
@@ -80,9 +93,8 @@ const contaAzulService = {
             try {
                 // Endpoint real: GET /v1/products
                 const url = `https://api.contaazul.com/v1/products?size=100&page=${page}${dataAlteracaoDe}`;
-                const response = await axios.get(url, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                // Usando helper com auto-retry
+                const response = await contaAzulService._axiosGet(url);
 
                 const data = response.data; // Pode ser array direto ou objeto com lista
                 const lista = Array.isArray(data) ? data : (data.products || []);
@@ -105,7 +117,6 @@ const contaAzulService = {
 
     fetchClientesFromAPI: async (lastSyncDate = null) => {
         console.log(`📥 Buscando clientes do Conta Azul... (Delta: ${lastSyncDate ? lastSyncDate.toISOString() : 'FULL'})`);
-        const token = await contaAzulService.getAccessToken();
         let clientes = [];
         let page = 0;
         let hasMore = true;
@@ -116,9 +127,8 @@ const contaAzulService = {
             try {
                 // Endpoint real: GET /v1/customers
                 const url = `https://api.contaazul.com/v1/customers?size=100&page=${page}${dataAlteracaoDe}`;
-                const response = await axios.get(url, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                // Usando helper com auto-retry
+                const response = await contaAzulService._axiosGet(url);
 
                 const data = response.data;
                 const lista = Array.isArray(data) ? data : (data.customers || []);
@@ -318,12 +328,9 @@ const contaAzulService = {
 
     // === DIAGNOSTIC TOOL ===
     verifySyncProdutos: async () => {
-        const token = await contaAzulService.getAccessToken();
+        // Usando helper com auto-retry
         const url = 'https://api.contaazul.com/v1/products?size=5&sort=name';
-
-        const response = await axios.get(url, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await contaAzulService._axiosGet(url);
 
         const caProducts = response.data.products || response.data || [];
         const comparison = [];
