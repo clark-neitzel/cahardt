@@ -11,8 +11,10 @@ const authController = {
     getAuthUrl: (req, res) => {
         const state = 'ESTADO_SEGURANCA';
         // CONFIGURAÇÃO VERIFICADA E FUNCIONANDO (Legacy/Cognito)
-        // NÃO ALTERAR SEM CONSULTAR SKILL contaazul-autenticacao
-        const url = `https://auth.contaazul.com/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=openid+profile+aws.cognito.signin.user.admin`;
+        // Consultar skill: contaazul-autenticacao
+        // O redirect URI deve ser Exatamente: https://cahardt-hardt-backend.xrqvlq.easypanel.host/api/auth/callback
+        const redirectUri = 'https://cahardt-hardt-backend.xrqvlq.easypanel.host/api/auth/callback';
+        const url = `https://auth.contaazul.com/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=openid+profile+aws.cognito.signin.user.admin`;
         res.json({ url });
     },
 

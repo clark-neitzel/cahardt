@@ -28,7 +28,6 @@ const PainelSync = () => {
     };
 
     const fetchLogs = async () => {
-        // ... (resto da função igual)
         setLoading(true);
         try {
             const data = await syncService.listarLogs();
@@ -59,109 +58,107 @@ const PainelSync = () => {
     useEffect(() => {
         checkConnection();
         fetchLogs();
-
-        // Check for success param (redirect from callback)
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('status') === 'success') {
-            setConnected(true);
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
     }, []);
 
     return (
-        <div className="container mx-auto px-4 py-6">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <h1 className="text-2xl font-bold text-gray-800">Sincronização Conta Azul</h1>
+        <div className="p-6">
+            <h1 className="text-2xl font-bold mb-6">Sincronização Conta Azul</h1>
 
-                <div className="flex gap-3">
-                    {connected ? (
-                        <div className="flex gap-2">
-                            <div className="flex items-center px-4 py-2 rounded-md font-medium text-green-700 bg-green-100 border border-green-200">
-                                <CheckCircle className="h-5 w-5 mr-2" />
-                                Conectado
-                            </div>
-                            <button
-                                onClick={handleConnect}
-                                className="flex items-center px-3 py-2 rounded-md font-medium text-blue-700 bg-blue-100 border border-blue-200 hover:bg-blue-200 transition-colors"
-                                title="Reconectar para atualizar permissões"
-                            >
-                                <LinkIcon className="h-4 w-4 mr-2" />
-                                Reconectar
-                            </button>
-                        </div>
-                    ) : (
-                        <button
-                            onClick={handleConnect}
-                            className="flex items-center px-4 py-2 rounded-md font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm"
-                        >
-                            <LinkIcon className="h-5 w-5 mr-2" />
-                            Conectar Conta Azul
-                        </button>
-                    )}
-
+            <div className="bg-white p-6 rounded-lg shadow-md mb-6 flex items-center justify-between">
+                <div>
+                    <h2 className="text-xl font-semibold mb-2">Status da Conexão</h2>
+                    <p className={`flex items-center gap-2 ${connected ? 'text-green-600' : 'text-red-600'}`}>
+                        {connected ? <CheckCircle size={20} /> : <XCircle size={20} />}
+                        {connected ? 'Conectado' : 'Desconectado'}
+                    </p>
+                </div>
+                <div className="flex gap-4">
+                    <button
+                        onClick={handleConnect}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                    >
+                        <LinkIcon size={18} />
+                        {connected ? 'Reconectar' : 'Conectar'}
+                    </button>
                     <button
                         onClick={handleSync}
-                        disabled={syncing}
-                        className={`flex items-center px-4 py-2 rounded-md font-medium text-white transition-colors ${syncing ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 shadow-sm'
+                        disabled={syncing || !connected}
+                        className={`flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition ${(syncing || !connected) ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
                     >
-                        <RefreshCw className={`h-5 w-5 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                        <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
                         {syncing ? 'Sincronizando...' : 'Sincronizar Agora'}
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                        Histórico de Execuções
-                    </h3>
-                    <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                        Últimos registros de sincronização de produtos e clientes.
-                    </p>
+            {/* Log List Section */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-semibold">Histórico de Execuções (Debug)</h2>
+                    <button
+                        onClick={fetchLogs}
+                        className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                        Atualizar Logs
+                    </button>
                 </div>
 
                 {loading && logs.length === 0 ? (
-                    <div className="p-4 text-center">Carregando logs...</div>
-                ) : (
-                    <ul className="divide-y divide-gray-200">
-                        {logs.map((log) => (
-                            <li key={log.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center">
-                                        {log.status === 'SUCESSO' ? (
-                                            <CheckCircle className="h-5 w-5 text-green-500 mr-3" />
-                                        ) : log.status === 'ERRO' ? (
-                                            <XCircle className="h-5 w-5 text-red-500 mr-3" />
-                                        ) : (
-                                            <RefreshCw className="h-5 w-5 text-blue-500 mr-3 animate-spin" />
-                                        )}
-                                        <div>
-                                            <p className="text-sm font-medium text-primary truncate">
-                                                {log.tipo}
-                                            </p>
-                                            <p className="text-sm text-gray-500">
-                                                {log.mensagem}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-sm text-gray-900 font-semibold">
-                                            {log.registrosProcessados} registros
-                                        </p>
-                                        <p className="text-sm text-gray-500">
+                    <p className="text-gray-500 text-center py-4">Carregando logs...</p>
+                ) : logs.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm text-left">
+                            <thead className="bg-gray-50 text-gray-700 font-medium">
+                                <tr>
+                                    <th className="p-3">Data</th>
+                                    <th className="p-3">Tipo</th>
+                                    <th className="p-3">Status</th>
+                                    <th className="p-3">Mensagem</th>
+                                    <th className="p-3 text-right">Registros</th>
+                                    <th className="p-3">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {logs.map((log) => (
+                                    <tr key={log.id} className="hover:bg-gray-50 transition">
+                                        <td className="p-3 whitespace-nowrap text-gray-600">
                                             {new Date(log.dataHora).toLocaleString()}
-                                        </p>
-                                    </div>
-                                </div>
-                            </li>
-                        ))}
-                        {logs.length === 0 && (
-                            <li className="px-4 py-4 text-center text-gray-500">
-                                Nenhum log encontrado.
-                            </li>
-                        )}
-                    </ul>
+                                        </td>
+                                        <td className="p-3 font-medium">{log.tipo}</td>
+                                        <td className="p-3">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${log.status === 'SUCESSO' ? 'bg-green-100 text-green-700' :
+                                                    log.status === 'ERRO' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                                                }`}>
+                                                {log.status}
+                                            </span>
+                                        </td>
+                                        <td className="p-3 max-w-xs truncate" title={log.mensagem}>
+                                            {log.mensagem}
+                                        </td>
+                                        <td className="p-3 text-right text-gray-600">
+                                            {log.registrosProcessados}
+                                        </td>
+                                        <td className="p-3">
+                                            <button
+                                                onClick={() => {
+                                                    console.log('Log Full:', log);
+                                                    alert(JSON.stringify(log, null, 2));
+                                                }}
+                                                className="text-blue-600 hover:underline text-xs"
+                                            >
+                                                Ver JSON
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <p className="text-gray-500 text-center py-8 bg-gray-50 rounded">
+                        Nenhum log encontrado. Clique em "Sincronizar Agora" para iniciar.
+                    </p>
                 )}
             </div>
         </div>
