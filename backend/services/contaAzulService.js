@@ -169,65 +169,62 @@ const contaAzulService = {
         }
     },
 
-    // === RESOURCE METHODS ===
+
     fetchProdutosFromAPI: async (lastSyncDate = null) => {
-        console.log(`📥 Buscando produtos...`);
-        let produtos = [];
-        let page = 0;
-        let hasMore = true;
-        const dataAlteracaoDe = lastSyncDate ? `&data_alteracao_de=${lastSyncDate.toISOString()}` : '';
-
-        while (hasMore && page < 50) {
-            try {
-                // CONFIGURAÇÃO VERIFICADA: api-v2 (Consultar skill contaazul-autenticacao)
-                const url = `https://api-v2.contaazul.com/v1/produtos?pagina=${page + 1}&tamanho_pagina=100${dataAlteracaoDe}`;
-
-                const response = await contaAzulService._axiosGet(url, 'PRODUTOS');
-                const lista = response.data || [];
-
-                if (lista.length === 0) {
-                    hasMore = false;
-                } else {
-                    produtos = produtos.concat(lista);
-                    console.log(`   - Página ${page + 1}: ${lista.length} produtos.`);
-                    page++;
-                }
-            } catch (error) {
-                console.error(`Erro pág ${page + 1}:`, error.message);
-                hasMore = false;
-            }
-        }
-        return produtos;
+        return contaAzulService._fetchGeneric('PRODUTOS', lastSyncDate);
     },
 
     fetchClientesFromAPI: async (lastSyncDate = null) => {
-        console.log(`📥 Buscando clientes...`);
-        let clientes = [];
+        return contaAzulService._fetchGeneric('CLIENTES', lastSyncDate);
+    },
+
+    _fetchGeneric: async (resourceType, lastSyncDate = null) => {
+        console.log(`📥 Buscando ${resourceType}...`);
+        let items = [];
         let page = 0;
         let hasMore = true;
         const dataAlteracaoDe = lastSyncDate ? `&data_alteracao_de=${lastSyncDate.toISOString()}` : '';
 
         while (hasMore && page < 50) {
             try {
-                // CONFIGURAÇÃO VERIFICADA: api-v2
-                const url = `https://api-v2.contaazul.com/v1/clientes?pagina=${page + 1}&tamanho_pagina=100${dataAlteracaoDe}`;
+                // Endpoint selection
+                let url = '';
+                if (resourceType === 'PRODUTOS') {
+                    url = `https://api-v2.contaazul.com/v1/produtos?pagina=${page + 1}&tamanho_pagina=100${dataAlteracaoDe}`;
+                } else {
+                    url = `https://api-v2.contaazul.com/v1/clientes?pagina=${page + 1}&tamanho_pagina=100${dataAlteracaoDe}`;
+                }
 
-                const response = await contaAzulService._axiosGet(url, 'CLIENTES');
-                const lista = response.data || [];
+                const response = await contaAzulService._axiosGet(url, resourceType);
+
+                // PARSING ROBUSTO (API v2)
+                let lista = response.data?.items || response.data || []; // Pode vir wrapped em items ou direto
+
+                if (!Array.isArray(lista)) {
+                    console.error(`⚠️ Formato inesperado na página ${page + 1}.`, lista);
+                    // Se veio objeto mas sem items, pode ser 404 disfarçado ou erro
+                    await contaAzulService._logStep(resourceType, 'ERRO', `Formato inválido: Não é array`, {
+                        bodyPreview: JSON.stringify(response.data).substring(0, 500)
+                    });
+                    hasMore = false;
+                    break;
+                }
 
                 if (lista.length === 0) {
                     hasMore = false;
                 } else {
-                    clientes = clientes.concat(lista);
-                    console.log(`   - Página ${page + 1}: ${lista.length} clientes.`);
+                    items = items.concat(lista);
+                    console.log(`   - Página ${page + 1}: ${lista.length} itens.`);
                     page++;
                 }
             } catch (error) {
                 console.error(`Erro pág ${page + 1}:`, error.message);
+                // 429 = Rate Limit (Too Many Requests) -> Esperar e Retentar? 
+                // Por segurança no loop, abortamos.
                 hasMore = false;
             }
         }
-        return clientes;
+        return items;
     },
 
     syncProdutos: async () => {
