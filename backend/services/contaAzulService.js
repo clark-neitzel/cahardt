@@ -54,7 +54,11 @@ const contaAzulService = {
                 return access_token;
 
             } catch (error) {
-                console.error('❌ FALHA CRÍTICA AO RENOVAR TOKEN:', error.response?.data || error.message);
+                console.error('❌ FALHA CRÍTICA AO RENOVAR TOKEN:');
+                console.error('Status:', error.response?.status);
+                console.error('Data:', JSON.stringify(error.response?.data, null, 2));
+                console.error('Message:', error.message);
+
                 // Se falhar o refresh (ex: revogado), infelizmente o usuário precisa logar de novo.
                 throw new Error('Sua sessão com a Conta Azul expirou e não pôde ser renovada. Por favor, conecte novamente no painel.');
             }
@@ -71,8 +75,14 @@ const contaAzulService = {
         } catch (error) {
             if (error.response?.status === 401) {
                 console.warn('⚠️ Token recusado (401). Tentando renovar e refazer request...');
-                token = await contaAzulService.getAccessToken(true); // Force Refresh
-                return await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                try {
+                    token = await contaAzulService.getAccessToken(true); // Force Refresh
+                    console.log('🔄 Token forçado com sucesso. Retentando request...');
+                    return await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                } catch (retryError) {
+                    console.error('❌ Falha também na retentativa após refresh:', retryError.message);
+                    throw retryError;
+                }
             }
             throw error;
         }
