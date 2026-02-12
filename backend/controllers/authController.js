@@ -28,19 +28,18 @@ const authController = {
         }
 
         try {
-            // Troca code por token (Basic Auth header com client_id:client_secret base64)
-            const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
-
-            // AJUSTE: Usando api.contaazul.com para o token (Legacy)
+            // TROCA DE CÓDIGO (Legacy)
+            // Envia credenciais no BODY para evitar invalid_client
             const response = await axios.post('https://api.contaazul.com/oauth2/token',
                 new URLSearchParams({
                     grant_type: 'authorization_code',
                     redirect_uri: REDIRECT_URI,
-                    code: code
+                    code: code,
+                    client_id: CLIENT_ID,
+                    client_secret: CLIENT_SECRET
                 }).toString(),
                 {
                     headers: {
-                        'Authorization': `Basic ${credentials}`,
                         'Content-Type': 'application/x-www-form-urlencoded'
                     }
                 }
