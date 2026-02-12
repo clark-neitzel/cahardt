@@ -4,36 +4,35 @@ const prisma = require('../config/database');
 const syncController = {
     // Disparar sincronização manual de Produtos
     sincronizarProdutos: async (req, res) => {
-        try {
-            const result = await contaAzulService.syncProdutos();
-            res.json({ message: 'Sincronização de Produtos finalizada.', result });
-        } catch (error) {
-            res.status(500).json({ error: 'Erro ao sincronizar produtos.' });
-        }
+        // Fire and Forget (Executa em background)
+        contaAzulService.syncProdutos().catch(err => console.error("Erro background syncProdutos:", err));
+
+        res.status(202).json({ message: 'Sincronização de Produtos iniciada em background.' });
     },
 
     // Disparar sincronização manual de Clientes
     sincronizarClientes: async (req, res) => {
-        try {
-            const result = await contaAzulService.syncClientes();
-            res.json({ message: 'Sincronização de Clientes finalizada.', result });
-        } catch (error) {
-            res.status(500).json({ error: 'Erro ao sincronizar clientes.' });
-        }
+        // Fire and Forget
+        contaAzulService.syncClientes().catch(err => console.error("Erro background syncClientes:", err));
+
+        res.status(202).json({ message: 'Sincronização de Clientes iniciada em background.' });
     },
 
     // Sincronizar Tudo
     sincronizarTudo: async (req, res) => {
-        try {
-            const p = await contaAzulService.syncProdutos();
-            const c = await contaAzulService.syncClientes();
-            res.json({
-                message: 'Sincronização Geral finalizada.',
-                detalhes: { produtos: p, clientes: c }
-            });
-        } catch (error) {
-            res.status(500).json({ error: 'Erro na sincronização geral.' });
-        }
+        // Fire and Forget
+        (async () => {
+            try {
+                await contaAzulService.syncProdutos();
+                await contaAzulService.syncClientes();
+            } catch (err) {
+                console.error("Erro background syncTudo:", err);
+            }
+        })();
+
+        res.status(202).json({
+            message: 'Sincronização Geral iniciada em background.'
+        });
     },
 
     // Listar logs de sincronização
