@@ -191,10 +191,11 @@ const contaAzulService = {
                 // Endpoint selection
                 let url = '';
                 if (resourceType === 'PRODUTOS') {
-                    // Full Sync: URL Corrigida (api.contaazul.com)
-                    url = `https://api.contaazul.com/v1/produtos?pagina=${page + 1}&tamanho_pagina=20${dataAlteracaoDe}`;
+                    // Full Sync: URL Corrigida (api-v2.contaazul.com) perante SKILL
+                    // O erro 404 anterior provavelmente era falta de scope 'sales'
+                    url = `https://api-v2.contaazul.com/v1/produtos?pagina=${page + 1}&tamanho_pagina=20${dataAlteracaoDe}`;
                 } else {
-                    url = `https://api.contaazul.com/v1/clientes?pagina=${page + 1}&tamanho_pagina=100${dataAlteracaoDe}`;
+                    url = `https://api-v2.contaazul.com/v1/clientes?pagina=${page + 1}&tamanho_pagina=100${dataAlteracaoDe}`;
                 }
 
                 const response = await contaAzulService._axiosGet(url, resourceType);
