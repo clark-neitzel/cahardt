@@ -81,49 +81,49 @@ const startServer = async () => {
         } catch (error) {
             console.error('❌ Falha na migração manual (SyncLog/synclog/sync_logs):', error.message);
         }
-    }
+
         const migrationService = require('./services/migrationService');
-    await migrationService.run();
+        await migrationService.run();
 
-    app.listen(PORT, () => {
-        console.log(`Servidor rodando na porta ${PORT}`);
+        app.listen(PORT, () => {
+            console.log(`Servidor rodando na porta ${PORT}`);
 
-        // === KEEP-ALIVE SYSTEM ===
-        // Garante que o token nunca expire mesmo se o sistema estiver ocioso.
-        // Executa a cada 45 minutos (45 * 60 * 1000 = 2700000 ms)
-        console.log('⏰ Iniciando sistema de Keep-Alive do Token Conta Azul...');
-        const contaAzulService = require('./services/contaAzulService');
+            // === KEEP-ALIVE SYSTEM ===
+            // Garante que o token nunca expire mesmo se o sistema estiver ocioso.
+            // Executa a cada 45 minutos (45 * 60 * 1000 = 2700000 ms)
+            console.log('⏰ Iniciando sistema de Keep-Alive do Token Conta Azul...');
+            const contaAzulService = require('./services/contaAzulService');
 
-        // Primeira execução imediata (async, não bloqueia)
-        contaAzulService.getAccessToken().catch(err => console.error('⚠️ Erro no Keep-Alive inicial:', err.message));
+            // Primeira execução imediata (async, não bloqueia)
+            contaAzulService.getAccessToken().catch(err => console.error('⚠️ Erro no Keep-Alive inicial:', err.message));
 
-        setInterval(async () => {
-            console.log('⏰ Keep-Alive: Verificando Token...');
-            try {
-                await contaAzulService.getAccessToken();
-            } catch (error) {
-                console.error('⚠️ Keep-Alive Error:', error.message);
-            }
-        }, 2700000); // 45 minutos
+            setInterval(async () => {
+                console.log('⏰ Keep-Alive: Verificando Token...');
+                try {
+                    await contaAzulService.getAccessToken();
+                } catch (error) {
+                    console.error('⚠️ Keep-Alive Error:', error.message);
+                }
+            }, 2700000); // 45 minutos
 
-        // === AUTO-SYNC SYSTEM (Dados) ===
-        // Sincroniza produtos e clientes automaticamente a cada 1 Hora
-        console.log('⏰ Iniciando sistema de Auto-Sync (Dados)...');
-        setInterval(async () => {
-            console.log('🔄 Auto-Sync: Buscando novidades na Conta Azul...');
-            try {
-                // Delta Sync automático
-                await contaAzulService.syncProdutos();
-                await contaAzulService.syncClientes();
-                console.log('✅ Auto-Sync finalizado com sucesso.');
-            } catch (error) {
-                console.error('⚠️ Auto-Sync Error:', error.message);
-            }
-        }, 3600000); // 60 minutos (1 hora)
-    });
-} catch (error) {
-    console.error('Erro fatal ao iniciar servidor:', error);
-}
+            // === AUTO-SYNC SYSTEM (Dados) ===
+            // Sincroniza produtos e clientes automaticamente a cada 1 Hora
+            console.log('⏰ Iniciando sistema de Auto-Sync (Dados)...');
+            setInterval(async () => {
+                console.log('🔄 Auto-Sync: Buscando novidades na Conta Azul...');
+                try {
+                    // Delta Sync automático
+                    await contaAzulService.syncProdutos();
+                    await contaAzulService.syncClientes();
+                    console.log('✅ Auto-Sync finalizado com sucesso.');
+                } catch (error) {
+                    console.error('⚠️ Auto-Sync Error:', error.message);
+                }
+            }, 3600000); // 60 minutos (1 hora)
+        });
+    } catch (error) {
+        console.error('Erro fatal ao iniciar servidor:', error);
+    }
 };
 
 startServer();
