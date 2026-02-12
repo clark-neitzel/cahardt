@@ -216,6 +216,10 @@ const contaAzulService = {
                     items = items.concat(lista);
                     console.log(`   - Página ${page + 1}: ${lista.length} itens.`);
                     page++;
+
+                    // RATE LIMIT PROTECTION: Conta Azul 10 req/s
+                    // Pausa de 1s para garantir segurança (Spike Arrest)
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             } catch (error) {
                 console.error(`Erro pág ${page + 1}:`, error.message);

@@ -145,12 +145,12 @@ const PainelSync = () => {
                                         <td className="p-3">
                                             <button
                                                 onClick={() => {
-                                                    console.log('Log Full:', log);
-                                                    alert(JSON.stringify(log, null, 2));
+                                                    // Usar prompt permite copiar o texto (hack rápido e funcional)
+                                                    window.prompt('Copie o JSON abaixo:', JSON.stringify(log, null, 2));
                                                 }}
                                                 className="text-blue-600 hover:underline text-xs"
                                             >
-                                                Ver JSON
+                                                Ver JSON/Copiar
                                             </button>
                                         </td>
                                     </tr>
