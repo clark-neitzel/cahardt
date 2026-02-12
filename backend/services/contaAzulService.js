@@ -396,8 +396,8 @@ const contaAzulService = {
 
     // === DIAGNOSTIC TOOL ===
     verifySyncProdutos: async () => {
-        // Usando helper com auto-retry
-        const url = 'https://api.contaazul.com/v1/products?size=5&sort=name';
+        // Usando helper com auto-retry e endpoint CORRETO
+        const url = 'https://api-v2.contaazul.com/v1/produtos?tamanho_pagina=5';
         const response = await contaAzulService._axiosGet(url);
 
         const caProducts = response.data.products || response.data || [];

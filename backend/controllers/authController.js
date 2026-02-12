@@ -47,22 +47,31 @@ const authController = {
 
             const { access_token, refresh_token, expires_in } = response.data;
 
-            // Salva no banco (Substitui ou cria o primeiro registro - Single Tenant)
-            // Vamos deletar anteriores pra garantir apenas 1 config válida
-            await prisma.contaAzulConfig.deleteMany({});
+            // Salva no banco (Upsert - Single Tenant)
+            const firstConfig = await prisma.contaAzulConfig.findFirst();
+            if (firstConfig) {
+                await prisma.contaAzulConfig.update({
+                    where: { id: firstConfig.id },
+                    data: {
+                        accessToken: access_token,
+                        refreshToken: refresh_token || firstConfig.refreshToken,
+                        expiresIn: expires_in || 3600,
+                        updatedAt: new Date()
+                    }
+                });
+            } else {
+                await prisma.contaAzulConfig.create({
+                    data: {
+                        accessToken: access_token,
+                        refreshToken: refresh_token,
+                        expiresIn: expires_in || 3600
+                    }
+                });
+            }
 
-            await prisma.contaAzulConfig.create({
-                data: {
-                    accessToken: access_token,
-                    refreshToken: refresh_token,
-                    expiresIn: expires_in || 3600 // Fallback para 1 hora se não vier
-                }
-            });
+            console.log('✅ Acesso Conta Azul obtido e salvo com sucesso!');
 
-            console.log('✅ Acesso Conta Azul obtido com sucesso!');
-
-            // Redireciona de volta para uma página de sucesso do frontend
-            // Ideal seria redirecionar para a URL do frontend
+            // Redireciona de volta para a URL CORRETA do frontend
             res.redirect('https://cahardt-github.xrqvlq.easypanel.host/admin/sync?status=success');
 
         } catch (error) {
