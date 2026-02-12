@@ -87,7 +87,32 @@ Sempre que for fazer uma chamada à API (ex: `syncProdutos`), **NÃO** use o tok
 
 ---
 
-## 5. Referências Oficiais & Endpoints
+## 5. Configuração VERIFICADA e Funcionando (IMPORTANTE)
+
+**⚠️ ESTA É A CONFIGURAÇÃO QUE FUNCIONA PARA ESTE PROJETO. NÃO ALTERAR.**
+
+### Credenciais
+- **Client ID**: `6f6gpe5la4bvg6oehqjh2ugp97`
+- **Client Secret**: `1fvmga9ikj9dk4mkctoqvm2nfna7ht2t60p2qmg7kq04le0gb1ls`
+
+### Endpoints (Legacy/Cognito)
+- **Authorization URL**: `https://auth.contaazul.com/login`
+- **Token URL**: `https://auth.contaazul.com/oauth2/token`
+- **Redirect URI**: `https://cahardt-hardt-backend.xrqvlq.easypanel.host/api/auth/callback`
+
+### URL Completa de Autorização
+```
+https://auth.contaazul.com/login?response_type=code&client_id=6f6gpe5la4bvg6oehqjh2ugp97&redirect_uri=https://cahardt-hardt-backend.xrqvlq.easypanel.host/api/auth/callback&state=ESTADO&scope=openid+profile+aws.cognito.signin.user.admin
+```
+
+### Scope Correto
+`openid+profile+aws.cognito.signin.user.admin`
+
+**NOTA CRÍTICA**: Este projeto usa credenciais Legacy/Cognito, NÃO o endpoint moderno `api.contaazul.com/auth/authorize`. O scope `sales` NÃO funciona neste endpoint.
+
+---
+
+## 6. Referências Oficiais & Endpoints (Documentação Genérica)
 
 *   **Authorize URL**: `https://api.contaazul.com/auth/authorize`
 *   **Token URL**: `https://api.contaazul.com/oauth2/token`

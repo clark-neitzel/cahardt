@@ -9,9 +9,10 @@ const REDIRECT_URI = process.env.CONTA_AZUL_REDIRECT_URI || 'https://cahardt-har
 const authController = {
     // Retorna a URL para redirecionar o usuário
     getAuthUrl: (req, res) => {
-        const state = 'ESTADO_SEGURANCA'; // Ideal ser aleatório
-        // Endpoint moderno da Conta Azul (api.contaazul.com/auth/authorize)
-        const url = `https://api.contaazul.com/auth/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=sales`;
+        const state = 'ESTADO_SEGURANCA';
+        // CONFIGURAÇÃO VERIFICADA E FUNCIONANDO (Legacy/Cognito)
+        // NÃO ALTERAR SEM CONSULTAR SKILL contaazul-autenticacao
+        const url = `https://auth.contaazul.com/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=openid+profile+aws.cognito.signin.user.admin`;
         res.json({ url });
     },
 
