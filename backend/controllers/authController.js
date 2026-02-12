@@ -11,7 +11,8 @@ const authController = {
     getAuthUrl: (req, res) => {
         const state = 'ESTADO_SEGURANCA'; // Ideal ser aleatório
         // Revertendo para URL de Login (Cognito/Legacy) pois as credenciais parecem não ser de App Developer
-        const url = `https://auth.contaazul.com/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=openid+profile+aws.cognito.signin.user.admin`;
+        // ADICIONADO: scope=sales para permitir acesso a Vendas/Produtos/Clientes
+        const url = `https://auth.contaazul.com/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${state}&scope=openid+profile+aws.cognito.signin.user.admin+sales`;
         res.json({ url });
     },
 
