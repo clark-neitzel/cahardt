@@ -1,0 +1,100 @@
+---
+name: _processo-desenvolvimento
+description: "REGRAS OBRIGATÓRIAS de processo de desenvolvimento. DEVE ser consultada antes de QUALQUER tarefa técnica no projeto."
+---
+
+# Processo de Desenvolvimento - Regras Obrigatórias
+
+## ⚠️ REGRA FUNDAMENTAL: SEMPRE CONSULTAR SKILLS ANTES DE AGIR
+
+**Esta é a regra número 1 deste projeto. Nunca viole.**
+
+### Fluxo Obrigatório para Qualquer Tarefa Técnica
+
+```
+1. IDENTIFICAR → Qual área/recurso vou trabalhar? (Auth, Produtos, Clientes, Sync, etc)
+2. VERIFICAR → Existe skill para isso? (Listar .agent/skills/)
+3. LER → Abrir e ler COMPLETAMENTE a skill relevante
+4. PLANEJAR → Basear o plano 100% na skill
+5. EXECUTAR → Seguir exatamente o que está documentado
+6. DOCUMENTAR → Se criar algo novo ou descobrir algo, atualizar a skill
+```
+
+### ❌ PROIBIDO
+
+- ❌ "Tentar algo" sem consultar a documentação
+- ❌ Assumir que você "lembra" como funciona
+- ❌ Ignorar configurações verificadas nas skills
+- ❌ Fazer experimentos (tentativa e erro) sem verificar primeiro
+- ❌ Usar "documentação genérica" quando existe skill específica
+
+### ✅ OBRIGATÓRIO
+
+- ✅ Antes de mexer em OAuth/Auth → Ler `contaazul-autenticacao`
+- ✅ Antes de mexer em Produtos → Ler `contaazul-produtos`
+- ✅ Antes de mexer em Sync → Ler `fluxo-dados-sync`
+- ✅ Antes de mexer em Frontend → Ler `frontend-arquitetura` e `tema-visual-app`
+- ✅ Antes de mexer em Backend → Ler `backend-arquitetura`
+- ✅ Antes de mexer em Login → Ler `login`
+
+### Hierarquia de Informação
+
+1. **Skills do Projeto** (`.agent/skills/`) = **VERDADE ABSOLUTA**
+   - Se tem configuração verificada na skill, USE ELA. Não invente.
+   
+2. **Código Atual** = Implementação baseada nas skills
+   - Se o código difere da skill, a skill está desatualizada ou o código está errado
+   
+3. **Documentação Externa** = Apenas para referência genérica
+   - Use APENAS se não houver skill específica
+   - Se usar, CRIE uma skill documentando o que foi verificado
+
+### Quando Criar/Atualizar Skills
+
+**CRIE uma nova skill quando:**
+- Implementar funcionalidade nova que vai precisar de manutenção futura
+- Descobrir configuração específica que funciona (ex: endpoints, credenciais)
+- Integrar com API externa pela primeira vez
+
+**ATUALIZE uma skill quando:**
+- Descobrir que a informação está desatualizada
+- Adicionar caso especial ou configuração verificada
+- Resolver bug causado por informação incorreta na skill
+
+### Template de Comentário no Código
+
+Quando implementar algo baseado em skill, adicionar comentário:
+
+```javascript
+// CONFIGURAÇÃO VERIFICADA - Ver skill: nome-da-skill
+// NÃO ALTERAR sem consultar a skill
+```
+
+## Exemplo de Aplicação (Aprendizado do Erro OAuth)
+
+**❌ O que foi feito ERRADO:**
+1. Usuário pediu para adicionar scope `sales`
+2. Agent tentou adicionar sem ler a skill
+3. Agent mudou endpoint de Legacy para Moderno sem verificar
+4. Resultou em múltiplas tentativas e erros
+
+**✅ O que DEVERIA ter sido feito:**
+1. Usuário pediu para adicionar scope `sales`
+2. Agent lê skill `contaazul-autenticacao`
+3. Agent vê: "Este projeto usa Legacy/Cognito, scope verificado é X"
+4. Agent pergunta: "A skill diz que usamos Legacy. O scope sales não é compatível. Você quer que eu teste mesmo assim ou há outra solução?"
+5. Evita tentativa e erro
+
+## Checklist Pré-Execução
+
+Antes de escrever QUALQUER código de integração ou configuração:
+
+- [ ] Identificou a skill relevante?
+- [ ] Leu COMPLETAMENTE a skill?
+- [ ] Verificou se há seção "VERIFICADO" ou "CONFIGURAÇÃO OBRIGATÓRIA"?
+- [ ] Seu plano está 100% alinhado com a skill?
+- [ ] Se vai divergir da skill, tem motivo documentado?
+
+---
+
+**RESUMO:** Não seja criativo com configurações. Seja preciso e baseado em documentação verificada.
