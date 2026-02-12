@@ -245,165 +245,167 @@ const contaAzulService = {
 
         try {
             const produtosAPI = await contaAzulService.fetchProdutosFromAPI();
+            let count = 0;
 
-            // ... Lógica de persistência (mantida simplificada para focar no fix)
-            // Aqui você deve reinserir a lógica de salvar no banco que já existia
-            // Vou recolocar a lógica original de upsert aqui:
+            for (const p of produtosAPI) {
+                // Mapeamento Real da API
+                const dadosProduto = {
+                    contaAzulId: p.id,
+                    codigo: p.code || p.codigo_sku || '', // Fallbacks
+                    nome: p.name || p.nome,
+                    valorVenda: p.value || p.valor_venda || 0,
+                    unidade: p.unity_measure || p.unidade_medida || 'UN',
 
-            let processados = 0;
-            // ... (rest of logic) ...
+                    // Estoques (API v1 pode vir campos diferentes ou objeto estoque)
+                    estoqueDisponivel: p.available_stock || (p.estoque?.estoque_disponivel) || 0,
+                    estoqueReservado: p.reserved_stock || (p.estoque?.quantidade_reservada) || 0,
+                    estoqueTotal: p.total_stock || (p.estoque?.quantidade_total) || 0,
+                    estoqueMinimo: p.min_stock || (p.estoque?.estoque_minimo) || 0,
 
-            // NOTE: The previous view_code_item showed logic that needs to be preserved or re-implemented here if truncated.
-            // Assuming the context around line 241-250 was preserved in file content, 
-            // but we need to update lines 242 and catch block.
+                    // Detalhes
+                    ean: p.ean_code || p.ean || p.codigo_ean,
+                    status: p.status, // 'ACTIVE' or 'INACTIVE'
+                    categoria: p.category_name || (p.categoria ? p.categoria.descricao : null),
+                    descricao: p.description || p.descricao,
+                    custoMedio: p.cost || p.custo_medio || 0,
+                    pesoLiquido: p.net_weight || (p.pesos_dimensoes?.peso_liquido) || 0,
 
-            // To be safe, I will rely on the previous context but I need to make sure I don't delete the logic.
-            // The view_file output showed I was editing lines 241.
-            // Let's look at where I am replacing.
+                    ativo: p.status === 'ACTIVE' || p.status === 'ativo' || p.status === 'ATIVO'
+                };
 
-            // Actually, I can't easily replace just the variable assignment without seeing the whole function body again.
-            // I'll use a smaller chunk replacement for the start and end of the function.
-
-        } catch (error) {
-            // ...
-        }
-    },
-
-    // End of syncProdutos function
-},
-    custoMedio: p.cost || p.custo_medio || 0,
-        pesoLiquido: p.net_weight || (p.pesos_dimensoes?.peso_liquido) || 0,
-
-            ativo: p.status === 'ACTIVE' || p.status === 'ativo' || p.status === 'ATIVO'
-        };
-
-await prisma.produto.upsert({
-    where: { contaAzulId: p.id },
-    update: {
-        nome: dadosProduto.nome,
-        valorVenda: dadosProduto.valorVenda,
-        unidade: dadosProduto.unidade,
-        estoqueDisponivel: dadosProduto.estoqueDisponivel,
-        estoqueTotal: dadosProduto.estoqueTotal,
-        status: dadosProduto.status,
-        categoria: dadosProduto.categoria,
-        descricao: dadosProduto.descricao,
-        ativo: dadosProduto.ativo,
-        updatedAt: new Date()
-    },
-    create: { ...dadosProduto }
-});
-count++;
-    }
-
-await prisma.syncLog.update({
-    where: { id: log.id },
-    data: { status: 'SUCESSO', mensagem: `Sync Produtos OK (Delta: ${!!lastDate})`, registrosProcessados: count, dataHora: new Date() }
-});
-
-return { success: true, count };
-} catch (error) {
-    await prisma.syncLog.update({
-        where: { id: log.id },
-        data: { status: 'ERRO', mensagem: error.message, dataHora: new Date() }
-    });
-    throw error;
-}
-    },
-
-syncClientes: async () => {
-    const log = await prisma.syncLog.create({
-        data: { tipo: 'CLIENTES', status: 'PROCESSANDO', registrosProcessados: 0 }
-    });
-
-    try {
-        // Delta Sync Strategy
-        const lastSuccessLog = await prisma.syncLog.findFirst({
-            where: { tipo: 'CLIENTES', status: 'SUCESSO' },
-            orderBy: { dataHora: 'desc' }
-        });
-
-        let lastDate = null;
-        if (lastSuccessLog) {
-            lastDate = new Date(lastSuccessLog.dataHora);
-            lastDate.setMinutes(lastDate.getMinutes() - 10);
-        }
-
-        const clientesCA = await contaAzulService.fetchClientesFromAPI(lastDate);
-        let count = 0;
-
-        for (const c of clientesCA) {
-            // Tratamento da Condição de Pagamento
-            let condicaoId = null;
-            const termName = c.payment_term || (c.condicao_pagamento ? c.condicao_pagamento : null); // Adaptação v1/v2
-
-            if (termName) {
-                const condicao = await prisma.condicaoPagamento.upsert({
-                    where: { nome: termName },
-                    create: { nome: termName },
-                    update: {}
-                }).catch(err => {
-                    return prisma.condicaoPagamento.findUnique({ where: { nome: termName } });
-                });
-                condicaoId = condicao?.id;
-            }
-
-            // Mapeamento
-            const dadosCliente = {
-                Nome: c.name || c.nome,
-                NomeFantasia: c.fantasy_name || c.nome_fantasia,
-                Tipo_Pessoa: c.person_type || c.tipo_pessoa,
-                Documento: c.document || c.documento,
-                Email: c.email,
-                Telefone: c.business_phone || c.telefone,
-                Telefone_Celular: c.mobile_phone || c.celular,
-                Ativo: c.status === 'ACTIVE' || c.status === 'ativo' || c.status === 'ATIVO',
-                Data_Criacao: c.created_at ? new Date(c.created_at) : new Date(),
-
-                Condicao_de_pagamento: condicaoId,
-
-                End_Logradouro: c.address?.street || c.endereco?.logradouro,
-                End_Numero: c.address?.number || c.endereco?.numero,
-                End_Complemento: c.address?.complement || c.endereco?.complemento,
-                End_Bairro: c.address?.neighborhood || c.endereco?.bairro,
-                // Cidade/Estado podem vir como objetos ou strings
-                End_Cidade: (c.address?.city?.name) || (c.address?.city) || (c.endereco?.cidade?.nome) || (c.endereco?.cidade),
-                End_Estado: (c.address?.state?.name) || (c.address?.state) || (c.endereco?.estado?.nome) || (c.endereco?.estado),
-                End_CEP: c.address?.zip_code || c.endereco?.cep,
-                End_Pais: 'Brasil',
-
-                Observacoes_Gerais: c.notes || c.observacoes,
-
-                Perfil_Filtro: "PADRAO",
-                updated_at: new Date()
-            };
-
-            // Upsert por Documento
-            if (dadosCliente.Documento) {
-                await prisma.cliente.upsert({
-                    where: { Documento: dadosCliente.Documento },
-                    update: dadosCliente,
-                    create: { ...dadosCliente }
+                await prisma.produto.upsert({
+                    where: { contaAzulId: p.id },
+                    update: {
+                        nome: dadosProduto.nome,
+                        valorVenda: dadosProduto.valorVenda,
+                        unidade: dadosProduto.unidade,
+                        estoqueDisponivel: dadosProduto.estoqueDisponivel,
+                        estoqueTotal: dadosProduto.estoqueTotal,
+                        status: dadosProduto.status,
+                        categoria: dadosProduto.categoria,
+                        descricao: dadosProduto.descricao,
+                        ativo: dadosProduto.ativo,
+                        updatedAt: new Date()
+                    },
+                    create: { ...dadosProduto }
                 });
                 count++;
             }
+
+            if (log && log.id) {
+                await prisma.syncLog.update({
+                    where: { id: log.id },
+                    data: { status: 'SUCESSO', mensagem: `Sync Produtos OK`, registrosProcessados: count, dataHora: new Date() }
+                });
+            }
+
+            return { success: true, count };
+
+        } catch (error) {
+            console.error('Erro no Sync Produtos:', error);
+            if (log && log.id) {
+                await prisma.syncLog.update({
+                    where: { id: log.id },
+                    data: { status: 'ERRO', mensagem: error.message, dataHora: new Date() }
+                });
+            }
+            throw error;
         }
+    },
 
-        await prisma.syncLog.update({
-            where: { id: log.id },
-            data: { status: 'SUCESSO', mensagem: `Sync Clientes OK (Delta: ${!!lastDate})`, registrosProcessados: count, dataHora: new Date() }
+    syncClientes: async () => {
+        const log = await prisma.syncLog.create({
+            data: { tipo: 'CLIENTES', status: 'PROCESSANDO', registrosProcessados: 0 }
         });
 
-        return { success: true, count };
+        try {
+            // Delta Sync Strategy
+            const lastSuccessLog = await prisma.syncLog.findFirst({
+                where: { tipo: 'CLIENTES', status: 'SUCESSO' },
+                orderBy: { dataHora: 'desc' }
+            });
 
-    } catch (error) {
-        await prisma.syncLog.update({
-            where: { id: log.id },
-            data: { status: 'ERRO', mensagem: error.message, dataHora: new Date() }
-        });
-        throw error;
-    }
-},
+            let lastDate = null;
+            if (lastSuccessLog) {
+                lastDate = new Date(lastSuccessLog.dataHora);
+                lastDate.setMinutes(lastDate.getMinutes() - 10);
+            }
+
+            const clientesCA = await contaAzulService.fetchClientesFromAPI(lastDate);
+            let count = 0;
+
+            for (const c of clientesCA) {
+                // Tratamento da Condição de Pagamento
+                let condicaoId = null;
+                const termName = c.payment_term || (c.condicao_pagamento ? c.condicao_pagamento : null); // Adaptação v1/v2
+
+                if (termName) {
+                    const condicao = await prisma.condicaoPagamento.upsert({
+                        where: { nome: termName },
+                        create: { nome: termName },
+                        update: {}
+                    }).catch(err => {
+                        return prisma.condicaoPagamento.findUnique({ where: { nome: termName } });
+                    });
+                    condicaoId = condicao?.id;
+                }
+
+                // Mapeamento
+                const dadosCliente = {
+                    Nome: c.name || c.nome,
+                    NomeFantasia: c.fantasy_name || c.nome_fantasia,
+                    Tipo_Pessoa: c.person_type || c.tipo_pessoa,
+                    Documento: c.document || c.documento,
+                    Email: c.email,
+                    Telefone: c.business_phone || c.telefone,
+                    Telefone_Celular: c.mobile_phone || c.celular,
+                    Ativo: c.status === 'ACTIVE' || c.status === 'ativo' || c.status === 'ATIVO',
+                    Data_Criacao: c.created_at ? new Date(c.created_at) : new Date(),
+
+                    Condicao_de_pagamento: condicaoId,
+
+                    End_Logradouro: c.address?.street || c.endereco?.logradouro,
+                    End_Numero: c.address?.number || c.endereco?.numero,
+                    End_Complemento: c.address?.complement || c.endereco?.complemento,
+                    End_Bairro: c.address?.neighborhood || c.endereco?.bairro,
+                    // Cidade/Estado podem vir como objetos ou strings
+                    End_Cidade: (c.address?.city?.name) || (c.address?.city) || (c.endereco?.cidade?.nome) || (c.endereco?.cidade),
+                    End_Estado: (c.address?.state?.name) || (c.address?.state) || (c.endereco?.estado?.nome) || (c.endereco?.estado),
+                    End_CEP: c.address?.zip_code || c.endereco?.cep,
+                    End_Pais: 'Brasil',
+
+                    Observacoes_Gerais: c.notes || c.observacoes,
+
+                    Perfil_Filtro: "PADRAO",
+                    updated_at: new Date()
+                };
+
+                // Upsert por Documento
+                if (dadosCliente.Documento) {
+                    await prisma.cliente.upsert({
+                        where: { Documento: dadosCliente.Documento },
+                        update: dadosCliente,
+                        create: { ...dadosCliente }
+                    });
+                    count++;
+                }
+            }
+
+            await prisma.syncLog.update({
+                where: { id: log.id },
+                data: { status: 'SUCESSO', mensagem: `Sync Clientes OK (Delta: ${!!lastDate})`, registrosProcessados: count, dataHora: new Date() }
+            });
+
+            return { success: true, count };
+
+        } catch (error) {
+            await prisma.syncLog.update({
+                where: { id: log.id },
+                data: { status: 'ERRO', mensagem: error.message, dataHora: new Date() }
+            });
+            throw error;
+        }
+    },
 
     // === DIAGNOSTIC TOOL ===
     verifySyncProdutos: async () => {

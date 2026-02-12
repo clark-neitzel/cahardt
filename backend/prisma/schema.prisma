@@ -72,7 +72,7 @@ model SyncLog {
   responseBody        String?  @db.Text @map("response_body")
   duration            Int?     @default(0)
 
-  @@map("sync_logs")
+
 }
 
 model Cliente {
