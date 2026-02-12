@@ -57,11 +57,18 @@ model ProdutoImagem {
 
 model SyncLog {
   id                  String   @id @default(uuid())
-  tipo                String   // Ex: 'PRODUTOS', 'CLIENTES'
+  tipo                String   // Ex: 'PRODUTOS', 'CLIENTES', 'AUTH'
   status              String   // 'SUCESSO', 'ERRO'
   mensagem            String?  @db.Text
-  registrosProcessados Int      @map("registros_processados")
+  registrosProcessados Int      @default(0) @map("registros_processados")
   dataHora            DateTime @default(now()) @map("data_hora")
+
+  // Detalhes Debug
+  requestUrl          String?  @map("request_url")
+  requestMethod       String?  @map("request_method")
+  responseStatus      Int?     @map("response_status")
+  responseBody        String?  @db.Text @map("response_body")
+  duration            Int?     @default(0)
 
   @@map("sync_logs")
 }
