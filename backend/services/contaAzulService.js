@@ -101,8 +101,8 @@ const contaAzulService = {
         // Loop de paginação
         while (hasMore && page < 50) { // Aumentei limite safety
             try {
-                // Endpoint real: GET /v1/products
-                const url = `https://api.contaazul.com/v1/products?size=100&page=${page}${dataAlteracaoDe}`;
+                // CONFIGURAÇÃO VERIFICADA: api-v2.contaazul.com (ver Google Apps Script funcionando)
+                const url = `https://api-v2.contaazul.com/v1/produtos?pagina=${page + 1}&tamanho_pagina=100${dataAlteracaoDe}`;
                 // Usando helper com auto-retry
                 const response = await contaAzulService._axiosGet(url);
 
@@ -135,8 +135,8 @@ const contaAzulService = {
 
         while (hasMore && page < 50) {
             try {
-                // Endpoint real: GET /v1/customers
-                const url = `https://api.contaazul.com/v1/customers?size=100&page=${page}${dataAlteracaoDe}`;
+                // CONFIGURAÇÃO VERIFICADA: api-v2.contaazul.com
+                const url = `https://api-v2.contaazul.com/v1/clientes?pagina=${page + 1}&tamanho_pagina=100${dataAlteracaoDe}`;
                 // Usando helper com auto-retry
                 const response = await contaAzulService._axiosGet(url);
 

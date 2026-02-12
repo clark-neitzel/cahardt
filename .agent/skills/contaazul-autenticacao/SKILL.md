@@ -108,6 +108,15 @@ https://auth.contaazul.com/login?response_type=code&client_id=6f6gpe5la4bvg6oehq
 ### Scope Correto
 `openid+profile+aws.cognito.signin.user.admin`
 
+### API Base URL (CRÍTICO)
+**URL Base da API:** `https://api-v2.contaazul.com`
+
+**IMPORTANTE:** A API base é `api-v2.contaazul.com`, NÃO `api.contaazul.com`. Usar o endpoint errado resulta em 401 mesmo com autenticação válida.
+
+**Endpoints de recursos:**
+- Produtos: `https://api-v2.contaazul.com/v1/produtos` (paginação: `?pagina=X&tamanho_pagina=Y`)
+- Clientes: `https://api-v2.contaazul.com/v1/clientes` (paginação: `?pagina=X&tamanho_pagina=Y`)
+
 **NOTA CRÍTICA**: Este projeto usa credenciais Legacy/Cognito, NÃO o endpoint moderno `api.contaazul.com/auth/authorize`. O scope `sales` NÃO funciona neste endpoint.
 
 ---
