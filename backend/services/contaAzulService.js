@@ -190,7 +190,8 @@ const contaAzulService = {
                 // Endpoint selection
                 let url = '';
                 if (resourceType === 'PRODUTOS') {
-                    url = `https://api-v2.contaazul.com/v1/produtos?pagina=${page + 1}&tamanho_pagina=100${dataAlteracaoDe}`;
+                    // DEBUG MODE: Apenas 1 item para teste
+                    url = `https://api-v2.contaazul.com/v1/produtos?pagina=${page + 1}&tamanho_pagina=1${dataAlteracaoDe}`;
                 } else {
                     url = `https://api-v2.contaazul.com/v1/clientes?pagina=${page + 1}&tamanho_pagina=100${dataAlteracaoDe}`;
                 }
@@ -220,6 +221,12 @@ const contaAzulService = {
                     // RATE LIMIT PROTECTION: Conta Azul 10 req/s
                     // Pausa de 1s para garantir segurança (Spike Arrest)
                     await new Promise(resolve => setTimeout(resolve, 1000));
+
+                    // DEBUG MODE: Parar após a primeira página (1 item)
+                    if (resourceType === 'PRODUTOS') {
+                        console.log('🛑 DEBUG MODE: Parando após 1 produto para validação.');
+                        hasMore = false;
+                    }
                 }
             } catch (error) {
                 console.error(`Erro pág ${page + 1}:`, error.message);
