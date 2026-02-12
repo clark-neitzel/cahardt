@@ -44,10 +44,35 @@ app.get('/api/debug-version', (req, res) => {
     });
 });
 
+const prisma = require('./config/database');
+
 // Inicialização
 const startServer = async () => {
     try {
-        // Rodar migrações manuais (Garantia de schema)
+        // Rodar migrações manuais (Garantia de schema) - SAFE RECOVERY
+        console.log('🔄 Verificando Schema do Banco de Dados...');
+        try {
+            // Tenta alterar SyncLog (Nome padrão do Prisma)
+            await prisma.$executeRawUnsafe(`ALTER TABLE "SyncLog" ADD COLUMN IF NOT EXISTS "request_url" TEXT;`);
+            await prisma.$executeRawUnsafe(`ALTER TABLE "SyncLog" ADD COLUMN IF NOT EXISTS "request_method" TEXT;`);
+            await prisma.$executeRawUnsafe(`ALTER TABLE "SyncLog" ADD COLUMN IF NOT EXISTS "response_status" INTEGER;`);
+            await prisma.$executeRawUnsafe(`ALTER TABLE "SyncLog" ADD COLUMN IF NOT EXISTS "response_body" TEXT;`);
+            await prisma.$executeRawUnsafe(`ALTER TABLE "SyncLog" ADD COLUMN IF NOT EXISTS "duration" INTEGER;`);
+            console.log('✅ Schema SyncLog atualizado com sucesso (SyncLog).');
+        } catch (e) {
+            console.log('⚠️ Tentativa SyncLog falhou, tentando sync_logs...', e.message);
+            try {
+                // Tenta alterar sync_logs (Caso tenha sido mapeado)
+                await prisma.$executeRawUnsafe(`ALTER TABLE "sync_logs" ADD COLUMN IF NOT EXISTS "request_url" TEXT;`);
+                await prisma.$executeRawUnsafe(`ALTER TABLE "sync_logs" ADD COLUMN IF NOT EXISTS "request_method" TEXT;`);
+                await prisma.$executeRawUnsafe(`ALTER TABLE "sync_logs" ADD COLUMN IF NOT EXISTS "response_status" INTEGER;`);
+                await prisma.$executeRawUnsafe(`ALTER TABLE "sync_logs" ADD COLUMN IF NOT EXISTS "response_body" TEXT;`);
+                await prisma.$executeRawUnsafe(`ALTER TABLE "sync_logs" ADD COLUMN IF NOT EXISTS "duration" INTEGER;`);
+                console.log('✅ Schema SyncLog atualizado com sucesso (sync_logs).');
+            } catch (e2) {
+                console.error('❌ Falha na migração manual:', e2.message);
+            }
+        }
         const migrationService = require('./services/migrationService');
         await migrationService.run();
 
