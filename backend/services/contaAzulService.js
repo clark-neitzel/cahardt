@@ -197,6 +197,7 @@ const contaAzulService = {
                     // CLIENTES: v2 usa /v1/pessoas (Padrão API v2)
                     // URL confirmada via pesquisa: https://api-v2.contaazul.com/v1/pessoas
                     url = `https://api-v2.contaazul.com/v1/pessoas?pagina=${page + 1}&tamanho_pagina=100${dataAlteracaoDe}`;
+                    console.log(`🔎 [DEBUG] Requesting URL: ${url}`);
                 }
 
                 const response = await contaAzulService._axiosGet(url, resourceType);
