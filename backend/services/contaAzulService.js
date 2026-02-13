@@ -184,7 +184,13 @@ const contaAzulService = {
         let items = [];
         let page = 0;
         let hasMore = true;
-        const dataAlteracaoDe = lastSyncDate ? `&data_alteracao_de=${lastSyncDate.toISOString()}` : '';
+
+        // PARAMETROS DE DATA (V2 exige start AND end)
+        let dateParams = '';
+        if (lastSyncDate) {
+            const now = new Date();
+            dateParams = `&data_alteracao_de=${lastSyncDate.toISOString()}&data_alteracao_ate=${now.toISOString()}`;
+        }
 
         while (hasMore && page < 50) {
             try {
@@ -192,11 +198,11 @@ const contaAzulService = {
                 let url = '';
                 if (resourceType === 'PRODUTOS') {
                     // Full Sync: URL Corrigida (api-v2.contaazul.com) perante SKILL
-                    url = `https://api-v2.contaazul.com/v1/produtos?pagina=${page + 1}&tamanho_pagina=20${dataAlteracaoDe}`;
+                    url = `https://api-v2.contaazul.com/v1/produtos?pagina=${page + 1}&tamanho_pagina=20${dateParams}`;
                 } else {
                     // CLIENTES: v2 usa /v1/pessoas (Padrão API v2)
                     // URL confirmada via pesquisa: https://api-v2.contaazul.com/v1/pessoas
-                    url = `https://api-v2.contaazul.com/v1/pessoas?pagina=${page + 1}&tamanho_pagina=100${dataAlteracaoDe}`;
+                    url = `https://api-v2.contaazul.com/v1/pessoas?pagina=${page + 1}&tamanho_pagina=100${dateParams}`;
                     console.log(`🔎 [DEBUG] Requesting URL: ${url}`);
                 }
 
