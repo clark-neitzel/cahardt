@@ -387,35 +387,36 @@ const contaAzulService = {
                     console.log('🔎 [DEBUG MAPPING] Endereço Identificado:', JSON.stringify(enderecoPrincipal, null, 2));
                 }
 
+                // Mapeamento baseado no JSON real fornecido pelo usuário
+                // JSON: { nome: "Curto/Fantasia", nome_empresa: "Longo/Razão", ... }
                 const dadosCliente = {
-                    // Nome = Razão Social (PJ) ou Nome (PF)
-                    // Prioridade: nome (API) -> razao_social -> company_name
-                    Nome: c.name || c.nome || c.razao_social || c.company_name,
+                    // Nome = Razão Social (Formal/Completo)
+                    // No JSON do usuário: 'nome_empresa' parece ser a Razão Social ("... LTDA")
+                    Nome: c.nome_empresa || c.razao_social || c.company_name || c.nome,
 
-                    // Nome Fantasia = Nome Fantasia (PJ) ou Apelido
-                    // API retorna 'nome_empresa' no GET Lista.
-                    NomeFantasia: c.fantasy_name || c.nome_fantasia || c.nome_empresa || c.apelido || (c.company_name ? c.name : null),
+                    // Nome Fantasia = Nome "comum" / Apelido
+                    // No JSON do usuário: 'nome' parece ser o nome de exibição/fantasia
+                    NomeFantasia: c.nome_fantasia || c.fantasy_name || c.nome || c.apelido,
 
-                    Tipo_Pessoa: c.person_type || c.tipo_pessoa,
+                    Tipo_Pessoa: c.person_type || c.tipo_pessoa, // "Jurídica"
                     Documento: c.document || c.documento,
                     Email: c.email,
-                    Telefone: c.business_phone || c.telefone || c.telefone_comercial,
-                    Telefone_Celular: c.mobile_phone || c.celular || c.telefone_celular,
-                    Ativo: (c.ativo === true) || (c.status === 'ACTIVE' || c.status === 'ativo' || c.status === 'ATIVO'),
-                    Data_Criacao: c.created_at ? new Date(c.created_at) : new Date(),
+                    Telefone: c.telefone_comercial || c.business_phone || c.telefone,
+                    Telefone_Celular: c.telefone_celular || c.mobile_phone || c.celular,
+                    Ativo: (c.ativo === true), // JSON confirma booleano
+                    Data_Criacao: c.criado_em ? new Date(c.criado_em) : (c.created_at ? new Date(c.created_at) : new Date()),
 
                     Condicao_de_pagamento: condicaoId,
 
-                    End_Logradouro: enderecoPrincipal.street || enderecoPrincipal.logradouro,
-                    End_Numero: enderecoPrincipal.number || enderecoPrincipal.numero,
-                    End_Complemento: enderecoPrincipal.complement || enderecoPrincipal.complemento,
-                    End_Bairro: enderecoPrincipal.neighborhood || enderecoPrincipal.bairro,
-                    // Cidade/Estado podem vir como objetos ou strings
-                    End_Cidade: (enderecoPrincipal.city?.name) || (enderecoPrincipal.city) || (enderecoPrincipal.cidade?.nome) || (enderecoPrincipal.cidade),
-                    End_Estado: (enderecoPrincipal.state?.name) || (enderecoPrincipal.state) || (enderecoPrincipal.estado?.nome) || (enderecoPrincipal.estado),
-                    End_CEP: enderecoPrincipal.zip_code || enderecoPrincipal.cep,
-                    End_Pais: 'Brasil',
-
+                    // Endereço (JSON confirma campos planos: logradouro, numero, bairro, cidade (string), estado (string))
+                    End_Logradouro: enderecoPrincipal.logradouro || enderecoPrincipal.street,
+                    End_Numero: enderecoPrincipal.numero || enderecoPrincipal.number,
+                    End_Complemento: enderecoPrincipal.complemento || enderecoPrincipal.complement,
+                    End_Bairro: enderecoPrincipal.bairro || enderecoPrincipal.neighborhood,
+                    End_Cidade: enderecoPrincipal.cidade || enderecoPrincipal.city?.name || enderecoPrincipal.city,
+                    End_Estado: enderecoPrincipal.estado || enderecoPrincipal.state?.name || enderecoPrincipal.state,
+                    End_CEP: enderecoPrincipal.cep || enderecoPrincipal.zip_code,
+                    End_Pais: enderecoPrincipal.pais || 'Brasil',
                     Observacoes_Gerais: c.notes || c.observacoes,
 
                     Perfil_Filtro: "PADRAO",
