@@ -377,14 +377,24 @@ const contaAzulService = {
                 }
 
                 // Mapeamento
-                // API v2 (Pessoas) retorna arrays em 'enderecos' e campos em português
-                const enderecoPrincipal = (c.enderecos && c.enderecos.length > 0) ? c.enderecos[0] : (c.address || {});
+                // API v2 (Pessoas) retorna 'endereco' (objeto singular) no GET, mas 'enderecos' (array) no POST/Detalhes.
+                // Ajuste: Verificar 'endereco' também.
+                const enderecoPrincipal = (c.enderecos && c.enderecos.length > 0) ? c.enderecos[0] : (c.endereco || c.address || {});
+
+                if (count === 0) {
+                    console.log('🔎 [DEBUG MAPPING] Primeiro Cliente Raw:', JSON.stringify(c, null, 2));
+                    console.log('🔎 [DEBUG MAPPING] Endereço Identificado:', JSON.stringify(enderecoPrincipal, null, 2));
+                }
 
                 const dadosCliente = {
                     // Nome = Razão Social (PJ) ou Nome (PF)
+                    // Prioridade: nome (API) -> razao_social -> company_name
                     Nome: c.name || c.nome || c.razao_social || c.company_name,
+
                     // Nome Fantasia = Nome Fantasia (PJ) ou Apelido
-                    NomeFantasia: c.fantasy_name || c.nome_fantasia || c.apelido || (c.company_name ? c.name : null),
+                    // API retorna 'nome_empresa' no GET Lista.
+                    NomeFantasia: c.fantasy_name || c.nome_fantasia || c.nome_empresa || c.apelido || (c.company_name ? c.name : null),
+
                     Tipo_Pessoa: c.person_type || c.tipo_pessoa,
                     Documento: c.document || c.documento,
                     Email: c.email,
