@@ -130,8 +130,8 @@ model Cliente {
   @@index([End_Cidade])
   @@index([Perfil_Filtro])
 
-  VendedorId      String?   @map("vendedor_id")
-  vendedor        Vendedor? @relation(fields: [VendedorId], references: [id])
+  idVendedor      String?   @map("id_vendedor")
+  vendedor        Vendedor? @relation(fields: [idVendedor], references: [id])
 }
 
 model CondicaoPagamento {
