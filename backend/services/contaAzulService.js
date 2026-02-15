@@ -209,7 +209,8 @@ const contaAzulService = {
                     // CLIENTES: v2 usa /v1/pessoas (Padrão API v2)
                     // Filtro tipo_perfil=Cliente (Title Case, conforme erro 400)
                     // URL confirmada via pesquisa: https://api-v2.contaazul.com/v1/pessoas
-                    url = `https://api-v2.contaazul.com/v1/pessoas?pagina=${page + 1}&tamanho_pagina=100&tipo_perfil=Cliente${dateParams}`;
+                    // FIX: Adicionado com_endereco=true para trazer dados de endereço na listagem
+                    url = `https://api-v2.contaazul.com/v1/pessoas?pagina=${page + 1}&tamanho_pagina=100&tipo_perfil=Cliente&com_endereco=true${dateParams}`;
                     console.log(`🔎 [DEBUG] Requesting URL: ${url}`);
                 }
 
