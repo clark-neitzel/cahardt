@@ -188,7 +188,10 @@ const contaAzulService = {
         // PARAMETROS DE DATA (V2 exige start AND end)
         // CRITICAL FIX: Remover millisegundos e Z para evitar 500 Server Error
         let dateParams = '';
-        if (lastSyncDate) {
+
+        // FORÇAR SYNC COMPLETO PARA CLIENTES (IGNORAR DATA)
+        // O usuário reclamou que nada retornava. Delta Sync estava filtrando tudo.
+        if (lastSyncDate && resourceType !== 'CLIENTES') {
             const now = new Date();
             const startStr = lastSyncDate.toISOString().split('.')[0];
             const endStr = now.toISOString().split('.')[0];
