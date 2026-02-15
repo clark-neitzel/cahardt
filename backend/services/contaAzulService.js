@@ -381,8 +381,10 @@ const contaAzulService = {
                 const enderecoPrincipal = (c.enderecos && c.enderecos.length > 0) ? c.enderecos[0] : (c.address || {});
 
                 const dadosCliente = {
-                    Nome: c.name || c.nome,
-                    NomeFantasia: c.fantasy_name || c.nome_fantasia,
+                    // Nome = Razão Social (PJ) ou Nome (PF)
+                    Nome: c.name || c.nome || c.razao_social || c.company_name,
+                    // Nome Fantasia = Nome Fantasia (PJ) ou Apelido
+                    NomeFantasia: c.fantasy_name || c.nome_fantasia || c.apelido || (c.company_name ? c.name : null),
                     Tipo_Pessoa: c.person_type || c.tipo_pessoa,
                     Documento: c.document || c.documento,
                     Email: c.email,
