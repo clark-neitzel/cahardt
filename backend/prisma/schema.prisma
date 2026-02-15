@@ -129,9 +129,6 @@ model Cliente {
   @@index([Codigo])
   @@index([End_Cidade])
   @@index([Perfil_Filtro])
-
-  idVendedor      String?   @map("id_vendedor")
-  vendedor        Vendedor? @relation(fields: [idVendedor], references: [id])
 }
 
 model CondicaoPagamento {
@@ -180,8 +177,6 @@ model Vendedor {
   ativo           Boolean  @default(true)
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
-
-  clientes        Cliente[]
 
   @@map("vendedores")
 }
