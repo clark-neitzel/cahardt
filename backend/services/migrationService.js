@@ -74,6 +74,20 @@ const migrationService = {
                 "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 "updatedAt" TIMESTAMP(3) NOT NULL,
                 CONSTRAINT "conta_azul_config_pkey" PRIMARY KEY ("id")
+            );`,
+
+            // Vendedores (Added manually to fix missing table error)
+            `CREATE TABLE IF NOT EXISTS "vendedores" (
+                "id" TEXT NOT NULL,
+                "nome" TEXT NOT NULL,
+                "email" TEXT,
+                "id_legado" TEXT,
+                "flex_mensal" DECIMAL(12, 2) NOT NULL DEFAULT 0,
+                "flex_disponivel" DECIMAL(12, 2) NOT NULL DEFAULT 0,
+                "ativo" BOOLEAN NOT NULL DEFAULT true,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL,
+                CONSTRAINT "vendedores_pkey" PRIMARY KEY ("id")
             );`
         ];
 
