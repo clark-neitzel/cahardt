@@ -377,27 +377,30 @@ const contaAzulService = {
                 }
 
                 // Mapeamento
+                // API v2 (Pessoas) retorna arrays em 'enderecos' e campos em português
+                const enderecoPrincipal = (c.enderecos && c.enderecos.length > 0) ? c.enderecos[0] : (c.address || {});
+
                 const dadosCliente = {
                     Nome: c.name || c.nome,
                     NomeFantasia: c.fantasy_name || c.nome_fantasia,
                     Tipo_Pessoa: c.person_type || c.tipo_pessoa,
                     Documento: c.document || c.documento,
                     Email: c.email,
-                    Telefone: c.business_phone || c.telefone,
-                    Telefone_Celular: c.mobile_phone || c.celular,
-                    Ativo: c.status === 'ACTIVE' || c.status === 'ativo' || c.status === 'ATIVO',
+                    Telefone: c.business_phone || c.telefone || c.telefone_comercial,
+                    Telefone_Celular: c.mobile_phone || c.celular || c.telefone_celular,
+                    Ativo: (c.ativo === true) || (c.status === 'ACTIVE' || c.status === 'ativo' || c.status === 'ATIVO'),
                     Data_Criacao: c.created_at ? new Date(c.created_at) : new Date(),
 
                     Condicao_de_pagamento: condicaoId,
 
-                    End_Logradouro: c.address?.street || c.endereco?.logradouro,
-                    End_Numero: c.address?.number || c.endereco?.numero,
-                    End_Complemento: c.address?.complement || c.endereco?.complemento,
-                    End_Bairro: c.address?.neighborhood || c.endereco?.bairro,
+                    End_Logradouro: enderecoPrincipal.street || enderecoPrincipal.logradouro,
+                    End_Numero: enderecoPrincipal.number || enderecoPrincipal.numero,
+                    End_Complemento: enderecoPrincipal.complement || enderecoPrincipal.complemento,
+                    End_Bairro: enderecoPrincipal.neighborhood || enderecoPrincipal.bairro,
                     // Cidade/Estado podem vir como objetos ou strings
-                    End_Cidade: (c.address?.city?.name) || (c.address?.city) || (c.endereco?.cidade?.nome) || (c.endereco?.cidade),
-                    End_Estado: (c.address?.state?.name) || (c.address?.state) || (c.endereco?.estado?.nome) || (c.endereco?.estado),
-                    End_CEP: c.address?.zip_code || c.endereco?.cep,
+                    End_Cidade: (enderecoPrincipal.city?.name) || (enderecoPrincipal.city) || (enderecoPrincipal.cidade?.nome) || (enderecoPrincipal.cidade),
+                    End_Estado: (enderecoPrincipal.state?.name) || (enderecoPrincipal.state) || (enderecoPrincipal.estado?.nome) || (enderecoPrincipal.estado),
+                    End_CEP: enderecoPrincipal.zip_code || enderecoPrincipal.cep,
                     End_Pais: 'Brasil',
 
                     Observacoes_Gerais: c.notes || c.observacoes,
