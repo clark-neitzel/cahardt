@@ -32,7 +32,7 @@ async function testClientSync() {
         // Endpoint: /v1/pessoas
         // Filtro: tipo_perfil=CLIENTE
 
-        const url = `https://api-v2.contaazul.com/v1/pessoas?pagina=1&tamanho_pagina=5&tipo_perfil=CLIENTE&data_alteracao_de=${startStr}&data_alteracao_ate=${endStr}`;
+        const url = `https://api-v2.contaazul.com/v1/pessoas?pagina=1&tamanho_pagina=5&tipo_perfil=Cliente&data_alteracao_de=${startStr}&data_alteracao_ate=${endStr}`;
 
         console.log(`\n🔎 [TESTE] Request URL: ${url}`);
         console.log(`🔑 Authorization: Bearer ${token.substring(0, 10)}...`);
