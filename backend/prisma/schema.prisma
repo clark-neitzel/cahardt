@@ -129,6 +129,9 @@ model Cliente {
   @@index([Codigo])
   @@index([End_Cidade])
   @@index([Perfil_Filtro])
+
+  VendedorId      String?   @map("vendedor_id")
+  vendedor        Vendedor? @relation(fields: [VendedorId], references: [id])
 }
 
 model CondicaoPagamento {
@@ -165,4 +168,20 @@ model ContaAzulConfig {
   updatedAt    DateTime @updatedAt
 
   @@map("conta_azul_config")
+}
+
+model Vendedor {
+  id              String   @id // CA UUID
+  nome            String
+  email           String?
+  idLegado        String?  @map("id_legado")
+  flexMensal      Decimal  @default(0) @map("flex_mensal") @db.Decimal(12, 2)
+  flexDisponivel  Decimal  @default(0) @map("flex_disponivel") @db.Decimal(12, 2)
+  ativo           Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  clientes        Cliente[]
+
+  @@map("vendedores")
 }

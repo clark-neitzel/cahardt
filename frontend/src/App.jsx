@@ -7,6 +7,7 @@ import GerenciarProduto from './pages/Admin/Produtos/GerenciarProduto';
 import PainelSync from './pages/Admin/Sync/PainelSync';
 import ListaClientes from './pages/Clientes/ListaClientes';
 import DetalheCliente from './pages/Clientes/DetalheCliente';
+import ListaVendedores from './pages/Admin/Vendedores/ListaVendedores'; // New
 
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
@@ -54,6 +55,16 @@ const Layout = ({ children }) => {
                   }
                 >
                   Admin: Produtos
+                </NavLink>
+                <NavLink
+                  to="/admin/vendedores"
+                  className={({ isActive }) =>
+                    isActive
+                      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
+                      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
+                  }
+                >
+                  Vendedores
                 </NavLink>
                 <NavLink
                   to="/admin/sync"
@@ -159,8 +170,11 @@ function App() {
 
           {/* Admin */}
           <Route path="/admin/produtos" element={<ListaProdutos />} />
+          <Route path="/admin/produtos/novo" element={<GerenciarProduto />} />
           <Route path="/admin/produtos/:id" element={<GerenciarProduto />} />
+
           <Route path="/admin/sync" element={<PainelSync />} />
+          <Route path="/admin/vendedores" element={<ListaVendedores />} />
         </Routes>
       </Layout>
     </Router>

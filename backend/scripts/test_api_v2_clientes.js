@@ -49,7 +49,9 @@ async function testClientSync() {
         if (Array.isArray(items)) {
             console.log(`Total de itens retornados: ${items.length}`);
             if (items.length > 0) {
+                console.log('--- ESTRUTURA COMPLETA DO PRIMEIRO ITEM ---');
                 console.log(JSON.stringify(items[0], null, 2));
+                console.log('--- FIM DA ESTRUTURA ---');
             } else {
                 console.log('Nenhum cliente encontrado neste período.');
             }

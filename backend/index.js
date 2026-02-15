@@ -7,6 +7,7 @@ const produtoRoutes = require('./routes/produtoRoutes');
 const syncRoutes = require('./routes/syncRoutes');
 const clienteRoutes = require('./routes/clienteRoutes');
 const authRoutes = require('./routes/authRoutes'); // New
+const vendedorRoutes = require('./routes/vendedorRoutes'); // New
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,6 +29,7 @@ app.use('/api/produtos', produtoRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/auth', authRoutes); // New
+app.use('/api/vendedores', vendedorRoutes); // New
 
 // Rota base
 app.get('/', (req, res) => {

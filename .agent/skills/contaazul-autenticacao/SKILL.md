@@ -117,7 +117,14 @@ https://auth.contaazul.com/login?response_type=code&client_id=6f6gpe5la4bvg6oehq
 - Produtos: `https://api-v2.contaazul.com/v1/produtos` (paginação: `?pagina=X&tamanho_pagina=Y`)
 - Clientes: `https://api-v2.contaazul.com/v1/clientes` (paginação: `?pagina=X&tamanho_pagina=Y`)
 
-**NOTA CRÍTICA**: Este projeto usa credenciais Legacy/Cognito, NÃO o endpoint moderno `api.contaazul.com/auth/authorize`. O scope `sales` NÃO funciona neste endpoint.
+### 6. Governança: Estabilidade e Segurança (Token Rotation)
+
+**CRÍTICO:** A Conta Azul utiliza **Refresh Token Rotation**. Isso significa que a cada refresh, o token antigo é invalidado.
+
+**Regras de Ouro:**
+1. **Mutex / Locking:** É OBRIGATÓRIO usar um mecanismo de trava (mutex) para impedir que múltiplas requisições tentem renovar o token simultaneamente. Se dois requests tentarem usar o mesmo `refresh_token` ao mesmo tempo, um deles falhará e invalidará o token para todos.
+2. **Safe Rotation:** Nem sempre a API retorna um novo `refresh_token`. O código deve checar: se vier `null`, MANTENHA o antigo. Se vier novo, SUBSTITUA.
+3. **Logs Detalhados:** Todo fluxo de auth deve logar o status, e qualquer erro 401 deve desencadear um log de erro crítico com o corpo da resposta.
 
 ---
 

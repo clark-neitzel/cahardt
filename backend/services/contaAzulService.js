@@ -452,6 +452,69 @@ const contaAzulService = {
         }
     },
 
+    // === VENDEDORES ===
+    syncVendedores: async () => {
+        const log = await prisma.syncLog.create({
+            data: { tipo: 'VENDEDORES', status: 'EM_ANDAMENTO', mensagem: 'Iniciando sync de vendedores...' }
+        });
+
+        try {
+            const config = await prisma.contaAzulConfig.findFirst();
+            if (!config || !config.accessToken) {
+                throw new Error('Conta Azul não conectada.');
+            }
+
+            console.log('📥 Buscando VENDEDORES...');
+            const url = 'https://api-v2.contaazul.com/v1/venda/vendedores';
+
+            // Usar _axiosGet se possível para tratar refresh, ou direto se for simples
+            // Aqui usando axios direto para simplificar, mas idealmente usaria o helper de retry se existisse publicamente
+            // Como _axiosGet é interno (mas acessível se definido no obj), vou usar axios direto seguindo padrão syncClientes
+            const response = await axios.get(url, {
+                headers: { Authorization: `Bearer ${config.accessToken}` }
+            });
+
+            const vendedores = response.data || [];
+            console.log(`🔎 Encontrados ${vendedores.length} vendedores.`);
+
+            let count = 0;
+            for (const v of vendedores) {
+                await prisma.vendedor.upsert({
+                    where: { id: v.id },
+                    update: {
+                        nome: v.nome,
+                        idLegado: v.id_legado ? String(v.id_legado) : null
+                        // Preserva email e flex
+                    },
+                    create: {
+                        id: v.id,
+                        nome: v.nome,
+                        idLegado: v.id_legado ? String(v.id_legado) : null,
+                        email: null,
+                        flexMensal: 0,
+                        flexDisponivel: 0
+                    }
+                });
+                count++;
+            }
+
+            await prisma.syncLog.update({
+                where: { id: log.id },
+                data: { status: 'SUCESSO', mensagem: `Vendedores sincronizados: ${count}`, registrosProcessados: count, dataHora: new Date() }
+            });
+
+            return { success: true, count };
+
+        } catch (error) {
+            console.error('Erro syncVendedores:', error);
+            await prisma.syncLog.update({
+                where: { id: log.id },
+                data: { status: 'ERRO', mensagem: error.message, dataHora: new Date() }
+            });
+            throw error;
+        }
+    },
+
     // === DIAGNOSTIC TOOL ===
     verifySyncProdutos: async () => {
         // Usando helper com auto-retry e endpoint CORRETO

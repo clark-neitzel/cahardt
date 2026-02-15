@@ -25,6 +25,7 @@ const syncController = {
             try {
                 await contaAzulService.syncProdutos();
                 await contaAzulService.syncClientes();
+                await contaAzulService.syncVendedores();
             } catch (err) {
                 console.error("Erro background syncTudo:", err);
             }
