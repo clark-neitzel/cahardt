@@ -12,7 +12,7 @@ const ListaVendedores = () => {
     const fetchVendedores = async () => {
         try {
             setLoading(true);
-            const response = await fetch('http://localhost:3000/api/vendedores');
+            const response = await fetch('/api/vendedores');
             // Hardcode localhost:3000 for now or use env if available. 
             // App.jsx doesn't seem to have global api config shown, but generally fetch goes to backend.
             // Using logic from ListaClientes (implied)
@@ -45,7 +45,7 @@ const ListaVendedores = () => {
 
     const handleSave = async (id) => {
         try {
-            const response = await fetch(`http://localhost:3000/api/vendedores/${id}`, {
+            const response = await fetch(`/api/vendedores/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(editForm)
