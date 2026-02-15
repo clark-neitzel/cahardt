@@ -72,7 +72,7 @@ const ListaVendedores = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Vendedores</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Vendedores (Lista Oficial)</h1>
                     <p className="mt-1 text-sm text-gray-500">Gerencie limites de Flex e dados de contato</p>
                 </div>
                 <div className="relative">
