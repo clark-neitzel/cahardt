@@ -213,14 +213,31 @@ const contaAzulService = {
                 const response = await contaAzulService._axiosGet(url, resourceType);
 
                 // PARSING ROBUSTO (API v2)
-                let lista = response.data?.items || response.data || []; // Pode vir wrapped em items ou direto
+                // PARSING ROBUSTO (API v2)
+                let lista = [];
+
+                if (response.data && Array.isArray(response.data.items)) {
+                    // Padrão v2: { items: [...] }
+                    lista = response.data.items;
+                } else if (Array.isArray(response.data)) {
+                    // Padrão v1 antigo ou fallback: [...]
+                    lista = response.data;
+                } else if (response.data && typeof response.data === 'object') {
+                    // Objeto sem items (ex: filtro não encontrou nada e retornou objeto vazio ou meta)
+                    // Assumimos vazio se não tiver erro explícito
+                    if (!response.data.error) {
+                        lista = [];
+                    }
+                }
 
                 if (!Array.isArray(lista)) {
-                    console.error(`⚠️ Formato inesperado na página ${page + 1}.`, lista);
-                    // Se veio objeto mas sem items, pode ser 404 disfarçado ou erro
+                    console.error(`⚠️ Formato inesperado na página ${page + 1}.`, JSON.stringify(response.data));
+
+                    // Log detalhadíssimo para o usuário ver o que retornou
                     await contaAzulService._logStep(resourceType, 'ERRO', `Formato inválido: Não é array`, {
-                        bodyPreview: JSON.stringify(response.data).substring(0, 500)
+                        bodyPreview: JSON.stringify(response.data, null, 2)
                     });
+
                     hasMore = false;
                     break;
                 }
