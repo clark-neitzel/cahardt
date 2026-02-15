@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Pencil, Save, X, Search, DollarSign, Mail } from 'lucide-react';
+import vendedorService from '../../../services/vendedorService';
 
 const ListaVendedores = () => {
     const [vendedores, setVendedores] = useState([]);
@@ -12,11 +13,9 @@ const ListaVendedores = () => {
     const fetchVendedores = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/vendedores');
-            // Hardcode localhost:3000 for now or use env if available. 
-            // App.jsx doesn't seem to have global api config shown, but generally fetch goes to backend.
-            // Using logic from ListaClientes (implied)
-            const data = await response.json();
+            console.log('Fetching vendedores via Service...');
+            const data = await vendedorService.listar();
+            console.log('Vendedores data:', data);
             setVendedores(data);
         } catch (error) {
             console.error('Erro ao buscar vendedores:', error);
@@ -45,19 +44,9 @@ const ListaVendedores = () => {
 
     const handleSave = async (id) => {
         try {
-            const response = await fetch(`/api/vendedores/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(editForm)
-            });
-
-            if (response.ok) {
-                const updated = await response.json();
-                setVendedores(vendedores.map(v => v.id === id ? updated : v));
-                setEditingId(null);
-            } else {
-                alert('Erro ao salvar');
-            }
+            const updated = await vendedorService.atualizar(id, editForm);
+            setVendedores(vendedores.map(v => v.id === id ? updated : v));
+            setEditingId(null);
         } catch (error) {
             console.error('Erro ao salvar:', error);
             alert('Erro ao conectar com servidor');
@@ -95,6 +84,8 @@ const ListaVendedores = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                         {loading ? (
                             <tr><td colSpan="5" className="px-6 py-4 text-center">Carregando...</td></tr>
+                        ) : filtered.length === 0 ? (
+                            <tr><td colSpan="5" className="px-6 py-4 text-center text-gray-500">Nenhum vendedor encontrado.</td></tr>
                         ) : filtered.map(vendedor => (
                             <tr key={vendedor.id}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
