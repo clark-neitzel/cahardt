@@ -30,8 +30,8 @@ const DayPicker = ({ label, selected, onChange }) => {
                         type="button"
                         onClick={() => toggleDay(day)}
                         className={`px-3 py-2 text-xs font-bold rounded border transition-colors ${selectedDays.includes(day)
-                                ? 'bg-primary text-white border-primary'
-                                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
                             }`}
                     >
                         {day}
@@ -303,6 +303,7 @@ const DetalheCliente = () => {
                     <div className="grid grid-cols-1 gap-2 text-sm text-gray-600">
                         <p><strong className="font-medium text-gray-900">E-mail:</strong> {cliente.Email || '-'}</p>
                         <p><strong className="font-medium text-gray-900">Telefone:</strong> {cliente.Telefone || '-'}</p>
+                        <p><strong className="font-medium text-gray-900">Celular:</strong> {cliente.Telefone_Celular || '-'}</p>
                         <p><strong className="font-medium text-gray-900">Endereço:</strong> <br />
                             {cliente.End_Logradouro}, {cliente.End_Numero}<br />
                             {cliente.End_Bairro} - {cliente.End_Cidade}/{cliente.End_Estado}</p>

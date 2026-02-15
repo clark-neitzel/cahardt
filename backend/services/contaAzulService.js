@@ -398,7 +398,9 @@ const contaAzulService = {
                     // No JSON do usuário: 'nome' parece ser o nome de exibição/fantasia
                     NomeFantasia: c.nome_fantasia || c.fantasy_name || c.nome || c.apelido,
 
-                    Tipo_Pessoa: c.person_type || c.tipo_pessoa, // "Jurídica"
+                    // Normalização: JURIDICA ou FISICA (para o frontend funcionar)
+                    Tipo_Pessoa: (c.person_type || c.tipo_pessoa || '').toUpperCase().includes('JUR') ? 'JURIDICA' : 'FISICA',
+
                     Documento: c.document || c.documento,
                     Email: c.email,
                     Telefone: c.telefone_comercial || c.business_phone || c.telefone,
