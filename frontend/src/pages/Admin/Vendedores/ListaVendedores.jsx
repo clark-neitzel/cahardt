@@ -110,7 +110,7 @@ const ListaVendedores = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     {editingId === vendedor.id ? (
                                         <input
-                                            className="border rounded px-2 py-1 w-24"
+                                            className="border border-gray-300 rounded px-2 py-1 w-24 bg-white text-gray-900 focus:ring-primary focus:border-primary"
                                             value={editForm.flexMensal}
                                             onChange={e => setEditForm({ ...editForm, flexMensal: e.target.value })}
                                             type="number"
@@ -124,7 +124,7 @@ const ListaVendedores = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     {editingId === vendedor.id ? (
                                         <input
-                                            className="border rounded px-2 py-1 w-24"
+                                            className="border border-gray-300 rounded px-2 py-1 w-24 bg-white text-gray-900 focus:ring-primary focus:border-primary"
                                             value={editForm.flexDisponivel}
                                             onChange={e => setEditForm({ ...editForm, flexDisponivel: e.target.value })}
                                             type="number"
