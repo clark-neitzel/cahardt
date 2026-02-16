@@ -408,6 +408,9 @@ const contaAzulService = {
                     Ativo: (c.ativo === true), // JSON confirma booleano
                     Data_Criacao: c.criado_em ? new Date(c.criado_em) : (c.created_at ? new Date(c.created_at) : new Date()),
 
+                    // FIX: Mapeamento de Perfis (Array de Objetos -> JSON String)
+                    Perfis: JSON.stringify(c.perfis || []),
+
                     Condicao_de_pagamento: condicaoId,
 
                     // Endereço (JSON confirma campos planos: logradouro, numero, bairro, cidade (string), estado (string))
