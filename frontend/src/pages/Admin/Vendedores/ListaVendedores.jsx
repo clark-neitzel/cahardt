@@ -13,9 +13,7 @@ const ListaVendedores = () => {
     const fetchVendedores = async () => {
         try {
             setLoading(true);
-            console.log('Fetching vendedores via Service...');
             const data = await vendedorService.listar();
-            console.log('Vendedores data:', data);
             setVendedores(data);
         } catch (error) {
             console.error('Erro ao buscar vendedores:', error);
@@ -61,7 +59,7 @@ const ListaVendedores = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Vendedores (Lista Oficial)</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Vendedores</h1>
                     <p className="mt-1 text-sm text-gray-500">Gerencie limites de Flex e dados de contato</p>
                 </div>
                 <div className="relative">
@@ -96,7 +94,7 @@ const ListaVendedores = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     {editingId === vendedor.id ? (
                                         <input
-                                            className="border rounded px-2 py-1 w-full"
+                                            className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 focus:ring-primary focus:border-primary"
                                             value={editForm.email}
                                             onChange={e => setEditForm({ ...editForm, email: e.target.value })}
                                             type="email"
