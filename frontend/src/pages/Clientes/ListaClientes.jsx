@@ -87,8 +87,8 @@ const ListaClientes = () => {
                 />
             </div>
 
-            {/* Tabela de Clientes */}
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
+            {/* Tabela de Clientes (Desktop) */}
+            <div className="hidden md:block bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
@@ -181,6 +181,59 @@ const ListaClientes = () => {
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Lista Cards (Mobile) */}
+            <div className="md:hidden space-y-4">
+                {loading ? (
+                    <div className="p-4 text-center text-gray-500 bg-white rounded-lg shadow">Carregando clientes...</div>
+                ) : clientes.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500 bg-white rounded-lg shadow">Nenhum cliente encontrado.</div>
+                ) : (
+                    clientes.map(cliente => (
+                        <Link to={`/clientes/${cliente.UUID}`} key={cliente.UUID} className="block bg-white shadow rounded-lg p-4 active:bg-gray-50">
+                            <div className="flex justify-between items-start mb-2">
+                                <div className="flex items-center">
+                                    <div className={`h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold mr-3 ${cliente.Ativo ? 'bg-blue-600' : 'bg-gray-400'}`}>
+                                        {cliente.Nome.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-bold text-gray-900 line-clamp-1">{cliente.Nome}</h3>
+                                        <p className="text-xs text-gray-500">{cliente.NomeFantasia}</p>
+                                    </div>
+                                </div>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                    {cliente.Ativo ? 'ATIVO' : 'INATIVO'}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 mb-3 border-t border-b border-gray-100 py-2">
+                                <div className="flex items-center">
+                                    <MapPin className="h-3 w-3 mr-1 text-gray-400" />
+                                    <span className="truncate max-w-[120px]">{cliente.End_Cidade}/{cliente.End_Estado}</span>
+                                </div>
+                                <div className="flex items-center justify-end">
+                                    <Phone className="h-3 w-3 mr-1 text-gray-400" />
+                                    <span>{cliente.Telefone_Celular?.split(' ')[0] || cliente.Telefone?.split(' ')[0] || '-'}</span>
+                                </div>
+                                {cliente.Dia_de_entrega && (
+                                    <div className="flex items-center text-orange-600 col-span-2">
+                                        <Truck className="h-3 w-3 mr-1" />
+                                        <span className="font-semibold">Entrega: {cliente.Dia_de_entrega}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-1">
+                                {formatarPerfis(cliente.Perfis).slice(0, 3).map((perfil, idx) => (
+                                    <span key={idx} className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${getBadgeColor(perfil)}`}>
+                                        {perfil}
+                                    </span>
+                                ))}
+                            </div>
+                        </Link>
+                    ))
+                )}
             </div>
 
             {/* Paginação */}
