@@ -120,6 +120,10 @@ model Cliente {
   updated_at                 DateTime  @updatedAt
 
   condicaoPagamento          CondicaoPagamento? @relation(fields: [Condicao_de_pagamento], references: [id])
+  
+  idVendedor                 String?   @map("id_vendedor")
+  vendedor                   Vendedor? @relation(fields: [idVendedor], references: [id])
+
   arquivos                   ClienteArquivo[]
 
   @@map("clientes")

@@ -68,7 +68,7 @@ const clienteController = {
     atualizar: async (req, res) => {
         try {
             const { uuid } = req.params;
-            const { Dia_de_entrega, Dia_de_venda, Ponto_GPS, Observacoes_Gerais } = req.body;
+            const { Dia_de_entrega, Dia_de_venda, Ponto_GPS, Observacoes_Gerais, idVendedor } = req.body;
 
             const cliente = await prisma.cliente.update({
                 where: { UUID: uuid },
@@ -76,7 +76,8 @@ const clienteController = {
                     Dia_de_entrega,
                     Dia_de_venda,
                     Ponto_GPS,
-                    Observacoes_Gerais
+                    Observacoes_Gerais,
+                    idVendedor
                 }
             });
 
