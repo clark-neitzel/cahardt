@@ -31,15 +31,28 @@ const ListaClientes = () => {
     const formatarPerfis = (perfis) => {
         if (!perfis) return [];
         let lista = [];
-        if (Array.isArray(perfis)) lista = perfis;
-        if (typeof perfis === 'string') {
+
+        // 1. Normalizar entrada para Array
+        if (Array.isArray(perfis)) {
+            lista = perfis;
+        } else if (typeof perfis === 'string') {
             try {
-                lista = JSON.parse(perfis);
+                const parsed = JSON.parse(perfis);
+                lista = Array.isArray(parsed) ? parsed : [parsed];
             } catch {
                 lista = perfis.split(',').map(p => p.trim());
             }
+        } else {
+            lista = [String(perfis)];
         }
-        return Array.isArray(lista) ? lista : [String(lista)];
+
+        // 2. Extrair string "tipo_perfil" se for objeto
+        return lista.map(item => {
+            if (typeof item === 'object' && item !== null) {
+                return item.tipo_perfil || item.nome || JSON.stringify(item);
+            }
+            return String(item);
+        }).filter(Boolean); // Remove vazios
     };
 
     // Helper para cores de badges
@@ -135,6 +148,12 @@ const ListaClientes = () => {
                                             <div className="flex items-center text-orange-600">
                                                 <Truck className="h-4 w-4 mr-2" />
                                                 <span className="text-xs font-semibold">Entrega: {cliente.Dia_de_entrega}</span>
+                                            </div>
+                                        )}
+                                        {cliente.Dia_de_venda && (
+                                            <div className="flex items-center text-blue-600">
+                                                <Truck className="h-4 w-4 mr-2" />
+                                                <span className="text-xs font-semibold">Venda: {cliente.Dia_de_venda}</span>
                                             </div>
                                         )}
                                     </td>
