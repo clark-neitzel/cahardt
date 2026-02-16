@@ -88,7 +88,10 @@ const migrationService = {
                 "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 "updated_at" TIMESTAMP(3) NOT NULL,
                 CONSTRAINT "vendedores_pkey" PRIMARY KEY ("id")
-            );`
+            );`,
+
+            // Update 02: Link Cliente -> Vendedor
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "id_vendedor" TEXT;`
         ];
 
         for (const [index, cmd] of commands.entries()) {
