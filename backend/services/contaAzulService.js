@@ -303,12 +303,18 @@ const contaAzulService = {
                     unidadeObj.descricao || unidadeObj.codigo ||
                     (typeof p.unidade_medida === 'string' ? p.unidade_medida : 'UN');
 
+                // DEBUG: Dump first product to file to verify fields
+                if (count === 0) {
+                    console.log('📦 [DEBUG PRODUCT] Body:', JSON.stringify(p, null, 2));
+                }
+
                 // Mapeamento Real da API
                 const dadosProduto = {
                     contaAzulId: p.id,
                     codigo: p.code || p.codigo_sku || '', // Fallbacks
                     nome: p.name || p.nome,
-                    valorVenda: p.value || p.valor_venda || 0,
+                    // Tenta obter valor de venda de múltiplas fontes possíveis na API v2
+                    valorVenda: p.value || p.valor_venda || p.price || p.sale_price || p.preco || 0,
                     unidade: unidadeValor.substring(0, 10), // Limit length just in case
 
                     // Estoques

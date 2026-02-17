@@ -160,6 +160,65 @@ const ListaProdutos = () => {
                     </div>
                 </div>
 
+                {/* Lista de Produtos (Mobile) */}
+                <div className="md:hidden divide-y divide-gray-200">
+                    {loading ? (
+                        <div className="p-4 text-center text-gray-500">
+                            <div className="flex justify-center items-center">
+                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
+                                Carregando...
+                            </div>
+                        </div>
+                    ) : produtos.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                            Nenhum produto encontrado.
+                        </div>
+                    ) : (
+                        produtos.map((produto) => (
+                            <div
+                                key={produto.id || produto.uuid}
+                                onClick={() => navigate(`/admin/produtos/${produto.id || produto.uuid}`, {
+                                    state: { search, page, statusFilter, selectedCategories }
+                                })}
+                                className="p-4 active:bg-gray-50 flex items-center justify-between cursor-pointer"
+                            >
+                                <div className="flex items-center flex-1 min-w-0">
+                                    <div className="h-10 w-10 flex-shrink-0">
+                                        {produto.imagens && produto.imagens.length > 0 ? (
+                                            <img className="h-10 w-10 rounded object-cover" src={`https://api-contaazul-jbv8.onrender.com${produto.imagens[0].url}`} alt="" />
+                                        ) : (
+                                            <div className="h-10 w-10 rounded bg-gray-100 flex items-center justify-center text-xs text-gray-400">
+                                                Sem foto
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="ml-3 flex-1 min-w-0">
+                                        <div className="text-sm font-medium text-gray-900 truncate">
+                                            {produto.nome}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            {produto.codigo} • {produto.categoria || 'Sem Cat.'}
+                                        </div>
+                                        <div className="flex mt-1 space-x-3 text-xs">
+                                            <span className={Number(produto.estoqueDisponivel) > 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                                                {Number(produto.estoqueDisponivel)} {produto.unidade}
+                                            </span>
+                                            <span className="text-gray-900">
+                                                Venda: R$ {Number(produto.valorVenda || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${produto.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                        {produto.ativo ? 'Ativo' : 'Inativo'}
+                                    </span>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
                 {/* Tabela de Produtos (Desktop) */}
                 <div className="hidden md:block bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
                     <table className="min-w-full divide-y divide-gray-200">

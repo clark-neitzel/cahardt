@@ -124,15 +124,18 @@ const ListaClientes = () => {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Perfis
                             </th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Ações
+                            <th
+                                scope="col"
+                                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            >
+                                Status
                             </th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {loading ? (
                             <tr>
-                                <td colSpan="4" className="px-6 py-10 text-center text-gray-500">
+                                <td colSpan="5" className="px-6 py-10 text-center text-gray-500">
                                     <div className="flex justify-center items-center">
                                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
                                         Carregando clientes...
@@ -141,55 +144,41 @@ const ListaClientes = () => {
                             </tr>
                         ) : clientes.length === 0 ? (
                             <tr>
-                                <td colSpan="4" className="px-6 py-10 text-center text-gray-500">
+                                <td colSpan="5" className="px-6 py-10 text-center text-gray-500">
                                     Nenhum cliente encontrado.
                                 </td>
                             </tr>
                         ) : (
                             clientes.map((cliente) => (
-                                <tr key={cliente.id || cliente.UUID} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-start">
+                                <tr
+                                    key={cliente.id || cliente.UUID}
+                                    onClick={() => navigate(`/clientes/${cliente.UUID}`)}
+                                    className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                                >
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="flex items-center">
                                             <div className="flex-shrink-0 h-10 w-10">
-                                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                                    <User className="h-5 w-5" />
+                                                <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
+                                                    {cliente.Nome.charAt(0)}
                                                 </div>
                                             </div>
                                             <div className="ml-4">
-                                                <div className="text-sm font-medium text-gray-900">
+                                                <div className="text-sm font-medium text-gray-900 group-hover:text-primary transition-colors">
                                                     {cliente.NomeFantasia || cliente.Nome}
                                                 </div>
-                                                <div className="text-sm text-gray-500 line-clamp-1">
+                                                <div className="text-sm text-gray-500">
                                                     {cliente.Nome || 'Razão Social N/A'}
-                                                </div>
-                                                <div className="text-xs text-gray-400 mt-1">
-                                                    {(cliente.Documento || '').replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")}
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col space-y-1">
-                                            {cliente.Email && (
-                                                <span className="text-sm text-gray-600 flex items-center">
-                                                    <span className="truncate max-w-xs" title={cliente.Email}>{cliente.Email}</span>
-                                                </span>
-                                            )}
-                                            {(cliente.Telefone || cliente.Telefone_Celular) && (
-                                                <span className="text-sm text-gray-500 flex items-center">
-                                                    <Phone className="h-3 w-3 mr-1" />
-                                                    {cliente.Telefone_Celular || cliente.Telefone}
-                                                </span>
-                                            )}
-                                            {(cliente.End_Cidade || cliente.End_Estado) && (
-                                                <span className="text-sm text-gray-500 flex items-center">
-                                                    <MapPin className="h-3 w-3 mr-1" />
-                                                    {cliente.End_Cidade}/{cliente.End_Estado}
-                                                </span>
-                                            )}
-                                        </div>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {(cliente.Documento || '').replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")}
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <div>{cliente.End_Cidade} / {cliente.End_Estado}</div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex flex-wrap gap-1">
                                             {formatarPerfis(cliente.Perfis).map((perfil, idx) => (
                                                 <span
@@ -201,98 +190,98 @@ const ListaClientes = () => {
                                             ))}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <Link
-                                            to={`/admin/clientes/${cliente.UUID}`}
-                                            className="text-primary hover:text-blue-900"
-                                        >
-                                            Detalhes
-                                        </Link>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                            {cliente.Ativo ? 'Ativo' : 'Inativo'}
+                                        </span>
                                     </td>
                                 </tr>
                             ))
                         )}
                     </tbody>
                 </table>
-            </div>
+            </div >
 
             {/* Lista Mobile */}
-            <div className="md:hidden mt-4 space-y-4">
-                {loading ? (
-                    <div className="text-center py-10">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                    </div>
-                ) : clientes.length === 0 ? (
-                    <div className="text-center py-10 text-gray-500 bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                        Nenhum cliente encontrado.
-                    </div>
-                ) : (
-                    clientes.map((cliente) => (
-                        <div key={cliente.id || cliente.UUID} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-3">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h3 className="text-base font-semibold text-gray-900">{cliente.NomeFantasia || cliente.Nome}</h3>
-                                    <p className="text-xs text-gray-500">{cliente.Documento}</p>
-                                </div>
-                                <Link
-                                    to={`/admin/clientes/${cliente.UUID}`}
-                                    className="px-3 py-1 bg-gray-100 text-primary text-xs rounded-full font-medium"
-                                >
-                                    Ver
-                                </Link>
-                            </div>
-
-                            <div className="text-sm text-gray-600">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Building className="h-3 w-3" />
-                                    <span className="truncate">{cliente.Nome || 'Razão Social N/A'}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="h-3 w-3" />
-                                    <span>{cliente.End_Cidade}/{cliente.End_Estado}</span>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-50">
-                                {formatarPerfis(cliente.Perfis).map((perfil, idx) => (
-                                    <span
-                                        key={idx}
-                                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getBadgeColor(perfil)}`}
-                                    >
-                                        {perfil}
-                                    </span>
-                                ))}
-                            </div>
+            < div className="md:hidden mt-4 space-y-4" >
+                {
+                    loading ? (
+                        <div className="text-center py-10" >
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                         </div>
-                    ))
-                )}
-            </div>
+                    ) : clientes.length === 0 ? (
+                        <div className="text-center py-10 text-gray-500 bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+                            Nenhum cliente encontrado.
+                        </div>
+                    ) : (
+                        clientes.map((cliente) => (
+                            <div key={cliente.id || cliente.UUID} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-3">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="text-base font-semibold text-gray-900">{cliente.NomeFantasia || cliente.Nome}</h3>
+                                        <p className="text-xs text-gray-500">{cliente.Documento}</p>
+                                    </div>
+                                    <Link
+                                        to={`/clientes/${cliente.UUID}`}
+                                        className="px-3 py-1 bg-gray-100 text-primary text-xs rounded-full font-medium"
+                                    >
+                                        Ver
+                                    </Link>
+                                </div>
+
+                                <div className="text-sm text-gray-600">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Building className="h-3 w-3" />
+                                        <span className="truncate">{cliente.Nome || 'Razão Social N/A'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <MapPin className="h-3 w-3" />
+                                        <span>{cliente.End_Cidade}/{cliente.End_Estado}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-50">
+                                    {formatarPerfis(cliente.Perfis).map((perfil, idx) => (
+                                        <span
+                                            key={idx}
+                                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getBadgeColor(perfil)}`}
+                                        >
+                                            {perfil}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))
+                    )}
+            </div >
 
             {/* Paginação */}
-            {totalPages > 1 && (
-                <div className="flex justify-center mt-8">
-                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                        <button
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                            disabled={page === 1}
-                            className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                        >
-                            Anterior
-                        </button>
-                        <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                            {page} / {totalPages}
-                        </span>
-                        <button
-                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                            disabled={page === totalPages}
-                            className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                        >
-                            Próxima
-                        </button>
-                    </nav>
-                </div>
-            )}
-        </div>
+            {
+                totalPages > 1 && (
+                    <div className="flex justify-center mt-8">
+                        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            <button
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Anterior
+                            </button>
+                            <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                {page} / {totalPages}
+                            </span>
+                            <button
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Próxima
+                            </button>
+                        </nav>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 
