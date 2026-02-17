@@ -4,7 +4,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import produtoService from '../../../services/produtoService';
 import configService from '../../../services/configService';
 import { API_URL } from '../../../services/api';
-import { ArrowLeft, Save, Loader, AlertCircle, Check, Camera } from 'lucide-react';
+import { ArrowLeft, Loader, AlertCircle, Camera } from 'lucide-react';
 
 const GerenciarProduto = () => {
     const { id } = useParams();
@@ -12,9 +12,7 @@ const GerenciarProduto = () => {
     const location = useLocation();
 
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
 
     // Data States
     const [produto, setProduto] = useState(null);
@@ -77,42 +75,7 @@ const GerenciarProduto = () => {
         fetchDetalhe();
     }, [id]);
 
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : value
-        }));
-    };
 
-    const handleSave = async () => {
-        setSaving(true);
-        setError('');
-        setSuccess('');
-
-        try {
-            // Prepare payload
-            const payload = {
-                ...formData,
-                valorVenda: parseFloat(formData.valorVenda.replace(',', '.')),
-                pesoLiquido: formData.pesoLiquido ? parseFloat(formData.pesoLiquido) : null
-            };
-
-            await produtoService.atualizar(id, payload);
-            setSuccess('Produto atualizado com sucesso!');
-
-            // Reload product data to ensure sync
-            const updated = await produtoService.detalhar(id);
-            setProduto(updated);
-
-            setTimeout(() => setSuccess(''), 3000);
-        } catch (err) {
-            console.error(err);
-            setError('Erro ao salvar as alterações.');
-        } finally {
-            setSaving(false);
-        }
-    };
 
     const handleBack = () => {
         if (location.state) {
@@ -165,29 +128,7 @@ const GerenciarProduto = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center space-x-3">
-                        <div className="flex items-center space-x-2 mr-4">
-                            <label className="text-sm font-medium text-gray-700 cursor-pointer select-none">
-                                {formData.ativo ? 'Ativo' : 'Inativo'}
-                            </label>
-                            <div
-                                onClick={() => setFormData(prev => ({ ...prev, ativo: !prev.ativo }))}
-                                className={`w-11 h-6 flex items-center bg-gray-300 rounded-full p-1 cursor-pointer transition-colors duration-300 ease-in-out ${formData.ativo ? 'bg-green-500' : ''}`}
-                            >
-                                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ease-in-out ${formData.ativo ? 'translate-x-5' : ''}`} />
-                            </div>
-                        </div>
 
-                        <button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className={`flex items-center px-6 py-2 rounded-lg font-medium text-white shadow-sm transition-all
-                                ${saving ? 'bg-blue-400 cursor-not-allowed' : 'bg-primary hover:bg-blue-700 hover:shadow-md'}`}
-                        >
-                            {saving ? <Loader className="animate-spin h-5 w-5 mr-2" /> : <Save className="h-5 w-5 mr-2" />}
-                            Salvar
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -197,12 +138,6 @@ const GerenciarProduto = () => {
                     <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 flex items-center">
                         <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
                         <p className="text-red-700">{error}</p>
-                    </div>
-                )}
-                {success && (
-                    <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 flex items-center">
-                        <Check className="h-5 w-5 text-green-500 mr-2" />
-                        <p className="text-green-700">{success}</p>
                     </div>
                 )}
 
@@ -270,8 +205,8 @@ const GerenciarProduto = () => {
                                         type="text"
                                         name="nome"
                                         value={formData.nome}
-                                        onChange={handleChange}
-                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white text-gray-900"
+                                        readOnly
+                                        className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
@@ -281,8 +216,8 @@ const GerenciarProduto = () => {
                                             type="text"
                                             name="codigo"
                                             value={formData.codigo}
-                                            onChange={handleChange}
-                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white text-gray-900"
+                                            readOnly
+                                            className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
                                         />
                                     </div>
                                     <div>
@@ -291,8 +226,8 @@ const GerenciarProduto = () => {
                                             type="text"
                                             name="ean"
                                             value={formData.ean}
-                                            onChange={handleChange}
-                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white text-gray-900"
+                                            readOnly
+                                            className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
                                         />
                                     </div>
                                 </div>
@@ -317,8 +252,8 @@ const GerenciarProduto = () => {
                                                 name="valorVenda"
                                                 step="0.01"
                                                 value={formData.valorVenda}
-                                                onChange={handleChange}
-                                                className="w-full pl-10 rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border font-bold bg-white text-gray-900"
+                                                readOnly
+                                                className="w-full pl-10 rounded-md border-gray-300 shadow-sm py-2 px-3 border font-bold bg-gray-50 text-gray-700 cursor-not-allowed"
                                             />
                                         </div>
                                     </div>
@@ -345,30 +280,22 @@ const GerenciarProduto = () => {
                                             type="text"
                                             name="unidade"
                                             value={formData.unidade}
-                                            onChange={handleChange}
-                                            placeholder="Ex: UN, KG, PC"
-                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border uppercase bg-white text-gray-900"
+                                            readOnly
+                                            className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border uppercase bg-gray-50 text-gray-700 cursor-not-allowed"
                                         />
                                     </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                                    <select
+                                    <input
+                                        type="text"
                                         name="categoria"
                                         value={formData.categoria}
-                                        onChange={handleChange}
-                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white text-gray-900"
-                                    >
-                                        <option value="">Selecione uma categoria...</option>
-                                        {categorias && categorias.length > 0 && categorias.map(cat => (
-                                            <option key={cat} value={cat}>{cat}</option>
-                                        ))}
-                                        {/* If current category is not in list, add it */}
-                                        {formData.categoria && categorias && !categorias.includes(formData.categoria) && (
-                                            <option value={formData.categoria}>{formData.categoria}</option>
-                                        )}
-                                    </select>
+                                        readOnly
+                                        className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
+                                    />
+
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
@@ -378,8 +305,8 @@ const GerenciarProduto = () => {
                                             type="text"
                                             name="ncm"
                                             value={formData.ncm}
-                                            onChange={handleChange}
-                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white text-gray-900"
+                                            readOnly
+                                            className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
                                         />
                                     </div>
                                     <div>
@@ -389,8 +316,8 @@ const GerenciarProduto = () => {
                                             step="0.001"
                                             name="pesoLiquido"
                                             value={formData.pesoLiquido}
-                                            onChange={handleChange}
-                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white text-gray-900"
+                                            readOnly
+                                            className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
                                         />
                                     </div>
                                 </div>
@@ -407,8 +334,8 @@ const GerenciarProduto = () => {
                                     name="descricao"
                                     rows={4}
                                     value={formData.descricao}
-                                    onChange={handleChange}
-                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white text-gray-900"
+                                    readOnly
+                                    className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
                                 />
                             </div>
                         </div>
