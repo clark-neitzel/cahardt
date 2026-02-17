@@ -6,7 +6,7 @@ const produtoController = {
     // Listar produtos com paginação e filtros
     listar: async (req, res) => {
         try {
-            const { page = 1, limit = 10, search, ativo } = req.query;
+            const { page = 1, limit = 10, search, ativo, categorias } = req.query;
             const skip = (page - 1) * limit;
 
             const where = {};
@@ -16,8 +16,18 @@ const produtoController = {
                     { codigo: { contains: search, mode: 'insensitive' } }
                 ];
             }
-            if (ativo !== undefined) {
+            // Filtro de Ativo/Inativo
+            // Se ativo for 'all' ou undefined, traz tudo. Se for 'true' traz ativos, 'false' inativos.
+            if (ativo !== undefined && ativo !== 'all') {
                 where.ativo = ativo === 'true';
+            }
+
+            // Filtro de Categorias (Multi-select)
+            if (categorias) {
+                const cats = categorias.split(',').map(c => c.trim()).filter(c => c);
+                if (cats.length > 0) {
+                    where.categoria = { in: cats };
+                }
             }
 
             const [produtos, total] = await Promise.all([

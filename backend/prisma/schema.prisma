@@ -98,6 +98,7 @@ model Cliente {
   End_CEP                    String?
   End_Pais                   String?
   Codigo                     String?
+
   Observacoes_Gerais         String?
   Telefone_Celular           String?
   Telefone_Comercial         String?
@@ -185,4 +186,11 @@ model Vendedor {
   clientes        Cliente[]
 
   @@map("vendedores")
+}
+
+model AppConfig {
+  key   String @id
+  value Json
+
+  @@map("app_configs")
 }

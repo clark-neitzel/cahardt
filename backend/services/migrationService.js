@@ -91,7 +91,14 @@ const migrationService = {
             );`,
 
             // Update 02: Link Cliente -> Vendedor
-            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "id_vendedor" TEXT;`
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "id_vendedor" TEXT;`,
+
+            // App Configs (Configurações do Sistema)
+            `CREATE TABLE IF NOT EXISTS "app_configs" (
+                "key" TEXT NOT NULL,
+                "value" JSONB NOT NULL,
+                CONSTRAINT "app_configs_pkey" PRIMARY KEY ("key")
+            );`
         ];
 
         for (const [index, cmd] of commands.entries()) {

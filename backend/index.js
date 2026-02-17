@@ -8,6 +8,7 @@ const syncRoutes = require('./routes/syncRoutes');
 const clienteRoutes = require('./routes/clienteRoutes');
 const authRoutes = require('./routes/authRoutes'); // New
 const vendedorRoutes = require('./routes/vendedorRoutes'); // New
+const configRoutes = require('./routes/configRoutes'); // New
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,6 +31,7 @@ app.use('/api/sync', syncRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/auth', authRoutes); // New
 app.use('/api/vendedores', vendedorRoutes); // New
+app.use('/api/config', configRoutes); // New
 
 // Rota base
 app.get('/', (req, res) => {
