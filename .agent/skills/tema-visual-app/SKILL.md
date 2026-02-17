@@ -67,7 +67,13 @@ module.exports = {
 - **Ícones**: Lucide React ou Heroicons.
 
 ## 📌 Regras de Aplicação
-1.  Todo novo componente deve herdar estas classes ou variáveis.
+71. 1.  Todo novo componente deve herdar estas classes ou variáveis.
 2.  Use ícones **Lucide React** ou **Heroicons** com tamanho consistente (ex: `w-5 h-5`).
 3.  Mantenha áreas de respiro (whitespace) generosas para um visual limpo.
 4.  **Adaptação**: Se a cor principal mudar, atualize apenas o `tailwind.config.js`.
+
+## 🚫 Anti-Patterns (O que NÃO fazer)
+1.  **Select Múltiplo Nativo**: Nunca use `<select multiple>`. Ele renderiza uma "caixa preta" ou lista feia dependendo do SO. Use sempre um componente customizado (Dropdown com Checkboxes).
+2.  **Bordas Escuras**: Evite bordas pretas ou cinza-escuras em inputs. Use `border-gray-300` com hover/focus coloridos.
+3.  **Botões Genéricos**: Evite botões cinza padrão do navegador. Sempre estilize com classes Tailwind.
+4.  **Tabelas sem Espaçamento**: Tabelas devem ter padding generoso nas células (`py-3 px-4`) para leitura confortável.
