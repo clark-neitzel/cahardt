@@ -271,7 +271,7 @@ const GerenciarProduto = () => {
                                         name="nome"
                                         value={formData.nome}
                                         onChange={handleChange}
-                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border"
+                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white text-gray-900"
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
@@ -282,7 +282,7 @@ const GerenciarProduto = () => {
                                             name="codigo"
                                             value={formData.codigo}
                                             onChange={handleChange}
-                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border"
+                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white text-gray-900"
                                         />
                                     </div>
                                     <div>
@@ -292,7 +292,7 @@ const GerenciarProduto = () => {
                                             name="ean"
                                             value={formData.ean}
                                             onChange={handleChange}
-                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border"
+                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white text-gray-900"
                                         />
                                     </div>
                                 </div>
@@ -318,7 +318,7 @@ const GerenciarProduto = () => {
                                                 step="0.01"
                                                 value={formData.valorVenda}
                                                 onChange={handleChange}
-                                                className="w-full pl-10 rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border font-bold text-gray-900"
+                                                className="w-full pl-10 rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border font-bold bg-white text-gray-900"
                                             />
                                         </div>
                                     </div>
@@ -347,7 +347,7 @@ const GerenciarProduto = () => {
                                             value={formData.unidade}
                                             onChange={handleChange}
                                             placeholder="Ex: UN, KG, PC"
-                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border uppercase"
+                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border uppercase bg-white text-gray-900"
                                         />
                                     </div>
                                 </div>
@@ -358,7 +358,7 @@ const GerenciarProduto = () => {
                                         name="categoria"
                                         value={formData.categoria}
                                         onChange={handleChange}
-                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white"
+                                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white text-gray-900"
                                     >
                                         <option value="">Selecione uma categoria...</option>
                                         {categorias && categorias.length > 0 && categorias.map(cat => (
@@ -379,7 +379,7 @@ const GerenciarProduto = () => {
                                             name="ncm"
                                             value={formData.ncm}
                                             onChange={handleChange}
-                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border"
+                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white text-gray-900"
                                         />
                                     </div>
                                     <div>
@@ -390,7 +390,7 @@ const GerenciarProduto = () => {
                                             name="pesoLiquido"
                                             value={formData.pesoLiquido}
                                             onChange={handleChange}
-                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border"
+                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white text-gray-900"
                                         />
                                     </div>
                                 </div>
@@ -408,7 +408,7 @@ const GerenciarProduto = () => {
                                     rows={4}
                                     value={formData.descricao}
                                     onChange={handleChange}
-                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border"
+                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white text-gray-900"
                                 />
                             </div>
                         </div>
