@@ -11,6 +11,11 @@ const produtoService = {
         return response.data;
     },
 
+    atualizar: async (id, data) => {
+        const response = await api.put(`/produtos/${id}`, data);
+        return response.data;
+    },
+
     uploadImagens: async (id, formData) => {
         const response = await api.post(`/produtos/${id}/imagens`, formData, {
             headers: {

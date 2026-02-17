@@ -5,6 +5,7 @@ const upload = require('../middlewares/uploadMiddleware');
 
 router.get('/', produtoController.listar);
 router.get('/:id', produtoController.detalhar);
+router.put('/:id', produtoController.atualizar); // Atualizar Produto
 router.patch('/:id/status', produtoController.alterarStatus);
 
 // Rotas de Imagem

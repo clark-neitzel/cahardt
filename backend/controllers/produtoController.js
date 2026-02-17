@@ -82,6 +82,30 @@ const produtoController = {
         }
     },
 
+    // Atualizar produto (Generic)
+    atualizar: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const data = req.body;
+
+            // Remove campos que não devem ser atualizados diretamente ou que são de controle
+            delete data.id;
+            delete data.createdAt;
+            delete data.updatedAt;
+            delete data.imagens; // Imagens são via upload
+
+            const produto = await prisma.produto.update({
+                where: { id },
+                data
+            });
+
+            res.json(produto);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Erro ao atualizar produto' });
+        }
+    },
+
     // Upload de imagens
     uploadImagem: async (req, res) => {
         try {

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import produtoService from '../../services/produtoService';
+import configService from '../../services/configService'; // Import Service
 import ProductCard from '../../components/ProductCard';
 import { Search } from 'lucide-react';
 
@@ -10,10 +11,38 @@ const Catalogo = () => {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
 
+    // Configurações
+    const [configuredCategories, setConfiguredCategories] = useState([]);
+    const [configLoaded, setConfigLoaded] = useState(false);
+
+    // Load Config on mount
+    useEffect(() => {
+        const loadConfig = async () => {
+            try {
+                const cats = await configService.get('categorias_vendas');
+                setConfiguredCategories(Array.isArray(cats) ? cats : []);
+            } catch (error) {
+                console.error('Erro ao carregar configurações:', error);
+            } finally {
+                setConfigLoaded(true);
+            }
+        };
+        loadConfig();
+    }, []);
+
     const fetchProdutos = async () => {
+        if (!configLoaded) return; // Wait for config
+
         setLoading(true);
         try {
-            const data = await produtoService.listar({ page, limit: 12, search, ativo: true });
+            const params = { page, limit: 12, search, ativo: true };
+
+            // Apply Category Filter if configured
+            if (configuredCategories.length > 0) {
+                params.categorias = configuredCategories.join(',');
+            }
+
+            const data = await produtoService.listar(params);
             setProdutos(data.data);
             setTotalPages(data.meta.totalPages);
         } catch (error) {
@@ -27,14 +56,14 @@ const Catalogo = () => {
         // Debounce search
         const timeoutId = setTimeout(() => {
             setPage(1); // Reset page on search
-            fetchProdutos();
+            if (configLoaded) fetchProdutos();
         }, 500);
         return () => clearTimeout(timeoutId);
-    }, [search]);
+    }, [search, configLoaded]);
 
     useEffect(() => {
-        fetchProdutos();
-    }, [page]);
+        if (configLoaded) fetchProdutos();
+    }, [page, configLoaded]);
 
     return (
         <div className="container mx-auto px-4 py-6">
