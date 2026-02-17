@@ -164,7 +164,11 @@ const ListaClientes = () => {
                                         <div className="flex items-center">
                                             <div className="flex-shrink-0 h-10 w-10">
                                                 <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
-                                                    {cliente.Nome.charAt(0)}
+                                                    {(cliente.NomeFantasia || cliente.Nome).charAt(0).match(/[a-z]/i) ? (
+                                                        (cliente.NomeFantasia || cliente.Nome).charAt(0).toUpperCase()
+                                                    ) : (
+                                                        <User className="h-5 w-5" />
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="ml-4">
