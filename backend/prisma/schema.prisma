@@ -28,6 +28,7 @@ model Produto {
   categoria         String?
   descricao         String?  @db.Text
   ean               String?
+  ncm               String?
   status            String?  // Status original do CA (ex: 'ativo', 'inativo')
   ativo             Boolean  @default(true) // Controle local do App
   

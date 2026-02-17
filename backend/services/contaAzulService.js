@@ -313,18 +313,21 @@ const contaAzulService = {
                     contaAzulId: p.id,
                     codigo: p.code || p.codigo_sku || '', // Fallbacks
                     nome: p.name || p.nome,
-                    // Tenta obter valor de venda de múltiplas fontes possíveis na API v2
-                    valorVenda: p.value || p.valor_venda || p.price || p.sale_price || p.preco || 0,
+                    // CORRIGIDO: Valor de venda vem do objeto estoque
+                    valorVenda: estoqueObj.valor_venda || p.value || p.valor_venda || p.price || p.sale_price || p.preco || 0,
                     unidade: unidadeValor.substring(0, 10), // Limit length just in case
 
                     // Estoques
                     estoqueDisponivel: estoqueObj.quantidade_disponivel || p.available_stock || p.saldo || 0,
                     estoqueReservado: estoqueObj.quantidade_reservada || p.reserved_stock || 0,
                     estoqueTotal: estoqueObj.quantidade_total || p.total_stock || p.saldo || 0,
-                    estoqueMinimo: estoqueObj.estoque_minimo || p.min_stock || 0,
+                    // CORRIGIDO: Estoque mínimo vem de minimumStock
+                    estoqueMinimo: estoqueObj.minimumStock || estoqueObj.estoque_minimo || p.min_stock || 0,
 
                     // Detalhes
                     ean: p.ean_code || p.ean || p.codigo_ean || '',
+                    // ADICIONADO: NCM do fiscal
+                    ncm: p.fiscal?.ncm?.codigo || '',
                     status: p.status,
                     categoria: p.categoria?.descricao || p.category_name || (p.categoria ? p.categoria.descricao : null) || '',
                     descricao: p.description || p.descricao || '',
@@ -341,13 +344,20 @@ const contaAzulService = {
                     where: { contaAzulId: p.id },
                     update: {
                         nome: dadosProduto.nome,
+                        codigo: dadosProduto.codigo,
                         valorVenda: dadosProduto.valorVenda,
                         unidade: dadosProduto.unidade,
                         estoqueDisponivel: dadosProduto.estoqueDisponivel,
+                        estoqueReservado: dadosProduto.estoqueReservado,
                         estoqueTotal: dadosProduto.estoqueTotal,
+                        estoqueMinimo: dadosProduto.estoqueMinimo,
+                        ean: dadosProduto.ean,
+                        ncm: dadosProduto.ncm,
                         status: dadosProduto.status,
                         categoria: dadosProduto.categoria,
                         descricao: dadosProduto.descricao,
+                        custoMedio: dadosProduto.custoMedio,
+                        pesoLiquido: dadosProduto.pesoLiquido,
                         ativo: dadosProduto.ativo,
                         updatedAt: new Date()
                     },
