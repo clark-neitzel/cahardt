@@ -177,7 +177,7 @@ const ListaProdutos = () => {
                         produtos.map((produto) => (
                             <div
                                 key={produto.id || produto.uuid}
-                                onClick={() => navigate(`/admin/produtos/editar/${produto.id || produto.uuid}`, {
+                                onClick={() => navigate(`/admin/produtos/${produto.id || produto.uuid}`, {
                                     state: { search, page, statusFilter, selectedCategories }
                                 })}
                                 className="p-4 active:bg-gray-50 flex items-center justify-between cursor-pointer"
