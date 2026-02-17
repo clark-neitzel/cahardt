@@ -177,7 +177,7 @@ const ListaProdutos = () => {
                         produtos.map((produto) => (
                             <div
                                 key={produto.id || produto.uuid}
-                                onClick={() => navigate(`/admin/produtos/${produto.id || produto.uuid}`, {
+                                onClick={() => navigate(`/admin/produtos/editar/${produto.id || produto.uuid}`, {
                                     state: { search, page, statusFilter, selectedCategories }
                                 })}
                                 className="p-4 active:bg-gray-50 flex items-center justify-between cursor-pointer"
@@ -209,11 +209,6 @@ const ListaProdutos = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <div>
-                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${produto.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                        {produto.ativo ? 'Ativo' : 'Inativo'}
-                                    </span>
-                                </div>
                             </div>
                         ))
                     )}
@@ -235,9 +230,6 @@ const ListaProdutos = () => {
                                 </th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Estoque
-                                </th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Status
                                 </th>
                             </tr>
                         </thead>
@@ -261,7 +253,7 @@ const ListaProdutos = () => {
                                 produtos.map((produto) => (
                                     <tr
                                         key={produto.id || produto.uuid}
-                                        onClick={() => navigate(`/admin/produtos/${produto.id || produto.uuid}`, {
+                                        onClick={() => navigate(`/admin/produtos/editar/${produto.id || produto.uuid}`, {
                                             state: { search, page, statusFilter, selectedCategories }
                                         })}
                                         className="hover:bg-gray-50 transition-colors cursor-pointer group"
@@ -309,11 +301,6 @@ const ListaProdutos = () => {
                                                     Total: {Number(produto.estoqueTotal).toLocaleString('pt-BR')}
                                                 </span>
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${produto.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                {produto.ativo ? 'Ativo' : 'Inativo'}
-                                            </span>
                                         </td>
                                     </tr>
                                 ))
