@@ -36,6 +36,8 @@ model Produto {
   custoMedio        Decimal? @map("custo_medio") @db.Decimal(12, 3)
   pesoLiquido       Decimal? @map("peso_liquido") @db.Decimal(12, 3)
 
+  // Timestamps
+  contaAzulUpdatedAt DateTime? @map("conta_azul_updated_at") // Última atualização no Conta Azul
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 

@@ -337,7 +337,10 @@ const contaAzulService = {
 
                     pesoLiquido: p.peso_liquido || p.net_weight || (p.pesos_dimensoes?.peso_liquido) || 0,
 
-                    ativo: p.status === 'ACTIVE' || p.status === 'ativo' || p.status === 'ATIVO'
+                    ativo: p.status === 'ACTIVE' || p.status === 'ativo' || p.status === 'ATIVO',
+
+                    // Timestamp de atualização no Conta Azul
+                    contaAzulUpdatedAt: p.ultima_atualizacao ? new Date(p.ultima_atualizacao) : null
                 };
 
                 await prisma.produto.upsert({
@@ -359,6 +362,7 @@ const contaAzulService = {
                         custoMedio: dadosProduto.custoMedio,
                         pesoLiquido: dadosProduto.pesoLiquido,
                         ativo: dadosProduto.ativo,
+                        contaAzulUpdatedAt: dadosProduto.contaAzulUpdatedAt,
                         updatedAt: new Date()
                     },
                     create: { ...dadosProduto }
