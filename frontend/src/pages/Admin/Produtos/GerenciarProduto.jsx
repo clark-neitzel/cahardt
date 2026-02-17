@@ -31,6 +31,7 @@ const GerenciarProduto = () => {
         ncm: '',
         pesoLiquido: '',
         descricao: '',
+        contaAzulUpdatedAt: '',
         ativo: true
     });
 
@@ -61,6 +62,7 @@ const GerenciarProduto = () => {
                     ncm: data.ncm || '',
                     pesoLiquido: data.pesoLiquido || '',
                     descricao: data.descricao || '',
+                    contaAzulUpdatedAt: data.contaAzulUpdatedAt || '',
                     ativo: data.ativo
                 });
             } catch (error) {
@@ -320,6 +322,18 @@ const GerenciarProduto = () => {
                                             className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
                                         />
                                     </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Última Atualização (Conta Azul)</label>
+                                    <input
+                                        type="text"
+                                        name="contaAzulUpdatedAt"
+                                        value={formData.contaAzulUpdatedAt}
+                                        readOnly
+                                        className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
+                                        title="Data de última atualização no Conta Azul"
+                                    />
                                 </div>
                             </div>
                         </div>

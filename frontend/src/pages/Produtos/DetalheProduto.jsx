@@ -31,6 +31,7 @@ const DetalheProduto = () => {
         ncm: '',
         pesoLiquido: '',
         descricao: '',
+        contaAzulUpdatedAt: '',
         ativo: true
     });
 
@@ -61,6 +62,7 @@ const DetalheProduto = () => {
                     ncm: data.ncm || '',
                     pesoLiquido: data.pesoLiquido || '',
                     descricao: data.descricao || '',
+                    contaAzulUpdatedAt: data.contaAzulUpdatedAt || '',
                     ativo: data.ativo
                 });
             } catch (error) {
