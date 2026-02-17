@@ -125,8 +125,8 @@ const ListaProdutos = () => {
                                 key={status}
                                 onClick={() => handleStatusChange(status)}
                                 className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${statusFilter === status
-                                        ? 'bg-white text-gray-900 shadow-sm'
-                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                                     }`}
                             >
                                 {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -160,25 +160,25 @@ const ListaProdutos = () => {
                     </div>
                 </div>
 
-                {/* Tabela */}
-                <div className="overflow-x-auto">
+                {/* Tabela de Produtos (Desktop) */}
+                <div className="hidden md:block bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
                                     Produto
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Categoria / Preço
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Classificação
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Custos & Preços
+                                </th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Estoque
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Status
-                                </th>
-                                <th scope="col" className="relative px-6 py-3">
-                                    <span className="sr-only">Ações</span>
                                 </th>
                             </tr>
                         </thead>
@@ -200,20 +200,26 @@ const ListaProdutos = () => {
                                 </tr>
                             ) : (
                                 produtos.map((produto) => (
-                                    <tr key={produto.id} className="hover:bg-gray-50 transition-colors">
+                                    <tr
+                                        key={produto.id || produto.uuid}
+                                        onClick={() => navigate(`/admin/produtos/${produto.id || produto.uuid}`, {
+                                            state: { search, page, statusFilter, selectedCategories }
+                                        })}
+                                        className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                                    >
                                         <td className="px-6 py-4">
                                             <div className="flex items-center">
-                                                <div className="h-10 w-10 flex-shrink-0 bg-gray-100 rounded-md overflow-hidden border border-gray-200">
+                                                <div className="h-10 w-10 flex-shrink-0">
                                                     {produto.imagens && produto.imagens.length > 0 ? (
-                                                        <img className="h-full w-full object-cover" src={`https://api-contaazul-jbv8.onrender.com${produto.imagens[0].url}`} alt="" />
+                                                        <img className="h-10 w-10 rounded object-cover" src={`https://api-contaazul-jbv8.onrender.com${produto.imagens[0].url}`} alt="" />
                                                     ) : (
-                                                        <div className="h-full w-full flex items-center justify-center text-gray-400">
-                                                            <div className="text-xs">Sem foto</div>
+                                                        <div className="h-10 w-10 rounded bg-gray-100 flex items-center justify-center text-xs text-gray-400">
+                                                            Sem foto
                                                         </div>
                                                     )}
                                                 </div>
                                                 <div className="ml-4">
-                                                    <div className="text-sm font-medium text-gray-900 line-clamp-1 max-w-xs" title={produto.nome}>
+                                                    <div className="text-sm font-medium text-gray-900 group-hover:text-primary transition-colors">
                                                         {produto.nome}
                                                     </div>
                                                     <div className="text-sm text-gray-500">
@@ -222,37 +228,33 @@ const ListaProdutos = () => {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-bold text-gray-900">
-                                                R$ {Number(produto.valorVenda || 0).toFixed(2).replace('.', ',')}
-                                            </div>
-                                            <div className="text-xs text-gray-500">
-                                                {produto.categoria || 'Sem categoria'}
-                                            </div>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-900">{produto.categoria || 'Sem Categoria'}</div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm">
-                                                <span className={`font-semibold ${produto.estoqueDisponivel > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                    {produto.estoqueDisponivel} unid.
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-medium text-gray-900">
+                                                    Venda: R$ {Number(produto.valorVenda || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </span>
+                                                <span className="text-xs text-gray-500">
+                                                    Custo: R$ {Number(produto.custoMedio || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                 </span>
                                             </div>
-                                            <div className="text-xs text-gray-400">
-                                                Total: {produto.estoqueTotal}
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex flex-col">
+                                                <span className={`text-sm font-bold ${Number(produto.estoqueDisponivel) > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {Number(produto.estoqueDisponivel).toLocaleString('pt-BR')} {produto.unidade}
+                                                </span>
+                                                <span className="text-xs text-gray-400">
+                                                    Total: {Number(produto.estoqueTotal).toLocaleString('pt-BR')}
+                                                </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${produto.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                                }`}>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${produto.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                                 {produto.ativo ? 'Ativo' : 'Inativo'}
                                             </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <Link
-                                                to={`/admin/produtos/${produto.id}`}
-                                                className="text-primary hover:text-blue-900 flex items-center justify-end"
-                                            >
-                                                <Edit className="h-4 w-4 mr-1" /> Editar
-                                            </Link>
                                         </td>
                                     </tr>
                                 ))
@@ -260,7 +262,6 @@ const ListaProdutos = () => {
                         </tbody>
                     </table>
                 </div>
-
                 {/* Paginação */}
                 <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6">
                     <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">

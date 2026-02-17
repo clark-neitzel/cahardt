@@ -1,5 +1,6 @@
+
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import produtoService from '../../services/produtoService';
 import configService from '../../services/configService';
 import { API_URL } from '../../services/api';
@@ -8,6 +9,7 @@ import { ArrowLeft, Save, Loader, AlertCircle, Check, Camera } from 'lucide-reac
 const DetalheProduto = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -41,6 +43,8 @@ const DetalheProduto = () => {
                 setCategorias(cats || []);
             } catch (err) {
                 console.error("Erro ao carregar categorias", err);
+                // Fallback para evitar crash
+                setCategorias([]);
             }
         };
 
@@ -110,6 +114,23 @@ const DetalheProduto = () => {
         }
     };
 
+    const handleBack = () => {
+        if (location.state) {
+            // Se tiver estado preservado (busca, filtro, pag), volta com ele
+            const params = new URLSearchParams();
+            if (location.state.search) params.set('search', location.state.search);
+            if (location.state.page) params.set('page', location.state.page);
+            if (location.state.statusFilter) params.set('ativo', location.state.statusFilter);
+            if (location.state.selectedCategories && location.state.selectedCategories.length > 0) {
+                params.set('categorias', location.state.selectedCategories.join(','));
+            }
+            navigate(`/admin/produtos?${params.toString()}`);
+        } else {
+            // Fallback: Tenta history.back()
+            navigate(-1);
+        }
+    };
+
     if (loading) return (
         <div className="flex justify-center items-center h-screen bg-gray-50">
             <Loader className="animate-spin h-8 w-8 text-primary" />
@@ -128,7 +149,7 @@ const DetalheProduto = () => {
             <div className="sticky top-0 z-10 bg-white border-b shadow-sm px-4 py-4 mb-6">
                 <div className="container mx-auto max-w-5xl flex justify-between items-center">
                     <div className="flex items-center space-x-4">
-                        <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-gray-800 transition-colors p-1 rounded-full hover:bg-gray-100">
+                        <button onClick={handleBack} className="text-gray-500 hover:text-gray-800 transition-colors p-1 rounded-full hover:bg-gray-100" title="Voltar para a lista">
                             <ArrowLeft className="h-6 w-6" />
                         </button>
                         <div>
@@ -235,7 +256,7 @@ const DetalheProduto = () => {
                         </div>
                     </div>
 
-                    {/* Coluna Direita: Formulário */}
+                    {/* Coluna Direita: Formulário - Wrapped in Fragment to ensure render */}
                     <div className="md:col-span-2 space-y-6">
                         {/* Card Dados Principais */}
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -340,11 +361,11 @@ const DetalheProduto = () => {
                                         className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border bg-white"
                                     >
                                         <option value="">Selecione uma categoria...</option>
-                                        {categorias.map(cat => (
+                                        {categorias && categorias.length > 0 && categorias.map(cat => (
                                             <option key={cat} value={cat}>{cat}</option>
                                         ))}
                                         {/* If current category is not in list, add it */}
-                                        {formData.categoria && !categorias.includes(formData.categoria) && (
+                                        {formData.categoria && categorias && !categorias.includes(formData.categoria) && (
                                             <option value={formData.categoria}>{formData.categoria}</option>
                                         )}
                                     </select>
