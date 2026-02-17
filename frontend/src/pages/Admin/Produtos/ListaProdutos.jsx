@@ -253,7 +253,7 @@ const ListaProdutos = () => {
                                 produtos.map((produto) => (
                                     <tr
                                         key={produto.id || produto.uuid}
-                                        onClick={() => navigate(`/admin/produtos/editar/${produto.id || produto.uuid}`, {
+                                        onClick={() => navigate(`/admin/produtos/${produto.id || produto.uuid}`, {
                                             state: { search, page, statusFilter, selectedCategories }
                                         })}
                                         className="hover:bg-gray-50 transition-colors cursor-pointer group"
