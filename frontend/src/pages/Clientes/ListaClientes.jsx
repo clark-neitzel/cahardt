@@ -130,6 +130,12 @@ const ListaClientes = () => {
                             >
                                 Status
                             </th>
+                            <th
+                                scope="col"
+                                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            >
+                                Ações
+                            </th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -152,8 +158,7 @@ const ListaClientes = () => {
                             clientes.map((cliente) => (
                                 <tr
                                     key={cliente.id || cliente.UUID}
-                                    onClick={() => navigate(`/clientes/${cliente.UUID}`)}
-                                    className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                                    className="hover:bg-gray-50 transition-colors"
                                 >
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
@@ -163,7 +168,7 @@ const ListaClientes = () => {
                                                 </div>
                                             </div>
                                             <div className="ml-4">
-                                                <div className="text-sm font-medium text-gray-900 group-hover:text-primary transition-colors">
+                                                <div className="text-sm font-medium text-gray-900">
                                                     {cliente.NomeFantasia || cliente.Nome}
                                                 </div>
                                                 <div className="text-sm text-gray-500">
@@ -194,6 +199,14 @@ const ListaClientes = () => {
                                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                             {cliente.Ativo ? 'Ativo' : 'Inativo'}
                                         </span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <Link
+                                            to={`/clientes/${cliente.UUID}`}
+                                            className="text-primary hover:text-blue-900"
+                                        >
+                                            Detalhes
+                                        </Link>
                                     </td>
                                 </tr>
                             ))
