@@ -274,28 +274,59 @@ const contaAzulService = {
             const produtosAPI = await contaAzulService.fetchProdutosFromAPI();
             let count = 0;
 
-            for (const p of produtosAPI) {
+            for (const itemList of produtosAPI) {
+                // DETALHE SYNC: A listagem V2 não retorna saldo/custos confiáveis.
+                // É necessário buscar os detalhes de cada produto.
+                let p = itemList;
+                try {
+                    console.log(`   > Buscando detalhes: ${itemList.nome}`);
+                    const responseDetalhe = await contaAzulService._axiosGet(`https://api-v2.contaazul.com/v1/produtos/${itemList.id}`, 'PRODUTO_DETALHE');
+                    if (responseDetalhe.data) {
+                        p = responseDetalhe.data; // Usa o objeto completo (Detalhes)
+                    }
+                    // Rate Limit Safety for Detail Loop
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (err) {
+                    console.error(`Falha ao buscar detalhes do produto ${itemList.id}: ${err.message}`);
+                    // Fallback: usa o item da lista mesmo (melhor que nada)
+                }
+
+                // Mapeamento Avançado (V2/V1 Fallbacks)
+                // Baseado no JSON REAL: estoque é objeto, unidade está em fiscal ou raiz, custo está em estoque
+                const estoqueObj = p.estoque || {};
+                const fiscalObj = p.fiscal || {};
+                const unidadeObj = p.unidade_medida || {};
+                const unidadeFiscal = fiscalObj.unidade_medida || {};
+
+                // Unidade: Tenta Fiscal > Raiz (Objeto) > Raiz (String) > Fallback
+                const unidadeValor = unidadeFiscal.descricao || unidadeFiscal.codigo ||
+                    unidadeObj.descricao || unidadeObj.codigo ||
+                    (typeof p.unidade_medida === 'string' ? p.unidade_medida : 'UN');
+
                 // Mapeamento Real da API
                 const dadosProduto = {
                     contaAzulId: p.id,
                     codigo: p.code || p.codigo_sku || '', // Fallbacks
                     nome: p.name || p.nome,
                     valorVenda: p.value || p.valor_venda || 0,
-                    unidade: p.unity_measure || p.unidade_medida || 'UN',
+                    unidade: unidadeValor.substring(0, 10), // Limit length just in case
 
-                    // Estoques (API v1 pode vir campos diferentes ou objeto estoque)
-                    estoqueDisponivel: p.available_stock || (p.estoque?.estoque_disponivel) || 0,
-                    estoqueReservado: p.reserved_stock || (p.estoque?.quantidade_reservada) || 0,
-                    estoqueTotal: p.total_stock || (p.estoque?.quantidade_total) || 0,
-                    estoqueMinimo: p.min_stock || (p.estoque?.estoque_minimo) || 0,
+                    // Estoques
+                    estoqueDisponivel: estoqueObj.quantidade_disponivel || p.available_stock || p.saldo || 0,
+                    estoqueReservado: estoqueObj.quantidade_reservada || p.reserved_stock || 0,
+                    estoqueTotal: estoqueObj.quantidade_total || p.total_stock || p.saldo || 0,
+                    estoqueMinimo: estoqueObj.estoque_minimo || p.min_stock || 0,
 
                     // Detalhes
-                    ean: p.ean_code || p.ean || p.codigo_ean,
-                    status: p.status, // 'ACTIVE' or 'INACTIVE'
-                    categoria: p.category_name || (p.categoria ? p.categoria.descricao : null),
-                    descricao: p.description || p.descricao,
-                    custoMedio: p.cost || p.custo_medio || 0,
-                    pesoLiquido: p.net_weight || (p.pesos_dimensoes?.peso_liquido) || 0,
+                    ean: p.ean_code || p.ean || p.codigo_ean || '',
+                    status: p.status,
+                    categoria: p.categoria?.descricao || p.category_name || (p.categoria ? p.categoria.descricao : null) || '',
+                    descricao: p.description || p.descricao || '',
+
+                    // Custo Médio (Vem dentro do objeto estoque no JSON fornecido)
+                    custoMedio: estoqueObj.custo_medio || p.cost || p.custo_medio || 0,
+
+                    pesoLiquido: p.peso_liquido || p.net_weight || (p.pesos_dimensoes?.peso_liquido) || 0,
 
                     ativo: p.status === 'ACTIVE' || p.status === 'ativo' || p.status === 'ATIVO'
                 };
