@@ -24,6 +24,7 @@ const DetalheProduto = () => {
         nome: '',
         codigo: '',
         valorVenda: '',
+        custoMedio: '',
         unidade: '',
         categoria: '',
         ean: '',
@@ -51,6 +52,7 @@ const DetalheProduto = () => {
                     nome: data.nome || '',
                     codigo: data.codigo || '',
                     valorVenda: data.valorVenda ? Number(data.valorVenda).toFixed(2) : '0.00',
+                    custoMedio: data.custoMedio ? Number(data.custoMedio).toFixed(2) : '0.00',
                     unidade: data.unidade || '',
                     categoria: data.categoria || '',
                     ean: data.ean || '',
@@ -296,6 +298,23 @@ const DetalheProduto = () => {
                                                 value={formData.valorVenda}
                                                 onChange={handleChange}
                                                 className="w-full pl-10 rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 py-2 px-3 border font-bold text-gray-900"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Custo Médio (R$)</label>
+                                        <div className="relative rounded-md shadow-sm">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <span className="text-gray-500 sm:text-sm">R$</span>
+                                            </div>
+                                            <input
+                                                type="number"
+                                                name="custoMedio"
+                                                step="0.01"
+                                                value={formData.custoMedio}
+                                                readOnly
+                                                className="w-full pl-10 rounded-md border-gray-300 shadow-sm bg-gray-100 text-gray-500 cursor-not-allowed py-2 px-3 border"
+                                                title="Sincronizado do Conta Azul"
                                             />
                                         </div>
                                     </div>

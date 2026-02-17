@@ -1,19 +1,34 @@
+
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import produtoService from '../../services/produtoService';
 import configService from '../../services/configService'; // Import Service
 import ProductCard from '../../components/ProductCard';
 import { Search } from 'lucide-react';
 
 const Catalogo = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const initialSearch = searchParams.get('search') || '';
+    const initialPage = parseInt(searchParams.get('page')) || 1;
+
     const [produtos, setProdutos] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
-    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState(initialSearch);
+    const [page, setPage] = useState(initialPage);
     const [totalPages, setTotalPages] = useState(1);
 
     // Configurações
     const [configuredCategories, setConfiguredCategories] = useState([]);
     const [configLoaded, setConfigLoaded] = useState(false);
+
+    // Sync State -> URL
+    useEffect(() => {
+        const params = {};
+        if (search) params.search = search;
+        if (page > 1) params.page = page;
+        setSearchParams(params, { replace: true });
+    }, [search, page, setSearchParams]);
 
     // Load Config on mount
     useEffect(() => {
@@ -55,15 +70,15 @@ const Catalogo = () => {
     useEffect(() => {
         // Debounce search
         const timeoutId = setTimeout(() => {
-            setPage(1); // Reset page on search
             if (configLoaded) fetchProdutos();
         }, 500);
         return () => clearTimeout(timeoutId);
-    }, [search, configLoaded]);
+    }, [search, page, configLoaded]); // Depend on search and page directly
 
-    useEffect(() => {
-        if (configLoaded) fetchProdutos();
-    }, [page, configLoaded]);
+    const handleSearch = (e) => {
+        setSearch(e.target.value);
+        setPage(1);
+    };
 
     return (
         <div className="container mx-auto px-4 py-6">
@@ -73,10 +88,10 @@ const Catalogo = () => {
                 </div>
                 <input
                     type="text"
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm text-gray-900"
                     placeholder="Buscar produto por nome ou código..."
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={handleSearch}
                 />
             </div>
 

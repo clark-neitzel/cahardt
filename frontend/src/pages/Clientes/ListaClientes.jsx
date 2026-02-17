@@ -1,14 +1,28 @@
+
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import clienteService from '../../services/clienteService';
 import { Search, MapPin, Phone, Truck, Building, User } from 'lucide-react';
 
 const ListaClientes = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const initialSearch = searchParams.get('search') || '';
+    const initialPage = parseInt(searchParams.get('page')) || 1;
+
     const [clientes, setClientes] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
-    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState(initialSearch);
+    const [page, setPage] = useState(initialPage);
     const [totalPages, setTotalPages] = useState(1);
+
+    // Sync State -> URL
+    useEffect(() => {
+        const params = {};
+        if (search) params.search = search;
+        if (page > 1) params.page = page;
+        setSearchParams(params, { replace: true });
+    }, [search, page, setSearchParams]);
 
     const fetchClientes = async () => {
         setLoading(true);
@@ -24,8 +38,17 @@ const ListaClientes = () => {
     };
 
     useEffect(() => {
-        fetchClientes();
+        // Debounce search
+        const timeoutId = setTimeout(() => {
+            fetchClientes();
+        }, 300);
+        return () => clearTimeout(timeoutId);
     }, [page, search]);
+
+    const handleSearch = (e) => {
+        setSearch(e.target.value);
+        setPage(1);
+    };
 
     // Helper para formatar Perfis (assumindo string ou array)
     const formatarPerfis = (perfis) => {
@@ -83,7 +106,7 @@ const ListaClientes = () => {
                     className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm shadow-sm"
                     placeholder="Buscar por nome, fantasia, documento ou código..."
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={handleSearch}
                 />
             </div>
 
@@ -102,79 +125,89 @@ const ListaClientes = () => {
                                 Perfis
                             </th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Status
+                                Ações
                             </th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {loading ? (
-                            <tr><td colSpan="4" className="px-6 py-10 text-center text-gray-500">Carregando clientes...</td></tr>
+                            <tr>
+                                <td colSpan="4" className="px-6 py-10 text-center text-gray-500">
+                                    <div className="flex justify-center items-center">
+                                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
+                                        Carregando clientes...
+                                    </div>
+                                </td>
+                            </tr>
                         ) : clientes.length === 0 ? (
-                            <tr><td colSpan="4" className="px-6 py-10 text-center text-gray-500">Nenhum cliente encontrado.</td></tr>
+                            <tr>
+                                <td colSpan="4" className="px-6 py-10 text-center text-gray-500">
+                                    Nenhum cliente encontrado.
+                                </td>
+                            </tr>
                         ) : (
                             clientes.map((cliente) => (
-                                <tr key={cliente.UUID} className="hover:bg-gray-50 transition-colors">
+                                <tr key={cliente.id || cliente.uuid} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="flex items-start">
-                                            <div className="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
-                                                {cliente.Tipo_Pessoa === 'JURIDICA' ? <Building className="h-5 w-5" /> : <User className="h-5 w-5" />}
+                                            <div className="flex-shrink-0 h-10 w-10">
+                                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                    <User className="h-5 w-5" />
+                                                </div>
                                             </div>
                                             <div className="ml-4">
-                                                <Link to={`/clientes/${cliente.UUID}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-900 hover:underline block">
-                                                    {cliente.Nome}
-                                                </Link>
-                                                {cliente.NomeFantasia && (
-                                                    <div className="text-sm text-gray-500">{cliente.NomeFantasia}</div>
-                                                )}
-                                                <div className="text-xs text-gray-400 mt-1 font-mono">
-                                                    {cliente.Tipo_Pessoa === 'JURIDICA' ? 'CNPJ' : 'CPF'}: {cliente.Documento || 'N/A'}
+                                                <div className="text-sm font-medium text-gray-900">
+                                                    {cliente.nome_fantasia || cliente.nome}
+                                                </div>
+                                                <div className="text-sm text-gray-500 line-clamp-1">
+                                                    {cliente.nome_empresa || cliente.razao_social || 'Razão Social N/A'}
+                                                </div>
+                                                <div className="text-xs text-gray-400 mt-1">
+                                                    {(cliente.documento || '').replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")}
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
-
-                                    <td className="px-6 py-4 text-sm text-gray-500 space-y-1">
-                                        <div className="flex items-center">
-                                            <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                                            <span>
-                                                {cliente.End_Cidade ? `${cliente.End_Cidade}/${cliente.End_Estado}` : 'Localização não definida'}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <Phone className="h-4 w-4 mr-2 text-gray-400" />
-                                            <span>{cliente.Telefone_Celular || cliente.Telefone || 'Sem telefone'}</span>
-                                        </div>
-                                        {cliente.Dia_de_entrega && (
-                                            <div className="flex items-center text-orange-600">
-                                                <Truck className="h-4 w-4 mr-2" />
-                                                <span className="text-xs font-semibold">Entrega: {cliente.Dia_de_entrega}</span>
-                                            </div>
-                                        )}
-                                        {cliente.Dia_de_venda && (
-                                            <div className="flex items-center text-blue-600">
-                                                <Truck className="h-4 w-4 mr-2" />
-                                                <span className="text-xs font-semibold">Venda: {cliente.Dia_de_venda}</span>
-                                            </div>
-                                        )}
-                                    </td>
-
                                     <td className="px-6 py-4">
-                                        <div className="flex flex-wrap gap-1">
-                                            {formatarPerfis(cliente.Perfis).map((perfil, idx) => (
-                                                <span key={idx} className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBadgeColor(perfil)}`}>
-                                                    {perfil}
+                                        <div className="flex flex-col space-y-1">
+                                            {cliente.email && (
+                                                <span className="text-sm text-gray-600 flex items-center">
+                                                    <span className="truncate max-w-xs" title={cliente.email}>{cliente.email}</span>
                                                 </span>
-                                            ))}
-                                            {formatarPerfis(cliente.Perfis).length === 0 && (
-                                                <span className="text-xs text-gray-400 italic">Sem perfil</span>
+                                            )}
+                                            {(cliente.telefone || cliente.telefone_celular) && (
+                                                <span className="text-sm text-gray-500 flex items-center">
+                                                    <Phone className="h-3 w-3 mr-1" />
+                                                    {cliente.telefone_celular || cliente.telefone}
+                                                </span>
+                                            )}
+                                            {(cliente.end_cidade || cliente.end_estado) && (
+                                                <span className="text-sm text-gray-500 flex items-center">
+                                                    <MapPin className="h-3 w-3 mr-1" />
+                                                    {cliente.end_cidade}/{cliente.end_estado}
+                                                </span>
                                             )}
                                         </div>
                                     </td>
-
-                                    <td className="px-6 py-4 text-right whitespace-nowrap">
-                                        <span className={`inline-flex px-2 text-xs leading-5 font-semibold rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                            {cliente.Ativo ? 'Ativo' : 'Inativo'}
-                                        </span>
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-wrap gap-1">
+                                            {formatarPerfis(cliente.perfis).map((perfil, idx) => (
+                                                <span
+                                                    key={idx}
+                                                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getBadgeColor(perfil)}`}
+                                                >
+                                                    {perfil}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <Link
+                                            to={`/admin/clientes/${cliente.uuid}`}
+                                            className="text-primary hover:text-blue-900"
+                                        >
+                                            Detalhes
+                                        </Link>
                                     </td>
                                 </tr>
                             ))
@@ -183,87 +216,80 @@ const ListaClientes = () => {
                 </table>
             </div>
 
-            {/* Lista Cards (Mobile) */}
-            <div className="md:hidden space-y-4">
+            {/* Lista Mobile */}
+            <div className="md:hidden mt-4 space-y-4">
                 {loading ? (
-                    <div className="p-4 text-center text-gray-500 bg-white rounded-lg shadow">Carregando clientes...</div>
+                    <div className="text-center py-10">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    </div>
                 ) : clientes.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500 bg-white rounded-lg shadow">Nenhum cliente encontrado.</div>
+                    <div className="text-center py-10 text-gray-500 bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+                        Nenhum cliente encontrado.
+                    </div>
                 ) : (
-                    clientes.map(cliente => (
-                        <Link to={`/clientes/${cliente.UUID}`} key={cliente.UUID} className="block bg-white shadow rounded-lg p-4 active:bg-gray-50">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="flex items-center">
-                                    <div className={`h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold mr-3 ${cliente.Ativo ? 'bg-blue-600' : 'bg-gray-400'}`}>
-                                        {cliente.Nome.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-bold text-gray-900 line-clamp-1">{cliente.Nome}</h3>
-                                        <p className="text-xs text-gray-500">{cliente.NomeFantasia}</p>
-                                    </div>
+                    clientes.map((cliente) => (
+                        <div key={cliente.id || cliente.uuid} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-3">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h3 className="text-base font-semibold text-gray-900">{cliente.nome_fantasia || cliente.nome}</h3>
+                                    <p className="text-xs text-gray-500">{cliente.documento}</p>
                                 </div>
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                    {cliente.Ativo ? 'ATIVO' : 'INATIVO'}
-                                </span>
+                                <Link
+                                    to={`/admin/clientes/${cliente.uuid}`}
+                                    className="px-3 py-1 bg-gray-100 text-primary text-xs rounded-full font-medium"
+                                >
+                                    Ver
+                                </Link>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 mb-3 border-t border-b border-gray-100 py-2">
-                                <div className="flex items-center">
-                                    <MapPin className="h-3 w-3 mr-1 text-gray-400" />
-                                    <span className="truncate max-w-[120px]">{cliente.End_Cidade}/{cliente.End_Estado}</span>
+                            <div className="text-sm text-gray-600">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Building className="h-3 w-3" />
+                                    <span className="truncate">{cliente.nome_empresa}</span>
                                 </div>
-                                <div className="flex items-center justify-end">
-                                    <Phone className="h-3 w-3 mr-1 text-gray-400" />
-                                    <span>{cliente.Telefone_Celular?.split(' ')[0] || cliente.Telefone?.split(' ')[0] || '-'}</span>
+                                <div className="flex items-center gap-2">
+                                    <MapPin className="h-3 w-3" />
+                                    <span>{cliente.end_cidade}/{cliente.end_estado}</span>
                                 </div>
-                                {cliente.Dia_de_entrega && (
-                                    <div className="flex items-center text-orange-600 col-span-2">
-                                        <Truck className="h-3 w-3 mr-1" />
-                                        <span className="font-semibold">Entrega: {cliente.Dia_de_entrega}</span>
-                                    </div>
-                                )}
                             </div>
 
-                            <div className="flex flex-wrap gap-1">
-                                {formatarPerfis(cliente.Perfis).slice(0, 3).map((perfil, idx) => (
-                                    <span key={idx} className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${getBadgeColor(perfil)}`}>
+                            <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-50">
+                                {formatarPerfis(cliente.perfis).map((perfil, idx) => (
+                                    <span
+                                        key={idx}
+                                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getBadgeColor(perfil)}`}
+                                    >
                                         {perfil}
                                     </span>
                                 ))}
                             </div>
-                        </Link>
+                        </div>
                     ))
                 )}
             </div>
 
             {/* Paginação */}
             {totalPages > 1 && (
-                <div className="mt-6 flex justify-between items-center bg-white px-4 py-3 border border-gray-200 rounded-lg sm:px-6">
-                    <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                        <div>
-                            <p className="text-sm text-gray-700">
-                                Página <span className="font-medium">{page}</span> de <span className="font-medium">{totalPages}</span>
-                            </p>
-                        </div>
-                        <div>
-                            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                                <button
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                                >
-                                    Anterior
-                                </button>
-                                <button
-                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                    disabled={page === totalPages}
-                                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                                >
-                                    Próxima
-                                </button>
-                            </nav>
-                        </div>
-                    </div>
+                <div className="flex justify-center mt-8">
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        <button
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                            Anterior
+                        </button>
+                        <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                            {page} / {totalPages}
+                        </span>
+                        <button
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                            className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                            Próxima
+                        </button>
+                    </nav>
                 </div>
             )}
         </div>

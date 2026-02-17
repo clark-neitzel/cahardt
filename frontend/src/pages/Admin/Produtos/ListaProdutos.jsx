@@ -1,24 +1,33 @@
 
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import produtoService from '../../../services/produtoService';
 import configService from '../../../services/configService';
 import { Search, Edit, ArrowLeft, Filter } from 'lucide-react';
 import MultiSelect from '../../../components/MultiSelect'; // Custom MultiSelect
 
 const ListaProdutos = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
+
+    // Initial State from URL
+    const initialSearch = searchParams.get('search') || '';
+    const initialPage = parseInt(searchParams.get('page')) || 1;
+    const initialStatus = searchParams.get('ativo') || 'ativo'; // 'ativo' | 'inativo' | 'todos'
+    const initialCategoriaStr = searchParams.get('categorias') || '';
+    const initialCategories = initialCategoriaStr ? initialCategoriaStr.split(',') : [];
+
+    // Local State
     const [produtos, setProdutos] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
-    const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
 
-    // Filtros
-    const [statusFilter, setStatusFilter] = useState('ativo'); // 'ativo', 'inativo', 'todos'
-    const [selectedCategories, setSelectedCategories] = useState([]);
+    // Controlled Inputs
+    const [search, setSearch] = useState(initialSearch);
+    const [page, setPage] = useState(initialPage);
+    const [statusFilter, setStatusFilter] = useState(initialStatus);
+    const [selectedCategories, setSelectedCategories] = useState(initialCategories);
     const [availableCategories, setAvailableCategories] = useState([]);
-
-    const navigate = useNavigate();
 
     // Load Categories
     useEffect(() => {
@@ -27,43 +36,72 @@ const ListaProdutos = () => {
             .catch(err => console.error(err));
     }, []);
 
-    const fetchProdutos = async () => {
-        setLoading(true);
-        try {
-            const params = {
-                page,
-                limit: 10,
-                search
-            };
+    // Sync State -> URL
+    useEffect(() => {
+        const params = {};
+        if (search) params.search = search;
+        if (page > 1) params.page = page;
+        if (statusFilter !== 'ativo') params.ativo = statusFilter;
+        if (selectedCategories.length > 0) params.categorias = selectedCategories.join(',');
 
-            // Status Filter Logic
-            if (statusFilter === 'ativo') params.ativo = true;
-            if (statusFilter === 'inativo') params.ativo = false;
-            // if 'todos', send nothing or 'all' (backend handles it)
+        setSearchParams(params, { replace: true });
+    }, [search, page, statusFilter, selectedCategories, setSearchParams]);
 
-            // Category Filter
-            if (selectedCategories.length > 0) {
-                params.categorias = selectedCategories.join(',');
+    // Fetch on State Change
+    useEffect(() => {
+        const fetchProdutos = async () => {
+            setLoading(true);
+            try {
+                const params = {
+                    page,
+                    limit: 10,
+                    search
+                };
+
+                // Status Filter Logic
+                if (statusFilter === 'ativo') params.ativo = true;
+                if (statusFilter === 'inativo') params.ativo = false;
+                // if 'todos', backend handles it
+
+                // Category Filter
+                if (selectedCategories.length > 0) {
+                    params.categorias = selectedCategories.join(',');
+                }
+
+                const data = await produtoService.listar(params);
+                setProdutos(data.data);
+                setTotalPages(data.meta.totalPages);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setLoading(false);
             }
+        };
 
-            const data = await produtoService.listar(params);
-            setProdutos(data.data);
-            setTotalPages(data.meta.totalPages);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
+        // Debounce search slightly to avoid excessive calls while typing
+        const timeoutId = setTimeout(() => {
+            fetchProdutos();
+        }, 300);
+
+        return () => clearTimeout(timeoutId);
+    }, [page, search, statusFilter, selectedCategories]);
+
+    // Handle Search Input Change
+    const handleSearchChange = (e) => {
+        setSearch(e.target.value);
+        setPage(1); // Reset page on search
     };
 
-    useEffect(() => {
-        setPage(1); // Reset page when filters change
-        fetchProdutos();
-    }, [search, statusFilter, selectedCategories]);
+    // Handle Filter Changes
+    const handleStatusChange = (status) => {
+        setStatusFilter(status);
+        setPage(1);
+    };
 
-    useEffect(() => {
-        fetchProdutos();
-    }, [page]);
+    const handleCategoryChange = (cats) => {
+        setSelectedCategories(cats);
+        setPage(1);
+    };
 
     return (
         <div className="container mx-auto px-4 py-6">
@@ -85,7 +123,7 @@ const ListaProdutos = () => {
                         {['ativo', 'inativo', 'todos'].map((status) => (
                             <button
                                 key={status}
-                                onClick={() => setStatusFilter(status)}
+                                onClick={() => handleStatusChange(status)}
                                 className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${statusFilter === status
                                         ? 'bg-white text-gray-900 shadow-sm'
                                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -106,8 +144,8 @@ const ListaProdutos = () => {
                                 type="text"
                                 placeholder="Buscar por nome, código ou EAN..."
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-9 w-full border-gray-300 rounded-md text-sm focus:ring-primary focus:border-primary py-2 shadow-sm"
+                                onChange={handleSearchChange}
+                                className="pl-9 w-full border-gray-300 rounded-md text-sm focus:ring-primary focus:border-primary py-2 shadow-sm text-gray-900 bg-white"
                             />
                         </div>
 
@@ -115,7 +153,7 @@ const ListaProdutos = () => {
                             <MultiSelect
                                 options={availableCategories}
                                 selected={selectedCategories}
-                                onChange={setSelectedCategories}
+                                onChange={handleCategoryChange}
                                 placeholder="Filtrar por Categoria"
                             />
                         </div>
@@ -257,4 +295,3 @@ const ListaProdutos = () => {
 };
 
 export default ListaProdutos;
-
