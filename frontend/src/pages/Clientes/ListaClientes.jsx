@@ -147,7 +147,7 @@ const ListaClientes = () => {
                             </tr>
                         ) : (
                             clientes.map((cliente) => (
-                                <tr key={cliente.id || cliente.uuid} className="hover:bg-gray-50 transition-colors">
+                                <tr key={cliente.id || cliente.UUID} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="flex items-start">
                                             <div className="flex-shrink-0 h-10 w-10">
@@ -157,41 +157,41 @@ const ListaClientes = () => {
                                             </div>
                                             <div className="ml-4">
                                                 <div className="text-sm font-medium text-gray-900">
-                                                    {cliente.nome_fantasia || cliente.nome}
+                                                    {cliente.NomeFantasia || cliente.Nome}
                                                 </div>
                                                 <div className="text-sm text-gray-500 line-clamp-1">
-                                                    {cliente.nome_empresa || cliente.razao_social || 'Razão Social N/A'}
+                                                    {cliente.Nome || 'Razão Social N/A'}
                                                 </div>
                                                 <div className="text-xs text-gray-400 mt-1">
-                                                    {(cliente.documento || '').replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")}
+                                                    {(cliente.Documento || '').replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")}
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col space-y-1">
-                                            {cliente.email && (
+                                            {cliente.Email && (
                                                 <span className="text-sm text-gray-600 flex items-center">
-                                                    <span className="truncate max-w-xs" title={cliente.email}>{cliente.email}</span>
+                                                    <span className="truncate max-w-xs" title={cliente.Email}>{cliente.Email}</span>
                                                 </span>
                                             )}
-                                            {(cliente.telefone || cliente.telefone_celular) && (
+                                            {(cliente.Telefone || cliente.Telefone_Celular) && (
                                                 <span className="text-sm text-gray-500 flex items-center">
                                                     <Phone className="h-3 w-3 mr-1" />
-                                                    {cliente.telefone_celular || cliente.telefone}
+                                                    {cliente.Telefone_Celular || cliente.Telefone}
                                                 </span>
                                             )}
-                                            {(cliente.end_cidade || cliente.end_estado) && (
+                                            {(cliente.End_Cidade || cliente.End_Estado) && (
                                                 <span className="text-sm text-gray-500 flex items-center">
                                                     <MapPin className="h-3 w-3 mr-1" />
-                                                    {cliente.end_cidade}/{cliente.end_estado}
+                                                    {cliente.End_Cidade}/{cliente.End_Estado}
                                                 </span>
                                             )}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex flex-wrap gap-1">
-                                            {formatarPerfis(cliente.perfis).map((perfil, idx) => (
+                                            {formatarPerfis(cliente.Perfis).map((perfil, idx) => (
                                                 <span
                                                     key={idx}
                                                     className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getBadgeColor(perfil)}`}
@@ -203,7 +203,7 @@ const ListaClientes = () => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <Link
-                                            to={`/admin/clientes/${cliente.uuid}`}
+                                            to={`/admin/clientes/${cliente.UUID}`}
                                             className="text-primary hover:text-blue-900"
                                         >
                                             Detalhes
@@ -228,14 +228,14 @@ const ListaClientes = () => {
                     </div>
                 ) : (
                     clientes.map((cliente) => (
-                        <div key={cliente.id || cliente.uuid} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-3">
+                        <div key={cliente.id || cliente.UUID} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-3">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <h3 className="text-base font-semibold text-gray-900">{cliente.nome_fantasia || cliente.nome}</h3>
-                                    <p className="text-xs text-gray-500">{cliente.documento}</p>
+                                    <h3 className="text-base font-semibold text-gray-900">{cliente.NomeFantasia || cliente.Nome}</h3>
+                                    <p className="text-xs text-gray-500">{cliente.Documento}</p>
                                 </div>
                                 <Link
-                                    to={`/admin/clientes/${cliente.uuid}`}
+                                    to={`/admin/clientes/${cliente.UUID}`}
                                     className="px-3 py-1 bg-gray-100 text-primary text-xs rounded-full font-medium"
                                 >
                                     Ver
@@ -245,16 +245,16 @@ const ListaClientes = () => {
                             <div className="text-sm text-gray-600">
                                 <div className="flex items-center gap-2 mb-1">
                                     <Building className="h-3 w-3" />
-                                    <span className="truncate">{cliente.nome_empresa}</span>
+                                    <span className="truncate">{cliente.Nome || 'Razão Social N/A'}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <MapPin className="h-3 w-3" />
-                                    <span>{cliente.end_cidade}/{cliente.end_estado}</span>
+                                    <span>{cliente.End_Cidade}/{cliente.End_Estado}</span>
                                 </div>
                             </div>
 
                             <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-50">
-                                {formatarPerfis(cliente.perfis).map((perfil, idx) => (
+                                {formatarPerfis(cliente.Perfis).map((perfil, idx) => (
                                     <span
                                         key={idx}
                                         className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getBadgeColor(perfil)}`}
