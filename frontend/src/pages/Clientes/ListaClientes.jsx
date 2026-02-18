@@ -416,7 +416,13 @@ const ListaClientes = () => {
                                     <p className="text-xs text-gray-500">{cliente.Nome}</p>
                                 )}
                                 <div className="flex gap-1 mt-1">
-                                    {/* Ícones removidos no rollback */}
+                                    {(cliente.Formas_Atendimento || []).map(forma => (
+                                        <span key={forma} title={forma} className="p-1 bg-gray-100 rounded text-gray-600">
+                                            {forma === 'Presencial' && <User className="h-3 w-3" />}
+                                            {forma === 'Whatsapp' && <MessageCircle className="h-3 w-3" />}
+                                            {forma === 'Telefone' && <Phone className="h-3 w-3" />}
+                                        </span>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -532,6 +538,35 @@ const ListaClientes = () => {
                                             <option key={dia} value={dia}>{dia}</option>
                                         ))}
                                     </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Canais de Atendimento</label>
+                                    <p className="text-xs text-gray-500 mb-2">Selecione para <strong>adicionar/sobrescrever</strong> a lista atual.</p>
+                                    <div className="flex gap-2">
+                                        {['Presencial', 'Whatsapp', 'Telefone'].map(canal => (
+                                            <button
+                                                key={canal}
+                                                type="button"
+                                                onClick={() => {
+                                                    const atuais = batchData.Formas_Atendimento || [];
+                                                    const novo = atuais.includes(canal)
+                                                        ? atuais.filter(c => c !== canal)
+                                                        : [...atuais, canal];
+                                                    setBatchData({ ...batchData, Formas_Atendimento: novo });
+                                                }}
+                                                className={`px-3 py-1.5 rounded text-sm border flex items-center gap-1.5 transition-colors ${(batchData.Formas_Atendimento || []).includes(canal)
+                                                    ? 'bg-primary text-white border-primary'
+                                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                                    }`}
+                                            >
+                                                {canal === 'Presencial' && <User className="h-3.5 w-3.5" />}
+                                                {canal === 'Whatsapp' && <MessageCircle className="h-3.5 w-3.5" />}
+                                                {canal === 'Telefone' && <Phone className="h-3.5 w-3.5" />}
+                                                {canal}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 
