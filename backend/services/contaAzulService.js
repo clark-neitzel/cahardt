@@ -388,7 +388,8 @@ const contaAzulService = {
                     ativo: p.status === 'ACTIVE' || p.status === 'ativo' || p.status === 'ATIVO',
 
                     // Timestamp de atualização no Conta Azul
-                    contaAzulUpdatedAt: p.ultima_atualizacao ? new Date(p.ultima_atualizacao) : null
+                    // IMPORTANTE: Usar o timestamp da LISTA, não dos detalhes, para garantir consistência
+                    contaAzulUpdatedAt: itemList.ultima_atualizacao ? new Date(itemList.ultima_atualizacao) : null
                 };
 
                 await prisma.produto.upsert({
