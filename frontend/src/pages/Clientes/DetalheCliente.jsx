@@ -327,7 +327,7 @@ const DetalheCliente = () => {
                             </label>
                             <input
                                 type="text"
-                                className="block w-full border border-gray-300 rounded-md shadow-sm p-3 text-gray-900 focus:ring-primary focus:border-primary"
+                                className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary"
                                 placeholder="Ex: -23.550520,-46.633308"
                                 value={formData.Ponto_GPS}
                                 onChange={(e) => setFormData({ ...formData, Ponto_GPS: e.target.value })}
@@ -341,7 +341,7 @@ const DetalheCliente = () => {
                                 Observações Gerais
                             </label>
                             <textarea
-                                className="block w-full border border-gray-300 rounded-md shadow-sm p-3 text-gray-900 focus:ring-primary focus:border-primary"
+                                className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary"
                                 rows="4"
                                 placeholder="Observações sobre o cliente..."
                                 value={formData.Observacoes_Gerais}

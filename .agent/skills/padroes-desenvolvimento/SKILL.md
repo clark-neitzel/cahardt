@@ -52,10 +52,19 @@ O Frontend (`frontend/src`) consome a API do Backend.
 - **Cache:** Alterações no Frontend podem demorar para aparecer se o cache do navegador estiver ativo. Force atualização (Ctrl+F5) ou use Versionamento no título/console para debugar.
 
 ## 6. UI/UX e Estilização 🎨
-- **Inputs e Formulários:**
-    - SEMPRE defina explicitamente `bg-white` e `text-gray-900` em inputs.
-    - Evite depender dos defaults do navegador, pois podem causar "fundo preto" em browsers com Dark Mode forçado.
-    - Exemplo seguro: `className="border border-gray-300 bg-white text-gray-900 rounded px-3 py-2"`
+- **Inputs e Formulários (CRÍTICO):**
+    - **SEMPRE** defina explicitamente `bg-white` e `text-gray-900` em **TODOS** os inputs, textareas e selects.
+    - **NUNCA** confie nos defaults do navegador - eles podem causar "fundo escuro com texto escuro" em browsers com Dark Mode.
+    - **Exemplo CORRETO:**
+      ```jsx
+      <input className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary" />
+      <textarea className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary" />
+      <select className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary" />
+      ```
+    - **Exemplo ERRADO (não fazer):**
+      ```jsx
+      <input className="border p-3" /> {/* ❌ Falta bg-white e text-gray-900 */}
+      ```
 
 ## 7. Sincronização e Preservação de Dados 🔄
 - **Campos Locais vs. Campos Remotos:**
