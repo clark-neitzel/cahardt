@@ -268,27 +268,63 @@ const contaAzulService = {
     },
 
     syncProdutos: async () => {
-        const log = await contaAzulService._logStep('PRODUTOS', 'INFO', 'Iniciando sincronização de produtos');
+        const log = await contaAzulService._logStep('PRODUTOS', 'INFO', 'Iniciando sincronização incremental de produtos');
 
         try {
             const produtosAPI = await contaAzulService.fetchProdutosFromAPI();
-            let count = 0;
+            let countUpdated = 0;
+            let countSkipped = 0;
+            let countNew = 0;
+
+            console.log(`📦 Total de produtos no CA: ${produtosAPI.length}`);
+
+            // Buscar todos os produtos locais com suas datas de atualização
+            const produtosLocais = await prisma.produto.findMany({
+                select: {
+                    contaAzulId: true,
+                    contaAzulUpdatedAt: true
+                }
+            });
+
+            // Criar mapa para lookup rápido
+            const produtosLocaisMap = new Map(
+                produtosLocais.map(p => [p.contaAzulId, p.contaAzulUpdatedAt])
+            );
+
+            console.log(`📊 Produtos locais: ${produtosLocais.length}`);
 
             for (const itemList of produtosAPI) {
-                // DETALHE SYNC: A listagem V2 não retorna saldo/custos confiáveis.
-                // É necessário buscar os detalhes de cada produto.
+                const ultimaAtualizacaoCA = itemList.ultima_atualizacao ? new Date(itemList.ultima_atualizacao) : null;
+                const ultimaAtualizacaoLocal = produtosLocaisMap.get(itemList.id);
+
+                // Verificar se precisa atualizar
+                const isNew = !ultimaAtualizacaoLocal;
+                const needsUpdate = isNew || !ultimaAtualizacaoCA ||
+                    (ultimaAtualizacaoCA && ultimaAtualizacaoLocal &&
+                        ultimaAtualizacaoCA.getTime() !== ultimaAtualizacaoLocal.getTime());
+
+                if (!needsUpdate) {
+                    countSkipped++;
+                    continue; // Pula este produto - está atualizado
+                }
+
+                // Produto novo ou desatualizado - buscar detalhes
                 let p = itemList;
                 try {
-                    console.log(`   > Buscando detalhes: ${itemList.nome}`);
+                    if (isNew) {
+                        console.log(`   ✨ NOVO: ${itemList.nome}`);
+                    } else {
+                        console.log(`   🔄 ATUALIZADO: ${itemList.nome}`);
+                    }
+
                     const responseDetalhe = await contaAzulService._axiosGet(`https://api-v2.contaazul.com/v1/produtos/${itemList.id}`, 'PRODUTO_DETALHE');
                     if (responseDetalhe.data) {
-                        p = responseDetalhe.data; // Usa o objeto completo (Detalhes)
+                        p = responseDetalhe.data;
                     }
-                    // Rate Limit Safety for Detail Loop
+                    // Rate Limit Safety
                     await new Promise(resolve => setTimeout(resolve, 500));
                 } catch (err) {
                     console.error(`Falha ao buscar detalhes do produto ${itemList.id}: ${err.message}`);
-                    // Fallback: usa o item da lista mesmo (melhor que nada)
                 }
 
                 // Mapeamento Avançado (V2/V1 Fallbacks)
@@ -303,8 +339,8 @@ const contaAzulService = {
                     unidadeObj.descricao || unidadeObj.codigo ||
                     (typeof p.unidade_medida === 'string' ? p.unidade_medida : 'UN');
 
-                // DEBUG: Dump first product to file to verify fields
-                if (count === 0) {
+                // DEBUG: Dump first product
+                if (countUpdated === 0 && countNew === 0) {
                     console.log('📦 [DEBUG PRODUCT] Body:', JSON.stringify(p, null, 2));
                 }
 
@@ -367,17 +403,33 @@ const contaAzulService = {
                     },
                     create: { ...dadosProduto }
                 });
-                count++;
+
+                if (isNew) {
+                    countNew++;
+                } else {
+                    countUpdated++;
+                }
             }
+
+            console.log(`\n📊 Resumo da Sincronização:`);
+            console.log(`   ✨ Novos: ${countNew}`);
+            console.log(`   🔄 Atualizados: ${countUpdated}`);
+            console.log(`   ⏭️  Ignorados (sem mudanças): ${countSkipped}`);
+            console.log(`   📦 Total processado: ${produtosAPI.length}`);
 
             if (log && log.id) {
                 await prisma.syncLog.update({
                     where: { id: log.id },
-                    data: { status: 'SUCESSO', mensagem: `Sync Produtos OK`, registrosProcessados: count, dataHora: new Date() }
+                    data: {
+                        status: 'SUCESSO',
+                        mensagem: `Sync OK - Novos: ${countNew}, Atualizados: ${countUpdated}, Ignorados: ${countSkipped}`,
+                        registrosProcessados: countNew + countUpdated,
+                        dataHora: new Date()
+                    }
                 });
             }
 
-            return { success: true, count };
+            return { success: true, countNew, countUpdated, countSkipped };
 
         } catch (error) {
             console.error('Erro no Sync Produtos:', error);
