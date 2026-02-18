@@ -124,8 +124,10 @@ const DetalheCliente = () => {
             <div className="bg-white shadow rounded-lg p-6 mb-6 border-l-4 border-primary">
                 <div className="flex justify-between items-start">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">{cliente.Nome}</h1>
-                        {cliente.NomeFantasia && <p className="text-lg text-gray-600 font-medium">{cliente.NomeFantasia}</p>}
+                        <h1 className="text-2xl font-bold text-gray-900">{cliente.NomeFantasia || cliente.Nome}</h1>
+                        {cliente.NomeFantasia && cliente.NomeFantasia !== cliente.Nome && (
+                            <p className="text-lg text-gray-600 font-medium">{cliente.Nome}</p>
+                        )}
                         <p className="text-gray-500 text-sm mt-1">
                             {cliente.Tipo_Pessoa === 'Jurídica' ? 'CNPJ' : 'CPF'}: {cliente.Documento}
                         </p>

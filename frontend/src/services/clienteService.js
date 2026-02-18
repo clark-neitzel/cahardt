@@ -16,6 +16,11 @@ const clienteService = {
         return response.data;
     },
 
+    atualizarLote: async (payload) => {
+        const response = await api.put('/clientes/lote', payload);
+        return response.data;
+    },
+
     listarCondicoesPagamento: async () => {
         const response = await api.get('/clientes/condicoes-pagamento');
         return response.data;

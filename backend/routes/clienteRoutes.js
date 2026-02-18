@@ -6,6 +6,7 @@ const condicaoPagamentoController = require('../controllers/condicaoPagamentoCon
 // Rotas para Clientes
 router.get('/', clienteController.listar);
 router.post('/sync', clienteController.sincronizar); // POST para ações de sync
+router.put('/lote', clienteController.atualizarLote); // Atualização em lote
 router.get('/condicoes-pagamento', condicaoPagamentoController.listar); // Nova rota
 router.get('/:uuid', clienteController.detalhar);
 router.patch('/:uuid', clienteController.atualizar);

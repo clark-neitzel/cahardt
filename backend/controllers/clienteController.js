@@ -3,26 +3,41 @@ const contaAzulService = require('../services/contaAzulService');
 
 const clienteController = {
     // Listar clientes com paginação e busca
+    // Listar clientes com paginação e busca
     listar: async (req, res) => {
         try {
-            const { page = 1, limit = 10, search = '', ativo } = req.query;
+            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda } = req.query;
             const skip = (page - 1) * limit;
 
             const where = {};
 
-            // Filtro de busca
+            // Filtro de busca textual expandida
             if (search) {
                 where.OR = [
                     { Nome: { contains: search, mode: 'insensitive' } },
                     { NomeFantasia: { contains: search, mode: 'insensitive' } },
                     { Documento: { contains: search, mode: 'insensitive' } },
-                    { Codigo: { contains: search, mode: 'insensitive' } }
+                    { Codigo: { contains: search, mode: 'insensitive' } },
+                    { End_Cidade: { contains: search, mode: 'insensitive' } },
+                    { End_Bairro: { contains: search, mode: 'insensitive' } },
+                    { End_Logradouro: { contains: search, mode: 'insensitive' } },
+                    { Telefone: { contains: search, mode: 'insensitive' } },
+                    { Telefone_Celular: { contains: search, mode: 'insensitive' } }
                 ];
             }
 
-            // Filtro de ativo/inativo
+            // Filtros Específicos
             if (ativo !== undefined) {
                 where.Ativo = ativo === 'true';
+            }
+            if (idVendedor) {
+                where.idVendedor = idVendedor;
+            }
+            if (diaEntrega) {
+                where.Dia_de_entrega = { contains: diaEntrega };
+            }
+            if (diaVenda) {
+                where.Dia_de_venda = { contains: diaVenda };
             }
 
             const total = await prisma.cliente.count({ where });
@@ -111,6 +126,47 @@ const clienteController = {
         } catch (error) {
             console.error('Erro no sync de clientes:', error);
             res.status(500).json({ error: 'Erro ao sincronizar clientes' });
+        }
+    },
+
+    // Atualizar clientes em lote
+    atualizarLote: async (req, res) => {
+        try {
+            const { ids, dados } = req.body;
+
+            if (!ids || !Array.isArray(ids) || ids.length === 0) {
+                return res.status(400).json({ error: 'Lista de IDs inválida.' });
+            }
+
+            if (!dados || Object.keys(dados).length === 0) {
+                return res.status(400).json({ error: 'Nenhum dado para atualização fornecido.' });
+            }
+
+            // Filtrar apenas campos permitidos para edição em lote
+            const dadosAtualizacao = {};
+            if (dados.idVendedor !== undefined) dadosAtualizacao.idVendedor = dados.idVendedor;
+            if (dados.Dia_de_entrega !== undefined) dadosAtualizacao.Dia_de_entrega = dados.Dia_de_entrega;
+            if (dados.Dia_de_venda !== undefined) dadosAtualizacao.Dia_de_venda = dados.Dia_de_venda;
+
+            if (Object.keys(dadosAtualizacao).length === 0) {
+                return res.status(400).json({ error: 'Nenhum campo válido para atualização (Vendedor, Entrega, Venda).' });
+            }
+
+            const resultado = await prisma.cliente.updateMany({
+                where: {
+                    UUID: { in: ids }
+                },
+                data: dadosAtualizacao
+            });
+
+            res.json({
+                message: 'Atualização em lote concluída com sucesso.',
+                count: resultado.count
+            });
+
+        } catch (error) {
+            console.error('Erro ao atualizar clientes em lote:', error);
+            res.status(500).json({ error: 'Erro interno ao atualizar clientes em lote' });
         }
     }
 };
