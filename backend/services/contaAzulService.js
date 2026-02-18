@@ -293,9 +293,21 @@ const contaAzulService = {
 
             console.log(`📊 Produtos locais: ${produtosLocais.length}`);
 
+
             for (const itemList of produtosAPI) {
                 const ultimaAtualizacaoCA = itemList.ultima_atualizacao ? new Date(itemList.ultima_atualizacao) : null;
                 const ultimaAtualizacaoLocal = produtosLocaisMap.get(itemList.id);
+
+                // DEBUG: Log first product comparison
+                if (countUpdated === 0 && countSkipped === 0 && countNew === 0) {
+                    console.log('🔍 [DEBUG TIMESTAMP COMPARISON]');
+                    console.log('   Produto:', itemList.nome);
+                    console.log('   CA timestamp:', ultimaAtualizacaoCA);
+                    console.log('   Local timestamp:', ultimaAtualizacaoLocal);
+                    console.log('   CA getTime():', ultimaAtualizacaoCA?.getTime());
+                    console.log('   Local getTime():', ultimaAtualizacaoLocal?.getTime());
+                    console.log('   São iguais?:', ultimaAtualizacaoCA?.getTime() === ultimaAtualizacaoLocal?.getTime());
+                }
 
                 // Verificar se precisa atualizar
                 const isNew = !ultimaAtualizacaoLocal;
