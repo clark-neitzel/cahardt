@@ -98,10 +98,7 @@ const migrationService = {
                 "key" TEXT NOT NULL,
                 "value" JSONB NOT NULL,
                 CONSTRAINT "app_configs_pkey" PRIMARY KEY ("key")
-            );`,
-
-            // Update 03: Canais de Atendimento (Array de Strings)
-            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "Formas_Atendimento" TEXT[];`
+            );`
         ];
 
         for (const [index, cmd] of commands.entries()) {

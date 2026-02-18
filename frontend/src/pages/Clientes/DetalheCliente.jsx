@@ -305,41 +305,6 @@ const DetalheCliente = () => {
                             onChange={(val) => setFormData({ ...formData, Dia_de_venda: val })}
                         />
 
-                        {/* Canais de Atendimento Preference */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                <Phone className="h-4 w-4 inline mr-1" />
-                                Canais de Atendimento Preferenciais
-                            </label>
-                            <div className="flex flex-wrap gap-3">
-                                {['Presencial', 'Whatsapp', 'Telefone'].map(canal => {
-                                    const isSelected = (formData.Formas_Atendimento || []).includes(canal);
-                                    return (
-                                        <button
-                                            key={canal}
-                                            type="button"
-                                            onClick={() => {
-                                                const atuais = formData.Formas_Atendimento || [];
-                                                const novos = isSelected
-                                                    ? atuais.filter(c => c !== canal)
-                                                    : [...atuais, canal];
-                                                setFormData({ ...formData, Formas_Atendimento: novos });
-                                            }}
-                                            className={`px-4 py-2 rounded-md border text-sm font-medium transition-all flex items-center gap-2 ${isSelected
-                                                ? 'bg-primary text-white border-primary shadow-sm'
-                                                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                                                }`}
-                                        >
-                                            {canal === 'Presencial' && <User className="h-4 w-4" />}
-                                            {canal === 'Whatsapp' && <MessageCircle className="h-4 w-4" />}
-                                            {canal === 'Telefone' && <Phone className="h-4 w-4" />}
-                                            {canal}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
                         {/* Condição de Pagamento */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">

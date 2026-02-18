@@ -95,10 +95,10 @@ const clienteController = {
     },
 
     // Edição manual de dados complementares (do App)
-    editar: async (req, res) => {
+    atualizar: async (req, res) => {
         try {
             const { uuid } = req.params;
-            const { Dia_de_entrega, Dia_de_venda, Ponto_GPS, Observacoes_Gerais, idVendedor, Formas_Atendimento } = req.body;
+            const { Dia_de_entrega, Dia_de_venda, Ponto_GPS, Observacoes_Gerais, idVendedor } = req.body;
 
             const cliente = await prisma.cliente.update({
                 where: { UUID: uuid },
@@ -107,8 +107,7 @@ const clienteController = {
                     Dia_de_venda,
                     Ponto_GPS,
                     Observacoes_Gerais,
-                    idVendedor,
-                    Formas_Atendimento
+                    idVendedor
                 }
             });
 
@@ -148,10 +147,9 @@ const clienteController = {
             if (dados.idVendedor !== undefined) dadosAtualizacao.idVendedor = dados.idVendedor;
             if (dados.Dia_de_entrega !== undefined) dadosAtualizacao.Dia_de_entrega = dados.Dia_de_entrega;
             if (dados.Dia_de_venda !== undefined) dadosAtualizacao.Dia_de_venda = dados.Dia_de_venda;
-            if (dados.Formas_Atendimento !== undefined) dadosAtualizacao.Formas_Atendimento = dados.Formas_Atendimento;
 
             if (Object.keys(dadosAtualizacao).length === 0) {
-                return res.status(400).json({ error: 'Nenhum campo válido para atualização (Vendedor, Entrega, Venda, Atendimento).' });
+                return res.status(400).json({ error: 'Nenhum campo válido para atualização (Vendedor, Entrega, Venda).' });
             }
 
             const resultado = await prisma.cliente.updateMany({
