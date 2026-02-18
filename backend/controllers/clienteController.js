@@ -5,10 +5,12 @@ const clienteController = {
     // Listar clientes com paginação e busca
     listar: async (req, res) => {
         try {
-            const { page = 1, limit = 10, search = '' } = req.query;
+            const { page = 1, limit = 10, search = '', ativo } = req.query;
             const skip = (page - 1) * limit;
 
             const where = {};
+
+            // Filtro de busca
             if (search) {
                 where.OR = [
                     { Nome: { contains: search, mode: 'insensitive' } },
@@ -18,12 +20,25 @@ const clienteController = {
                 ];
             }
 
+            // Filtro de ativo/inativo
+            if (ativo !== undefined) {
+                where.Ativo = ativo === 'true';
+            }
+
             const total = await prisma.cliente.count({ where });
             const clientes = await prisma.cliente.findMany({
                 where,
                 skip: Number(skip),
                 take: Number(limit),
-                orderBy: { Nome: 'asc' }
+                orderBy: { Nome: 'asc' },
+                include: {
+                    vendedor: {
+                        select: {
+                            id: true,
+                            nome: true
+                        }
+                    }
+                }
             });
 
             res.json({

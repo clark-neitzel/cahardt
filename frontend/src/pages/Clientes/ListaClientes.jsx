@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import clienteService from '../../services/clienteService';
 import { Search, MapPin, Phone, Truck, Building, User } from 'lucide-react';
 
@@ -10,11 +10,13 @@ const ListaClientes = () => {
     const initialSearch = searchParams.get('search') || '';
     const initialPage = parseInt(searchParams.get('page')) || 1;
 
+    const navigate = useNavigate();
     const [clientes, setClientes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState(initialSearch);
     const [page, setPage] = useState(initialPage);
     const [totalPages, setTotalPages] = useState(1);
+    const [activeTab, setActiveTab] = useState('ativos'); // 'ativos' ou 'inativos'
 
     // Sync State -> URL
     useEffect(() => {
@@ -27,7 +29,8 @@ const ListaClientes = () => {
     const fetchClientes = async () => {
         setLoading(true);
         try {
-            const data = await clienteService.listar({ page, limit: 12, search });
+            const ativo = activeTab === 'ativos';
+            const data = await clienteService.listar({ page, limit: 12, search, ativo });
             setClientes(data.data);
             setTotalPages(data.meta.totalPages);
         } catch (error) {
@@ -43,7 +46,7 @@ const ListaClientes = () => {
             fetchClientes();
         }, 300);
         return () => clearTimeout(timeoutId);
-    }, [page, search]);
+    }, [page, search, activeTab]);
 
     const handleSearch = (e) => {
         setSearch(e.target.value);
@@ -96,6 +99,28 @@ const ListaClientes = () => {
                 </div>
             </div>
 
+            {/* Tabs Ativos/Inativos */}
+            <div className="flex border-b border-gray-200 mb-6">
+                <button
+                    onClick={() => { setActiveTab('ativos'); setPage(1); }}
+                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'ativos'
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                >
+                    Ativos
+                </button>
+                <button
+                    onClick={() => { setActiveTab('inativos'); setPage(1); }}
+                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'inativos'
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                >
+                    Inativos
+                </button>
+            </div>
+
             {/* Barra de Busca */}
             <div className="mb-6 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -115,33 +140,30 @@ const ListaClientes = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Identificação
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Contato & Localização
+                                Vendedor
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Perfis
+                                Dia de Entrega
                             </th>
-                            <th
-                                scope="col"
-                                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                            >
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Dia de Venda
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                CNPJ/CPF
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Status
-                            </th>
-                            <th
-                                scope="col"
-                                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                            >
-                                Ações
                             </th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {loading ? (
                             <tr>
-                                <td colSpan="5" className="px-6 py-10 text-center text-gray-500">
+                                <td colSpan="6" className="px-6 py-10 text-center text-gray-500">
                                     <div className="flex justify-center items-center">
                                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
                                         Carregando clientes...
@@ -150,7 +172,7 @@ const ListaClientes = () => {
                             </tr>
                         ) : clientes.length === 0 ? (
                             <tr>
-                                <td colSpan="5" className="px-6 py-10 text-center text-gray-500">
+                                <td colSpan="6" className="px-6 py-10 text-center text-gray-500">
                                     Nenhum cliente encontrado.
                                 </td>
                             </tr>
@@ -158,14 +180,16 @@ const ListaClientes = () => {
                             clientes.map((cliente) => (
                                 <tr
                                     key={cliente.id || cliente.UUID}
-                                    className="hover:bg-gray-50 transition-colors"
+                                    onClick={() => navigate(`/clientes/${cliente.UUID}`)}
+                                    className="cursor-pointer hover:bg-gray-50 transition-colors"
                                 >
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    {/* Identificação */}
+                                    <td className="px-6 py-4">
                                         <div className="flex items-center">
                                             <div className="flex-shrink-0 h-10 w-10">
                                                 <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">
-                                                    {(cliente.NomeFantasia || cliente.Nome).charAt(0).match(/[a-z]/i) ? (
-                                                        (cliente.NomeFantasia || cliente.Nome).charAt(0).toUpperCase()
+                                                    {(cliente.Nome || '').charAt(0).match(/[a-z]/i) ? (
+                                                        (cliente.Nome || '').charAt(0).toUpperCase()
                                                     ) : (
                                                         <User className="h-5 w-5" />
                                                     )}
@@ -173,44 +197,48 @@ const ListaClientes = () => {
                                             </div>
                                             <div className="ml-4">
                                                 <div className="text-sm font-medium text-gray-900">
-                                                    {cliente.NomeFantasia || cliente.Nome}
+                                                    {cliente.Nome || 'N/A'}
                                                 </div>
                                                 <div className="text-sm text-gray-500">
-                                                    {cliente.Nome || 'Razão Social N/A'}
+                                                    {cliente.NomeFantasia || '-'}
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
+
+                                    {/* Vendedor */}
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {(cliente.Documento || '').replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")}
+                                        {cliente.vendedor?.nome || '-'}
                                     </td>
+
+                                    {/* Dia de Entrega */}
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <div>{cliente.End_Cidade} / {cliente.End_Estado}</div>
+                                        {cliente.Dia_de_entrega || '-'}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex flex-wrap gap-1">
-                                            {formatarPerfis(cliente.Perfis).map((perfil, idx) => (
-                                                <span
-                                                    key={idx}
-                                                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getBadgeColor(perfil)}`}
-                                                >
-                                                    {perfil}
-                                                </span>
-                                            ))}
-                                        </div>
+
+                                    {/* Dia de Venda */}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {cliente.Dia_de_venda || '-'}
                                     </td>
+
+                                    {/* CNPJ/CPF */}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {cliente.Documento ? (
+                                            cliente.Documento.length === 14 ? (
+                                                // CNPJ: 00.000.000/0000-00
+                                                cliente.Documento.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
+                                            ) : (
+                                                // CPF: 000.000.000-00
+                                                cliente.Documento.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4")
+                                            )
+                                        ) : '-'}
+                                    </td>
+
+                                    {/* Status */}
                                     <td className="px-6 py-4 whitespace-nowrap text-right">
                                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                             {cliente.Ativo ? 'Ativo' : 'Inativo'}
                                         </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <Link
-                                            to={`/clientes/${cliente.UUID}`}
-                                            className="text-primary hover:text-blue-900"
-                                        >
-                                            Detalhes
-                                        </Link>
                                     </td>
                                 </tr>
                             ))
@@ -220,10 +248,10 @@ const ListaClientes = () => {
             </div >
 
             {/* Lista Mobile */}
-            < div className="md:hidden mt-4 space-y-4" >
+            <div className="md:hidden mt-4 space-y-4">
                 {
                     loading ? (
-                        <div className="text-center py-10" >
+                        <div className="text-center py-10">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                         </div>
                     ) : clientes.length === 0 ? (
@@ -232,40 +260,34 @@ const ListaClientes = () => {
                         </div>
                     ) : (
                         clientes.map((cliente) => (
-                            <div key={cliente.id || cliente.UUID} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-3">
+                            <div
+                                key={cliente.id || cliente.UUID}
+                                onClick={() => navigate(`/clientes/${cliente.UUID}`)}
+                                className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 space-y-3 cursor-pointer hover:shadow-md transition-shadow"
+                            >
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <h3 className="text-base font-semibold text-gray-900">{cliente.NomeFantasia || cliente.Nome}</h3>
-                                        <p className="text-xs text-gray-500">{cliente.Documento}</p>
+                                        <h3 className="text-base font-semibold text-gray-900">{cliente.Nome || 'N/A'}</h3>
+                                        <p className="text-xs text-gray-500">{cliente.NomeFantasia || '-'}</p>
                                     </div>
-                                    <Link
-                                        to={`/clientes/${cliente.UUID}`}
-                                        className="px-3 py-1 bg-gray-100 text-primary text-xs rounded-full font-medium"
-                                    >
-                                        Ver
-                                    </Link>
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                        {cliente.Ativo ? 'Ativo' : 'Inativo'}
+                                    </span>
                                 </div>
 
-                                <div className="text-sm text-gray-600">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Building className="h-3 w-3" />
-                                        <span className="truncate">{cliente.Nome || 'Razão Social N/A'}</span>
+                                <div className="text-sm text-gray-600 space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <User className="h-3 w-3" />
+                                        <span className="truncate">{cliente.vendedor?.nome || 'Sem vendedor'}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <MapPin className="h-3 w-3" />
-                                        <span>{cliente.End_Cidade}/{cliente.End_Estado}</span>
+                                        <Truck className="h-3 w-3" />
+                                        <span>Entrega: {cliente.Dia_de_entrega || '-'}</span>
                                     </div>
-                                </div>
-
-                                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-50">
-                                    {formatarPerfis(cliente.Perfis).map((perfil, idx) => (
-                                        <span
-                                            key={idx}
-                                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getBadgeColor(perfil)}`}
-                                        >
-                                            {perfil}
-                                        </span>
-                                    ))}
+                                    <div className="flex items-center gap-2">
+                                        <Phone className="h-3 w-3" />
+                                        <span>{cliente.Documento || '-'}</span>
+                                    </div>
                                 </div>
                             </div>
                         ))
