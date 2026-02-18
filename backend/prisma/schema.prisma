@@ -120,6 +120,7 @@ model Cliente {
   Ponto_GPS                  String?   // "lat,lng"
   Situacao_serasa            String?   // "APROVADO", "NEGADO", "PENDENTE"
   Serasa_consulta            String?   // URL do arquivo principal
+  Formas_Atendimento         String[]  @default([])
   
   updated_at                 DateTime  @updatedAt
 

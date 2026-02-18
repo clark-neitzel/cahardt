@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import clienteService from '../../services/clienteService';
 import vendedorService from '../../services/vendedorService'; // Import Service
-import { Search, MapPin, Phone, Truck, Building, User, Filter, CheckSquare, Settings, X, Save, AlertTriangle } from 'lucide-react';
+import { Search, MapPin, Phone, Truck, Building, User, Filter, CheckSquare, Settings, X, Save, AlertTriangle, MessageCircle } from 'lucide-react';
 import { cn } from '../../lib/utils'; // Assumindo utils (se não existir, criar inline)
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
@@ -137,6 +137,9 @@ const ListaClientes = () => {
         if (batchData.idVendedor) dadosParaEnviar.idVendedor = batchData.idVendedor;
         if (batchData.Dia_de_entrega) dadosParaEnviar.Dia_de_entrega = batchData.Dia_de_entrega;
         if (batchData.Dia_de_venda) dadosParaEnviar.Dia_de_venda = batchData.Dia_de_venda;
+        if (batchData.Formas_Atendimento && batchData.Formas_Atendimento.length > 0) {
+            dadosParaEnviar.Formas_Atendimento = batchData.Formas_Atendimento;
+        }
 
         if (Object.keys(dadosParaEnviar).length === 0) {
             alert("Selecione pelo menos um campo para alterar.");
@@ -352,6 +355,15 @@ const ListaClientes = () => {
                                             <MapPin className="h-3 w-3" />
                                             {cliente.End_Cidade}/{cliente.End_Estado}
                                         </div>
+                                        <div className="flex gap-1 mt-1">
+                                            {(cliente.Formas_Atendimento || []).map(forma => (
+                                                <span key={forma} title={forma} className="p-0.5 bg-gray-50 rounded text-gray-500 border border-gray-100">
+                                                    {forma === 'Presencial' && <User className="h-3 w-3" />}
+                                                    {forma === 'Whatsapp' && <MessageCircle className="h-3 w-3" />}
+                                                    {forma === 'Telefone' && <Phone className="h-3 w-3" />}
+                                                </span>
+                                            ))}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-500">
                                         {cliente.vendedor?.nome || '-'}
@@ -403,9 +415,14 @@ const ListaClientes = () => {
                                 {cliente.NomeFantasia && cliente.NomeFantasia !== cliente.Nome && (
                                     <p className="text-xs text-gray-500">{cliente.Nome}</p>
                                 )}
-                                <div className="mt-2 text-xs text-gray-600 grid grid-cols-2 gap-2">
-                                    <div><span className="font-medium">Vend:</span> {cliente.vendedor?.nome || '-'}</div>
-                                    <div><span className="font-medium">Ent:</span> {cliente.Dia_de_entrega || '-'}</div>
+                                <div className="flex gap-1 mt-1">
+                                    {(cliente.Formas_Atendimento || []).map(forma => (
+                                        <span key={forma} title={forma} className="p-1 bg-gray-100 rounded text-gray-600">
+                                            {forma === 'Presencial' && <User className="h-3 w-3" />}
+                                            {forma === 'Whatsapp' && <MessageCircle className="h-3 w-3" />}
+                                            {forma === 'Telefone' && <Phone className="h-3 w-3" />}
+                                        </span>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -452,95 +469,125 @@ const ListaClientes = () => {
             </div>
 
             {/* Modal de Edição em Lote */}
-            {isBatchModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                <Settings className="h-5 w-5 text-primary" />
-                                Edição em Lote
-                            </h3>
-                            <button onClick={() => setIsBatchModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
+            {
+                isBatchModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                        <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                    <Settings className="h-5 w-5 text-primary" />
+                                    Edição em Lote
+                                </h3>
+                                <button onClick={() => setIsBatchModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
 
-                        <div className="p-6 space-y-4">
-                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                                <div className="flex">
-                                    <div className="flex-shrink-0">
-                                        <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                            <div className="p-6 space-y-4">
+                                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                                    <div className="flex">
+                                        <div className="flex-shrink-0">
+                                            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                                        </div>
+                                        <div className="ml-3">
+                                            <p className="text-sm text-yellow-700">
+                                                Você está alterando <strong>{selectedIds.length}</strong> clientes.
+                                                Preencha apenas os campos que deseja modificar. Campos vazios não serão alterados.
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="ml-3">
-                                        <p className="text-sm text-yellow-700">
-                                            Você está alterando <strong>{selectedIds.length}</strong> clientes.
-                                            Preencha apenas os campos que deseja modificar. Campos vazios não serão alterados.
-                                        </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Novo Vendedor</label>
+                                    <select
+                                        className="block w-full border border-gray-300 rounded-md p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                                        value={batchData.idVendedor}
+                                        onChange={(e) => setBatchData({ ...batchData, idVendedor: e.target.value })}
+                                    >
+                                        <option value="">Não alterar</option>
+                                        {vendedores.map(v => (
+                                            <option key={v.id} value={v.id}>{v.nome}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Novo Dia de Entrega</label>
+                                    <select
+                                        className="block w-full border border-gray-300 rounded-md p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                                        value={batchData.Dia_de_entrega}
+                                        onChange={(e) => setBatchData({ ...batchData, Dia_de_entrega: e.target.value })}
+                                    >
+                                        <option value="">Não alterar</option>
+                                        {DIAS_SEMANA.map(dia => (
+                                            <option key={dia} value={dia}>{dia}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Novo Dia de Venda</label>
+                                    <select
+                                        className="block w-full border border-gray-300 rounded-md p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                                        value={batchData.Dia_de_venda}
+                                        onChange={(e) => setBatchData({ ...batchData, Dia_de_venda: e.target.value })}
+                                    >
+                                        <option value="">Não alterar</option>
+                                        {DIAS_SEMANA.map(dia => (
+                                            <option key={dia} value={dia}>{dia}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Canais de Atendimento</label>
+                                    <p className="text-xs text-gray-500 mb-2">Selecione para <strong>adicionar/sobrescrever</strong> a lista atual.</p>
+                                    <div className="flex gap-2">
+                                        {['Presencial', 'Whatsapp', 'Telefone'].map(canal => (
+                                            <button
+                                                key={canal}
+                                                type="button"
+                                                onClick={() => {
+                                                    const atuais = batchData.Formas_Atendimento || [];
+                                                    const novo = atuais.includes(canal)
+                                                        ? atuais.filter(c => c !== canal)
+                                                        : [...atuais, canal];
+                                                    setBatchData({ ...batchData, Formas_Atendimento: novo });
+                                                }}
+                                                className={`px-3 py-1.5 rounded text-sm border flex items-center gap-1.5 transition-colors ${(batchData.Formas_Atendimento || []).includes(canal)
+                                                    ? 'bg-primary text-white border-primary'
+                                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                                    }`}
+                                            >
+                                                {canal === 'Presencial' && <User className="h-3.5 w-3.5" />}
+                                                {canal === 'Whatsapp' && <MessageCircle className="h-3.5 w-3.5" />}
+                                                {canal === 'Telefone' && <Phone className="h-3.5 w-3.5" />}
+                                                {canal}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Novo Vendedor</label>
-                                <select
-                                    className="block w-full border border-gray-300 rounded-md p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                    value={batchData.idVendedor}
-                                    onChange={(e) => setBatchData({ ...batchData, idVendedor: e.target.value })}
+                            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                                <button
+                                    onClick={() => setIsBatchModalOpen(false)}
+                                    className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
                                 >
-                                    <option value="">Não alterar</option>
-                                    {vendedores.map(v => (
-                                        <option key={v.id} value={v.id}>{v.nome}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Novo Dia de Entrega</label>
-                                <select
-                                    className="block w-full border border-gray-300 rounded-md p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                    value={batchData.Dia_de_entrega}
-                                    onChange={(e) => setBatchData({ ...batchData, Dia_de_entrega: e.target.value })}
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleBatchSubmit}
+                                    className="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
                                 >
-                                    <option value="">Não alterar</option>
-                                    {DIAS_SEMANA.map(dia => (
-                                        <option key={dia} value={dia}>{dia}</option>
-                                    ))}
-                                </select>
+                                    <Save className="h-4 w-4" />
+                                    Aplicar Alterações
+                                </button>
                             </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Novo Dia de Venda</label>
-                                <select
-                                    className="block w-full border border-gray-300 rounded-md p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                    value={batchData.Dia_de_venda}
-                                    onChange={(e) => setBatchData({ ...batchData, Dia_de_venda: e.target.value })}
-                                >
-                                    <option value="">Não alterar</option>
-                                    {DIAS_SEMANA.map(dia => (
-                                        <option key={dia} value={dia}>{dia}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-                            <button
-                                onClick={() => setIsBatchModalOpen(false)}
-                                className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={handleBatchSubmit}
-                                className="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
-                            >
-                                <Save className="h-4 w-4" />
-                                Aplicar Alterações
-                            </button>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
         </div>
     );
 };

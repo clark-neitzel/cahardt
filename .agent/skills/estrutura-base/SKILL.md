@@ -18,10 +18,11 @@ Estrutura padrão para a API:
 - `routes/`: Definição de rotas da API.
 - `controllers/`: Lógica das funções da API (handlers).
 - `services/`: Regras de negócio e integrações externas.
-- `models/`: Definição de dados/schemas.
+- `prisma/`: Schema do banco (Prisma ORM) e migrations.
+- `scripts/`: Migrations manuais e utilitários.
 - `middlewares/`: Autenticação, validação e tratamento de erros.
-- `config/`: Arquivos de configuração.
-- `server.js`: Arquivo principal de inicialização do servidor.
+- `config/`: Arquivos de configuração (database, etc).
+- `index.js`: Arquivo principal de inicialização do servidor.
 - `.env.example`: Modelo de variáveis de ambiente.
 
 ## Frontend (`frontend/`)

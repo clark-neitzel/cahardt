@@ -5,6 +5,56 @@ description: "REGRAS OBRIGATÓRIAS de processo de desenvolvimento. DEVE ser cons
 
 # Processo de Desenvolvimento - Regras Obrigatórias
 
+## 🇧🇷 REGRA 0: COMUNICAÇÃO EM PORTUGUÊS
+
+**TODAS as comunicações com o usuário DEVEM ser em português brasileiro.**
+
+- ✅ Explicações técnicas
+- ✅ Mensagens de commit  
+- ✅ Documentação
+- ✅ Comentários em código
+- ✅ Logs e debug
+
+**Exceção:** Código em inglês é aceitável quando necessário por convenção técnica (nomes de variáveis, funções).
+
+## 📢 REGRA 0.5: EXPLICAR ANTES DE FAZER
+
+**Antes de fazer QUALQUER alteração, você DEVE explicar:**
+
+### Formato Obrigatório:
+
+```markdown
+## 📋 O que vou fazer:
+[Descrição clara da tarefa]
+
+## 📂 Onde vou alterar:
+- Arquivo: `caminho/completo/arquivo.js`
+- Função/Seção: `nomeDaFuncao` (linhas X-Y)
+
+## 🎯 Por que:
+[Razão técnica e benefício]
+
+## ✅ Mudanças específicas:
+1. [Mudança 1]
+2. [Mudança 2]
+
+**Posso prosseguir?**
+```
+
+### ⚠️ Escopo Restrito
+
+**ALTERAR APENAS O SOLICITADO. NADA MAIS.**
+
+❌ NÃO fazer:
+- Refatorações extras
+- Melhorias não pedidas
+- Mudanças de estilo
+- Otimizações de bônus
+
+✅ FAZER:
+- Exatamente o que foi pedido
+- Se ver algo para melhorar → **PERGUNTAR** primeiro
+
 ## ⚠️ REGRA FUNDAMENTAL: SEMPRE CONSULTAR SKILLS ANTES DE AGIR
 
 **Esta é a regra número 1 deste projeto. Nunca viole.**

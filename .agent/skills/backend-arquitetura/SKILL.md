@@ -9,17 +9,21 @@ O backend é construído com **Node.js**, **Express** e **Prisma ORM**.
 
 ## Estrutura de Diretórios
 
-- **`src/controllers`**: Lógica de entrada/saída das requisições.
+- **`controllers/`**: Lógica de entrada/saída das requisições.
   - Padrão: `nomeController.js`
   - Métodos: `listar`, `detalhar`, `criar`, `atualizar`, `deletar`.
-- **`src/services`**: Regras de negócio e integração com APIs externas.
-  - Ex: `contaAzulService.js` (Lógica de Sync), `produtoService.js`.
-- **`src/routes`**: Definição das rotas da API.
+- **`services/`**: Regras de negócio e integração com APIs externas.
+  - Ex: `contaAzulService.js` (Sync incremental), `produtoService.js`.
+- **`routes/`**: Definição das rotas da API.
   - Padrão: `nomeRoutes.js`.
   - Importam os controllers.
-- **`src/prisma`**: Schema do banco de dados e migrations.
+- **`prisma/`**: Schema do banco de dados e migrations.
   - `schema.prisma`: Definição única das tabelas.
-- **`src/scripts`**: Scripts utilitários (migrations manuais, seeds).
+- **`scripts/`**: Scripts utilitários (migrations manuais, seeds).
+  - Ex: `add_timestamp_column.js`, `apply_migration.sh`
+- **`config/`**: Configurações (database, etc).
+- **`middlewares/`**: Autenticação, validação e tratamento de erros.
+- **`index.js`**: Arquivo principal de inicialização do servidor.
 
 ## Padrões de Código
 
