@@ -1,10 +1,8 @@
-import axios from 'axios';
-
-const API_URL = 'http://localhost:3000/api/contas-financeiras';
+import api from './api';
 
 const contaFinanceiraService = {
     listar: async () => {
-        const response = await axios.get(API_URL);
+        const response = await api.get('/contas-financeiras');
         return response.data;
     }
 };
