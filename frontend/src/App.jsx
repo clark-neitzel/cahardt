@@ -8,10 +8,12 @@ import PainelSync from './pages/Admin/Sync/PainelSync';
 import ListaClientes from './pages/Clientes/ListaClientes';
 import DetalheCliente from './pages/Clientes/DetalheCliente';
 import ListaVendedores from './pages/Admin/Vendedores/ListaVendedores';
-import Configuracoes from './pages/Admin/Configuracoes/Configuracoes'; // New
+import Configuracoes from './pages/Admin/Configuracoes/Configuracoes';
+import TabelaPrecos from './pages/Configuracoes/TabelaPrecos'; // New // New
 
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import { Toaster } from 'react-hot-toast'; // New
 
 // Layout simples para navegação durante desenvolvimento
 const Layout = ({ children }) => {
@@ -86,6 +88,16 @@ const Layout = ({ children }) => {
                   }
                 >
                   Configurações
+                </NavLink>
+                <NavLink
+                  to="/config/tabela-precos"
+                  className={({ isActive }) =>
+                    isActive
+                      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
+                      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
+                  }
+                >
+                  Tabela Preços
                 </NavLink>
               </div>
             </div>
@@ -166,6 +178,17 @@ const Layout = ({ children }) => {
               >
                 Vendedores
               </NavLink>
+              <NavLink
+                to="/config/tabela-precos"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  isActive
+                    ? "bg-primary-50 border-l-4 border-primary text-primary block pl-3 pr-4 py-2 text-base font-medium"
+                    : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium"
+                }
+              >
+                Tabela Preços
+              </NavLink>
             </div>
           </div>
         )}
@@ -198,8 +221,10 @@ function App() {
           <Route path="/admin/sync" element={<PainelSync />} />
           <Route path="/admin/vendedores" element={<ListaVendedores />} />
           <Route path="/admin/config" element={<Configuracoes />} />
+          <Route path="/config/tabela-precos" element={<TabelaPrecos />} />
         </Routes>
       </Layout>
+      <Toaster position="top-right" />
     </Router>
   );
 }

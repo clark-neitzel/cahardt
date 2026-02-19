@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import clienteService from '../../services/clienteService';
 import vendedorService from '../../services/vendedorService';
+import tabelaPrecoService from '../../services/tabelaPrecoService'; // New
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle } from 'lucide-react';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
@@ -69,7 +70,7 @@ const DetalheCliente = () => {
         try {
             const [clienteData, condicoesData, vendedoresData] = await Promise.all([
                 clienteService.detalhar(uuid),
-                clienteService.listarCondicoesPagamento(),
+                tabelaPrecoService.listar(), // Changed
                 vendedorService.listar()
             ]);
 
@@ -353,7 +354,7 @@ const DetalheCliente = () => {
                             >
                                 <option value="">Selecione uma condição...</option>
                                 {condicoesPagamento.map(c => (
-                                    <option key={c.id} value={c.id}>{c.nome}</option>
+                                    <option key={c.id} value={c.idCondicao}>{c.nomeCondicao}</option>
                                 ))}
                             </select>
                         </div>

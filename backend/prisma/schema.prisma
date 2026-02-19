@@ -198,3 +198,23 @@ model AppConfig {
 
   @@map("app_configs")
 }
+
+model TabelaPreco {
+  id                  String   @id // id-Pgto (Ex: "1000")
+  idCondicao          String   @map("id_condicao") // ID_CONDICAO (Ex: "AVISTA_DIN")
+  nomeCondicao        String   @map("nome_condicao") // NOME_CONDICAO
+  tipoPagamento       String?  @map("tipo_pagamento") // TIPO_PAGAMENTO
+  opcaoCondicao       String?  @map("opcao_condicao") // opcao_condicao_pagamento
+  qtdParcelas         Int      @default(1) @map("qtd_parcelas")
+  parcelasDias        Int      @default(0) @map("parcelas_dias")
+  acrescimoPreco      Decimal  @default(0) @map("acrescimo_preco") @db.Decimal(10, 2)
+  parcelasPercentuais Decimal  @default(100) @map("parcelas_percentuais") @db.Decimal(10, 2)
+  exigeBanco          Boolean  @default(false) @map("exige_banco")
+  bancoPadrao         String?  @map("banco_padrao")
+  ativo               Boolean  @default(true)
+  obs                 String?
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("tabela_precos")
+}

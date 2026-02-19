@@ -101,7 +101,52 @@ const migrationService = {
             );`,
 
             // Update 03: Canais de Atendimento (Array de Strings)
-            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "Formas_Atendimento" TEXT[];`
+            // Update 03: Canais de Atendimento (Array de Strings)
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "Formas_Atendimento" TEXT[];`,
+
+            // Update 04: Tabela de Preços (Condições Avançadas)
+            `CREATE TABLE IF NOT EXISTS "tabela_precos" (
+                "id" TEXT NOT NULL,
+                "id_condicao" TEXT NOT NULL,
+                "nome_condicao" TEXT NOT NULL,
+                "tipo_pagamento" TEXT,
+                "opcao_condicao" TEXT,
+                "qtd_parcelas" INTEGER NOT NULL DEFAULT 1,
+                "parcelas_dias" INTEGER NOT NULL DEFAULT 0,
+                "acrescimo_preco" DECIMAL(10, 2) NOT NULL DEFAULT 0,
+                "parcelas_percentuais" DECIMAL(10, 2) NOT NULL DEFAULT 100,
+                "exige_banco" BOOLEAN NOT NULL DEFAULT false,
+                "banco_padrao" TEXT,
+                "ativo" BOOLEAN NOT NULL DEFAULT true,
+                "obs" TEXT,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL,
+                CONSTRAINT "tabela_precos_pkey" PRIMARY KEY ("id")
+            );`,
+
+            // Seed Tabela de Preços (Idempotent: ON CONFLICT DO UPDATE/NOTHING)
+            `INSERT INTO "tabela_precos" ("id", "id_condicao", "nome_condicao", "tipo_pagamento", "opcao_condicao", "qtd_parcelas", "parcelas_dias", "acrescimo_preco", "parcelas_percentuais", "exige_banco", "banco_padrao", "ativo", "updated_at") VALUES
+            ('1000', 'AVISTA_DIN', 'À vista - Dinheiro', 'DINHEIRO', 'À vista', 1, 1, 0, 100, false, '1dc7f96e-7658-4e0c-8d0a-5c5980234c90', true, NOW()),
+            ('1001', 'AVISTA_PIX', 'À vista - Pix', 'PIX', 'À vista', 1, 1, 0, 100, false, 'ed4798c2-f8e3-4e87-9ff3-8f264dcf6aa0', true, NOW()),
+            ('1002', 'BOL_7', '7 dias - Boleto', 'BOLETO_BANCARIO', '1x', 1, 7, 2.5, 100, true, 'ed4798c2-f8e3-4e87-9ff3-8f264dcf6aa0', true, NOW()),
+            ('1003', 'BOL_14', '14 dias - Boleto', 'BOLETO_BANCARIO', '1x', 1, 14, 4, 100, true, 'ed4798c2-f8e3-4e87-9ff3-8f264dcf6aa0', true, NOW()),
+            ('1004', 'BOL_21', '21 dias - Boleto', 'BOLETO_BANCARIO', '1x', 1, 21, 5, 100, true, null, true, NOW()),
+            ('1005', 'BOL_28', '28 dias - Boleto', 'BOLETO_BANCARIO', '1x', 1, 28, 6, 100, true, 'ed4798c2-f8e3-4e87-9ff3-8f264dcf6aa0', true, NOW()),
+            ('1007', 'CARD_DEB', 'Cartão - Débito', 'CARTAO', null, 1, 1, 4, 100, false, null, true, NOW()),
+            ('1008', 'CARD_CRED', 'Cartão - Crédito', 'CARTAO', null, 1, 1, 4, 100, false, null, true, NOW())
+            ON CONFLICT ("id") DO UPDATE SET
+                "id_condicao" = EXCLUDED."id_condicao",
+                "nome_condicao" = EXCLUDED."nome_condicao",
+                "tipo_pagamento" = EXCLUDED."tipo_pagamento",
+                "opcao_condicao" = EXCLUDED."opcao_condicao",
+                "qtd_parcelas" = EXCLUDED."qtd_parcelas",
+                "parcelas_dias" = EXCLUDED."parcelas_dias",
+                "acrescimo_preco" = EXCLUDED."acrescimo_preco",
+                "parcelas_percentuais" = EXCLUDED."parcelas_percentuais",
+                "exige_banco" = EXCLUDED."exige_banco",
+                "banco_padrao" = EXCLUDED."banco_padrao",
+                "ativo" = EXCLUDED."ativo",
+                "updated_at" = NOW();`
         ];
 
         for (const [index, cmd] of commands.entries()) {
