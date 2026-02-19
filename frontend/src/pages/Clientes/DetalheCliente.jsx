@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import clienteService from '../../services/clienteService';
 import vendedorService from '../../services/vendedorService';
 import tabelaPrecoService from '../../services/tabelaPrecoService'; // New
+import condicaoPagamentoService from '../../services/condicaoPagamentoService';
 import MultiSelect from '../../components/MultiSelect'; // New
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle } from 'lucide-react';
 
@@ -49,6 +50,7 @@ const DetalheCliente = () => {
     const navigate = useNavigate();
     const [cliente, setCliente] = useState(null);
     const [condicoesPagamento, setCondicoesPagamento] = useState([]);
+    const [condicoesPagamentoCA, setCondicoesPagamentoCA] = useState([]);
     const [vendedores, setVendedores] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -70,14 +72,16 @@ const DetalheCliente = () => {
 
     const fetchData = async () => {
         try {
-            const [clienteData, condicoesData, vendedoresData] = await Promise.all([
+            const [clienteData, condicoesData, condicoesCAData, vendedoresData] = await Promise.all([
                 clienteService.detalhar(uuid),
                 tabelaPrecoService.listar(), // Changed
+                condicaoPagamentoService.listar(),
                 vendedorService.listar()
             ]);
 
             setCliente(clienteData);
             setCondicoesPagamento(condicoesData);
+            setCondicoesPagamentoCA(condicoesCAData);
             setVendedores(vendedoresData);
 
             setFormData({
@@ -356,8 +360,8 @@ const DetalheCliente = () => {
                                 onChange={(e) => setFormData({ ...formData, Condicao_de_pagamento: e.target.value })}
                             >
                                 <option value="">Selecione uma condição padrão...</option>
-                                {condicoesPagamento.map(c => (
-                                    <option key={c.id} value={c.id}>{c.nomeCondicao}</option>
+                                {condicoesPagamentoCA.map(c => (
+                                    <option key={c.id} value={c.id}>{c.nome}</option>
                                 ))}
                             </select>
 
