@@ -176,7 +176,56 @@ const migrationService = {
                 "ultima_captura_em" = EXCLUDED."ultima_captura_em",
                 "fonte_venda_id" = EXCLUDED."fonte_venda_id",
                 "opcao_condicao" = EXCLUDED."opcao_condicao",
-                "updated_at" = NOW();`
+                "updated_at" = NOW();`,
+
+            // Update 06: Campos NCM e Data Conta Azul Atualizada em Produtos
+            `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "ncm" TEXT;`,
+            `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "conta_azul_updated_at" TIMESTAMP(3);`,
+
+            // Update 07: Adicionar condicoes_pagamento_permitidas no Cliente
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "condicoes_pagamento_permitidas" TEXT[] DEFAULT ARRAY[]::TEXT[];`,
+
+            // Update 08: Criação da Tabela de Pedidos
+            `CREATE TABLE IF NOT EXISTS "pedidos" (
+                "id" TEXT NOT NULL,
+                "numero" INTEGER,
+                "data_venda" TIMESTAMP(3) NOT NULL,
+                "observacoes" TEXT,
+                "id_conta_financeira" TEXT,
+                "id_categoria" TEXT,
+                "tipo_pagamento" TEXT,
+                "opcao_condicao_pagamento" TEXT,
+                "qtd_parcelas" INTEGER NOT NULL DEFAULT 1,
+                "primeiro_vencimento" TIMESTAMP(3),
+                "intervalo_dias" INTEGER NOT NULL DEFAULT 0,
+                "status_envio" TEXT NOT NULL DEFAULT 'ABERTO',
+                "id_venda_contaazul" TEXT,
+                "erro_envio" TEXT,
+                "enviado_em" TIMESTAMP(3),
+                "flex_total" DECIMAL(12,2) NOT NULL DEFAULT 0,
+                "lat_lng" TEXT,
+                "cliente_id" TEXT NOT NULL,
+                "vendedor_id" TEXT,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL,
+                CONSTRAINT "pedidos_pkey" PRIMARY KEY ("id")
+            );`,
+            `CREATE INDEX IF NOT EXISTS "pedidos_status_envio_idx" ON "pedidos"("status_envio");`,
+            `CREATE INDEX IF NOT EXISTS "pedidos_vendedor_id_idx" ON "pedidos"("vendedor_id");`,
+            `CREATE INDEX IF NOT EXISTS "pedidos_cliente_id_idx" ON "pedidos"("cliente_id");`,
+
+            // Update 09: Criação da Tabela de Itens de Pedidos
+            `CREATE TABLE IF NOT EXISTS "pedido_itens" (
+                "id" TEXT NOT NULL,
+                "descricao" TEXT,
+                "quantidade" DECIMAL(12,3) NOT NULL,
+                "valor" DECIMAL(12,2) NOT NULL,
+                "valor_base" DECIMAL(12,2) NOT NULL,
+                "flex_gerado" DECIMAL(12,2) NOT NULL DEFAULT 0,
+                "pedido_id" TEXT NOT NULL,
+                "produto_id" TEXT NOT NULL,
+                CONSTRAINT "pedido_itens_pkey" PRIMARY KEY ("id")
+            );`
         ];
 
         for (const [index, cmd] of commands.entries()) {

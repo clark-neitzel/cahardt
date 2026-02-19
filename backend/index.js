@@ -12,6 +12,7 @@ const configRoutes = require('./routes/configRoutes'); // New
 const tabelaPrecoRoutes = require('./routes/tabelaPrecoRoutes'); // New
 const contaFinanceiraRoutes = require('./routes/contaFinanceiraRoutes'); // New
 const migrationRoutes = require('./routes/migrationRoutes'); // Migration endpoint
+const pedidoRoutes = require('./routes/pedidoRoutes'); // New Pedidos Module
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,6 +39,7 @@ app.use('/api/config', configRoutes); // New
 app.use('/api/tabela-precos', tabelaPrecoRoutes); // New
 app.use('/api/contas-financeiras', contaFinanceiraRoutes); // New
 app.use('/api/migrations', migrationRoutes); // Migration endpoint
+app.use('/api/pedidos', pedidoRoutes); // New Pedidos Module
 
 // Rota base
 app.get('/', (req, res) => {
@@ -130,6 +132,14 @@ const startServer = async () => {
                     console.error('⚠️ Auto-Sync Error:', error.message);
                 }
             }, 3600000); // 60 minutos (1 hora)
+
+            // === AUTO-SYNC SYSTEM (Pedidos) ===
+            // Checa a fila de pedidos a enviar a cada 30 segundos
+            console.log('⏰ Iniciando Worker de Pedidos (Upload para CA)...');
+            const syncPedidosService = require('./services/syncPedidosService');
+            setInterval(async () => {
+                await syncPedidosService.processarFila();
+            }, 30000); // 30 segundos
         });
     } catch (error) {
         console.error('Erro fatal ao iniciar servidor:', error);

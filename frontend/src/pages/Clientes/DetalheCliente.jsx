@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import clienteService from '../../services/clienteService';
 import vendedorService from '../../services/vendedorService';
 import tabelaPrecoService from '../../services/tabelaPrecoService'; // New
+import MultiSelect from '../../components/MultiSelect'; // New
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle } from 'lucide-react';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
@@ -59,7 +60,8 @@ const DetalheCliente = () => {
         Observacoes_Gerais: '',
         Condicao_de_pagamento: '',
         idVendedor: '',
-        Formas_Atendimento: []
+        Formas_Atendimento: [],
+        condicoes_pagamento_permitidas: []
     });
 
     useEffect(() => {
@@ -85,7 +87,8 @@ const DetalheCliente = () => {
                 Observacoes_Gerais: clienteData.Observacoes_Gerais || '',
                 Condicao_de_pagamento: clienteData.Condicao_de_pagamento || '',
                 idVendedor: clienteData.idVendedor || '',
-                Formas_Atendimento: clienteData.Formas_Atendimento || []
+                Formas_Atendimento: clienteData.Formas_Atendimento || [],
+                condicoes_pagamento_permitidas: clienteData.condicoes_pagamento_permitidas || []
             });
 
         } catch (error) {
@@ -345,26 +348,54 @@ const DetalheCliente = () => {
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 <DollarSign className="h-4 w-4 inline mr-1" />
-                                Condição de Pagamento
+                                Condição de Pagamento Padrão
                             </label>
                             <select
-                                className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                                className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary mb-4"
                                 value={formData.Condicao_de_pagamento}
                                 onChange={(e) => setFormData({ ...formData, Condicao_de_pagamento: e.target.value })}
                             >
-                                <option value="">Selecione uma condição...</option>
+                                <option value="">Selecione uma condição padrão...</option>
                                 {condicoesPagamento.map(c => (
                                     <option key={c.id} value={c.idCondicao}>{c.nomeCondicao}</option>
                                 ))}
                             </select>
-                            {/* Detalhes da Condição Selecionada */}
+
+                            <label className="block text-sm font-medium text-gray-700 mb-2 mt-4">
+                                <DollarSign className="h-4 w-4 inline mr-1" />
+                                Condições de Pagamento Permitidas (Flex/App)
+                            </label>
+                            {/* We use idCondicao as the value stored in the array */}
+                            <div className="border border-gray-300 rounded-md">
+                                <MultiSelect
+                                    options={condicoesPagamento.map(c => c.nomeCondicao)}
+                                    selected={formData.condicoes_pagamento_permitidas.map(id => {
+                                        const c = condicoesPagamento.find(cond => cond.idCondicao === id);
+                                        return c ? c.nomeCondicao : id;
+                                    }).filter(Boolean)}
+                                    onChange={(selectedNames) => {
+                                        // Convert selected names back to idCondicao array
+                                        const ids = selectedNames.map(name => {
+                                            const c = condicoesPagamento.find(cond => cond.nomeCondicao === name);
+                                            return c ? c.idCondicao : null;
+                                        }).filter(Boolean);
+                                        setFormData({ ...formData, condicoes_pagamento_permitidas: ids });
+                                    }}
+                                    placeholder="Selecione as condições permitidas no App..."
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Selecione as condições que aparecerão no App de Vendas para este cliente. Se vazio, o app usará a padrão.
+                            </p>
+
+                            {/* Detalhes da Condição Padrão Selecionada */}
                             {formData.Condicao_de_pagamento && (() => {
                                 const selected = condicoesPagamento.find(c => c.idCondicao === formData.Condicao_de_pagamento);
                                 if (selected) {
                                     return (
-                                        <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200 text-sm grid grid-cols-3 gap-2">
+                                        <div className="mt-4 p-3 bg-blue-50/50 rounded-md border border-blue-100 text-sm grid grid-cols-3 gap-2">
                                             <div>
-                                                <span className="block text-xs text-gray-500">Parcelas</span>
+                                                <span className="block text-xs text-gray-500">Parcelas (Padrão)</span>
                                                 <span className="font-semibold text-gray-900">{selected.qtdParcelas}x</span>
                                             </div>
                                             <div>

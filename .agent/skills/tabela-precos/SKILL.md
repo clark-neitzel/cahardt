@@ -16,10 +16,16 @@ Diferente do Conta Azul (que usa UUIDs opacos), esta tabela usa IDs semânticos 
 | `id` | String (PK) | ID Interno/Legado | `1002` |
 | `id_condicao` | String | Código legível | `BOL_7` |
 | `nome_condicao` | String | Nome exibido ao usuário | `7 dias - Boleto` |
+| `tipo_pagamento` | String | Tipo de Pagamento | `BOLETO` |
+| `opcao_condicao` | String | Agrupamento/Opção Visual | `7 dias` |
 | `qtd_parcelas` | Int | Número de parcelas | `1` |
 | `parcelas_dias` | Int | Dias para vencimento | `7` |
 | `acrescimo_preco` | Decimal | % de acréscimo | `2.5` |
+| `parcelas_percentuais` | Decimal | Percentual | `100` |
 | `exige_banco` | Boolean | Se exige banco no cadastro | `true` |
+| `banco_padrao` | String | FK de banco preferido | `UUID` |
+| `ativo` | Boolean | Status do registro | `true` |
+| `obs` | String | Observações | `...` |
 
 ## Regras de Negócio
 

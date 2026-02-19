@@ -33,6 +33,10 @@ const service = {
 export default service;
 ```
 
+**⚠️ REGRAS DE API URL:**
+- **NUNCA** defina URLs absolutas de API (ex: `http://localhost:3001` ou `https://meu-app...`) diretamente nos arquivos de Service ou Componentes.
+- A configuração da Base URL DEVE estar centralizada no arquivo `src/services/api.js`, utilizando variáveis de ambiente do Vite (`import.meta.env.VITE_API_URL`).
+
 ### Componente (Page)
 - Use `useEffect` para carregar dados.
 - Mantenha estado local `useState` para dados da tela.

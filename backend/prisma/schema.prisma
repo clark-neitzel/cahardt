@@ -11,133 +11,192 @@ datasource db {
 }
 
 model Produto {
-  id                String   @id @default(uuid())
-  contaAzulId       String   @unique @map("conta_azul_id")
-  codigo            String
-  nome              String
-  valorVenda        Decimal  @map("valor_venda") @db.Decimal(10, 2)
-  unidade           String
-  
+  id          String  @id @default(uuid())
+  contaAzulId String  @unique @map("conta_azul_id")
+  codigo      String
+  nome        String
+  valorVenda  Decimal @map("valor_venda") @db.Decimal(10, 2)
+  unidade     String
+
   // Estoques
-  estoqueDisponivel Decimal  @default(0) @map("estoque_disponivel") @db.Decimal(12, 3)
-  estoqueReservado  Decimal  @default(0) @map("estoque_reservado") @db.Decimal(12, 3)
-  estoqueTotal      Decimal  @default(0) @map("estoque_total") @db.Decimal(12, 3)
-  estoqueMinimo     Decimal  @default(0) @map("estoque_minimo") @db.Decimal(12, 3)
-  
+  estoqueDisponivel Decimal @default(0) @map("estoque_disponivel")
+  estoqueReservado  Decimal @default(0) @map("estoque_reservado")
+  estoqueTotal      Decimal @default(0) @map("estoque_total")
+  estoqueMinimo     Decimal @default(0) @map("estoque_minimo")
+
   // Detalhes
-  categoria         String?
-  descricao         String?  @db.Text
-  ean               String?
-  ncm               String?
-  status            String?  // Status original do CA (ex: 'ativo', 'inativo')
-  ativo             Boolean  @default(true) // Controle local do App
-  
+  categoria String?
+  descricao String? @db.Text
+  ean       String?
+  ncm       String?
+  status    String? // Status original do CA (ex: 'ativo', 'inativo')
+  ativo     Boolean @default(true) // Controle local do App
+
   // Custos e Pesos
-  custoMedio        Decimal? @map("custo_medio") @db.Decimal(12, 3)
-  pesoLiquido       Decimal? @map("peso_liquido") @db.Decimal(12, 3)
+  custoMedio  Decimal? @map("custo_medio")
+  pesoLiquido Decimal? @map("peso_liquido")
 
   // Timestamps
   contaAzulUpdatedAt DateTime? @map("conta_azul_updated_at") // Última atualização no Conta Azul
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  imagens           ProdutoImagem[]
+  imagens ProdutoImagem[]
+  itens   PedidoItem[]
 
   @@map("produtos")
 }
 
 model ProdutoImagem {
-  id         String  @id @default(uuid())
-  produtoId  String  @map("produto_id")
-  url        String
-  principal  Boolean @default(false)
-  ordem      Int     @default(0)
+  id        String  @id @default(uuid())
+  produtoId String  @map("produto_id")
+  url       String
+  principal Boolean @default(false)
+  ordem     Int     @default(0)
 
-  produto    Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 
   @@map("produto_imagens")
 }
 
 model SyncLog {
-  id                  String   @id @default(uuid())
-  tipo                String   // Ex: 'PRODUTOS', 'CLIENTES', 'AUTH'
-  status              String   // 'SUCESSO', 'ERRO'
-  mensagem            String?  @db.Text
+  id                   String   @id @default(uuid())
+  tipo                 String // Ex: 'PRODUTOS', 'CLIENTES', 'AUTH'
+  status               String // 'SUCESSO', 'ERRO'
+  mensagem             String?  @db.Text
   registrosProcessados Int      @default(0) @map("registros_processados")
-  dataHora            DateTime @default(now()) @map("data_hora")
-
-  @@map("sync_logs")
+  dataHora             DateTime @default(now()) @map("data_hora")
 
   // Detalhes Debug
-  requestUrl          String?  @map("request_url")
-  requestMethod       String?  @map("request_method")
-  responseStatus      Int?     @map("response_status")
-  responseBody        String?  @db.Text @map("response_body")
-  duration            Int?     @default(0)
+  requestUrl     String? @map("request_url")
+  requestMethod  String? @map("request_method")
+  responseStatus Int?    @map("response_status")
+  responseBody   String? @map("response_body") @db.Text
+  duration       Int?    @default(0)
 
-
+  @@map("sync_logs")
 }
 
 model Cliente {
   // Campos Conta Azul (Obrigatórios com nomes estritos)
-  UUID                       String    @id @default(uuid())
-  Nome                       String
-  NomeFantasia               String?
-  Tipo_Pessoa                String?
-  Documento                  String?   @unique
-  Email                      String?
-  Telefone                   String?
-  Ativo                      Boolean   @default(true)
-  Perfis                     String?
-  Perfil_Filtro              String?
-  Data_Criacao               DateTime?
-  Data_Alteracao             DateTime?
-  End_Logradouro             String?
-  End_Numero                 String?
-  End_Complemento            String?
-  End_Bairro                 String?
-  End_Cidade                 String?
-  End_Estado                 String?
-  End_CEP                    String?
-  End_Pais                   String?
-  Codigo                     String?
+  UUID            String    @id @default(uuid())
+  Nome            String
+  NomeFantasia    String?
+  Tipo_Pessoa     String?
+  Documento       String?   @unique
+  Email           String?
+  Telefone        String?
+  Ativo           Boolean   @default(true)
+  Perfis          String?
+  Perfil_Filtro   String?
+  Data_Criacao    DateTime?
+  Data_Alteracao  DateTime?
+  End_Logradouro  String?
+  End_Numero      String?
+  End_Complemento String?
+  End_Bairro      String?
+  End_Cidade      String?
+  End_Estado      String?
+  End_CEP         String?
+  End_Pais        String?
+  Codigo          String?
 
-  Observacoes_Gerais         String?
-  Telefone_Celular           String?
-  Telefone_Comercial         String?
+  Observacoes_Gerais           String?
+  Telefone_Celular             String?
+  Telefone_Comercial           String?
   Indicador_Inscricao_Estadual String?
-  Outros_Contatos            String?
-  Atrasos_Pagamentos         Decimal?  @db.Decimal(12, 2)
-  Atrasos_Recebimentos       Decimal?  @db.Decimal(12, 2)
-  Pagamentos_Mes_Atual       Decimal?  @db.Decimal(12, 2)
-  Recebimentos_Mes_Atual     Decimal?  @db.Decimal(12, 2)
-  
+  Outros_Contatos              String?
+  Atrasos_Pagamentos           Decimal? @db.Decimal(12, 2)
+  Atrasos_Recebimentos         Decimal? @db.Decimal(12, 2)
+  Pagamentos_Mes_Atual         Decimal? @db.Decimal(12, 2)
+  Recebimentos_Mes_Atual       Decimal? @db.Decimal(12, 2)
+
   // Campos Internos (App Hardt)
-  Dia_de_entrega             String?   // Ex: "SEG,QUA"
-  Dia_de_venda               String?   // Ex: "TER,QUI"
-  Condicao_de_pagamento      String?   // FK ID para CondicaoPagamento
-  Flex_utilizado             Decimal   @default(0) @db.Decimal(14, 2)
-  Ponto_GPS                  String?   // "lat,lng"
-  Situacao_serasa            String?   // "APROVADO", "NEGADO", "PENDENTE"
-  Serasa_consulta            String?   // URL do arquivo principal
-  Formas_Atendimento         String[]  @default([])
-  
-  updated_at                 DateTime  @updatedAt
+  Dia_de_entrega                 String? // Ex: "SEG,QUA"
+  Dia_de_venda                   String? // Ex: "TER,QUI"
+  Condicao_de_pagamento          String? // FK ID para CondicaoPagamento
+  condicoes_pagamento_permitidas String[] @default([]) // Lista de IDs de tabelas de preço/condições
+  Flex_utilizado                 Decimal  @default(0) @db.Decimal(14, 2)
+  Ponto_GPS                      String? // "lat,lng"
+  Situacao_serasa                String? // "APROVADO", "NEGADO", "PENDENTE"
+  Serasa_consulta                String? // URL do arquivo principal
+  Formas_Atendimento             String[] @default([])
 
-  condicaoPagamento          CondicaoPagamento? @relation(fields: [Condicao_de_pagamento], references: [id])
-  
-  idVendedor                 String?   @map("id_vendedor")
-  vendedor                   Vendedor? @relation(fields: [idVendedor], references: [id])
+  updated_at DateTime @updatedAt
 
-  arquivos                   ClienteArquivo[]
+  condicaoPagamento CondicaoPagamento? @relation(fields: [Condicao_de_pagamento], references: [id])
 
-  @@map("clientes")
+  idVendedor String?   @map("id_vendedor")
+  vendedor   Vendedor? @relation(fields: [idVendedor], references: [id])
+
+  arquivos ClienteArquivo[]
+  pedidos  Pedido[]
+
   @@index([Nome])
   @@index([NomeFantasia])
   @@index([Documento])
   @@index([Codigo])
   @@index([End_Cidade])
   @@index([Perfil_Filtro])
+  @@map("clientes")
+}
+
+model Pedido {
+  id                     String    @id @default(uuid())
+  numero                 Int? // Preenchido ao gerar número no CA
+  dataVenda              DateTime  @map("data_venda") // Data para entrega (vendedor escolhe)
+  observacoes            String?   @db.Text
+  idContaFinanceira      String?   @map("id_conta_financeira")
+  idCategoria            String?   @map("id_categoria")
+  tipoPagamento          String?   @map("tipo_pagamento")
+  opcaoCondicaoPagamento String?   @map("opcao_condicao_pagamento")
+  qtdParcelas            Int       @default(1) @map("qtd_parcelas")
+  primeiroVencimento     DateTime? @map("primeiro_vencimento")
+  intervaloDias          Int       @default(0) @map("intervalo_dias")
+
+  // Status de Integração 
+  statusEnvio      String    @default("ABERTO") @map("status_envio") // ABERTO, ENVIAR, SINCRONIZANDO, RECEBIDO, ERRO
+  idVendaContaAzul String?   @map("id_venda_contaazul") // ID gerado na API 
+  erroEnvio        String?   @map("erro_envio") @db.Text
+  enviadoEm        DateTime? @map("enviado_em")
+
+  // UX e Mobile
+  flexTotal Decimal @default(0) @map("flex_total") @db.Decimal(12, 2)
+  latLng    String? @map("lat_lng") // Ponto GPS capturado na elaboração
+
+  // Relacionamentos
+  clienteId String  @map("cliente_id")
+  cliente   Cliente @relation(fields: [clienteId], references: [UUID])
+
+  vendedorId String?   @map("vendedor_id")
+  vendedor   Vendedor? @relation(fields: [vendedorId], references: [id])
+
+  itens PedidoItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([statusEnvio])
+  @@index([vendedorId])
+  @@index([clienteId])
+  @@map("pedidos")
+}
+
+model PedidoItem {
+  id         String  @id @default(uuid())
+  descricao  String? @db.Text // Observação ou nome extra do item
+  quantidade Decimal @db.Decimal(12, 3)
+  valor      Decimal @db.Decimal(12, 2) // Valor de Venda praticado (com/sem Flex)
+  valorBase  Decimal @map("valor_base") @db.Decimal(12, 2) // Valor Tabela + Acréscimo pra calcular Flex
+  flexGerado Decimal @default(0) @map("flex_gerado") @db.Decimal(12, 2) // Flex individual do item
+
+  pedidoId String @map("pedido_id")
+  pedido   Pedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  produtoId String  @map("produto_id")
+  produto   Produto @relation(fields: [produtoId], references: [id])
+
+  @@map("pedido_itens")
 }
 
 model CondicaoPagamento {
@@ -148,7 +207,7 @@ model CondicaoPagamento {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  clientes  Cliente[]
+  clientes Cliente[]
 
   @@map("condicoes_pagamento")
 }
@@ -156,11 +215,11 @@ model CondicaoPagamento {
 model ClienteArquivo {
   id           String   @id @default(uuid())
   cliente_uuid String
-  tipo         String   // Ex: "SERASA"
+  tipo         String // Ex: "SERASA"
   url          String
   criado_em    DateTime @default(now())
 
-  cliente      Cliente  @relation(fields: [cliente_uuid], references: [UUID], onDelete: Cascade)
+  cliente Cliente @relation(fields: [cliente_uuid], references: [UUID], onDelete: Cascade)
 
   @@map("cliente_arquivos")
 }
@@ -177,17 +236,18 @@ model ContaAzulConfig {
 }
 
 model Vendedor {
-  id              String   @id // CA UUID
-  nome            String
-  email           String?
-  idLegado        String?  @map("id_legado")
-  flexMensal      Decimal  @default(0) @map("flex_mensal") @db.Decimal(12, 2)
-  flexDisponivel  Decimal  @default(0) @map("flex_disponivel") @db.Decimal(12, 2)
-  ativo           Boolean  @default(true)
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id             String   @id // CA UUID
+  nome           String
+  email          String?
+  idLegado       String?  @map("id_legado")
+  flexMensal     Decimal  @default(0) @map("flex_mensal") @db.Decimal(12, 2)
+  flexDisponivel Decimal  @default(0) @map("flex_disponivel") @db.Decimal(12, 2)
+  ativo          Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  clientes        Cliente[]
+  clientes Cliente[]
+  pedidos  Pedido[]
 
   @@map("vendedores")
 }
@@ -220,16 +280,16 @@ model TabelaPreco {
 }
 
 model ContaFinanceira {
-  id              String   @id // ID_CONTA_FINANCEIRA
-  nomeBanco       String   @map("nome_banco") // NOME_BANCO
-  tipoUso         String   @map("tipo_uso") // TIPO_USO
-  ativo           Boolean  @default(true)
+  id              String    @id // ID_CONTA_FINANCEIRA
+  nomeBanco       String    @map("nome_banco") // NOME_BANCO
+  tipoUso         String    @map("tipo_uso") // TIPO_USO
+  ativo           Boolean   @default(true)
   ultimaCapturaEm DateTime? @map("ultima_captura_em") // ULTIMA_CAPTURA_EM
-  fonteVendaId    String?  @map("fonte_venda_id") // FONTE_VENDA_ID
+  fonteVendaId    String?   @map("fonte_venda_id") // FONTE_VENDA_ID
   obs             String?
-  opcaoCondicao   String?  @map("opcao_condicao") // OPCAO_CONDICAO (Visual reference)
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  opcaoCondicao   String?   @map("opcao_condicao") // OPCAO_CONDICAO (Visual reference)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   @@map("contas_financeiras")
 }

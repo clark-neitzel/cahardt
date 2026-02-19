@@ -11,6 +11,8 @@ import ListaVendedores from './pages/Admin/Vendedores/ListaVendedores';
 import Configuracoes from './pages/Admin/Configuracoes/Configuracoes';
 import TabelaPrecos from './pages/Configuracoes/TabelaPrecos'; // New
 import ContasFinanceiras from './pages/Configuracoes/ContasFinanceiras'; // New
+import ListaPedidos from './pages/Pedidos/ListaPedidos';
+import NovoPedido from './pages/Pedidos/NovoPedido';
 
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
@@ -39,6 +41,16 @@ const Layout = ({ children }) => {
                   }
                 >
                   Catálogo
+                </NavLink>
+                <NavLink
+                  to="/pedidos"
+                  className={({ isActive }) =>
+                    isActive
+                      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
+                      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
+                  }
+                >
+                  Pedidos
                 </NavLink>
                 <NavLink
                   to="/clientes"
@@ -146,6 +158,17 @@ const Layout = ({ children }) => {
                 Catálogo
               </NavLink>
               <NavLink
+                to="/pedidos"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  isActive
+                    ? "bg-primary-50 border-l-4 border-primary text-primary block pl-3 pr-4 py-2 text-base font-medium"
+                    : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium"
+                }
+              >
+                Pedidos
+              </NavLink>
+              <NavLink
                 to="/clientes"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={({ isActive }) =>
@@ -230,6 +253,10 @@ function App() {
           {/* Vendedor */}
           <Route path="/" element={<Catalogo />} />
           <Route path="/produto/:id" element={<DetalheProduto />} />
+
+          {/* Pedidos */}
+          <Route path="/pedidos" element={<ListaPedidos />} />
+          <Route path="/pedidos/novo" element={<NovoPedido />} />
 
           {/* Clientes */}
           <Route path="/clientes" element={<ListaClientes />} />

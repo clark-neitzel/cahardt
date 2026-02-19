@@ -663,6 +663,70 @@ const contaAzulService = {
             });
         }
         return comparison;
+    },
+
+    // === PEDIDOS (VENDAS) INTEGRAÇÃO ===
+    obterProximoNumeroPedido: async () => {
+        try {
+            // A API de próximo número freqüentemente retorna texto puro e pode falhar com JSON.parse nativo se não tratado pelo axios
+            const url = 'https://api-v2.contaazul.com/v1/venda/proximo-numero';
+            const response = await contaAzulService._axiosGet(url, 'PROX_NUMERO');
+            // Pode vir como número literal ou objeto dependendo do endpoint. 
+            // Historicamente a API v1 retornava texto. A v2 tenta retornar JSON, mas garante fallback:
+            if (response.data && typeof response.data === 'object' && response.data.proximo_numero) {
+                return Number(response.data.proximo_numero);
+            }
+            return Number(response.data);
+        } catch (error) {
+            console.error('Erro ao obter proximo numero:', error.message);
+            throw error;
+        }
+    },
+
+    buscarPedidoPorNumero: async (numero) => {
+        try {
+            // Busca venda por número pra garantir idempotência
+            const url = `https://api-v2.contaazul.com/v1/venda/busca?numeros=${numero}`;
+            const response = await contaAzulService._axiosGet(url, 'BUSCA_PEDIDO');
+            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+                return response.data[0]; // Retorna a primeira venda encontrada
+            }
+            return null;
+        } catch (error) {
+            console.error(`Erro ao buscar pedido ${numero}:`, error.message);
+            return null; // Se der erro (ex: 404), assumir que não existe
+        }
+    },
+
+    enviarPedido: async (payload) => {
+        const start = Date.now();
+        let token = await contaAzulService.getAccessToken();
+        const url = 'https://api-v2.contaazul.com/v1/venda'; // POST to create Sale
+
+        try {
+            const response = await axios.post(url, payload, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            await contaAzulService._logStep('PEDIDO_ENVIO', 'SUCESSO', `Venda ${payload.numero} enviada`, {
+                url, method: 'POST', status: response.status,
+                body: { id_venda: response.data?.id }, duration: Date.now() - start
+            });
+
+            return response.data; // Retorna os dados da venda criada (ex: { id: "..." })
+        } catch (error) {
+            let errorMsg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+
+            await contaAzulService._logStep('PEDIDO_ENVIO', 'ERRO', `Falha ao enviar venda ${payload.numero}`, {
+                url, method: 'POST', status: error.response?.status,
+                body: error.response?.data || error.message, duration: Date.now() - start
+            });
+
+            throw new Error(`Erro na API Conta Azul: ${errorMsg}`);
+        }
     }
 };
 
