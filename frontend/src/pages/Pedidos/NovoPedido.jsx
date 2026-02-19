@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Save, User, ShoppingCart, DollarSign, Plus, Trash2, AlertCircle, X } from 'lucide-react';
+import { ArrowLeft, MapPin, Save, User, ShoppingCart, DollarSign, Plus, Trash2, Calendar, FileText, AlertCircle, X, CheckCircle } from 'lucide-react';
 import clienteService from '../../services/clienteService';
 import produtoService from '../../services/produtoService';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
 import pedidoService from '../../services/pedidoService';
 import configService from '../../services/configService';
+
+const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
 const NovoPedido = () => {
     const navigate = useNavigate();
@@ -19,12 +21,14 @@ const NovoPedido = () => {
 
     // Form State
     const [clienteId, setClienteId] = useState('');
-    const [vendedorId, setVendedorId] = useState(null); // Extracted from selected client
+    const [vendedorId, setVendedorId] = useState(null);
     const [condicaoPagamentoId, setCondicaoPagamentoId] = useState('');
+    const [dataEntrega, setDataEntrega] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
+    const [isEncaixe, setIsEncaixe] = useState(false);
     const [observacoes, setObservacoes] = useState('');
-    const [itens, setItens] = useState([]); // { produtoId, quantidade, valorUnitario, valorBase, flexUnitario }
+    const [itens, setItens] = useState([]);
 
-    // Client Search State
+    // Client/Product Search State
     const [clienteSearchText, setClienteSearchText] = useState('');
     const [showClienteDropdown, setShowClienteDropdown] = useState(false);
 
@@ -42,13 +46,8 @@ const NovoPedido = () => {
 
     const carregarDadosBase = async () => {
         try {
-            // Apply restrictions to show only catalog products
             let cats = [];
-            try {
-                cats = await configService.get('categorias_vendas');
-            } catch (e) {
-                console.warn('Categorias nao encontradas', e);
-            }
+            try { cats = await configService.get('categorias_vendas'); } catch (e) { }
 
             const paramsProd = { limit: 1000, ativo: true };
             if (Array.isArray(cats) && cats.length > 0) {
@@ -61,11 +60,9 @@ const NovoPedido = () => {
                 tabelaPrecoService.listar()
             ]);
 
-            // For now, load active items
             setClientes(clientesData.data?.filter(c => c.Ativo) || clientesData?.filter(c => c.Ativo) || []);
             setProdutos(produtosData.data || produtosData || []);
             setTodasCondicoes(condicoesData);
-
         } catch (error) {
             console.error("Erro ao carregar dados", error);
             alert("Erro ao carregar dados básicos para o pedido.");
@@ -81,6 +78,7 @@ const NovoPedido = () => {
             setVendedorId(null);
             setCondicoesPermitidas([]);
             setCondicaoPagamentoId('');
+            setIsEncaixe(false);
             return;
         }
 
@@ -97,12 +95,17 @@ const NovoPedido = () => {
             setVendedorId(cliente.idVendedor);
             setClienteSearchText(cliente.NomeFantasia || cliente.Nome);
 
-            // Build permitted conditions
+            // Verify Delivery Date vs Visit Days immediately for today's date
+            verificarDataEntrega(dataEntrega, cliente);
+
+            // Permitted Conditions
             if (cliente.condicoes_pagamento_permitidas && cliente.condicoes_pagamento_permitidas.length > 0) {
                 const permitidas = todasCondicoes.filter(c => cliente.condicoes_pagamento_permitidas.includes(c.idCondicao));
                 setCondicoesPermitidas(permitidas);
-                if (permitidas.length > 0) {
+                if (permitidas.length === 1) {
                     setCondicaoPagamentoId(permitidas[0].idCondicao);
+                } else {
+                    setCondicaoPagamentoId('');
                 }
             } else if (cliente.Condicao_de_pagamento) {
                 const padrao = todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento);
@@ -110,9 +113,29 @@ const NovoPedido = () => {
                 setCondicaoPagamentoId(cliente.Condicao_de_pagamento);
             } else {
                 setCondicoesPermitidas(todasCondicoes);
+                setCondicaoPagamentoId('');
             }
         }
     }, [clienteId, clientes, todasCondicoes]);
+
+    useEffect(() => {
+        if (clienteSelecionado) {
+            verificarDataEntrega(dataEntrega, clienteSelecionado);
+        }
+    }, [dataEntrega]);
+
+    const verificarDataEntrega = (dataStr, cliente) => {
+        if (!dataStr || !cliente) return;
+        const d = new Date(dataStr + 'T12:00:00Z'); // Evitar problemas de timezone
+        const dayOfWeekStr = DIA_SEMANA_MAP[d.getUTCDay()];
+
+        const diasVisita = cliente.Dia_de_entrega || ''; // "SEG,QUA"
+        if (diasVisita && !diasVisita.includes(dayOfWeekStr)) {
+            setIsEncaixe(true);
+        } else {
+            setIsEncaixe(false);
+        }
+    };
 
     // When condition changes, recalculate Flex
     useEffect(() => {
@@ -153,7 +176,7 @@ const NovoPedido = () => {
 
     const adicionarProduto = () => {
         setItens([
-            { id: Date.now().toString(), produtoId: '', quantidade: 1, valorUnitario: 0, valorBase: 0, flexUnitario: 0 },
+            { id: Date.now().toString(), produtoId: '', quantidade: 1, valorUnitario: 0, valorBase: 0, flexUnitario: 0, search: '', showDropdown: false },
             ...itens
         ]);
     };
@@ -171,7 +194,6 @@ const NovoPedido = () => {
 
         let item = { ...novosItens[idx], [field]: value };
 
-        // Se mudou o produto, buscar preço base e último preço
         if (field === 'produtoId' && value) {
             const produto = produtos.find(p => p.id === value);
             if (produto) {
@@ -181,28 +203,26 @@ const NovoPedido = () => {
 
                 let valorPraticado = valorBase;
 
-                // Tentar buscar último preço
                 if (clienteId) {
                     try {
                         const ultimo = await pedidoService.obterUltimoPreco(clienteId, value);
                         if (ultimo && ultimo.valor) {
                             valorPraticado = Number(ultimo.valor);
                         }
-                    } catch (e) {
-                        // ignore
-                    }
+                    } catch (e) { }
                 }
 
                 item.valorBase = valorBase;
                 item.valorUnitario = valorPraticado;
                 item.flexUnitario = valorPraticado - valorBase;
-                item.quantidade = 1; // reset qty
+                item.quantidade = 1;
+                item.search = produto.nome;
+                item.showDropdown = false;
             }
         }
 
-        // Se mudou quantidade ou valor unitário, recalcular flex item
         if (field === 'quantidade' || field === 'valorUnitario') {
-            const numVal = Number(value) || 0;
+            const numVal = Number(value.toString().replace(',', '.')) || 0;
             if (field === 'valorUnitario') {
                 item.flexUnitario = numVal - item.valorBase;
             }
@@ -219,9 +239,13 @@ const NovoPedido = () => {
             return;
         }
 
-        // Validação de itens não preenchidos
+        if (!condicaoPagamentoId) {
+            alert("Selecione uma condição de pagamento.");
+            return;
+        }
+
         if (itens.some(i => !i.produtoId || isNaN(i.valorUnitario) || i.quantidade <= 0)) {
-            alert("Todos os itens adicionados devem ter um produto selecionado, valor e quantidade.");
+            alert("Todos os itens adicionados devem ter um produto selecionado, valor e quantidade válidos.");
             return;
         }
 
@@ -233,7 +257,6 @@ const NovoPedido = () => {
                     salvarPedido(statusEnvio, latLng);
                 },
                 (error) => {
-                    console.warn("GPS falhou, enviando sem GPS", error);
                     salvarPedido(statusEnvio, null);
                 },
                 { enableHighAccuracy: true, timeout: 5000 }
@@ -244,11 +267,24 @@ const NovoPedido = () => {
     };
 
     const salvarPedido = async (statusEnvio, latLng) => {
+        let obsFinal = observacoes;
+        if (isEncaixe) {
+            obsFinal = obsFinal ? `ENCAIXE DE ENTREGA\n${obsFinal}` : `ENCAIXE DE ENTREGA`;
+        }
+
+        // Apply string conversion cleanly before sending
+        const itensLimpos = itens.map(i => ({
+            produtoId: i.produtoId,
+            quantidade: Number(i.quantidade.toString().replace(',', '.')),
+            valor: Number(i.valorUnitario.toString().replace(',', '.')),
+            valorBase: i.valorBase
+        }));
+
         const payload = {
             clienteId,
             vendedorId,
-            dataVenda: new Date().toISOString(),
-            observacoes,
+            dataVenda: new Date(dataEntrega + 'T12:00:00Z').toISOString(),
+            observacoes: obsFinal,
             tipoPagamento: condicaoSelecionada?.tipoPagamento,
             opcaoCondicaoPagamento: condicaoSelecionada?.opcaoCondicao,
             qtdParcelas: condicaoSelecionada?.qtdParcelas || 1,
@@ -257,17 +293,11 @@ const NovoPedido = () => {
             idCategoria: null,
             latLng,
             statusEnvio,
-            itens: itens.map(i => ({
-                produtoId: i.produtoId,
-                quantidade: i.quantidade,
-                valor: i.valorUnitario,
-                valorBase: i.valorBase
-            }))
+            itens: itensLimpos
         };
 
         try {
             await pedidoService.criar(payload);
-            alert("Pedido salvo com sucesso!");
             navigate('/pedidos');
         } catch (error) {
             const msg = error.response?.data?.error || "Erro ao salvar pedido.";
@@ -279,11 +309,10 @@ const NovoPedido = () => {
 
     if (loading) return <div className="p-4 text-center">Carregando...</div>;
 
-    const vTotal = itens.reduce((acc, i) => acc + ((Number(i.valorUnitario) || 0) * (Number(i.quantidade) || 0)), 0);
+    const vTotal = itens.reduce((acc, i) => acc + ((Number(i.valorUnitario?.toString().replace(',', '.')) || 0) * (Number(i.quantidade?.toString().replace(',', '.')) || 0)), 0);
 
     return (
         <div className="bg-gray-50 min-h-screen pb-32">
-            {/* Mobile Header Fixed */}
             <div className="bg-white shadow-sm sticky top-0 z-10">
                 <div className="flex items-center justify-between p-4">
                     <div className="flex items-center">
@@ -292,8 +321,14 @@ const NovoPedido = () => {
                         </button>
                         <h1 className="text-xl font-bold text-gray-900">Novo Pedido</h1>
                     </div>
+                    {/* Botão claro para salvar rascunho sem enviar */}
+                    <button
+                        onClick={() => handleSalvar('ABERTO')}
+                        className="text-primary font-semibold text-sm hover:underline"
+                    >
+                        Salvar em Aberto
+                    </button>
                 </div>
-                {/* Flex Total Resumo Fixed */}
                 <div className={`px-4 py-2 flex justify-between items-center text-sm font-bold text-white shadow-inner ${flexTotal >= 0 ? 'bg-green-600' : 'bg-red-600'}`}>
                     <span>Saldo Flex do Pedido:</span>
                     <span>{flexTotal > 0 && '+'}{flexTotal.toFixed(2).replace('.', ',')}</span>
@@ -301,7 +336,6 @@ const NovoPedido = () => {
             </div>
 
             <div className="p-4 space-y-4 max-w-lg mx-auto">
-                {/* Cliente (Busca Customizada) */}
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                         <User className="h-4 w-4 mr-1" /> Cliente
@@ -321,8 +355,10 @@ const NovoPedido = () => {
                                         setClienteId('');
                                     }
                                 }}
-                                onFocus={() => setShowClienteDropdown(true)}
-                                // Pequeno delay pra permitir clique na lista antes dela fechar
+                                onFocus={(e) => {
+                                    e.target.select();
+                                    setShowClienteDropdown(true);
+                                }}
                                 onBlur={() => setTimeout(() => setShowClienteDropdown(false), 200)}
                             />
                             {clienteId && (
@@ -342,64 +378,80 @@ const NovoPedido = () => {
                             <ul className="absolute z-30 mt-1 w-full bg-white border border-gray-200 shadow-xl max-h-60 rounded-md py-1 text-base ring-0 overflow-auto sm:text-sm">
                                 {clientes
                                     .filter(c => (c.NomeFantasia || c.Nome).toLowerCase().includes(clienteSearchText.toLowerCase()) || (c.Documento || '').includes(clienteSearchText))
-                                    .slice(0, 30) // Limitamos a view inicial pra não quebrar a performance 
+                                    .slice(0, 30)
                                     .map(c => (
                                         <li
                                             key={c.UUID}
                                             className="text-gray-900 cursor-pointer select-none relative py-2 pl-3 pr-4 hover:bg-gray-100 border-b border-gray-50 last:border-0"
-                                            onClick={() => {
-                                                setClienteId(c.UUID);
-                                            }}
+                                            onClick={() => setClienteId(c.UUID)}
                                         >
-                                            <span className="font-semibold block truncate leading-tight dark:text-gray-900">{c.NomeFantasia || c.Nome}</span>
-                                            <span className="text-gray-500 text-xs block truncate">{c.Documento || 'Sem Documento'}</span>
+                                            <span className="font-bold block truncate leading-tight">{c.NomeFantasia || c.Nome}</span>
+                                            <span className="text-gray-500 text-xs block truncate">{c.Documento || 'Sem Documento'}  • {c.End_Cidade || 'S/ Cidade'}</span>
+                                            {c.Dia_de_entrega && <span className="text-blue-600 font-semibold text-xs inline-block mt-1 bg-blue-50 px-2 py-0.5 rounded">Entregas válidas: {c.Dia_de_entrega}</span>}
                                         </li>
                                     ))
                                 }
-                                {clientes.filter(c => (c.NomeFantasia || c.Nome).toLowerCase().includes(clienteSearchText.toLowerCase()) || (c.Documento || '').includes(clienteSearchText)).length === 0 && (
-                                    <li className="text-gray-500 select-none relative py-3 px-3 text-center text-sm">Nenhum cliente encontrado.</li>
-                                )}
-                            </ul>
-                        )}
-                        {!clienteId && !clienteSearchText && showClienteDropdown && (
-                            <ul className="absolute z-30 mt-1 w-full bg-white border border-gray-200 shadow-xl max-h-60 rounded-md py-1 text-base ring-0 overflow-auto sm:text-sm">
-                                <li className="text-gray-500 select-none relative py-3 px-3 text-center text-sm">Digite para buscar...</li>
                             </ul>
                         )}
                     </div>
                 </div>
 
-                {/* Condição de Pagamento */}
+                {/* Data de Entrega */}
+                {clienteId && (
+                    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                            <Calendar className="h-4 w-4 mr-1" /> Data da Entrega
+                        </label>
+                        <input
+                            type="date"
+                            className="w-full border border-gray-300 rounded-md p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                            value={dataEntrega}
+                            onChange={e => setDataEntrega(e.target.value)}
+                        />
+                        {clienteSelecionado && clienteSelecionado.Dia_de_entrega && (
+                            <p className="text-xs text-gray-500 mt-2">Dias cadastrados p/ cliente: <b>{clienteSelecionado.Dia_de_entrega}</b></p>
+                        )}
+                        {isEncaixe && (
+                            <div className="mt-2 text-xs flex items-start text-orange-700 bg-orange-50 p-2 rounded border border-orange-200">
+                                <AlertCircle className="h-4 w-4 mr-1 flex-shrink-0" />
+                                <span><b>Aviso de Encaixe:</b> A data escolhida não cai em um dia da semana cadastrado para entrega. Este pedido será marcado como Encaixe.</span>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {clienteId && (
                     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200  animate-in fade-in slide-in-from-bottom-2 duration-300">
                         <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                             <DollarSign className="h-4 w-4 mr-1" /> Condição de Pagamento
                         </label>
                         <select
-                            className="w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 text-base focus:ring-primary focus:border-primary"
+                            className="w-full border border-gray-300 rounded-md p-3 bg-white text-gray-900 font-bold focus:ring-primary"
                             value={condicaoPagamentoId}
                             onChange={e => setCondicaoPagamentoId(e.target.value)}
                         >
-                            <option value="">Selecione...</option>
+                            <option value="" disabled>Selecione exatamente uma condição...</option>
                             {condicoesPermitidas.map(c => (
                                 <option key={c.idCondicao} value={c.idCondicao}>{c.nomeCondicao}</option>
                             ))}
                         </select>
+                        {condicoesPermitidas.length === 0 && (
+                            <p className="text-red-500 text-xs mt-2">O Administrador não habilitou nenhuma tabela de preço para este cliente.</p>
+                        )}
                         {condicaoSelecionada && (
-                            <div className="mt-2 text-xs text-gray-500 flex justify-between bg-blue-50 p-2 rounded">
-                                <span><strong className="text-blue-800">Acréscimo:</strong> {condicaoSelecionada.acrescimoPreco}%</span>
-                                <span><strong className="text-blue-800">Parcelas:</strong> {condicaoSelecionada.qtdParcelas}x de {condicaoSelecionada.parcelasDias} dias</span>
+                            <div className="mt-2 text-xs text-gray-600 flex justify-between bg-blue-50 p-2 rounded">
+                                <span>Acréscimo: <b>{condicaoSelecionada.acrescimoPreco}%</b></span>
+                                <span>Parcelas: <b>{condicaoSelecionada.qtdParcelas}x de {condicaoSelecionada.parcelasDias} d</b></span>
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* Itens do Pedido */}
                 {clienteId && condicaoPagamentoId && (
-                    <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-white p-2 text-gray-900 rounded-lg shadow-sm border border-gray-200 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="p-2 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-lg">
                             <label className="text-sm font-bold text-gray-800 flex items-center">
-                                <ShoppingCart className="h-4 w-4 mr-1" /> Produtos
+                                <ShoppingCart className="h-4 w-4 mr-1" /> Produtos do Pedido
                             </label>
                             <button
                                 onClick={adicionarProduto}
@@ -417,19 +469,52 @@ const NovoPedido = () => {
                                 </div>
                             ) : (
                                 itens.map((item, index) => (
-                                    <div key={item.id} className="relative p-3 border border-gray-200 rounded-md bg-white shadow-sm transition-all">
+                                    <div key={item.id} className="relative p-3 border border-gray-200 rounded-md bg-white shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary">
 
-                                        <div className="pr-8 mb-3">
-                                            <select
-                                                className="w-full border border-gray-300 bg-white text-gray-900 rounded p-2 text-sm font-medium focus:ring-primary"
-                                                value={item.produtoId}
-                                                onChange={e => atualizarItem(item.id, 'produtoId', e.target.value)}
-                                            >
-                                                <option value="">Selecione o produto...</option>
-                                                {produtos.map(p => (
-                                                    <option key={p.id} value={p.id}>{p.nome}</option>
-                                                ))}
-                                            </select>
+                                        {/* Autocomplete Produto */}
+                                        <div className="pr-8 mb-3 relative">
+                                            <input
+                                                type="text"
+                                                className={`w-full border border-gray-300 rounded p-2 text-sm font-semibold truncate ${item.produtoId ? 'bg-green-50 text-green-900 border-green-300' : 'bg-white text-gray-900'}`}
+                                                placeholder="Digite nome ou código do produto..."
+                                                value={item.search}
+                                                onChange={e => {
+                                                    atualizarItem(item.id, 'search', e.target.value);
+                                                    atualizarItem(item.id, 'showDropdown', true);
+                                                    if (e.target.value === '') {
+                                                        atualizarItem(item.id, 'produtoId', '');
+                                                    }
+                                                }}
+                                                onFocus={(e) => {
+                                                    e.target.select();
+                                                    atualizarItem(item.id, 'showDropdown', true);
+                                                }}
+                                                onBlur={() => setTimeout(() => atualizarItem(item.id, 'showDropdown', false), 200)}
+                                            />
+                                            {item.produtoId && (
+                                                <CheckCircle className="absolute right-3 top-2.5 h-4 w-4 text-green-600" />
+                                            )}
+
+                                            {item.showDropdown && item.search && !item.produtoId && (
+                                                <ul className="absolute z-40 mt-1 w-full bg-white border border-gray-200 shadow-2xl max-h-56 rounded-md py-1 text-sm ring-1 ring-black ring-opacity-5 overflow-auto">
+                                                    {produtos
+                                                        .filter(p => p.nome.toLowerCase().includes(item.search.toLowerCase()) || p.codigo.includes(item.search))
+                                                        .slice(0, 15)
+                                                        .map(p => (
+                                                            <li
+                                                                key={p.id}
+                                                                className="text-gray-900 cursor-pointer select-none relative py-2 pl-3 pr-4 hover:bg-gray-100 border-b border-gray-100"
+                                                                onClick={() => {
+                                                                    atualizarItem(item.id, 'produtoId', p.id);
+                                                                }}
+                                                            >
+                                                                <span className="font-bold block truncate">{p.nome}</span>
+                                                                <span className="text-gray-500 text-xs mt-0.5 block truncate">Cód: {p.codigo} | Tabela: R$ {p.valorVenda}</span>
+                                                            </li>
+                                                        ))
+                                                    }
+                                                </ul>
+                                            )}
                                         </div>
 
                                         <button
@@ -445,9 +530,10 @@ const NovoPedido = () => {
                                                     <label className="block text-xs font-semibold text-gray-600 mb-1">Quantidade</label>
                                                     <input
                                                         type="number"
-                                                        min="0.1" step="0.1"
-                                                        className="w-full border border-gray-300 bg-white text-gray-900 rounded p-2 text-center text-base"
+                                                        min="0" step="any"
+                                                        className="w-full border border-gray-300 bg-white text-gray-900 rounded p-2 text-center text-base font-bold shadow-inner"
                                                         value={item.quantidade}
+                                                        onFocus={e => e.target.select()}
                                                         onChange={e => atualizarItem(item.id, 'quantidade', e.target.value)}
                                                     />
                                                 </div>
@@ -455,13 +541,14 @@ const NovoPedido = () => {
                                                     <label className="block text-xs font-semibold text-gray-600 mb-1">R$ Un (Praticado)</label>
                                                     <input
                                                         type="number"
-                                                        min="0.01" step="0.01"
-                                                        className="w-full border border-gray-300 bg-white text-gray-900 rounded p-2 text-center text-base font-bold"
+                                                        min="0" step="any"
+                                                        className="w-full border border-gray-300 bg-white text-gray-900 rounded p-2 text-center text-base font-bold shadow-inner"
                                                         value={item.valorUnitario}
+                                                        onFocus={e => e.target.select()}
                                                         onChange={e => atualizarItem(item.id, 'valorUnitario', e.target.value)}
                                                     />
                                                     <div className="text-xs mt-1 text-center bg-gray-50 p-1 rounded border border-gray-100">
-                                                        <span className="text-gray-500 block mb-0.5">Tabela c/ Acr.: <b>{item.valorBase.toFixed(2)}</b></span>
+                                                        <span className="text-gray-500 block mb-0.5">Base (c/ Acrésc.): <b>{item.valorBase.toFixed(2)}</b></span>
                                                         <span className={`font-bold inline-block px-2 py-0.5 rounded-full ${item.flexUnitario >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                                             {item.flexUnitario >= 0 ? '+' : ''}{item.flexUnitario.toFixed(2)} unit
                                                         </span>
@@ -476,13 +563,14 @@ const NovoPedido = () => {
                     </div>
                 )}
 
-                {/* Observações */}
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Observações do Pedido</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                        <FileText className="h-4 w-4 mr-1" /> Observações do Pedido
+                    </label>
                     <textarea
                         className="w-full border border-gray-300 rounded-md shadow-sm p-3 text-sm focus:ring-primary focus:border-primary bg-white text-gray-900"
                         rows="3"
-                        placeholder="Ex: Entregar na doca dos fundos até as 17:00hs."
+                        placeholder="Adicione restrições de doca, horários ou informações para o faturamento."
                         value={observacoes}
                         onChange={e => setObservacoes(e.target.value)}
                     ></textarea>
@@ -492,10 +580,8 @@ const NovoPedido = () => {
                     <MapPin className="h-3 w-3 mr-1" />
                     Localização capturada e enviada como registro do vendedor.
                 </div>
-
             </div>
 
-            {/* Bottom Fixed Action Bar */}
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.1)] z-20">
                 <div className="max-w-lg mx-auto">
                     <div className="flex justify-between items-center mb-3">
@@ -505,18 +591,11 @@ const NovoPedido = () => {
                     <div className="flex gap-3">
                         <button
                             disabled={saving}
-                            onClick={() => handleSalvar('ABERTO')}
-                            className="flex-1 bg-white border border-gray-300 text-gray-700 font-semibold py-3 px-2 rounded-lg active:bg-gray-100 shadow-sm transition outline-none"
-                        >
-                            Salvar Rascunho
-                        </button>
-                        <button
-                            disabled={saving}
                             onClick={() => handleSalvar('ENVIAR')}
-                            className="flex-1 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold py-3 px-2 rounded-lg active:from-blue-700 active:to-blue-600 shadow-md transition flex justify-center items-center outline-none ring-2 ring-blue-500 ring-offset-2"
+                            className="flex-1 bg-primary text-white font-bold py-3 px-2 rounded-lg hover:bg-blue-700 active:bg-blue-800 shadow-md transition flex justify-center items-center outline-none"
                         >
                             <Save className="h-5 w-5 mr-2" />
-                            Finalizar
+                            FECHAR PEDIDO
                         </button>
                     </div>
                 </div>
