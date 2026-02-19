@@ -154,7 +154,7 @@ const ListaPedidos = () => {
                                     )}
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4 mb-6 bg-blue-50 p-3 rounded border border-blue-100">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 bg-blue-50 p-3 rounded border border-blue-100">
                                 <div>
                                     <p className="text-xs text-blue-700 uppercase font-semibold">Condição de Pagamento</p>
                                     <p className="text-sm font-medium text-blue-900">
@@ -165,6 +165,12 @@ const ListaPedidos = () => {
                                 <div>
                                     <p className="text-xs text-blue-700 uppercase font-semibold">Vendedor</p>
                                     <p className="text-sm font-medium text-blue-900">{selectedPedido.vendedor?.nome || 'N/D'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-blue-700 uppercase font-semibold">Flex Gerado</p>
+                                    <p className={`text-xl font-bold ${Number(selectedPedido.flexTotal) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {Number(selectedPedido.flexTotal) > 0 ? '+' : ''}{Number(selectedPedido.flexTotal || 0).toFixed(2).replace('.', ',')}
+                                    </p>
                                 </div>
                             </div>
 
@@ -193,8 +199,13 @@ const ListaPedidos = () => {
                                                 <div className="flex-1">
                                                     <p className="text-sm font-semibold text-gray-900">{item.produto?.codigo ? `[${item.produto.codigo}] ` : ''}{item.produto?.nome || item.descricao || 'Produto Indisponível'}</p>
                                                     <p className="text-xs text-gray-500">{Number(item.quantidade)}x - R$ {Number(item.valor).toFixed(2).replace('.', ',')} / un</p>
+                                                    {item.flexGerado !== undefined && item.flexGerado !== null && (
+                                                        <p className={`text-[10px] font-bold mt-0.5 ${Number(item.flexGerado) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                                            {Number(item.flexGerado) > 0 ? '+' : ''}{Number(item.flexGerado).toFixed(2).replace('.', ',')} Flex
+                                                        </p>
+                                                    )}
                                                 </div>
-                                                <div className="font-bold text-gray-900">
+                                                <div className="font-bold text-gray-900 text-right">
                                                     R$ {(Number(item.quantidade) * Number(item.valor)).toFixed(2).replace('.', ',')}
                                                 </div>
                                             </div>
