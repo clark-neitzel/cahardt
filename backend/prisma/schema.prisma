@@ -218,3 +218,18 @@ model TabelaPreco {
 
   @@map("tabela_precos")
 }
+
+model ContaFinanceira {
+  id              String   @id // ID_CONTA_FINANCEIRA
+  nomeBanco       String   @map("nome_banco") // NOME_BANCO
+  tipoUso         String   @map("tipo_uso") // TIPO_USO
+  ativo           Boolean  @default(true)
+  ultimaCapturaEm DateTime? @map("ultima_captura_em") // ULTIMA_CAPTURA_EM
+  fonteVendaId    String?  @map("fonte_venda_id") // FONTE_VENDA_ID
+  obs             String?
+  opcaoCondicao   String?  @map("opcao_condicao") // OPCAO_CONDICAO (Visual reference)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("contas_financeiras")
+}

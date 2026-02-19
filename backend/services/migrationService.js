@@ -146,6 +146,36 @@ const migrationService = {
                 "exige_banco" = EXCLUDED."exige_banco",
                 "banco_padrao" = EXCLUDED."banco_padrao",
                 "ativo" = EXCLUDED."ativo",
+                "updated_at" = NOW();`,
+
+            // Update 05: Contas Financeiras (Bancos)
+            `CREATE TABLE IF NOT EXISTS "contas_financeiras" (
+                "id" TEXT NOT NULL,
+                "nome_banco" TEXT NOT NULL,
+                "tipo_uso" TEXT NOT NULL,
+                "ativo" BOOLEAN NOT NULL DEFAULT true,
+                "ultima_captura_em" TIMESTAMP(3),
+                "fonte_venda_id" TEXT,
+                "obs" TEXT,
+                "opcao_condicao" TEXT,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL,
+                CONSTRAINT "contas_financeiras_pkey" PRIMARY KEY ("id")
+            );`,
+
+            // Seed Contas Financeiras
+            `INSERT INTO "contas_financeiras" ("id", "nome_banco", "tipo_uso", "ativo", "ultima_captura_em", "fonte_venda_id", "opcao_condicao", "updated_at") VALUES
+            ('1dc7f96e-7658-4e0c-8d0a-5c5980234c90', 'Caixinha', 'DINHEIRO', true, '2026-02-01T12:58:20.667Z', '5bf9e998-34bf-4e6a-8e20-9e4b34c4b053', 'À vista', NOW()),
+            ('ed4798c2-f8e3-4e87-9ff3-8f264dcf6aa0', 'Conta Azul', 'BOLETO_BANCARIO', true, '2026-01-22T20:45:40.396Z', '4e83e2f3-3950-47f5-9d5d-c43974506dfa', '1x', NOW()),
+            ('dc83b583-4a49-47c4-b238-c7d14ab77d5f', 'Acredicoop', 'BOLETO_BANCARIO', true, '2026-01-22T20:48:03.238Z', '4e83e2f3-3950-47f5-9d5d-c43974506dfa', '1x', NOW()),
+            ('f756dd56-4946-493e-9343-0a2e2fdfe681', 'Sicoob', 'BOLETO_BANCARIO', true, '2026-01-28T23:14:10.915Z', '4e83e2f3-3950-47f5-9d5d-c43974506dfa', '1x', NOW())
+            ON CONFLICT ("id") DO UPDATE SET
+                "nome_banco" = EXCLUDED."nome_banco",
+                "tipo_uso" = EXCLUDED."tipo_uso",
+                "ativo" = EXCLUDED."ativo",
+                "ultima_captura_em" = EXCLUDED."ultima_captura_em",
+                "fonte_venda_id" = EXCLUDED."fonte_venda_id",
+                "opcao_condicao" = EXCLUDED."opcao_condicao",
                 "updated_at" = NOW();`
         ];
 

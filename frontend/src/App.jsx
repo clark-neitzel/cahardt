@@ -9,7 +9,8 @@ import ListaClientes from './pages/Clientes/ListaClientes';
 import DetalheCliente from './pages/Clientes/DetalheCliente';
 import ListaVendedores from './pages/Admin/Vendedores/ListaVendedores';
 import Configuracoes from './pages/Admin/Configuracoes/Configuracoes';
-import TabelaPrecos from './pages/Configuracoes/TabelaPrecos'; // New // New
+import TabelaPrecos from './pages/Configuracoes/TabelaPrecos'; // New
+import ContasFinanceiras from './pages/Configuracoes/ContasFinanceiras'; // New
 
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
@@ -98,6 +99,16 @@ const Layout = ({ children }) => {
                   }
                 >
                   Tabela Preços
+                </NavLink>
+                <NavLink
+                  to="/config/contas-financeiras"
+                  className={({ isActive }) =>
+                    isActive
+                      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
+                      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
+                  }
+                >
+                  Bancos
                 </NavLink>
               </div>
             </div>
@@ -189,6 +200,17 @@ const Layout = ({ children }) => {
               >
                 Tabela Preços
               </NavLink>
+              <NavLink
+                to="/config/contas-financeiras"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  isActive
+                    ? "bg-primary-50 border-l-4 border-primary text-primary block pl-3 pr-4 py-2 text-base font-medium"
+                    : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium"
+                }
+              >
+                Bancos
+              </NavLink>
             </div>
           </div>
         )}
@@ -222,6 +244,7 @@ function App() {
           <Route path="/admin/vendedores" element={<ListaVendedores />} />
           <Route path="/admin/config" element={<Configuracoes />} />
           <Route path="/config/tabela-precos" element={<TabelaPrecos />} />
+          <Route path="/config/contas-financeiras" element={<ContasFinanceiras />} />
         </Routes>
       </Layout>
       <Toaster position="top-right" />

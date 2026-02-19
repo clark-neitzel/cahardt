@@ -10,6 +10,7 @@ const authRoutes = require('./routes/authRoutes'); // New
 const vendedorRoutes = require('./routes/vendedorRoutes'); // New
 const configRoutes = require('./routes/configRoutes'); // New
 const tabelaPrecoRoutes = require('./routes/tabelaPrecoRoutes'); // New
+const contaFinanceiraRoutes = require('./routes/contaFinanceiraRoutes'); // New
 const migrationRoutes = require('./routes/migrationRoutes'); // Migration endpoint
 
 const app = express();
@@ -35,6 +36,7 @@ app.use('/api/auth', authRoutes); // New
 app.use('/api/vendedores', vendedorRoutes); // New
 app.use('/api/config', configRoutes); // New
 app.use('/api/tabela-precos', tabelaPrecoRoutes); // New
+app.use('/api/contas-financeiras', contaFinanceiraRoutes); // New
 app.use('/api/migrations', migrationRoutes); // Migration endpoint
 
 // Rota base
