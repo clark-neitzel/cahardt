@@ -100,20 +100,23 @@ const NovoPedido = () => {
             verificarDataEntrega(dataEntrega, cliente);
 
             // Permitted Conditions
+            let permitidas = [];
+
             if (cliente.condicoes_pagamento_permitidas && cliente.condicoes_pagamento_permitidas.length > 0) {
-                const permitidas = todasCondicoes.filter(c => cliente.condicoes_pagamento_permitidas.includes(c.idCondicao));
-                setCondicoesPermitidas(permitidas);
-                if (permitidas.length === 1) {
-                    setCondicaoPagamentoId(permitidas[0].idCondicao);
-                } else {
-                    setCondicaoPagamentoId('');
-                }
+                const idsArray = cliente.condicoes_pagamento_permitidas.split(',').map(s => s.trim());
+                permitidas = todasCondicoes.filter(c => idsArray.includes(c.idCondicao));
             } else if (cliente.Condicao_de_pagamento) {
                 const padrao = todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento);
-                setCondicoesPermitidas(padrao ? [padrao] : todasCondicoes);
+                if (padrao) permitidas = [padrao];
+            }
+
+            setCondicoesPermitidas(permitidas);
+
+            if (permitidas.length === 1) {
+                setCondicaoPagamentoId(permitidas[0].idCondicao);
+            } else if (cliente.Condicao_de_pagamento && permitidas.some(c => c.idCondicao === cliente.Condicao_de_pagamento)) {
                 setCondicaoPagamentoId(cliente.Condicao_de_pagamento);
             } else {
-                setCondicoesPermitidas(todasCondicoes);
                 setCondicaoPagamentoId('');
             }
         }
@@ -386,6 +389,16 @@ const NovoPedido = () => {
                                 </button>
                             )}
                         </div>
+
+                        {clienteId && condicoesPermitidas.length === 0 && (
+                            <div className="mt-4 bg-red-50 border border-red-200 p-4 rounded text-sm text-red-700 shadow-sm flex items-start animate-fade-in">
+                                <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 text-red-600" />
+                                <div>
+                                    <p className="font-bold mb-1 uppercase">Atenção!</p>
+                                    <p>Nenhuma Tabela de Preço ou Condição de Pagamento foi vinculada a este cliente. É <b>obrigatório</b> acessar Editar no WebApp e selecionar Lote e Tabela para prosseguir com a venda.</p>
+                                </div>
+                            </div>
+                        )}
 
                         {showClienteDropdown && !clienteId && (
                             <ul className="absolute z-30 mt-1 w-full bg-white border border-gray-200 shadow-xl max-h-60 rounded-md py-1 text-base ring-0 overflow-auto sm:text-sm">
