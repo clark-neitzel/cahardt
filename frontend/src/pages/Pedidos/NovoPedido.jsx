@@ -404,9 +404,15 @@ const NovoPedido = () => {
                         </label>
                         <input
                             type="date"
-                            className="w-full border border-gray-300 rounded-md p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                            className="w-full border border-gray-300 rounded-md p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary cursor-pointer"
                             value={dataEntrega}
                             onChange={e => setDataEntrega(e.target.value)}
+                            onClick={(e) => {
+                                try {
+                                    // Força a abertura do calendário nativo do navegador ao clicar em qualquer lugar do campo
+                                    if (e.target.showPicker) e.target.showPicker();
+                                } catch (err) { }
+                            }}
                         />
                         {clienteSelecionado && clienteSelecionado.Dia_de_entrega && (
                             <p className="text-xs text-gray-500 mt-2">Dias cadastrados p/ cliente: <b>{clienteSelecionado.Dia_de_entrega}</b></p>
