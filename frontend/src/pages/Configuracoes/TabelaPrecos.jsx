@@ -54,7 +54,8 @@ const TabelaPrecos = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição (Nome)</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo / Opção</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parcelas</th>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Qtd Parc.</th>
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Dias</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acréscimo</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Regras</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -74,11 +75,11 @@ const TabelaPrecos = () => {
                                         <div>{item.tipoPagamento || '-'}</div>
                                         <div className="text-xs text-gray-400">{item.opcaoCondicao}</div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <div className="flex items-center gap-1">
-                                            <Calendar className="h-4 w-4 text-gray-400" />
-                                            {item.qtdParcelas}x ({item.parcelasDias} dias)
-                                        </div>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center font-medium">
+                                        {item.qtdParcelas}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                        {item.parcelasDias} dias
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {item.acrescimoPreco > 0 ? (

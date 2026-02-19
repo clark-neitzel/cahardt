@@ -357,6 +357,30 @@ const DetalheCliente = () => {
                                     <option key={c.id} value={c.idCondicao}>{c.nomeCondicao}</option>
                                 ))}
                             </select>
+                            {/* Detalhes da Condição Selecionada */}
+                            {formData.Condicao_de_pagamento && (() => {
+                                const selected = condicoesPagamento.find(c => c.idCondicao === formData.Condicao_de_pagamento);
+                                if (selected) {
+                                    return (
+                                        <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200 text-sm grid grid-cols-3 gap-2">
+                                            <div>
+                                                <span className="block text-xs text-gray-500">Parcelas</span>
+                                                <span className="font-semibold text-gray-900">{selected.qtdParcelas}x</span>
+                                            </div>
+                                            <div>
+                                                <span className="block text-xs text-gray-500">Dias</span>
+                                                <span className="font-semibold text-gray-900">{selected.parcelasDias} dias</span>
+                                            </div>
+                                            <div>
+                                                <span className="block text-xs text-gray-500">Acréscimo</span>
+                                                <span className={`font-semibold ${Number(selected.acrescimoPreco) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                    {Number(selected.acrescimoPreco) > 0 ? `+${selected.acrescimoPreco}%` : '0%'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                            })()}
                         </div>
 
                         {/* Localização GPS */}
