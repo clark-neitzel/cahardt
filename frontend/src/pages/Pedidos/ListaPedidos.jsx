@@ -133,25 +133,38 @@ const ListaPedidos = () => {
                         </div>
 
                         <div className="p-4 overflow-y-auto flex-1">
-                            <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                                 <div>
                                     <p className="text-xs text-gray-500 uppercase font-semibold">Cliente</p>
-                                    <p className="text-sm font-medium text-gray-900">{selectedPedido.cliente?.NomeFantasia || selectedPedido.cliente?.Nome || 'N/D'}</p>
+                                    <p className="text-sm font-medium text-gray-900 line-clamp-2">{selectedPedido.cliente?.NomeFantasia || selectedPedido.cliente?.Nome || 'N/D'}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-500 uppercase font-semibold">Vendedor</p>
-                                    <p className="text-sm font-medium text-gray-900">{selectedPedido.vendedor?.nome || 'N/D'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 uppercase font-semibold">Data e Hora</p>
+                                    <p className="text-xs text-gray-500 uppercase font-semibold">Emissão</p>
                                     <p className="text-sm font-medium text-gray-900">{new Date(selectedPedido.createdAt).toLocaleString('pt-BR')}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 uppercase font-semibold">Data da Entrega</p>
+                                    <p className="text-sm font-bold text-gray-900 bg-gray-100 inline-block px-2 py-0.5 rounded uppercase">{new Date(selectedPedido.dataVenda).toLocaleDateString('pt-BR')}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 uppercase font-semibold">Status de Envio</p>
                                     <div className="mt-1"><StatusBadge status={selectedPedido.statusEnvio} /></div>
                                     {selectedPedido.idVendaContaAzul && (
-                                        <p className="text-xs text-green-600 mt-1">ID ERP: {selectedPedido.idVendaContaAzul}</p>
+                                        <p className="text-xs text-green-600 mt-1 truncate">ID ERP: {selectedPedido.idVendaContaAzul}</p>
                                     )}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 mb-6 bg-blue-50 p-3 rounded border border-blue-100">
+                                <div>
+                                    <p className="text-xs text-blue-700 uppercase font-semibold">Condição de Pagamento</p>
+                                    <p className="text-sm font-medium text-blue-900">
+                                        Termo: {selectedPedido.qtdParcelas}x de {selectedPedido.intervaloDias}d
+                                    </p>
+                                    {selectedPedido.tipoPagamento && <p className="text-xs text-blue-800 font-bold mt-1">Meio de Pgto: {selectedPedido.tipoPagamento}</p>}
+                                </div>
+                                <div>
+                                    <p className="text-xs text-blue-700 uppercase font-semibold">Vendedor</p>
+                                    <p className="text-sm font-medium text-blue-900">{selectedPedido.vendedor?.nome || 'N/D'}</p>
                                 </div>
                             </div>
 
@@ -178,7 +191,7 @@ const ListaPedidos = () => {
                                         {selectedPedido.itens.map(item => (
                                             <div key={item.id} className="flex justify-between items-center bg-gray-50 p-3 rounded border border-gray-100">
                                                 <div className="flex-1">
-                                                    <p className="text-sm font-semibold text-gray-900">{item.descricao || item.produto?.nome || 'Produto Indisponível'}</p>
+                                                    <p className="text-sm font-semibold text-gray-900">{item.produto?.codigo ? `[${item.produto.codigo}] ` : ''}{item.produto?.nome || item.descricao || 'Produto Indisponível'}</p>
                                                     <p className="text-xs text-gray-500">{Number(item.quantidade)}x - R$ {Number(item.valor).toFixed(2).replace('.', ',')} / un</p>
                                                 </div>
                                                 <div className="font-bold text-gray-900">

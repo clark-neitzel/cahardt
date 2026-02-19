@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Save, User, ShoppingCart, DollarSign, Plus, Trash2, Calendar, FileText, AlertCircle, X, CheckCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, Save, User, ShoppingCart, DollarSign, Plus, Trash2, Calendar, FileText, AlertCircle, X, CheckCircle, ChevronDown } from 'lucide-react';
 import clienteService from '../../services/clienteService';
 import produtoService from '../../services/produtoService';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
@@ -31,6 +31,7 @@ const NovoPedido = () => {
     // Client/Product Search State
     const [clienteSearchText, setClienteSearchText] = useState('');
     const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+    const [mostrarCondicoesDropdown, setMostrarCondicoesDropdown] = useState(false);
 
     // Computed/Derived
     const [condicoesPermitidas, setCondicoesPermitidas] = useState([]);
@@ -158,8 +159,8 @@ const NovoPedido = () => {
 
             return {
                 ...item,
-                valorBase: valorBase,
-                flexUnitario: flexUnitario
+                valorBase: Number(valorBase.toFixed(2)),
+                flexUnitario: Number(flexUnitario.toFixed(2))
             };
         });
 
@@ -187,15 +188,15 @@ const NovoPedido = () => {
         calcularFlexTotal(novos);
     };
 
-    const atualizarItem = async (idToUpdate, field, value) => {
+    const atualizarItem = async (idToUpdate, updates) => {
         let novosItens = [...itens];
         const idx = novosItens.findIndex(i => i.id === idToUpdate);
         if (idx === -1) return;
 
-        let item = { ...novosItens[idx], [field]: value };
+        let item = { ...novosItens[idx], ...updates };
 
-        if (field === 'produtoId' && value) {
-            const produto = produtos.find(p => p.id === value);
+        if ('produtoId' in updates && updates.produtoId) {
+            const produto = produtos.find(p => p.id === updates.produtoId);
             if (produto) {
                 const acrescimo = condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0;
                 const precoTabela = Number(produto.valorVenda) || 0;
@@ -205,32 +206,44 @@ const NovoPedido = () => {
 
                 if (clienteId) {
                     try {
-                        const ultimo = await pedidoService.obterUltimoPreco(clienteId, value);
+                        const ultimo = await pedidoService.obterUltimoPreco(clienteId, updates.produtoId);
                         if (ultimo && ultimo.valor) {
                             valorPraticado = Number(ultimo.valor);
                         }
                     } catch (e) { }
                 }
 
-                item.valorBase = valorBase;
-                item.valorUnitario = valorPraticado;
-                item.flexUnitario = valorPraticado - valorBase;
+                item.valorBase = Number(valorBase.toFixed(2));
+                item.valorUnitario = Number(valorPraticado.toFixed(2));
+                item.flexUnitario = Number((item.valorUnitario - item.valorBase).toFixed(2));
                 item.quantidade = 1;
                 item.search = produto.nome;
                 item.showDropdown = false;
             }
+        } else if ('produtoId' in updates && updates.produtoId === '') {
+            item.valorBase = 0;
+            item.valorUnitario = 0;
+            item.flexUnitario = 0;
+            item.quantidade = 1;
         }
 
-        if (field === 'quantidade' || field === 'valorUnitario') {
-            const numVal = Number(value.toString().replace(',', '.')) || 0;
-            if (field === 'valorUnitario') {
-                item.flexUnitario = numVal - item.valorBase;
-            }
+        if ('quantidade' in updates || 'valorUnitario' in updates) {
+            const numValQtd = 'quantidade' in updates ? Number(updates.quantidade.toString().replace(',', '.')) || 0 : item.quantidade;
+            const numValVal = 'valorUnitario' in updates ? Number(updates.valorUnitario.toString().replace(',', '.')) || 0 : item.valorUnitario;
+
+            item.quantidade = numValQtd;
+            item.valorUnitario = numValVal;
+            item.flexUnitario = Number((item.valorUnitario - item.valorBase).toFixed(2));
         }
 
-        novosItens[idx] = item;
-        setItens(novosItens);
-        calcularFlexTotal(novosItens);
+        setItens(prevItens => {
+            const pIdx = prevItens.findIndex(i => i.id === idToUpdate);
+            if (pIdx === -1) return prevItens;
+            const newList = [...prevItens];
+            newList[pIdx] = { ...newList[pIdx], ...item };
+            setTimeout(() => calcularFlexTotal(newList), 0);
+            return newList;
+        });
     };
 
     const handleSalvar = (statusEnvio) => {
@@ -431,16 +444,35 @@ const NovoPedido = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                             <DollarSign className="h-4 w-4 mr-1" /> Condição de Pagamento
                         </label>
-                        <select
-                            className="w-full border border-gray-300 rounded-md p-3 bg-white text-gray-900 font-bold focus:ring-primary"
-                            value={condicaoPagamentoId}
-                            onChange={e => setCondicaoPagamentoId(e.target.value)}
-                        >
-                            <option value="" disabled>Selecione exatamente uma condição...</option>
-                            {condicoesPermitidas.map(c => (
-                                <option key={c.idCondicao} value={c.idCondicao}>{c.nomeCondicao}</option>
-                            ))}
-                        </select>
+                        <div className="relative">
+                            <div
+                                className="w-full border border-gray-300 rounded-md p-3 bg-white text-gray-900 font-bold focus:ring-primary cursor-pointer flex justify-between items-center"
+                                onClick={() => setMostrarCondicoesDropdown(!mostrarCondicoesDropdown)}
+                            >
+                                <span>{condicaoSelecionada ? condicaoSelecionada.nomeCondicao : 'Selecione exatamente uma condição...'}</span>
+                                <ChevronDown className="h-4 w-4 text-gray-400" />
+                            </div>
+
+                            {mostrarCondicoesDropdown && (
+                                <ul className="absolute z-30 mt-1 w-full bg-white border border-gray-200 shadow-xl max-h-60 rounded-md py-1 text-base ring-0 overflow-auto sm:text-sm">
+                                    {condicoesPermitidas.map(c => (
+                                        <li
+                                            key={c.idCondicao}
+                                            className={`text-gray-900 cursor-pointer select-none relative py-3 pl-3 pr-4 hover:bg-gray-100 border-b border-gray-50 last:border-0 font-bold ${condicaoPagamentoId === c.idCondicao ? 'bg-blue-50 text-blue-800' : ''}`}
+                                            onClick={() => {
+                                                setCondicaoPagamentoId(c.idCondicao);
+                                                setMostrarCondicoesDropdown(false);
+                                            }}
+                                        >
+                                            <div className="flex justify-between items-center w-full">
+                                                <span>{c.nomeCondicao}</span>
+                                                {condicaoPagamentoId === c.idCondicao && <CheckCircle className="h-4 w-4 text-blue-600" />}
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
                         {condicoesPermitidas.length === 0 && (
                             <p className="text-red-500 text-xs mt-2">O Administrador não habilitou nenhuma tabela de preço para este cliente.</p>
                         )}
@@ -485,17 +517,17 @@ const NovoPedido = () => {
                                                 placeholder="Digite nome ou código do produto..."
                                                 value={item.search}
                                                 onChange={e => {
-                                                    atualizarItem(item.id, 'search', e.target.value);
-                                                    atualizarItem(item.id, 'showDropdown', true);
+                                                    let updates = { search: e.target.value, showDropdown: true };
                                                     if (e.target.value === '') {
-                                                        atualizarItem(item.id, 'produtoId', '');
+                                                        updates.produtoId = '';
                                                     }
+                                                    atualizarItem(item.id, updates);
                                                 }}
                                                 onFocus={(e) => {
                                                     e.target.select();
-                                                    atualizarItem(item.id, 'showDropdown', true);
+                                                    atualizarItem(item.id, { showDropdown: true });
                                                 }}
-                                                onBlur={() => setTimeout(() => atualizarItem(item.id, 'showDropdown', false), 200)}
+                                                onBlur={() => setTimeout(() => atualizarItem(item.id, { showDropdown: false }), 200)}
                                             />
                                             {item.produtoId && (
                                                 <CheckCircle className="absolute right-3 top-2.5 h-4 w-4 text-green-600" />
@@ -511,7 +543,7 @@ const NovoPedido = () => {
                                                                 key={p.id}
                                                                 className="text-gray-900 cursor-pointer select-none relative py-2 pl-3 pr-4 hover:bg-gray-100 border-b border-gray-100"
                                                                 onClick={() => {
-                                                                    atualizarItem(item.id, 'produtoId', p.id);
+                                                                    atualizarItem(item.id, { produtoId: p.id, showDropdown: false });
                                                                 }}
                                                             >
                                                                 <span className="font-bold block truncate">{p.nome}</span>
@@ -540,7 +572,7 @@ const NovoPedido = () => {
                                                         className="w-full border border-gray-300 bg-white text-gray-900 rounded p-2 text-center text-base font-bold shadow-inner"
                                                         value={item.quantidade}
                                                         onFocus={e => e.target.select()}
-                                                        onChange={e => atualizarItem(item.id, 'quantidade', e.target.value)}
+                                                        onChange={e => atualizarItem(item.id, { quantidade: e.target.value })}
                                                     />
                                                 </div>
                                                 <div>
@@ -551,7 +583,7 @@ const NovoPedido = () => {
                                                         className="w-full border border-gray-300 bg-white text-gray-900 rounded p-2 text-center text-base font-bold shadow-inner"
                                                         value={item.valorUnitario}
                                                         onFocus={e => e.target.select()}
-                                                        onChange={e => atualizarItem(item.id, 'valorUnitario', e.target.value)}
+                                                        onChange={e => atualizarItem(item.id, { valorUnitario: e.target.value })}
                                                     />
                                                     <div className="text-xs mt-1 text-center bg-gray-50 p-1 rounded border border-gray-100">
                                                         <span className="text-gray-500 block mb-0.5">Base (c/ Acrésc.): <b>{item.valorBase.toFixed(2)}</b></span>

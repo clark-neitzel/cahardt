@@ -20,7 +20,11 @@ const pedidoService = {
                 vendedor: {
                     select: { nome: true }
                 },
-                itens: true
+                itens: {
+                    include: {
+                        produto: { select: { nome: true, codigo: true } }
+                    }
+                }
             },
             orderBy: { createdAt: 'desc' }
         });
