@@ -147,4 +147,32 @@ Antes de escrever QUALQUER código de integração ou configuração:
 
 ---
 
+## 🚨 REGRA DE OURO: DIAGNÓSTICO DE AMBIENTE VS CÓDIGO
+
+**Antes de assumir que o código está quebrado, verifique o AMBIENTE.**
+
+Se você receber erros como `Connection refused`, `Can't reach database`, `500 Internal Server Error` (em rotas novas):
+
+1.  **PARE.** Não altere uma linha de código sequer.
+2.  **VERIFIQUE:**
+    *   O Banco de Dados está rodando? (`pg_isready`, `docker ps`, `lsof -i :5432`)
+    *   A API está rodando na porta certa?
+    *   As variáveis de ambiente (`.env`) estão corretas?
+3.  **AÇÃO:** Se o ambiente estiver quebrado, conserte o AMBIENTE ou avise o usuário. **NUNCA** tente "contornar" um banco desligado criando código complexo ou mocks não solicitados.
+
+## 🎯 FIDELIDADE AOS DADOS (DATA DRIVEN)
+
+Se o usuário fornecer uma planilha, CSV ou lista de dados (IDs, Nomes, Valores):
+
+1.  **COPIE EXATAMENTE.** Não altere, não "melhore", não gere UUIDs aleatórios se o usuário deu IDs fixos.
+2.  **USE SEEDS.** Garanta que esses dados existam no banco via `migrationService` ou seed script.
+3.  **NÃO INVENTE.** Se o usuário pediu "Banco Caixinha com ID X", o sistema TEM que ter "Banco Caixinha com ID X".
+
+## 📉 PRINCÍPIO DA SIMPLICIDADE (KISS)
+
+Se o usuário pedir: "Crie uma tabela para X e popule com Y":
+*   **FAÇA:** Criar Tabela + Insert (Migration) + Listagem Simples.
+*   **NÃO FAÇA:** Criar arquitetura de microserviços, factories complexas, validadores excessivos ou tentar adivinhar regras de negócio futuras. Resolva o problema atual da forma mais direta possível.
+
 **RESUMO:** Não seja criativo com configurações. Seja preciso e baseado em documentação verificada.
+
