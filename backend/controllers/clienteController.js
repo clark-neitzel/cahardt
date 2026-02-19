@@ -116,9 +116,9 @@ const clienteController = {
                     Dia_de_venda,
                     Ponto_GPS,
                     Observacoes_Gerais,
-                    idVendedor,
+                    idVendedor: idVendedor === "" ? null : idVendedor,
                     Formas_Atendimento,
-                    Condicao_de_pagamento,
+                    Condicao_de_pagamento: Condicao_de_pagamento === "" ? null : Condicao_de_pagamento,
                     condicoes_pagamento_permitidas
                 }
             });

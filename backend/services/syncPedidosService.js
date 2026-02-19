@@ -28,8 +28,7 @@ const syncPedidosService = {
                         include: {
                             produto: true
                         }
-                    },
-                    condicaoPag: true
+                    }
                 },
                 take: 5,
                 orderBy: {
@@ -116,19 +115,13 @@ const syncPedidosService = {
             const d = new Date(pedido.dataVenda);
             const dataVendaStr = d.toISOString().split('T')[0];
 
-            const condPag = pedido.condicaoPag || {};
-            const acrescimoDecimal = Number(condPag.acrescimoPreco || 0);
-
-            // Calculate if there's any addition to create standard descriptions or calculate final installment
-            const installmentValue = Number((totalPedido / (Number(pedido.qtdParcelas) || 1)).toFixed(2));
-
             // Data de vencimento baseada no intervalo
+            const installmentValue = Number((totalPedido / (Number(pedido.qtdParcelas) || 1)).toFixed(2));
             const dataVenc = new Date(d);
             dataVenc.setDate(dataVenc.getDate() + (pedido.intervaloDias || 0));
             const dataVencStr = dataVenc.toISOString().split('T')[0];
 
             let contaFinId = pedido.idContaFinanceira || undefined;
-            if (!contaFinId && condPag.bancoId) contaFinId = condPag.bancoId; // Use standard bank from Condition
 
             const payload = {
                 id_cliente: pedido.cliente.contaAzulId || pedido.cliente.UUID,
@@ -144,9 +137,9 @@ const syncPedidosService = {
                     tipo: "PRODUTO"
                 })),
                 condicao_pagamento: {
-                    tipo_pagamento: pedido.tipoPagamento || condPag.tipoPagamento || "A_PRAZO",
+                    tipo_pagamento: pedido.tipoPagamento || "A_PRAZO",
                     id_conta_financeira: contaFinId,
-                    opcao_condicao_pagamento: pedido.opcaoCondicaoPagamento || condPag.opcaoCondicao || "Personalizado",
+                    opcao_condicao_pagamento: pedido.opcaoCondicaoPagamento || "Personalizado",
                     pagamento_a_vista: false, // Pode ser dinâmico em futuras issues
                     parcelas: []
                 }
