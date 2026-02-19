@@ -136,6 +136,87 @@ const pedidoService = {
         });
     },
 
+    editar: async (id, dadosPedido) => {
+        const { clienteId, vendedorId, itens, statusEnvio, observacoes, dataVenda, opcaoCondicaoPagamento } = dadosPedido;
+
+        return await prisma.$transaction(async (tx) => {
+            const pedidoAntigo = await tx.pedido.findUnique({
+                where: { id },
+                include: { itens: true }
+            });
+
+            if (!pedidoAntigo) throw new Error('Pedido não encontrado');
+            if (pedidoAntigo.statusEnvio !== 'ABERTO') throw new Error('Só é permitido editar pedidos em Rascunho (Em Aberto).');
+
+            let totalPedido = 0;
+            let flexTotalPedido = 0;
+
+            const novosItens = [];
+            for (const item of (itens || [])) {
+                totalPedido += Number(item.valorUnitario) * Number(item.quantidade);
+                flexTotalPedido += Number(item.flexUnitario) * Number(item.quantidade);
+            }
+
+            // Exclui os itens anteriores
+            await tx.pedidoItem.deleteMany({
+                where: { pedidoId: id }
+            });
+
+            const pedidoAtualizado = await tx.pedido.update({
+                where: { id },
+                data: {
+                    clienteId,
+                    vendedorId,
+                    total: totalPedido,
+                    flexTotal: flexTotalPedido,
+                    statusEnvio,
+                    observacoes,
+                    opcaoCondicaoPagamento,
+                    dataVenda: dataVenda ? new Date(dataVenda) : new Date(),
+                    itens: {
+                        create: (itens || []).map(item => ({
+                            produtoId: item.produtoId,
+                            quantidade: Number(item.quantidade),
+                            valorUnitario: Number(item.valorUnitario),
+                            valorBase: Number(item.valorBase),
+                            valorGerado: Number(item.flexUnitario)
+                        }))
+                    }
+                },
+                include: {
+                    itens: true
+                }
+            });
+
+            // Se for finalizado, abate o Flex (visto que antes estava em ABERTO e não abateu)
+            if (statusEnvio === 'ENVIAR') {
+                const vendedor = await tx.vendedor.findUnique({ where: { id: vendedorId } });
+                if (vendedor) {
+                    const novoFlexDisponivel = parseFloat(vendedor.flexDisponivel) + flexTotalPedido;
+                    const limiteFlexAprovado = parseFloat(vendedor.flexMensal);
+
+                    if (novoFlexDisponivel < 0 && Math.abs(novoFlexDisponivel) > limiteFlexAprovado) {
+                        throw new Error(`Saldo Flex insuficiente para finalizar. Faltam R$ ${Math.abs(novoFlexDisponivel).toFixed(2)}`);
+                    }
+
+                    await tx.vendedor.update({
+                        where: { id: vendedorId },
+                        data: { flexDisponivel: novoFlexDisponivel }
+                    });
+
+                    await tx.cliente.update({
+                        where: { UUID: clienteId },
+                        data: {
+                            Flex_utilizado: { increment: Math.abs(flexTotalPedido) }
+                        }
+                    });
+                }
+            }
+
+            return pedidoAtualizado;
+        });
+    },
+
     // 3. Buscar último preço de um produto vendido para um cliente
     obterUltimoPreco: async (clienteId, produtoId) => {
         // Busca o último item de pedido deste produto para este cliente

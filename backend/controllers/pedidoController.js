@@ -23,6 +23,18 @@ const pedidoController = {
         }
     },
 
+    atualizar: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const dadosPedido = req.body;
+            const pedidoAtualizado = await pedidoService.editar(id, dadosPedido);
+            res.json(pedidoAtualizado);
+        } catch (error) {
+            console.error('Erro ao atualizar pedido:', error);
+            res.status(400).json({ error: error.message });
+        }
+    },
+
     detalhar: async (req, res) => {
         try {
             const id = req.params.id;

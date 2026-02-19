@@ -257,6 +257,7 @@ function App() {
           {/* Pedidos */}
           <Route path="/pedidos" element={<ListaPedidos />} />
           <Route path="/pedidos/novo" element={<NovoPedido />} />
+          <Route path="/pedidos/editar/:id" element={<NovoPedido />} />
 
           {/* Clientes */}
           <Route path="/clientes" element={<ListaClientes />} />

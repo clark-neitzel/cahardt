@@ -107,10 +107,16 @@ const ListaPedidos = () => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <button
-                                                className="text-primary hover:text-blue-900"
-                                                onClick={() => setSelectedPedido(pedido)}
+                                                className="font-bold text-primary hover:text-blue-900"
+                                                onClick={() => {
+                                                    if (pedido.statusEnvio === 'ABERTO') {
+                                                        navigate(`/pedidos/editar/${pedido.id}`);
+                                                    } else {
+                                                        setSelectedPedido(pedido);
+                                                    }
+                                                }}
                                             >
-                                                Detalhes
+                                                {pedido.statusEnvio === 'ABERTO' ? 'Editar' : 'Detalhes'}
                                             </button>
                                         </td>
                                     </tr>

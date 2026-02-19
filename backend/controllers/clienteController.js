@@ -98,7 +98,16 @@ const clienteController = {
     atualizar: async (req, res) => {
         try {
             const { uuid } = req.params;
-            const { Dia_de_entrega, Dia_de_venda, Ponto_GPS, Observacoes_Gerais, idVendedor, Formas_Atendimento } = req.body;
+            const {
+                Dia_de_entrega,
+                Dia_de_venda,
+                Ponto_GPS,
+                Observacoes_Gerais,
+                idVendedor,
+                Formas_Atendimento,
+                Condicao_de_pagamento,
+                condicoes_pagamento_permitidas
+            } = req.body;
 
             const cliente = await prisma.cliente.update({
                 where: { UUID: uuid },
@@ -108,7 +117,9 @@ const clienteController = {
                     Ponto_GPS,
                     Observacoes_Gerais,
                     idVendedor,
-                    Formas_Atendimento
+                    Formas_Atendimento,
+                    Condicao_de_pagamento,
+                    condicoes_pagamento_permitidas
                 }
             });
 

@@ -357,7 +357,7 @@ const DetalheCliente = () => {
                             >
                                 <option value="">Selecione uma condição padrão...</option>
                                 {condicoesPagamento.map(c => (
-                                    <option key={c.id} value={c.idCondicao}>{c.nomeCondicao}</option>
+                                    <option key={c.id} value={c.id}>{c.nomeCondicao}</option>
                                 ))}
                             </select>
 

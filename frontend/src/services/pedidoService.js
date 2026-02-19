@@ -25,6 +25,12 @@ const pedidoService = {
     criar: async (dadosPedido) => {
         const response = await api.post('/pedidos', dadosPedido);
         return response.data;
+    },
+
+    // Atualizar Pedido Existente (Apenas Rascunho/Em Aberto)
+    atualizar: async (id, dadosPedido) => {
+        const response = await api.put(`/pedidos/${id}`, dadosPedido);
+        return response.data;
     }
 };
 

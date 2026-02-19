@@ -313,7 +313,11 @@ const NovoPedido = () => {
         };
 
         try {
-            await pedidoService.criar(payload);
+            if (editId) {
+                await pedidoService.atualizar(editId, payload);
+            } else {
+                await pedidoService.criar(payload);
+            }
             navigate('/pedidos');
         } catch (error) {
             const msg = error.response?.data?.error || "Erro ao salvar pedido.";
@@ -335,7 +339,9 @@ const NovoPedido = () => {
                         <button onClick={() => navigate(-1)} className="mr-3 text-gray-600">
                             <ArrowLeft className="h-6 w-6" />
                         </button>
-                        <h1 className="text-xl font-bold text-gray-900">Novo Pedido</h1>
+                        <h1 className="text-xl font-bold text-gray-900">
+                            {editId ? 'Editar Rascunho' : 'Novo Pedido'}
+                        </h1>
                     </div>
                     {/* Botão claro para salvar rascunho sem enviar */}
                     <button
@@ -549,6 +555,7 @@ const NovoPedido = () => {
                                             {item.showDropdown && !item.produtoId && (
                                                 <ul className="absolute z-40 mt-1 w-full bg-white border border-gray-200 shadow-2xl max-h-56 rounded-md py-1 text-sm ring-1 ring-black ring-opacity-5 overflow-auto">
                                                     {produtos
+                                                        .filter(p => !itens.some(i => i.produtoId === p.id && i.id !== item.id))
                                                         .filter(p => !item.search || (p.nome && p.nome.toLowerCase().includes(item.search.toLowerCase())) || (p.codigo && p.codigo.toLowerCase().includes(item.search.toLowerCase())))
                                                         .slice(0, 50)
                                                         .map(p => (

@@ -14,4 +14,7 @@ router.get('/:id', pedidoController.detalhar);
 // Criar Novo Pedido
 router.post('/', pedidoController.criar);
 
+// Editar Pedido (Apenas ABERTO)
+router.put('/:id', pedidoController.atualizar);
+
 module.exports = router;
