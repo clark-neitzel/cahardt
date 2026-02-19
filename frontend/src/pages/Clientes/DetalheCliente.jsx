@@ -360,8 +360,8 @@ const DetalheCliente = () => {
                                 onChange={(e) => setFormData({ ...formData, Condicao_de_pagamento: e.target.value })}
                             >
                                 <option value="">Selecione uma condição padrão...</option>
-                                {condicoesPagamentoCA.map(c => (
-                                    <option key={c.id} value={c.id}>{c.nome}</option>
+                                {condicoesPagamento.map(c => (
+                                    <option key={c.id} value={c.id}>{c.nomeCondicao}</option>
                                 ))}
                             </select>
 

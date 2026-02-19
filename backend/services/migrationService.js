@@ -225,7 +225,16 @@ const migrationService = {
                 "pedido_id" TEXT NOT NULL,
                 "produto_id" TEXT NOT NULL,
                 CONSTRAINT "pedido_itens_pkey" PRIMARY KEY ("id")
-            );`
+            );`,
+
+            // Update 10: Remove FK de CondicaoPagamento em clientes (agora campo livre com ID da TabelaPreco)
+            `DO $$ BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'clientes_Condicao_de_pagamento_fkey'
+                ) THEN
+                    ALTER TABLE "clientes" DROP CONSTRAINT "clientes_Condicao_de_pagamento_fkey";
+                END IF;
+            END $$;`
         ];
 
         for (const [index, cmd] of commands.entries()) {

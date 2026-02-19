@@ -114,7 +114,7 @@ model Cliente {
   // Campos Internos (App Hardt)
   Dia_de_entrega                 String? // Ex: "SEG,QUA"
   Dia_de_venda                   String? // Ex: "TER,QUI"
-  Condicao_de_pagamento          String? // FK ID para CondicaoPagamento
+  Condicao_de_pagamento          String? // ID da TabelaPreco (sem FK)
   condicoes_pagamento_permitidas String[] @default([]) // Lista de IDs de tabelas de preço/condições
   Flex_utilizado                 Decimal  @default(0) @db.Decimal(14, 2)
   Ponto_GPS                      String? // "lat,lng"
@@ -123,8 +123,6 @@ model Cliente {
   Formas_Atendimento             String[] @default([])
 
   updated_at DateTime @updatedAt
-
-  condicaoPagamento CondicaoPagamento? @relation(fields: [Condicao_de_pagamento], references: [id])
 
   idVendedor String?   @map("id_vendedor")
   vendedor   Vendedor? @relation(fields: [idVendedor], references: [id])
@@ -206,8 +204,6 @@ model CondicaoPagamento {
   ativo     Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  clientes Cliente[]
 
   @@map("condicoes_pagamento")
 }
