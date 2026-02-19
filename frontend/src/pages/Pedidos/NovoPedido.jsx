@@ -374,11 +374,11 @@ const NovoPedido = () => {
                             )}
                         </div>
 
-                        {showClienteDropdown && !clienteId && clienteSearchText && (
+                        {showClienteDropdown && !clienteId && (
                             <ul className="absolute z-30 mt-1 w-full bg-white border border-gray-200 shadow-xl max-h-60 rounded-md py-1 text-base ring-0 overflow-auto sm:text-sm">
                                 {clientes
-                                    .filter(c => (c.NomeFantasia || c.Nome).toLowerCase().includes(clienteSearchText.toLowerCase()) || (c.Documento || '').includes(clienteSearchText))
-                                    .slice(0, 30)
+                                    .filter(c => !clienteSearchText || (c.NomeFantasia || c.Nome).toLowerCase().includes(clienteSearchText.toLowerCase()) || (c.Documento || '').includes(clienteSearchText))
+                                    .slice(0, 50)
                                     .map(c => (
                                         <li
                                             key={c.UUID}
@@ -501,11 +501,11 @@ const NovoPedido = () => {
                                                 <CheckCircle className="absolute right-3 top-2.5 h-4 w-4 text-green-600" />
                                             )}
 
-                                            {item.showDropdown && item.search && !item.produtoId && (
+                                            {item.showDropdown && !item.produtoId && (
                                                 <ul className="absolute z-40 mt-1 w-full bg-white border border-gray-200 shadow-2xl max-h-56 rounded-md py-1 text-sm ring-1 ring-black ring-opacity-5 overflow-auto">
                                                     {produtos
-                                                        .filter(p => p.nome.toLowerCase().includes(item.search.toLowerCase()) || p.codigo.includes(item.search))
-                                                        .slice(0, 15)
+                                                        .filter(p => !item.search || (p.nome && p.nome.toLowerCase().includes(item.search.toLowerCase())) || (p.codigo && p.codigo.toLowerCase().includes(item.search.toLowerCase())))
+                                                        .slice(0, 50)
                                                         .map(p => (
                                                             <li
                                                                 key={p.id}
