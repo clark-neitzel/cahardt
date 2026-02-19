@@ -166,8 +166,42 @@ Usado para compatibilidade com sistemas antigos que ainda guardam o ID numérico
 { "uuids": ["UUID-1", "UUID-2"] }
 ```
 
-### Excluir Pessoas
-**POST** `/v1/pessoas/excluir`
-```json
-{ "uuids": ["UUID-1", "UUID-2"] }
-```
+---
+
+## 8. Filtros Avançados (Hardt App)
+
+A aplicação estende a API padrão com filtros específicos para a operação da Hardt:
+
+*   **Status**: `Ativo`, `Inativo`, `Todos`.
+*   **Cidade**: Filtro por cidades existentes na base de clientes.
+*   **Vendedor**: Filtro por vendedor responsável (`id_vendedor`).
+*   **Dia de Entrega**: Segunda a Sábado.
+*   **Dia de Venda**: Segunda a Sábado.
+*   **Condição de Pagamento**: Filtro por ID da condição.
+
+## 9. Ações em Lote (Bulk Actions)
+
+Para facilitar a gestão, o sistema permite ações em massa na listagem de clientes:
+
+### Alteração em Lote
+Permite alterar campos específicos de múltiplos clientes selecionados simultaneamente:
+1.  **Vendedor**: Atribuir carteira de clientes a um novo vendedor.
+2.  **Dia de Entrega**: Otimizar rotas logísticas.
+3.  **Dia de Venda**: Reorganizar agenda comercial.
+
+> **Importante:** Estas ações atualizam o banco de dados local (`clientes`) e devem sincronizar com o Conta Azul (se houver campo correspondente via Custom fields ou Observação, conforme regra de negócio de Sync).
+
+## 10. Novos Campos (Extensão Hardt)
+
+Além dos campos padrão do Conta Azul, a tabela `clientes` local possui:
+
+| Campo | Tipo | Descrição |
+| :--- | :--- | :--- |
+| `id_vendedor` | String | ID do Vendedor responsável (FK `vendedores`). |
+| `Dia_de_entrega` | String | Dia da semana fixo para entrega. |
+| `Dia_de_venda` | String | Dia da semana fixo para visita/contato. |
+| `Condicao_de_pagamento` | String | ID da tabela de preços (`1000`, `BOL_7`, etc). |
+| `Formas_Atendimento` | String[] | Array de canais (`WHATSAPP`, `VISITA`, etc). |
+
+Estes campos são fundamentais para o funcionamento dos filtros e da lógica de vendas do App.
+
