@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, MapPin, Save, User, ShoppingCart, DollarSign, Plus, Trash2, Calendar, FileText, AlertCircle, X, CheckCircle, ChevronDown } from 'lucide-react';
 import clienteService from '../../services/clienteService';
 import produtoService from '../../services/produtoService';
@@ -11,6 +11,7 @@ const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
 const NovoPedido = () => {
     const navigate = useNavigate();
+    const { id: editId } = useParams();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
