@@ -129,6 +129,7 @@ const syncPedidosService = {
                 situacao: "APROVADO", // Envia aprovado pra já reservar estoque
                 data_venda: dataVendaStr,
                 id_categoria: pedido.idCategoria || "b2771a7a-2120-4af5-affb-8e6fac7e48af", // Default to Receitas de Vendas
+                id_natureza_operacao: "915a96fe-d5ca-11f0-8ea0-e7ffa7159b62", // Default to Venda de Mercadorias / Produtos
                 observacoes: pedido.observacoes ? `${pedido.observacoes}\n(Gerado via App Mobile Hardt - GPS: ${pedido.latLng || 'N/D'})` : `(Gerado via App Mobile Hardt) - GPS: ${pedido.latLng || 'N/D'}`,
                 itens: pedido.itens.map(item => ({
                     id: item.produto.contaAzulId, // id real do produto no CA
