@@ -178,8 +178,8 @@ const pedidoService = {
             const pedidoAtualizado = await tx.pedido.update({
                 where: { id },
                 data: {
-                    clienteId,
-                    vendedorId,
+                    cliente: { connect: { UUID: clienteId } },
+                    ...(vendedorId ? { vendedor: { connect: { id: vendedorId } } } : {}),
                     total: totalPedido,
                     flexTotal: flexTotalPedido,
                     statusEnvio,
