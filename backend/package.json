@@ -7,7 +7,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "migrate:deploy": "prisma migrate deploy",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "clean:clientes": "node scripts/clean-clientes-teste.js"
   },
   "keywords": [],
   "author": "",
