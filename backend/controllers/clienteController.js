@@ -78,7 +78,6 @@ const clienteController = {
             const cliente = await prisma.cliente.findUnique({
                 where: { UUID: uuid },
                 include: {
-                    condicaoPagamento: true,
                     arquivos: true
                 }
             });
