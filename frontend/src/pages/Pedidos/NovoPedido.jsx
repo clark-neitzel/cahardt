@@ -103,20 +103,28 @@ const NovoPedido = () => {
             // Permitted Conditions
             let permitidas = [];
 
-            if (cliente.condicoes_pagamento_permitidas && cliente.condicoes_pagamento_permitidas.length > 0) {
-                const idsArray = cliente.condicoes_pagamento_permitidas.split(',').map(s => s.trim());
-                permitidas = todasCondicoes.filter(c => idsArray.includes(c.idCondicao));
+            let idsArray = [];
+            if (Array.isArray(cliente.condicoes_pagamento_permitidas)) {
+                idsArray = cliente.condicoes_pagamento_permitidas;
+            } else if (typeof cliente.condicoes_pagamento_permitidas === 'string' && cliente.condicoes_pagamento_permitidas.trim().length > 0) {
+                idsArray = cliente.condicoes_pagamento_permitidas.split(',').map(s => s.trim());
+            }
+
+            if (idsArray.length > 0) {
+                permitidas = todasCondicoes.filter(c => idsArray.includes(c.idCondicao) || idsArray.includes(c.id));
             } else if (cliente.Condicao_de_pagamento) {
-                const padrao = todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento);
+                const padrao = todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento);
                 if (padrao) permitidas = [padrao];
             }
 
             setCondicoesPermitidas(permitidas);
 
+            let padraoCliente = todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento);
+
             if (permitidas.length === 1) {
                 setCondicaoPagamentoId(permitidas[0].idCondicao);
-            } else if (cliente.Condicao_de_pagamento && permitidas.some(c => c.idCondicao === cliente.Condicao_de_pagamento)) {
-                setCondicaoPagamentoId(cliente.Condicao_de_pagamento);
+            } else if (padraoCliente && permitidas.some(c => c.idCondicao === padraoCliente.idCondicao)) {
+                setCondicaoPagamentoId(padraoCliente.idCondicao);
             } else {
                 setCondicaoPagamentoId('');
             }
