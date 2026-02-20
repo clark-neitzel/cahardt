@@ -144,6 +144,7 @@ const NovoPedido = () => {
 
         const diasVisita = cliente.Dia_de_entrega || ''; // "SEG,QUA"
         if (diasVisita && !diasVisita.includes(dayOfWeekStr)) {
+            if (!isEncaixe) alert(`Aviso de Encaixe: A data escolhida não cai em um dia da semana cadastrado para entrega p/ este cliente. Este pedido será marcado como Encaixe.`);
             setIsEncaixe(true);
         } else {
             setIsEncaixe(false);
@@ -189,7 +190,7 @@ const NovoPedido = () => {
 
     const adicionarProduto = () => {
         setItens([
-            { id: Date.now().toString(), produtoId: '', quantidade: 1, valorUnitario: 0, valorBase: 0, flexUnitario: 0, search: '', showDropdown: false },
+            { id: Date.now().toString() + Math.random().toString(), produtoId: '', quantidade: 1, valorUnitario: 0, valorBase: 0, flexUnitario: 0, search: '', showDropdown: false },
             ...itens
         ]);
     };
@@ -366,7 +367,7 @@ const NovoPedido = () => {
                 </div>
             </div>
 
-            <div className="p-4 space-y-4 max-w-lg mx-auto">
+            <div className="p-4 space-y-4 max-w-5xl mx-auto">
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                         <User className="h-4 w-4 mr-1" /> Cliente
@@ -405,15 +406,7 @@ const NovoPedido = () => {
                             )}
                         </div>
 
-                        {clienteId && condicoesPermitidas.length === 0 && (
-                            <div className="mt-4 bg-red-50 border border-red-200 p-4 rounded text-sm text-red-700 shadow-sm flex items-start animate-fade-in">
-                                <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 text-red-600" />
-                                <div>
-                                    <p className="font-bold mb-1 uppercase">Atenção!</p>
-                                    <p>Nenhuma Tabela de Preço ou Condição de Pagamento foi vinculada a este cliente. É <b>obrigatório</b> acessar Editar no WebApp e selecionar Lote e Tabela para prosseguir com a venda.</p>
-                                </div>
-                            </div>
-                        )}
+
 
                         {showClienteDropdown && !clienteId && (
                             <ul className="absolute z-30 mt-1 w-full bg-white border border-gray-200 shadow-xl max-h-60 rounded-md py-1 text-base ring-0 overflow-auto sm:text-sm">
@@ -457,12 +450,6 @@ const NovoPedido = () => {
                         />
                         {clienteSelecionado && clienteSelecionado.Dia_de_entrega && (
                             <p className="text-xs text-gray-500 mt-2">Dias cadastrados p/ cliente: <b>{clienteSelecionado.Dia_de_entrega}</b></p>
-                        )}
-                        {isEncaixe && (
-                            <div className="mt-2 text-xs flex items-start text-orange-700 bg-orange-50 p-2 rounded border border-orange-200">
-                                <AlertCircle className="h-4 w-4 mr-1 flex-shrink-0" />
-                                <span><b>Aviso de Encaixe:</b> A data escolhida não cai em um dia da semana cadastrado para entrega. Este pedido será marcado como Encaixe.</span>
-                            </div>
                         )}
                     </div>
                 )}
@@ -571,7 +558,8 @@ const NovoPedido = () => {
                                                             <li
                                                                 key={p.id}
                                                                 className="text-gray-900 cursor-pointer select-none relative py-2 pl-3 pr-4 hover:bg-gray-100 border-b border-gray-100"
-                                                                onClick={() => {
+                                                                onMouseDown={(e) => {
+                                                                    e.preventDefault(); // Previne o blur do input
                                                                     atualizarItem(item.id, { produtoId: p.id, showDropdown: false });
                                                                 }}
                                                             >
