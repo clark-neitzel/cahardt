@@ -549,7 +549,7 @@ const contaAzulService = {
                     await prisma.cliente.upsert({
                         where: { Documento: dadosCliente.Documento },
                         update: dadosCliente,
-                        create: { ...dadosCliente }
+                        create: { ...dadosCliente, UUID: c.id }
                     });
                     count++;
                 }

@@ -151,11 +151,24 @@ const pedidoService = {
             let totalPedido = 0;
             let flexTotalPedido = 0;
 
-            const novosItens = [];
-            for (const item of (itens || [])) {
-                totalPedido += Number(item.valorUnitario) * Number(item.quantidade);
-                flexTotalPedido += Number(item.flexUnitario) * Number(item.quantidade);
-            }
+            const novosItens = (itens || []).map(item => {
+                const valorDigitado = parseFloat(item.valor) || 0;
+                const valorBase = parseFloat(item.valorBase) || 0;
+                const qtd = parseFloat(item.quantidade) || 0;
+
+                const flexItem = (valorDigitado - valorBase) * qtd;
+
+                totalPedido += valorDigitado * qtd;
+                flexTotalPedido += flexItem;
+
+                return {
+                    produtoId: item.produtoId,
+                    quantidade: qtd,
+                    valor: valorDigitado,
+                    valorBase: valorBase,
+                    flexGerado: flexItem
+                };
+            });
 
             // Exclui os itens anteriores
             await tx.pedidoItem.deleteMany({
@@ -174,13 +187,7 @@ const pedidoService = {
                     opcaoCondicaoPagamento,
                     dataVenda: dataVenda ? new Date(dataVenda) : new Date(),
                     itens: {
-                        create: (itens || []).map(item => ({
-                            produtoId: item.produtoId,
-                            quantidade: Number(item.quantidade),
-                            valorUnitario: Number(item.valorUnitario),
-                            valorBase: Number(item.valorBase),
-                            valorGerado: Number(item.flexUnitario)
-                        }))
+                        create: novosItens
                     }
                 },
                 include: {
