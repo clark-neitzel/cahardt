@@ -31,6 +31,12 @@ const pedidoService = {
     atualizar: async (id, dadosPedido) => {
         const response = await api.put(`/pedidos/${id}`, dadosPedido);
         return response.data;
+    },
+
+    // Excluir Pedido Existente (Apenas Rascunho/Em Aberto)
+    excluir: async (id) => {
+        const response = await api.delete(`/pedidos/${id}`);
+        return response.data;
     }
 };
 

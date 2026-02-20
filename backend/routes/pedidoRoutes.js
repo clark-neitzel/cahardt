@@ -17,4 +17,7 @@ router.post('/', pedidoController.criar);
 // Editar Pedido (Apenas ABERTO)
 router.put('/:id', pedidoController.atualizar);
 
+// Excluir Pedido Existente (Apenas Rascunho/ABERTO/ERRO)
+router.delete('/:id', pedidoController.excluir);
+
 module.exports = router;

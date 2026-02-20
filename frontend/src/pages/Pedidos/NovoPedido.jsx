@@ -42,6 +42,9 @@ const NovoPedido = () => {
     // Flex Total
     const [flexTotal, setFlexTotal] = useState(0);
 
+    // Ref to prevent resetting the draft condition
+    const carregouDraftRef = React.useRef(false);
+
     useEffect(() => {
         carregarDadosBase();
     }, []);
@@ -65,6 +68,42 @@ const NovoPedido = () => {
             setClientes(clientesData.data?.filter(c => c.Ativo) || clientesData?.filter(c => c.Ativo) || []);
             setProdutos(produtosData.data || produtosData || []);
             setTodasCondicoes(condicoesData);
+
+            if (editId) {
+                try {
+                    const pd = await pedidoService.detalhar(editId);
+                    if (pd) {
+                        setClienteId(pd.clienteId);
+                        setObservacoes(pd.observacoes || '');
+                        if (pd.dataVenda) setDataEntrega(pd.dataVenda.split('T')[0]);
+
+                        const cond = condicoesData.find(c => c.tipoPagamento === pd.tipoPagamento && c.opcaoCondicao === pd.opcaoCondicaoPagamento);
+                        if (cond) {
+                            setTimeout(() => {
+                                setCondicaoPagamentoId(cond.idCondicao);
+                            }, 500); // Wait for the cliente effect to mount and clear stuff
+                        }
+
+                        if (pd.itens && pd.itens.length > 0) {
+                            setItens(pd.itens.map(i => ({
+                                id: Math.random().toString(),
+                                produtoId: i.produtoId,
+                                quantidade: i.quantidade,
+                                valorUnitario: i.valor,
+                                valorBase: Number(i.valorBase),
+                                flexUnitario: Number((Number(i.valor) - Number(i.valorBase)).toFixed(2)),
+                                search: i.produto?.nome || '',
+                                showDropdown: false
+                            })));
+                            setTimeout(() => calcularFlexTotal(pd.itens.map(i => ({ quantidade: i.quantidade, flexUnitario: Number((Number(i.valor) - Number(i.valorBase)).toFixed(2)) }))), 100);
+                        }
+                        carregouDraftRef.current = true;
+                    }
+                } catch (e) {
+                    alert("Erro ao carregar o rascunho de pedido.");
+                    navigate('/pedidos');
+                }
+            }
         } catch (error) {
             console.error("Erro ao carregar dados", error);
             alert("Erro ao carregar dados básicos para o pedido.");
@@ -121,12 +160,14 @@ const NovoPedido = () => {
 
             let padraoCliente = todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento);
 
-            if (permitidas.length === 1) {
-                setCondicaoPagamentoId(permitidas[0].idCondicao);
-            } else if (padraoCliente && permitidas.some(c => c.idCondicao === padraoCliente.idCondicao)) {
-                setCondicaoPagamentoId(padraoCliente.idCondicao);
-            } else {
-                setCondicaoPagamentoId('');
+            if (!editId || !carregouDraftRef.current) {
+                if (permitidas.length === 1) {
+                    setCondicaoPagamentoId(permitidas[0].idCondicao);
+                } else if (padraoCliente && permitidas.some(c => c.idCondicao === padraoCliente.idCondicao)) {
+                    setCondicaoPagamentoId(padraoCliente.idCondicao);
+                } else {
+                    setCondicaoPagamentoId('');
+                }
             }
         }
     }, [clienteId, clientes, todasCondicoes]);
@@ -337,6 +378,23 @@ const NovoPedido = () => {
         }
     };
 
+    const handleExcluir = async () => {
+        if (!editId) return;
+        const confirm = window.confirm("Tem certeza que deseja excluir permanentemente este rascunho de pedido?");
+        if (!confirm) return;
+
+        setSaving(true);
+        try {
+            await pedidoService.excluir(editId);
+            alert("Pedido excluído com sucesso.");
+            navigate('/pedidos');
+        } catch (error) {
+            alert(error.response?.data?.error || "Erro ao excluir o pedido.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
     if (loading) return <div className="p-4 text-center">Carregando...</div>;
 
     const vTotal = itens.reduce((acc, i) => acc + ((Number(i.valorUnitario?.toString().replace(',', '.')) || 0) * (Number(i.quantidade?.toString().replace(',', '.')) || 0)), 0);
@@ -353,13 +411,23 @@ const NovoPedido = () => {
                             {editId ? 'Editar Rascunho' : 'Novo Pedido'}
                         </h1>
                     </div>
-                    {/* Botão claro para salvar rascunho sem enviar */}
-                    <button
-                        onClick={() => handleSalvar('ABERTO')}
-                        className="text-primary font-semibold text-sm hover:underline"
-                    >
-                        Salvar em Aberto
-                    </button>
+                    {/* Botoes auxiliares */}
+                    <div className="flex space-x-4 items-center">
+                        {editId && (
+                            <button
+                                onClick={handleExcluir}
+                                className="text-red-600 font-semibold text-sm hover:underline"
+                            >
+                                Excluir Pedido
+                            </button>
+                        )}
+                        <button
+                            onClick={() => handleSalvar('ABERTO')}
+                            className="text-primary font-semibold text-sm hover:underline"
+                        >
+                            Salvar em Aberto
+                        </button>
+                    </div>
                 </div>
                 <div className={`px-4 py-2 flex justify-between items-center text-sm font-bold text-white shadow-inner ${flexTotal >= 0 ? 'bg-green-600' : 'bg-red-600'}`}>
                     <span>Saldo Flex do Pedido:</span>

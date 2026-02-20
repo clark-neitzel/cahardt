@@ -253,6 +253,29 @@ const pedidoService = {
                 }
             }
         });
+    },
+
+    // 5. Excluir pedido (apenas se não estiver ENVIADO/SINCRONIZADO)
+    excluir: async (id) => {
+        const pedido = await prisma.pedido.findUnique({ where: { id } });
+        if (!pedido) throw new Error("Pedido não encontrado");
+
+        // Regra de negócio: não pode excluir pedido que já foi para o ERP
+        if (pedido.statusEnvio !== 'ABERTO' && pedido.statusEnvio !== 'ERRO') {
+            throw new Error("Não é possível excluir um pedido que já foi enviado ou está processando.");
+        }
+
+        return await prisma.$transaction(async (tx) => {
+            // Remove itens primeiro (se não houvesse cascade/referential actions)
+            await tx.pedidoItem.deleteMany({
+                where: { pedidoId: id }
+            });
+            // Remove evento de webhook pendente se houver (relacionado ao requestId/referenceId caso existisse, mas não precisa pois não foi enviado)
+            // Remove pedido
+            return await tx.pedido.delete({
+                where: { id }
+            });
+        });
     }
 };
 
