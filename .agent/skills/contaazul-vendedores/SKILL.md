@@ -64,6 +64,9 @@ Ao sincronizar, o sistema deve:
     - `email`: E-mail de login/contato do vendedor.
     - `flex_mensal`: Limite de desconto mensal (R$).
     - `flex_disponivel`: Saldo atual de desconto disponível (R$).
+    - `login`: Nome de usuário para acesso exclusivo ao App (ex: "Clarkson").
+    - `senha`: Hash da senha de acesso ao App.
+    - `permissoes`: JSON de controle granular de acesso às abas do app (view, edit, e visibilidade de clientes "todos" vs "vinculados").
 
 ### 3.2. Fluxo
 1.  Busca lista completa na API (`GET /v1/venda/vendedores`).

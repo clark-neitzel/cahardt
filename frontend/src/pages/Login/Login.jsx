@@ -59,7 +59,7 @@ const Login = () => {
                                     required
                                     value={loginSTR}
                                     onChange={(e) => setLoginSTR(e.target.value)}
-                                    className="focus:ring-primary focus:border-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                                    className="focus:ring-primary focus:border-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 px-3 border bg-white text-gray-900"
                                     placeholder="Nome de usuário"
                                 />
                             </div>
@@ -80,7 +80,7 @@ const Login = () => {
                                     required
                                     value={senha}
                                     onChange={(e) => setSenha(e.target.value)}
-                                    className="focus:ring-primary focus:border-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                                    className="focus:ring-primary focus:border-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 px-3 border bg-white text-gray-900"
                                     placeholder="Sua senha"
                                 />
                             </div>
