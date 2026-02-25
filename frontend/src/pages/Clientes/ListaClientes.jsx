@@ -346,14 +346,13 @@ const ListaClientes = () => {
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="text-sm font-bold text-gray-900">
+                                            <span className="text-gray-400 font-normal text-xs block mb-0.5">Razão Social:</span>
                                             {cliente.Nome}
                                         </div>
-                                        {cliente.NomeFantasia && cliente.NomeFantasia !== cliente.Nome && (
-                                            <div className="text-xs text-gray-600 font-medium mt-0.5 whitespace-normal">
-                                                <span className="text-gray-400 font-normal">Fantasia:</span> {cliente.NomeFantasia}
-                                            </div>
-                                        )}
-                                        <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                        <div className="text-xs text-gray-600 font-medium mt-1.5 whitespace-normal border-t border-gray-100 pt-1.5">
+                                            <span className="text-gray-400 font-normal">Fantasia:</span> {cliente.NomeFantasia || cliente.Nome}
+                                        </div>
+                                        <div className="text-xs text-gray-400 mt-2 flex items-center gap-1">
                                             <MapPin className="h-3 w-3" />
                                             {cliente.End_Cidade}/{cliente.End_Estado}
                                         </div>
@@ -406,18 +405,22 @@ const ListaClientes = () => {
                                 onChange={() => handleSelectOne(cliente.UUID)}
                             />
                             <div className="flex-1" onClick={() => navigate(`/clientes/${cliente.UUID}`)}>
-                                <div className="flex justify-between">
-                                    <h3 className="font-bold text-gray-900 text-sm">
-                                        {cliente.Nome}
-                                    </h3>
-                                    <span className={`text-xs px-2 py-0.5 rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                <div className="flex justify-between items-start">
+                                    <div className="pr-2">
+                                        <p className="text-xs text-gray-400 mb-0.5">Razão Social:</p>
+                                        <h3 className="font-bold text-gray-900 text-sm leading-tight">
+                                            {cliente.Nome}
+                                        </h3>
+                                    </div>
+                                    <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                         {cliente.Ativo ? 'Ativo' : 'Inativo'}
                                     </span>
                                 </div>
-                                {cliente.NomeFantasia && cliente.NomeFantasia !== cliente.Nome && (
-                                    <p className="text-xs text-gray-600 mt-0.5"><span className="text-gray-400">Fantasia:</span> {cliente.NomeFantasia}</p>
-                                )}
-                                <div className="flex gap-1 mt-1">
+                                <p className="text-xs text-gray-600 mt-2 border-t border-gray-100 pt-2">
+                                    <span className="text-gray-400 inline-block w-16">Fantasia:</span>
+                                    <span className="font-medium">{cliente.NomeFantasia || cliente.Nome}</span>
+                                </p>
+                                <div className="flex gap-1 mt-2">
                                     {(cliente.Formas_Atendimento || []).map(forma => (
                                         <span key={forma} title={forma} className="p-1 bg-gray-100 rounded text-gray-600">
                                             {forma === 'Presencial' && <User className="h-3 w-3" />}
