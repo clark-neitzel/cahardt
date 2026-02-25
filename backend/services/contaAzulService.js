@@ -548,6 +548,7 @@ const contaAzulService = {
                     Telefone_Celular: c.telefone_celular || c.mobile_phone || c.celular,
                     Ativo: (c.ativo === true), // JSON confirma booleano
                     Data_Criacao: c.criado_em ? new Date(c.criado_em) : (c.created_at ? new Date(c.created_at) : new Date()),
+                    Data_Alteracao: ultimaAtualizacaoCA,
 
                     // FIX: Mapeamento de Perfis (Array de Objetos -> JSON String)
                     Perfis: JSON.stringify(c.perfis || []),

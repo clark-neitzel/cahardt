@@ -345,11 +345,13 @@ const ListaClientes = () => {
                                         />
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="text-sm font-medium text-gray-900">
-                                            {cliente.NomeFantasia || cliente.Nome}
+                                        <div className="text-sm font-bold text-gray-900">
+                                            {cliente.Nome}
                                         </div>
                                         {cliente.NomeFantasia && cliente.NomeFantasia !== cliente.Nome && (
-                                            <div className="text-xs text-gray-500">{cliente.Nome}</div>
+                                            <div className="text-xs text-gray-600 font-medium mt-0.5 whitespace-normal">
+                                                <span className="text-gray-400 font-normal">Fantasia:</span> {cliente.NomeFantasia}
+                                            </div>
                                         )}
                                         <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
                                             <MapPin className="h-3 w-3" />
@@ -405,15 +407,15 @@ const ListaClientes = () => {
                             />
                             <div className="flex-1" onClick={() => navigate(`/clientes/${cliente.UUID}`)}>
                                 <div className="flex justify-between">
-                                    <h3 className="font-semibold text-gray-900 text-sm">
-                                        {cliente.NomeFantasia || cliente.Nome}
+                                    <h3 className="font-bold text-gray-900 text-sm">
+                                        {cliente.Nome}
                                     </h3>
                                     <span className={`text-xs px-2 py-0.5 rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                         {cliente.Ativo ? 'Ativo' : 'Inativo'}
                                     </span>
                                 </div>
                                 {cliente.NomeFantasia && cliente.NomeFantasia !== cliente.Nome && (
-                                    <p className="text-xs text-gray-500">{cliente.Nome}</p>
+                                    <p className="text-xs text-gray-600 mt-0.5"><span className="text-gray-400">Fantasia:</span> {cliente.NomeFantasia}</p>
                                 )}
                                 <div className="flex gap-1 mt-1">
                                     {(cliente.Formas_Atendimento || []).map(forma => (

@@ -8,9 +8,8 @@ async function testClientPayload() {
         console.log('Obtendo token da CA...');
         const token = await contaAzulService.getAccessToken();
 
-        console.log('Buscando payload do primeiro cliente...');
-        // Buscar o cliente 'SIMPLE COFFEE JARAGUA' ou apenas a primeira pagina
-        const response = await axios.get('https://api-v2.contaazul.com/v1/pessoas?tamanho_pagina=2&tipo_perfil=Cliente', {
+        console.log('Buscando payload do cliente SIMPLE COFFEE ...');
+        const response = await axios.get('https://api-v2.contaazul.com/v1/pessoas?busca=SIMPLE+COFFEE', {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
