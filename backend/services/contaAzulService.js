@@ -515,7 +515,7 @@ const contaAzulService = {
                 let detalheC = c;
                 const tipoPessoa = (c.person_type || c.tipo_pessoa || '').toUpperCase().includes('JUR') ? 'JURIDICA' : 'FISICA';
 
-                if (docRaw && tipoPessoa === 'JURIDICA') {
+                if (docRaw) {
                     const localCLI = await prisma.cliente.findUnique({ where: { Documento: docRaw } });
                     const caDate = ultimaAtualizacaoCA ? ultimaAtualizacaoCA.getTime() : 0;
                     const localDate = localCLI?.contaAzulUpdatedAt ? localCLI.contaAzulUpdatedAt.getTime() : 0;
