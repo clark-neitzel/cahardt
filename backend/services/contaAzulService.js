@@ -510,17 +510,14 @@ const contaAzulService = {
                 }
 
                 // Mapeamento baseado no JSON real fornecido pelo usuário
-                // JSON: { nome: "Curto/Fantasia", nome_empresa: "Longo/Razão", ... }
-                const dadosCliente = {
-                    // Nome = Razão Social (Formal/Completo)
-                    // No JSON da API v2: 'nome_empresa' é a Razão Social ("LUIZ CARLOS...")
-                    // Fallback para 'nome' caso seja pessoa física ou não tenha nome_empresa.
-                    Nome: c.nome_empresa || c.razao_social || c.nome || c.company_name,
+                // Mapeamento baseado no JSON real fornecido pela API V2 /v1/pessoas
+                // Em V2 Listagem, 'company_name' ou 'nome_empresa' pode não existir ou vir como 'name'.
+                const razao = c.company_name || c.nome_empresa || c.razao_social;
+                const fantasia = c.fantasy_name || c.nome_fantasia || c.nome || c.apelido;
 
-                    // Nome Fantasia = Nome "comum" / Apelido
-                    // No JSON da API v2: 'nome' é a Fantasia ("SIMPLE COFFEE...")
-                    // Se nome_empresa existir, usamos 'nome' como Fantasia. Se não, fantasia fica nulo para não duplicar.
-                    NomeFantasia: c.nome_empresa ? (c.nome_fantasia || c.nome) : null,
+                const dadosCliente = {
+                    Nome: razao || fantasia || 'Desconhecido',
+                    NomeFantasia: razao ? fantasia : null,
 
                     // Normalização: JURIDICA ou FISICA (para o frontend funcionar)
                     Tipo_Pessoa: (c.person_type || c.tipo_pessoa || '').toUpperCase().includes('JUR') ? 'JURIDICA' : 'FISICA',
@@ -741,6 +738,78 @@ const contaAzulService = {
             });
 
             throw new Error(`Erro na API Conta Azul: ${errorMsg}`);
+        }
+    },
+
+    // Buscar Vendas Modificadas no Conta Azul (Sync Bidirecional)
+    syncPedidosModificados: async () => {
+        const log = await prisma.syncLog.create({
+            data: { tipo: 'PEDIDOS_MODIFICADOS', status: 'EM_ANDAMENTO', mensagem: 'Iniciando rastreamento de modificações...' }
+        });
+
+        try {
+            const token = await contaAzulService.getAccessToken();
+            // Buscar vendas modificadas nos últimos 2 dias ou na última hora.
+            // Para segurança na primeira rodada e evitar payload massivo: últimos 3 dias
+            const diasAtras = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+            // API V1 endpoint para buscar vendas por data de atualização
+            const url = `https://api.contaazul.com/v1/vendas?data_atualizacao_inicial=${diasAtras}T00:00:00Z&size=50`;
+            console.log(`🔎 Buscando Pedidos na CA: ${url}`);
+
+            const response = await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            const vendasModificadas = response.data || [];
+            console.log(`Encontradas ${vendasModificadas.length} vendas recentemente alteradas.`);
+
+            let count = 0;
+            for (const venda of vendasModificadas) {
+                // Procurar pedido correspondente na base local
+                const pedidoLocal = await prisma.pedido.findFirst({
+                    where: {
+                        OR: [
+                            { idVendaContaAzul: venda.id },
+                            { numero: venda.numero }
+                        ]
+                    },
+                    include: { itens: true }
+                });
+
+                if (pedidoLocal) {
+                    const dataAtualizacaoCA = venda.data_atualizacao ? new Date(venda.data_atualizacao) : new Date();
+                    const ignorar = pedidoLocal.contaAzulUpdatedAt && pedidoLocal.contaAzulUpdatedAt.getTime() >= dataAtualizacaoCA.getTime();
+
+                    if (!ignorar) {
+                        const valorLocal = Number(pedidoLocal.itens.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0)).toFixed(2);
+                        const valorCA = Number(venda.total || 0).toFixed(2);
+                        const mudouValor = Math.abs(valorCA - valorLocal) > 0.05; // tolerância centavos
+
+                        if (mudouValor || !pedidoLocal.contaAzulUpdatedAt) {
+                            await prisma.pedido.update({
+                                where: { id: pedidoLocal.id },
+                                data: {
+                                    revisaoPendente: true,
+                                    contaAzulUpdatedAt: dataAtualizacaoCA
+                                }
+                            });
+                            count++;
+                        }
+                    }
+                }
+            }
+
+            await prisma.syncLog.update({
+                where: { id: log.id },
+                data: { status: 'SUCESSO', mensagem: `Modificações RASTREADAS. ${count} pedidos acenderam flag alerta.`, registrosProcessados: count, dataHora: new Date() }
+            });
+
+            return { success: true, count };
+        } catch (error) {
+            console.error('Erro syncPedidosModificados:', error);
+            await prisma.syncLog.update({
+                where: { id: log.id },
+                data: { status: 'ERRO', mensagem: error.message, dataHora: new Date() }
+            });
+            throw error;
         }
     }
 };

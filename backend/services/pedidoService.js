@@ -180,7 +180,6 @@ const pedidoService = {
                 data: {
                     cliente: { connect: { UUID: clienteId } },
                     ...(vendedorId ? { vendedor: { connect: { id: vendedorId } } } : {}),
-                    total: totalPedido,
                     flexTotal: flexTotalPedido,
                     statusEnvio,
                     observacoes,
