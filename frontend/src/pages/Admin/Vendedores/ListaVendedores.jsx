@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Pencil, Save, X, Search, DollarSign, Mail } from 'lucide-react';
+import { Pencil, Save, X, Search, DollarSign, Mail, Shield } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
+import PermissoesModal from './PermissoesModal';
 
 const ListaVendedores = () => {
     const [vendedores, setVendedores] = useState([]);
@@ -8,6 +9,7 @@ const ListaVendedores = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [editingId, setEditingId] = useState(null);
     const [editForm, setEditForm] = useState({});
+    const [permissionsModalVendedor, setPermissionsModalVendedor] = useState(null);
 
     // Carregar vendedores
     const fetchVendedores = async () => {
@@ -142,9 +144,18 @@ const ListaVendedores = () => {
                                             <button onClick={handleCancel} className="text-red-600 hover:text-red-900"><X className="h-4 w-4" /></button>
                                         </div>
                                     ) : (
-                                        <button onClick={() => handleEdit(vendedor)} className="text-primary hover:text-indigo-900">
-                                            <Pencil className="h-4 w-4" />
-                                        </button>
+                                        <div className="flex justify-end space-x-2">
+                                            <button
+                                                onClick={() => setPermissionsModalVendedor(vendedor)}
+                                                className="text-indigo-600 hover:text-indigo-900"
+                                                title="Acessos e Permissões"
+                                            >
+                                                <Shield className="h-4 w-4" />
+                                            </button>
+                                            <button onClick={() => handleEdit(vendedor)} className="text-primary hover:text-indigo-900">
+                                                <Pencil className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                     )}
                                 </td>
                             </tr>
@@ -152,6 +163,17 @@ const ListaVendedores = () => {
                     </tbody>
                 </table>
             </div>
+
+            {permissionsModalVendedor && (
+                <PermissoesModal
+                    vendedor={permissionsModalVendedor}
+                    onClose={() => setPermissionsModalVendedor(null)}
+                    onUpdated={() => {
+                        setPermissionsModalVendedor(null);
+                        fetchVendedores();
+                    }}
+                />
+            )}
         </div>
     );
 };

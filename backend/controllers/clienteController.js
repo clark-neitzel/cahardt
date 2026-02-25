@@ -40,6 +40,16 @@ const clienteController = {
                 where.Dia_de_venda = { contains: diaVenda };
             }
 
+            // Controle de visibilidade com base no nível de permissão (Vendedor/Admin)
+            if (req.user) {
+                const permissaoPedidos = req.user.permissoes?.pedidos || {};
+                // Se NÃO tem permissão explícita para ver TODOS OS CLIENTES (ex: regra imposta),
+                // Oculta os clientes e exibe apenas os vinculados a ele
+                if (permissaoPedidos.clientes !== 'todos') {
+                    where.idVendedor = req.user.id;
+                }
+            }
+
             const total = await prisma.cliente.count({ where });
             const clientes = await prisma.cliente.findMany({
                 where,

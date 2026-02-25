@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom';
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, NavLink, Navigate } from 'react-router-dom';
 import Catalogo from './pages/Produtos/Catalogo';
 import DetalheProduto from './pages/Produtos/DetalheProduto';
 import ListaProdutos from './pages/Admin/Produtos/ListaProdutos';
@@ -9,18 +9,40 @@ import ListaClientes from './pages/Clientes/ListaClientes';
 import DetalheCliente from './pages/Clientes/DetalheCliente';
 import ListaVendedores from './pages/Admin/Vendedores/ListaVendedores';
 import Configuracoes from './pages/Admin/Configuracoes/Configuracoes';
-import TabelaPrecos from './pages/Configuracoes/TabelaPrecos'; // New
-import ContasFinanceiras from './pages/Configuracoes/ContasFinanceiras'; // New
+import TabelaPrecos from './pages/Configuracoes/TabelaPrecos';
+import ContasFinanceiras from './pages/Configuracoes/ContasFinanceiras';
 import ListaPedidos from './pages/Pedidos/ListaPedidos';
 import NovoPedido from './pages/Pedidos/NovoPedido';
+import Login from './pages/Login/Login';
 
-import { Menu, X } from 'lucide-react';
-import { useState } from 'react';
-import { Toaster } from 'react-hot-toast'; // New
+import { Menu, X, LogOut } from 'lucide-react';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-// Layout simples para navegação durante desenvolvimento
+const PrivateRoute = ({ children, tab }) => {
+  const { signed, loading, hasPermission } = useAuth();
+  if (loading) return <div className="p-8 text-center text-gray-500">Validando sessão...</div>;
+  if (!signed) return <Navigate to="/login" replace />;
+  if (tab && !hasPermission(tab, 'view')) return <div className="p-8 text-center text-red-600 font-bold">Acesso Negado a esta tela.</div>;
+  return children;
+};
+
 const Layout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, logout, hasPermission, loading } = useAuth();
+
+  // Se não estiver logado, renderiza apenas o conteúdo (tela de login)
+  if (!user || loading) return <>{children}</>;
+
+  const getNavLinkClass = (isActive) =>
+    isActive
+      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
+      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300";
+
+  const getMobileNavLinkClass = (isActive) =>
+    isActive
+      ? "bg-primary-50 border-l-4 border-primary text-primary block pl-3 pr-4 py-2 text-base font-medium"
+      : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -32,97 +54,43 @@ const Layout = ({ children }) => {
                 Hardt App
               </Link>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <NavLink
-                  to="/"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
-                      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
-                  }
-                >
-                  Catálogo
-                </NavLink>
-                <NavLink
-                  to="/pedidos"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
-                      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
-                  }
-                >
-                  Pedidos
-                </NavLink>
-                <NavLink
-                  to="/clientes"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
-                      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
-                  }
-                >
-                  Clientes
-                </NavLink>
-                <NavLink
-                  to="/admin/produtos"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
-                      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
-                  }
-                >
-                  Admin: Produtos
-                </NavLink>
-                <NavLink
-                  to="/admin/vendedores"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
-                      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
-                  }
-                >
-                  Vendedores
-                </NavLink>
-                <NavLink
-                  to="/admin/sync"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
-                      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
-                  }
-                >
-                  Admin: Sync
-                </NavLink>
-                <NavLink
-                  to="/admin/config"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
-                      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
-                  }
-                >
-                  Configurações
-                </NavLink>
-                <NavLink
-                  to="/config/tabela-precos"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
-                      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
-                  }
-                >
-                  Tabela Preços
-                </NavLink>
-                <NavLink
-                  to="/config/contas-financeiras"
-                  className={({ isActive }) =>
-                    isActive
-                      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
-                      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300"
-                  }
-                >
-                  Bancos
-                </NavLink>
+                {hasPermission('catalogo') && (
+                  <NavLink to="/" className={({ isActive }) => getNavLinkClass(isActive)}>Catálogo</NavLink>
+                )}
+                {hasPermission('pedidos') && (
+                  <NavLink to="/pedidos" className={({ isActive }) => getNavLinkClass(isActive)}>Pedidos</NavLink>
+                )}
+                {hasPermission('clientes') && (
+                  <NavLink to="/clientes" className={({ isActive }) => getNavLinkClass(isActive)}>Clientes</NavLink>
+                )}
+                {hasPermission('produtos') && (
+                  <NavLink to="/admin/produtos" className={({ isActive }) => getNavLinkClass(isActive)}>Admin: Produtos</NavLink>
+                )}
+                {hasPermission('vendedores') && (
+                  <NavLink to="/admin/vendedores" className={({ isActive }) => getNavLinkClass(isActive)}>Vendedores</NavLink>
+                )}
+                {hasPermission('sync') && (
+                  <NavLink to="/admin/sync" className={({ isActive }) => getNavLinkClass(isActive)}>Admin: Sync</NavLink>
+                )}
+                {hasPermission('configuracoes') && (
+                  <>
+                    <NavLink to="/admin/config" className={({ isActive }) => getNavLinkClass(isActive)}>Configurações</NavLink>
+                    <NavLink to="/config/tabela-precos" className={({ isActive }) => getNavLinkClass(isActive)}>Tabela Preços</NavLink>
+                    <NavLink to="/config/contas-financeiras" className={({ isActive }) => getNavLinkClass(isActive)}>Bancos</NavLink>
+                  </>
+                )}
               </div>
+            </div>
+
+            <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
+              <span className="text-sm font-medium text-gray-700">Olá, {user.login || user.nome}</span>
+              <button
+                onClick={logout}
+                className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                title="Sair"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
             </div>
 
             {/* Mobile menu button */}
@@ -132,108 +100,48 @@ const Layout = ({ children }) => {
                 className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
               >
                 <span className="sr-only">Open main menu</span>
-                {isMobileMenuOpen ? (
-                  <X className="block h-6 w-6" aria-hidden="true" />
-                ) : (
-                  <Menu className="block h-6 w-6" aria-hidden="true" />
-                )}
+                {isMobileMenuOpen ? <X className="block h-6 w-6" /> : <Menu className="block h-6 w-6" />}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Mobile menu, show/hide based on menu state */}
+        {/* Mobile menu */}
         {isMobileMenuOpen && (
           <div className="sm:hidden">
             <div className="pt-2 pb-3 space-y-1">
-              <NavLink
-                to="/"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  isActive
-                    ? "bg-primary-50 border-l-4 border-primary text-primary block pl-3 pr-4 py-2 text-base font-medium"
-                    : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium"
-                }
+              {hasPermission('catalogo') && (
+                <NavLink to="/" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Catálogo</NavLink>
+              )}
+              {hasPermission('pedidos') && (
+                <NavLink to="/pedidos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Pedidos</NavLink>
+              )}
+              {hasPermission('clientes') && (
+                <NavLink to="/clientes" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Clientes</NavLink>
+              )}
+              {hasPermission('produtos') && (
+                <NavLink to="/admin/produtos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Admin: Produtos</NavLink>
+              )}
+              {hasPermission('vendedores') && (
+                <NavLink to="/admin/vendedores" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Vendedores</NavLink>
+              )}
+              {hasPermission('sync') && (
+                <NavLink to="/admin/sync" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Admin: Sync</NavLink>
+              )}
+              {hasPermission('configuracoes') && (
+                <>
+                  <NavLink to="/admin/config" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Configurações</NavLink>
+                  <NavLink to="/config/tabela-precos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Tabela Preços</NavLink>
+                  <NavLink to="/config/contas-financeiras" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Bancos</NavLink>
+                </>
+              )}
+
+              <button
+                onClick={() => { logout(); setIsMobileMenuOpen(false); }}
+                className="w-full text-left border-l-4 border-transparent text-red-500 hover:bg-gray-50 block pl-3 pr-4 py-2 text-base font-medium"
               >
-                Catálogo
-              </NavLink>
-              <NavLink
-                to="/pedidos"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  isActive
-                    ? "bg-primary-50 border-l-4 border-primary text-primary block pl-3 pr-4 py-2 text-base font-medium"
-                    : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium"
-                }
-              >
-                Pedidos
-              </NavLink>
-              <NavLink
-                to="/clientes"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  isActive
-                    ? "bg-primary-50 border-l-4 border-primary text-primary block pl-3 pr-4 py-2 text-base font-medium"
-                    : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium"
-                }
-              >
-                Clientes
-              </NavLink>
-              <NavLink
-                to="/admin/produtos"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  isActive
-                    ? "bg-primary-50 border-l-4 border-primary text-primary block pl-3 pr-4 py-2 text-base font-medium"
-                    : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium"
-                }
-              >
-                Admin: Produtos
-              </NavLink>
-              <NavLink
-                to="/admin/sync"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  isActive
-                    ? "bg-primary-50 border-l-4 border-primary text-primary block pl-3 pr-4 py-2 text-base font-medium"
-                    : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium"
-                }
-              >
-                Admin: Sync
-              </NavLink>
-              <NavLink
-                to="/admin/vendedores"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  isActive
-                    ? "bg-primary-50 border-l-4 border-primary text-primary block pl-3 pr-4 py-2 text-base font-medium"
-                    : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium"
-                }
-              >
-                Vendedores
-              </NavLink>
-              <NavLink
-                to="/config/tabela-precos"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  isActive
-                    ? "bg-primary-50 border-l-4 border-primary text-primary block pl-3 pr-4 py-2 text-base font-medium"
-                    : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium"
-                }
-              >
-                Tabela Preços
-              </NavLink>
-              <NavLink
-                to="/config/contas-financeiras"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  isActive
-                    ? "bg-primary-50 border-l-4 border-primary text-primary block pl-3 pr-4 py-2 text-base font-medium"
-                    : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium"
-                }
-              >
-                Bancos
-              </NavLink>
+                Sair
+              </button>
             </div>
           </div>
         )}
@@ -248,34 +156,39 @@ const Layout = ({ children }) => {
 function App() {
   return (
     <Router>
-      <Layout>
-        <Routes>
-          {/* Vendedor */}
-          <Route path="/" element={<Catalogo />} />
-          <Route path="/produto/:id" element={<DetalheProduto />} />
+      <AuthProvider>
+        <Layout>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-          {/* Pedidos */}
-          <Route path="/pedidos" element={<ListaPedidos />} />
-          <Route path="/pedidos/novo" element={<NovoPedido />} />
-          <Route path="/pedidos/editar/:id" element={<NovoPedido />} />
+            {/* Catálogo */}
+            <Route path="/" element={<PrivateRoute tab="catalogo"><Catalogo /></PrivateRoute>} />
+            <Route path="/produto/:id" element={<PrivateRoute tab="catalogo"><DetalheProduto /></PrivateRoute>} />
 
-          {/* Clientes */}
-          <Route path="/clientes" element={<ListaClientes />} />
-          <Route path="/clientes/:uuid" element={<DetalheCliente />} />
+            {/* Pedidos */}
+            <Route path="/pedidos" element={<PrivateRoute tab="pedidos"><ListaPedidos /></PrivateRoute>} />
+            <Route path="/pedidos/novo" element={<PrivateRoute tab="pedidos"><NovoPedido /></PrivateRoute>} />
+            <Route path="/pedidos/editar/:id" element={<PrivateRoute tab="pedidos"><NovoPedido /></PrivateRoute>} />
 
-          {/* Admin */}
-          <Route path="/admin/produtos" element={<ListaProdutos />} />
-          <Route path="/admin/produtos/novo" element={<GerenciarProduto />} />
-          <Route path="/admin/produtos/:id" element={<GerenciarProduto />} />
+            {/* Clientes */}
+            <Route path="/clientes" element={<PrivateRoute tab="clientes"><ListaClientes /></PrivateRoute>} />
+            <Route path="/clientes/:uuid" element={<PrivateRoute tab="clientes"><DetalheCliente /></PrivateRoute>} />
 
-          <Route path="/admin/sync" element={<PainelSync />} />
-          <Route path="/admin/vendedores" element={<ListaVendedores />} />
-          <Route path="/admin/config" element={<Configuracoes />} />
-          <Route path="/config/tabela-precos" element={<TabelaPrecos />} />
-          <Route path="/config/contas-financeiras" element={<ContasFinanceiras />} />
-        </Routes>
-      </Layout>
-      <Toaster position="top-right" />
+            {/* Produtos / Admin */}
+            <Route path="/admin/produtos" element={<PrivateRoute tab="produtos"><ListaProdutos /></PrivateRoute>} />
+            <Route path="/admin/produtos/novo" element={<PrivateRoute tab="produtos"><GerenciarProduto /></PrivateRoute>} />
+            <Route path="/admin/produtos/:id" element={<PrivateRoute tab="produtos"><GerenciarProduto /></PrivateRoute>} />
+
+            {/* Outros Admins */}
+            <Route path="/admin/sync" element={<PrivateRoute tab="sync"><PainelSync /></PrivateRoute>} />
+            <Route path="/admin/vendedores" element={<PrivateRoute tab="vendedores"><ListaVendedores /></PrivateRoute>} />
+            <Route path="/admin/config" element={<PrivateRoute tab="configuracoes"><Configuracoes /></PrivateRoute>} />
+            <Route path="/config/tabela-precos" element={<PrivateRoute tab="configuracoes"><TabelaPrecos /></PrivateRoute>} />
+            <Route path="/config/contas-financeiras" element={<PrivateRoute tab="configuracoes"><ContasFinanceiras /></PrivateRoute>} />
+          </Routes>
+        </Layout>
+        <Toaster position="top-right" />
+      </AuthProvider>
     </Router>
   );
 }

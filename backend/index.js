@@ -14,6 +14,7 @@ const contaFinanceiraRoutes = require('./routes/contaFinanceiraRoutes'); // New
 const condicaoPagamentoRoutes = require('./routes/condicaoPagamentoRoutes');
 const migrationRoutes = require('./routes/migrationRoutes'); // Migration endpoint
 const pedidoRoutes = require('./routes/pedidoRoutes'); // New Pedidos Module
+const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,17 +32,21 @@ app.use((req, res, next) => {
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Rotas
-app.use('/api/produtos', produtoRoutes);
+// (auth e sync abertos)
+app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
-app.use('/api/clientes', clienteRoutes);
-app.use('/api/auth', authRoutes); // New
-app.use('/api/vendedores', vendedorRoutes); // New
-app.use('/api/config', configRoutes); // New
-app.use('/api/tabela-precos', tabelaPrecoRoutes); // New
-app.use('/api/condicoes-pagamento', condicaoPagamentoRoutes);
-app.use('/api/contas-financeiras', contaFinanceiraRoutes); // New
+
+// (Protegidas)
+app.use('/api/produtos', authMiddleware, produtoRoutes);
+app.use('/api/clientes', authMiddleware, clienteRoutes);
+app.use('/api/vendedores', authMiddleware, vendedorRoutes);
+app.use('/api/config', authMiddleware, configRoutes);
+app.use('/api/tabela-precos', authMiddleware, tabelaPrecoRoutes);
+app.use('/api/condicoes-pagamento', authMiddleware, condicaoPagamentoRoutes);
+app.use('/api/contas-financeiras', authMiddleware, contaFinanceiraRoutes);
+app.use('/api/pedidos', authMiddleware, pedidoRoutes);
+
 app.use('/api/migrations', migrationRoutes); // Migration endpoint
-app.use('/api/pedidos', pedidoRoutes); // New Pedidos Module
 
 // Rota base
 app.get('/', (req, res) => {

@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const prisma = require('../config/database');
 
 const vendedorController = {
@@ -27,22 +28,32 @@ const vendedorController = {
         }
     },
 
-    // Atualizar dados locais (Email, Flex)
+    // Atualizar dados locais (Email, Flex, Permissoes, Auth)
     atualizar: async (req, res) => {
         try {
             const { id } = req.params;
-            const { email, flexMensal, flexDisponivel } = req.body;
+            const { email, flexMensal, flexDisponivel, login, senha, permissoes } = req.body;
 
             // Prepara objeto de atualização (ignora undefined)
             const dataToUpdate = {};
             if (email !== undefined) dataToUpdate.email = email;
             if (flexMensal !== undefined) dataToUpdate.flexMensal = flexMensal;
             if (flexDisponivel !== undefined) dataToUpdate.flexDisponivel = flexDisponivel;
+            if (login !== undefined) dataToUpdate.login = login || null;
+            if (permissoes !== undefined) dataToUpdate.permissoes = permissoes;
+
+            if (senha && senha.trim() !== '') {
+                const salt = await bcrypt.genSalt(10);
+                dataToUpdate.senha = await bcrypt.hash(senha, salt);
+            }
 
             const vendedor = await prisma.vendedor.update({
                 where: { id },
                 data: dataToUpdate
             });
+
+            // Remover a senha do retorno por segurança
+            vendedor.senha = undefined;
 
             res.json(vendedor);
         } catch (error) {

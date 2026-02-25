@@ -4,6 +4,15 @@ const pedidoController = {
     listar: async (req, res) => {
         try {
             const filtros = req.query;
+
+            if (req.user) {
+                const permissaoPedidos = req.user.permissoes?.pedidos || {};
+                // Se a regra for mostrar apenas para clientes vinculados, filtra os pedidos apenas do vendedor logado
+                if (permissaoPedidos.clientes !== 'todos') {
+                    filtros.vendedorId = req.user.id;
+                }
+            }
+
             const pedidos = await pedidoService.listar(filtros);
             res.json(pedidos);
         } catch (error) {
