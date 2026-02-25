@@ -476,14 +476,6 @@ const contaAzulService = {
 
             const clientesCA = await contaAzulService.fetchClientesFromAPI(lastDate);
             let count = 0;
-            let countSkipped = 0;
-
-            const clientesLocais = await prisma.cliente.findMany({
-                select: { Documento: true, contaAzulUpdatedAt: true }
-            });
-            const clientesLocaisMap = new Map(
-                clientesLocais.map(c => [c.Documento, c.contaAzulUpdatedAt])
-            );
 
             for (const c of clientesCA) {
                 const docRaw = c.document || c.documento;
@@ -491,17 +483,6 @@ const contaAzulService = {
 
                 const dataAltRaw = c.data_alteracao || c.atualizado_em || c.updated_at || c.ultima_atualizacao;
                 const ultimaAtualizacaoCA = dataAltRaw ? new Date(dataAltRaw) : null;
-                const ultimaAtualizacaoLocal = clientesLocaisMap.get(docRaw);
-
-                const isNew = !ultimaAtualizacaoLocal;
-                const needsUpdate = isNew || !ultimaAtualizacaoCA ||
-                    (ultimaAtualizacaoCA && ultimaAtualizacaoLocal &&
-                        ultimaAtualizacaoCA.getTime() !== ultimaAtualizacaoLocal.getTime());
-
-                if (!needsUpdate) {
-                    countSkipped++;
-                    continue;
-                }
 
                 // Tratamento da Condição de Pagamento
                 let condicaoId = null;
@@ -541,6 +522,11 @@ const contaAzulService = {
 
                     // Normalização: JURIDICA ou FISICA (para o frontend funcionar)
                     Tipo_Pessoa: (c.person_type || c.tipo_pessoa || '').toUpperCase().includes('JUR') ? 'JURIDICA' : 'FISICA',
+
+                    Atrasos_Pagamentos: c.atrasos_pagamentos || 0,
+                    Atrasos_Recebimentos: c.atrasos_recebimentos || 0,
+                    Pagamentos_Mes_Atual: c.pagamentos_mes_atual || 0,
+                    Recebimentos_Mes_Atual: c.recebimentos_mes_atual || 0,
 
                     Documento: c.document || c.documento,
                     Email: c.email,
@@ -584,10 +570,10 @@ const contaAzulService = {
 
             await prisma.syncLog.update({
                 where: { id: log.id },
-                data: { status: 'SUCESSO', mensagem: `Sync Clientes OK. Atualizados: ${count}. Ignorados (sem mudança): ${countSkipped}.`, registrosProcessados: count, dataHora: new Date() }
+                data: { status: 'SUCESSO', mensagem: `Sync Clientes OK. Atualizados: ${count}.`, registrosProcessados: count, dataHora: new Date() }
             });
 
-            return { success: true, count, countSkipped };
+            return { success: true, count };
 
         } catch (error) {
             await prisma.syncLog.update({
