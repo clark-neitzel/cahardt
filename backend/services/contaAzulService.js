@@ -513,12 +513,14 @@ const contaAzulService = {
                 // JSON: { nome: "Curto/Fantasia", nome_empresa: "Longo/Razão", ... }
                 const dadosCliente = {
                     // Nome = Razão Social (Formal/Completo)
-                    // No JSON do usuário: 'nome_empresa' parece ser a Razão Social ("... LTDA")
-                    Nome: c.nome_empresa || c.razao_social || c.company_name || c.nome,
+                    // No JSON da API v2: 'nome_empresa' é a Razão Social ("LUIZ CARLOS...")
+                    // Fallback para 'nome' caso seja pessoa física ou não tenha nome_empresa.
+                    Nome: c.nome_empresa || c.razao_social || c.nome || c.company_name,
 
                     // Nome Fantasia = Nome "comum" / Apelido
-                    // No JSON do usuário: 'nome' parece ser o nome de exibição/fantasia
-                    NomeFantasia: c.nome_fantasia || c.fantasy_name || c.nome || c.apelido,
+                    // No JSON da API v2: 'nome' é a Fantasia ("SIMPLE COFFEE...")
+                    // Se nome_empresa existir, usamos 'nome' como Fantasia. Se não, fantasia fica nulo para não duplicar.
+                    NomeFantasia: c.nome_empresa ? (c.nome_fantasia || c.nome) : null,
 
                     // Normalização: JURIDICA ou FISICA (para o frontend funcionar)
                     Tipo_Pessoa: (c.person_type || c.tipo_pessoa || '').toUpperCase().includes('JUR') ? 'JURIDICA' : 'FISICA',
