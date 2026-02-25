@@ -234,7 +234,13 @@ const migrationService = {
                 ) THEN
                     ALTER TABLE "clientes" DROP CONSTRAINT "clientes_Condicao_de_pagamento_fkey";
                 END IF;
-            END $$;`
+            END $$;`,
+
+            // Update 11: Login Vendedor (App Hardt)
+            `ALTER TABLE "vendedores" ADD COLUMN IF NOT EXISTS "login" TEXT;`,
+            `ALTER TABLE "vendedores" ADD COLUMN IF NOT EXISTS "senha" TEXT;`,
+            `ALTER TABLE "vendedores" ADD COLUMN IF NOT EXISTS "permissoes" JSONB;`,
+            `CREATE UNIQUE INDEX IF NOT EXISTS "vendedores_login_key" ON "vendedores"("login");`
         ];
 
         for (const [index, cmd] of commands.entries()) {
