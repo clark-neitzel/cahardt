@@ -778,7 +778,6 @@ const contaAzulService = {
         });
 
         try {
-            const token = await contaAzulService.getAccessToken();
             // Buscar vendas modificadas nos últimos 2 dias ou na última hora.
             // Para segurança na primeira rodada e evitar payload massivo: últimos 3 dias
             const diasAtras = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -787,7 +786,8 @@ const contaAzulService = {
             const url = `https://api.contaazul.com/v1/vendas?data_atualizacao_inicial=${diasAtras}T00:00:00Z&size=50`;
             console.log(`🔎 Buscando Pedidos na CA: ${url}`);
 
-            const response = await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            // Usa o wrapper interno para garantir refresh de token automático
+            const response = await contaAzulService._axiosGet(url, 'PEDIDOS_MODIFICADOS');
             const vendasModificadas = response.data || [];
             console.log(`Encontradas ${vendasModificadas.length} vendas recentemente alteradas.`);
 
