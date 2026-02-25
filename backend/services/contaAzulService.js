@@ -476,8 +476,33 @@ const contaAzulService = {
 
             const clientesCA = await contaAzulService.fetchClientesFromAPI(lastDate);
             let count = 0;
+            let countSkipped = 0;
+
+            const clientesLocais = await prisma.cliente.findMany({
+                select: { Documento: true, contaAzulUpdatedAt: true }
+            });
+            const clientesLocaisMap = new Map(
+                clientesLocais.map(c => [c.Documento, c.contaAzulUpdatedAt])
+            );
 
             for (const c of clientesCA) {
+                const docRaw = c.document || c.documento;
+                if (!docRaw) continue; // Ignora se não tem documento
+
+                const dataAltRaw = c.data_alteracao || c.atualizado_em || c.updated_at || c.ultima_atualizacao;
+                const ultimaAtualizacaoCA = dataAltRaw ? new Date(dataAltRaw) : null;
+                const ultimaAtualizacaoLocal = clientesLocaisMap.get(docRaw);
+
+                const isNew = !ultimaAtualizacaoLocal;
+                const needsUpdate = isNew || !ultimaAtualizacaoCA ||
+                    (ultimaAtualizacaoCA && ultimaAtualizacaoLocal &&
+                        ultimaAtualizacaoCA.getTime() !== ultimaAtualizacaoLocal.getTime());
+
+                if (!needsUpdate) {
+                    countSkipped++;
+                    continue;
+                }
+
                 // Tratamento da Condição de Pagamento
                 let condicaoId = null;
                 const termName = c.payment_term || (c.condicao_pagamento ? c.condicao_pagamento : null); // Adaptação v1/v2
@@ -541,6 +566,7 @@ const contaAzulService = {
                     Observacoes_Gerais: c.notes || c.observacoes,
 
                     Perfil_Filtro: "PADRAO",
+                    contaAzulUpdatedAt: ultimaAtualizacaoCA,
                     updated_at: new Date()
                 };
 
@@ -557,10 +583,10 @@ const contaAzulService = {
 
             await prisma.syncLog.update({
                 where: { id: log.id },
-                data: { status: 'SUCESSO', mensagem: `Sync Clientes OK (Delta: ${!!lastDate})`, registrosProcessados: count, dataHora: new Date() }
+                data: { status: 'SUCESSO', mensagem: `Sync Clientes OK. Atualizados: ${count}. Ignorados (sem mudança): ${countSkipped}.`, registrosProcessados: count, dataHora: new Date() }
             });
 
-            return { success: true, count };
+            return { success: true, count, countSkipped };
 
         } catch (error) {
             await prisma.syncLog.update({

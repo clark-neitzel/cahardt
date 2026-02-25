@@ -240,7 +240,10 @@ const migrationService = {
             `ALTER TABLE "vendedores" ADD COLUMN IF NOT EXISTS "login" TEXT;`,
             `ALTER TABLE "vendedores" ADD COLUMN IF NOT EXISTS "senha" TEXT;`,
             `ALTER TABLE "vendedores" ADD COLUMN IF NOT EXISTS "permissoes" JSONB;`,
-            `CREATE UNIQUE INDEX IF NOT EXISTS "vendedores_login_key" ON "vendedores"("login");`
+            `CREATE UNIQUE INDEX IF NOT EXISTS "vendedores_login_key" ON "vendedores"("login");`,
+
+            // Update 12: Sync Data Alteracao Cliente
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "conta_azul_updated_at" TIMESTAMP(3);`
         ];
 
         for (const [index, cmd] of commands.entries()) {

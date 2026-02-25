@@ -122,6 +122,7 @@ model Cliente {
   Serasa_consulta                String? // URL do arquivo principal
   Formas_Atendimento             String[] @default([])
 
+  contaAzulUpdatedAt DateTime? @map("conta_azul_updated_at")
   updated_at DateTime @updatedAt
 
   idVendedor String?   @map("id_vendedor")

@@ -134,12 +134,12 @@ const DetalheCliente = () => {
             <div className="bg-white shadow rounded-lg p-6 mb-6 border-l-4 border-primary">
                 <div className="flex justify-between items-start">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">{cliente.NomeFantasia || cliente.Nome}</h1>
+                        <h1 className="text-2xl font-bold text-gray-900">{cliente.Nome}</h1>
                         {cliente.NomeFantasia && cliente.NomeFantasia !== cliente.Nome && (
-                            <p className="text-lg text-gray-600 font-medium">{cliente.Nome}</p>
+                            <p className="text-lg text-gray-600 font-medium">{cliente.NomeFantasia}</p>
                         )}
                         <p className="text-gray-500 text-sm mt-1">
-                            {cliente.Tipo_Pessoa === 'Jurídica' ? 'CNPJ' : 'CPF'}: {cliente.Documento}
+                            {String(cliente.Tipo_Pessoa).toUpperCase().includes('JUR') ? 'CNPJ' : 'CPF'}: {cliente.Documento}
                         </p>
                     </div>
                     <span className={`px-3 py-1 rounded-full font-medium text-sm ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
