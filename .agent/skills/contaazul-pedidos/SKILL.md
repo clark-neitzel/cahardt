@@ -61,6 +61,11 @@ Esta skill documenta a integração de envio de Pedidos (Vendas) para o Conta Az
 }
 ```
 
+## 3. Regra de Integração de API (Token Auto-Refresh)
+**CRÍTICO:** Nunca use `axios.get()` ou `axios.post()` diretamente para interagir com a API do Conta Azul a partir dos Services, pois o Token expira a cada 1 hora.
+- Se for fazer um `GET` (como buscar vendas ou próximo número), use o wrapper interno `contaAzulService._axiosGet(url, 'LOG_NAME')` que interceptará falhas `401 Unauthorized` e renovará o token silenciosamente.
+- Se for fazer um `POST/PUT` (como enviar a venda), se assegure de capturar o token atual com `contaAzulService.getAccessToken()` e, caso ocorra a falha HTTP `401`, chame `contaAzulService.getAccessToken(true)` para forçar a renovação e tente a requisição novamente.
+
 ## 4. Limitações e Regras CA
 - O array de itens deve conter apenas produtos cadastrados (`id` de produto válido). `pedido_item_id` ou identificadores similares do app são controles locais apenas.
 - Vendedores precisam ser cadastrados no ERP e linkados no Payload via `id_vendedor`.

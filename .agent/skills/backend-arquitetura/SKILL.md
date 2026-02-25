@@ -14,6 +14,7 @@ O backend é construído com **Node.js**, **Express** e **Prisma ORM**.
   - Métodos: `listar`, `detalhar`, `criar`, `atualizar`, `deletar`.
 - **`services/`**: Regras de negócio e integração com APIs externas.
   - Ex: `contaAzulService.js` (Sync incremental), `produtoService.js`.
+  - **ATENÇÃO API Externa**: Ao criar requisições HTTP dentro dos services (especialmente para a API do Conta Azul), **nunca** utilize `axios.get()` ou `axios.post()` diretamente. Obrigatoriamente utilize os **wrappers internos** (ex: `contaAzulService._axiosGet()`) arquitetados para capturar o Erro 401 e executar o mecanismo de Auto-Refresh do token OAuth2 automaticamente.
 - **`routes/`**: Definição das rotas da API.
   - Padrão: `nomeRoutes.js`.
   - Importam os controllers.

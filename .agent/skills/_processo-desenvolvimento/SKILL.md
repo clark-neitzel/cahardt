@@ -160,6 +160,17 @@ Se você receber erros como `Connection refused`, `Can't reach database`, `500 I
     *   As variáveis de ambiente (`.env`) estão corretas?
 3.  **AÇÃO:** Se o ambiente estiver quebrado, conserte o AMBIENTE ou avise o usuário. **NUNCA** tente "contornar" um banco desligado criando código complexo ou mocks não solicitados.
 
+## 🔌 REGRA DE INTEGRAÇÃO COM APIS (OAUTH / CONTA AZUL)
+
+**NUNCA utilize clientes HTTP puros (como `axios.get`, `axios.post` ou `fetch`) diretamente nos services para chamar APIs que dependem de Tokens de Acesso dinâmicos (OAuth2).**
+
+O Conta Azul possui tokens que expiram a cada 60 minutos. Se você usar `axios.get` puro, o código falhará com erro `401 Unauthorized` assim que o token expirar, quebrando sincronizações automáticas e em lote.
+
+**PROCEDIMENTO OBRIGATÓRIO:**
+1. Sempre procure e utilize os **Wrappers Internos** do projeto projetados para interceptar erros 401 e fazer o Auto-Refresh do token.
+2. No caso do Conta Azul, utilize **SEMPRE** o helper `contaAzulService._axiosGet(url, resourceType)` ou semelhante para leitura de dados.
+3. Se precisar criar chamadas POST/PUT/PATCH, verifique como gerenciar a renovação do token (ex: capturar o token via `getAccessToken()`, tentar a requisição e, se der 401, forçar o refresh via `getAccessToken(true)` antes de tentar novamente, replicando o comportamento do helper).
+
 ## 🎯 FIDELIDADE AOS DADOS (DATA DRIVEN)
 
 Se o usuário fornecer uma planilha, CSV ou lista de dados (IDs, Nomes, Valores):
