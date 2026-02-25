@@ -1,7 +1,16 @@
 ---
-name: regras-negocio-pedido
-description: Regras de negócio do Pedido, Flex, Precificação e UX Mobile
+name: 06-regras-negocio-app
+description: "💼 REGRAS CORPORATIVAS. Obrigatório consultar para alterar cálculos de Tabelas de Preços, comissões, saldo Flex ou limitações logísticas."
 ---
+
+# 06 REGRAS NEGOCIO APP
+> ⚠️ **DOCUMENTO MESTRE**: Este documento é a consolidação das antigas skills: regras-negocio-pedido, tabela-precos.
+
+
+
+-------------------------------------------------
+## CONTEÚDO ORIGINAL DE: regras-negocio-pedido
+-------------------------------------------------
 
 # Regras de Negócio do Pedido (App Hardt)
 
@@ -52,3 +61,42 @@ Como o App será operado 95% do tempo via Celular em campo:
 - **Accordion ou Sections**: Área de Itens (carrinho) que agrupa linhas para não usar toda a tela.
 - **Feedback Visual Flex**: Saldo Flex projetado em Cores (ex: **Verde** se gera flex positivo, **Vermelho** se consumir, totalizador fixado no bottom ou top da tela de modo persistente).
 - **Digitação Rápida**: Teclado numérico nativo para campos numéricos; foco rápido entre os text inputs de produto e valor.
+
+-------------------------------------------------
+## CONTEÚDO ORIGINAL DE: tabela-precos
+-------------------------------------------------
+
+# Tabela de Preços (Condições Avançadas)
+
+Esta skill documenta a implementação da `TabelaPreco`, que substitui/complementa as condições de pagamento padrão do Conta Azul com regras de negócio específicas da Hardt.
+
+## Estrutura do Banco (`tabela_precos`)
+
+Diferente do Conta Azul (que usa UUIDs opacos), esta tabela usa IDs semânticos ou legados para facilitar a identificação visual e a integração.
+
+| Campo | Tipo | Descrição | Exemplo |
+| :--- | :--- | :--- | :--- |
+| `id` | String (PK) | ID Interno/Legado | `1002` |
+| `id_condicao` | String | Código legível | `BOL_7` |
+| `nome_condicao` | String | Nome exibido ao usuário | `7 dias - Boleto` |
+| `tipo_pagamento` | String | Tipo de Pagamento | `BOLETO` |
+| `opcao_condicao` | String | Agrupamento/Opção Visual | `7 dias` |
+| `qtd_parcelas` | Int | Número de parcelas | `1` |
+| `parcelas_dias` | Int | Dias para vencimento | `7` |
+| `acrescimo_preco` | Decimal | % de acréscimo | `2.5` |
+| `parcelas_percentuais` | Decimal | Percentual | `100` |
+| `exige_banco` | Boolean | Se exige banco no cadastro | `true` |
+| `banco_padrao` | String | FK de banco preferido | `UUID` |
+| `ativo` | Boolean | Status do registro | `true` |
+| `obs` | String | Observações | `...` |
+
+## Regras de Negócio
+
+1.  **Exibição Separada**: No frontend, "Parcelas" e "Dias" devem ser mostrados em colunas distintas (ex: `1x` e `7 dias`), nunca concatenados como string ("1x (7 dias)"), para clareza técnica.
+2.  **Seleção no Cliente**: Ao selecionar uma condição no cadastro do cliente (`DetalheCliente.jsx`), o sistema deve mostrar imediatamente um resumo técnico (Parcelas, Dias, Acréscimo) para que o usuário valide a escolha.
+3.  **Imutabilidade dos IDs**: Os IDs (`1000` a `1008`) e códigos (`BOL_7`) são fixos e usados em Seeds. Não devem ser gerados aleatoriamente.
+
+## Integração
+
+*   **Endpoint**: `GET /api/tabela-precos`
+*   **Uso**: Dropdowns de seleção de condição de pagamento e cálculo de totais de pedidos.

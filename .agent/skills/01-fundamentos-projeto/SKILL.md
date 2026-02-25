@@ -1,7 +1,16 @@
 ---
-name: _processo-desenvolvimento
-description: "REGRAS OBRIGATÓRIAS de processo de desenvolvimento. DEVE ser consultada antes de QUALQUER tarefa técnica no projeto."
+name: 01-fundamentos-projeto
+description: "🚨 LEITURA OBRIGATÓRIA ANTES DE QUALQUER CÓDIGO. Contém regras de ouro de processo, comandos SQL, deploy e correções críticas de UI (inputs pretos). Manda na arquitetura."
 ---
+
+# 01 FUNDAMENTOS PROJETO
+> ⚠️ **DOCUMENTO MESTRE**: Este documento é a consolidação das antigas skills: _processo-desenvolvimento, padroes-desenvolvimento, estrutura-base.
+
+
+
+-------------------------------------------------
+## CONTEÚDO ORIGINAL DE: _processo-desenvolvimento
+-------------------------------------------------
 
 # Processo de Desenvolvimento - Regras Obrigatórias
 
@@ -187,3 +196,119 @@ Se o usuário pedir: "Crie uma tabela para X e popule com Y":
 
 **RESUMO:** Não seja criativo com configurações. Seja preciso e baseado em documentação verificada.
 
+-------------------------------------------------
+## CONTEÚDO ORIGINAL DE: padroes-desenvolvimento
+-------------------------------------------------
+
+# Padrões de Projeto (MANDATÓRIO)
+
+ESTE DOCUMENTO DEVE SER SEGUIDO RIGOROSAMENTE. NÃO INVENTE MODA.
+
+## 1. Migração de Banco de Dados (CRÍTICO) 🚨
+O projeto roda em um ambiente (Easypanel) onde o `prisma migrate deploy` **NÃO É EXECUTADO AUTOMATICAMENTE**.
+O sistema usa um **MigrationService customizado** que roda no startup da aplicação (`backend/index.js`).
+
+**REGRA:**
+Sempre que criar ou alterar uma tabela no `schema.prisma`:
+1.  **Adicione o comando SQL** correspondente no arquivo `backend/services/migrationService.js`.
+2.  Use `CREATE TABLE IF NOT EXISTS` ou `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
+3.  **NUNCA** dependa apenas do `prisma db push` local. Ele atualiza o banco local, mas o servidor de produção precisa do SQL no `migrationService.js`.
+
+## 2. Frontend API (Service Pattern) 🌐
+O Frontend (`frontend/src`) consome a API do Backend.
+**NUNCA** use `fetch('http://localhost:3000/...')` ou `fetch('/api/...')` diretamente nos componentes.
+
+**REGRA:**
+1.  Sempre crie um **Service** em `frontend/src/services/` (ex: `vendedorService.js`).
+2.  Importe a instância configurada do axios de `frontend/src/services/api.js`.
+    ```javascript
+    import api from './api';
+    // api.js já tem a Base URL configurada corretamente para Produção/Dev
+    ```
+3.  Use `api.get()`, `api.post()`, etc.
+4.  O componente deve chamar apenas o método do service (ex: `vendedorService.listar()`).
+
+## 3. Estrutura de Pastas
+- **Backend:** `backend/` (Node.js + Express + Prisma)
+    - `controllers/`: Lógica de negócio HTTP.
+    - `services/`: Lógica de negócio reutilizável e Integrações.
+    - `routes/`: Definição de rotas Express.
+    - `prisma/`: Schema do banco.
+- **Frontend:** `frontend/` (React + Vite)
+    - `src/pages/`: Componentes de página.
+    - `src/services/`: Camada de comunicação com API.
+    - `src/components/`: Componentes reutilizáveis UI.
+
+## 4. Integração Conta Azul
+- O `backend/services/contaAzulService.js` centraliza TODAS as chamadas à API da Conta Azul.
+- Use `syncLog` para registrar o status das sincronizações.
+- Ao adicionar novas entidades (ex: Vendedores), siga o padrão de `upsert` do Prisma para evitar duplicidade.
+
+## 5. Deployment
+- O deploy é automático via Push no branch `main`.
+- O Frontend deve ser buildado e servido (ou proxied).
+- **Cache:** Alterações no Frontend podem demorar para aparecer se o cache do navegador estiver ativo. Force atualização (Ctrl+F5) ou use Versionamento no título/console para debugar.
+
+## 6. UI/UX e Estilização 🎨
+- **Inputs e Formulários (CRÍTICO):**
+    - **SEMPRE** defina explicitamente `bg-white` e `text-gray-900` em **TODOS** os inputs, textareas e selects.
+    - **NUNCA** confie nos defaults do navegador - eles podem causar "fundo escuro com texto escuro" em browsers com Dark Mode.
+    - **Exemplo CORRETO:**
+      ```jsx
+      <input className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary" />
+      <textarea className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary" />
+      <select className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary" />
+      ```
+    - **Exemplo ERRADO (não fazer):**
+      ```jsx
+      <input className="border p-3" /> {/* ❌ Falta bg-white e text-gray-900 */}
+      ```
+
+## 7. Sincronização e Preservação de Dados 🔄
+- **Campos Locais vs. Campos Remotos:**
+    - Dados vindos da API externa (Conta Azul) devem atualizar o banco.
+    - Dados exclusivos do App (ex: `Vendedor`, `Dia_de_venda`, `Dia_de_entrega`) **NÃO** devem ser sobrescritos pelo Sync.
+    - **Regra:** No `update` do Prisma, inclua APENAS os campos que vieram da API. Não passe `null` ou `undefined` para campos locais, pois isso pode apagá-los.
+
+-------------------------------------------------
+## CONTEÚDO ORIGINAL DE: estrutura-base
+-------------------------------------------------
+
+# Estrutura Base do Projeto
+
+Esta skill define a organização de pastas e arquivos essenciais para o projeto, servindo como referência para organizar todos os próximos PRDs.
+
+## Estrutura Geral
+O projeto é dividido em dois componentes principais:
+- `backend/`: API em Node.js com Express
+- `frontend/`: Aplicação Web em React com Vite
+
+## Backend (`backend/`)
+Estrutura padrão para a API:
+
+- `routes/`: Definição de rotas da API.
+- `controllers/`: Lógica das funções da API (handlers).
+- `services/`: Regras de negócio e integrações externas.
+- `prisma/`: Schema do banco (Prisma ORM) e migrations.
+- `scripts/`: Migrations manuais e utilitários.
+- `middlewares/`: Autenticação, validação e tratamento de erros.
+- `config/`: Arquivos de configuração (database, etc).
+- `index.js`: Arquivo principal de inicialização do servidor.
+- `.env.example`: Modelo de variáveis de ambiente.
+
+## Frontend (`frontend/`)
+Estrutura padrão para a interface:
+
+- `src/pages/`: Telas e rotas da aplicação.
+- `src/components/`: Componentes visuais reutilizáveis.
+- `src/services/`: Configuração de clientes API e requisições.
+- `src/utils/`: Funções utilitárias e helpers.
+- `src/assets/`: Imagens, ícones e estilos globais.
+- `src/App.jsx`: Componente raiz da aplicação.
+- `src/main.jsx`: Ponto de entrada do React.
+- `tailwind.config.js`: Configuração do framework de estilos.
+- `index.html`: Arquivo HTML base.
+
+## Diretrizes
+1.  **Padronização**: Todo novo PRD deve respeitar essa estrutura.
+2.  **Arquivos Vazios**: Ao inicializar novos módulos, crie os arquivos necessários mesmo que vazios inicialmente, mantendo os nomes corretos.
