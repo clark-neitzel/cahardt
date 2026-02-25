@@ -519,12 +519,15 @@ const contaAzulService = {
                     const localCLI = await prisma.cliente.findUnique({ where: { Documento: docRaw } });
                     const caDate = ultimaAtualizacaoCA ? ultimaAtualizacaoCA.getTime() : 0;
                     const localDate = localCLI?.contaAzulUpdatedAt ? localCLI.contaAzulUpdatedAt.getTime() : 0;
-                    const sameName = localCLI?.Nome === localCLI?.NomeFantasia; // Indica que usou fallback
 
-                    // Busca detalhe se mudou, ou se está novo, ou se a razão social parece igual fantasia (faltou detalhe antes)
-                    if (!localCLI || caDate > localDate || sameName) {
+                    // Se NomeFantasia é nulo, significa que na sincronização anterior usamos fallback (Razão = Fantasia).
+                    // Portanto, sameName é verdadeiro indiretamente.
+                    const usedFallbackLocal = localCLI && (localCLI.Nome === localCLI.NomeFantasia || !localCLI.NomeFantasia);
+
+                    // Busca detalhe se mudou, ou se está novo, ou se a razão social parece ser igual a fantasia
+                    if (!localCLI || caDate > localDate || usedFallbackLocal) {
                         try {
-                            const urlDet = `https://api-v2.contaazul.com/v1/pessoas/${c.id}`;
+                            const urlDet = `https://api.contaazul.com/v1/pessoas/${c.id}`; // V1 returns nome_empresa directly as requested by Google Script
                             const resDet = await contaAzulService._axiosGet(urlDet, 'CLIENTES_DETALHE');
                             if (resDet && resDet.data) {
                                 detalheC = resDet.data;
