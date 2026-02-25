@@ -33,6 +33,12 @@ const pedidoService = {
         return response.data;
     },
 
+    // Marcar Pedido Modificado no CA como Revisado pelo Vendedor
+    marcarRevisado: async (id) => {
+        const response = await api.put(`/pedidos/${id}/revisado`);
+        return response.data;
+    },
+
     // Excluir Pedido Existente (Apenas Rascunho/Em Aberto)
     excluir: async (id) => {
         const response = await api.delete(`/pedidos/${id}`);

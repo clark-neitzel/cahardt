@@ -6,6 +6,11 @@ const syncService = {
         return response.data;
     },
 
+    sincronizarPedidos: async () => {
+        const response = await api.post('/sync/pedidos');
+        return response.data;
+    },
+
     listarLogs: async () => {
         const response = await api.get('/sync/logs');
         return response.data;

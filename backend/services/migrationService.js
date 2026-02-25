@@ -243,7 +243,11 @@ const migrationService = {
             `CREATE UNIQUE INDEX IF NOT EXISTS "vendedores_login_key" ON "vendedores"("login");`,
 
             // Update 12: Sync Data Alteracao Cliente
-            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "conta_azul_updated_at" TIMESTAMP(3);`
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "conta_azul_updated_at" TIMESTAMP(3);`,
+
+            // Update 13: Sincronização Bidirecional de Vendas (Pedidos alterados no CA)
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "revisao_pendente" BOOLEAN NOT NULL DEFAULT false;`,
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "conta_azul_updated_at" TIMESTAMP(3);`
         ];
 
         for (const [index, cmd] of commands.entries()) {

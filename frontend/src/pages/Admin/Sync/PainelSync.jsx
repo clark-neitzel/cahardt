@@ -7,6 +7,7 @@ const PainelSync = () => {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(false);
+    const [syncingPedidos, setSyncingPedidos] = useState(false);
     const [connected, setConnected] = useState(false);
     const [selectedLog, setSelectedLog] = useState(null); // Estado para o modal
 
@@ -59,6 +60,23 @@ const PainelSync = () => {
         }
     };
 
+    const handleSyncPedidos = async () => {
+        if (!connected) {
+            alert('Você precisa conectar ao Conta Azul primeiro!');
+            return;
+        }
+        setSyncingPedidos(true);
+        try {
+            await syncService.sincronizarPedidos();
+            setTimeout(() => fetchLogs(), 1000);
+            alert('Acompanhamento de Modificações do Conta Azul Iniciado! Em alguns segundos as flags alaranjadas aparecerão na lista de Pedidos se algo houver mudado.');
+        } catch (error) {
+            alert('Erro ao iniciar rastreio de pedidos.');
+        } finally {
+            setSyncingPedidos(false);
+        }
+    };
+
     useEffect(() => {
         checkConnection();
         fetchLogs();
@@ -84,15 +102,27 @@ const PainelSync = () => {
                         <LinkIcon size={18} />
                         {connected ? 'Reconectar' : 'Conectar'}
                     </button>
-                    <button
-                        onClick={handleSync}
-                        disabled={syncing || !connected}
-                        className={`flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition ${(syncing || !connected) ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                    >
-                        <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
-                        {syncing ? 'Sincronizando...' : 'Sincronizar Agora'}
-                    </button>
+                    <div className="flex flex-col gap-2">
+                        <button
+                            onClick={handleSync}
+                            disabled={syncing || !connected}
+                            className={`flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition ${(syncing || !connected) ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
+                        >
+                            <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+                            {syncing ? 'Sincronizando Produtos/Clientes...' : 'Sincronizar Geral'}
+                        </button>
+                        <button
+                            onClick={handleSyncPedidos}
+                            title="Procura por alterações nos orçamentos ou vendas que faturaram no Conta Azul e sinaliza com uma bolinha laranja."
+                            disabled={syncingPedidos || !connected}
+                            className={`flex justify-center items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 transition ${(syncingPedidos || !connected) ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
+                        >
+                            <RefreshCw size={18} className={syncingPedidos ? 'animate-spin' : ''} />
+                            {syncingPedidos ? 'Buscando Modificações...' : 'Sync Modificações (Pedidos)'}
+                        </button>
+                    </div>
                 </div>
             </div>
 

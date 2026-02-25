@@ -160,8 +160,10 @@ model Pedido {
   enviadoEm        DateTime? @map("enviado_em")
 
   // UX e Mobile
-  flexTotal Decimal @default(0) @map("flex_total") @db.Decimal(12, 2)
-  latLng    String? @map("lat_lng") // Ponto GPS capturado na elaboração
+  flexTotal          Decimal   @default(0) @map("flex_total") @db.Decimal(12, 2)
+  latLng             String?   @map("lat_lng") // Ponto GPS capturado na elaboração
+  revisaoPendente    Boolean   @default(false) @map("revisao_pendente")
+  contaAzulUpdatedAt DateTime? @map("conta_azul_updated_at")
 
   // Relacionamentos
   clienteId String  @map("cliente_id")

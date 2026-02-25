@@ -18,6 +18,14 @@ const syncController = {
         res.status(202).json({ message: 'Sincronização de Clientes iniciada em background.' });
     },
 
+    // Buscar Vendas Modificadas no Conta Azul
+    sincronizarPedidos: async (req, res) => {
+        // Fire and Forget
+        contaAzulService.syncPedidosModificados().catch(err => console.error("Erro background syncPedidos:", err));
+
+        res.status(202).json({ message: 'Rastreamento de Pedidos Modificados no Conta Azul iniciado em background.' });
+    },
+
     // Sincronizar Tudo
     sincronizarTudo: async (req, res) => {
         // Fire and Forget

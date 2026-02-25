@@ -58,6 +58,17 @@ const pedidoController = {
         }
     },
 
+    marcarRevisado: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const pedidoAtualizado = await pedidoService.editar(id, { revisaoPendente: false });
+            res.json({ message: 'Revisão concluída', revisaoPendente: pedidoAtualizado.revisaoPendente });
+        } catch (error) {
+            console.error('Erro ao marcar pedido como revisado:', error);
+            res.status(500).json({ error: 'Erro ao marcar revisão' });
+        }
+    },
+
     obterUltimoPreco: async (req, res) => {
         try {
             const { clienteId, produtoId } = req.query;

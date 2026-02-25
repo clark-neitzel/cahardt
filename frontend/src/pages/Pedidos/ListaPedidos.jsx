@@ -103,7 +103,15 @@ const ListaPedidos = () => {
                                             R$ {Number(pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toFixed(2).replace('.', ',')}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <StatusBadge status={pedido.statusEnvio} />
+                                            <div className="flex items-center gap-2">
+                                                <StatusBadge status={pedido.statusEnvio} />
+                                                {pedido.revisaoPendente && (
+                                                    <span className="flex items-center text-xs font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded-full animate-pulse" title="Modificado no Conta Azul">
+                                                        <AlertCircle className="h-3 w-3 mr-1" />
+                                                        Alterado
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <button
@@ -132,13 +140,45 @@ const ListaPedidos = () => {
                 <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                         <div className="flex justify-between items-center p-4 border-b">
-                            <h2 className="text-lg font-bold text-gray-900">Detalhes do Pedido</h2>
+                            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                Detalhes do Pedido
+                                {selectedPedido.revisaoPendente && (
+                                    <span className="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded-full flex items-center">
+                                        <AlertCircle className="h-4 w-4 mr-1" /> Alterado no ERP
+                                    </span>
+                                )}
+                            </h2>
                             <button onClick={() => setSelectedPedido(null)} className="text-gray-500 hover:text-gray-700">
                                 <X className="h-6 w-6" />
                             </button>
                         </div>
 
                         <div className="p-4 overflow-y-auto flex-1">
+                            {selectedPedido.revisaoPendente && (
+                                <div className="mb-6 bg-orange-50 border-l-4 border-orange-500 p-4 rounded text-sm text-orange-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div className="flex items-start">
+                                        <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0 text-orange-600 mt-0.5" />
+                                        <div>
+                                            <p className="font-bold text-orange-900 text-base">Atenção Vendedor!</p>
+                                            <p className="mt-1">Este pedido foi modificado lá no Conta Azul (Escritório) desde a última vez que você visualizou. O valor ou os produtos podem ter mudado.</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                await pedidoService.marcarRevisado(selectedPedido.id);
+                                                setSelectedPedido({ ...selectedPedido, revisaoPendente: false });
+                                                setPedidos(pedidos.map(p => p.id === selectedPedido.id ? { ...p, revisaoPendente: false } : p));
+                                            } catch (e) {
+                                                alert('Erro ao marcar como revisado.');
+                                            }
+                                        }}
+                                        className="whitespace-nowrap bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md font-bold text-xs transition-colors shadow-sm"
+                                    >
+                                        Marcar como Visto
+                                    </button>
+                                </div>
+                            )}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                                 <div>
                                     <p className="text-xs text-gray-500 uppercase font-semibold">Cliente</p>
