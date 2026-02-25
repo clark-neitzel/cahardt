@@ -510,10 +510,40 @@ const contaAzulService = {
                 }
 
                 // Mapeamento baseado no JSON real fornecido pelo usuário
+                // TRATAMENTO DA RAZÃO SOCIAL (API V2 NÃO RETORNA 'nome_empresa' NA LISTA)
+                // Vamos buscar o detalhe apenas se o cliente for PJ e (for novo, ou CA atualizou, ou local está sem Razão)
+                let detalheC = c;
+                const tipoPessoa = (c.person_type || c.tipo_pessoa || '').toUpperCase().includes('JUR') ? 'JURIDICA' : 'FISICA';
+
+                if (docRaw && tipoPessoa === 'JURIDICA') {
+                    const localCLI = await prisma.cliente.findUnique({ where: { Documento: docRaw } });
+                    const caDate = ultimaAtualizacaoCA ? ultimaAtualizacaoCA.getTime() : 0;
+                    const localDate = localCLI?.contaAzulUpdatedAt ? localCLI.contaAzulUpdatedAt.getTime() : 0;
+                    const sameName = localCLI?.Nome === localCLI?.NomeFantasia; // Indica que usou fallback
+
+                    // Busca detalhe se mudou, ou se está novo, ou se a razão social parece igual fantasia (faltou detalhe antes)
+                    if (!localCLI || caDate > localDate || sameName) {
+                        try {
+                            const urlDet = `https://api-v2.contaazul.com/v1/pessoas/${c.id}`;
+                            const resDet = await contaAzulService._axiosGet(urlDet, 'CLIENTES_DETALHE');
+                            if (resDet && resDet.data) {
+                                detalheC = resDet.data;
+                            }
+                            await new Promise(r => setTimeout(r, 200)); // Rate limit 5req/s
+                        } catch (e) {
+                            console.error(`⚠️ Erro ao buscar detalhe do Cliente ${c.id}:`, e.message);
+                        }
+                    } else {
+                        // Reutilizar Razão local se não quisermos buscar do CA à toa
+                        detalheC.nome_empresa = localCLI.Nome;
+                        detalheC.nome = localCLI.NomeFantasia || localCLI.Nome;
+                    }
+                }
+
                 // Mapeamento baseado no JSON real fornecido pela API V2 /v1/pessoas
                 // Em V2 Listagem, 'company_name' ou 'nome_empresa' pode não existir ou vir como 'name'.
-                const razao = c.company_name || c.nome_empresa || c.razao_social;
-                const fantasia = c.fantasy_name || c.nome_fantasia || c.nome || c.apelido;
+                const razao = detalheC.company_name || detalheC.nome_empresa || detalheC.razao_social;
+                const fantasia = detalheC.fantasy_name || detalheC.nome_fantasia || detalheC.nome || detalheC.apelido;
 
                 const dadosCliente = {
                     Nome: razao || fantasia || 'Desconhecido',
