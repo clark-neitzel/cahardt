@@ -898,6 +898,7 @@ const contaAzulService = {
                                 where: { id: pedidoLocal.id },
                                 data: {
                                     status: 'EXCLUIDO',
+                                    situacaoCA: venda.situacao?.nome || 'CANCELADO',
                                     contaAzulUpdatedAt: dataAtualizacaoCA
                                 }
                             });
@@ -919,21 +920,23 @@ const contaAzulService = {
 
                         if (isAprovado && !mudouValor) {
                             // Se foi aprovado sem diferença de valor, podemos remover o alerta
-                            if (pedidoLocal.revisaoPendente) {
+                            if (pedidoLocal.revisaoPendente || pedidoLocal.situacaoCA !== venda.situacao?.nome) {
                                 await prisma.pedido.update({
                                     where: { id: pedidoLocal.id },
                                     data: {
                                         revisaoPendente: false,
+                                        situacaoCA: venda.situacao?.nome || 'ABERTO',
                                         contaAzulUpdatedAt: dataAtualizacaoCA
                                     }
                                 });
                             }
-                        } else if (mudouValor || !pedidoLocal.contaAzulUpdatedAt) {
-                            // Houve diferença de valor ou é a primeira sincronização de modificação
+                        } else if (mudouValor || !pedidoLocal.contaAzulUpdatedAt || pedidoLocal.situacaoCA !== venda.situacao?.nome) {
+                            // Houve diferença de valor, mudança de status ou é a primeira sincronização de modificação
                             await prisma.pedido.update({
                                 where: { id: pedidoLocal.id },
                                 data: {
-                                    revisaoPendente: true,
+                                    revisaoPendente: mudouValor, // Só alerta se o valor mudou. Mudança de status puro não acende alerta.
+                                    situacaoCA: venda.situacao?.nome || 'ABERTO',
                                     contaAzulUpdatedAt: dataAtualizacaoCA
                                 }
                             });

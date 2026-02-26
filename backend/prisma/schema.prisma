@@ -156,6 +156,7 @@ model Pedido {
   // Status de Integração 
   statusEnvio      String    @default("ABERTO") @map("status_envio") // ABERTO, ENVIAR, SINCRONIZANDO, RECEBIDO, ERRO
   idVendaContaAzul String?   @map("id_venda_contaazul") // ID gerado na API 
+  situacaoCA       String?   @map("situacao_ca") // APROVADO, FATURADO, EM_ABERTO (Conta Azul Oficial)
   erroEnvio        String?   @map("erro_envio") @db.Text
   enviadoEm        DateTime? @map("enviado_em")
 

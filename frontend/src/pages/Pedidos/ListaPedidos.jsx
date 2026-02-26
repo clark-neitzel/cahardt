@@ -103,12 +103,19 @@ const ListaPedidos = () => {
                                             R$ {Number(pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toFixed(2).replace('.', ',')}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
-                                                <StatusBadge status={pedido.statusEnvio} />
-                                                {pedido.revisaoPendente && (
-                                                    <span className="flex items-center text-xs font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded-full animate-pulse" title="Modificado no Conta Azul">
-                                                        <AlertCircle className="h-3 w-3 mr-1" />
-                                                        Alterado
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <StatusBadge status={pedido.statusEnvio} />
+                                                    {pedido.revisaoPendente && (
+                                                        <span className="flex items-center text-[10px] font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full animate-pulse" title="Modificado no Conta Azul">
+                                                            <AlertCircle className="h-3 w-3 mr-1" />
+                                                            Alterado
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {pedido.situacaoCA && (
+                                                    <span className="text-[10px] font-bold text-blue-800 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded w-fit uppercase" title="Status Oficial no Conta Azul">
+                                                        CA: {pedido.situacaoCA}
                                                     </span>
                                                 )}
                                             </div>
@@ -194,9 +201,16 @@ const ListaPedidos = () => {
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 uppercase font-semibold">Status de Envio</p>
-                                    <div className="mt-1"><StatusBadge status={selectedPedido.statusEnvio} /></div>
+                                    <div className="mt-1 flex items-center gap-2">
+                                        <StatusBadge status={selectedPedido.statusEnvio} />
+                                        {selectedPedido.situacaoCA && (
+                                            <span className="text-[10px] font-bold text-blue-800 bg-blue-50 border border-blue-200 px-2 py-1 rounded w-fit uppercase" title="Status Oficial no Conta Azul">
+                                                CA: {selectedPedido.situacaoCA}
+                                            </span>
+                                        )}
+                                    </div>
                                     {selectedPedido.idVendaContaAzul && (
-                                        <p className="text-xs text-green-600 mt-1 truncate">ID ERP: {selectedPedido.idVendaContaAzul}</p>
+                                        <p className="text-[10px] text-green-600 mt-2 truncate font-mono bg-green-50 p-1 w-fit rounded">ERP: {selectedPedido.idVendaContaAzul}</p>
                                     )}
                                 </div>
                             </div>
