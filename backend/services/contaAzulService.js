@@ -57,8 +57,8 @@ const contaAzulService = {
             refreshPromise = (async () => {
                 try {
                     const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
-                    // VOLTA PARA AUTH MODERNO: auth.contaazul.com
-                    const response = await axios.post('https://auth.contaazul.com/oauth2/token',
+                    // CONFIGURAÇÃO VERIFICADA: api.contaazul.com (A API antiga rejeita tokens do auth.contaazul.com)
+                    const response = await axios.post('https://api.contaazul.com/oauth2/token',
                         new URLSearchParams({
                             grant_type: 'refresh_token',
                             refresh_token: config.refreshToken
