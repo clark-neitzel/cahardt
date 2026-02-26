@@ -56,16 +56,17 @@ const contaAzulService = {
 
             refreshPromise = (async () => {
                 try {
-                    const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
-                    // CONFIGURAÇÃO VERIFICADA: api.contaazul.com (A API antiga rejeita tokens do auth.contaazul.com)
+                    // CONFIGURAÇÃO LEGACY: api.contaazul.com
+                    // A API Legada requer AS CREDENCIAIS NO CORPO DA REQUISIÇÃO, e NÃO no cabeçalho.
                     const response = await axios.post('https://api.contaazul.com/oauth2/token',
                         new URLSearchParams({
                             grant_type: 'refresh_token',
-                            refresh_token: config.refreshToken
+                            refresh_token: config.refreshToken,
+                            client_id: process.env.CA_CLIENT_ID || CLIENT_ID,
+                            client_secret: process.env.CA_CLIENT_SECRET || CLIENT_SECRET
                         }).toString(),
                         {
                             headers: {
-                                'Authorization': `Basic ${credentials}`,
                                 'Content-Type': 'application/x-www-form-urlencoded'
                             }
                         }
