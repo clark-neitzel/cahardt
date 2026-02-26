@@ -154,6 +154,14 @@ const pedidoService = {
                 throw new Error('Só é permitido editar dados de vendas em Rascunho (Em Aberto).');
             }
 
+            if (isSomenteRevisao) {
+                return await tx.pedido.update({
+                    where: { id },
+                    data: { revisaoPendente: dadosPedido.revisaoPendente },
+                    include: { itens: true }
+                });
+            }
+
             let totalPedido = 0;
             let flexTotalPedido = 0;
 
