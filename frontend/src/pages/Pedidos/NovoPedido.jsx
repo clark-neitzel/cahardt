@@ -3,13 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
     ArrowLeft, Save, User, ChevronDown, ChevronUp, Calendar,
     FileText, AlertCircle, X, CheckCircle, Minus, Plus, Clock,
-    ShoppingBag, Search, Trash2
+    ShoppingBag, Search, Trash2, Package
 } from 'lucide-react';
 import clienteService from '../../services/clienteService';
 import produtoService from '../../services/produtoService';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
 import pedidoService from '../../services/pedidoService';
 import configService from '../../services/configService';
+import { API_URL } from '../../services/api';
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
@@ -174,8 +175,8 @@ const NovoPedido = () => {
                 setHistoricoMap(map);
             }).catch(() => { });
 
-            // Fechar o formulário para dar espaço à lista de produtos
-            setMostrarFormulario(false);
+            // Abrir o formulário (Data/Condição) para o vendedor configurar
+            setMostrarFormulario(true);
         }
     }, [clienteId, clientes, todasCondicoes]);
 
@@ -395,7 +396,13 @@ const NovoPedido = () => {
         const hist = produto.hist;
         const expandido = expandidosProduto.has(produto.id);
 
+        // Imagem principal do produto
+        const imgUrl = produto.imagens && produto.imagens.length > 0
+            ? `${API_URL}${produto.imagens[0].url}`
+            : null;
+
         const toggleExpand = () => {
+            if (!hist) return;
             setExpandidosProduto(prev => {
                 const n = new Set(prev);
                 n.has(produto.id) ? n.delete(produto.id) : n.add(produto.id);
@@ -404,46 +411,81 @@ const NovoPedido = () => {
         };
 
         return (
-            <div className={`border-b border-gray-100 ${qtd > 0 ? 'bg-blue-50/60' : 'bg-white'}`}>
-                <div className="flex items-center gap-2 px-3 py-2.5">
-                    {/* Nome e preço */}
+            <div className={`border-b border-gray-100 ${qtd > 0 ? 'bg-blue-50/40' : 'bg-white'}`}>
+                {/* Linha principal — clicável para expandir histórico nos Já Comprados */}
+                <div
+                    className={`flex items-center gap-2 px-2 py-2 ${hist ? 'cursor-pointer active:bg-gray-50' : ''}`}
+                    onClick={toggleExpand}
+                >
+                    {/* Foto do produto */}
+                    <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
+                        {imgUrl ? (
+                            <img src={imgUrl} alt={produto.nome} className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                                <Package className="h-5 w-5 text-gray-300" />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Info do produto */}
                     <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-gray-800 leading-tight">{produto.nome}</div>
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className="text-sm font-semibold text-gray-800 leading-tight line-clamp-2">{produto.nome}</div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                            {/* Preço / input de preço */}
                             {qtd > 0 ? (
-                                <input
-                                    type="number"
-                                    min="0" step="any"
-                                    className="w-20 border border-blue-300 bg-white text-blue-800 rounded px-1.5 py-0.5 text-sm font-bold text-center"
-                                    value={valor}
-                                    onFocus={e => e.target.select()}
-                                    onChange={e => setValorUnitario(produto.id, e.target.value)}
-                                />
+                                <span
+                                    className="text-xs font-bold text-blue-700"
+                                    onClick={e => e.stopPropagation()}
+                                >
+                                    <input
+                                        type="number"
+                                        min="0" step="any"
+                                        className="w-20 border border-blue-300 bg-white text-blue-800 rounded px-1.5 py-0.5 text-xs font-bold text-center"
+                                        value={valor}
+                                        onFocus={e => e.target.select()}
+                                        onChange={e => setValorUnitario(produto.id, e.target.value)}
+                                    />
+                                </span>
                             ) : (
                                 <span className="text-xs font-bold text-orange-600">
                                     R$ {Number(produto.valorVenda || 0).toFixed(2).replace('.', ',')}
                                 </span>
                             )}
+                            {/* Flex badge */}
                             {qtd > 0 && item && (
-                                <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${item.flexUnitario >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                <span className={`text-xs font-semibold px-1 py-0 rounded-full ${item.flexUnitario >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                     {item.flexUnitario >= 0 ? '+' : ''}{item.flexUnitario.toFixed(2)}
                                 </span>
                             )}
+                            {/* Peso */}
+                            {produto.pesoLiquido > 0 && (
+                                <span className="text-xs text-gray-400">{Number(produto.pesoLiquido).toFixed(0)}g</span>
+                            )}
+                            {/* Estoque */}
+                            <span className={`text-xs font-semibold ${Number(produto.estoqueDisponivel) > 0 ? 'text-green-600' : 'text-red-500'
+                                }`}>
+                                Est: {Number(produto.estoqueDisponivel || 0).toFixed(0)} {produto.unidade || 'un'}
+                            </span>
+                            {/* Chevron para histórico */}
                             {hist && (
-                                <button onClick={toggleExpand} className="text-gray-400 ml-auto">
-                                    {expandido ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                                </button>
+                                <span className="text-gray-400 ml-auto">
+                                    {expandido ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                </span>
                             )}
                         </div>
                     </div>
 
-                    {/* Controles de quantidade */}
-                    <div className="flex items-center gap-1 shrink-0">
+                    {/* Controles de quantidade — stopPropagation para não acionar toggleExpand */}
+                    <div
+                        className="flex items-center gap-1 shrink-0"
+                        onClick={e => e.stopPropagation()}
+                    >
                         {qtd > 0 && (
                             <button
                                 onMouseDown={e => e.preventDefault()}
                                 onClick={() => setQuantidade(produto.id, qtd - 1)}
-                                className="w-8 h-8 flex items-center justify-center rounded-full bg-red-100 text-red-600 active:bg-red-200 text-lg font-bold"
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-red-100 text-red-600 active:bg-red-200"
                             >
                                 <Minus className="h-4 w-4" />
                             </button>
@@ -451,7 +493,7 @@ const NovoPedido = () => {
                         {qtd > 0 && (
                             <input
                                 type="number" min="1"
-                                className="w-10 text-center border border-gray-300 rounded bg-white text-gray-900 text-sm font-bold py-0.5"
+                                className="w-9 text-center border border-gray-300 rounded bg-white text-gray-900 text-sm font-bold py-0.5"
                                 value={qtd}
                                 onFocus={e => e.target.select()}
                                 onChange={e => {
@@ -472,7 +514,7 @@ const NovoPedido = () => {
 
                 {/* Histórico de compras expansível */}
                 {expandido && hist && hist.compras && hist.compras.length > 0 && (
-                    <div className="px-3 pb-2 bg-gray-50 border-t border-gray-100">
+                    <div className="pl-16 pr-3 pb-2 bg-amber-50/60 border-t border-amber-100">
                         <table className="w-full text-xs mt-1.5">
                             <thead>
                                 <tr className="text-gray-500">
@@ -484,7 +526,7 @@ const NovoPedido = () => {
                             </thead>
                             <tbody>
                                 {hist.compras.map((c, i) => (
-                                    <tr key={i} className="border-t border-gray-100">
+                                    <tr key={i} className="border-t border-amber-100">
                                         <td className="py-0.5 text-gray-600">#{c.numero || '-'}</td>
                                         <td className="py-0.5 text-center font-semibold text-gray-800">{c.quantidade}</td>
                                         <td className="py-0.5 text-right font-semibold text-gray-800">{Number(c.valor).toFixed(2).replace('.', ',')}</td>
