@@ -782,8 +782,12 @@ const contaAzulService = {
         try {
             // Buscar vendas modificadas nos últimos 2 dias ou na última hora.
             // Para segurança na primeira rodada e evitar payload massivo: últimos 3 dias
-            const diasAtras = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().substring(0, 19);
-            const dataAtual = new Date(Date.now()).toISOString().substring(0, 19);
+            const diasAtrasDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            const dataAtualDate = new Date(Date.now()).toISOString().split('T')[0];
+
+            // Formatação Exata (YYYY-MM-DDTHH:mm:ss) exigida pela API V2, mas ignorando horas fracionadas para evitar corte fuso horário
+            const diasAtras = `${diasAtrasDate}T00:00:00`;
+            const dataAtual = `${dataAtualDate}T23:59:59`;
 
             // API V2 Endpoint oficial para buscar vendas (A V1 devolve 401 com tokens Cognito)
             // A API V2 EXIGE que seja enviada a data inicial e final juntas
@@ -794,6 +798,13 @@ const contaAzulService = {
             const response = await contaAzulService._axiosGet(url, 'PEDIDOS_MODIFICADOS');
             const vendasModificadas = response.data?.itens || [];
             console.log(`Encontradas ${vendasModificadas.length} vendas recentemente alteradas.`);
+
+            // DUMP ABSOLUTO PARA DEBUG: Entender porque o pedido BROTHAUS não fica EXCLUIDO
+            if (vendasModificadas.length > 0) {
+                console.log(`\n\n--- INÍCIO DUMP VENDAS MODIFICADAS V2 ---`);
+                console.log(JSON.stringify(vendasModificadas.slice(0, 3), null, 2));
+                console.log(`--- FIM DUMP VENDAS MODIFICADAS V2 ---\n\n`);
+            }
 
             let count = 0;
             for (const venda of vendasModificadas) {
