@@ -111,6 +111,23 @@ const NovoPedido = () => {
                     alert("Erro ao carregar o rascunho de pedido.");
                     navigate('/pedidos');
                 }
+            } else {
+                // Tenta carregar auto-save local (novo pedido)
+                try {
+                    const draft = localStorage.getItem('@CAHardt:NovoPedido_Draft');
+                    if (draft) {
+                        const pd = JSON.parse(draft);
+                        if (pd.clienteId) setTimeout(() => setClienteId(pd.clienteId), 100);
+                        if (pd.clienteSearchText) setClienteSearchText(pd.clienteSearchText);
+                        if (pd.dataEntrega) setDataEntrega(pd.dataEntrega);
+                        if (pd.condicaoPagamentoId) setTimeout(() => setCondicaoPagamentoId(pd.condicaoPagamentoId), 600);
+                        if (pd.isEncaixe !== undefined) setIsEncaixe(pd.isEncaixe);
+                        if (pd.observacoes) setObservacoes(pd.observacoes);
+                        if (pd.itensMap && Array.isArray(pd.itensMap)) {
+                            setItensMap(new Map(pd.itensMap));
+                        }
+                    }
+                } catch (e) { }
             }
         } catch (error) {
             alert("Erro ao carregar dados básicos para o pedido.");
@@ -118,6 +135,24 @@ const NovoPedido = () => {
             setLoading(false);
         }
     };
+
+    // Auto-Save: Sincroniza o rascunho a cada alteração pertinente
+    useEffect(() => {
+        if (!loading && !editId) {
+            const dataToSave = {
+                clienteId,
+                clienteSearchText,
+                dataEntrega,
+                condicaoPagamentoId,
+                isEncaixe,
+                observacoes,
+                itensMap: Array.from(itensMap.entries())
+            };
+            try {
+                localStorage.setItem('@CAHardt:NovoPedido_Draft', JSON.stringify(dataToSave));
+            } catch (e) { }
+        }
+    }, [clienteId, clienteSearchText, dataEntrega, condicaoPagamentoId, isEncaixe, observacoes, itensMap, loading, editId]);
 
     // Recalcular flex sempre que itensMap mudar
     useEffect(() => {
@@ -325,6 +360,8 @@ const NovoPedido = () => {
         try {
             if (editId) await pedidoService.atualizar(editId, payload);
             else await pedidoService.criar(payload);
+
+            localStorage.removeItem('@CAHardt:NovoPedido_Draft');
             navigate('/pedidos');
         } catch (error) {
             alert(error.response?.data?.error || "Erro ao salvar pedido.");
@@ -339,6 +376,7 @@ const NovoPedido = () => {
         setSaving(true);
         try {
             await pedidoService.excluir(editId);
+            localStorage.removeItem('@CAHardt:NovoPedido_Draft');
             navigate('/pedidos');
         } catch (error) {
             alert(error.response?.data?.error || "Erro ao excluir o pedido.");
@@ -389,7 +427,7 @@ const NovoPedido = () => {
         .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
         .forEach(p => produtosOutros.push({ ...p, hist: null }));
 
-    const ListaProdutoRow = ({ produto }) => {
+    const renderProdutoRow = (produto) => {
         const item = itensMap.get(produto.id);
         const qtd = item?.quantidade || 0;
         const valor = item?.valorUnitario;
@@ -547,7 +585,13 @@ const NovoPedido = () => {
             <div className="bg-white shadow-sm sticky top-0 z-20">
                 <div className="flex items-center justify-between px-3 py-2">
                     <div className="flex items-center gap-2">
-                        <button onClick={() => navigate(-1)} className="text-gray-600 p-1">
+                        <button
+                            onClick={() => {
+                                localStorage.removeItem('@CAHardt:NovoPedido_Draft');
+                                navigate(-1);
+                            }}
+                            className="text-gray-600 p-1"
+                        >
                             <ArrowLeft className="h-5 w-5" />
                         </button>
                         <h1 className="text-base font-bold text-gray-900">
@@ -734,7 +778,7 @@ const NovoPedido = () => {
                                 <Clock className="h-3.5 w-3.5 text-amber-600" />
                                 <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">Já Comprados</span>
                             </div>
-                            {produtosJaComprados.map(p => <ListaProdutoRow key={p.id} produto={p} />)}
+                            {produtosJaComprados.map(p => <React.Fragment key={p.id}>{renderProdutoRow(p)}</React.Fragment>)}
                         </div>
                     )}
 
@@ -747,7 +791,7 @@ const NovoPedido = () => {
                                     {produtosJaComprados.length > 0 ? 'Outros Produtos' : 'Produtos'}
                                 </span>
                             </div>
-                            {produtosOutros.map(p => <ListaProdutoRow key={p.id} produto={p} />)}
+                            {produtosOutros.map(p => <React.Fragment key={p.id}>{renderProdutoRow(p)}</React.Fragment>)}
                         </div>
                     )}
 

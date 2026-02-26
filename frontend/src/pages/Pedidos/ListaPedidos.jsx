@@ -16,6 +16,8 @@ const ListaPedidos = () => {
     const carregarPedidos = async () => {
         try {
             const data = await pedidoService.listar({});
+            // Ordenar por dataVenda (data de entrega) decrescente
+            data.sort((a, b) => new Date(b.dataVenda || b.createdAt) - new Date(a.dataVenda || a.createdAt));
             setPedidos(data);
         } catch (error) {
             console.error("Erro ao carregar pedidos", error);
@@ -81,19 +83,22 @@ const ListaPedidos = () => {
                                 <div className="flex justify-between items-start gap-2">
                                     <div className="flex-1 min-w-0 pr-1">
                                         <div className="flex items-center gap-1.5 mb-0.5">
-                                            <h3 className="text-[14px] font-semibold text-gray-800 leading-tight truncate">
-                                                {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Desconhecido'}
-                                            </h3>
                                             {pedido.numero && (
-                                                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1 py-0.5 rounded border border-blue-100 shrink-0">
+                                                <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-1 py-0.5 rounded border border-blue-100 shrink-0">
                                                     #{pedido.numero}
                                                 </span>
                                             )}
+                                            <h3 className="text-[14px] font-semibold text-gray-800 leading-tight truncate">
+                                                {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Desconhecido'}
+                                            </h3>
                                         </div>
-                                        <div className="flex items-center gap-1.5 text-[11px] text-gray-500 font-light mb-1.5">
-                                            <span>{new Date(pedido.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
-                                            <span className="text-gray-300">•</span>
-                                            <span className="truncate">{pedido.vendedor?.nome || '-'}</span>
+                                        <div className="flex flex-col gap-0.5 text-[11px] text-gray-500 font-light mb-1.5">
+                                            <div className="flex items-center gap-1">
+                                                <span className="font-semibold text-gray-700">Entrega: {pedido.dataVenda ? new Date(pedido.dataVenda).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '-'}</span>
+                                                <span className="text-gray-300">•</span>
+                                                <span>Criação: {new Date(pedido.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                                            </div>
+                                            <div className="truncate text-[10px] text-gray-400">Vendedor: {pedido.vendedor?.nome || '-'}</div>
                                         </div>
                                     </div>
                                     <div className="text-[14px] font-bold text-gray-900 tracking-tight shrink-0 mt-0.5">
@@ -117,8 +122,8 @@ const ListaPedidos = () => {
                                     </div>
                                     <button
                                         className={`text-[11px] font-bold px-3 py-1 rounded transition-colors shadow-sm outline-none border ${pedido.statusEnvio === 'ABERTO'
-                                                ? 'bg-blue-50 border-blue-200 text-blue-700 active:bg-blue-100'
-                                                : 'bg-white border-gray-200 text-gray-600 active:bg-gray-50'
+                                            ? 'bg-blue-50 border-blue-200 text-blue-700 active:bg-blue-100'
+                                            : 'bg-white border-gray-200 text-gray-600 active:bg-gray-50'
                                             }`}
                                         onClick={() => {
                                             if (pedido.statusEnvio === 'ABERTO') navigate(`/pedidos/editar/${pedido.id}`);
