@@ -45,7 +45,7 @@ const NovoPedido = () => {
 
     // Client/Product Search State
     const [clienteSearchText, setClienteSearchText] = useState('');
-    const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+    const [showClienteModal, setShowClienteModal] = useState(false);
     const [mostrarCondicoesDropdown, setMostrarCondicoesDropdown] = useState(false);
     const [mostrarFormulario, setMostrarFormulario] = useState(true);
     const [produtoSearch, setProdutoSearch] = useState('');
@@ -580,44 +580,38 @@ const NovoPedido = () => {
 
             {/* ===== FORMULÁRIO (cliente + data + condição) ===== */}
             <div className="bg-white shadow-sm">
-                {/* Campo cliente sempre visível */}
-                <div className="px-3 py-2 border-b border-gray-100">
-                    <div className="relative">
-                        <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-gray-400 shrink-0" />
-                            <input
-                                type="text"
-                                className="flex-1 text-sm font-semibold text-gray-900 bg-transparent outline-none placeholder-gray-400"
-                                placeholder="Buscar cliente..."
-                                value={clienteSearchText}
-                                onChange={e => { setClienteSearchText(e.target.value); setShowClienteDropdown(true); if (!e.target.value) setClienteId(''); }}
-                                onFocus={e => { e.target.select(); setShowClienteDropdown(true); }}
-                                onBlur={() => setTimeout(() => setShowClienteDropdown(false), 200)}
-                            />
-                            {clienteId && (
-                                <button onClick={() => { setClienteId(''); setClienteSearchText(''); }} className="text-gray-400">
-                                    <X className="h-4 w-4" />
-                                </button>
+                {/* Campo cliente (agora um gatilho de modal) */}
+                <div className="px-3 py-3 border-b border-gray-100 bg-white">
+                    <button
+                        className="w-full relative flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 active:bg-gray-100 transition-colors text-left"
+                        onClick={() => setShowClienteModal(true)}
+                    >
+                        <div className="flex items-center gap-2 overflow-hidden items-center">
+                            <User className="h-5 w-5 text-gray-500 shrink-0" />
+                            {clienteId && clienteSelecionado ? (
+                                <span className="text-[14px] font-bold text-gray-900 truncate tracking-tight leading-tight pt-0.5">
+                                    {clienteSelecionado.NomeFantasia || clienteSelecionado.Nome || clienteSearchText}
+                                </span>
+                            ) : (
+                                <span className="text-[14px] font-semibold text-gray-400 tracking-tight leading-tight pt-0.5">
+                                    Toque p/ buscar cliente...
+                                </span>
                             )}
                         </div>
-
-                        {showClienteDropdown && !clienteId && (
-                            <ul className="absolute z-40 left-0 right-0 mt-1 bg-white border border-gray-200 shadow-2xl max-h-52 rounded-md overflow-auto">
-                                {clientes
-                                    .filter(c => !clienteSearchText || (c.NomeFantasia || c.Nome).toLowerCase().includes(clienteSearchText.toLowerCase()) || (c.Documento || '').includes(clienteSearchText))
-                                    .slice(0, 40)
-                                    .map(c => (
-                                        <li key={c.UUID}
-                                            className="py-2.5 px-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 active:bg-gray-100"
-                                            onClick={() => setClienteId(c.UUID)}>
-                                            <div className="font-bold text-sm text-gray-900">{c.NomeFantasia || c.Nome}</div>
-                                            <div className="text-xs text-gray-500">{c.Documento || 'Sem Doc'} · {c.End_Cidade || ''}</div>
-                                            {c.Dia_de_entrega && <span className="text-blue-600 text-xs font-semibold">Entregas: {c.Dia_de_entrega}</span>}
-                                        </li>
-                                    ))}
-                            </ul>
+                        {clienteId && (
+                            <div
+                                className="text-gray-400 p-0.5 shrink-0 bg-white rounded-full border border-gray-200 ml-2 shadow-sm"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setClienteId('');
+                                    setClienteSearchText('');
+                                    setClienteSelecionado(null);
+                                }}
+                            >
+                                <X className="h-4 w-4 text-red-500" />
+                            </div>
                         )}
-                    </div>
+                    </button>
                 </div>
 
                 {/* Data + Condição compactas (collapsível) */}
@@ -798,6 +792,74 @@ const NovoPedido = () => {
                         <Save className="h-5 w-5" />
                         FECHAR PEDIDO · R$ {vTotal.toFixed(2).replace('.', ',')}
                     </button>
+                </div>
+            )}
+            {/* Modal de Busca de Cliente (Tela Cheia) */}
+            {showClienteModal && (
+                <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col">
+                    <div className="flex items-center gap-3 px-3 py-3 border-b border-gray-200 bg-white shadow-sm">
+                        <button onClick={() => setShowClienteModal(false)} className="text-gray-600 p-1.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors">
+                            <ArrowLeft className="h-6 w-6" />
+                        </button>
+                        <div className="flex-1 relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                            <input
+                                autoFocus
+                                type="text"
+                                className="w-full pl-10 pr-10 py-2.5 text-base font-semibold text-gray-900 bg-gray-50 border border-transparent rounded outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:bg-white placeholder-gray-400 transition-colors"
+                                placeholder="Fantasia ou CNPJ..."
+                                value={clienteSearchText}
+                                onChange={e => setClienteSearchText(e.target.value)}
+                            />
+                            {clienteSearchText && (
+                                <button onClick={() => setClienteSearchText('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 p-1.5 hover:text-gray-600 bg-white rounded-full">
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto bg-gray-50 px-3 pb-6 pt-3">
+                        <div className="space-y-2">
+                            {clientes
+                                .filter(c => !clienteSearchText || (c.NomeFantasia || c.Nome).toLowerCase().includes(clienteSearchText.toLowerCase()) || (c.Documento || '').includes(clienteSearchText))
+                                .slice(0, 50)
+                                .map(c => (
+                                    <div
+                                        key={c.UUID}
+                                        className="bg-white p-4 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 cursor-pointer active:bg-blue-50 active:border-blue-100 transition-colors"
+                                        onClick={() => {
+                                            setClienteId(c.UUID);
+                                            setShowClienteModal(false);
+                                            setClienteSearchText(c.NomeFantasia || c.Nome);
+                                        }}
+                                    >
+                                        <div className="font-bold text-[15px] text-gray-900 mb-1 leading-tight tracking-tight">{c.NomeFantasia || c.Nome}</div>
+                                        <div className="text-[13px] text-gray-500 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-medium">
+                                            <span>{c.Documento || 'S/ Documento'}</span>
+                                            {c.End_Cidade && (
+                                                <>
+                                                    <span className="text-gray-300">•</span>
+                                                    <span>{c.End_Cidade}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                        {c.Dia_de_entrega && (
+                                            <div className="mt-2.5 inline-block bg-blue-50/70 text-blue-700 text-[11px] font-bold tracking-tight px-1.5 py-0.5 rounded border border-blue-100">
+                                                Rota: {c.Dia_de_entrega}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            {clientes.filter(c => !clienteSearchText || (c.NomeFantasia || c.Nome).toLowerCase().includes(clienteSearchText.toLowerCase()) || (c.Documento || '').includes(clienteSearchText)).length === 0 && (
+                                <div className="p-10 text-center text-gray-500 flex flex-col items-center">
+                                    <Search className="h-10 w-10 text-gray-300 mb-2" />
+                                    <p className="text-[15px] font-bold text-gray-700">Nenhum cliente com esse nome</p>
+                                    <p className="text-[13px] mt-1 text-gray-400">Tente buscar de outra forma ou pelo CNPJ.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
