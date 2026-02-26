@@ -140,6 +140,23 @@ const startServer = async () => {
                 }
             }, 3600000); // 60 minutos (1 hora)
 
+            // === AUTO-SYNC PEDIDOS (Bidirecional) ===
+            // Detecta automaticamente pedidos alterados/excluídos no CA a cada 15 minutos.
+            // Não depende do usuário clicar no botão — roda em background continuamente.
+            console.log('⏰ Iniciando Auto-Sync de Pedidos (CA → App)...');
+            const _runSyncPedidos = async () => {
+                try {
+                    await contaAzulService.syncPedidosModificados();
+                } catch (err) {
+                    console.error('⚠️ Auto-Sync Pedidos Error:', err.message);
+                }
+            };
+            // Primeira execução 2min após o start (para o servidor estar estável)
+            setTimeout(_runSyncPedidos, 120000);
+            // Execuções subsequentes a cada 15min
+            setInterval(_runSyncPedidos, 900000); // 15 minutos
+
+
             // === AUTO-SYNC SYSTEM (Pedidos) ===
             // Checa a fila de pedidos a enviar a cada 30 segundos
             console.log('⏰ Iniciando Worker de Pedidos (Upload para CA)...');
