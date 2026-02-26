@@ -792,19 +792,22 @@ const contaAzulService = {
             if (!pedidosLocaisAtivos.length) return 0;
 
             let deletadosCount = 0;
+            // Pegamos o token uma vez no começo do lote
+            let token = await contaAzulService.getAccessToken();
 
             for (const local of pedidosLocaisAtivos) {
                 try {
                     const url = `https://api-v2.contaazul.com/v1/venda/${local.idVendaContaAzul}`;
-                    // Fazemos o GET. Se o pedido existe, retorna 200.
-                    await contaAzulService._axiosGet(url, 'VERIFICA_EXCLUSAO');
+                    // Fazemos o GET direto usando Axios Puro para que possamos ler o error.response genuíno, 
+                    // pois o _axiosGet mastiga o erro antes de devolver pra cá.
+                    await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` } });
                 } catch (error) {
                     const statusCA = error.response ? error.response.status : 'SEM_STATUS';
                     const erroAviso = error.response ? JSON.stringify(error.response.data) : error.message;
                     console.log(`[GARBAGE COLLECTOR] Venda ${local.numero} (CA: ${local.idVendaContaAzul}) ping falhou. Status da CA: ${statusCA}. Detalhe: ${erroAviso}`);
 
-                    // Se a CA retornar 404 (Not Found), significa que excluíram o pedido lá dentro!
-                    if (statusCA === 404) {
+                    // Se a CA retornar 404 (Not Found) OU 400 Bad Request (V2 rejeitando ID V1 int legado)
+                    if (statusCA === 404 || statusCA === 400) {
                         try {
                             await prisma.pedido.update({
                                 where: { id: local.id },
