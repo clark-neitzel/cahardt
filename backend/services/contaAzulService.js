@@ -782,6 +782,7 @@ const contaAzulService = {
         try {
             // Buscar vendas modificadas nos últimos 2 dias ou na última hora.
             // Para segurança na primeira rodada e evitar payload massivo: últimos 3 dias
+            const diasAtras = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().substring(0, 19);
             const dataAtual = new Date(Date.now()).toISOString().substring(0, 19);
 
             // API V2 Endpoint oficial para buscar vendas (A V1 devolve 401 com tokens Cognito)
