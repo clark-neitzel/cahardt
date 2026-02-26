@@ -991,17 +991,93 @@ const contaAzulService = {
                                 });
                             }
                         } else if (mudouValor || !pedidoLocal.contaAzulUpdatedAt || pedidoLocal.situacaoCA !== venda.situacao?.nome) {
-                            // Houve diferença de valor, mudança de status ou é a primeira sincronização de modificação
-                            await prisma.pedido.update({
-                                where: { id: pedidoLocal.id },
-                                data: {
-                                    revisaoPendente: mudouValor, // Só alerta se o valor mudou. Mudança de status puro não acende alerta.
-                                    situacaoCA: venda.situacao?.nome || 'ABERTO',
-                                    contaAzulUpdatedAt: dataAtualizacaoCA
+                            // Houve diferença de valor, mudança de status ou é a primeira sincronização
+
+                            if (mudouValor) {
+                                // === ATUALIZAÇÃO COMPLETA: buscar itens reais do CA e substituir localmente ===
+                                console.log(`🔄 [Sync CA] Pedido #${pedidoLocal.numero} com valor divergente (local: ${valorLocal}, CA: ${valorCA}). Buscando itens do CA...`);
+                                try {
+                                    const tokenSync = await contaAzulService.getAccessToken();
+                                    const resItens = await axios.get(
+                                        `https://api-v2.contaazul.com/v1/venda/${venda.id}/itens?pagina=1&tamanho_pagina=100`,
+                                        { headers: { 'Authorization': `Bearer ${tokenSync}` } }
+                                    );
+                                    const itensCA = resItens.data?.itens || [];
+
+                                    if (itensCA.length > 0) {
+                                        // Montar novos itens — cada item do CA tem id_item (CA UUID do produto)
+                                        const novosItens = [];
+                                        for (const itemCA of itensCA) {
+                                            // Tentar encontrar produto local pelo CA UUID
+                                            const produtoLocal = await prisma.produto.findFirst({
+                                                where: { contaAzulId: itemCA.id_item }
+                                            });
+                                            const valorBase = produtoLocal ? Number(produtoLocal.valorVenda) : Number(itemCA.valor);
+                                            novosItens.push({
+                                                produtoId: produtoLocal?.id || null,
+                                                descricao: itemCA.nome || itemCA.descricao || 'Produto CA',
+                                                quantidade: Number(itemCA.quantidade),
+                                                valor: Number(itemCA.valor),
+                                                valorBase: valorBase,
+                                                flexGerado: (Number(itemCA.valor) - valorBase) * Number(itemCA.quantidade)
+                                            });
+                                        }
+
+                                        // Substituir itens locais pelos do CA dentro de uma transação
+                                        await prisma.$transaction(async (tx) => {
+                                            await tx.pedidoItem.deleteMany({ where: { pedidoId: pedidoLocal.id } });
+                                            await tx.pedido.update({
+                                                where: { id: pedidoLocal.id },
+                                                data: {
+                                                    numero: venda.numero || pedidoLocal.numero,
+                                                    revisaoPendente: true,
+                                                    situacaoCA: venda.situacao?.nome || 'ABERTO',
+                                                    contaAzulUpdatedAt: dataAtualizacaoCA,
+                                                    itens: { create: novosItens }
+                                                }
+                                            });
+                                        });
+                                        console.log(`✅ [Sync CA] Pedido #${pedidoLocal.numero} atualizado com ${novosItens.length} itens do CA.`);
+                                        count++;
+                                    } else {
+                                        // Sem itens retornados pelo CA — só atualiza status
+                                        await prisma.pedido.update({
+                                            where: { id: pedidoLocal.id },
+                                            data: {
+                                                revisaoPendente: true,
+                                                situacaoCA: venda.situacao?.nome || 'ABERTO',
+                                                contaAzulUpdatedAt: dataAtualizacaoCA
+                                            }
+                                        });
+                                        count++;
+                                    }
+                                } catch (erroFetchItens) {
+                                    console.error(`[Sync CA] Erro ao buscar itens do pedido #${pedidoLocal.numero}: ${erroFetchItens.message}`);
+                                    // Fallback: só atualiza status
+                                    await prisma.pedido.update({
+                                        where: { id: pedidoLocal.id },
+                                        data: {
+                                            revisaoPendente: true,
+                                            situacaoCA: venda.situacao?.nome || 'ABERTO',
+                                            contaAzulUpdatedAt: dataAtualizacaoCA
+                                        }
+                                    });
+                                    count++;
                                 }
-                            });
-                            count++;
+                            } else {
+                                // Apenas mudança de status ou primeira sync — sem divergência de valor
+                                await prisma.pedido.update({
+                                    where: { id: pedidoLocal.id },
+                                    data: {
+                                        revisaoPendente: false,
+                                        situacaoCA: venda.situacao?.nome || 'ABERTO',
+                                        contaAzulUpdatedAt: dataAtualizacaoCA
+                                    }
+                                });
+                                count++;
+                            }
                         }
+
                     }
                 } else {
                     // === IMPORTAÇÃO DE PEDIDO ÓRFÃO ===
