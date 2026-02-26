@@ -784,7 +784,8 @@ const contaAzulService = {
             const diasAtras = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
             // API V1 endpoint para buscar vendas por data de atualização
-            const url = `https://api-v2.contaazul.com/v1/vendas?data_atualizacao_inicial=${diasAtras}T00:00:00Z&size=50`;
+            // O endpoint de vendas SÓ existe na v1 (api.contaazul.com). A v2 (api-v2.contaazul.com) retorna 404 Not Found.
+            const url = `https://api.contaazul.com/v1/vendas?data_atualizacao_inicial=${diasAtras}T00:00:00Z&size=50`;
             console.log(`🔎 Buscando Pedidos na CA: ${url}`);
 
             // Usa o wrapper interno para garantir refresh de token automático
@@ -804,9 +805,25 @@ const contaAzulService = {
                     },
                     include: { itens: true }
                 });
-
                 if (pedidoLocal) {
                     const dataAtualizacaoCA = venda.data_atualizacao ? new Date(venda.data_atualizacao) : new Date();
+
+                    // Lógica solicitada pelo usuário para Pedidos Excluídos/Cancelados
+                    if (venda.situacao === 'CANCELADO' || venda.status === 'DELETED') {
+                        if (pedidoLocal.status !== 'EXCLUIDO') {
+                            await prisma.pedido.update({
+                                where: { id: pedidoLocal.id },
+                                data: {
+                                    status: 'EXCLUIDO',
+                                    contaAzulUpdatedAt: dataAtualizacaoCA
+                                }
+                            });
+                            console.log(`🗑️ Pedido Local ${pedidoLocal.id} marcado como EXCLUIDO (Refletindo CA)`);
+                            count++;
+                        }
+                        continue;
+                    }
+
                     const ignorar = pedidoLocal.contaAzulUpdatedAt && pedidoLocal.contaAzulUpdatedAt.getTime() >= dataAtualizacaoCA.getTime();
 
                     if (!ignorar) {
