@@ -44,12 +44,14 @@ Para que a conexão nunca se perca, o sistema deve renovar o token **automaticam
 ### Quando renovar?
 O ideal é implementar uma margem de segurança. Se o token dura 60 minutos, renove-o aos **50 minutos** ou **55 minutos**.
 
-### Como renovar (Endpoint)
+### Como renovar (Endpoint V2 COGNITO - OBRIGATÓRIO)
 
-**POST** `https://api.contaazul.com/oauth2/token`
+**CRÍTICO [FEV/2026]:** Os tokens atuais do Conta Azul operam sob o padrão JWT (Cognito). A API legada (`api.contaazul.com`) NÃO aceitará renovar esses tokens e retornará `invalid_client`. **Sempre use `auth.contaazul.com`**.
 
-**Headers:**
-*   `Authorization`: `Basic base64(client_id + ":" + client_secret)`
+**POST** `https://auth.contaazul.com/oauth2/token`
+
+**Headers Obrigatórios:**
+*   `Authorization`: `Basic base64(client_id + ":" + client_secret)` -> Exigência exclusiva do novo endpoint auth!
 *   `Content-Type`: `application/x-www-form-urlencoded`
 
 **Body:**
@@ -120,11 +122,13 @@ https://auth.contaazul.com/login?response_type=code&client_id=6f6gpe5la4bvg6oehq
 ### API Base URL (CRÍTICO)
 **URL Base da API:** `https://api-v2.contaazul.com`
 
-**IMPORTANTE:** A API base é `api-v2.contaazul.com`, NÃO `api.contaazul.com`. Usar o endpoint errado resulta em 401 mesmo com autenticação válida.
+**IMPORTANTE [FEV/2026]:** A API base é EXCLUSIVAMENTE `api-v2.contaazul.com`. A API legada (`api.contaazul.com`) foi descontinuada para contas novas (Cognito). Usar o endpoint legado com tokens novos resultará em erro 401 Unauthorized imediato e impossível de reverter.
 
-**Endpoints de recursos:**
-- Produtos: `https://api-v2.contaazul.com/v1/produtos` (paginação: `?pagina=X&tamanho_pagina=Y`)
-- Clientes: `https://api-v2.contaazul.com/v1/clientes` (paginação: `?pagina=X&tamanho_pagina=Y`)
+**Endpoints OBRIGATÓRIOS (V2):**
+- **Produtos**: `https://api-v2.contaazul.com/v1/produtos` (paginação: `?pagina=X&tamanho_pagina=Y`)
+- **Clientes (Pessoas)**: `https://api-v2.contaazul.com/v1/pessoas` (paginação: `?pagina=X&tamanho_pagina=Y`)
+- **Vendas (Busca)**: `https://api-v2.contaazul.com/v1/venda/busca` -> NÃO USE `/v1/vendas` da API antiga.
+- **Vendas (Criar)**: `https://api-v2.contaazul.com/v1/venda`
 
 ### 6. Governança: Estabilidade e Segurança (Token Rotation)
 
@@ -137,14 +141,15 @@ https://auth.contaazul.com/login?response_type=code&client_id=6f6gpe5la4bvg6oehq
 
 ---
 
-## 6. Referências Oficiais & Endpoints (Documentação Genérica)
+## 6. Referências Oficiais & Endpoints (Documentação V2)
 
-*   **Authorize URL**: `https://api.contaazul.com/auth/authorize`
-*   **Token URL**: `https://api.contaazul.com/oauth2/token`
-*   **Escopos**: Verifique se o escopo `sales` está incluso para pedidos e produtos.
+*   **Authorize URL**: `https://auth.contaazul.com/login`
+*   **Token URL**: `https://auth.contaazul.com/oauth2/token`
+*   **Escopos**: `openid profile aws.cognito.signin.user.admin`
 
 ### Parâmetros de URL Autorização
-`client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&scope=sales&state={RANDOM_STRING}&response_type=code`
+O endpoint de login Cognito exige parâmetros estritos:
+`https://auth.contaazul.com/login?response_type=code&client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&state={RANDOM_STRING}&scope=openid+profile+aws.cognito.signin.user.admin`
 
 ---
 

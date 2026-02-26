@@ -232,10 +232,19 @@ Esta skill documenta a integração de envio de Pedidos (Vendas) para o Conta Az
    - `RECEBIDO`: Pedido processado com sucesso no CA, recebemos o `id_venda_contaazul`. Intocável.
    - `ERRO`: Ocorreu falha no envio. A mensagem vai para `erro_envio`.
 3. **Job Assíncrono**: Um processo em background pega 1 pedido por vez (prioriza `SINCRONIZANDO`, depois `ENVIAR`).
-4. **Idempotência e Prevenção de Duplicidade**:
-   - Se já existe `id_venda_contaazul`, verifica via `GET /v1/venda/{id}` se consta no CA.
-   - Se não tem ID, mas tem `numero`, busca via `GET /v1/venda/busca?numeros={numero}`. Se achar, salva o ID e marca como `RECEBIDO`.
-   - Se não existir no CA de forma alguma, gera um novo número (`GET /v1/venda/proximo-numero`) se necessário, constrói o payload e dispara `POST /v1/venda`.
+4. **Idempotência e Prevenção de Duplicidade:**
+   - Se já existe `id_venda_contaazul`, verifica via `GET https://api-v2.contaazul.com/v1/venda/{id}` se consta no CA.
+   - Se não tem ID, mas tem `numero`, busca via `GET https://api-v2.contaazul.com/v1/venda/busca?numeros={numero}`. Se achar, salva o ID e marca como `RECEBIDO`.
+   - Se não existir no CA de forma alguma, gera um novo número (`GET https://api-v2.contaazul.com/v1/venda/proximo-numero`) se necessário, constrói o payload e dispara `POST https://api-v2.contaazul.com/v1/venda`.
+
+**CRÍTICO [FEV/2026]: Integração V2 OBRIGATÓRIA para Vendas**
+Com a migração para tokens Cognito, a API antiga (`api.contaazul.com/v1/vendas`) passou a rejeitar novos tokens com erro 401 Unauthorized.
+Você DEVE utilizar exclusivamentes as rotas da V2 hospedadas em `api-v2.contaazul.com`.
+
+- **Busca de Múltiplas Vendas:** `GET https://api-v2.contaazul.com/v1/venda/busca`
+  - Parâmetros principais: `?data_alteracao_de=2026-01-01T00:00:00&tamanho_pagina=50` (Atenção ao formato da data sem "Z" no final).
+  - A resposta devolve as vendas em **`response.data.itens`** (um array). Não leia `response.data` diretamente!
+- **Criar Venda:** `POST https://api-v2.contaazul.com/v1/venda`
 
 ## 2. Estrutura de Envio (Payload POST /v1/venda)
 
@@ -309,7 +318,7 @@ Todos os endpoints requerem autenticação via OAuth 2.0.
 Header: `Authorization: Bearer <access_token>`
 
 ## Base URL
-Observação: A documentação faz referência a `https://api-v2.contaazul.com`, mas endpoints legados podem usar `https://api.contaazul.com`. Verificar em produção.
+**CRÍTICO [FEV/2026]: A documentação e os sistemas atuais utilizam EXCLUSIVAMENTE `https://api-v2.contaazul.com`. A `api.contaazul.com` foi desativada para novas integrações Cognito (gerando erros irreversíveis de Autorização/401).**
 
 ---
 
