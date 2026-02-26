@@ -42,37 +42,30 @@ const ListaPedidos = () => {
     };
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-                        <FileText className="h-6 w-6 mr-2 text-primary" />
-                        Pedidos
-                    </h1>
-                    <p className="text-gray-500 mt-1">Gerencie os pedidos enviados e em rascunho</p>
+        <div className="container mx-auto px-2 py-4">
+            {/* Header ultra compacto: Busca e Novo Pedido na mesma linha */}
+            <div className="flex flex-row justify-between items-center gap-2 mb-3">
+                <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                        <Search className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Buscar pedido..."
+                        className="block w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                    />
                 </div>
                 <button
                     onClick={() => navigate('/pedidos/novo')}
-                    className="bg-primary hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md flex items-center transition-colors shadow-sm"
+                    className="bg-primary hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded flex items-center justify-center transition-colors shadow-sm text-sm shrink-0"
                 >
-                    <Plus className="h-5 w-5 mr-2" />
-                    Novo Pedido
+                    <Plus className="h-4 w-4 mr-1" />
+                    Novo
                 </button>
             </div>
 
-            <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
-                <div className="p-4 border-b border-gray-200 bg-gray-50 flex gap-4">
-                    <div className="relative flex-1">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Buscar pedido..."
-                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm text-gray-900"
-                        />
-                    </div>
-                </div>
+            <div className="bg-white rounded overflow-hidden border-t sm:border border-gray-100 sm:border-gray-200">
+
 
                 <div className="divide-y divide-gray-200">
                     {loading ? (
@@ -84,61 +77,55 @@ const ListaPedidos = () => {
                         <div className="p-8 text-center text-gray-500">Nenhum pedido encontrado.</div>
                     ) : (
                         pedidos.map((pedido) => (
-                            <div key={pedido.id} className="p-4 hover:bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
-                                {/* Lado Esquerdo / Topo (Mobile): Info do Pedido */}
-                                <div className="flex-1">
-                                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                                        <h3 className="text-sm font-bold text-gray-900 leading-tight">
-                                            {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Desconhecido'}
-                                        </h3>
-                                        {pedido.numero && (
-                                            <span className="text-[11px] font-black text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                                                #{pedido.numero}
-                                            </span>
-                                        )}
+                            <div key={pedido.id} className="p-3 hover:bg-gray-50 flex flex-col justify-between gap-1 border-b border-gray-100 transition-colors">
+                                <div className="flex justify-between items-start gap-2">
+                                    <div className="flex-1 min-w-0 pr-1">
+                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                            <h3 className="text-[14px] font-semibold text-gray-800 leading-tight truncate">
+                                                {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Desconhecido'}
+                                            </h3>
+                                            {pedido.numero && (
+                                                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1 py-0.5 rounded border border-blue-100 shrink-0">
+                                                    #{pedido.numero}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-[11px] text-gray-500 font-light mb-1.5">
+                                            <span>{new Date(pedido.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                                            <span className="text-gray-300">•</span>
+                                            <span className="truncate">{pedido.vendedor?.nome || '-'}</span>
+                                        </div>
                                     </div>
-                                    <div className="text-xs text-gray-500 flex flex-wrap items-center gap-1 mb-2">
-                                        <span className="font-medium text-gray-600">{new Date(pedido.createdAt).toLocaleDateString('pt-BR')}</span>
-                                        <span className="text-gray-300">•</span>
-                                        <span className="truncate max-w-[200px]">{pedido.vendedor?.nome || '-'}</span>
+                                    <div className="text-[14px] font-bold text-gray-900 tracking-tight shrink-0 mt-0.5">
+                                        R$ {Number(pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toFixed(2).replace('.', ',')}
                                     </div>
+                                </div>
 
-                                    {/* Seção de Status */}
-                                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                <div className="flex items-center justify-between mt-0.5">
+                                    <div className="flex flex-wrap items-center gap-1">
                                         <StatusBadge status={pedido.statusEnvio} />
                                         {pedido.revisaoPendente && (
-                                            <span className="flex items-center text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded" title="Modificado no Conta Azul">
-                                                <AlertCircle className="h-3 w-3 mr-1" />
-                                                Alterado CA
+                                            <span className="flex items-center text-[9px] font-medium text-orange-600 bg-orange-50 border border-orange-100 px-1.5 py-0.5 rounded" title="Modificado no CA">
+                                                <AlertCircle className="h-2.5 w-2.5 mr-0.5" /> Alt CA
                                             </span>
                                         )}
                                         {pedido.situacaoCA && (
-                                            <span className="text-[10px] font-bold text-blue-800 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded uppercase" title="Status Oficial no Conta Azul">
+                                            <span className="text-[9px] font-medium text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded uppercase">
                                                 CA: {pedido.situacaoCA}
                                             </span>
                                         )}
                                     </div>
-                                </div>
-
-                                {/* Lado Direito / Base (Mobile): Valor e Botão de Ação */}
-                                <div className="flex items-center justify-between sm:flex-col sm:items-end gap-3 mt-1 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-0 border-gray-100">
-                                    <div className="text-base font-black text-gray-900 tracking-tight">
-                                        R$ {Number(pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toFixed(2).replace('.', ',')}
-                                    </div>
                                     <button
-                                        className={`text-sm font-bold px-4 py-1.5 rounded transition-colors w-full sm:w-auto shadow-sm border ${pedido.statusEnvio === 'ABERTO'
-                                                ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
-                                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                        className={`text-[11px] font-bold px-3 py-1 rounded transition-colors shadow-sm outline-none border ${pedido.statusEnvio === 'ABERTO'
+                                                ? 'bg-blue-50 border-blue-200 text-blue-700 active:bg-blue-100'
+                                                : 'bg-white border-gray-200 text-gray-600 active:bg-gray-50'
                                             }`}
                                         onClick={() => {
-                                            if (pedido.statusEnvio === 'ABERTO') {
-                                                navigate(`/pedidos/editar/${pedido.id}`);
-                                            } else {
-                                                setSelectedPedido(pedido);
-                                            }
+                                            if (pedido.statusEnvio === 'ABERTO') navigate(`/pedidos/editar/${pedido.id}`);
+                                            else setSelectedPedido(pedido);
                                         }}
                                     >
-                                        {pedido.statusEnvio === 'ABERTO' ? 'Continuar Edição' : 'Ver Detalhes'}
+                                        {pedido.statusEnvio === 'ABERTO' ? 'Editar' : 'Detalhes'}
                                     </button>
                                 </div>
                             </div>
