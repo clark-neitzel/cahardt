@@ -812,7 +812,7 @@ const contaAzulService = {
                             await prisma.pedido.update({
                                 where: { id: local.id },
                                 data: {
-                                    status: 'EXCLUIDO',
+                                    statusEnvio: 'EXCLUIDO',
                                     revisaoPendente: false,
                                     contaAzulUpdatedAt: new Date()
                                 }
@@ -893,11 +893,11 @@ const contaAzulService = {
                     const isCanceladoV2 = venda.situacao?.nome === 'CANCELADO' || venda.status === 'DELETED';
 
                     if (isCanceladoV2) {
-                        if (pedidoLocal.status !== 'EXCLUIDO') {
+                        if (pedidoLocal.statusEnvio !== 'EXCLUIDO') {
                             await prisma.pedido.update({
                                 where: { id: pedidoLocal.id },
                                 data: {
-                                    status: 'EXCLUIDO',
+                                    statusEnvio: 'EXCLUIDO',
                                     situacaoCA: venda.situacao?.nome || 'CANCELADO',
                                     contaAzulUpdatedAt: dataAtualizacaoCA
                                 }
