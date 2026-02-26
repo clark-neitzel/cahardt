@@ -74,75 +74,76 @@ const ListaPedidos = () => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {loading ? (
-                                <tr><td colSpan="5" className="px-6 py-4 text-center text-gray-500">Carregando...</td></tr>
-                            ) : pedidos.length === 0 ? (
-                                <tr><td colSpan="5" className="px-6 py-4 text-center text-gray-500">Nenhum pedido encontrado.</td></tr>
-                            ) : (
-                                pedidos.map((pedido) => (
-                                    <tr key={pedido.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-medium text-gray-900">{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Desconhecido'}</div>
-                                            <div className="text-sm text-gray-500">Vendedor: {pedido.vendedor?.nome || '-'}</div>
-                                            {pedido.numero && (
-                                                <div className="text-xs text-blue-600 font-bold mt-0.5">Pedido #{pedido.numero}</div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {new Date(pedido.createdAt).toLocaleDateString('pt-BR')}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                            R$ {Number(pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toFixed(2).replace('.', ',')}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2">
-                                                    <StatusBadge status={pedido.statusEnvio} />
-                                                    {pedido.revisaoPendente && (
-                                                        <span className="flex items-center text-[10px] font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full animate-pulse" title="Modificado no Conta Azul">
-                                                            <AlertCircle className="h-3 w-3 mr-1" />
-                                                            Alterado
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {pedido.situacaoCA && (
-                                                    <span className="text-[10px] font-bold text-blue-800 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded w-fit uppercase" title="Status Oficial no Conta Azul">
-                                                        CA: {pedido.situacaoCA}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button
-                                                className="font-bold text-primary hover:text-blue-900"
-                                                onClick={() => {
-                                                    if (pedido.statusEnvio === 'ABERTO') {
-                                                        navigate(`/pedidos/editar/${pedido.id}`);
-                                                    } else {
-                                                        setSelectedPedido(pedido);
-                                                    }
-                                                }}
-                                            >
-                                                {pedido.statusEnvio === 'ABERTO' ? 'Editar' : 'Detalhes'}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                <div className="divide-y divide-gray-200">
+                    {loading ? (
+                        <div className="p-8 text-center text-gray-500">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                            Carregando pedidos...
+                        </div>
+                    ) : pedidos.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500">Nenhum pedido encontrado.</div>
+                    ) : (
+                        pedidos.map((pedido) => (
+                            <div key={pedido.id} className="p-4 hover:bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
+                                {/* Lado Esquerdo / Topo (Mobile): Info do Pedido */}
+                                <div className="flex-1">
+                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                        <h3 className="text-sm font-bold text-gray-900 leading-tight">
+                                            {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Desconhecido'}
+                                        </h3>
+                                        {pedido.numero && (
+                                            <span className="text-[11px] font-black text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                                                #{pedido.numero}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="text-xs text-gray-500 flex flex-wrap items-center gap-1 mb-2">
+                                        <span className="font-medium text-gray-600">{new Date(pedido.createdAt).toLocaleDateString('pt-BR')}</span>
+                                        <span className="text-gray-300">•</span>
+                                        <span className="truncate max-w-[200px]">{pedido.vendedor?.nome || '-'}</span>
+                                    </div>
+
+                                    {/* Seção de Status */}
+                                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                        <StatusBadge status={pedido.statusEnvio} />
+                                        {pedido.revisaoPendente && (
+                                            <span className="flex items-center text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded" title="Modificado no Conta Azul">
+                                                <AlertCircle className="h-3 w-3 mr-1" />
+                                                Alterado CA
+                                            </span>
+                                        )}
+                                        {pedido.situacaoCA && (
+                                            <span className="text-[10px] font-bold text-blue-800 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded uppercase" title="Status Oficial no Conta Azul">
+                                                CA: {pedido.situacaoCA}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Lado Direito / Base (Mobile): Valor e Botão de Ação */}
+                                <div className="flex items-center justify-between sm:flex-col sm:items-end gap-3 mt-1 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-0 border-gray-100">
+                                    <div className="text-base font-black text-gray-900 tracking-tight">
+                                        R$ {Number(pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toFixed(2).replace('.', ',')}
+                                    </div>
+                                    <button
+                                        className={`text-sm font-bold px-4 py-1.5 rounded transition-colors w-full sm:w-auto shadow-sm border ${pedido.statusEnvio === 'ABERTO'
+                                                ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                            }`}
+                                        onClick={() => {
+                                            if (pedido.statusEnvio === 'ABERTO') {
+                                                navigate(`/pedidos/editar/${pedido.id}`);
+                                            } else {
+                                                setSelectedPedido(pedido);
+                                            }
+                                        }}
+                                    >
+                                        {pedido.statusEnvio === 'ABERTO' ? 'Continuar Edição' : 'Ver Detalhes'}
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
 
