@@ -777,59 +777,84 @@ const contaAzulService = {
     // Precisamos pingar ativamente os pedidos locais "RECEBIDO" para ver se retornam 404 (Excluídos).
     _verificarPedidosExcluidosContAzul: async () => {
         try {
-            // Pega até 100 pedidos locais que estão como "RECEBIDO" (teoricamente ativos na CA)
-            // Ordenados pelos mais recentes modificados para varrer em lotes seguros.
             const pedidosLocaisAtivos = await prisma.pedido.findMany({
                 where: {
                     statusEnvio: 'RECEBIDO',
                     idVendaContaAzul: { not: null }
                 },
                 orderBy: { updatedAt: 'desc' },
-                take: 100 // Limite de segurança para não explodir rate limit
+                take: 100
             });
 
             console.log(`[GARBAGE COLLECTOR] Iniciando varredura em ${pedidosLocaisAtivos.length} pedidos marcados como RECEBIDO.`);
             if (!pedidosLocaisAtivos.length) return 0;
 
             let deletadosCount = 0;
-            // Pegamos o token uma vez no começo do lote
             let token = await contaAzulService.getAccessToken();
 
             for (const local of pedidosLocaisAtivos) {
                 try {
                     const url = `https://api-v2.contaazul.com/v1/venda/${local.idVendaContaAzul}`;
-                    // Fazemos o GET direto usando Axios Puro para que possamos ler o error.response genuíno, 
-                    // pois o _axiosGet mastiga o erro antes de devolver pra cá.
-                    await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                    const resCA = await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` } });
+
+                    // 200 OK: pedido existe no CA. Verificar se foi CANCELADO (soft-delete do CA).
+                    const situacaoNome = resCA.data?.situacao?.nome;
+                    console.log(`[GARBAGE COLLECTOR] ✅ Venda #${local.numero} (CA ${local.idVendaContaAzul}) → CA situacao: ${situacaoNome || 'n/d'}`);
+
+                    if (situacaoNome === 'CANCELADO') {
+                        // Pedido cancelado no CA → marcar como EXCLUIDO localmente
+                        await prisma.pedido.update({
+                            where: { id: local.id },
+                            data: {
+                                statusEnvio: 'EXCLUIDO',
+                                situacaoCA: 'CANCELADO',
+                                revisaoPendente: true, // Alerta visual: "Pedido excluído/cancelado no CA"
+                                contaAzulUpdatedAt: new Date()
+                            }
+                        });
+                        console.log(`🗑️ Pedido #${local.numero} marcado como EXCLUIDO (situacao CANCELADO no CA)`);
+                        deletadosCount++;
+                    }
+
                 } catch (error) {
+                    if (error.response && error.response.status === 401) {
+                        // Token expirou: tentar refresh e continuar
+                        console.warn('[GARBAGE COLLECTOR] 401 - Token expirado, tentando refresh...');
+                        try {
+                            token = await contaAzulService.getAccessToken(true);
+                        } catch (_) {
+                            console.error('[GARBAGE COLLECTOR] Falha no refresh de token. Abortando varredura.');
+                            break;
+                        }
+                        continue; // Vai tentar o próximo pedido com o novo token
+                    }
+
                     const statusCA = error.response ? error.response.status : 'SEM_STATUS';
                     const erroAviso = error.response ? JSON.stringify(error.response.data) : error.message;
-                    console.log(`[GARBAGE COLLECTOR] Venda ${local.numero} (CA: ${local.idVendaContaAzul}) ping falhou. Status da CA: ${statusCA}. Detalhe: ${erroAviso}`);
+                    console.log(`[GARBAGE COLLECTOR] ❌ Venda #${local.numero} (CA: ${local.idVendaContaAzul}) → Status: ${statusCA} | Detalhe: ${erroAviso}`);
 
-                    // Se a CA retornar 404 (Not Found) OU 400 Bad Request (V2 rejeitando ID V1 int legado)
+                    // 404 = Excluído definitivamente | 400 = ID V1 legado rejeitado (também trata como excluído)
                     if (statusCA === 404 || statusCA === 400) {
                         try {
                             await prisma.pedido.update({
                                 where: { id: local.id },
                                 data: {
                                     statusEnvio: 'EXCLUIDO',
-                                    revisaoPendente: false,
+                                    situacaoCA: 'EXCLUIDO',
+                                    revisaoPendente: true, // Alerta visual: "Pedido excluído no CA"
                                     contaAzulUpdatedAt: new Date()
                                 }
                             });
-                            console.log(`🗑️ Pedido Local ${local.id} (CA ${local.idVendaContaAzul}) DADO COMO EXCLUÍDO (404 na Conta Azul)`);
+                            console.log(`🗑️ Pedido #${local.numero} marcado como EXCLUIDO (${statusCA} no CA)`);
                             deletadosCount++;
                         } catch (updateErr) {
                             console.error(`Falha ao marcar EXCLUIDO no BD: ${updateErr.message}`);
                         }
-                    } else if (error.response && error.response.status === 401) {
-                        // Se der 401, abortamos o loop (token expirado na V1 acidental ou outro stress severo)
-                        break;
                     }
                 }
 
-                // Pequeno delay (100ms) para respeitar o limite de Rate da CA (normalmente 3 a 5 reqs/seg)
-                await new Promise(r => setTimeout(r, 100));
+                // 200ms de delay para respeitar rate limit da CA
+                await new Promise(r => setTimeout(r, 200));
             }
 
             return deletadosCount;
@@ -946,17 +971,56 @@ const contaAzulService = {
                 } else {
                     // === IMPORTAÇÃO DE PEDIDO ÓRFÃO ===
                     // Pedido existe no CA mas não existe localmente (ex: foi apagado do banco local).
-                    // Importamos com status RECEBIDO para preservar o histórico e permitir rastreamento futuro.
                     console.log(`[Sync CA] Pedido #${venda.numero} (CA ID: ${venda.id}) existe no CA mas não localmente. Importando...`);
 
                     try {
                         // Buscar o cliente local pelo UUID do CA (que é o mesmo UUID local)
-                        const clienteLocal = await prisma.cliente.findUnique({
+                        let clienteLocal = await prisma.cliente.findUnique({
                             where: { UUID: venda.cliente?.id }
                         });
 
+                        // Fallback: cliente sem documento pode ter sido pulado no sync → buscar no CA e criar
+                        if (!clienteLocal && venda.cliente?.id) {
+                            console.log(`[Sync CA] Cliente ${venda.cliente.nome} não encontrado localmente. Buscando no CA...`);
+                            try {
+                                const resCliente = await contaAzulService._axiosGet(
+                                    `https://api-v2.contaazul.com/v1/pessoas/${venda.cliente.id}`,
+                                    'CLIENTE_IMPORT'
+                                );
+                                const c = resCliente.data;
+                                if (c) {
+                                    const enderecoC = c.endereco || c.enderecos?.[0] || {};
+                                    clienteLocal = await prisma.cliente.upsert({
+                                        where: { UUID: c.id },
+                                        update: { Nome: c.nome_empresa || c.nome || venda.cliente.nome, contaAzulUpdatedAt: new Date(), updated_at: new Date() },
+                                        create: {
+                                            UUID: c.id,
+                                            Nome: c.nome_empresa || c.nome || venda.cliente.nome,
+                                            NomeFantasia: c.nome || null,
+                                            Documento: c.documento || null,
+                                            Tipo_Pessoa: (c.tipo_pessoa || '').toUpperCase().includes('JUR') ? 'JURIDICA' : 'FISICA',
+                                            Ativo: c.ativo !== false,
+                                            Perfis: JSON.stringify(c.perfis || ['Cliente']),
+                                            Perfil_Filtro: 'PADRAO',
+                                            End_Logradouro: enderecoC.logradouro || null,
+                                            End_Numero: enderecoC.numero || null,
+                                            End_Cidade: enderecoC.cidade || null,
+                                            End_Estado: enderecoC.estado || null,
+                                            End_CEP: enderecoC.cep || null,
+                                            End_Pais: enderecoC.pais || 'Brasil',
+                                            contaAzulUpdatedAt: new Date(),
+                                            updated_at: new Date()
+                                        }
+                                    });
+                                    console.log(`✅ [Sync CA] Cliente ${clienteLocal.Nome} criado/atualizado localmente.`);
+                                }
+                            } catch (clienteErr) {
+                                console.error(`[Sync CA] Falha ao buscar cliente ${venda.cliente.id} no CA:`, clienteErr.message);
+                            }
+                        }
+
                         if (!clienteLocal) {
-                            console.warn(`[Sync CA] ⚠️ Pedido #${venda.numero} ignorado: cliente CA ID=${venda.cliente?.id} não encontrado localmente.`);
+                            console.warn(`[Sync CA] ⚠️ Pedido #${venda.numero} não importado: cliente não encontrado nem no CA.`);
                             continue;
                         }
 
