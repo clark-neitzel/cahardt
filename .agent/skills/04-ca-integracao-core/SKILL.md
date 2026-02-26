@@ -248,3 +248,145 @@ Todo processo de sincronização DEVE implementar logs detalhados salvos no banc
 - Localizados em `backend/scripts/`.
 - Ex: `sync_clientes_manual.js`, `populate_manual.js`.
 - **Atenção**: Scripts manuais rodam no contexto da máquina host. Certifique-se que o banco está acessível (localhost vs docker service name).
+
+-------------------------------------------------
+## SINCRONIZAÇÃO BIDIRECIONAL DE PEDIDOS (CA ↔ App)
+-------------------------------------------------
+
+> 🚨 **CRÍTICO**: Esta seção foi consolidada em FEV/2026 após bugs graves. Leia antes de tocar em `contaAzulService.js`.
+
+## Arquitetura do Sync de Pedidos
+
+Há 3 componentes independentes que trabalham juntos:
+
+| Componente | Arquivo | Frequência | Função |
+|---|---|---|---|
+| `syncPedidosModificados` | `contaAzulService.js` | **Auto 15min** | Detecta alterações/exclusões no CA via busca por `data_alteracao` |
+| Garbage Collector (GC) | `contaAzulService.js` | **Dentro do sync** | Pinga individualmente pedidos RECEBIDO para confirmar existência no CA |
+| Worker de Fila | `syncPedidosService.js` | **A cada 30s** | Envia para o CA pedidos locais com statusEnvio='ENVIAR' |
+
+**Auto-sync configurado em `index.js`:**
+```javascript
+// Roda a cada 15 minutos automaticamente (não precisa de botão)
+setTimeout(_runSyncPedidos, 120000);  // 2min após start
+setInterval(_runSyncPedidos, 900000); // depois a cada 15min
+```
+
+---
+
+## 🚨 ARMADILHA CRÍTICA: Estrutura diferente entre endpoints CA
+
+O GET individual de venda e o endpoint de busca retornam estruturas **diferentes**. Confundir isso causa marcar todos os pedidos como EXCLUIDO erroneamente.
+
+### Endpoint de Busca (`/v1/venda/busca`)
+```json
+{
+  "id": "87464009-...",
+  "situacao": { "nome": "APROVADO", "descricao": "Aprovado" },
+  "total": 470,
+  "numero": 12
+}
+```
+
+### Endpoint GET por ID (`/v1/venda/{id}`) — ESTRUTURA DIFERENTE!
+```json
+{
+  "cliente": { "uuid": "...", "nome": "..." },
+  "venda": {
+    "id": "87464009-...",
+    "situacao": { "nome": "APROVADO", "descricao": "Aprovado" },
+    "numero": 12
+  },
+  "vendedor": { "id": "...", "nome": "..." }
+}
+```
+
+**CÓDIGO CORRETO no GC para ler situacao:**
+```javascript
+// ✅ CORRETO — situacao está dentro de resCA.data.venda
+const vendaObj = resCA.data?.venda || resCA.data; // fallback compatibilidade
+const situacaoRaw = vendaObj?.situacao;
+const situacaoNome = (typeof situacaoRaw === 'object' ? situacaoRaw?.nome : situacaoRaw) || null;
+
+// ❌ ERRADO — retorna undefined no GET /venda/{id}
+const situacaoNome = resCA.data?.situacao?.nome; // NUNCA FAZER ISSO NO GC
+```
+
+---
+
+## Garbage Collector (GC) — Regras
+
+O GC detecta pedidos excluídos ou cancelados silenciosamente no CA.
+
+### Configuração Atual (Escalável)
+```javascript
+const pedidosLocaisAtivos = await prisma.pedido.findMany({
+    where: { statusEnvio: 'RECEBIDO', idVendaContaAzul: { not: null } },
+    orderBy: { contaAzulUpdatedAt: 'asc' }, // Mais antigos primeiro (rotação)
+    take: 20  // MÁXIMO 20 por ciclo — não alterar para cima sem análise
+});
+```
+**Por que 20?** Com rate limit de 10 req/s, 20 pings = ~3s. Com sync a cada 15min → 2.880 pedidos/dia verificados. Suficiente para qualquer volume.
+
+### Lógica de Detecção de Excluído
+
+| Resposta CA | Situação | Ação |
+|---|---|---|
+| `404` ou `400` | Pedido deletado definitivamente | Marcar EXCLUIDO |
+| `200` com `situacao.nome = null` | Soft-delete via interface CA | Marcar EXCLUIDO |
+| `200` com `situacao.nome = 'CANCELADO'` | Cancelado explicitamente | Marcar EXCLUIDO |
+| `200` com situacao válida (APROVADO etc.) | Ativo | Não fazer nada |
+| `401` | Token expirado | Refresh e continuar |
+
+---
+
+## findFirst no syncPedidosModificados — REGRA CRÍTICA
+
+**NUNCA usar OR [idVendaContaAzul, numero] em uma única query.** Isso causa falsos positivos quando há vários pedidos com o mesmo número (pedidos de teste + pedido real).
+
+**CORRETO — em duas etapas:**
+```javascript
+// PRIORIDADE 1: Match exato pelo CA ID (sem ambiguidade)
+let pedidoLocal = await prisma.pedido.findFirst({
+    where: { idVendaContaAzul: venda.id },
+    include: { itens: true }
+});
+
+// PRIORIDADE 2: Fallback por numero SOMENTE se o pedido nunca foi ao CA
+if (!pedidoLocal && venda.numero) {
+    pedidoLocal = await prisma.pedido.findFirst({
+        where: { numero: venda.numero, idVendaContaAzul: null },
+        include: { itens: true }
+    });
+}
+```
+
+---
+
+## Restauração de Status (EXCLUIDO → RECEBIDO)
+
+Quando o GC tem bug e marca pedido ativo como EXCLUIDO, o `syncPedidosModificados` restaura automaticamente:
+
+```javascript
+// Se CA diz que está ativo mas local está EXCLUIDO (ex: GC bugado)
+if (pedidoLocal.statusEnvio === 'EXCLUIDO' && !isCanceladoV2) {
+    await prisma.pedido.update({
+        where: { id: pedidoLocal.id },
+        data: {
+            statusEnvio: 'RECEBIDO',
+            situacaoCA: venda.situacao?.nome || null,
+            revisaoPendente: true,
+            contaAzulUpdatedAt: dataAtualizacaoCA
+        }
+    });
+    console.log(`🔄 [Sync CA] Pedido #${pedidoLocal.numero} RESTAURADO: EXCLUIDO → RECEBIDO`);
+}
+```
+
+---
+
+## Rate Limits da CA (Verificado 2026)
+
+- **600 chamadas por minuto** por conta conectada
+- **10 por segundo** por conta conectada
+- Sem webhook disponível — usar polling com `data_alteracao_de` (estratégia oficial da CA)

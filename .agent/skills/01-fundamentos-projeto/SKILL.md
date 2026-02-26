@@ -214,6 +214,27 @@ Sempre que criar ou alterar uma tabela no `schema.prisma`:
 2.  Use `CREATE TABLE IF NOT EXISTS` ou `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
 3.  **NUNCA** dependa apenas do `prisma db push` local. Ele atualiza o banco local, mas o servidor de produção precisa do SQL no `migrationService.js`.
 
+### 🚨 ERRO REAL FEV/2026 — Referência Obrigatória
+
+**O que aconteceu:** Campo `situacaoCA` foi adicionado ao `schema.prisma` mas o SQL equivalente **não foi adicionado ao `migrationService.js`**. Resultado: crash total do backend em produção com erro:
+```
+PrismaClientKnownRequestError: The column `pedidos.situacao_ca` does not exist in the current database.
+```
+
+**Como corrigir:** Incrementar o Update más recente no `migrationService.js`:
+```javascript
+// Update N: Descrição do campo
+`ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "situacao_ca" TEXT;`
+```
+
+**Checklist OBRIGATÓRIO ao criar campo novo no schema:**
+- [ ] Adicionei o campo no `schema.prisma`?
+- [ ] Adicionei o ALTER TABLE no `migrationService.js`?
+- [ ] O número do Update está incrementado (Update N+1)?
+- [ ] Testei o start do servidor limpo?
+
+
+
 ## 2. Frontend API (Service Pattern) 🌐
 O Frontend (`frontend/src`) consome a API do Backend.
 **NUNCA** use `fetch('http://localhost:3000/...')` ou `fetch('/api/...')` diretamente nos componentes.
