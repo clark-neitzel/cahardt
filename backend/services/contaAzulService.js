@@ -798,7 +798,13 @@ const contaAzulService = {
                     const resCA = await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` } });
 
                     // 200 OK: pedido existe no CA. Verificar se foi CANCELADO (soft-delete do CA).
-                    const situacaoNome = resCA.data?.situacao?.nome;
+                    // LOG: Mostrar o body real da CA para entender a estrutura de 'situacao'
+                    if (deletadosCount === 0 && local === pedidosLocaisAtivos[0]) {
+                        console.log(`[GC DEBUG] Body CA venda #${local.numero}: ${JSON.stringify(resCA.data).substring(0, 400)}`);
+                    }
+                    // O GET /venda/{id} pode retornar 'situacao' como string OU como objeto {nome, descricao}
+                    const situacaoRaw = resCA.data?.situacao;
+                    const situacaoNome = (typeof situacaoRaw === 'object' ? situacaoRaw?.nome : situacaoRaw) || resCA.data?.status;
                     console.log(`[GARBAGE COLLECTOR] ✅ Venda #${local.numero} (CA ${local.idVendaContaAzul}) → CA situacao: ${situacaoNome || 'n/d'}`);
 
                     if (situacaoNome === 'CANCELADO') {
