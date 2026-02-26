@@ -19,10 +19,10 @@ model Produto {
   unidade     String
 
   // Estoques
-  estoqueDisponivel Decimal @default(0) @map("estoque_disponivel")
-  estoqueReservado  Decimal @default(0) @map("estoque_reservado")
-  estoqueTotal      Decimal @default(0) @map("estoque_total")
-  estoqueMinimo     Decimal @default(0) @map("estoque_minimo")
+  estoqueDisponivel Decimal @default(0) @map("estoque_disponivel") @db.Decimal(12, 3)
+  estoqueReservado  Decimal @default(0) @map("estoque_reservado") @db.Decimal(12, 3)
+  estoqueTotal      Decimal @default(0) @map("estoque_total") @db.Decimal(12, 3)
+  estoqueMinimo     Decimal @default(0) @map("estoque_minimo") @db.Decimal(12, 3)
 
   // Detalhes
   categoria String?
@@ -33,8 +33,8 @@ model Produto {
   ativo     Boolean @default(true) // Controle local do App
 
   // Custos e Pesos
-  custoMedio  Decimal? @map("custo_medio")
-  pesoLiquido Decimal? @map("peso_liquido")
+  custoMedio  Decimal? @map("custo_medio") @db.Decimal(12, 2)
+  pesoLiquido Decimal? @map("peso_liquido") @db.Decimal(12, 3)
 
   // Timestamps
   contaAzulUpdatedAt DateTime? @map("conta_azul_updated_at") // Última atualização no Conta Azul

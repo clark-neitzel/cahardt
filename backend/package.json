@@ -4,7 +4,7 @@
   "description": "Backend para o sistema de vendas Hardt Salgados",
   "main": "index.js",
   "scripts": {
-    "start": "npx prisma generate && npx prisma db push && node index.js",
+    "start": "npx prisma generate && npx prisma db push --accept-data-loss && node index.js",
     "dev": "nodemon index.js",
     "migrate:deploy": "prisma migrate deploy",
     "prisma:generate": "prisma generate",
