@@ -520,14 +520,11 @@ const contaAzulService = {
                     const caDate = ultimaAtualizacaoCA ? ultimaAtualizacaoCA.getTime() : 0;
                     const localDate = localCLI?.contaAzulUpdatedAt ? localCLI.contaAzulUpdatedAt.getTime() : 0;
 
-                    // Se NomeFantasia é nulo, significa que na sincronização anterior usamos fallback (Razão = Fantasia).
-                    // Portanto, sameName é verdadeiro indiretamente.
-                    const usedFallbackLocal = localCLI && (localCLI.Nome === localCLI.NomeFantasia || !localCLI.NomeFantasia);
-
-                    // Busca detalhe se mudou, ou se está novo, ou se a razão social parece ser igual a fantasia
-                    if (!localCLI || caDate > localDate || usedFallbackLocal) {
+                    // Busca detalhe APENAS se mudou ou se é um cliente novo.
+                    // Isso evita o loop infinito de tentar buscar detalhes de clientes sem NomeFantasia em toda sincronização.
+                    if (!localCLI || caDate > localDate) {
                         try {
-                            const urlDet = `https://api.contaazul.com/v1/pessoas/${c.id}`; // V1 returns nome_empresa directly as requested by Google Script
+                            const urlDet = `https://api-v2.contaazul.com/v1/pessoas/${c.id}`; // V2 is required for Cognito JWT Auth
                             const resDet = await contaAzulService._axiosGet(urlDet, 'CLIENTES_DETALHE');
                             if (resDet && resDet.data) {
                                 detalheC = resDet.data;
@@ -537,20 +534,21 @@ const contaAzulService = {
                             console.error(`⚠️ Erro ao buscar detalhe do Cliente ${c.id}:`, e.message);
                         }
                     } else {
-                        // Reutilizar Razão local se não quisermos buscar do CA à toa
+                        // Reutilizar Razão e Fantasia local já validados para economizar requisições
                         detalheC.nome_empresa = localCLI.Nome;
-                        detalheC.nome = localCLI.NomeFantasia || localCLI.Nome;
+                        detalheC.nome = localCLI.NomeFantasia;
                     }
                 }
 
-                // Mapeamento baseado no JSON real fornecido pela API V2 /v1/pessoas
-                // Em V2 Listagem, 'company_name' ou 'nome_empresa' pode não existir ou vir como 'name'.
-                const razao = detalheC.company_name || detalheC.nome_empresa || detalheC.razao_social;
-                const fantasia = detalheC.fantasy_name || detalheC.nome_fantasia || detalheC.nome || detalheC.apelido;
+                // Mapeamento EXATO conforme regra ditada pelo usuário:
+                // nome_empresa = Razão Social (Sempre tem)
+                // nome = Fantasia (Pode ter ou não)
+                const razao = detalheC.nome_empresa || detalheC.company_name || detalheC.razao_social;
+                const fantasia = detalheC.nome || detalheC.fantasy_name || detalheC.nome_fantasia || detalheC.apelido;
 
                 const dadosCliente = {
                     Nome: razao || fantasia || 'Desconhecido',
-                    NomeFantasia: razao ? fantasia : null,
+                    NomeFantasia: (fantasia && fantasia !== razao) ? fantasia : null, // Se for igual à Razão ou ausente, fica null
 
                     // Normalização: JURIDICA ou FISICA (para o frontend funcionar)
                     Tipo_Pessoa: (c.person_type || c.tipo_pessoa || '').toUpperCase().includes('JUR') ? 'JURIDICA' : 'FISICA',
@@ -786,7 +784,7 @@ const contaAzulService = {
             const diasAtras = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
             // API V1 endpoint para buscar vendas por data de atualização
-            const url = `https://api.contaazul.com/v1/vendas?data_atualizacao_inicial=${diasAtras}T00:00:00Z&size=50`;
+            const url = `https://api-v2.contaazul.com/v1/vendas?data_atualizacao_inicial=${diasAtras}T00:00:00Z&size=50`;
             console.log(`🔎 Buscando Pedidos na CA: ${url}`);
 
             // Usa o wrapper interno para garantir refresh de token automático
