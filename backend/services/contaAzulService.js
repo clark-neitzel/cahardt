@@ -909,15 +909,23 @@ const contaAzulService = {
             let count = 0;
             for (const venda of vendasModificadas) {
                 // Procurar pedido correspondente na base local
-                const pedidoLocal = await prisma.pedido.findFirst({
-                    where: {
-                        OR: [
-                            { idVendaContaAzul: venda.id },
-                            { numero: venda.numero }
-                        ]
-                    },
+                // PRIORIDADE 1: Match exato pelo CA ID (sem ambiguidade)
+                let pedidoLocal = await prisma.pedido.findFirst({
+                    where: { idVendaContaAzul: venda.id },
                     include: { itens: true }
                 });
+
+                // PRIORIDADE 2: Fallback por numero, MAS somente se o pedido local ainda NÃO tem CA id
+                // Isso evita bater num pedido de teste que tem o mesmo numero mas CA id diferente
+                if (!pedidoLocal && venda.numero) {
+                    pedidoLocal = await prisma.pedido.findFirst({
+                        where: {
+                            numero: venda.numero,
+                            idVendaContaAzul: null // Nunca foi enviado ao CA ainda
+                        },
+                        include: { itens: true }
+                    });
+                }
                 if (pedidoLocal) {
                     const dataAtualizacaoCA = venda.data_atualizacao ? new Date(venda.data_atualizacao) : new Date();
 
