@@ -781,8 +781,8 @@ const contaAzulService = {
 
         try {
             // Buscar vendas modificadas nos últimos 2 dias ou na última hora.
-            // Para segurança na primeira rodada e evitar payload massivo: últimos 3 dias
-            const diasAtrasDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            // Ampliando para últimos 10 dias para garantir que pegamos o pedido BROTHAUS antigo do screenshot
+            const diasAtrasDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
             const dataAtualDate = new Date(Date.now()).toISOString().split('T')[0];
 
             // Formatação Exata (YYYY-MM-DDTHH:mm:ss) exigida pela API V2, mas ignorando horas fracionadas para evitar corte fuso horário
@@ -822,7 +822,10 @@ const contaAzulService = {
                     const dataAtualizacaoCA = venda.data_atualizacao ? new Date(venda.data_atualizacao) : new Date();
 
                     // Lógica solicitada pelo usuário para Pedidos Excluídos/Cancelados
-                    if (venda.situacao === 'CANCELADO' || venda.status === 'DELETED') {
+                    // API V2 envia situacao como um Objeto: { "nome": "CANCELADO", "descricao": "Cancelado" }
+                    const isCanceladoV2 = venda.situacao?.nome === 'CANCELADO' || venda.status === 'DELETED';
+
+                    if (isCanceladoV2) {
                         if (pedidoLocal.status !== 'EXCLUIDO') {
                             await prisma.pedido.update({
                                 where: { id: pedidoLocal.id },
@@ -840,11 +843,26 @@ const contaAzulService = {
                     const ignorar = pedidoLocal.contaAzulUpdatedAt && pedidoLocal.contaAzulUpdatedAt.getTime() >= dataAtualizacaoCA.getTime();
 
                     if (!ignorar) {
+                        const isAprovado = venda.situacao?.nome === 'APROVADO';
+
+                        // Check values divergence
                         const valorLocal = Number(pedidoLocal.itens.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0)).toFixed(2);
                         const valorCA = Number(venda.total || 0).toFixed(2);
                         const mudouValor = Math.abs(valorCA - valorLocal) > 0.05; // tolerância centavos
 
-                        if (mudouValor || !pedidoLocal.contaAzulUpdatedAt) {
+                        if (isAprovado && !mudouValor) {
+                            // Se foi aprovado sem diferença de valor, podemos remover o alerta
+                            if (pedidoLocal.revisaoPendente) {
+                                await prisma.pedido.update({
+                                    where: { id: pedidoLocal.id },
+                                    data: {
+                                        revisaoPendente: false,
+                                        contaAzulUpdatedAt: dataAtualizacaoCA
+                                    }
+                                });
+                            }
+                        } else if (mudouValor || !pedidoLocal.contaAzulUpdatedAt) {
+                            // Houve diferença de valor ou é a primeira sincronização de modificação
                             await prisma.pedido.update({
                                 where: { id: pedidoLocal.id },
                                 data: {

@@ -146,7 +146,13 @@ const pedidoService = {
             });
 
             if (!pedidoAntigo) throw new Error('Pedido não encontrado');
-            if (pedidoAntigo.statusEnvio !== 'ABERTO') throw new Error('Só é permitido editar pedidos em Rascunho (Em Aberto).');
+
+            // Permite edição de 'revisaoPendente' mesmo se o pedido não estiver ABERTO
+            const isSomenteRevisao = Object.keys(dadosPedido).length === 1 && typeof dadosPedido.revisaoPendente === 'boolean';
+
+            if (pedidoAntigo.statusEnvio !== 'ABERTO' && !isSomenteRevisao) {
+                throw new Error('Só é permitido editar dados de vendas em Rascunho (Em Aberto).');
+            }
 
             let totalPedido = 0;
             let flexTotalPedido = 0;
