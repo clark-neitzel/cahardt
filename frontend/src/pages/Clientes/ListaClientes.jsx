@@ -182,14 +182,9 @@ const ListaClientes = () => {
     // Render
     return (
         <div className="container mx-auto px-4 py-8 relative">
-            {/* Header */}
-            <div className="hidden md:flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Meus Clientes</h1>
-                    <p className="mt-1 text-sm text-gray-500">
-                        {totalRegistros} registros encontrados | Página {page} de {totalPages}
-                    </p>
-                </div>
+            {/* Header - Apenas botões de ação (Título e contadores removidos para manter design clean) */}
+            <div className="flex flex-col md:flex-row justify-end items-start md:items-center mb-6 gap-4">
+
 
                 {selectedIds.length > 0 && (
                     <div className="flex items-center gap-4 bg-blue-50 px-4 py-2 rounded-lg border border-blue-200 animate-in fade-in slide-in-from-top-2">
@@ -450,6 +445,19 @@ const ListaClientes = () => {
                                     </span>
                                 )}
                             </div>
+
+                            {/* Formas de Atendimento restauradas */}
+                            {cliente.Formas_Atendimento && cliente.Formas_Atendimento.length > 0 && (
+                                <div className="flex gap-1 mt-1">
+                                    {cliente.Formas_Atendimento.map(forma => (
+                                        <span key={forma} title={forma} className="p-1 bg-gray-50 rounded text-gray-400 border border-gray-100">
+                                            {forma === 'Presencial' && <User className="h-3 w-3" />}
+                                            {forma === 'Whatsapp' && <MessageCircle className="h-3 w-3" />}
+                                            {forma === 'Telefone' && <Phone className="h-3 w-3" />}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}

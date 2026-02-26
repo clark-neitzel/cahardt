@@ -76,12 +76,13 @@ Esta skill define o padrão visual para todo o desenvolvimento do aplicativo, in
 - **Error**: `#d32f2f`
 
 ### Tipografia
-- **Família**: Inter (preferencial) ou Roboto.
+- **Família Principal**: Fonte do Sistema (SF Pro Text, Helvetica, Arial). Atualizada para garantir legibilidade de alta imersão padrão Apple no Mobile.
 - **Tamanhos Padrão**:
     - H1: `text-2xl font-bold text-gray-900`
     - H2: `text-xl font-semibold text-gray-800`
+    - Títulos de Card Mobile (Nome Fantasia): `text-[16px] font-bold leading-tight tracking-tight`
     - Body: `text-sm text-gray-700`
-    - Small: `text-xs text-gray-500`
+    - Micro (Pills e Tags de dados): `text-[10px]` ou `text-[11px]`
 
 ## 🔧 Framework & Configuração
 
@@ -115,13 +116,16 @@ module.exports = {
 ### Inputs
 - **Base**: `w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary shadow-sm text-sm`
 
-### Cards
-- **Estilo**: `bg-white rounded-lg shadow-sm border border-gray-200 p-6`
+### Cards & Mobile Views
+- **Estilo Desktop**: `bg-white rounded-lg shadow-sm border border-gray-200 p-6`
+- **Estilo Mobile (Padrão 2026)**: Substitua listagens de tabela densas (`md:hidden`) por "Cards de Resumo" (`rounded-xl p-3.5`).
+- **Pills de Negócio Mobile**: Utilize a abordagem "Pill" para economizar espaço e empacotar metadados cruciais. 
+  - Exemplo de uso: `<span className="text-[10px] sm text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">`
 
 ### Layout
-- **Mobile First**: Design responsivo por padrão.
-- **Espaçamento**: Uso consistente de `p-4`, `p-6`, `m-4`.
-- **Ícones**: Lucide React ou Heroicons.
+- **Mobile First**: Desenhe as views inicialmente para Celulares e expanda usando `md:flex` e `md:grid`. Oculte paginações e contadores irrelevantes no mobile.
+- **Espaçamento**: Uso consistente de `p-3.5` e `gap-2` para celular, `p-6` para Desktop.
+- **Ícones**: Lucide React com tamanhos compactos em views mobile (`h-3 w-3` ou `h-4 w-4`).
 
 ## 📌 Regras de Aplicação
 71. 1.  Todo novo componente deve herdar estas classes ou variáveis.
