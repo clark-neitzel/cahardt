@@ -247,7 +247,11 @@ const migrationService = {
 
             // Update 13: Sincronização Bidirecional de Vendas (Pedidos alterados no CA)
             `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "revisao_pendente" BOOLEAN NOT NULL DEFAULT false;`,
-            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "conta_azul_updated_at" TIMESTAMP(3);`
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "conta_azul_updated_at" TIMESTAMP(3);`,
+
+            // Update 14: Campo situacao_ca (status oficial do CA: APROVADO, FATURADO, EM_ABERTO, CANCELADO)
+            // CORRIGIDO: Campo estava no schema.prisma mas nunca foi adicionado ao banco de produção.
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "situacao_ca" TEXT;`
         ];
 
         for (const [index, cmd] of commands.entries()) {

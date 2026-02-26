@@ -943,6 +943,45 @@ const contaAzulService = {
                             count++;
                         }
                     }
+                } else {
+                    // === IMPORTAÇÃO DE PEDIDO ÓRFÃO ===
+                    // Pedido existe no CA mas não existe localmente (ex: foi apagado do banco local).
+                    // Importamos com status RECEBIDO para preservar o histórico e permitir rastreamento futuro.
+                    console.log(`[Sync CA] Pedido #${venda.numero} (CA ID: ${venda.id}) existe no CA mas não localmente. Importando...`);
+
+                    try {
+                        // Buscar o cliente local pelo UUID do CA (que é o mesmo UUID local)
+                        const clienteLocal = await prisma.cliente.findUnique({
+                            where: { UUID: venda.cliente?.id }
+                        });
+
+                        if (!clienteLocal) {
+                            console.warn(`[Sync CA] ⚠️ Pedido #${venda.numero} ignorado: cliente CA ID=${venda.cliente?.id} não encontrado localmente.`);
+                            continue;
+                        }
+
+                        const dataVendaCA = venda.data ? new Date(venda.data) : new Date();
+                        const dataAltCA = venda.data_alteracao ? new Date(venda.data_alteracao) : new Date();
+
+                        await prisma.pedido.create({
+                            data: {
+                                numero: venda.numero,
+                                dataVenda: dataVendaCA,
+                                clienteId: clienteLocal.UUID,
+                                statusEnvio: 'RECEBIDO',
+                                idVendaContaAzul: venda.id,
+                                situacaoCA: venda.situacao?.nome || null,
+                                contaAzulUpdatedAt: dataAltCA,
+                                observacoes: `Pedido importado do Conta Azul (não encontrado localmente). Total CA: R$${venda.total}`,
+                                updatedAt: new Date()
+                            }
+                        });
+
+                        console.log(`✅ [Sync CA] Pedido #${venda.numero} importado com sucesso do CA.`);
+                        count++;
+                    } catch (importErr) {
+                        console.error(`[Sync CA] ❌ Falha ao importar pedido #${venda.numero}:`, importErr.message);
+                    }
                 }
             }
 
