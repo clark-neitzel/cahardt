@@ -800,7 +800,9 @@ const contaAzulService = {
                     // 200 OK: pedido existe no CA. Verificar se foi CANCELADO (soft-delete do CA).
                     // LOG: Mostrar o body real da CA para entender a estrutura de 'situacao'
                     if (deletadosCount === 0 && local === pedidosLocaisAtivos[0]) {
-                        console.log(`[GC DEBUG] Body CA venda #${local.numero}: ${JSON.stringify(resCA.data).substring(0, 400)}`);
+                        console.log(`[GC DEBUG] Body CA venda #${local.numero}: ${JSON.stringify(resCA.data).substring(0, 800)}`);
+                        console.log(`[GC DEBUG] Campo situacao direto: ${JSON.stringify(resCA.data?.situacao)}`);
+                        console.log(`[GC DEBUG] Campo status direto: ${JSON.stringify(resCA.data?.status)}`);
                     }
                     // O GET /venda/{id} pode retornar 'situacao' como string OU como objeto {nome, descricao}
                     const situacaoRaw = resCA.data?.situacao;
