@@ -788,6 +788,7 @@ const contaAzulService = {
                 take: 100 // Limite de segurança para não explodir rate limit
             });
 
+            console.log(`[GARBAGE COLLECTOR] Iniciando varredura em ${pedidosLocaisAtivos.length} pedidos marcados como RECEBIDO.`);
             if (!pedidosLocaisAtivos.length) return 0;
 
             let deletadosCount = 0;
@@ -798,8 +799,12 @@ const contaAzulService = {
                     // Fazemos o GET. Se o pedido existe, retorna 200.
                     await contaAzulService._axiosGet(url, 'VERIFICA_EXCLUSAO');
                 } catch (error) {
+                    const statusCA = error.response ? error.response.status : 'SEM_STATUS';
+                    const erroAviso = error.response ? JSON.stringify(error.response.data) : error.message;
+                    console.log(`[GARBAGE COLLECTOR] Venda ${local.numero} (CA: ${local.idVendaContaAzul}) ping falhou. Status da CA: ${statusCA}. Detalhe: ${erroAviso}`);
+
                     // Se a CA retornar 404 (Not Found), significa que excluíram o pedido lá dentro!
-                    if (error.response && error.response.status === 404) {
+                    if (statusCA === 404) {
                         try {
                             await prisma.pedido.update({
                                 where: { id: local.id },
