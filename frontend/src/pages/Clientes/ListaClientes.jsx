@@ -183,7 +183,7 @@ const ListaClientes = () => {
     return (
         <div className="container mx-auto px-4 py-8 relative">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div className="hidden md:flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Meus Clientes</h1>
                     <p className="mt-1 text-sm text-gray-500">
@@ -390,45 +390,65 @@ const ListaClientes = () => {
                 </table>
             </div>
 
-            {/* Mobile List (Simplificada) */}
-            <div className="md:hidden mt-4 space-y-4">
+            {/* Mobile List (Simplificada & Focada em Negócio) */}
+            <div className="md:hidden mt-4 space-y-3">
                 {clientes.map((cliente) => (
                     <div
                         key={cliente.UUID}
-                        className={`bg-white p-4 rounded-lg shadow-sm border ${selectedIds.includes(cliente.UUID) ? 'border-primary bg-blue-50' : 'border-gray-100'} space-y-2`}
+                        className={`bg-white p-3.5 rounded-xl shadow-sm border ${selectedIds.includes(cliente.UUID) ? 'border-primary bg-blue-50/50' : 'border-gray-100'} relative`}
                     >
-                        <div className="flex items-start gap-3">
-                            <input
-                                type="checkbox"
-                                className="mt-1 rounded border-gray-300 text-primary focus:ring-primary h-5 w-5"
-                                checked={selectedIds.includes(cliente.UUID)}
-                                onChange={() => handleSelectOne(cliente.UUID)}
-                            />
-                            <div className="flex-1" onClick={() => navigate(`/clientes/${cliente.UUID}`)}>
-                                <div className="flex justify-between items-start">
-                                    <div className="pr-2">
-                                        <p className="text-xs text-gray-400 mb-0.5">Razão Social:</p>
-                                        <h3 className="font-bold text-gray-900 text-sm leading-tight">
-                                            {cliente.Nome}
-                                        </h3>
-                                    </div>
-                                    <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                        {cliente.Ativo ? 'Ativo' : 'Inativo'}
+                        {/* Checkbox em Lote Mobile */}
+                        {selectedIds.length > 0 && (
+                            <div className="absolute top-3.5 right-3.5 z-10">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-gray-300 text-primary focus:ring-primary h-5 w-5 bg-white shadow-sm"
+                                    checked={selectedIds.includes(cliente.UUID)}
+                                    onChange={() => handleSelectOne(cliente.UUID)}
+                                    onClick={e => e.stopPropagation()}
+                                />
+                            </div>
+                        )}
+
+                        <div className="flex flex-col gap-2" onClick={() => navigate(`/clientes/${cliente.UUID}`)}>
+                            <div className="pr-8">
+                                <h3 className="font-bold text-gray-900 text-[16px] leading-tight tracking-tight">
+                                    {cliente.NomeFantasia || cliente.Nome}
+                                </h3>
+                                {/* Usando Razão Social sub-text se Fantasia existir e for diferente */}
+                                {cliente.NomeFantasia && cliente.NomeFantasia !== cliente.Nome && (
+                                    <p className="text-[11px] text-gray-400 mt-0.5 truncate">{cliente.Nome}</p>
+                                )}
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                <span className="text-[11px] font-mono text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                                    {cliente.Documento || 'Sem Documento'}
+                                </span>
+                                {cliente.End_Cidade && (
+                                    <span className="text-[11px] text-gray-500 flex items-center gap-0.5 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                                        <MapPin className="h-3 w-3 text-gray-400" />
+                                        {cliente.End_Cidade}
                                     </span>
-                                </div>
-                                <p className="text-xs text-gray-600 mt-2 border-t border-gray-100 pt-2">
-                                    <span className="text-gray-400 inline-block w-16">Fantasia:</span>
-                                    <span className="font-medium">{cliente.NomeFantasia || cliente.Nome}</span>
-                                </p>
-                                <div className="flex gap-1 mt-2">
-                                    {(cliente.Formas_Atendimento || []).map(forma => (
-                                        <span key={forma} title={forma} className="p-1 bg-gray-100 rounded text-gray-600">
-                                            {forma === 'Presencial' && <User className="h-3 w-3" />}
-                                            {forma === 'Whatsapp' && <MessageCircle className="h-3 w-3" />}
-                                            {forma === 'Telefone' && <Phone className="h-3 w-3" />}
-                                        </span>
-                                    ))}
-                                </div>
+                                )}
+                            </div>
+
+                            <div className="flex gap-2 items-center flex-wrap pt-2 border-t border-gray-100 mt-1">
+                                {cliente.vendedor?.nome && (
+                                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                                        Vend: {cliente.vendedor.nome.split(' ')[0]}
+                                    </span>
+                                )}
+                                {cliente.Dia_de_entrega && (
+                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                                        Entrega: {cliente.Dia_de_entrega}
+                                    </span>
+                                )}
+                                {cliente.Dia_de_venda && (
+                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
+                                        Venda: {cliente.Dia_de_venda}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -436,7 +456,7 @@ const ListaClientes = () => {
             </div>
 
             {/* Paginação e Limite */}
-            <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-4">
+            <div className="hidden md:flex flex-col md:flex-row justify-between items-center mt-6 gap-4">
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600">Exibir</span>
                     <select
