@@ -782,8 +782,10 @@ const contaAzulService = {
                     statusEnvio: 'RECEBIDO',
                     idVendaContaAzul: { not: null }
                 },
-                orderBy: { updatedAt: 'desc' },
-                take: 100
+                // Rotação: processar os mais antigos sem confirmação primeiro
+                // Isso garante cobertura uniforme mesmo com 1000+ pedidos RECEBIDO
+                orderBy: { contaAzulUpdatedAt: 'asc' },
+                take: 20 // Máx 20 pings/ciclo → ~3s total, dentro do rate limit da CA (10 req/s)
             });
 
             console.log(`[GARBAGE COLLECTOR] Iniciando varredura em ${pedidosLocaisAtivos.length} pedidos marcados como RECEBIDO.`);
@@ -932,6 +934,23 @@ const contaAzulService = {
                     // Lógica solicitada pelo usuário para Pedidos Excluídos/Cancelados
                     // API V2 envia situacao como um Objeto: { "nome": "CANCELADO", "descricao": "Cancelado" }
                     const isCanceladoV2 = venda.situacao?.nome === 'CANCELADO' || venda.status === 'DELETED';
+
+                    // === RESTAURAÇÃO: pedido marcado EXCLUIDO localmente mas CA diz que está ATIVO ===
+                    // Pode ocorrer quando o GC rodou com bug e marcou erroneamente como excluído.
+                    if (pedidoLocal.statusEnvio === 'EXCLUIDO' && !isCanceladoV2) {
+                        await prisma.pedido.update({
+                            where: { id: pedidoLocal.id },
+                            data: {
+                                statusEnvio: 'RECEBIDO',
+                                situacaoCA: venda.situacao?.nome || null,
+                                revisaoPendente: true, // Sinaliza ao vendedor que houve movimentação
+                                contaAzulUpdatedAt: dataAtualizacaoCA
+                            }
+                        });
+                        console.log(`🔄 [Sync CA] Pedido #${pedidoLocal.numero} RESTAURADO: EXCLUIDO → RECEBIDO (CA: ${venda.situacao?.nome})`);
+                        count++;
+                        continue;
+                    }
 
                     if (isCanceladoV2) {
                         if (pedidoLocal.statusEnvio !== 'EXCLUIDO') {
