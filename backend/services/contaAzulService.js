@@ -797,30 +797,26 @@ const contaAzulService = {
                     const url = `https://api-v2.contaazul.com/v1/venda/${local.idVendaContaAzul}`;
                     const resCA = await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` } });
 
-                    // 200 OK: pedido existe no CA. Verificar se foi CANCELADO (soft-delete do CA).
-                    // LOG: Mostrar o body real da CA para entender a estrutura de 'situacao'
-                    if (deletadosCount === 0 && local === pedidosLocaisAtivos[0]) {
-                        console.log(`[GC DEBUG] Body CA venda #${local.numero}: ${JSON.stringify(resCA.data).substring(0, 800)}`);
-                        console.log(`[GC DEBUG] Campo situacao direto: ${JSON.stringify(resCA.data?.situacao)}`);
-                        console.log(`[GC DEBUG] Campo status direto: ${JSON.stringify(resCA.data?.status)}`);
-                    }
-                    // O GET /venda/{id} pode retornar 'situacao' como string OU como objeto {nome, descricao}
+                    // 200 OK: pedido existe no CA. Verificar situacao.
+                    // O GET /venda/{id} pode retornar 'situacao' como string OU objeto {nome, descricao}
                     const situacaoRaw = resCA.data?.situacao;
-                    const situacaoNome = (typeof situacaoRaw === 'object' ? situacaoRaw?.nome : situacaoRaw) || resCA.data?.status;
-                    console.log(`[GARBAGE COLLECTOR] ✅ Venda #${local.numero} (CA ${local.idVendaContaAzul}) → CA situacao: ${situacaoNome || 'n/d'}`);
+                    const situacaoNome = (typeof situacaoRaw === 'object' ? situacaoRaw?.nome : situacaoRaw) || resCA.data?.status || null;
+                    console.log(`[GARBAGE COLLECTOR] \u2705 Venda #${local.numero} (CA ${local.idVendaContaAzul}) \u2192 CA situacao: ${situacaoNome || 'n/d'}`);
 
-                    if (situacaoNome === 'CANCELADO') {
-                        // Pedido cancelado no CA → marcar como EXCLUIDO localmente
+                    if (!situacaoNome || situacaoNome === 'CANCELADO') {
+                        // sem situacao = pedido exclu\u00eddo do CA via interface (soft-delete: API retorna 200 mas sem status)
+                        // CANCELADO = cancelado explicitamente no CA
+                        const motivoExclusao = situacaoNome === 'CANCELADO' ? 'CANCELADO no CA' : 'exclu\u00eddo do CA (sem situa\u00e7\u00e3o)';
                         await prisma.pedido.update({
                             where: { id: local.id },
                             data: {
                                 statusEnvio: 'EXCLUIDO',
-                                situacaoCA: 'CANCELADO',
-                                revisaoPendente: true, // Alerta visual: "Pedido excluído/cancelado no CA"
+                                situacaoCA: situacaoNome || 'EXCLUIDO',
+                                revisaoPendente: true, // Alerta visual para o vendedor
                                 contaAzulUpdatedAt: new Date()
                             }
                         });
-                        console.log(`🗑️ Pedido #${local.numero} marcado como EXCLUIDO (situacao CANCELADO no CA)`);
+                        console.log(`\ud83d\uddd1\ufe0f Pedido #${local.numero} marcado como EXCLUIDO (${motivoExclusao})`);
                         deletadosCount++;
                     }
 

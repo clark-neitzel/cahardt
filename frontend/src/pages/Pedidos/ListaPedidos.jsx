@@ -30,7 +30,8 @@ const ListaPedidos = () => {
             'ENVIAR': 'bg-blue-100 text-blue-800',
             'SINCRONIZANDO': 'bg-yellow-100 text-yellow-800',
             'RECEBIDO': 'bg-green-100 text-green-800',
-            'ERRO': 'bg-red-100 text-red-800'
+            'ERRO': 'bg-red-100 text-red-800',
+            'EXCLUIDO': 'bg-red-100 text-red-700'
         };
         const colorClass = colors[status] || 'bg-gray-100 text-gray-800';
         return (
@@ -95,6 +96,9 @@ const ListaPedidos = () => {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm font-medium text-gray-900">{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Desconhecido'}</div>
                                             <div className="text-sm text-gray-500">Vendedor: {pedido.vendedor?.nome || '-'}</div>
+                                            {pedido.numero && (
+                                                <div className="text-xs text-blue-600 font-bold mt-0.5">Pedido #{pedido.numero}</div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {new Date(pedido.createdAt).toLocaleDateString('pt-BR')}
@@ -148,7 +152,11 @@ const ListaPedidos = () => {
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                         <div className="flex justify-between items-center p-4 border-b">
                             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                Detalhes do Pedido
+                                {selectedPedido.numero ? (
+                                    <span className="text-blue-600 font-extrabold">Pedido #{selectedPedido.numero}</span>
+                                ) : (
+                                    'Detalhes do Pedido'
+                                )}
                                 {selectedPedido.revisaoPendente && (
                                     <span className="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded-full flex items-center">
                                         <AlertCircle className="h-4 w-4 mr-1" /> Alterado no ERP
