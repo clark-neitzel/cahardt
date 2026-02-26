@@ -5,6 +5,9 @@ const pedidoController = require('../controllers/pedidoController');
 // Buscar histórico/último preço
 router.get('/ultimo-preco', pedidoController.obterUltimoPreco);
 
+// Buscar histórico de compras por cliente (para novo pedido mobile)
+router.get('/historico-cliente', pedidoController.historicoComprasCliente);
+
 // Listagem de Pedidos
 router.get('/', pedidoController.listar);
 

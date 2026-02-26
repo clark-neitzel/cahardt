@@ -261,6 +261,57 @@ const pedidoService = {
         return ultimoItem;
     },
 
+    // Retorna os produtos que o cliente já comprou, com as últimas 5 compras de cada
+    // Ordenado: os mais recentemente comprados primeiro
+    historicoComprasCliente: async (clienteId) => {
+        // Busca todos os itens de pedidos fechados deste cliente
+        const itens = await prisma.pedidoItem.findMany({
+            where: {
+                pedido: {
+                    clienteId: clienteId,
+                    statusEnvio: { not: 'EXCLUIDO' }
+                }
+            },
+            orderBy: { pedido: { dataVenda: 'desc' } },
+            select: {
+                valor: true,
+                quantidade: true,
+                produtoId: true,
+                pedido: { select: { dataVenda: true, numero: true } }
+            }
+        });
+
+        // Agrupar por produto mantendo as 5 últimas compras
+        const porProduto = new Map();
+        for (const item of itens) {
+            if (!item.produtoId) continue;
+            if (!porProduto.has(item.produtoId)) {
+                porProduto.set(item.produtoId, {
+                    produtoId: item.produtoId,
+                    ultimaCompra: item.pedido.dataVenda,
+                    ultimoPreco: Number(item.valor),
+                    compras: []
+                });
+            }
+            const entry = porProduto.get(item.produtoId);
+            if (entry.compras.length < 5) {
+                entry.compras.push({
+                    data: item.pedido.dataVenda,
+                    numero: item.pedido.numero,
+                    quantidade: Number(item.quantidade),
+                    valor: Number(item.valor)
+                });
+            }
+        }
+
+        // Retornar como array ordenado pela compra mais recente
+        return Array.from(porProduto.values()).sort(
+            (a, b) => new Date(b.ultimaCompra) - new Date(a.ultimaCompra)
+        );
+    },
+
+
+
     // 4. Detalhar um pedido
     detalhar: async (id) => {
         return await prisma.pedido.findUnique({

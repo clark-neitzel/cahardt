@@ -9,6 +9,16 @@ const pedidoService = {
         return response.data;
     },
 
+    // Buscar histórico de compras do cliente (todos os produtos com 5 últimas compras)
+    historicoComprasCliente: async (clienteId) => {
+        const response = await api.get('/pedidos/historico-cliente', {
+            params: { clienteId }
+        });
+        return response.data;
+    },
+
+
+
     // Listagem de Pedidos
     listar: async (filtros) => {
         const response = await api.get('/pedidos', { params: filtros });

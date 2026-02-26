@@ -84,6 +84,20 @@ const pedidoController = {
         }
     },
 
+    historicoComprasCliente: async (req, res) => {
+        try {
+            const { clienteId } = req.query;
+            if (!clienteId) {
+                return res.status(400).json({ error: 'clienteId é obrigatório' });
+            }
+            const historico = await pedidoService.historicoComprasCliente(clienteId);
+            res.json(historico);
+        } catch (error) {
+            console.error('Erro ao buscar histórico de compras:', error);
+            res.status(500).json({ error: 'Erro ao buscar histórico de compras' });
+        }
+    },
+
     excluir: async (req, res) => {
         try {
             const id = req.params.id;
