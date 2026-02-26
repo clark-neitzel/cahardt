@@ -56,17 +56,17 @@ const contaAzulService = {
 
             refreshPromise = (async () => {
                 try {
-                    // CONFIGURAÇÃO LEGACY: api.contaazul.com
-                    // A API Legada requer AS CREDENCIAIS NO CORPO DA REQUISIÇÃO, e NÃO no cabeçalho.
-                    const response = await axios.post('https://api.contaazul.com/oauth2/token',
+                    const credentials = Buffer.from(`${process.env.CA_CLIENT_ID || CLIENT_ID}:${process.env.CA_CLIENT_SECRET || CLIENT_SECRET}`).toString('base64');
+                    // CONFIGURAÇÃO OBRIGATÓRIA PARA COGNITO: auth.contaazul.com com Basic Auth no Header
+                    // A API antiga (api.contaazul.com) retorna invalid_client para novas contas
+                    const response = await axios.post('https://auth.contaazul.com/oauth2/token',
                         new URLSearchParams({
                             grant_type: 'refresh_token',
-                            refresh_token: config.refreshToken,
-                            client_id: process.env.CA_CLIENT_ID || CLIENT_ID,
-                            client_secret: process.env.CA_CLIENT_SECRET || CLIENT_SECRET
+                            refresh_token: config.refreshToken
                         }).toString(),
                         {
                             headers: {
+                                'Authorization': `Basic ${credentials}`,
                                 'Content-Type': 'application/x-www-form-urlencoded'
                             }
                         }
@@ -784,9 +784,8 @@ const contaAzulService = {
             // Para segurança na primeira rodada e evitar payload massivo: últimos 3 dias
             const diasAtras = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-            // API V1 endpoint para buscar vendas por data de atualização
-            // O endpoint de vendas SÓ existe na v1 (api.contaazul.com). A v2 (api-v2.contaazul.com) retorna 404 Not Found.
-            const url = `https://api.contaazul.com/v1/vendas?data_atualizacao_inicial=${diasAtras}T00:00:00Z&size=50`;
+            // API V2 Endpoint oficial para buscar vendas (A V1 devolve 401 com tokens Cognito)
+            const url = `https://api-v2.contaazul.com/v1/venda/busca?data_alteracao_de=${diasAtras}T00:00:00&tamanho_pagina=50`;
             console.log(`🔎 Buscando Pedidos na CA: ${url}`);
 
             // Usa o wrapper interno para garantir refresh de token automático
