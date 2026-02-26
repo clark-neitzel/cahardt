@@ -426,6 +426,18 @@ const ListaClientes = () => {
                                         {cliente.End_Cidade}
                                     </span>
                                 )}
+                                {/* Formas de Atendimento integradas na mesma linha do Endereço */}
+                                {cliente.Formas_Atendimento && cliente.Formas_Atendimento.length > 0 && (
+                                    <div className="flex gap-1 ml-auto md:ml-0">
+                                        {cliente.Formas_Atendimento.map(forma => (
+                                            <span key={forma} title={forma} className="p-1 bg-gray-50 rounded text-gray-400 border border-gray-100 flex items-center">
+                                                {forma === 'Presencial' && <User className="h-3 w-3" />}
+                                                {forma === 'Whatsapp' && <MessageCircle className="h-3 w-3" />}
+                                                {forma === 'Telefone' && <Phone className="h-3 w-3" />}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex gap-2 items-center flex-wrap pt-2 border-t border-gray-100 mt-1">
@@ -446,18 +458,6 @@ const ListaClientes = () => {
                                 )}
                             </div>
 
-                            {/* Formas de Atendimento restauradas */}
-                            {cliente.Formas_Atendimento && cliente.Formas_Atendimento.length > 0 && (
-                                <div className="flex gap-1 mt-1">
-                                    {cliente.Formas_Atendimento.map(forma => (
-                                        <span key={forma} title={forma} className="p-1 bg-gray-50 rounded text-gray-400 border border-gray-100">
-                                            {forma === 'Presencial' && <User className="h-3 w-3" />}
-                                            {forma === 'Whatsapp' && <MessageCircle className="h-3 w-3" />}
-                                            {forma === 'Telefone' && <Phone className="h-3 w-3" />}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
                         </div>
                     </div>
                 ))}
