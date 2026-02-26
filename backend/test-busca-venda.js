@@ -10,34 +10,31 @@ const prisma = new PrismaClient({
 async function run() {
     try {
         const config = await prisma.contaAzulConfig.findFirst();
-        if (!config || !config.accessToken) return;
 
-        // Fetching by general date instead of alteracao date
-        const url = `https://api-v2.contaazul.com/v1/venda/busca?data_emissao_de=2026-02-01T00:00:00&data_emissao_ate=2026-02-28T23:59:59&tamanho_pagina=50`;
-        console.log(`Fetching: ${url}`);
+        // One of the orders from the screenshot is BROTHAUS 500.00
+        // Another is BROTHAUS 825.00
+        // I will pull ALL pedidos locally that are RECEBIDO and ask CA directly about them.
         
-        const response = await axios.get(url, {
-            headers: { 'Authorization': `Bearer ${config.accessToken}` }
+        const pedidosLocais = await prisma.pedido.findMany({
+             where: { statusEnvio: 'RECEBIDO' },
+             select: { id: true, idVendaContaAzul: true, numero: true }
         });
         
-        console.log(`Total Vendas Found (by emissao): ${response.data?.itens?.length || 0}`);
+        console.log(`Pedidos Locais Recebidos: ${pedidosLocais.length}`);
         
-        if (response.data && response.data.itens) {
-            response.data.itens.forEach(v => {
-                // Focus on BROTHAUS orders to find the canceled one
-                if (v.cliente && v.cliente.nome && v.cliente.nome.includes("BROTHAUS")) {
-                    console.log(`\n--- Venda ${v.numero} (BROTHAUS) ---`);
-                    console.log(`ID CA: ${v.id}`);
-                    console.log(`Situação: "${v.situacao}"`);
-                    console.log(`Status string: "${v.status}"`);
-                    console.log(`Data Emissão: ${v.data_emissao}`);
-                    console.log(`Data Alteração: ${v.data_alteracao}`);
-                    console.log(`Valor Total: ${v.total}`);
-                }
-            });
+        for (const pd of pedidosLocais) {
+            if (!pd.idVendaContaAzul) continue;
+            try {
+               const url = `https://api-v2.contaazul.com/v1/venda/${pd.idVendaContaAzul}`;
+               const response = await axios.get(url, { headers: { 'Authorization': `Bearer ${config.accessToken}` } });
+               console.log(`[OK] CA tem a Venda ${pd.numero} (${pd.idVendaContaAzul}) - Situacao: ${response.data.situacao?.nome}`);
+            } catch(e) {
+               console.log(`[FALHA] Buscar Venda ${pd.numero} (${pd.idVendaContaAzul}): ${e.response?.status} - ${e.response?.data?.message || 'Nao encontrada'}`);
+            }
         }
+        
     } catch (e) {
-        console.error("Fetch Error:", e?.response?.data || e.message);
+        console.error("Geral Error:", e.message);
     } finally {
         await prisma.$disconnect();
     }

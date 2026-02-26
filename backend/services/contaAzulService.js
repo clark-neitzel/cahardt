@@ -773,6 +773,65 @@ const contaAzulService = {
         }
     },
 
+    // Rotina exclusiva para V2: A V2 simplesmente "esconde" pedidos deletados da busca geral.
+    // Precisamos pingar ativamente os pedidos locais "RECEBIDO" para ver se retornam 404 (Excluídos).
+    _verificarPedidosExcluidosContAzul: async () => {
+        try {
+            // Pega até 100 pedidos locais que estão como "RECEBIDO" (teoricamente ativos na CA)
+            // Ordenados pelos mais recentes modificados para varrer em lotes seguros.
+            const pedidosLocaisAtivos = await prisma.pedido.findMany({
+                where: {
+                    statusEnvio: 'RECEBIDO',
+                    idVendaContaAzul: { not: null }
+                },
+                orderBy: { updatedAt: 'desc' },
+                take: 100 // Limite de segurança para não explodir rate limit
+            });
+
+            if (!pedidosLocaisAtivos.length) return 0;
+
+            let deletadosCount = 0;
+
+            for (const local of pedidosLocaisAtivos) {
+                try {
+                    const url = `https://api-v2.contaazul.com/v1/venda/${local.idVendaContaAzul}`;
+                    // Fazemos o GET. Se o pedido existe, retorna 200.
+                    await contaAzulService._axiosGet(url, 'VERIFICA_EXCLUSAO');
+                } catch (error) {
+                    // Se a CA retornar 404 (Not Found), significa que excluíram o pedido lá dentro!
+                    if (error.response && error.response.status === 404) {
+                        try {
+                            await prisma.pedido.update({
+                                where: { id: local.id },
+                                data: {
+                                    status: 'EXCLUIDO',
+                                    revisaoPendente: false,
+                                    contaAzulUpdatedAt: new Date()
+                                }
+                            });
+                            console.log(`🗑️ Pedido Local ${local.id} (CA ${local.idVendaContaAzul}) DADO COMO EXCLUÍDO (404 na Conta Azul)`);
+                            deletadosCount++;
+                        } catch (updateErr) {
+                            console.error(`Falha ao marcar EXCLUIDO no BD: ${updateErr.message}`);
+                        }
+                    } else if (error.response && error.response.status === 401) {
+                        // Se der 401, abortamos o loop (token expirado na V1 acidental ou outro stress severo)
+                        break;
+                    }
+                }
+
+                // Pequeno delay (100ms) para respeitar o limite de Rate da CA (normalmente 3 a 5 reqs/seg)
+                await new Promise(r => setTimeout(r, 100));
+            }
+
+            return deletadosCount;
+
+        } catch (error) {
+            console.error('Erro na rotina de verificação de excluídos (V2):', error.message);
+            return 0;
+        }
+    },
+
     // Buscar Vendas Modificadas no Conta Azul (Sync Bidirecional)
     syncPedidosModificados: async () => {
         const log = await prisma.syncLog.create({
@@ -876,12 +935,19 @@ const contaAzulService = {
                 }
             }
 
+            // Dispara a rotina pesada de caça aos "Ressuscitados 404" (Pedidos deletados na CA)
+            const excluidosSilenciosos = await contaAzulService._verificarPedidosExcluidosContAzul();
+
+            if (excluidosSilenciosos > 0) {
+                console.log(`Detectados e excluídos ${excluidosSilenciosos} pedidos silenciosamente apagados na CA.`);
+            }
+
             await prisma.syncLog.update({
                 where: { id: log.id },
-                data: { status: 'SUCESSO', mensagem: `Modificações RASTREADAS. ${count} pedidos acenderam flag alerta.`, registrosProcessados: count, dataHora: new Date() }
+                data: { status: 'SUCESSO', mensagem: `Modificações RASTREADAS. ${count} pedidos acenderam flag alerta. ${excluidosSilenciosos} detectados como excluídos.`, registrosProcessados: count + excluidosSilenciosos, dataHora: new Date() }
             });
 
-            return { success: true, count };
+            return { success: true, count, excluidosSilenciosos };
         } catch (error) {
             console.error('Erro syncPedidosModificados:', error);
             await prisma.syncLog.update({
