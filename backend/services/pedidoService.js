@@ -1,6 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
-
+const prisma = require('../config/database');
 const pedidoService = {
     // 1. Listagem de pedidos com filtros (para a tela de histórico)
     listar: async (filtros) => {
