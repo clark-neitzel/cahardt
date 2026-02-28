@@ -155,13 +155,10 @@ const promocaoController = {
      */
     buscarAtivasLote: async (req, res) => {
         try {
-            const agora = new Date();
+            // Retorna todas as promoções com status ATIVA (inclui futuras/agendadas)
+            // O filtro real de período é feito no momento do pedido pelo backend
             const promos = await prisma.promocao.findMany({
-                where: {
-                    status: 'ATIVA',
-                    dataInicio: { lte: agora },
-                    dataFim: { gte: agora }
-                },
+                where: { status: 'ATIVA' },
                 include: { grupos: { include: { condicoes: true } } }
             });
 

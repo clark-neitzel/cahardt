@@ -301,14 +301,17 @@ const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
                                             {promoAtiva.grupos.map((g, gi) => (
                                                 <div key={g.id} className="text-xs bg-white border rounded p-2 mb-1">
                                                     <span className="font-medium text-purple-700">Grupo {gi + 1}: </span>
-                                                    {g.condicoes.map((c, ci) => (
-                                                        <span key={c.id} className={ci > 0 ? 'ml-1' : ''}>
-                                                            {ci > 0 && <span className="text-gray-400"> E </span>}
-                                                            {c.tipo === 'PRODUTO_QUANTIDADE'
-                                                                ? `Produto ${c.produtoId} ≥ ${c.quantidadeMinima} un`
-                                                                : `Total ≥ R$ ${c.valorMinimo}`}
-                                                        </span>
-                                                    ))}
+                                                    {g.condicoes.map((c, ci) => {
+                                                        const nomeProd = todosOsProdutos.find(p => p.id === c.produtoId)?.nome || c.produtoId;
+                                                        return (
+                                                            <span key={c.id} className={ci > 0 ? 'ml-1' : ''}>
+                                                                {ci > 0 && <span className="text-gray-400"> E </span>}
+                                                                {c.tipo === 'PRODUTO_QUANTIDADE'
+                                                                    ? <span><span className="font-semibold text-gray-700">{nomeProd}</span> ≥ <span className="font-bold">{c.quantidadeMinima}</span> un</span>
+                                                                    : <span>Total do pedido ≥ <span className="font-bold">R$ {c.valorMinimo}</span></span>}
+                                                            </span>
+                                                        );
+                                                    })}
                                                 </div>
                                             ))}
                                         </div>
