@@ -490,6 +490,11 @@ const NovoPedido = () => {
                             {(() => {
                                 const promo = promocoesMap.get(produto.id);
                                 if (!promo) return null;
+
+                                // Acréscimo da tabela selecionada (mesma regra do preço normal)
+                                const acrescimo = condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0;
+                                const precoPromoComTabela = Number(promo.precoPromocional) * (1 + acrescimo / 100);
+
                                 // Avalia condições em tempo real para tipo CONDICIONAL
                                 if (promo.tipo === 'CONDICIONAL') {
                                     const itensList = Array.from(itensMap.entries()).map(([pid, it]) => ({
@@ -515,11 +520,13 @@ const NovoPedido = () => {
                                     );
                                 }
                                 return (
-                                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-300 font-semibold flex items-center gap-1">
-                                        <Tag className="h-3 w-3" /> R$ {Number(promo.precoPromocional).toFixed(2).replace('.', ',')}
+                                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-300 font-semibold flex items-center gap-1"
+                                        title={`Base: R$ ${Number(promo.precoPromocional).toFixed(2)} + ${acrescimo}% tabela`}>
+                                        <Tag className="h-3 w-3" /> R$ {precoPromoComTabela.toFixed(2).replace('.', ',')}
                                     </span>
                                 );
                             })()}
+
                             {/* Preço / input de preço */}
                             {qtd > 0 ? (
                                 <span
