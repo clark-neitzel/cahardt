@@ -27,7 +27,10 @@ const tabelaPrecoController = {
     atualizar: async (req, res) => {
         try {
             const { id } = req.params;
-            const { ativo, acrescimoPreco, exigeBanco, bancoPadrao, valorMinimo } = req.body;
+            const {
+                ativo, acrescimoPreco, exigeBanco, bancoPadrao, valorMinimo,
+                nomeCondicao, tipoPagamento, opcaoCondicao, qtdParcelas, parcelasDias
+            } = req.body;
 
             // Verificar se o registro existe
             const exists = await prisma.tabelaPreco.findUnique({ where: { id } });
@@ -41,6 +44,12 @@ const tabelaPrecoController = {
             if (ativo !== undefined) updateData.ativo = ativo;
             if (exigeBanco !== undefined) updateData.exigeBanco = exigeBanco;
             if (bancoPadrao !== undefined) updateData.bancoPadrao = bancoPadrao;
+            if (nomeCondicao !== undefined) updateData.nomeCondicao = nomeCondicao;
+            if (tipoPagamento !== undefined) updateData.tipoPagamento = tipoPagamento;
+            if (opcaoCondicao !== undefined) updateData.opcaoCondicao = opcaoCondicao;
+
+            if (qtdParcelas !== undefined) updateData.qtdParcelas = Number(qtdParcelas) || 1;
+            if (parcelasDias !== undefined) updateData.parcelasDias = Number(parcelasDias) || 0;
 
             if (acrescimoPreco !== undefined) {
                 updateData.acrescimoPreco = Number(acrescimoPreco) || 0;
