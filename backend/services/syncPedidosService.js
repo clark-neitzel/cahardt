@@ -123,14 +123,21 @@ const syncPedidosService = {
 
             let contaFinId = pedido.idContaFinanceira || undefined;
 
+            // Montar linha de promoções nos produtos do pedido
+            const itensEmPromocao = pedido.itens.filter(item => item.emPromocao && item.nomePromocao);
+            const linhaPromo = itensEmPromocao.length > 0
+                ? `PROMO - ${itensEmPromocao.map(item => item.produto?.nome || '').filter(Boolean).join('; ')}`
+                : null;
+            const observacoesFinal = [pedido.observacoes, linhaPromo].filter(Boolean).join('\n') || undefined;
+
             const payload = {
                 id_cliente: pedido.cliente.contaAzulId || pedido.cliente.UUID,
                 numero: numeroVenda,
-                situacao: "APROVADO", // Envia aprovado pra já reservar estoque
+                situacao: "APROVADO",
                 data_venda: dataVendaStr,
-                id_categoria: pedido.idCategoria || "b2771a7a-2120-4af5-affb-8e6fac7e48af", // Default to Receitas de Vendas
-                id_natureza_operacao: "915a96fe-d5ca-11f0-8ea0-e7ffa7159b62", // Default to Venda de Mercadorias / Produtos
-                observacoes: pedido.observacoes ? `${pedido.observacoes}\n(Gerado via App Mobile Hardt - GPS: ${pedido.latLng || 'N/D'})` : `(Gerado via App Mobile Hardt) - GPS: ${pedido.latLng || 'N/D'}`,
+                id_categoria: pedido.idCategoria || "b2771a7a-2120-4af5-affb-8e6fac7e48af",
+                id_natureza_operacao: "915a96fe-d5ca-11f0-8ea0-e7ffa7159b62",
+                observacoes: observacoesFinal,
                 itens: pedido.itens.map(item => ({
                     id: item.produto.contaAzulId, // id real do produto no CA
                     descricao: item.descricao || item.produto.nome,

@@ -290,7 +290,10 @@ const NovoPedido = () => {
                 const produto = produtos.find(p => p.id === produtoId);
                 const acrescimo = condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0;
                 const precoTabela = Number(produto?.valorVenda || 0);
-                const valorBase = precoTabela * (1 + acrescimo / 100);
+                // Se há promoção ativa, o valorBase para flex é o preço promo (c/ acréscimo)
+                const promoAtiva = promocoesMap.get(produtoId);
+                const precoBase = promoAtiva ? Number(promoAtiva.precoPromocional) : precoTabela;
+                const valorBase = precoBase * (1 + acrescimo / 100);
                 const hist = historicoMap.get(produtoId);
                 const valorPraticado = hist?.ultimoPreco || valorBase;
                 m.set(produtoId, {
@@ -414,8 +417,9 @@ const NovoPedido = () => {
         (acc, i) => acc + (Number(i.valorUnitario) * Number(i.quantidade)), 0
     );
 
-    // Ordenar produtos: já comprados (por data desc) e depois os demais (alfabético)
+    // Ordenar produtos: já comprados → em promoção (não comprados) → outros (alfabético)
     const produtosJaComprados = [];
+    const produtosComPromoNaoComprados = [];
     const produtosOutros = [];
 
     // Filtrar
@@ -432,7 +436,7 @@ const NovoPedido = () => {
 
     const jaCompradosIds = new Set(historicoPorData.map(([pid]) => pid));
 
-    // Montar lista na ordem: histórico (com os produtos enriquecidos) → outros (alfabético)
+    // Montar lista na ordem: histórico → em promoção → outros (alfabético)
     historicoPorData.forEach(([pid, hist]) => {
         const prod = produtosFiltrados.find(p => p.id === pid);
         if (prod) produtosJaComprados.push({ ...prod, hist });
@@ -441,14 +445,22 @@ const NovoPedido = () => {
     produtosFiltrados
         .filter(p => !jaCompradosIds.has(p.id))
         .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
-        .forEach(p => produtosOutros.push({ ...p, hist: null }));
+        .forEach(p => {
+            if (promocoesMap.has(p.id)) {
+                produtosComPromoNaoComprados.push({ ...p, hist: null });
+            } else {
+                produtosOutros.push({ ...p, hist: null });
+            }
+        });
 
     const renderProdutoRow = (produto) => {
         const item = itensMap.get(produto.id);
         const qtd = item?.quantidade || 0;
         const valor = item?.valorUnitario;
         const hist = produto.hist;
+        const promo = promocoesMap.get(produto.id);
         const expandido = expandidosProduto.has(produto.id);
+        const temExpand = !!hist || !!promo; // expandível se tem histórico ou promoção
 
         // Imagem principal do produto
         const imgUrl = produto.imagens && produto.imagens.length > 0
@@ -456,7 +468,7 @@ const NovoPedido = () => {
             : null;
 
         const toggleExpand = () => {
-            if (!hist) return;
+            if (!temExpand) return;
             setExpandidosProduto(prev => {
                 const n = new Set(prev);
                 n.has(produto.id) ? n.delete(produto.id) : n.add(produto.id);
@@ -468,7 +480,7 @@ const NovoPedido = () => {
             <div className={`border-b border-gray-100 ${qtd > 0 ? 'bg-blue-50/40' : 'bg-white'}`}>
                 {/* Linha principal — clicável para expandir histórico nos Já Comprados */}
                 <div
-                    className={`flex items-center gap-2 px-2 py-2 ${hist ? 'cursor-pointer active:bg-gray-50' : ''}`}
+                    className={`flex items-center gap-2 px-2 py-2 ${temExpand ? 'cursor-pointer active:bg-gray-50' : ''}`}
                     onClick={toggleExpand}
                 >
                     {/* Foto do produto */}
@@ -488,7 +500,6 @@ const NovoPedido = () => {
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                             {/* Tag de Promoção */}
                             {(() => {
-                                const promo = promocoesMap.get(produto.id);
                                 if (!promo) return null;
 
                                 // Acréscimo da tabela selecionada (mesma regra do preço normal)
@@ -502,7 +513,6 @@ const NovoPedido = () => {
                                         quantidade: it.quantidade
                                     }));
                                     const valorTotal = Array.from(itensMap.values()).reduce((s, it) => s + it.valorUnitario * it.quantidade, 0);
-                                    // Motor de avaliação simples (replica backend)
                                     const liberada = promo.grupos?.some(grupo =>
                                         grupo.condicoes?.every(cond => {
                                             if (cond.tipo === 'PRODUTO_QUANTIDADE') {
@@ -521,7 +531,7 @@ const NovoPedido = () => {
                                 }
                                 return (
                                     <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-300 font-semibold flex items-center gap-1"
-                                        title={`Base: R$ ${Number(promo.precoPromocional).toFixed(2)} + ${acrescimo}% tabela`}>
+                                        title={`Base: R$ ${Number(promo.precoPromocional).toFixed(2)} + ${condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0}% tabela`}>
                                         <Tag className="h-3 w-3" /> R$ {precoPromoComTabela.toFixed(2).replace('.', ',')}
                                     </span>
                                 );
@@ -562,8 +572,8 @@ const NovoPedido = () => {
                                 }`}>
                                 Est: {Number(produto.estoqueDisponivel || 0).toFixed(0)} {produto.unidade || 'un'}
                             </span>
-                            {/* Chevron para histórico */}
-                            {hist && (
+                            {/* Chevron para expand (histórico ou promo) */}
+                            {temExpand && (
                                 <span className="text-gray-400 ml-auto">
                                     {expandido ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                                 </span>
@@ -606,6 +616,59 @@ const NovoPedido = () => {
                         </button>
                     </div>
                 </div>
+
+                {/* Painel de Promoção expansível */}
+                {expandido && promo && (() => {
+                    const acrescimo = condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0;
+                    const precoPromoComTabela = Number(promo.precoPromocional) * (1 + acrescimo / 100);
+                    // Revaliar para mostrar status atual
+                    let liberada = true;
+                    if (promo.tipo === 'CONDICIONAL') {
+                        const itensList = Array.from(itensMap.entries()).map(([pid, it]) => ({ produtoId: pid, quantidade: it.quantidade }));
+                        const valorTotal = Array.from(itensMap.values()).reduce((s, it) => s + it.valorUnitario * it.quantidade, 0);
+                        liberada = promo.grupos?.some(grupo =>
+                            grupo.condicoes?.every(cond => {
+                                if (cond.tipo === 'PRODUTO_QUANTIDADE') {
+                                    const found = itensList.find(i => i.produtoId === cond.produtoId);
+                                    return found && Number(found.quantidade) >= Number(cond.quantidadeMinima);
+                                }
+                                if (cond.tipo === 'VALOR_TOTAL') return valorTotal >= Number(cond.valorMinimo);
+                                return false;
+                            })
+                        );
+                    }
+                    return (
+                        <div className="pl-14 pr-3 pb-2 pt-1.5 bg-green-50/70 border-t border-green-100">
+                            <div className="flex items-center gap-2 mb-1">
+                                <Tag className="h-3.5 w-3.5 text-green-600" />
+                                <span className="text-xs font-bold text-green-700">{promo.nome}</span>
+                                <span className={`text-xs px-1.5 py-0 rounded-full font-medium ml-auto ${promo.tipo === 'SIMPLES' ? 'bg-blue-100 text-blue-700' : liberada ? 'bg-green-200 text-green-800' : 'bg-orange-100 text-orange-700'
+                                    }`}>
+                                    {promo.tipo === 'SIMPLES' ? 'SIMPLES' : liberada ? '✓ LIBERADA' : 'CONDICIONAL'}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs">
+                                <span className="text-gray-500">Preço promo:</span>
+                                <span className="font-bold text-green-700">R$ {precoPromoComTabela.toFixed(2).replace('.', ',')}</span>
+                                {acrescimo > 0 && <span className="text-gray-400">(base R$ {Number(promo.precoPromocional).toFixed(2)} + {acrescimo}%)</span>}
+                                <span className="text-gray-400 ml-auto">{new Date(promo.dataInicio).toLocaleDateString('pt-BR')} → {new Date(promo.dataFim).toLocaleDateString('pt-BR')}</span>
+                            </div>
+                            {promo.tipo === 'CONDICIONAL' && promo.grupos?.map((g, gi) => (
+                                <div key={g.id} className="mt-1 text-xs text-gray-600 bg-white/70 border border-green-100 rounded px-2 py-1">
+                                    <span className="font-semibold text-purple-700">Grupo {gi + 1}: </span>
+                                    {g.condicoes?.map((c, ci) => (
+                                        <span key={c.id}>
+                                            {ci > 0 && <span className="text-gray-400"> E </span>}
+                                            {c.tipo === 'PRODUTO_QUANTIDADE'
+                                                ? <span>{c.produtoNome || c.produtoId} <span className="font-bold">≥ {c.quantidadeMinima}</span> un</span>
+                                                : <span>Total do pedido <span className="font-bold">≥ R$ {c.valorMinimo}</span></span>}
+                                        </span>
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
+                    );
+                })()}
 
                 {/* Histórico de compras expansível */}
                 {expandido && hist && hist.compras && hist.compras.length > 0 && (
@@ -839,6 +902,17 @@ const NovoPedido = () => {
                         </div>
                     )}
 
+                    {/* Produtos em promoção (não comprados antes) */}
+                    {produtosComPromoNaoComprados.length > 0 && (
+                        <div>
+                            <div className="px-3 py-1.5 bg-green-50 border-b border-green-100 flex items-center gap-1.5">
+                                <Tag className="h-3.5 w-3.5 text-green-600" />
+                                <span className="text-xs font-bold text-green-700 uppercase tracking-wide">Em Promoção</span>
+                            </div>
+                            {produtosComPromoNaoComprados.map(p => <React.Fragment key={p.id}>{renderProdutoRow(p)}</React.Fragment>)}
+                        </div>
+                    )}
+
                     {/* Outros produtos */}
                     {produtosOutros.length > 0 && (
                         <div>
@@ -852,7 +926,7 @@ const NovoPedido = () => {
                         </div>
                     )}
 
-                    {produtosJaComprados.length === 0 && produtosOutros.length === 0 && (
+                    {produtosJaComprados.length === 0 && produtosComPromoNaoComprados.length === 0 && produtosOutros.length === 0 && (
                         <div className="text-center py-12 text-gray-400">
                             <Search className="h-10 w-10 mx-auto mb-2 opacity-50" />
                             <p className="text-sm">Nenhum produto encontrado</p>
