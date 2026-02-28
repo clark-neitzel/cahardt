@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import produtoService from '../../../services/produtoService';
 import produtoServiceFront from '../../../services/produtoService';
@@ -7,8 +7,81 @@ import promocaoService from '../../../services/promocaoService';
 import { API_URL } from '../../../services/api';
 import {
     ArrowLeft, Loader, AlertCircle, Camera, Tag, Plus, X,
-    CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Trash2
+    CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Trash2, Search
 } from 'lucide-react';
+
+// Componente autocomplete de produto por nome
+const BuscaProduto = ({ value, onChange, todosOsProdutos }) => {
+    const [busca, setBusca] = useState('');
+    const [aberto, setAberto] = useState(false);
+    const [nomeSelecionado, setNomeSelecionado] = useState('');
+    const ref = useRef(null);
+
+    // Preencher nome quando um ID já existe (edição)
+    useEffect(() => {
+        if (value && todosOsProdutos.length > 0) {
+            const prod = todosOsProdutos.find(p => p.id === value);
+            if (prod && !nomeSelecionado) setNomeSelecionado(prod.nome);
+        }
+    }, [value, todosOsProdutos]);
+
+    useEffect(() => {
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setAberto(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const filtrados = busca.length >= 2
+        ? todosOsProdutos.filter(p => p.nome.toLowerCase().includes(busca.toLowerCase())).slice(0, 8)
+        : [];
+
+    const selecionar = (prod) => {
+        setNomeSelecionado(prod.nome);
+        setBusca('');
+        setAberto(false);
+        onChange(prod.id);
+    };
+
+    return (
+        <div className="relative flex-1" ref={ref}>
+            {nomeSelecionado && !aberto ? (
+                <div className="flex items-center gap-1">
+                    <span className="flex-1 text-xs border border-green-300 rounded px-2 py-1 bg-green-50 text-green-800 truncate">{nomeSelecionado}</span>
+                    <button onClick={() => { setNomeSelecionado(''); onChange(''); setAberto(true); }} className="text-gray-400 hover:text-red-500">
+                        <X className="h-3 w-3" />
+                    </button>
+                </div>
+            ) : (
+                <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                    <input
+                        type="text"
+                        value={busca}
+                        onChange={e => { setBusca(e.target.value); setAberto(true); }}
+                        onFocus={() => setAberto(true)}
+                        placeholder="Buscar produto..."
+                        className="w-full text-xs border border-gray-300 rounded pl-6 pr-2 py-1 bg-white text-gray-900"
+                    />
+                    {aberto && filtrados.length > 0 && (
+                        <ul className="absolute z-50 top-full left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded shadow-lg max-h-40 overflow-y-auto">
+                            {filtrados.map(p => (
+                                <li key={p.id}
+                                    onMouseDown={() => selecionar(p)}
+                                    className="px-2 py-1.5 text-xs hover:bg-blue-50 cursor-pointer truncate">
+                                    <span className="font-medium text-gray-800">{p.nome}</span>
+                                    <span className="ml-2 text-gray-400">#{p.codigo}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {aberto && busca.length >= 2 && filtrados.length === 0 && (
+                        <div className="absolute z-50 top-full left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded shadow p-2 text-xs text-gray-400">Nenhum produto encontrado</div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
 
 // -------------------------------------------------------
 // Sub-componente: Seção de Promoções
@@ -23,8 +96,19 @@ const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
     const [sucesso, setSucesso] = useState('');
     const [confirmEncerrar, setConfirmEncerrar] = useState(false);
 
+    // Rascunho de nova promoção
+    const DRAFT_KEY = `@CAHardt:PromoRascunho_${produtoId}`;
+    const carregarRascunho = () => {
+        try {
+            const raw = localStorage.getItem(DRAFT_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+    };
+
+    const draft = carregarRascunho();
+
     // Form nova promoção
-    const [novaPromo, setNovaPromo] = useState({
+    const [novaPromo, setNovaPromoState] = useState(draft?.novaPromo || {
         nome: '',
         tipo: 'SIMPLES',
         precoPromocional: '',
@@ -33,7 +117,26 @@ const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
     });
 
     // Grupos de condições (para tipo CONDICIONAL)
-    const [grupos, setGrupos] = useState([{ id: Date.now(), condicoes: [] }]);
+    const [grupos, setGruposState] = useState(draft?.grupos || [{ id: Date.now(), condicoes: [] }]);
+
+    // Lista de todos os produtos para autocomplete
+    const [todosOsProdutos, setTodosOsProdutos] = useState([]);
+
+    // Proxy setters que também salvam no localStorage
+    const setNovaPromo = (updater) => {
+        setNovaPromoState(prev => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ novaPromo: next, grupos })); } catch { }
+            return next;
+        });
+    };
+    const setGrupos = (updater) => {
+        setGruposState(prev => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ novaPromo, grupos: next })); } catch { }
+            return next;
+        });
+    };
 
     const carregarPromocoes = useCallback(async () => {
         setLoadingPromo(true);
@@ -51,6 +154,13 @@ const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
             setLoadingPromo(false);
         }
     }, [produtoId]);
+
+    // Carregar produtos para autocomplete (busca em lote, lazy)
+    useEffect(() => {
+        produtoService.listar({ limit: 1000, ativo: true })
+            .then(r => setTodosOsProdutos(r.data || r || []))
+            .catch(() => { });
+    }, []);
 
     useEffect(() => {
         carregarPromocoes();
@@ -120,8 +230,11 @@ const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
             };
             await promocaoService.criar(payload);
             setSucesso('Promoção criada com sucesso!');
-            setNovaPromo({ nome: '', tipo: 'SIMPLES', precoPromocional: '', dataInicio: '', dataFim: '' });
-            setGrupos([{ id: Date.now(), condicoes: [] }]);
+            const resetPromo = { nome: '', tipo: 'SIMPLES', precoPromocional: '', dataInicio: '', dataFim: '' };
+            const resetGrupos = [{ id: Date.now(), condicoes: [] }];
+            setNovaPromoState(resetPromo);
+            setGruposState(resetGrupos);
+            try { localStorage.removeItem(DRAFT_KEY); } catch { }
             setTab('atual');
             await carregarPromocoes();
         } catch (e) {
@@ -309,10 +422,11 @@ const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
                                             {ci > 0 && <span className="text-xs text-gray-500 font-bold shrink-0">E</span>}
                                             {cond.tipo === 'PRODUTO_QUANTIDADE' ? (
                                                 <>
-                                                    <span className="text-xs text-gray-500 shrink-0">Produto ID:</span>
-                                                    <input type="text" value={cond.produtoId} placeholder="ID do produto"
-                                                        onChange={e => atualizarCondicao(grupo.id, cond.id, 'produtoId', e.target.value)}
-                                                        className="flex-1 text-xs border border-gray-300 rounded px-2 py-1 bg-white text-gray-900" />
+                                                    <BuscaProduto
+                                                        value={cond.produtoId}
+                                                        onChange={v => atualizarCondicao(grupo.id, cond.id, 'produtoId', v)}
+                                                        todosOsProdutos={todosOsProdutos}
+                                                    />
                                                     <span className="text-xs text-gray-500 shrink-0">≥</span>
                                                     <input type="number" min="0" step="1" value={cond.quantidadeMinima} placeholder="Qtd"
                                                         onChange={e => atualizarCondicao(grupo.id, cond.id, 'quantidadeMinima', e.target.value)}
