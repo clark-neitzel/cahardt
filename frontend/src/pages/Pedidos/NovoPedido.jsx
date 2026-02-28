@@ -313,7 +313,10 @@ const NovoPedido = () => {
             const limiteAplicado = liberada ? 0 : limitePerc;
             const valorMinimoPermitido = Number((novoValorBase * (1 - limiteAplicado / 100)).toFixed(2));
             if (novoValorUnitario < valorMinimoPermitido && valorMinimoPermitido > 0) {
-                novoValorUnitario = novoValorBase; // Chuta de volta pro novo preco cheio
+                if (!liberada && item.emPromocao) {
+                    alert(`⚠️ Promoção do Produto Perdida.\nO valor será ajustado para o limite configurado: R$ ${valorMinimoPermitido.toFixed(2).replace('.', ',')}`);
+                }
+                novoValorUnitario = valorMinimoPermitido;
             }
 
             novoMapa.set(pid, {
@@ -367,7 +370,10 @@ const NovoPedido = () => {
                 const valorMinimoPermitido = Number((valorBase * (1 - limitePerc / 100)).toFixed(2));
 
                 if (valorUnitario < valorMinimoPermitido && valorMinimoPermitido > 0) {
-                    valorUnitario = valorBase;
+                    if (usouHistorico) {
+                        alert(`⚠️ O último preço pago (R$ ${valorUnitario.toFixed(2).replace('.', ',')}) excede seu limite de desconto atual.\nO valor será ajustado para o mínimo permitido: R$ ${valorMinimoPermitido.toFixed(2).replace('.', ',')}`);
+                    }
+                    valorUnitario = valorMinimoPermitido;
                 }
 
                 m.set(produtoId, {
@@ -391,7 +397,10 @@ const NovoPedido = () => {
                                     const lPerc = it.emPromocao ? 0 : limiteBasePerc;
                                     const vMin = Number((it.valorBase * (1 - lPerc / 100)).toFixed(2));
 
-                                    if (vp < vMin && vMin > 0) vp = it.valorBase;
+                                    if (vp < vMin && vMin > 0) {
+                                        alert(`⚠️ O último preço pago (R$ ${vp.toFixed(2).replace('.', ',')}) excede o limite de desconto atual.\nO valor foi ajustado para R$ ${vMin.toFixed(2).replace('.', ',')}`);
+                                        vp = vMin;
+                                    }
 
                                     m2.set(produtoId, { ...it, valorUnitario: vp, flexUnitario: Number((vp - it.valorBase).toFixed(2)) });
                                 }
