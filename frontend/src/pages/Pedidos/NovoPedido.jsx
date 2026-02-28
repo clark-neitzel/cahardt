@@ -285,6 +285,8 @@ const NovoPedido = () => {
 
     const reavaliarMapaItens = useCallback((mapAtual, condicaoSel, todasPromos, listaProdutos) => {
         const novoMapa = new Map();
+        const limitePerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
+
         mapAtual.forEach((item, pid) => {
             const produto = listaProdutos.find(p => p.id === pid);
             if (!produto) return;
@@ -305,6 +307,13 @@ const NovoPedido = () => {
                 if (novoValorBase > 0) novoValorUnitario = novoValorBase;
             }
 
+            // NOVA REGRA CASCATA: Se a promo caiu (ou entrou), o limite base muda.
+            // Precisamos garantir que o preço unitário atual do cara continue respeitando o novo base * (1 - limite)
+            const valorMinimoPermitido = Number((novoValorBase * (1 - limitePerc / 100)).toFixed(2));
+            if (novoValorUnitario < valorMinimoPermitido && valorMinimoPermitido > 0) {
+                novoValorUnitario = novoValorBase; // Chuta de volta pro novo preco cheio
+            }
+
             novoMapa.set(pid, {
                 ...item,
                 valorUnitario: Number(novoValorUnitario.toFixed(2)),
@@ -313,7 +322,7 @@ const NovoPedido = () => {
             });
         });
         return novoMapa;
-    }, [checkPromoLiberada]);
+    }, [checkPromoLiberada, vendedorSelecionado]);
 
     const recalcularItens = useCallback((condicao) => {
         if (!condicao) return;
@@ -398,7 +407,22 @@ const NovoPedido = () => {
             const it = m.get(produtoId);
             if (!it) return prev;
 
+            // Apenas atualiza o estado para não travar a digitação do usuário
+            // A validação de limite será feita no onBlur (verificarTravaValorUnitario)
             let vp = Number(valor.toString().replace(',', '.')) || 0;
+            // Permitir deixar zerado temporariamente durante a digitação para não pular casas indesejadas
+            m.set(produtoId, { ...it, valorUnitario: valor === '' ? '' : vp, flexUnitario: Number((vp - it.valorBase).toFixed(2)) });
+            return m;
+        });
+    }, []);
+
+    const verificarTravaValorUnitario = useCallback((produtoId) => {
+        setItensMap(prev => {
+            const m = new Map(prev);
+            const it = m.get(produtoId);
+            if (!it) return prev;
+
+            let vp = Number(it.valorUnitario) || 0;
 
             // Trava de Desconto Máximo Flex por Vendedor
             const limitePerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
@@ -410,7 +434,7 @@ const NovoPedido = () => {
             }
 
             m.set(produtoId, { ...it, valorUnitario: vp, flexUnitario: Number((vp - it.valorBase).toFixed(2)) });
-            return m; // sem reavaliar o mapa todo aqui para evitar lag de digitação, ou reavaliar? Vamos deixar s/ reavaliar, senao qlqr alteracao reseta td
+            return m;
         });
     }, [vendedorSelecionado]);
 
@@ -627,6 +651,12 @@ const NovoPedido = () => {
                                         value={valor}
                                         onFocus={e => e.target.select()}
                                         onChange={e => setValorUnitario(produto.id, e.target.value)}
+                                        onBlur={() => verificarTravaValorUnitario(produto.id)}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                e.target.blur();
+                                            }
+                                        }}
                                     />
                                 </span>
                             ) : (
