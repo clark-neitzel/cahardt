@@ -654,18 +654,40 @@ const NovoPedido = () => {
                                 <span className="text-gray-400 ml-auto">{new Date(promo.dataInicio).toLocaleDateString('pt-BR')} → {new Date(promo.dataFim).toLocaleDateString('pt-BR')}</span>
                             </div>
                             {promo.tipo === 'CONDICIONAL' && promo.grupos?.map((g, gi) => (
-                                <div key={g.id} className="mt-1 text-xs text-gray-600 bg-white/70 border border-green-100 rounded px-2 py-1">
-                                    <span className="font-semibold text-purple-700">Grupo {gi + 1}: </span>
-                                    {g.condicoes?.map((c, ci) => (
-                                        <span key={c.id}>
-                                            {ci > 0 && <span className="text-gray-400"> E </span>}
-                                            {c.tipo === 'PRODUTO_QUANTIDADE'
-                                                ? <span>{c.produtoNome || c.produtoId} <span className="font-bold">≥ {c.quantidadeMinima}</span> un</span>
-                                                : <span>Total do pedido <span className="font-bold">≥ R$ {c.valorMinimo}</span></span>}
-                                        </span>
-                                    ))}
+                                <div key={g.id}>
+                                    {/* OU entre grupos */}
+                                    {gi > 0 && (
+                                        <div className="text-center text-xs font-bold text-orange-500 my-0.5">— OU —</div>
+                                    )}
+                                    <div className="mt-1 text-xs bg-white/70 border border-green-100 rounded px-2 py-1.5 space-y-1">
+                                        {g.condicoes?.map((c, ci) => {
+                                            const nomeProd = c.tipo === 'PRODUTO_QUANTIDADE'
+                                                ? (produtos.find(p => p.id === c.produtoId)?.nome || c.produtoId)
+                                                : null;
+                                            return (
+                                                <div key={c.id}>
+                                                    {/* E entre condições do mesmo grupo */}
+                                                    {ci > 0 && (
+                                                        <div className="text-xs text-center text-gray-400 font-semibold py-0.5">E</div>
+                                                    )}
+                                                    {c.tipo === 'PRODUTO_QUANTIDADE' ? (
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-gray-700 font-medium truncate mr-2">{nomeProd}</span>
+                                                            <span className="text-purple-700 font-bold shrink-0">≥ {c.quantidadeMinima} un</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-gray-700 font-medium">Valor do pedido</span>
+                                                            <span className="text-purple-700 font-bold shrink-0">≥ R$ {Number(c.valorMinimo).toFixed(2).replace('.', ',')}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             ))}
+
                         </div>
                     );
                 })()}
