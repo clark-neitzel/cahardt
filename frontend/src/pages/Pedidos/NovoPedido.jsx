@@ -309,13 +309,16 @@ const NovoPedido = () => {
 
             // NOVA REGRA CASCATA: Se a promo caiu (ou entrou), o limite base muda.
             // Precisamos garantir que o preço unitário atual do cara continue respeitando o novo base * (1 - limite)
-            const valorMinimoPermitido = Number((novoValorBase * (1 - limitePerc / 100)).toFixed(2));
+            // REGRA EXTRA (PROMO_LIMIT): Se o item estiver com promo liberada, o desconto máximo passa a ser 0% sobre a Tabela Promocional!
+            const limiteAplicado = liberada ? 0 : limitePerc;
+            const valorMinimoPermitido = Number((novoValorBase * (1 - limiteAplicado / 100)).toFixed(2));
             if (novoValorUnitario < valorMinimoPermitido && valorMinimoPermitido > 0) {
                 novoValorUnitario = novoValorBase; // Chuta de volta pro novo preco cheio
             }
 
             novoMapa.set(pid, {
                 ...item,
+                emPromocao: liberada,
                 valorUnitario: Number(novoValorUnitario.toFixed(2)),
                 valorBase: Number(novoValorBase.toFixed(2)),
                 flexUnitario: Number((novoValorUnitario - novoValorBase).toFixed(2))
@@ -384,7 +387,8 @@ const NovoPedido = () => {
                                 if (it) {
                                     let vp = Number(res.valor);
 
-                                    const lPerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
+                                    const limiteBasePerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
+                                    const lPerc = it.emPromocao ? 0 : limiteBasePerc;
                                     const vMin = Number((it.valorBase * (1 - lPerc / 100)).toFixed(2));
 
                                     if (vp < vMin && vMin > 0) vp = it.valorBase;
@@ -425,7 +429,9 @@ const NovoPedido = () => {
             let vp = Number(it.valorUnitario) || 0;
 
             // Trava de Desconto Máximo Flex por Vendedor
-            const limitePerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
+            // SE O PRODUTO ESTOU EM PROMO, DESCONTO MAX = 0
+            const limiteBasePerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
+            const limitePerc = it.emPromocao ? 0 : limiteBasePerc;
             const valorMinimoPermitido = Number((it.valorBase * (1 - limitePerc / 100)).toFixed(2));
 
             if (vp < valorMinimoPermitido && valorMinimoPermitido > 0) {
