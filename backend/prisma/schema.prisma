@@ -248,6 +248,7 @@ model Vendedor {
   idLegado       String?  @map("id_legado")
   flexMensal     Decimal  @default(0) @map("flex_mensal") @db.Decimal(12, 2)
   flexDisponivel Decimal  @default(0) @map("flex_disponivel") @db.Decimal(12, 2)
+  maxDescontoFlex Decimal @default(100) @map("max_desconto_flex") @db.Decimal(5, 2)
   ativo          Boolean  @default(true)
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")

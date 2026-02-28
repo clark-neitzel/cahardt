@@ -306,7 +306,10 @@ const migrationService = {
             `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "valor_minimo" DECIMAL(12,2) DEFAULT 0;`,
 
             // Update 20: Adiciona coluna id_conta_financeira ao pedido
-            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "id_conta_financeira" TEXT;`
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "id_conta_financeira" TEXT;`,
+
+            // Update 21: Limite Máximo de Desconto Flex do Vendedor
+            `ALTER TABLE "vendedores" ADD COLUMN IF NOT EXISTS "max_desconto_flex" DECIMAL(5,2) DEFAULT 100;`
         ];
 
         for (const [index, cmd] of commands.entries()) {

@@ -11,6 +11,7 @@ import tabelaPrecoService from '../../services/tabelaPrecoService';
 import pedidoService from '../../services/pedidoService';
 import configService from '../../services/configService';
 import promocaoService from '../../services/promocaoService';
+import vendedorService from '../../services/vendedorService';
 import { API_URL } from '../../services/api';
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -32,6 +33,7 @@ const NovoPedido = () => {
     const [clientes, setClientes] = useState([]);
     const [produtos, setProdutos] = useState([]);
     const [todasCondicoes, setTodasCondicoes] = useState([]);
+    const [vendedores, setVendedores] = useState([]);
 
     // Form State
     const [clienteId, setClienteId] = useState('');
@@ -62,6 +64,7 @@ const NovoPedido = () => {
     // Computed/Derived
     const [condicoesPermitidas, setCondicoesPermitidas] = useState([]);
     const [clienteSelecionado, setClienteSelecionado] = useState(null);
+    const [vendedorSelecionado, setVendedorSelecionado] = useState(null);
     const [condicaoSelecionada, setCondicaoSelecionada] = useState(null);
     const [flexTotal, setFlexTotal] = useState(0);
 
@@ -77,16 +80,18 @@ const NovoPedido = () => {
             const paramsProd = { limit: 1000, ativo: true };
             if (Array.isArray(cats) && cats.length > 0) paramsProd.categorias = cats.join(',');
 
-            const [clientesData, produtosData, condicoesData] = await Promise.all([
+            const [clientesData, produtosData, condicoesData, vendedoresData] = await Promise.all([
                 clienteService.listar({ limit: 2000 }),
                 produtoService.listar(paramsProd),
-                tabelaPrecoService.listar()
+                tabelaPrecoService.listar(),
+                vendedorService.listar()
             ]);
 
             setClientes(clientesData.data?.filter(c => c.Ativo) || clientesData?.filter(c => c.Ativo) || []);
             const listaProdutos = produtosData.data || produtosData || [];
             setProdutos(listaProdutos);
             setTodasCondicoes(condicoesData);
+            setVendedores(vendedoresData || []);
 
             // Carregar TODAS as promoções ativas em 1 única chamada (evita N requests por produto)
             try {
@@ -182,6 +187,7 @@ const NovoPedido = () => {
         if (!clienteId) {
             setClienteSelecionado(null);
             setVendedorId(null);
+            setVendedorSelecionado(null);
             setCondicoesPermitidas([]);
             setCondicaoPagamentoId('');
             setIsEncaixe(false);
@@ -196,6 +202,7 @@ const NovoPedido = () => {
             }
             setClienteSelecionado(cliente);
             setVendedorId(cliente.idVendedor);
+            setVendedorSelecionado(vendedores.find(v => v.id === cliente.idVendedor) || null);
             setClienteSearchText(cliente.NomeFantasia || cliente.Nome);
             verificarDataEntrega(dataEntrega, cliente);
 
@@ -374,11 +381,22 @@ const NovoPedido = () => {
             const m = new Map(prev);
             const it = m.get(produtoId);
             if (!it) return prev;
-            const vp = Number(valor.toString().replace(',', '.')) || 0;
+
+            let vp = Number(valor.toString().replace(',', '.')) || 0;
+
+            // Trava de Desconto Máximo Flex por Vendedor
+            const limitePerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
+            const valorMinimoPermitido = Number((it.valorBase * (1 - limitePerc / 100)).toFixed(2));
+
+            if (vp < valorMinimoPermitido && valorMinimoPermitido > 0) {
+                alert(`⚠️ O limite máximo de desconto foi excedido.\nO menor valor permitido é R$ ${valorMinimoPermitido.toFixed(2).replace('.', ',')}`);
+                vp = valorMinimoPermitido;
+            }
+
             m.set(produtoId, { ...it, valorUnitario: vp, flexUnitario: Number((vp - it.valorBase).toFixed(2)) });
             return m; // sem reavaliar o mapa todo aqui para evitar lag de digitação, ou reavaliar? Vamos deixar s/ reavaliar, senao qlqr alteracao reseta td
         });
-    }, []);
+    }, [vendedorSelecionado]);
 
     const handleSalvar = (statusEnvio) => {
         if (!clienteId || itensMap.size === 0) { alert("Preencha cliente e adicione itens."); return; }

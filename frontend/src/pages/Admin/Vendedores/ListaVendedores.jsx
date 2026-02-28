@@ -33,7 +33,8 @@ const ListaVendedores = () => {
         setEditForm({
             email: vendedor.email || '',
             flexMensal: vendedor.flexMensal || 0,
-            flexDisponivel: vendedor.flexDisponivel || 0
+            flexDisponivel: vendedor.flexDisponivel || 0,
+            maxDescontoFlex: vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100
         });
     };
 
@@ -77,6 +78,7 @@ const ListaVendedores = () => {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">E-mail</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Flex Mensal</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">% Máx. Desc.</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Flex Disponível</th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                         </tr>
@@ -120,6 +122,25 @@ const ListaVendedores = () => {
                                         />
                                     ) : (
                                         `R$ ${Number(vendedor.flexMensal).toFixed(2)}`
+                                    )}
+                                </td>
+
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {editingId === vendedor.id ? (
+                                        <div className="flex items-center">
+                                            <input
+                                                className="border border-gray-300 rounded px-2 py-1 w-20 bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                                                value={editForm.maxDescontoFlex}
+                                                onChange={e => setEditForm({ ...editForm, maxDescontoFlex: e.target.value })}
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                max="100"
+                                            />
+                                            <span className="ml-1">%</span>
+                                        </div>
+                                    ) : (
+                                        `${Number(vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100).toFixed(0)}%`
                                     )}
                                 </td>
 
