@@ -428,6 +428,7 @@ const NovoPedido = () => {
             qtdParcelas: condicaoSelecionada?.qtdParcelas || 1,
             primeiroVencimento: null,
             intervaloDias: condicaoSelecionada?.parcelasDias || 0,
+            idContaFinanceira: condicaoSelecionada?.bancoPadrao || null,
             idCategoria: null, latLng, statusEnvio,
             itens: itensLimpos
         };

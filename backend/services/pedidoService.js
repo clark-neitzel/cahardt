@@ -235,6 +235,7 @@ const pedidoService = {
                     statusEnvio,
                     observacoes,
                     opcaoCondicaoPagamento,
+                    idContaFinanceira: dadosPedido.idContaFinanceira,
                     dataVenda: dataVenda ? new Date(dataVenda) : new Date(),
                     itens: {
                         create: novosItens

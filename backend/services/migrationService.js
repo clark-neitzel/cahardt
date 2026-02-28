@@ -303,7 +303,10 @@ const migrationService = {
             `ALTER TABLE "pedido_itens" ADD COLUMN IF NOT EXISTS "tipo_promocao" TEXT;`,
 
             // Update 19: Adiciona coluna valor_minimo na tabela de preços
-            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "valor_minimo" DECIMAL(12,2) DEFAULT 0;`
+            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "valor_minimo" DECIMAL(12,2) DEFAULT 0;`,
+
+            // Update 20: Adiciona coluna id_conta_financeira ao pedido
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "id_conta_financeira" TEXT;`
         ];
 
         for (const [index, cmd] of commands.entries()) {
