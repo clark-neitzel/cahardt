@@ -254,30 +254,73 @@ const NovoPedido = () => {
         if (cond) recalcularItens(cond);
     }, [condicaoPagamentoId]);
 
-    const recalcularItens = (condicao) => {
-        if (!condicao) return;
-        const acrescimo = Number(condicao.acrescimoPreco) || 0;
-        setItensMap(prev => {
-            const novo = new Map(prev);
-            novo.forEach((item, pid) => {
-                const produto = produtos.find(p => p.id === pid);
-                if (!produto) return;
-                const precoTabela = Number(produto.valorVenda) || 0;
-                const valorBase = precoTabela * (1 + acrescimo / 100);
-                novo.set(pid, {
-                    ...item,
-                    valorBase: Number(valorBase.toFixed(2)),
-                    flexUnitario: Number((item.valorUnitario - valorBase).toFixed(2))
-                });
+    const checkPromoLiberada = useCallback((promo, mapRef) => {
+        if (!promo) return false;
+        if (promo.tipo === 'SIMPLES') return true;
+
+        const itensList = Array.from(mapRef.entries()).map(([pid, it]) => ({
+            produtoId: pid,
+            quantidade: it.quantidade
+        }));
+        const valorTotal = Array.from(mapRef.values()).reduce((s, it) => s + it.valorUnitario * it.quantidade, 0);
+
+        return promo.grupos?.some(grupo =>
+            grupo.condicoes?.every(cond => {
+                if (cond.tipo === 'PRODUTO_QUANTIDADE') {
+                    const found = itensList.find(i => i.produtoId === cond.produtoId);
+                    return found && Number(found.quantidade) >= Number(cond.quantidadeMinima);
+                }
+                if (cond.tipo === 'VALOR_TOTAL') return valorTotal >= Number(cond.valorMinimo);
+                return false;
+            })
+        ) || false;
+    }, []);
+
+    const reavaliarMapaItens = useCallback((mapAtual, condicaoSel, todasPromos, listaProdutos) => {
+        const novoMapa = new Map();
+        mapAtual.forEach((item, pid) => {
+            const produto = listaProdutos.find(p => p.id === pid);
+            if (!produto) return;
+            const promoAtiva = todasPromos.get(pid);
+            const liberada = checkPromoLiberada(promoAtiva, mapAtual);
+
+            const acrescimo = condicaoSel ? Number(condicaoSel.acrescimoPreco) : 0;
+            const precoTabela = Number(produto.valorVenda) || 0;
+            const precoBaseInicial = liberada ? Number(promoAtiva.precoPromocional) : precoTabela;
+            const novoValorBase = precoBaseInicial * (1 + acrescimo / 100);
+
+            let novoValorUnitario = item.valorUnitario;
+
+            // Auto-atualizar o valor unitário SE o usuário não tiver forçado um preço customizado
+            // i.e., se o preço dele era exatamente igual ao valor base anterior
+            if (Math.abs(Number(item.valorUnitario || 0) - Number(item.valorBase || 0)) < 0.01) {
+                // garante que nao zere caso seja a 1a vez
+                if (novoValorBase > 0) novoValorUnitario = novoValorBase;
+            }
+
+            novoMapa.set(pid, {
+                ...item,
+                valorUnitario: Number(novoValorUnitario.toFixed(2)),
+                valorBase: Number(novoValorBase.toFixed(2)),
+                flexUnitario: Number((novoValorUnitario - novoValorBase).toFixed(2))
             });
-            return novo;
         });
-    };
+        return novoMapa;
+    }, [checkPromoLiberada]);
+
+    const recalcularItens = useCallback((condicao) => {
+        if (!condicao) return;
+        setItensMap(prev => reavaliarMapaItens(prev, condicao, promocoesMap, produtos));
+    }, [reavaliarMapaItens, promocoesMap, produtos]);
 
     // Adicionar/atualizar quantidade de um produto
     const setQuantidade = useCallback(async (produtoId, novaQtd) => {
         if (novaQtd <= 0) {
-            setItensMap(prev => { const m = new Map(prev); m.delete(produtoId); return m; });
+            setItensMap(prev => {
+                const m = new Map(prev);
+                m.delete(produtoId);
+                return reavaliarMapaItens(m, condicaoSelecionada, promocoesMap, produtos);
+            });
             return;
         }
         setItensMap(prev => {
@@ -286,23 +329,26 @@ const NovoPedido = () => {
             if (existente) {
                 m.set(produtoId, { ...existente, quantidade: novaQtd });
             } else {
-                // Novo produto: calcular preço
+                // Item novo no carrinho - chuta um valor inicial, depois reavaliarMapaItens ajusta perfeitamente
                 const produto = produtos.find(p => p.id === produtoId);
-                const acrescimo = condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0;
                 const precoTabela = Number(produto?.valorVenda || 0);
-                // Se há promoção ativa, o valorBase para flex é o preço promo (c/ acréscimo)
-                const promoAtiva = promocoesMap.get(produtoId);
-                const precoBase = promoAtiva ? Number(promoAtiva.precoPromocional) : precoTabela;
-                const valorBase = precoBase * (1 + acrescimo / 100);
+                const acrescimo = condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0;
+                let valorBase = precoTabela * (1 + acrescimo / 100);
+                let valorUnitario = valorBase;
+
                 const hist = historicoMap.get(produtoId);
-                const valorPraticado = hist?.ultimoPreco || valorBase;
+                if (hist && hist.ultimoPreco) {
+                    valorUnitario = hist.ultimoPreco; // puxa historico do cliente
+                }
+
                 m.set(produtoId, {
                     quantidade: novaQtd,
-                    valorUnitario: Number(valorPraticado.toFixed(2)),
+                    valorUnitario: Number(valorUnitario.toFixed(2)),
                     valorBase: Number(valorBase.toFixed(2)),
-                    flexUnitario: Number((valorPraticado - valorBase).toFixed(2))
+                    flexUnitario: Number((valorUnitario - valorBase).toFixed(2))
                 });
-                // Buscar último preço real no backend
+
+                // Buscar último preço real no backend silenciosamente
                 if (clienteId) {
                     pedidoService.obterUltimoPreco(clienteId, produtoId).then(res => {
                         if (res?.valor) {
@@ -313,15 +359,15 @@ const NovoPedido = () => {
                                     const vp = Number(res.valor);
                                     m2.set(produtoId, { ...it, valorUnitario: vp, flexUnitario: Number((vp - it.valorBase).toFixed(2)) });
                                 }
-                                return m2;
+                                return reavaliarMapaItens(m2, condicaoSelecionada, promocoesMap, produtos);
                             });
                         }
                     }).catch(() => { });
                 }
             }
-            return m;
+            return reavaliarMapaItens(m, condicaoSelecionada, promocoesMap, produtos);
         });
-    }, [produtos, condicaoSelecionada, historicoMap, clienteId]);
+    }, [produtos, condicaoSelecionada, historicoMap, clienteId, reavaliarMapaItens, promocoesMap]);
 
     const setValorUnitario = useCallback((produtoId, valor) => {
         setItensMap(prev => {
@@ -330,7 +376,7 @@ const NovoPedido = () => {
             if (!it) return prev;
             const vp = Number(valor.toString().replace(',', '.')) || 0;
             m.set(produtoId, { ...it, valorUnitario: vp, flexUnitario: Number((vp - it.valorBase).toFixed(2)) });
-            return m;
+            return m; // sem reavaliar o mapa todo aqui para evitar lag de digitação, ou reavaliar? Vamos deixar s/ reavaliar, senao qlqr alteracao reseta td
         });
     }, []);
 
@@ -518,21 +564,7 @@ const NovoPedido = () => {
 
                                 // Avalia condições em tempo real para tipo CONDICIONAL
                                 if (promo.tipo === 'CONDICIONAL') {
-                                    const itensList = Array.from(itensMap.entries()).map(([pid, it]) => ({
-                                        produtoId: pid,
-                                        quantidade: it.quantidade
-                                    }));
-                                    const valorTotal = Array.from(itensMap.values()).reduce((s, it) => s + it.valorUnitario * it.quantidade, 0);
-                                    const liberada = promo.grupos?.some(grupo =>
-                                        grupo.condicoes?.every(cond => {
-                                            if (cond.tipo === 'PRODUTO_QUANTIDADE') {
-                                                const found = itensList.find(i => i.produtoId === cond.produtoId);
-                                                return found && Number(found.quantidade) >= Number(cond.quantidadeMinima);
-                                            }
-                                            if (cond.tipo === 'VALOR_TOTAL') return valorTotal >= Number(cond.valorMinimo);
-                                            return false;
-                                        })
-                                    );
+                                    const liberada = checkPromoLiberada(promo, itensMap);
                                     if (!liberada) return (
                                         <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-dashed border-gray-300 flex items-center gap-1">
                                             <Tag className="h-3 w-3" /> Promo Cond.
