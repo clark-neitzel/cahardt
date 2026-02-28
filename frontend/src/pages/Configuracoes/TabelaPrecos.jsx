@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
+import contaFinanceiraService from '../../services/contaFinanceiraService';
 import { BadgeDollarSign, Landmark, X, Save } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -8,6 +9,7 @@ const TabelaPrecos = () => {
     const [loading, setLoading] = useState(true);
 
     // Estados do Modal de Edição
+    const [bancos, setBancos] = useState([]);
     const [editingItem, setEditingItem] = useState(null);
     const [saving, setSaving] = useState(false);
     const [editForm, setEditForm] = useState({ acrescimoPreco: 0, valorMinimo: 0, ativo: true });
@@ -19,10 +21,14 @@ const TabelaPrecos = () => {
     const carregarDados = async () => {
         try {
             setLoading(true);
-            const dados = await tabelaPrecoService.listar();
+            const [dados, bancosData] = await Promise.all([
+                tabelaPrecoService.listar(),
+                contaFinanceiraService.listar()
+            ]);
             setCondicoes(dados);
+            setBancos(bancosData.filter(b => b.ativo)); // apenas bancos ativos
         } catch (error) {
-            toast.error('Erro ao carregar tabela de preços');
+            toast.error('Erro ao carregar dados');
             console.error(error);
         } finally {
             setLoading(false);
@@ -306,14 +312,19 @@ const TabelaPrecos = () => {
                                 </label>
                                 {editForm.exigeBanco && (
                                     <div>
-                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Banco Padrão (ID Conta Azul) - Opcional</label>
-                                        <input
-                                            type="text"
-                                            className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 py-1.5 px-3 bg-white text-gray-900 text-sm"
-                                            placeholder="Ex: 5ed9b2-3f4a..."
+                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Banco Padrão (Conta Financeira)</label>
+                                        <select
+                                            className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 py-1.5 px-3 bg-white text-gray-900 text-sm font-medium"
                                             value={editForm.bancoPadrao}
                                             onChange={(e) => setEditForm({ ...editForm, bancoPadrao: e.target.value })}
-                                        />
+                                        >
+                                            <option value="">Selecione um banco...</option>
+                                            {bancos.map(b => (
+                                                <option key={b.id} value={b.id}>
+                                                    {b.nomeBanco} (ID: {b.id.substring(0, 8)}...)
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                 )}
                             </div>
