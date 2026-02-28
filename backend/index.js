@@ -14,6 +14,7 @@ const contaFinanceiraRoutes = require('./routes/contaFinanceiraRoutes'); // New
 const condicaoPagamentoRoutes = require('./routes/condicaoPagamentoRoutes');
 const migrationRoutes = require('./routes/migrationRoutes'); // Migration endpoint
 const pedidoRoutes = require('./routes/pedidoRoutes'); // New Pedidos Module
+const promocaoRoutes = require('./routes/promocaoRoutes'); // Sistema de Promoções
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -45,6 +46,7 @@ app.use('/api/tabela-precos', authMiddleware, tabelaPrecoRoutes);
 app.use('/api/condicoes-pagamento', authMiddleware, condicaoPagamentoRoutes);
 app.use('/api/contas-financeiras', authMiddleware, contaFinanceiraRoutes);
 app.use('/api/pedidos', authMiddleware, pedidoRoutes);
+app.use('/api/promocoes', promocaoRoutes); // authMiddleware já aplicado internamente na rota
 
 app.use('/api/migrations', migrationRoutes); // Migration endpoint
 

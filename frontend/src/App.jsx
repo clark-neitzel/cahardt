@@ -64,7 +64,7 @@ const Layout = ({ children }) => {
                   <NavLink to="/clientes" className={({ isActive }) => getNavLinkClass(isActive)}>Clientes</NavLink>
                 )}
                 {hasPermission('produtos') && (
-                  <NavLink to="/admin/produtos" className={({ isActive }) => getNavLinkClass(isActive)}>Admin: Produtos</NavLink>
+                  <NavLink to="/admin/produtos" className={({ isActive }) => getNavLinkClass(isActive)}>Produtos</NavLink>
                 )}
                 {hasPermission('vendedores') && (
                   <NavLink to="/admin/vendedores" className={({ isActive }) => getNavLinkClass(isActive)}>Vendedores</NavLink>
@@ -120,7 +120,7 @@ const Layout = ({ children }) => {
                 <NavLink to="/clientes" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Clientes</NavLink>
               )}
               {hasPermission('produtos') && (
-                <NavLink to="/admin/produtos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Admin: Produtos</NavLink>
+                <NavLink to="/admin/produtos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Produtos</NavLink>
               )}
               {hasPermission('vendedores') && (
                 <NavLink to="/admin/vendedores" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Vendedores</NavLink>

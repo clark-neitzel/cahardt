@@ -251,7 +251,57 @@ const migrationService = {
 
             // Update 14: Campo situacao_ca (status oficial do CA: APROVADO, FATURADO, EM_ABERTO, CANCELADO)
             // CORRIGIDO: Campo estava no schema.prisma mas nunca foi adicionado ao banco de produção.
-            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "situacao_ca" TEXT;`
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "situacao_ca" TEXT;`,
+
+            // Update 15: Sistema de Promoções — Tabela principal de promoções
+            `CREATE TABLE IF NOT EXISTS "promocoes" (
+                "id" TEXT NOT NULL,
+                "produto_id" TEXT NOT NULL,
+                "nome" TEXT NOT NULL,
+                "tipo" TEXT NOT NULL,
+                "preco_promocional" DECIMAL(10,2) NOT NULL,
+                "data_inicio" TIMESTAMP(3) NOT NULL,
+                "data_fim" TIMESTAMP(3) NOT NULL,
+                "status" TEXT NOT NULL DEFAULT 'ATIVA',
+                "criado_por" TEXT NOT NULL,
+                "criado_em" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "encerrado_por" TEXT,
+                "encerrado_em" TIMESTAMP(3),
+                "encerrada_antes_previsto" BOOLEAN,
+                CONSTRAINT "promocoes_pkey" PRIMARY KEY ("id"),
+                CONSTRAINT "promocoes_produto_id_fkey" FOREIGN KEY ("produto_id") REFERENCES "produtos"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+            );`,
+            `CREATE INDEX IF NOT EXISTS "promocoes_produto_id_idx" ON "promocoes"("produto_id");`,
+            `CREATE INDEX IF NOT EXISTS "promocoes_status_idx" ON "promocoes"("status");`,
+
+            // Update 16: Sistema de Promoções — Grupos de condições (lógica OU entre grupos)
+            `CREATE TABLE IF NOT EXISTS "promocao_condicao_grupos" (
+                "id" TEXT NOT NULL,
+                "promocao_id" TEXT NOT NULL,
+                CONSTRAINT "promocao_condicao_grupos_pkey" PRIMARY KEY ("id"),
+                CONSTRAINT "promocao_condicao_grupos_promocao_id_fkey" FOREIGN KEY ("promocao_id") REFERENCES "promocoes"("id") ON DELETE CASCADE ON UPDATE CASCADE
+            );`,
+            `CREATE INDEX IF NOT EXISTS "promocao_condicao_grupos_promocao_id_idx" ON "promocao_condicao_grupos"("promocao_id");`,
+
+            // Update 17: Sistema de Promoções — Condições dentro dos grupos (lógica E dentro do grupo)
+            `CREATE TABLE IF NOT EXISTS "promocao_condicoes" (
+                "id" TEXT NOT NULL,
+                "grupo_id" TEXT NOT NULL,
+                "tipo" TEXT NOT NULL,
+                "produto_id" TEXT,
+                "quantidade_minima" DECIMAL(12,3),
+                "valor_minimo" DECIMAL(12,2),
+                CONSTRAINT "promocao_condicoes_pkey" PRIMARY KEY ("id"),
+                CONSTRAINT "promocao_condicoes_grupo_id_fkey" FOREIGN KEY ("grupo_id") REFERENCES "promocao_condicao_grupos"("id") ON DELETE CASCADE ON UPDATE CASCADE
+            );`,
+            `CREATE INDEX IF NOT EXISTS "promocao_condicoes_grupo_id_idx" ON "promocao_condicoes"("grupo_id");`,
+
+            // Update 18: Sistema de Promoções — Campos de snapshot de promoção em pedido_itens
+            `ALTER TABLE "pedido_itens" ADD COLUMN IF NOT EXISTS "em_promocao" BOOLEAN NOT NULL DEFAULT false;`,
+            `ALTER TABLE "pedido_itens" ADD COLUMN IF NOT EXISTS "promocao_id" TEXT;`,
+            `ALTER TABLE "pedido_itens" ADD COLUMN IF NOT EXISTS "nome_promocao" TEXT;`,
+            `ALTER TABLE "pedido_itens" ADD COLUMN IF NOT EXISTS "tipo_promocao" TEXT;`
+
         ];
 
         for (const [index, cmd] of commands.entries()) {

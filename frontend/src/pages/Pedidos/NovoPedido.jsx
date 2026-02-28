@@ -3,13 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
     ArrowLeft, Save, User, ChevronDown, ChevronUp, Calendar,
     FileText, AlertCircle, X, CheckCircle, Minus, Plus, Clock,
-    ShoppingBag, Search, Trash2, Package
+    ShoppingBag, Search, Trash2, Package, Tag
 } from 'lucide-react';
 import clienteService from '../../services/clienteService';
 import produtoService from '../../services/produtoService';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
 import pedidoService from '../../services/pedidoService';
 import configService from '../../services/configService';
+import promocaoService from '../../services/promocaoService';
 import { API_URL } from '../../services/api';
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -55,6 +56,9 @@ const NovoPedido = () => {
     // Histórico de compras do cliente por produto
     const [historicoMap, setHistoricoMap] = useState(new Map()); // produtoId → { ultimoPreco, ultimaCompra, compras[] }
 
+    // Promoções ativas por produto (produtoId → promoção)
+    const [promocoesMap, setPromocoesMap] = useState(new Map());
+
     // Computed/Derived
     const [condicoesPermitidas, setCondicoesPermitidas] = useState([]);
     const [clienteSelecionado, setClienteSelecionado] = useState(null);
@@ -80,8 +84,19 @@ const NovoPedido = () => {
             ]);
 
             setClientes(clientesData.data?.filter(c => c.Ativo) || clientesData?.filter(c => c.Ativo) || []);
-            setProdutos(produtosData.data || produtosData || []);
+            const listaProdutos = produtosData.data || produtosData || [];
+            setProdutos(listaProdutos);
             setTodasCondicoes(condicoesData);
+
+            // Carregar promoções ativas para todos os produtos
+            const promoMap = new Map();
+            await Promise.all(listaProdutos.map(async (prod) => {
+                try {
+                    const promo = await promocaoService.buscarAtiva(prod.id);
+                    if (promo) promoMap.set(prod.id, promo);
+                } catch (e) { /* ignora produto sem promo */ }
+            }));
+            setPromocoesMap(promoMap);
 
             if (editId) {
                 try {
@@ -470,6 +485,40 @@ const NovoPedido = () => {
                     <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-gray-800 leading-tight line-clamp-2">{produto.nome}</div>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                            {/* Tag de Promoção */}
+                            {(() => {
+                                const promo = promocoesMap.get(produto.id);
+                                if (!promo) return null;
+                                // Avalia condições em tempo real para tipo CONDICIONAL
+                                if (promo.tipo === 'CONDICIONAL') {
+                                    const itensList = Array.from(itensMap.entries()).map(([pid, it]) => ({
+                                        produtoId: pid,
+                                        quantidade: it.quantidade
+                                    }));
+                                    const valorTotal = Array.from(itensMap.values()).reduce((s, it) => s + it.valorUnitario * it.quantidade, 0);
+                                    // Motor de avaliação simples (replica backend)
+                                    const liberada = promo.grupos?.some(grupo =>
+                                        grupo.condicoes?.every(cond => {
+                                            if (cond.tipo === 'PRODUTO_QUANTIDADE') {
+                                                const found = itensList.find(i => i.produtoId === cond.produtoId);
+                                                return found && Number(found.quantidade) >= Number(cond.quantidadeMinima);
+                                            }
+                                            if (cond.tipo === 'VALOR_TOTAL') return valorTotal >= Number(cond.valorMinimo);
+                                            return false;
+                                        })
+                                    );
+                                    if (!liberada) return (
+                                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-dashed border-gray-300 flex items-center gap-1">
+                                            <Tag className="h-3 w-3" /> Promo Cond.
+                                        </span>
+                                    );
+                                }
+                                return (
+                                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-300 font-semibold flex items-center gap-1">
+                                        <Tag className="h-3 w-3" /> R$ {Number(promo.precoPromocional).toFixed(2).replace('.', ',')}
+                                    </span>
+                                );
+                            })()}
                             {/* Preço / input de preço */}
                             {qtd > 0 ? (
                                 <span

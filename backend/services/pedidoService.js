@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const promocaoService = require('./promocaoService');
 const pedidoService = {
     // 1. Listagem de pedidos com filtros (para a tela de histórico)
     listar: async (filtros) => {
@@ -51,9 +52,62 @@ const pedidoService = {
             throw new Error('Cliente e itens são obrigatórios');
         }
 
+        // Buscar promoções ativas de todos os produtos antes de entrar na transação
+        const produtoIds = [...new Set(itens.map(item => item.produtoId))];
+        const promocoesAtivas = {};
+        for (const prodId of produtoIds) {
+            const promo = await promocaoService.buscarAtivaPorProduto(prodId);
+            if (promo) promocoesAtivas[prodId] = promo;
+        }
+
+        // Calcular valor total para avaliação de condicionais
+        const valorTotalEstimado = itens.reduce((acc, item) =>
+            acc + parseFloat(item.valor) * parseFloat(item.quantidade), 0
+        );
+
         // A validação de Flex e atualização do vendedor ocorrerá dentro de uma transação
         return await prisma.$transaction(async (tx) => {
             let flexTotalPedido = 0;
+
+            // Montar os itens com avaliação de promoção
+            const itensData = itens.map(item => {
+                const valorDigitado = parseFloat(item.valor);
+                const valorBase = parseFloat(item.valorBase);
+                const quantidade = parseFloat(item.quantidade);
+
+                // Verificar promoção ativa para este produto
+                const promo = promocoesAtivas[item.produtoId] || null;
+                let emPromocao = false;
+                let flexItem;
+
+                if (promo) {
+                    const liberada = promocaoService.avaliarLiberada(promo, itens, valorTotalEstimado);
+                    if (liberada) {
+                        emPromocao = true;
+                        const precoPromoBase = parseFloat(promo.precoPromocional);
+                        flexItem = promocaoService.calcularFlexComPromocao(valorDigitado, valorBase, precoPromoBase, quantidade);
+                    } else {
+                        flexItem = (valorDigitado - valorBase) * quantidade;
+                    }
+                } else {
+                    flexItem = (valorDigitado - valorBase) * quantidade;
+                }
+
+                flexTotalPedido += flexItem;
+
+                return {
+                    produtoId: item.produtoId,
+                    descricao: item.descricao,
+                    quantidade,
+                    valor: valorDigitado,
+                    valorBase,
+                    flexGerado: flexItem,
+                    emPromocao,
+                    promocaoId: emPromocao && promo ? promo.id : null,
+                    nomePromocao: emPromocao && promo ? promo.nome : null,
+                    tipoPromocao: emPromocao && promo ? promo.tipo : null
+                };
+            });
 
             // Criação base do pedido
             const novoPedido = await tx.pedido.create({
@@ -72,22 +126,7 @@ const pedidoService = {
                     latLng,
                     statusEnvio: statusEnvio || 'ABERTO',
                     itens: {
-                        create: itens.map(item => {
-                            const valorDigitado = parseFloat(item.valor);
-                            const valorBase = parseFloat(item.valorBase);
-                            const flexItem = (valorDigitado - valorBase) * parseFloat(item.quantidade);
-
-                            flexTotalPedido += flexItem;
-
-                            return {
-                                produtoId: item.produtoId,
-                                descricao: item.descricao,
-                                quantidade: parseFloat(item.quantidade),
-                                valor: valorDigitado,
-                                valorBase: valorBase,
-                                flexGerado: flexItem
-                            };
-                        })
+                        create: itensData
                     }
                 },
                 include: {

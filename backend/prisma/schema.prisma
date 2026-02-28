@@ -198,6 +198,12 @@ model PedidoItem {
   produtoId String  @map("produto_id")
   produto   Produto @relation(fields: [produtoId], references: [id])
 
+  // Promoção aplicada no momento do item
+  emPromocao   Boolean @default(false) @map("em_promocao")
+  promocaoId   String? @map("promocao_id")
+  nomePromocao String? @map("nome_promocao")
+  tipoPromocao String? @map("tipo_promocao") // SIMPLES ou CONDICIONAL
+
   @@map("pedido_itens")
 }
 
@@ -297,4 +303,60 @@ model ContaFinanceira {
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   @@map("contas_financeiras")
+}
+
+// =============================================
+// SISTEMA DE PROMOÇÕES
+// =============================================
+
+model Promocao {
+  id           String   @id @default(uuid())
+  produtoId    String   @map("produto_id")
+  nome         String
+  tipo         String   // SIMPLES ou CONDICIONAL
+  precoPromocional Decimal @map("preco_promocional") @db.Decimal(10, 2)
+  dataInicio   DateTime @map("data_inicio")
+  dataFim      DateTime @map("data_fim")
+  status       String   @default("ATIVA") // ATIVA ou ENCERRADA
+
+  // Auditoria de criação
+  criadoPor    String   @map("criado_por") // vendedorId
+  criadoEm    DateTime  @default(now()) @map("criado_em")
+
+  // Auditoria de encerramento
+  encerradoPor            String?   @map("encerrado_por") // vendedorId
+  encerradoEm             DateTime? @map("encerrado_em")
+  encerradaAntesPrevisto  Boolean?  @map("encerrada_antes_previsto")
+
+  produto  Produto                @relation(fields: [produtoId], references: [id])
+  grupos   PromocaoCondicaoGrupo[]
+
+  @@index([produtoId])
+  @@index([status])
+  @@map("promocoes")
+}
+
+model PromocaoCondicaoGrupo {
+  id         String @id @default(uuid())
+  promocaoId String @map("promocao_id")
+
+  promocao   Promocao           @relation(fields: [promocaoId], references: [id], onDelete: Cascade)
+  condicoes  PromocaoCondicao[]
+
+  @@index([promocaoId])
+  @@map("promocao_condicao_grupos")
+}
+
+model PromocaoCondicao {
+  id               String   @id @default(uuid())
+  grupoId          String   @map("grupo_id")
+  tipo             String   // PRODUTO_QUANTIDADE ou VALOR_TOTAL
+  produtoId        String?  @map("produto_id") // Para tipo PRODUTO_QUANTIDADE
+  quantidadeMinima Decimal? @map("quantidade_minima") @db.Decimal(12, 3)
+  valorMinimo      Decimal? @map("valor_minimo") @db.Decimal(12, 2)
+
+  grupo   PromocaoCondicaoGrupo @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+
+  @@index([grupoId])
+  @@map("promocao_condicoes")
 }
