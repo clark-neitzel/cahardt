@@ -142,11 +142,10 @@ const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
         setLoadingPromo(true);
         setErro('');
         try {
-            const [hist, ativa] = await Promise.all([
-                promocaoService.listarPorProduto(produtoId),
-                promocaoService.buscarAtiva(produtoId)
-            ]);
+            const hist = await promocaoService.listarPorProduto(produtoId);
             setPromocoes(hist || []);
+            // Promo ativa = qualquer uma com status ATIVA (inclui futuras/agendadas)
+            const ativa = (hist || []).find(p => p.status === 'ATIVA') || null;
             setPromoAtiva(ativa);
         } catch (e) {
             setErro('Erro ao carregar promoções.');
