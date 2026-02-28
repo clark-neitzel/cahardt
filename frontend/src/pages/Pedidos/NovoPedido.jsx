@@ -344,8 +344,18 @@ const NovoPedido = () => {
                 let valorUnitario = valorBase;
 
                 const hist = historicoMap.get(produtoId);
+                let usouHistorico = false;
                 if (hist && hist.ultimoPreco) {
                     valorUnitario = hist.ultimoPreco; // puxa historico do cliente
+                    usouHistorico = true;
+                }
+
+                // Restrição: Se o Vendedor atual sofreu redução de limite Flex e o histórico é muito velho, corrige para a Tabela.
+                const limitePerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
+                const valorMinimoPermitido = Number((valorBase * (1 - limitePerc / 100)).toFixed(2));
+
+                if (valorUnitario < valorMinimoPermitido && valorMinimoPermitido > 0) {
+                    valorUnitario = valorBase;
                 }
 
                 m.set(produtoId, {
@@ -355,15 +365,21 @@ const NovoPedido = () => {
                     flexUnitario: Number((valorUnitario - valorBase).toFixed(2))
                 });
 
-                // Buscar último preço real no backend silenciosamente
-                if (clienteId) {
+                // Buscar último preço real no backend silenciosamente se nao houver no historicoMap cacheado
+                if (!usouHistorico && clienteId) {
                     pedidoService.obterUltimoPreco(clienteId, produtoId).then(res => {
                         if (res?.valor) {
                             setItensMap(prev2 => {
                                 const m2 = new Map(prev2);
                                 const it = m2.get(produtoId);
                                 if (it) {
-                                    const vp = Number(res.valor);
+                                    let vp = Number(res.valor);
+
+                                    const lPerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
+                                    const vMin = Number((it.valorBase * (1 - lPerc / 100)).toFixed(2));
+
+                                    if (vp < vMin && vMin > 0) vp = it.valorBase;
+
                                     m2.set(produtoId, { ...it, valorUnitario: vp, flexUnitario: Number((vp - it.valorBase).toFixed(2)) });
                                 }
                                 return reavaliarMapaItens(m2, condicaoSelecionada, promocoesMap, produtos);

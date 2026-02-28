@@ -282,7 +282,8 @@ const pedidoService = {
             where: {
                 produtoId: produtoId,
                 pedido: {
-                    clienteId: clienteId
+                    clienteId: clienteId,
+                    statusEnvio: { not: 'EXCLUIDO' }
                 }
             },
             orderBy: {
