@@ -1,5 +1,5 @@
 const prisma = require('../config/database');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 const promocaoController = {
 
@@ -39,7 +39,7 @@ const promocaoController = {
             // Cria a promoção com grupos e condições aninhados
             const promocao = await prisma.promocao.create({
                 data: {
-                    id: uuidv4(),
+                    id: randomUUID(),
                     produtoId,
                     nome,
                     tipo,
@@ -50,10 +50,10 @@ const promocaoController = {
                     criadoPor: criadoPor || 'sistema',
                     grupos: tipo === 'CONDICIONAL' ? {
                         create: grupos.map(grupo => ({
-                            id: uuidv4(),
+                            id: randomUUID(),
                             condicoes: {
                                 create: (grupo.condicoes || []).map(cond => ({
-                                    id: uuidv4(),
+                                    id: randomUUID(),
                                     tipo: cond.tipo,
                                     produtoId: cond.produtoId || null,
                                     quantidadeMinima: cond.quantidadeMinima ? parseFloat(cond.quantidadeMinima) : null,
