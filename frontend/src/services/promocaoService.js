@@ -10,11 +10,21 @@ const promocaoService = {
     },
 
     /**
-     * Retorna a promoção atualmente ativa (dentro do período) para o produto
+     * Retorna a promoção atualmente ativa (dentro do período) para um produto específico
      */
     buscarAtiva: async (produtoId) => {
         const response = await api.get('/promocoes/ativa', { params: { produtoId } });
         return response.data;
+    },
+
+    /**
+     * Retorna TODAS as promoções ativas em uma única chamada.
+     * Formato de retorno: { [produtoId]: Promocao }
+     * Usado pelo NovoPedido para evitar N chamadas simultâneas.
+     */
+    buscarAtivasLote: async () => {
+        const response = await api.get('/promocoes/ativas-lote');
+        return response.data; // { produtoId: promo, ... }
     },
 
     /**
@@ -35,3 +45,4 @@ const promocaoService = {
 };
 
 export default promocaoService;
+

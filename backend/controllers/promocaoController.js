@@ -148,6 +148,34 @@ const promocaoController = {
     },
 
     /**
+     * GET /api/promocoes/ativas-lote
+     * Retorna TODAS as promoções atualmente ativas (dentro do período) em uma única query.
+     * Usado pelo NovoPedido para evitar N requisições (1 por produto).
+     * Retorna: { [produtoId]: Promocao }
+     */
+    buscarAtivasLote: async (req, res) => {
+        try {
+            const agora = new Date();
+            const promos = await prisma.promocao.findMany({
+                where: {
+                    status: 'ATIVA',
+                    dataInicio: { lte: agora },
+                    dataFim: { gte: agora }
+                },
+                include: { grupos: { include: { condicoes: true } } }
+            });
+
+            // Transformar em mapa produtoId → promocao
+            const mapa = {};
+            promos.forEach(p => { mapa[p.produtoId] = p; });
+            return res.json(mapa);
+        } catch (error) {
+            console.error('Erro ao buscar promoções ativas (lote):', error);
+            return res.status(500).json({ error: 'Erro interno.' });
+        }
+    },
+
+    /**
      * POST /api/promocoes/:id/encerrar
      * Encerra uma promoção com auditoria completa.
      */

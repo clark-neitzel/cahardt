@@ -88,15 +88,16 @@ const NovoPedido = () => {
             setProdutos(listaProdutos);
             setTodasCondicoes(condicoesData);
 
-            // Carregar promoções ativas para todos os produtos
-            const promoMap = new Map();
-            await Promise.all(listaProdutos.map(async (prod) => {
-                try {
-                    const promo = await promocaoService.buscarAtiva(prod.id);
-                    if (promo) promoMap.set(prod.id, promo);
-                } catch (e) { /* ignora produto sem promo */ }
-            }));
-            setPromocoesMap(promoMap);
+            // Carregar TODAS as promoções ativas em 1 única chamada (evita N requests por produto)
+            try {
+                const mapaPromos = await promocaoService.buscarAtivasLote();
+                // mapaPromos = { produtoId: promocao, ... }
+                const promoMap = new Map(Object.entries(mapaPromos));
+                setPromocoesMap(promoMap);
+            } catch (e) {
+                // Falha silenciosa — promoções são opcionais, não devem travar o pedido
+                console.warn('Não foi possível carregar promoções:', e.message);
+            }
 
             if (editId) {
                 try {
