@@ -7,6 +7,11 @@ const tabelaPrecoService = {
 
         const response = await api.get('/tabela-precos', { params });
         return response.data;
+    },
+
+    atualizar: async (id, dados) => {
+        const response = await api.patch(`/tabela-precos/${id}`, dados);
+        return response.data;
     }
 };
 

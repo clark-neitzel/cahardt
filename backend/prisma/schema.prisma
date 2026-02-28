@@ -281,6 +281,7 @@ model TabelaPreco {
   parcelasDias        Int      @default(0) @map("parcelas_dias")
   acrescimoPreco      Decimal  @default(0) @map("acrescimo_preco") @db.Decimal(10, 2)
   parcelasPercentuais Decimal  @default(100) @map("parcelas_percentuais") @db.Decimal(10, 2)
+  valorMinimo         Decimal? @default(0) @map("valor_minimo") @db.Decimal(12, 2)
   exigeBanco          Boolean  @default(false) @map("exige_banco")
   bancoPadrao         String?  @map("banco_padrao")
   ativo               Boolean  @default(true)

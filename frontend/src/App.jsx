@@ -75,7 +75,7 @@ const Layout = ({ children }) => {
                 {hasPermission('configuracoes') && (
                   <>
                     <NavLink to="/admin/config" className={({ isActive }) => getNavLinkClass(isActive)}>Configurações</NavLink>
-                    <NavLink to="/config/tabela-precos" className={({ isActive }) => getNavLinkClass(isActive)}>Tabela Preços</NavLink>
+                    <NavLink to="/config/tabela-precos" className={({ isActive }) => getNavLinkClass(isActive)}>Preços</NavLink>
                     <NavLink to="/config/contas-financeiras" className={({ isActive }) => getNavLinkClass(isActive)}>Bancos</NavLink>
                   </>
                 )}
@@ -131,7 +131,7 @@ const Layout = ({ children }) => {
               {hasPermission('configuracoes') && (
                 <>
                   <NavLink to="/admin/config" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Configurações</NavLink>
-                  <NavLink to="/config/tabela-precos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Tabela Preços</NavLink>
+                  <NavLink to="/config/tabela-precos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Preços</NavLink>
                   <NavLink to="/config/contas-financeiras" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Bancos</NavLink>
                 </>
               )}

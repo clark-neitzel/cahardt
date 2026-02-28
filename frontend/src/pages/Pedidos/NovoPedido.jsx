@@ -337,6 +337,16 @@ const NovoPedido = () => {
     const handleSalvar = (statusEnvio) => {
         if (!clienteId || itensMap.size === 0) { alert("Preencha cliente e adicione itens."); return; }
         if (!condicaoPagamentoId) { alert("Selecione uma condição de pagamento."); return; }
+
+        // Bloqueio de valor mínimo
+        const valorMinimoReq = Number(condicaoSelecionada?.valorMinimo) || 0;
+        const total = Array.from(itensMap.values()).reduce((acc, i) => acc + (Number(i.valorUnitario) * Number(i.quantidade)), 0);
+
+        if (total < valorMinimoReq) {
+            alert(`ATENÇÃO: Este pedido não atingiu o valor mínimo exigido para esta tabela/condição (R$ ${valorMinimoReq.toFixed(2).replace('.', ',')}). Adicione mais itens ou escolha outra condição.`);
+            return;
+        }
+
         setSaving(true);
         if (navigator.geolocation && statusEnvio === 'ENVIAR') {
             navigator.geolocation.getCurrentPosition(
@@ -980,15 +990,39 @@ const NovoPedido = () => {
 
             {/* ===== FOOTER FECHAR PEDIDO ===== */}
             {itensMap.size > 0 && (
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-3 py-2 shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.1)] z-20">
-                    <button
-                        disabled={saving}
-                        onClick={() => handleSalvar('ENVIAR')}
-                        className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 active:bg-blue-800 shadow-md flex items-center justify-center gap-2 text-base"
-                    >
-                        <Save className="h-5 w-5" />
-                        FECHAR PEDIDO · R$ {vTotal.toFixed(2).replace('.', ',')}
-                    </button>
+                <div className="fixed bottom-0 left-0 right-0 p-3 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
+                    {(() => {
+                        const min = Number(condicaoSelecionada?.valorMinimo) || 0;
+                        const bloqueado = min > 0 && vTotal < min;
+
+                        if (bloqueado) {
+                            return (
+                                <div className="flex flex-col gap-2">
+                                    <div className="bg-red-50 text-red-700 px-3 py-2 rounded-md text-xs font-semibold flex items-center gap-2 border border-red-100">
+                                        <AlertCircle className="h-4 w-4 shrink-0" />
+                                        <span>Faltam R$ {(min - vTotal).toFixed(2).replace('.', ',')} para atingir o mínimo desta tabela (R$ {min.toFixed(2).replace('.', ',')})</span>
+                                    </div>
+                                    <button
+                                        disabled
+                                        className="w-full bg-gray-300 text-gray-500 font-bold py-3.5 rounded-lg text-[15px] cursor-not-allowed uppercase tracking-wide"
+                                    >
+                                        VALOR MÍNIMO NÃO ATINGIDO
+                                    </button>
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <button
+                                onClick={() => handleSalvar('ENVIAR')}
+                                disabled={saving}
+                                className="w-full bg-green-600 active:bg-green-700 text-white font-bold py-3.5 rounded-lg shadow-sm text-[15px] disabled:opacity-50 transition-colors flex items-center justify-center gap-2 tracking-wide"
+                            >
+                                <CheckCircle className="h-5 w-5" />
+                                {saving ? 'ENVIANDO...' : `FECHAR PEDIDO · R$ ${vTotal.toFixed(2).replace('.', ',')}`}
+                            </button>
+                        );
+                    })()}
                 </div>
             )}
             {/* Modal de Busca de Cliente (Tela Cheia) */}

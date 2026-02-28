@@ -21,6 +21,44 @@ const tabelaPrecoController = {
             console.error('Erro ao listar tabela de preços:', error);
             res.status(500).json({ error: 'Erro interno ao buscar tabela de preços' });
         }
+    },
+
+    // Atualizar uma condição de pagamento (Edição inline)
+    atualizar: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { ativo, acrescimoPreco, exigeBanco, bancoPadrao, valorMinimo } = req.body;
+
+            // Verificar se o registro existe
+            const exists = await prisma.tabelaPreco.findUnique({ where: { id } });
+            if (!exists) {
+                return res.status(404).json({ error: 'Tabela de preço não encontrada.' });
+            }
+
+            // Converter e validar valores para manter a integridade do banco (Decimal)
+            const updateData = {};
+
+            if (ativo !== undefined) updateData.ativo = ativo;
+            if (exigeBanco !== undefined) updateData.exigeBanco = exigeBanco;
+            if (bancoPadrao !== undefined) updateData.bancoPadrao = bancoPadrao;
+
+            if (acrescimoPreco !== undefined) {
+                updateData.acrescimoPreco = Number(acrescimoPreco) || 0;
+            }
+            if (valorMinimo !== undefined) {
+                updateData.valorMinimo = Number(valorMinimo) || 0;
+            }
+
+            const condicaoAtualizada = await prisma.tabelaPreco.update({
+                where: { id },
+                data: updateData
+            });
+
+            res.json(condicaoAtualizada);
+        } catch (error) {
+            console.error('Erro ao atualizar tabela de preço:', error);
+            res.status(500).json({ error: 'Erro interno ao atualizar tabela de preço' });
+        }
     }
 };
 

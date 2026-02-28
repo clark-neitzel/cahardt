@@ -300,8 +300,10 @@ const migrationService = {
             `ALTER TABLE "pedido_itens" ADD COLUMN IF NOT EXISTS "em_promocao" BOOLEAN NOT NULL DEFAULT false;`,
             `ALTER TABLE "pedido_itens" ADD COLUMN IF NOT EXISTS "promocao_id" TEXT;`,
             `ALTER TABLE "pedido_itens" ADD COLUMN IF NOT EXISTS "nome_promocao" TEXT;`,
-            `ALTER TABLE "pedido_itens" ADD COLUMN IF NOT EXISTS "tipo_promocao" TEXT;`
+            `ALTER TABLE "pedido_itens" ADD COLUMN IF NOT EXISTS "tipo_promocao" TEXT;`,
 
+            // Update 19: Adiciona coluna valor_minimo na tabela de preços
+            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "valor_minimo" DECIMAL(12,2) DEFAULT 0;`
         ];
 
         for (const [index, cmd] of commands.entries()) {
