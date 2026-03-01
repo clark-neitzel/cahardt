@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, Navigation, Loader } from 'lucide-react';
+import { X, MapPin, Navigation, Loader, Mic, MicOff } from 'lucide-react';
 import atendimentoService from '../../services/atendimentoService';
 import toast from 'react-hot-toast';
 
@@ -26,6 +26,54 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
     const [gps, setGps] = useState(null);
     const [loadingGps, setLoadingGps] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    const [isListening, setIsListening] = useState(false);
+    const recognitionRef = React.useRef(null);
+
+    const toggleMicrophone = () => {
+        if (isListening) {
+            if (recognitionRef.current) recognitionRef.current.stop();
+            setIsListening(false);
+            return;
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            toast.error('Reconhecimento de voz não suportado neste navegador/dispositivo.');
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'pt-BR';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => setIsListening(true);
+
+        recognition.onresult = (event) => {
+            const transcript = Array.from(event.results)
+                .map(res => res[0].transcript)
+                .join('');
+
+            setForm(f => ({ ...f, observacao: (f.observacao + ' ' + transcript).trim() }));
+        };
+
+        recognition.onerror = (event) => {
+            if (event.error !== 'aborted') {
+                toast.error('Erro no reconhecimento de voz.');
+            }
+            setIsListening(false);
+        };
+
+        recognition.onend = () => setIsListening(false);
+
+        recognitionRef.current = recognition;
+        try {
+            recognition.start();
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     // Captura GPS automaticamente ao abrir
     useEffect(() => {
@@ -147,13 +195,32 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
 
                     {/* Observação */}
                     <div>
-                        <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Observação</label>
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label className="block text-[13px] font-semibold text-gray-700">Observação</label>
+                            <button
+                                type="button"
+                                onClick={toggleMicrophone}
+                                className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition-colors ${isListening
+                                        ? 'bg-red-50 text-red-600 border-red-200 animate-pulse'
+                                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                    }`}
+                            >
+                                {isListening ? (
+                                    <><MicOff className="h-3 w-3" /> Ouvindo...</>
+                                ) : (
+                                    <><Mic className="h-3 w-3" /> Ditar por Voz</>
+                                )}
+                            </button>
+                        </div>
                         <textarea
                             value={form.observacao}
                             onChange={e => setForm(f => ({ ...f, observacao: e.target.value }))}
                             rows={3}
-                            placeholder="O que aconteceu neste atendimento?"
-                            className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-blue-500 focus:border-blue-500 resize-none"
+                            placeholder={isListening ? 'Fale agora...' : 'O que aconteceu neste atendimento?'}
+                            className={`block w-full border rounded-lg p-3 text-[14px] resize-none transition-colors ${isListening
+                                    ? 'border-red-400 bg-red-50/30 ring-1 ring-red-400'
+                                    : 'border-gray-300 bg-white focus:ring-blue-500 focus:border-blue-500'
+                                }`}
                         />
                     </div>
 
