@@ -29,6 +29,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
 
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = React.useRef(null);
+    const originalTextRef = React.useRef('');
 
     const toggleMicrophone = () => {
         if (isListening) {
@@ -45,22 +46,42 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
 
         const recognition = new SpeechRecognition();
         recognition.lang = 'pt-BR';
-        recognition.continuous = false;
-        recognition.interimResults = false;
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        originalTextRef.current = form.observacao; // Salva o texto base
 
         recognition.onstart = () => setIsListening(true);
 
         recognition.onresult = (event) => {
-            const transcript = Array.from(event.results)
-                .map(res => res[0].transcript)
-                .join('');
+            let finalTranscript = '';
+            let interimTranscript = '';
 
-            setForm(f => ({ ...f, observacao: (f.observacao + ' ' + transcript).trim() }));
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript + ' ';
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+
+            // Concatena o texto base + os blocos já finalizados desta sessão + o trecho sendo falado agora
+            setForm(f => {
+                const updatedBase = (originalTextRef.current + ' ' + finalTranscript).replace(/\s+/g, ' ').trim();
+                return { ...f, observacao: (updatedBase + ' ' + interimTranscript).trim() };
+            });
+
+            // Se confirmou bloco final, atualiza a base para a próxima rodada
+            if (finalTranscript !== '') {
+                originalTextRef.current = (originalTextRef.current + ' ' + finalTranscript).replace(/\s+/g, ' ').trim();
+            }
         };
 
         recognition.onerror = (event) => {
             if (event.error !== 'aborted') {
-                toast.error('Erro no reconhecimento de voz.');
+                toast.error('Grave de mais perto ou verifique sua conexão.');
+                console.error('Speech recognition error', event.error);
             }
             setIsListening(false);
         };
@@ -201,8 +222,8 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
                                 type="button"
                                 onClick={toggleMicrophone}
                                 className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition-colors ${isListening
-                                        ? 'bg-red-50 text-red-600 border-red-200 animate-pulse'
-                                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                    ? 'bg-red-50 text-red-600 border-red-200 animate-pulse'
+                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                                     }`}
                             >
                                 {isListening ? (
@@ -218,8 +239,8 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
                             rows={3}
                             placeholder={isListening ? 'Fale agora...' : 'O que aconteceu neste atendimento?'}
                             className={`block w-full border rounded-lg p-3 text-[14px] resize-none transition-colors ${isListening
-                                    ? 'border-red-400 bg-red-50/30 ring-1 ring-red-400'
-                                    : 'border-gray-300 bg-white focus:ring-blue-500 focus:border-blue-500'
+                                ? 'border-red-400 bg-red-50/30 ring-1 ring-red-400'
+                                : 'border-gray-300 bg-white focus:ring-blue-500 focus:border-blue-500'
                                 }`}
                         />
                     </div>
