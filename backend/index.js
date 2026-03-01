@@ -72,36 +72,9 @@ const startServer = async () => {
     try {
         // Rodar migrações manuais (Garantia de schema) - SAFE RECOVERY
         console.log('🔄 Verificando Schema do Banco de Dados...');
-        try {
-            // Tenta alterar SyncLog (Nome padrão do Prisma) ou sync_logs
-            // POSTGRES CASE SENSITIVE FIX
-            try {
-                await prisma.$executeRawUnsafe(`ALTER TABLE "SyncLog" ADD COLUMN IF NOT EXISTS "request_url" TEXT;`);
-                await prisma.$executeRawUnsafe(`ALTER TABLE "SyncLog" ADD COLUMN IF NOT EXISTS "request_method" TEXT;`);
-                await prisma.$executeRawUnsafe(`ALTER TABLE "SyncLog" ADD COLUMN IF NOT EXISTS "response_status" INTEGER;`);
-                await prisma.$executeRawUnsafe(`ALTER TABLE "SyncLog" ADD COLUMN IF NOT EXISTS "response_body" TEXT;`);
-                await prisma.$executeRawUnsafe(`ALTER TABLE "SyncLog" ADD COLUMN IF NOT EXISTS "duration" INTEGER;`);
-            } catch (e) {
-                console.log('⚠️ Tabela "SyncLog" não encontrada. Tentando "synclog" (lowercase)...');
-                try {
-                    await prisma.$executeRawUnsafe(`ALTER TABLE "synclog" ADD COLUMN IF NOT EXISTS "request_url" TEXT;`);
-                    await prisma.$executeRawUnsafe(`ALTER TABLE "synclog" ADD COLUMN IF NOT EXISTS "request_method" TEXT;`);
-                    await prisma.$executeRawUnsafe(`ALTER TABLE "synclog" ADD COLUMN IF NOT EXISTS "response_status" INTEGER;`);
-                    await prisma.$executeRawUnsafe(`ALTER TABLE "synclog" ADD COLUMN IF NOT EXISTS "response_body" TEXT;`);
-                    await prisma.$executeRawUnsafe(`ALTER TABLE "synclog" ADD COLUMN IF NOT EXISTS "duration" INTEGER;`);
-                } catch (e2) {
-                    console.log('⚠️ Tabela "synclog" não encontrada. Tentando "sync_logs" (snake_case)...');
-                    await prisma.$executeRawUnsafe(`ALTER TABLE "sync_logs" ADD COLUMN IF NOT EXISTS "request_url" TEXT;`);
-                    await prisma.$executeRawUnsafe(`ALTER TABLE "sync_logs" ADD COLUMN IF NOT EXISTS "request_method" TEXT;`);
-                    await prisma.$executeRawUnsafe(`ALTER TABLE "sync_logs" ADD COLUMN IF NOT EXISTS "response_status" INTEGER;`);
-                    await prisma.$executeRawUnsafe(`ALTER TABLE "sync_logs" ADD COLUMN IF NOT EXISTS "response_body" TEXT;`);
-                    await prisma.$executeRawUnsafe(`ALTER TABLE "sync_logs" ADD COLUMN IF NOT EXISTS "duration" INTEGER;`);
-                }
-            }
-            console.log('✅ Schema SyncLog atualizado com sucesso.');
-        } catch (error) {
-            console.error('❌ Falha na migração manual (SyncLog/synclog/sync_logs):', error.message);
-        }
+        // A tabela SyncLog já está coberta pelo Prisma db push. 
+        // Queries raw desabilitadas para não poluir os logs de erro do Postgres.
+        console.log('✅ Schema gerenciado pelo Prisma.');
 
         const migrationService = require('./services/migrationService');
         await migrationService.run();

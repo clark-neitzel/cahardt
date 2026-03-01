@@ -5,6 +5,7 @@ import {
     FileText, AlertCircle, X, CheckCircle, Minus, Plus, Clock,
     ShoppingBag, Search, Trash2, Package, Tag
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import clienteService from '../../services/clienteService';
 import produtoService from '../../services/produtoService';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
@@ -129,7 +130,7 @@ const NovoPedido = () => {
                         carregouDraftRef.current = true;
                     }
                 } catch (e) {
-                    alert("Erro ao carregar o rascunho de pedido.");
+                    toast.error("Erro ao carregar o rascunho de pedido.", { duration: 6000, style: { maxWidth: "600px" } });
                     navigate('/pedidos');
                 }
             } else {
@@ -151,7 +152,7 @@ const NovoPedido = () => {
                 } catch (e) { }
             }
         } catch (error) {
-            alert("Erro ao carregar dados básicos para o pedido.");
+            toast.error("Erro ao carregar dados básicos para o pedido.", { duration: 6000, style: { maxWidth: "600px" } });
         } finally {
             setLoading(false);
         }
@@ -197,7 +198,7 @@ const NovoPedido = () => {
         const cliente = clientes.find(c => c.UUID === clienteId);
         if (cliente) {
             if (!cliente.idVendedor) {
-                alert("Este cliente não tem um vendedor associado! Não é possível criar pedido.");
+                toast.error("Este cliente não tem um vendedor associado! Não é possível criar pedido.", { duration: 6000, style: { maxWidth: "600px" } });
                 setClienteId(''); setClienteSearchText(''); return;
             }
             setClienteSelecionado(cliente);
@@ -248,7 +249,7 @@ const NovoPedido = () => {
         const dayOfWeekStr = DIA_SEMANA_MAP[d.getUTCDay()];
         const diasVisita = cliente.Dia_de_entrega || '';
         if (diasVisita && !diasVisita.includes(dayOfWeekStr)) {
-            if (!isEncaixe) alert(`Aviso de Encaixe: A data escolhida não cai em um dia da semana cadastrado para entrega p/ este cliente. Este pedido será marcado como Encaixe.`);
+            if (!isEncaixe) toast.error(`Aviso de Encaixe: A data escolhida não cai em um dia da semana cadastrado para entrega p/ este cliente. Este pedido será marcado como Encaixe.`, { duration: 6000, style: { maxWidth: "600px" } });
             setIsEncaixe(true);
         } else {
             setIsEncaixe(false);
@@ -360,7 +361,7 @@ const NovoPedido = () => {
                 const depoisComPromo = checkPromoLiberada(promocoesMap.get(produtoId), mCopia);
 
                 if (antesTinhaPromo && !depoisComPromo) {
-                    alert(`⚠️ Promoção do Produto Perdida.\nSe o preço era promocional, será reajustado em cascata para Tabela Normal.`);
+                    toast.error(`⚠️ Promoção do Produto Perdida.\nSe o preço era promocional, será reajustado em cascata para Tabela Normal.`, { duration: 6000, style: { maxWidth: "600px" } });
                 }
 
                 m.set(produtoId, { ...existente, quantidade: novaQtd });
@@ -393,7 +394,7 @@ const NovoPedido = () => {
                 // Exemplo Cliente Comprou a 42. Promo pede mínimo 39. Histórico 42 prevalece e o auto-atualizar ignora.
                 if (valorUnitario < valorMinimoRealPermitido && valorMinimoRealPermitido > 0) {
                     if (usouHistorico) {
-                        alert(`⚠️ O último preço pago (R$ ${valorUnitario.toFixed(2).replace('.', ',')}) excede o piso desta promoção/limite atual.\nO valor será ajustado para R$ ${valorMinimoRealPermitido.toFixed(2).replace('.', ',')}`);
+                        toast.error(`⚠️ O último preço pago (R$ ${valorUnitario.toFixed(2).replace('.', ',')}) excede o piso desta promoção/limite atual.\nO valor será ajustado para R$ ${valorMinimoRealPermitido.toFixed(2).replace('.', ',')}`, { duration: 6000, style: { maxWidth: "600px" } });
                     }
                     valorUnitario = valorMinimoRealPermitido; // Joga pro preço promo, ou pro limite normal.
                 }
@@ -421,7 +422,7 @@ const NovoPedido = () => {
                                     const vMin = Number((it.valorBase * (1 - lPerc / 100)).toFixed(2));
 
                                     if (vp < vMin && vMin > 0) {
-                                        alert(`⚠️ O último preço pago (R$ ${vp.toFixed(2).replace('.', ',')}) excede o limite de desconto atual.\nO valor foi ajustado para R$ ${vMin.toFixed(2).replace('.', ',')}`);
+                                        toast.error(`⚠️ O último preço pago (R$ ${vp.toFixed(2).replace('.', ',')}) excede o limite de desconto atual.\nO valor foi ajustado para R$ ${vMin.toFixed(2).replace('.', ',')}`, { duration: 6000, style: { maxWidth: "600px" } });
                                         vp = vMin;
                                     }
 
@@ -467,7 +468,7 @@ const NovoPedido = () => {
             const valorMinimoPermitido = Number((it.valorBase * (1 - limitePerc / 100)).toFixed(2));
 
             if (vp < valorMinimoPermitido && valorMinimoPermitido > 0) {
-                alert(`⚠️ O limite máximo de desconto foi excedido.\nO menor valor permitido é R$ ${valorMinimoPermitido.toFixed(2).replace('.', ',')}`);
+                toast.error(`⚠️ O limite máximo de desconto foi excedido.\nO menor valor permitido é R$ ${valorMinimoPermitido.toFixed(2).replace('.', ',')}`, { duration: 6000, style: { maxWidth: "600px" } });
                 vp = valorMinimoPermitido;
             }
 
@@ -477,15 +478,15 @@ const NovoPedido = () => {
     }, [vendedorSelecionado]);
 
     const handleSalvar = (statusEnvio) => {
-        if (!clienteId || itensMap.size === 0) { alert("Preencha cliente e adicione itens."); return; }
-        if (!condicaoPagamentoId) { alert("Selecione uma condição de pagamento."); return; }
+        if (!clienteId || itensMap.size === 0) { toast.error("Preencha cliente e adicione itens.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
+        if (!condicaoPagamentoId) { toast.error("Selecione uma condição de pagamento.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
 
         // Bloqueio de valor mínimo
         const valorMinimoReq = Number(condicaoSelecionada?.valorMinimo) || 0;
         const total = Array.from(itensMap.values()).reduce((acc, i) => acc + (Number(i.valorUnitario) * Number(i.quantidade)), 0);
 
         if (total < valorMinimoReq) {
-            alert(`ATENÇÃO: Este pedido não atingiu o valor mínimo exigido para esta tabela/condição (R$ ${valorMinimoReq.toFixed(2).replace('.', ',')}). Adicione mais itens ou escolha outra condição.`);
+            toast.error(`ATENÇÃO: Este pedido não atingiu o valor mínimo exigido para esta tabela/condição (R$ ${valorMinimoReq.toFixed(2).replace('.', ',')}). Adicione mais itens ou escolha outra condição.`, { duration: 6000, style: { maxWidth: "600px" } });
             return;
         }
 
@@ -536,7 +537,7 @@ const NovoPedido = () => {
             localStorage.removeItem('@CAHardt:NovoPedido_Draft');
             navigate('/pedidos');
         } catch (error) {
-            alert(error.response?.data?.error || "Erro ao salvar pedido.");
+            toast.error(error.response?.data?.error || "Erro ao salvar pedido.", { duration: 6000, style: { maxWidth: "600px" } });
         } finally {
             setSaving(false);
         }
@@ -600,7 +601,7 @@ const NovoPedido = () => {
             localStorage.removeItem('@CAHardt:NovoPedido_Draft');
             navigate('/pedidos');
         } catch (error) {
-            alert(error.response?.data?.error || "Erro ao excluir o pedido.");
+            toast.error(error.response?.data?.error || "Erro ao excluir o pedido.", { duration: 6000, style: { maxWidth: "600px" } });
         } finally {
             setSaving(false);
         }
