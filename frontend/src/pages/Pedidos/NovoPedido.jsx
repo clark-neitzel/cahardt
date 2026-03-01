@@ -570,41 +570,54 @@ const NovoPedido = () => {
         (acc, i) => acc + (Number(i.valorUnitario) * Number(i.quantidade)), 0
     );
 
-    // Ordenar produtos: já comprados → em promoção (não comprados) → outros (alfabético)
-    const produtosJaComprados = [];
-    const produtosComPromoNaoComprados = [];
-    const produtosOutros = [];
+    const clientesBusca = useMemo(() => {
+        if (!showClienteModal) return [];
+        const lowerSearch = clienteSearchText.toLowerCase().trim();
+        return clientes.filter(c =>
+            !lowerSearch ||
+            (c.NomeFantasia || c.Nome)?.toLowerCase().includes(lowerSearch) ||
+            (c.Documento || '').includes(lowerSearch)
+        );
+    }, [clientes, clienteSearchText, showClienteModal]);
 
-    // Filtrar
-    const termoBusca = produtoSearch.toLowerCase().trim();
-    const produtosFiltrados = produtos.filter(p => {
-        if (!termoBusca) return true;
-        return (p.nome && p.nome.toLowerCase().includes(termoBusca))
-            || (p.codigo && p.codigo.toLowerCase().includes(termoBusca));
-    });
-
-    // Separar em já comprados e outros
-    const historicoPorData = Array.from(historicoMap.entries())
-        .sort((a, b) => new Date(b[1].ultimaCompra) - new Date(a[1].ultimaCompra));
-
-    const jaCompradosIds = new Set(historicoPorData.map(([pid]) => pid));
-
-    // Montar lista na ordem: histórico → em promoção → outros (alfabético)
-    historicoPorData.forEach(([pid, hist]) => {
-        const prod = produtosFiltrados.find(p => p.id === pid);
-        if (prod) produtosJaComprados.push({ ...prod, hist });
-    });
-
-    produtosFiltrados
-        .filter(p => !jaCompradosIds.has(p.id))
-        .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
-        .forEach(p => {
-            if (promocoesMap.has(p.id)) {
-                produtosComPromoNaoComprados.push({ ...p, hist: null });
-            } else {
-                produtosOutros.push({ ...p, hist: null });
-            }
+    // Otimização: Cachear as listas de produtos (só recalcula quando necessário)
+    const { produtosJaComprados, produtosComPromoNaoComprados, produtosOutros } = useMemo(() => {
+        const termoBusca = produtoSearch.toLowerCase().trim();
+        const filtrados = produtos.filter(p => {
+            if (!termoBusca) return true;
+            return (p.nome && p.nome.toLowerCase().includes(termoBusca))
+                || (p.codigo && p.codigo.toLowerCase().includes(termoBusca));
         });
+
+        const historicoPorData = Array.from(historicoMap.entries())
+            .sort((a, b) => new Date(b[1].ultimaCompra) - new Date(a[1].ultimaCompra));
+        const jaCompradosIds = new Set(historicoPorData.map(([pid]) => pid));
+
+        const jaC = [];
+        historicoPorData.forEach(([pid, hist]) => {
+            const prod = filtrados.find(p => p.id === pid);
+            if (prod) jaC.push({ ...prod, hist });
+        });
+
+        const promoC = [];
+        const outC = [];
+        filtrados
+            .filter(p => !jaCompradosIds.has(p.id))
+            .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+            .forEach(p => {
+                if (promocoesMap.has(p.id)) {
+                    promoC.push({ ...p, hist: null });
+                } else {
+                    outC.push({ ...p, hist: null });
+                }
+            });
+
+        return {
+            produtosJaComprados: jaC,
+            produtosComPromoNaoComprados: promoC,
+            produtosOutros: outC
+        };
+    }, [produtos, produtoSearch, historicoMap, promocoesMap]);
 
     const renderProdutoRow = (produto) => {
         const item = itensMap.get(produto.id);
@@ -1195,37 +1208,34 @@ const NovoPedido = () => {
 
                     <div className="flex-1 overflow-y-auto bg-gray-50 px-3 pb-6 pt-3">
                         <div className="space-y-2">
-                            {clientes
-                                .filter(c => !clienteSearchText || (c.NomeFantasia || c.Nome).toLowerCase().includes(clienteSearchText.toLowerCase()) || (c.Documento || '').includes(clienteSearchText))
-                                .slice(0, 50)
-                                .map(c => (
-                                    <div
-                                        key={c.UUID}
-                                        className="bg-white p-4 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 cursor-pointer active:bg-blue-50 active:border-blue-100 transition-colors"
-                                        onClick={() => {
-                                            setClienteId(c.UUID);
-                                            setShowClienteModal(false);
-                                            setClienteSearchText(c.NomeFantasia || c.Nome);
-                                        }}
-                                    >
-                                        <div className="font-bold text-[15px] text-gray-900 mb-1 leading-tight tracking-tight">{c.NomeFantasia || c.Nome}</div>
-                                        <div className="text-[13px] text-gray-500 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-medium">
-                                            <span>{c.Documento || 'S/ Documento'}</span>
-                                            {c.End_Cidade && (
-                                                <>
-                                                    <span className="text-gray-300">•</span>
-                                                    <span>{c.End_Cidade}</span>
-                                                </>
-                                            )}
-                                        </div>
-                                        {c.Dia_de_entrega && (
-                                            <div className="mt-2.5 inline-block bg-blue-50/70 text-blue-700 text-[11px] font-bold tracking-tight px-1.5 py-0.5 rounded border border-blue-100">
-                                                Rota: {c.Dia_de_entrega}
-                                            </div>
+                            {clientesBusca.slice(0, 50).map(c => (
+                                <div
+                                    key={c.UUID}
+                                    className="bg-white p-4 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 cursor-pointer active:bg-blue-50 active:border-blue-100 transition-colors"
+                                    onClick={() => {
+                                        setClienteId(c.UUID);
+                                        setShowClienteModal(false);
+                                        setClienteSearchText(c.NomeFantasia || c.Nome);
+                                    }}
+                                >
+                                    <div className="font-bold text-[15px] text-gray-900 mb-1 leading-tight tracking-tight">{c.NomeFantasia || c.Nome}</div>
+                                    <div className="text-[13px] text-gray-500 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-medium">
+                                        <span>{c.Documento || 'S/ Documento'}</span>
+                                        {c.End_Cidade && (
+                                            <>
+                                                <span className="text-gray-300">•</span>
+                                                <span>{c.End_Cidade}</span>
+                                            </>
                                         )}
                                     </div>
-                                ))}
-                            {clientes.filter(c => !clienteSearchText || (c.NomeFantasia || c.Nome).toLowerCase().includes(clienteSearchText.toLowerCase()) || (c.Documento || '').includes(clienteSearchText)).length === 0 && (
+                                    {c.Dia_de_entrega && (
+                                        <div className="mt-2.5 inline-block bg-blue-50/70 text-blue-700 text-[11px] font-bold tracking-tight px-1.5 py-0.5 rounded border border-blue-100">
+                                            Rota: {c.Dia_de_entrega}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                            {clientesBusca.length === 0 && (
                                 <div className="p-10 text-center text-gray-500 flex flex-col items-center">
                                     <Search className="h-10 w-10 text-gray-300 mb-2" />
                                     <p className="text-[15px] font-bold text-gray-700">Nenhum cliente com esse nome</p>
