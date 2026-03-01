@@ -217,9 +217,11 @@ const RotaLeads = () => {
                 clienteService.listar({ limit: 2000 })
             ]);
 
-            // Para cada cliente, buscar atendimentos de hoje
-            setLeads(leadsData.filter(l => l.etapa !== 'FINALIZADO'));
-            setClientes(clientesData);
+            // Normaliza resposta — pode vir como array ou { data: [] }
+            const listaLeads = Array.isArray(leadsData) ? leadsData : (leadsData?.data || []);
+            const listaClientes = Array.isArray(clientesData) ? clientesData : (clientesData?.data || []);
+            setLeads(listaLeads.filter(l => l.etapa !== 'FINALIZADO'));
+            setClientes(listaClientes);
         } catch (e) {
             console.error(e);
             toast.error('Erro ao carregar dados da rota.', { duration: 5000 });
