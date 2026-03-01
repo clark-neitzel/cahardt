@@ -542,34 +542,6 @@ const NovoPedido = () => {
         }
     };
 
-    const handleExcluir = async () => {
-        if (!editId) return;
-        if (!window.confirm("Tem certeza que deseja excluir permanentemente este rascunho?")) return;
-        setSaving(true);
-        try {
-            await pedidoService.excluir(editId);
-            localStorage.removeItem('@CAHardt:NovoPedido_Draft');
-            navigate('/pedidos');
-        } catch (error) {
-            alert(error.response?.data?.error || "Erro ao excluir o pedido.");
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    if (loading) return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3"></div>
-                <p className="text-sm text-gray-500">Carregando...</p>
-            </div>
-        </div>
-    );
-
-    const vTotal = Array.from(itensMap.values()).reduce(
-        (acc, i) => acc + (Number(i.valorUnitario) * Number(i.quantidade)), 0
-    );
-
     const clientesBusca = useMemo(() => {
         if (!showClienteModal) return [];
         const lowerSearch = clienteSearchText.toLowerCase().trim();
@@ -618,6 +590,34 @@ const NovoPedido = () => {
             produtosOutros: outC
         };
     }, [produtos, produtoSearch, historicoMap, promocoesMap]);
+
+    const handleExcluir = async () => {
+        if (!editId) return;
+        if (!window.confirm("Tem certeza que deseja excluir permanentemente este rascunho?")) return;
+        setSaving(true);
+        try {
+            await pedidoService.excluir(editId);
+            localStorage.removeItem('@CAHardt:NovoPedido_Draft');
+            navigate('/pedidos');
+        } catch (error) {
+            alert(error.response?.data?.error || "Erro ao excluir o pedido.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="text-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3"></div>
+                <p className="text-sm text-gray-500">Carregando...</p>
+            </div>
+        </div>
+    );
+
+    const vTotal = Array.from(itensMap.values()).reduce(
+        (acc, i) => acc + (Number(i.valorUnitario) * Number(i.quantidade)), 0
+    );
 
     const renderProdutoRow = (produto) => {
         const item = itensMap.get(produto.id);
