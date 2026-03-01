@@ -678,25 +678,33 @@ const NovoPedido = () => {
 
                             {/* Preço / input de preço */}
                             {qtd > 0 ? (
-                                <span
-                                    className="text-xs font-bold text-blue-700"
-                                    onClick={e => e.stopPropagation()}
-                                >
-                                    <input
-                                        type="number"
-                                        min="0" step="any"
-                                        className="w-20 border border-blue-300 bg-white text-blue-800 rounded px-1.5 py-0.5 text-xs font-bold text-center"
-                                        value={valor}
-                                        onFocus={e => e.target.select()}
-                                        onChange={e => setValorUnitario(produto.id, e.target.value)}
-                                        onBlur={() => verificarTravaValorUnitario(produto.id)}
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter') {
-                                                e.target.blur();
-                                            }
-                                        }}
-                                    />
-                                </span>
+                                <div className="flex items-center gap-1">
+                                    {/* Indica preço riscado se estiver sofrendo desconto ou se tiver promoção */}
+                                    {item && (Number(item.valorBase) > Number(item.valorUnitario) || promo) && (
+                                        <span className="text-xs text-gray-400 line-through mr-1" title={`Tabela: R$ ${Number(item.valorBase).toFixed(2)}`}>
+                                            R$ {Number(item.valorBase).toFixed(2).replace('.', ',')}
+                                        </span>
+                                    )}
+                                    <span
+                                        className="text-xs font-bold text-blue-700"
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        <input
+                                            type="number"
+                                            min="0" step="any"
+                                            className="w-16 sm:w-20 border border-blue-300 bg-white text-blue-800 rounded px-1.5 py-0.5 text-xs font-bold text-center"
+                                            value={valor}
+                                            onFocus={e => e.target.select()}
+                                            onChange={e => setValorUnitario(produto.id, e.target.value)}
+                                            onBlur={() => verificarTravaValorUnitario(produto.id)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') {
+                                                    e.target.blur();
+                                                }
+                                            }}
+                                        />
+                                    </span>
+                                </div>
                             ) : (
                                 <span className="text-xs font-bold text-orange-600">
                                     R$ {Number(produto.valorVenda || 0).toFixed(2).replace('.', ',')}
@@ -704,7 +712,7 @@ const NovoPedido = () => {
                             )}
                             {/* Flex badge */}
                             {qtd > 0 && item && (
-                                <span className={`text-xs font-semibold px-1 py-0 rounded-full ${item.flexUnitario >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                <span className={`text-[10px] sm:text-xs font-semibold px-1 py-0 rounded-full ${item.flexUnitario >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                     {item.flexUnitario >= 0 ? '+' : ''}{item.flexUnitario.toFixed(2)}
                                 </span>
                             )}
