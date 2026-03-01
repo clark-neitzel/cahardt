@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 const DEFAULT_PERMISSIONS = {
     catalogo: { view: false, edit: false },
     pedidos: { view: false, edit: false, clientes: "vinculados" },
+    rota: { view: false, edit: false },
     clientes: { view: false, edit: false },
     produtos: { view: false, edit: false },
     vendedores: { view: false, edit: false },
@@ -16,8 +17,9 @@ const DEFAULT_PERMISSIONS = {
 const TAB_LABELS = {
     catalogo: "Catálogo",
     pedidos: "Pedidos",
+    rota: "Rota / Leads",
     clientes: "Clientes",
-    produtos: "Admin Produtos",
+    produtos: "Produtos",
     vendedores: "Vendedores",
     sync: "Painel Sincronização",
     configuracoes: "Configurações (Bancos/Tabelas)"

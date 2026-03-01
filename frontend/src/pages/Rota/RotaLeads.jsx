@@ -59,9 +59,10 @@ const abrirMapa = (gps) => {
 // ================================================
 const CardCliente = ({ cliente, onAtendimento, onNovoPedido }) => {
     const atendidoHoje = isAtendidoHoje(cliente._atendimentos);
+    const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-3">
+        <div className={`bg-white rounded-xl border shadow-sm overflow-hidden mb-3 ${doDia ? 'border-green-500/50 ring-1 ring-green-500/20' : 'border-gray-200'}`}>
             <div className="p-4">
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -100,9 +101,9 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido }) => {
                 {/* Canais de atendimento */}
                 {cliente.Formas_Atendimento?.length > 0 && (
                     <div className="flex gap-1.5 mt-2">
-                        {cliente.Formas_Atendimento.includes('PRESENCIAL') && <span className="text-[11px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><User className="h-3 w-3" />Presencial</span>}
-                        {cliente.Formas_Atendimento.includes('WHATSAPP') && <span className="text-[11px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><MessageCircle className="h-3 w-3" />WhatsApp</span>}
-                        {cliente.Formas_Atendimento.includes('TELEFONE') && <span className="text-[11px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><Phone className="h-3 w-3" />Telefone</span>}
+                        {cliente.Formas_Atendimento.some(f => f.toUpperCase() === 'PRESENCIAL') && <span className="text-[11px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><User className="h-3 w-3" />Presencial</span>}
+                        {cliente.Formas_Atendimento.some(f => f.toUpperCase() === 'WHATSAPP') && <span className="text-[11px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><MessageCircle className="h-3 w-3" />WhatsApp</span>}
+                        {cliente.Formas_Atendimento.some(f => f.toUpperCase() === 'TELEFONE') && <span className="text-[11px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><Phone className="h-3 w-3" />Telefone</span>}
                     </div>
                 )}
 
@@ -133,8 +134,9 @@ const CardLead = ({ lead, onAtendimento }) => {
     const atendidoHoje = isAtendidoHoje(lead.atendimentos);
     const proxHoje = isProximaVisitaHoje(lead.proximaVisita);
 
+    // Prospectos/Leads ficam com destaque laranja
     return (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-3">
+        <div className="bg-white rounded-xl border border-orange-400/50 ring-1 ring-orange-500/20 shadow-sm overflow-hidden mb-3">
             <div className="p-4">
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -406,7 +408,7 @@ const RotaLeads = () => {
                 <ModalNovoLead
                     onClose={() => setModalNovoLead(false)}
                     onSalvo={handleNovoLeadSalvo}
-                    vendedorId={vendedorId}
+                    user={user}
                 />
             )}
         </div>

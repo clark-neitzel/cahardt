@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, MapPin, Loader } from 'lucide-react';
 import leadService from '../../services/leadService';
+import vendedorService from '../../services/vendedorService';
 import toast from 'react-hot-toast';
 
 const DIAS_OPCOES = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
@@ -10,7 +11,7 @@ const CANAIS = [
     { value: 'TELEFONE', label: 'Telefone' },
 ];
 
-const ModalNovoLead = ({ onClose, onSalvo, vendedorId }) => {
+const ModalNovoLead = ({ onClose, onSalvo, user }) => {
     const [form, setForm] = useState({
         nomeEstabelecimento: '',
         contato: '',
@@ -20,9 +21,14 @@ const ModalNovoLead = ({ onClose, onSalvo, vendedorId }) => {
         formasAtendimento: [],
         pontoGps: '',
         observacoes: '',
+        idVendedor: user?.id || ''
     });
     const [capturandoGps, setCapturandoGps] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [vendedores, setVendedores] = useState([]);
+
+    // Verifica se usuário pode ver todos os clientes (portanto, pode escolher o vendedor para o lead)
+    const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
 
     const toggleDia = (dia) => {
         setForm(f => ({
@@ -41,6 +47,13 @@ const ModalNovoLead = ({ onClose, onSalvo, vendedorId }) => {
                 : [...f.formasAtendimento, canal]
         }));
     };
+
+    // Carrega vendedores apenas se o usuário puder ver todos
+    React.useEffect(() => {
+        if (podeEscolherVendedor) {
+            vendedorService.listar().then(setVendedores).catch(console.error);
+        }
+    }, [podeEscolherVendedor]);
 
     const capturarGps = () => {
         if (!navigator.geolocation) {
@@ -77,7 +90,7 @@ const ModalNovoLead = ({ onClose, onSalvo, vendedorId }) => {
             await leadService.criar({
                 ...form,
                 diasVisita: form.diasVisita.join(','),
-                idVendedor: vendedorId,
+                idVendedor: form.idVendedor || user?.id,
             });
             onSalvo();
         } catch (e) {
@@ -99,16 +112,34 @@ const ModalNovoLead = ({ onClose, onSalvo, vendedorId }) => {
                 </div>
 
                 <div className="px-4 py-4 space-y-4">
-                    {/* Nome */}
-                    <div>
-                        <label className="block text-[13px] font-semibold text-gray-700 mb-1">Nome do Estabelecimento *</label>
-                        <input
-                            type="text"
-                            value={form.nomeEstabelecimento}
-                            onChange={e => setForm(f => ({ ...f, nomeEstabelecimento: e.target.value }))}
-                            placeholder="Ex: Padaria do João"
-                            className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500"
-                        />
+                    {/* Nome e Vendedor */}
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-[13px] font-semibold text-gray-700 mb-1">Nome do Estabelecimento *</label>
+                            <input
+                                type="text"
+                                value={form.nomeEstabelecimento}
+                                onChange={e => setForm(f => ({ ...f, nomeEstabelecimento: e.target.value }))}
+                                placeholder="Ex: Padaria do João"
+                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500"
+                            />
+                        </div>
+
+                        {podeEscolherVendedor && (
+                            <div>
+                                <label className="block text-[13px] font-semibold text-gray-700 mb-1">Vendedor Responsável</label>
+                                <select
+                                    value={form.idVendedor}
+                                    onChange={e => setForm(f => ({ ...f, idVendedor: e.target.value }))}
+                                    className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500"
+                                >
+                                    <option value="">Selecione um vendedor (Opcional)</option>
+                                    {vendedores.map(v => (
+                                        <option key={v.id} value={v.id}>{v.nome}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
 
                     {/* Contato */}
