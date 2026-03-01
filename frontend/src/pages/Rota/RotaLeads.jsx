@@ -113,6 +113,17 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, mostrarAcoes = true
                     </div>
                 )}
 
+                {/* Exibir observação se já atendido */}
+                {atendHoje?.observacao && (
+                    <div className="mt-3 bg-gray-50 border border-gray-100 rounded-lg p-3">
+                        <p className="text-[12px] font-semibold text-gray-700 mb-0.5 flex items-center gap-1">
+                            <ClipboardList className="h-3 w-3" />
+                            Observação do Atendimento
+                        </p>
+                        <p className="text-[13px] text-gray-600 line-clamp-3">{atendHoje.observacao}</p>
+                    </div>
+                )}
+
                 {/* Ações */}
                 {mostrarAcoes && (
                     <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
@@ -189,6 +200,17 @@ const CardLead = ({ lead, onAtendimento, mostrarAcoes = true }) => {
                         {lead.formasAtendimento.includes('PRESENCIAL') && <span className="text-[11px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><User className="h-3 w-3" />Presencial</span>}
                         {lead.formasAtendimento.includes('WHATSAPP') && <span className="text-[11px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><MessageCircle className="h-3 w-3" />WhatsApp</span>}
                         {lead.formasAtendimento.includes('TELEFONE') && <span className="text-[11px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><Phone className="h-3 w-3" />Telefone</span>}
+                    </div>
+                )}
+
+                {/* Exibir observação se já atendido */}
+                {atendHoje?.observacao && (
+                    <div className="mt-3 bg-gray-50 border border-gray-100 rounded-lg p-3">
+                        <p className="text-[12px] font-semibold text-gray-700 mb-0.5 flex items-center gap-1">
+                            <ClipboardList className="h-3 w-3" />
+                            Observação do Atendimento
+                        </p>
+                        <p className="text-[13px] text-gray-600 line-clamp-3">{atendHoje.observacao}</p>
                     </div>
                 )}
 
