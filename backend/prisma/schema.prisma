@@ -260,6 +260,7 @@ model Vendedor {
 
   clientes Cliente[]
   pedidos  Pedido[]
+  leads    Lead[]
 
   @@map("vendedores")
 }
@@ -361,4 +362,61 @@ model PromocaoCondicao {
 
   @@index([grupoId])
   @@map("promocao_condicoes")
+}
+
+// =============================================
+// MODULO CRM: ROTA + LEADS
+// =============================================
+
+model Lead {
+  id                  String   @id @default(uuid())
+  numero              Int      @default(autoincrement())
+  nomeEstabelecimento String   @map("nome_estabelecimento")
+  contato             String?
+  whatsapp            String?
+  diasVisita          String?  @map("dias_visita")
+  horarioAtendimento  String?  @map("horario_atendimento")
+  horarioEntrega      String?  @map("horario_entrega")
+  formasAtendimento   String[] @default([]) @map("formas_atendimento")
+  pontoGps            String?  @map("ponto_gps")
+  etapa               String   @default("NOVO")
+  proximaVisita       DateTime? @map("proxima_visita")
+  observacoes         String?  @db.Text
+  fotoFachada         String?  @map("foto_fachada")
+
+  idVendedor          String?   @map("id_vendedor")
+  vendedor            Vendedor? @relation(fields: [idVendedor], references: [id])
+
+  atendimentos        Atendimento[]
+
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@index([idVendedor])
+  @@index([etapa])
+  @@map("leads")
+}
+
+model Atendimento {
+  id              String   @id @default(uuid())
+  tipo            String
+  observacao      String?  @db.Text
+  etapaAnterior   String?  @map("etapa_anterior")
+  etapaNova       String?  @map("etapa_nova")
+  proximaVisita   DateTime? @map("proxima_visita")
+  gpsVendedor     String?  @map("gps_vendedor")
+  pedidoId        String?  @map("pedido_id")
+
+  leadId          String?  @map("lead_id")
+  lead            Lead?    @relation(fields: [leadId], references: [id])
+  clienteId       String?  @map("cliente_id")
+
+  idVendedor      String   @map("id_vendedor")
+
+  criadoEm        DateTime @default(now()) @map("criado_em")
+
+  @@index([leadId])
+  @@index([clienteId])
+  @@index([idVendedor])
+  @@map("atendimentos")
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
     ArrowLeft, Save, User, ChevronDown, ChevronUp, Calendar,
     FileText, AlertCircle, X, CheckCircle, Minus, Plus, Clock,
@@ -27,6 +27,7 @@ const fmtData = (d) => {
 const NovoPedido = () => {
     const navigate = useNavigate();
     const { id: editId } = useParams();
+    const [searchParams] = useSearchParams();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -72,6 +73,9 @@ const NovoPedido = () => {
     const carregouDraftRef = useRef(false);
     const searchInputRef = useRef(null);
 
+    // Pré-selecionar cliente quando vindo da tela Rota (?clienteId=...)
+    const clienteIdFromUrl = searchParams.get('clienteId');
+
     useEffect(() => { carregarDadosBase(); }, []);
 
     const carregarDadosBase = async () => {
@@ -88,7 +92,13 @@ const NovoPedido = () => {
                 vendedorService.listar()
             ]);
 
-            setClientes(clientesData.data?.filter(c => c.Ativo) || clientesData?.filter(c => c.Ativo) || []);
+            const clientesList = clientesData.data?.filter(c => c.Ativo) || clientesData?.filter(c => c.Ativo) || [];
+            setClientes(clientesList);
+
+            // Pré-selecionar cliente vindo da URL (?clienteId=...)
+            if (clienteIdFromUrl && !editId) {
+                setClienteId(clienteIdFromUrl);
+            }
             const listaProdutos = produtosData.data || produtosData || [];
             setProdutos(listaProdutos);
             setTodasCondicoes(condicoesData);

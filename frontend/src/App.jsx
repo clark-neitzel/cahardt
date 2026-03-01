@@ -13,6 +13,7 @@ import TabelaPrecos from './pages/Configuracoes/TabelaPrecos';
 import ContasFinanceiras from './pages/Configuracoes/ContasFinanceiras';
 import ListaPedidos from './pages/Pedidos/ListaPedidos';
 import NovoPedido from './pages/Pedidos/NovoPedido';
+import RotaLeads from './pages/Rota/RotaLeads';
 import Login from './pages/Login/Login';
 
 import { Menu, X, LogOut } from 'lucide-react';
@@ -59,6 +60,9 @@ const Layout = ({ children }) => {
                 )}
                 {hasPermission('pedidos') && (
                   <NavLink to="/pedidos" className={({ isActive }) => getNavLinkClass(isActive)}>Pedidos</NavLink>
+                )}
+                {hasPermission('pedidos') && (
+                  <NavLink to="/rota" className={({ isActive }) => getNavLinkClass(isActive)}>Rota</NavLink>
                 )}
                 {hasPermission('clientes') && (
                   <NavLink to="/clientes" className={({ isActive }) => getNavLinkClass(isActive)}>Clientes</NavLink>
@@ -116,6 +120,9 @@ const Layout = ({ children }) => {
               {hasPermission('pedidos') && (
                 <NavLink to="/pedidos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Pedidos</NavLink>
               )}
+              {hasPermission('pedidos') && (
+                <NavLink to="/rota" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Rota / Leads</NavLink>
+              )}
               {hasPermission('clientes') && (
                 <NavLink to="/clientes" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Clientes</NavLink>
               )}
@@ -169,6 +176,9 @@ function App() {
             <Route path="/pedidos" element={<PrivateRoute tab="pedidos"><ListaPedidos /></PrivateRoute>} />
             <Route path="/pedidos/novo" element={<PrivateRoute tab="pedidos"><NovoPedido /></PrivateRoute>} />
             <Route path="/pedidos/editar/:id" element={<PrivateRoute tab="pedidos"><NovoPedido /></PrivateRoute>} />
+
+            {/* Rota / Leads (CRM) */}
+            <Route path="/rota" element={<PrivateRoute tab="pedidos"><RotaLeads /></PrivateRoute>} />
 
             {/* Clientes */}
             <Route path="/clientes" element={<PrivateRoute tab="clientes"><ListaClientes /></PrivateRoute>} />

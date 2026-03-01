@@ -309,7 +309,56 @@ const migrationService = {
             `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "id_conta_financeira" TEXT;`,
 
             // Update 21: Limite Máximo de Desconto Flex do Vendedor
-            `ALTER TABLE "vendedores" ADD COLUMN IF NOT EXISTS "max_desconto_flex" DECIMAL(5,2) DEFAULT 100;`
+            `ALTER TABLE "vendedores" ADD COLUMN IF NOT EXISTS "max_desconto_flex" DECIMAL(5,2) DEFAULT 100;`,
+
+            // Update 22: Módulo CRM — Tabela de Leads (Prospectos)
+            `CREATE TABLE IF NOT EXISTS "leads" (
+                "id" TEXT NOT NULL,
+                "numero" SERIAL,
+                "nome_estabelecimento" TEXT NOT NULL,
+                "contato" TEXT,
+                "whatsapp" TEXT,
+                "dias_visita" TEXT,
+                "horario_atendimento" TEXT,
+                "horario_entrega" TEXT,
+                "formas_atendimento" TEXT[] DEFAULT ARRAY[]::TEXT[],
+                "ponto_gps" TEXT,
+                "etapa" TEXT NOT NULL DEFAULT 'NOVO',
+                "proxima_visita" TIMESTAMP(3),
+                "observacoes" TEXT,
+                "foto_fachada" TEXT,
+                "id_vendedor" TEXT,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "leads_pkey" PRIMARY KEY ("id")
+            );`,
+            `CREATE INDEX IF NOT EXISTS "leads_id_vendedor_idx" ON "leads"("id_vendedor");`,
+            `CREATE INDEX IF NOT EXISTS "leads_etapa_idx" ON "leads"("etapa");`,
+
+            // Update 23: Módulo CRM — Tabela de Atendimentos (Histórico de Visitas)
+            `CREATE TABLE IF NOT EXISTS "atendimentos" (
+                "id" TEXT NOT NULL,
+                "tipo" TEXT NOT NULL,
+                "observacao" TEXT,
+                "etapa_anterior" TEXT,
+                "etapa_nova" TEXT,
+                "proxima_visita" TIMESTAMP(3),
+                "gps_vendedor" TEXT,
+                "pedido_id" TEXT,
+                "lead_id" TEXT,
+                "cliente_id" TEXT,
+                "id_vendedor" TEXT NOT NULL,
+                "criado_em" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "atendimentos_pkey" PRIMARY KEY ("id")
+            );`,
+            `ALTER TABLE "atendimentos" ADD CONSTRAINT IF NOT EXISTS "atendimentos_lead_id_fkey" FOREIGN KEY ("lead_id") REFERENCES "leads"("id") ON DELETE SET NULL ON UPDATE CASCADE;`,
+            `CREATE INDEX IF NOT EXISTS "atendimentos_lead_id_idx" ON "atendimentos"("lead_id");`,
+            `CREATE INDEX IF NOT EXISTS "atendimentos_cliente_id_idx" ON "atendimentos"("cliente_id");`,
+            `CREATE INDEX IF NOT EXISTS "atendimentos_id_vendedor_idx" ON "atendimentos"("id_vendedor");`,
+
+            // Update 24: Campos de Horário nos Clientes
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "Horario_Atendimento" TEXT;`,
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "Horario_Entrega" TEXT;`
         ];
 
         for (const [index, cmd] of commands.entries()) {

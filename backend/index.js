@@ -15,6 +15,8 @@ const condicaoPagamentoRoutes = require('./routes/condicaoPagamentoRoutes');
 const migrationRoutes = require('./routes/migrationRoutes'); // Migration endpoint
 const pedidoRoutes = require('./routes/pedidoRoutes'); // New Pedidos Module
 const promocaoRoutes = require('./routes/promocaoRoutes'); // Sistema de Promoções
+const leadRoutes = require('./routes/leadRoutes'); // CRM: Leads
+const atendimentoRoutes = require('./routes/atendimentoRoutes'); // CRM: Atendimentos
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -47,6 +49,8 @@ app.use('/api/condicoes-pagamento', authMiddleware, condicaoPagamentoRoutes);
 app.use('/api/contas-financeiras', authMiddleware, contaFinanceiraRoutes);
 app.use('/api/pedidos', authMiddleware, pedidoRoutes);
 app.use('/api/promocoes', promocaoRoutes); // authMiddleware já aplicado internamente na rota
+app.use('/api/leads', authMiddleware, leadRoutes); // CRM: Leads
+app.use('/api/atendimentos', authMiddleware, atendimentoRoutes); // CRM: Atendimentos
 
 app.use('/api/migrations', migrationRoutes); // Migration endpoint
 
