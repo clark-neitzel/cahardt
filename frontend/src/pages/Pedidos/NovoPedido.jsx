@@ -304,7 +304,11 @@ const NovoPedido = () => {
             // i.e., se o preço dele era exatamente igual ao valor base anterior
             if (Math.abs(Number(item.valorUnitario || 0) - Number(item.valorBase || 0)) < 0.01) {
                 // garante que nao zere caso seja a 1a vez
-                if (novoValorBase > 0) novoValorUnitario = novoValorBase;
+                // REGRA HISTÓRICA DO USUÁRIO: Se tem PREÇO HISTÓRICO MANUAL, NUNCA AUTORESETE SE FOR MAIOR QUE A PROMO.
+                // Usar a flag veioDeHistorico
+                if (!item.veioDeHistorico) {
+                    if (novoValorBase > 0) novoValorUnitario = novoValorBase;
+                }
             }
 
             // NOVA REGRA CASCATA: Se a promo caiu (ou entrou), o limite base muda.
@@ -313,9 +317,7 @@ const NovoPedido = () => {
             const limiteAplicado = liberada ? 0 : limitePerc;
             const valorMinimoPermitido = Number((novoValorBase * (1 - limiteAplicado / 100)).toFixed(2));
             if (novoValorUnitario < valorMinimoPermitido && valorMinimoPermitido > 0) {
-                if (!liberada && item.emPromocao) {
-                    alert(`⚠️ Promoção do Produto Perdida.\nO valor será ajustado para o limite configurado: R$ ${valorMinimoPermitido.toFixed(2).replace('.', ',')}`);
-                }
+                // Removemos o alerta daqui para não pipocar desespero durante carregamento mudo de promocoes de tela, o vendedor vê o chutar de volta
                 novoValorUnitario = valorMinimoPermitido;
             }
 
@@ -349,6 +351,18 @@ const NovoPedido = () => {
             const m = new Map(prev);
             const existente = m.get(produtoId);
             if (existente) {
+                // Se existe e estamos SÓ mexendo na qtd
+                const mCopia = new Map(m);
+                mCopia.set(produtoId, { ...existente, quantidade: novaQtd });
+
+                // Se mexeu na quantidade e a promo caiu, AVISA
+                const antesTinhaPromo = existente.emPromocao;
+                const depoisComPromo = checkPromoLiberada(promocoesMap.get(produtoId), mCopia);
+
+                if (antesTinhaPromo && !depoisComPromo) {
+                    alert(`⚠️ Promoção do Produto Perdida.\nSe o preço era promocional, será reajustado em cascata para Tabela Normal.`);
+                }
+
                 m.set(produtoId, { ...existente, quantidade: novaQtd });
             } else {
                 // Item novo no carrinho - chuta um valor inicial, depois reavaliarMapaItens ajusta perfeitamente
@@ -366,18 +380,27 @@ const NovoPedido = () => {
                 }
 
                 // Restrição: Se o Vendedor atual sofreu redução de limite Flex e o histórico é muito velho, corrige para a Tabela.
-                const limitePerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
-                const valorMinimoPermitido = Number((valorBase * (1 - limitePerc / 100)).toFixed(2));
+                const promoNova = promocoesMap.get(produtoId);
+                // Prevemos temporariamente se a promo estaria ativa pra essa 1 unidade adicionada
+                const temporarioLiberado = (promoNova?.tipo === 'SIMPLES'); // CONDICIONAL nao bate meta de cara, só dps.
 
-                if (valorUnitario < valorMinimoPermitido && valorMinimoPermitido > 0) {
+                const limiteBasePerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
+                // Mínimo Tolerável no Adicionar
+                const limitePerc = temporarioLiberado ? 0 : limiteBasePerc;
+                const minDePromo = temporarioLiberado ? Number(promoNova.precoPromocional) : valorBase;
+                const valorMinimoRealPermitido = Number((minDePromo * (1 - limitePerc / 100)).toFixed(2));
+
+                // Exemplo Cliente Comprou a 42. Promo pede mínimo 39. Histórico 42 prevalece e o auto-atualizar ignora.
+                if (valorUnitario < valorMinimoRealPermitido && valorMinimoRealPermitido > 0) {
                     if (usouHistorico) {
-                        alert(`⚠️ O último preço pago (R$ ${valorUnitario.toFixed(2).replace('.', ',')}) excede seu limite de desconto atual.\nO valor será ajustado para o mínimo permitido: R$ ${valorMinimoPermitido.toFixed(2).replace('.', ',')}`);
+                        alert(`⚠️ O último preço pago (R$ ${valorUnitario.toFixed(2).replace('.', ',')}) excede o piso desta promoção/limite atual.\nO valor será ajustado para R$ ${valorMinimoRealPermitido.toFixed(2).replace('.', ',')}`);
                     }
-                    valorUnitario = valorMinimoPermitido;
+                    valorUnitario = valorMinimoRealPermitido; // Joga pro preço promo, ou pro limite normal.
                 }
 
                 m.set(produtoId, {
                     quantidade: novaQtd,
+                    veioDeHistorico: usouHistorico,
                     valorUnitario: Number(valorUnitario.toFixed(2)),
                     valorBase: Number(valorBase.toFixed(2)),
                     flexUnitario: Number((valorUnitario - valorBase).toFixed(2))
