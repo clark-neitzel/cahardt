@@ -188,8 +188,16 @@ const DetalheCliente = () => {
                     ) : (
                         atendimentos.map(a => (
                             <div key={a.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                                <div className="flex items-center justify-between mb-1">
-                                    <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded uppercase">{a.tipo}</span>
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded uppercase">{a.tipo}</span>
+                                        {a.vendedor?.nome && (
+                                            <span className="text-xs text-gray-500 flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
+                                                <User className="h-3 w-3" />
+                                                {a.vendedor.nome}
+                                            </span>
+                                        )}
+                                    </div>
                                     <span className="text-xs text-gray-400 flex items-center gap-1">
                                         <Clock className="h-3 w-3" />
                                         {new Date(a.criadoEm).toLocaleDateString('pt-BR')} {new Date(a.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}

@@ -43,6 +43,7 @@ const atendimentoService = {
     listarPorLead: async (leadId) => {
         return await prisma.atendimento.findMany({
             where: { leadId },
+            include: { vendedor: { select: { nome: true } } },
             orderBy: { criadoEm: 'desc' }
         });
     },
@@ -51,6 +52,7 @@ const atendimentoService = {
     listarPorCliente: async (clienteId) => {
         return await prisma.atendimento.findMany({
             where: { clienteId },
+            include: { vendedor: { select: { nome: true } } },
             orderBy: { criadoEm: 'desc' }
         });
     },
@@ -67,6 +69,7 @@ const atendimentoService = {
                 idVendedor: vendedorId,
                 criadoEm: { gte: hoje, lt: amanha }
             },
+            include: { vendedor: { select: { nome: true } } },
             orderBy: { criadoEm: 'desc' }
         });
     }

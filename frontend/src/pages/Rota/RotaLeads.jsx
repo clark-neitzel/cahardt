@@ -37,11 +37,13 @@ const itemTemDiaBase = (diasStr) => {
     return diasStr.toUpperCase().split(',').map(d => d.trim()).includes(base);
 };
 
-const isAtendidoHoje = (atendimentos) => {
-    if (!atendimentos || atendimentos.length === 0) return false;
+const getAtendimentoHoje = (atendimentos) => {
+    if (!atendimentos || atendimentos.length === 0) return null;
     const hoje = new Date().toDateString();
-    return atendimentos.some(a => new Date(a.criadoEm).toDateString() === hoje);
+    return atendimentos.find(a => new Date(a.criadoEm).toDateString() === hoje);
 };
+
+const isAtendidoHoje = (atendimentos) => !!getAtendimentoHoje(atendimentos);
 
 const isProximaVisitaHoje = (proximaVisita) => {
     if (!proximaVisita) return false;
@@ -58,7 +60,7 @@ const abrirMapa = (gps) => {
 // Card de Cliente
 // ================================================
 const CardCliente = ({ cliente, onAtendimento, onNovoPedido }) => {
-    const atendidoHoje = isAtendidoHoje(cliente._atendimentos);
+    const atendHoje = getAtendimentoHoje(cliente._atendimentos);
     const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
 
     return (
@@ -68,7 +70,11 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido }) => {
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                             <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-wide">Cliente</span>
-                            {atendidoHoje && <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><CheckCircle className="h-3 w-3" /> Atendido</span>}
+                            {atendHoje && (
+                                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={atendHoje.vendedor?.nome ? `Atendido por ${atendHoje.vendedor.nome}` : ''}>
+                                    <CheckCircle className="h-3 w-3" /> Atendido {atendHoje.vendedor?.nome && `por ${atendHoje.vendedor.nome.split(' ')[0]}`}
+                                </span>
+                            )}
                         </div>
                         <p className="font-bold text-[15px] text-gray-900 leading-tight truncate">{cliente.NomeFantasia || cliente.Nome}</p>
                         {cliente.End_Cidade && <p className="text-[12px] text-gray-500 mt-0.5">{cliente.End_Cidade}</p>}
@@ -131,7 +137,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido }) => {
 // Card de Lead
 // ================================================
 const CardLead = ({ lead, onAtendimento }) => {
-    const atendidoHoje = isAtendidoHoje(lead.atendimentos);
+    const atendHoje = getAtendimentoHoje(lead.atendimentos);
     const proxHoje = isProximaVisitaHoje(lead.proximaVisita);
 
     // Prospectos/Leads ficam com destaque laranja
@@ -143,8 +149,12 @@ const CardLead = ({ lead, onAtendimento }) => {
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="text-[11px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded uppercase tracking-wide">Lead #{lead.numero || '?'}</span>
                             <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${ETAPA_COLORS[lead.etapa] || 'bg-gray-100 text-gray-600'}`}>{lead.etapa}</span>
-                            {atendidoHoje && <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><CheckCircle className="h-3 w-3" /> Atendido</span>}
-                            {proxHoje && !atendidoHoje && <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><Star className="h-3 w-3" /> Visita Hoje!</span>}
+                            {atendHoje && (
+                                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={atendHoje.vendedor?.nome ? `Atendido por ${atendHoje.vendedor.nome}` : ''}>
+                                    <CheckCircle className="h-3 w-3" /> Atendido {atendHoje.vendedor?.nome && `por ${atendHoje.vendedor.nome.split(' ')[0]}`}
+                                </span>
+                            )}
+                            {proxHoje && !atendHoje && <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><Star className="h-3 w-3" /> Visita Hoje!</span>}
                         </div>
                         <p className="font-bold text-[15px] text-gray-900 leading-tight truncate">{lead.nomeEstabelecimento}</p>
                         {lead.contato && <p className="text-[12px] text-gray-500 mt-0.5">{lead.contato}</p>}

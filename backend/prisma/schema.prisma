@@ -261,6 +261,7 @@ model Vendedor {
   clientes Cliente[]
   pedidos  Pedido[]
   leads    Lead[]
+  atendimentos Atendimento[]
 
   @@map("vendedores")
 }
@@ -412,6 +413,7 @@ model Atendimento {
   clienteId       String?  @map("cliente_id")
 
   idVendedor      String   @map("id_vendedor")
+  vendedor        Vendedor @relation(fields: [idVendedor], references: [id])
 
   criadoEm        DateTime @default(now()) @map("criado_em")
 
