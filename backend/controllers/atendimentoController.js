@@ -29,6 +29,18 @@ const atendimentoController = {
             console.error('[atendimentoController.listarPorCliente]', error);
             res.status(500).json({ error: 'Erro ao listar atendimentos do cliente.' });
         }
+    },
+
+    listarHojeVendedor: async (req, res) => {
+        try {
+            const { vendedorId } = req.query;
+            if (!vendedorId) return res.status(400).json({ error: 'vendedorId obrigatório.' });
+            const atendimentos = await atendimentoService.listarHojeVendedor(vendedorId);
+            res.json(atendimentos);
+        } catch (error) {
+            console.error('[atendimentoController.listarHojeVendedor]', error);
+            res.status(500).json({ error: 'Erro ao listar atendimentos de hoje.' });
+        }
     }
 };
 

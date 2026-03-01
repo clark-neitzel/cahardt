@@ -212,16 +212,47 @@ const RotaLeads = () => {
     const carregar = useCallback(async () => {
         try {
             setLoading(true);
-            const [leadsData, clientesData] = await Promise.all([
+            const [leadsData, clientesData, atendHojeData] = await Promise.all([
                 leadService.listar(vendedorId),
-                clienteService.listar({ limit: 2000 })
+                clienteService.listar({ limit: 2000 }),
+                vendedorId ? atendimentoService.listarHoje(vendedorId) : Promise.resolve([])
             ]);
 
             // Normaliza resposta — pode vir como array ou { data: [] }
             const listaLeads = Array.isArray(leadsData) ? leadsData : (leadsData?.data || []);
             const listaClientes = Array.isArray(clientesData) ? clientesData : (clientesData?.data || []);
-            setLeads(listaLeads.filter(l => l.etapa !== 'FINALIZADO'));
-            setClientes(listaClientes);
+            const listaAtendHoje = Array.isArray(atendHojeData) ? atendHojeData : [];
+
+            // Mapas: clienteId → [atendimentos hoje] e leadId → [atendimentos hoje]
+            const mapClienteAtend = {};
+            const mapLeadAtend = {};
+            listaAtendHoje.forEach(a => {
+                if (a.clienteId) {
+                    if (!mapClienteAtend[a.clienteId]) mapClienteAtend[a.clienteId] = [];
+                    mapClienteAtend[a.clienteId].push(a);
+                }
+                if (a.leadId) {
+                    if (!mapLeadAtend[a.leadId]) mapLeadAtend[a.leadId] = [];
+                    mapLeadAtend[a.leadId].push(a);
+                }
+            });
+
+            // Injetar atendimentos de hoje nos clientes
+            const clientesComAtend = listaClientes.map(c => ({
+                ...c,
+                _atendimentos: mapClienteAtend[c.UUID] || []
+            }));
+
+            // Injetar atendimentos de hoje nos leads
+            const leadsComAtend = listaLeads
+                .filter(l => l.etapa !== 'FINALIZADO')
+                .map(l => ({
+                    ...l,
+                    atendimentos: mapLeadAtend[l.id] || l.atendimentos || []
+                }));
+
+            setLeads(leadsComAtend);
+            setClientes(clientesComAtend);
         } catch (e) {
             console.error(e);
             toast.error('Erro ao carregar dados da rota.', { duration: 5000 });
@@ -232,11 +263,9 @@ const RotaLeads = () => {
 
     useEffect(() => { carregar(); }, [carregar]);
 
-    // Classifica clientes com os atendimentos recentes
+    // Filtra clientes com rota definida (atendimentos já injetados no carregar)
     const clientesComAtendimento = useMemo(() => {
-        return clientes
-            .filter(c => c.Dia_de_venda || c.Dia_de_entrega) // só quem tem rota definida
-            .map(c => ({ ...c, _atendimentos: [] }));
+        return clientes.filter(c => c.Dia_de_venda || c.Dia_de_entrega);
     }, [clientes]);
 
     // Ordenar itens da aba "Atendimento" (não atendidos hoje)

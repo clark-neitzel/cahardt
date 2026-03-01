@@ -53,6 +53,22 @@ const atendimentoService = {
             where: { clienteId },
             orderBy: { criadoEm: 'desc' }
         });
+    },
+
+    // Retorna todos os atendimentos registrados HOJE para um vendedor
+    listarHojeVendedor: async (vendedorId) => {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        const amanha = new Date(hoje);
+        amanha.setDate(amanha.getDate() + 1);
+
+        return await prisma.atendimento.findMany({
+            where: {
+                idVendedor: vendedorId,
+                criadoEm: { gte: hoje, lt: amanha }
+            },
+            orderBy: { criadoEm: 'desc' }
+        });
     }
 };
 

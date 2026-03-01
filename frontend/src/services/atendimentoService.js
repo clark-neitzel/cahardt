@@ -14,6 +14,12 @@ const atendimentoService = {
     listarPorCliente: async (clienteId) => {
         const response = await api.get(`/atendimentos/cliente/${clienteId}`);
         return response.data;
+    },
+
+    // Retorna todos os atendimentos de hoje para um vendedor específico
+    listarHoje: async (vendedorId) => {
+        const response = await api.get('/atendimentos/hoje', { params: { vendedorId } });
+        return response.data;
     }
 };
 
