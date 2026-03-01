@@ -59,7 +59,7 @@ const abrirMapa = (gps) => {
 // ================================================
 // Card de Cliente
 // ================================================
-const CardCliente = ({ cliente, onAtendimento, onNovoPedido }) => {
+const CardCliente = ({ cliente, onAtendimento, onNovoPedido, mostrarAcoes = true }) => {
     const atendHoje = getAtendimentoHoje(cliente._atendimentos);
     const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
 
@@ -114,20 +114,22 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido }) => {
                 )}
 
                 {/* Ações */}
-                <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
-                    <button
-                        onClick={() => onAtendimento({ tipo: 'cliente', item: cliente })}
-                        className="flex-1 bg-blue-600 text-white text-[13px] font-semibold py-2 rounded-lg flex items-center justify-center gap-1.5 active:opacity-80"
-                    >
-                        <ClipboardList className="h-4 w-4" /> Registrar Atendimento
-                    </button>
-                    <button
-                        onClick={() => onNovoPedido(cliente.UUID)}
-                        className="bg-gray-100 text-gray-700 text-[13px] font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 active:opacity-80"
-                    >
-                        <Package className="h-4 w-4" /> Pedido
-                    </button>
-                </div>
+                {mostrarAcoes && (
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                        <button
+                            onClick={() => onAtendimento({ tipo: 'cliente', item: cliente })}
+                            className="flex-1 bg-blue-600 text-white text-[13px] font-semibold py-2 rounded-lg flex items-center justify-center gap-1.5 active:opacity-80"
+                        >
+                            <ClipboardList className="h-4 w-4" /> Registrar Atendimento
+                        </button>
+                        <button
+                            onClick={() => onNovoPedido(cliente.UUID)}
+                            className="bg-gray-100 text-gray-700 text-[13px] font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 active:opacity-80"
+                        >
+                            <Package className="h-4 w-4" /> Pedido
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -136,7 +138,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido }) => {
 // ================================================
 // Card de Lead
 // ================================================
-const CardLead = ({ lead, onAtendimento }) => {
+const CardLead = ({ lead, onAtendimento, mostrarAcoes = true }) => {
     const atendHoje = getAtendimentoHoje(lead.atendimentos);
     const proxHoje = isProximaVisitaHoje(lead.proximaVisita);
 
@@ -190,14 +192,16 @@ const CardLead = ({ lead, onAtendimento }) => {
                     </div>
                 )}
 
-                <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
-                    <button
-                        onClick={() => onAtendimento({ tipo: 'lead', item: lead })}
-                        className="flex-1 bg-orange-500 text-white text-[13px] font-semibold py-2 rounded-lg flex items-center justify-center gap-1.5 active:opacity-80"
-                    >
-                        <ClipboardList className="h-4 w-4" /> Registrar Atendimento
-                    </button>
-                </div>
+                {mostrarAcoes && (
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                        <button
+                            onClick={() => onAtendimento({ tipo: 'lead', item: lead })}
+                            className="flex-1 bg-orange-500 text-white text-[13px] font-semibold py-2 rounded-lg flex items-center justify-center gap-1.5 active:opacity-80"
+                        >
+                            <ClipboardList className="h-4 w-4" /> Registrar Atendimento
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -323,10 +327,12 @@ const RotaLeads = () => {
     };
 
     const renderItem = (item) => {
+        const mostrarAcoes = aba === 'atendimento';
+
         if (item._tipo === 'cliente') {
-            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} />;
+            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} mostrarAcoes={mostrarAcoes} />;
         }
-        return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} />;
+        return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} mostrarAcoes={mostrarAcoes} />;
     };
 
     const diaBase = getDiaSigla(getDiaBase());
