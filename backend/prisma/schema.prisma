@@ -267,6 +267,7 @@ model Vendedor {
   pedidosLancados Pedido[] @relation("UsuarioLancamento")
   leads    Lead[]
   atendimentos Atendimento[]
+  diarios  DiarioVendedor[]
 
   @@map("vendedores")
 }
@@ -426,4 +427,48 @@ model Atendimento {
   @@index([clienteId])
   @@index([idVendedor])
   @@map("atendimentos")
+}
+// =============================================
+// MÓDULO PONTO E VEÍCULOS (DIÁRIO / GATE)
+// =============================================
+
+model Veiculo {
+  id           String   @id @default(uuid())
+  placa        String   @unique
+  modelo       String
+  documentoUrl String?  @map("documento_url")
+  ativo        Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  diarios DiarioVendedor[]
+
+  @@map("veiculos")
+}
+
+model DiarioVendedor {
+  id             String   @id @default(uuid())
+  vendedorId     String   @map("vendedor_id")
+  modo           String   // HOME_OFFICE ou PRESENCIAL
+  dataReferencia String   @map("data_referencia") // YYYY-MM-DD para busca exata (sem HH:MM)
+  
+  // Se Presencial
+  veiculoId      String?  @map("veiculo_id")
+  kmInicial      Int?     @map("km_inicial")
+  kmFinal        Int?     @map("km_final")
+  checklist      Json?    // Array de booleans/strings
+  obs            String?  @db.Text
+
+  // Timestamps de Ponto
+  inicioHora     DateTime @default(now()) @map("inicio_hora")
+  fimHora        DateTime? @map("fim_hora")
+
+  vendedor Vendedor @relation(fields: [vendedorId], references: [id])
+  veiculo  Veiculo? @relation(fields: [veiculoId], references: [id])
+
+  @@unique([vendedorId, dataReferencia])
+  @@index([vendedorId])
+  @@index([dataReferencia])
+  @@index([veiculoId])
+  @@map("diario_vendedor")
 }

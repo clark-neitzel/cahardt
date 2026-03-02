@@ -12,13 +12,16 @@ import Configuracoes from './pages/Admin/Configuracoes/Configuracoes';
 import TabelaPrecos from './pages/Configuracoes/TabelaPrecos';
 import ContasFinanceiras from './pages/Configuracoes/ContasFinanceiras';
 import ListaPedidos from './pages/Pedidos/ListaPedidos';
+import Veiculos from './pages/Veiculos/Veiculos';
 import NovoPedido from './pages/Pedidos/NovoPedido';
 import RotaLeads from './pages/Rota/RotaLeads';
 import Login from './pages/Login/Login';
 
-import { Menu, X, LogOut } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { DiarioProvider } from './contexts/DiarioContext';
+import DiarioGateway from './components/Diario/DiarioGateway';
+import DiarioCheckout from './components/Diario/DiarioCheckout';
 
 const PrivateRoute = ({ children, tab }) => {
   const { signed, loading, hasPermission } = useAuth();
@@ -73,8 +76,11 @@ const Layout = ({ children }) => {
                 {hasPermission('vendedores') && (
                   <NavLink to="/admin/vendedores" className={({ isActive }) => getNavLinkClass(isActive)}>Vendedores</NavLink>
                 )}
+                {hasPermission('clientes', 'clientes') === 'todos' && (
+                  <NavLink to="/admin/veiculos" className={({ isActive }) => getNavLinkClass(isActive)}>Veículos</NavLink>
+                )}
                 {hasPermission('sync') && (
-                  <NavLink to="/admin/sync" className={({ isActive }) => getNavLinkClass(isActive)}>Admin: Sync</NavLink>
+                  <NavLink to="/admin/sync" className={({ isActive }) => getNavLinkClass(isActive)}>Sincronizar</NavLink>
                 )}
                 {hasPermission('configuracoes') && (
                   <>
@@ -87,6 +93,7 @@ const Layout = ({ children }) => {
             </div>
 
             <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
+              <DiarioCheckout />
               <span className="text-sm font-medium text-gray-700">Olá, {user.login || user.nome}</span>
               <button
                 onClick={logout}
@@ -132,8 +139,11 @@ const Layout = ({ children }) => {
               {hasPermission('vendedores') && (
                 <NavLink to="/admin/vendedores" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Vendedores</NavLink>
               )}
+              {hasPermission('clientes', 'clientes') === 'todos' && (
+                <NavLink to="/admin/veiculos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Veículos</NavLink>
+              )}
               {hasPermission('sync') && (
-                <NavLink to="/admin/sync" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Admin: Sync</NavLink>
+                <NavLink to="/admin/sync" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Sincronizar</NavLink>
               )}
               {hasPermission('configuracoes') && (
                 <>
@@ -142,6 +152,8 @@ const Layout = ({ children }) => {
                   <NavLink to="/config/contas-financeiras" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Bancos</NavLink>
                 </>
               )}
+
+              <DiarioCheckout />
 
               <button
                 onClick={() => { logout(); setIsMobileMenuOpen(false); }}
@@ -153,6 +165,10 @@ const Layout = ({ children }) => {
           </div>
         )}
       </nav>
+
+      {/* GATEKEEPER DO DIÁRIO / PONTO */}
+      <DiarioGateway />
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
         {children}
       </main>
@@ -164,40 +180,43 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Layout>
-          <Routes>
-            <Route path="/login" element={<Login />} />
+        <DiarioProvider>
+          <Layout>
+            <Routes>
+              <Route path="/login" element={<Login />} />
 
-            {/* Catálogo */}
-            <Route path="/" element={<PrivateRoute tab="catalogo"><Catalogo /></PrivateRoute>} />
-            <Route path="/produto/:id" element={<PrivateRoute tab="catalogo"><DetalheProduto /></PrivateRoute>} />
+              {/* Catálogo */}
+              <Route path="/" element={<PrivateRoute tab="catalogo"><Catalogo /></PrivateRoute>} />
+              <Route path="/produto/:id" element={<PrivateRoute tab="catalogo"><DetalheProduto /></PrivateRoute>} />
 
-            {/* Pedidos */}
-            <Route path="/pedidos" element={<PrivateRoute tab="pedidos"><ListaPedidos /></PrivateRoute>} />
-            <Route path="/pedidos/novo" element={<PrivateRoute tab="pedidos"><NovoPedido /></PrivateRoute>} />
-            <Route path="/pedidos/editar/:id" element={<PrivateRoute tab="pedidos"><NovoPedido /></PrivateRoute>} />
+              {/* Pedidos */}
+              <Route path="/pedidos" element={<PrivateRoute tab="pedidos"><ListaPedidos /></PrivateRoute>} />
+              <Route path="/pedidos/novo" element={<PrivateRoute tab="pedidos"><NovoPedido /></PrivateRoute>} />
+              <Route path="/pedidos/editar/:id" element={<PrivateRoute tab="pedidos"><NovoPedido /></PrivateRoute>} />
 
-            {/* Rota / Leads (CRM) */}
-            <Route path="/rota" element={<PrivateRoute tab="pedidos"><RotaLeads /></PrivateRoute>} />
+              {/* Rota / Leads (CRM) */}
+              <Route path="/rota" element={<PrivateRoute tab="pedidos"><RotaLeads /></PrivateRoute>} />
 
-            {/* Clientes */}
-            <Route path="/clientes" element={<PrivateRoute tab="clientes"><ListaClientes /></PrivateRoute>} />
-            <Route path="/clientes/:uuid" element={<PrivateRoute tab="clientes"><DetalheCliente /></PrivateRoute>} />
+              {/* Clientes */}
+              <Route path="/clientes" element={<PrivateRoute tab="clientes"><ListaClientes /></PrivateRoute>} />
+              <Route path="/clientes/:uuid" element={<PrivateRoute tab="clientes"><DetalheCliente /></PrivateRoute>} />
 
-            {/* Produtos / Admin */}
-            <Route path="/admin/produtos" element={<PrivateRoute tab="produtos"><ListaProdutos /></PrivateRoute>} />
-            <Route path="/admin/produtos/novo" element={<PrivateRoute tab="produtos"><GerenciarProduto /></PrivateRoute>} />
-            <Route path="/admin/produtos/:id" element={<PrivateRoute tab="produtos"><GerenciarProduto /></PrivateRoute>} />
+              {/* Produtos / Admin */}
+              <Route path="/admin/produtos" element={<PrivateRoute tab="produtos"><ListaProdutos /></PrivateRoute>} />
+              <Route path="/admin/produtos/novo" element={<PrivateRoute tab="produtos"><GerenciarProduto /></PrivateRoute>} />
+              <Route path="/admin/produtos/:id" element={<PrivateRoute tab="produtos"><GerenciarProduto /></PrivateRoute>} />
 
-            {/* Outros Admins */}
-            <Route path="/admin/sync" element={<PrivateRoute tab="sync"><PainelSync /></PrivateRoute>} />
-            <Route path="/admin/vendedores" element={<PrivateRoute tab="vendedores"><ListaVendedores /></PrivateRoute>} />
-            <Route path="/admin/config" element={<PrivateRoute tab="configuracoes"><Configuracoes /></PrivateRoute>} />
-            <Route path="/config/tabela-precos" element={<PrivateRoute tab="configuracoes"><TabelaPrecos /></PrivateRoute>} />
-            <Route path="/config/contas-financeiras" element={<PrivateRoute tab="configuracoes"><ContasFinanceiras /></PrivateRoute>} />
-          </Routes>
-        </Layout>
-        <Toaster position="top-right" />
+              {/* Outros Admins */}
+              <Route path="/admin/sync" element={<PrivateRoute tab="sync"><PainelSync /></PrivateRoute>} />
+              <Route path="/admin/vendedores" element={<PrivateRoute tab="vendedores"><ListaVendedores /></PrivateRoute>} />
+              <Route path="/admin/veiculos" element={<PrivateRoute tab="clientes"><Veiculos /></PrivateRoute>} />
+              <Route path="/admin/config" element={<PrivateRoute tab="configuracoes"><Configuracoes /></PrivateRoute>} />
+              <Route path="/config/tabela-precos" element={<PrivateRoute tab="configuracoes"><TabelaPrecos /></PrivateRoute>} />
+              <Route path="/config/contas-financeiras" element={<PrivateRoute tab="configuracoes"><ContasFinanceiras /></PrivateRoute>} />
+            </Routes>
+          </Layout>
+          <Toaster position="top-right" />
+        </DiarioProvider>
       </AuthProvider>
     </Router>
   );

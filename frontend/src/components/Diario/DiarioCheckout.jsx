@@ -1,0 +1,119 @@
+import React, { useState } from 'react';
+import { LogOut, X } from 'lucide-react';
+import { useDiario } from '../../contexts/DiarioContext';
+import { toast } from 'react-hot-toast';
+import api from '../../services/api';
+
+const DiarioCheckout = () => {
+    const { diarioStatus, carregarStatus } = useDiario();
+    const [isOpen, setIsOpen] = useState(false);
+    const [kmFinal, setKmFinal] = useState('');
+    const [obsFinal, setObsFinal] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Só exibe se o dia estiver iniciado em modo PRESENCIAL
+    if (!diarioStatus.diarioHoje || diarioStatus.diarioHoje.modo !== 'PRESENCIAL' || diarioStatus.diarioHoje.kmFinal) {
+        return null;
+    }
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            setIsSubmitting(true);
+            await api.post('/diarios/encerrar', {
+                diarioId: diarioStatus.diarioHoje.id,
+                kmFinal: parseInt(kmFinal),
+                obsFinal
+            });
+            toast.success('Expediente presencial encerrado com sucesso!');
+            await carregarStatus();
+            setIsOpen(false);
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao finalizar o dia');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <>
+            <button
+                onClick={() => setIsOpen(true)}
+                className="hidden sm:inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                title="Finalizar o Dia e Informar KM Final"
+            >
+                <LogOut className="h-4 w-4 mr-1.5" />
+                Finalizar Expediente
+            </button>
+
+            {/* Mobile Version inside Sidebar */}
+            <button
+                onClick={() => setIsOpen(true)}
+                className="sm:hidden w-full text-left bg-red-50 border-l-4 border-red-500 text-red-700 block pl-3 pr-4 py-2 text-base font-medium hover:bg-red-100"
+            >
+                Finalizar Expediente ({diarioStatus.diarioHoje.veiculo?.placa})
+            </button>
+
+
+            {isOpen && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+                    <div className="relative p-5 border w-full max-w-md shadow-lg rounded-xl bg-white mx-4">
+                        <div className="flex justify-between items-center mb-4 border-b pb-3">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                                <LogOut className="h-5 w-5 mr-2 text-red-600" />
+                                Encerrar Dia Presencial
+                            </h3>
+                            <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-500">
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
+
+                        <div className="bg-blue-50 p-3 rounded-lg flex items-center justify-between text-blue-900 border border-blue-200 mb-4">
+                            <span className="text-sm font-medium">Você saiu com:</span>
+                            <span className="font-mono text-lg font-bold">{diarioStatus.diarioHoje.kmInicial} <span className="text-xs">KM</span></span>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">
+                                    Odômetro / KM Final *
+                                </label>
+                                <input
+                                    type="number"
+                                    required
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-center text-3xl font-mono h-14 font-bold bg-gray-50 uppercase"
+                                    value={kmFinal}
+                                    onChange={(e) => setKmFinal(e.target.value)}
+                                    placeholder="00000"
+                                    min={diarioStatus.diarioHoje.kmInicial}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Deve ser igual ou maior que a saída.</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Ocorrências do dia (opcional)</label>
+                                <textarea
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm bg-gray-50"
+                                    rows="2"
+                                    value={obsFinal}
+                                    onChange={(e) => setObsFinal(e.target.value)}
+                                    placeholder="Teve algum problema com o carro, trânsito ou multas?"
+                                ></textarea>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="w-full h-12 flex justify-center items-center rounded-lg shadow-sm px-4 py-2 bg-red-600 text-base font-bold text-white hover:bg-red-700 disabled:opacity-50 transition-colors mt-2"
+                            >
+                                CONFIRMAR E ENTREGAR VEÍCULO
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+};
+
+export default DiarioCheckout;
