@@ -80,7 +80,7 @@ const DiarioGateway = () => {
             setIsSubmitting(true);
             await api.post('/diarios/iniciar', { modo: 'HOME_OFFICE' });
             toast.success('Expediente de Home Office iniciado!');
-            await carregarStatus();
+            setTimeout(() => window.location.reload(), 800);
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao iniciar o dia.');
             setIsSubmitting(false);
@@ -103,7 +103,7 @@ const DiarioGateway = () => {
                 obs
             });
             toast.success('Boa viagem! Registrado com sucesso.');
-            await carregarStatus();
+            setTimeout(() => window.location.reload(), 800);
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao iniciar o dia.');
             setIsSubmitting(false);

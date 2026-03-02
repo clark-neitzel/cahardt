@@ -1,12 +1,20 @@
 const prisma = require('../config/database');
 
-// Função auxiliar para pegar data no formato YYYY-MM-DD
+// Função auxiliar para pegar data no formato YYYY-MM-DD baseado no horário de Brasília
 const getDataReferencia = (data) => {
     const d = data ? new Date(data) : new Date();
-    // Atenção: Fuso horário do Brasil para evitar erro de virada de dia
-    const offset = d.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(d.getTime() - offset)).toISOString().slice(0, 10);
-    return localISOTime;
+    // Extrai o YYYY, MM, DD usando o timezone seguro de São Paulo (evita erro de virada UTC)
+    const formatter = new Intl.DateTimeFormat('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    const partes = formatter.formatToParts(d);
+    const ano = partes.find(p => p.type === 'year').value;
+    const mes = partes.find(p => p.type === 'month').value;
+    const dia = partes.find(p => p.type === 'day').value;
+    return `${ano}-${mes}-${dia}`;
 };
 
 const diarioService = {
