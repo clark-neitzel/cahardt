@@ -41,9 +41,10 @@ model Produto {
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  imagens    ProdutoImagem[]
-  itens      PedidoItem[]
-  promocoes  Promocao[]
+  imagens         ProdutoImagem[]
+  itens           PedidoItem[]
+  promocoes       Promocao[]
+  itensDevolvidos EntregaItemDevolvido[]
 
   @@map("produtos")
 }
@@ -179,6 +180,17 @@ model Pedido {
 
   itens PedidoItem[]
 
+  // Embarque e Entregas Logísticas
+  embarqueId           String?   @map("embarque_id")
+  embarque             Embarque? @relation(fields: [embarqueId], references: [id])
+  statusEntrega        String    @default("PENDENTE") @map("status_entrega") // PENDENTE, ENTREGUE, ENTREGUE_PARCIAL, DEVOLVIDO
+  dataEntrega          DateTime? @map("data_entrega")
+  gpsEntrega           String?   @map("gps_entrega")
+  divergenciaPagamento Boolean   @default(false) @map("divergencia_pagamento")
+
+  pagamentosReais      PedidoPagamentoReal[]
+  itensDevolvidos      EntregaItemDevolvido[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -268,6 +280,9 @@ model Vendedor {
   leads    Lead[]
   atendimentos Atendimento[]
   diarios  DiarioVendedor[]
+
+  embarques           Embarque[]
+  pagamentosFiados    PedidoPagamentoReal[] @relation("PagamentosFiados")
 
   @@map("vendedores")
 }
@@ -472,3 +487,74 @@ model DiarioVendedor {
   @@index([veiculoId])
   @@map("diario_vendedor")
 }
+
+// =============================================
+// MÓDULO EMBARQUE E ENTREGAS 
+// =============================================
+
+model Embarque {
+  id             String   @id @default(uuid())
+  numero         Int      @default(autoincrement())
+  dataSaida      DateTime @map("data_saida")
+  
+  responsavelId  String   @map("responsavel_id") // Vendedor/Usuário responsável
+  responsavel    Vendedor @relation(fields: [responsavelId], references: [id])
+
+  pedidos        Pedido[]
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("embarques")
+}
+
+model FormaPagamentoEntrega {
+  id                           String   @id @default(uuid())
+  nome                         String
+  permiteVendedorResponsavel   Boolean  @default(false) @map("permite_vendedor_responsavel")
+  permiteEscritorioResponsavel Boolean  @default(false) @map("permite_escritorio_responsavel")
+  ativo                        Boolean  @default(true)
+  createdAt                    DateTime @default(now()) @map("created_at")
+  updatedAt                    DateTime @updatedAt @map("updated_at")
+
+  pagamentosReais              PedidoPagamentoReal[]
+
+  @@map("formas_pagamento_entrega")
+}
+
+model PedidoPagamentoReal {
+  id                      String   @id @default(uuid())
+  pedidoId                String   @map("pedido_id")
+  formaPagamentoEntregaId String?  @map("forma_pagamento_entrega_id")
+  
+  formaPagamentoNome      String   @map("forma_pagamento_nome") // Nome na hora, para histórico
+  valor                   Decimal  @db.Decimal(12, 2)
+  
+  // Responsabilidade em caso de Dívida/Ação
+  vendedorResponsavelId   String?  @map("vendedor_responsavel_id")
+  escritorioResponsavel   Boolean  @default(false) @map("escritorio_responsavel")
+
+  pedido                  Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  formaPagamento          FormaPagamentoEntrega? @relation(fields: [formaPagamentoEntregaId], references: [id])
+  vendedorResponsavel     Vendedor? @relation("PagamentosFiados", fields: [vendedorResponsavelId], references: [id])
+
+  createdAt               DateTime @default(now()) @map("created_at")
+
+  @@map("pedido_pagamentos_reais")
+}
+
+model EntregaItemDevolvido {
+  id            String   @id @default(uuid())
+  pedidoId      String   @map("pedido_id")
+  produtoId     String   @map("produto_id")
+  quantidade    Decimal  @db.Decimal(12, 3)
+  valorBaseItem Decimal  @db.Decimal(12, 2) @map("valor_base_item") // Valor do item devolvido para registro e cálculo de estorno
+  
+  pedido        Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto       Produto  @relation(fields: [produtoId], references: [id])
+
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("entrega_itens_devolvidos")
+}
+
