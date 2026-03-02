@@ -76,7 +76,7 @@ const Layout = ({ children }) => {
                   <NavLink to="/clientes" className={({ isActive }) => getNavLinkClass(isActive)}>Clientes</NavLink>
                 )}
                 {/* AGRUPAMENTO DE ROTINA ADMINISTRATIVA */}
-                {user?.permissoes?.admin && (
+                {(hasPermission('produtos') || hasPermission('vendedores') || hasPermission('sync') || hasPermission('configuracoes') || hasPermission('clientes', 'clientes') === 'todos' || user?.permissoes?.admin) && (
                   <div
                     className="relative flex items-center"
                     onMouseEnter={() => setIsAdminDropdownOpen(true)}
