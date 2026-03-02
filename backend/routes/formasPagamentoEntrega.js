@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { verificarAuth } = require('../middlewares/auth');
+const verificarAuth = require('../middlewares/authMiddleware');
 
 // GET: Listar formas (Se entregador, só ativas)
 router.get('/', verificarAuth, async (req, res) => {
