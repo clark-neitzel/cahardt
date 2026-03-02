@@ -41,8 +41,8 @@ const Layout = ({ children }) => {
 
   const getNavLinkClass = (isActive) =>
     isActive
-      ? "text-primary inline-flex items-center px-1 pt-1 border-b-2 border-primary"
-      : "text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300";
+      ? "text-primary inline-flex items-center px-2 pt-1 border-b-2 border-primary whitespace-nowrap flex-shrink-0 text-sm"
+      : "text-gray-900 inline-flex items-center px-2 pt-1 border-b-2 border-transparent hover:border-gray-300 whitespace-nowrap flex-shrink-0 text-sm";
 
   const getMobileNavLinkClass = (isActive) =>
     isActive
@@ -54,11 +54,11 @@ const Layout = ({ children }) => {
       <nav className="bg-white shadow-sm mb-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex">
-              <Link to="/" className="flex-shrink-0 flex items-center text-primary font-bold">
+            <div className="flex flex-1 overflow-hidden">
+              <Link to="/" className="flex-shrink-0 flex items-center text-primary font-bold mr-4">
                 Hardt App
               </Link>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              <div className="hidden sm:flex sm:space-x-2 lg:space-x-4 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {hasPermission('catalogo') && (
                   <NavLink to="/" className={({ isActive }) => getNavLinkClass(isActive)}>Catálogo</NavLink>
                 )}
@@ -77,7 +77,7 @@ const Layout = ({ children }) => {
                 {hasPermission('vendedores') && (
                   <NavLink to="/admin/vendedores" className={({ isActive }) => getNavLinkClass(isActive)}>Vendedores</NavLink>
                 )}
-                {hasPermission('clientes', 'clientes') === 'todos' && (
+                {(user?.permissoes?.admin || hasPermission('clientes', 'clientes') === 'todos') && (
                   <NavLink to="/admin/veiculos" className={({ isActive }) => getNavLinkClass(isActive)}>Veículos</NavLink>
                 )}
                 {hasPermission('sync') && (
@@ -140,7 +140,7 @@ const Layout = ({ children }) => {
               {hasPermission('vendedores') && (
                 <NavLink to="/admin/vendedores" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Vendedores</NavLink>
               )}
-              {hasPermission('clientes', 'clientes') === 'todos' && (
+              {(user?.permissoes?.admin || hasPermission('clientes', 'clientes') === 'todos') && (
                 <NavLink to="/admin/veiculos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Veículos</NavLink>
               )}
               {hasPermission('sync') && (
