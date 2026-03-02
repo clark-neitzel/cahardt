@@ -12,6 +12,7 @@ const DEFAULT_PERMISSIONS = {
     vendedores: { view: false, edit: false },
     sync: { view: false, edit: false },
     configuracoes: { view: false, edit: false },
+    admin: false // Flag Global Mestre
 };
 
 const TAB_LABELS = {
@@ -136,9 +137,24 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                     </div>
 
                     <div className="border-t pt-4">
+                        <div className="flex items-center justify-between bg-indigo-50 p-4 rounded-md border border-indigo-200 mb-6">
+                            <div>
+                                <h4 className="font-bold text-indigo-900">Administrador Global (Isento de Ponto)</h4>
+                                <p className="text-xs text-indigo-700 mt-1">Este usuário pula a trava Matinal de Veículos/KM e tem acesso irrestrito visual aos Menus Administrativos Superiores.</p>
+                            </div>
+                            <label className="flex items-center space-x-2 text-sm cursor-pointer ml-4">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-5 w-5"
+                                    checked={!!permissoes.admin}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, admin: e.target.checked }))}
+                                />
+                            </label>
+                        </div>
+
                         <h4 className="font-medium text-gray-900 mb-4">Permissões de Abas</h4>
                         <div className="space-y-3">
-                            {Object.keys(DEFAULT_PERMISSIONS).map(tabKey => (
+                            {Object.keys(DEFAULT_PERMISSIONS).filter(k => k !== 'admin').map(tabKey => (
                                 <div key={tabKey} className="flex flex-col sm:flex-row sm:items-center justify-between bg-gray-50 p-3 rounded-md border border-gray-200">
                                     <span className="font-medium text-sm text-gray-700 mb-2 sm:mb-0 w-1/3">
                                         {TAB_LABELS[tabKey] || tabKey}
