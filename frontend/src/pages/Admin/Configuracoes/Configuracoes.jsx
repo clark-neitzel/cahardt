@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import configService from '../../../services/configService';
-import { Save, AlertCircle, CheckCircle } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle, Truck } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Configuracoes = () => {
     const [categorias, setCategorias] = useState([]);
@@ -118,6 +119,30 @@ const Configuracoes = () => {
                             <Save className="h-5 w-5 mr-2" />
                             {saving ? 'Salvando...' : 'Salvar Alterações'}
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Nova Seção Sub-Modulos */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mt-8">
+                <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-700 flex items-center">
+                            <Truck className="h-5 w-5 mr-2 text-sky-600" />
+                            Logística e Expedição
+                        </h2>
+                        <p className="text-sm text-gray-500">Regras e exceções de controle para os caminhões.</p>
+                    </div>
+                </div>
+                <div className="p-6">
+                    <div className="mb-4">
+                        <h3 className="text-md font-medium text-gray-800">Meios de Pagamento da Viagem</h3>
+                        <p className="text-xs text-gray-500 mt-1 mb-4">
+                            Crie parâmetros de baixa como "Caixa Devedor (Motorista)", "Responsabilidade Escritório", Pix na rua, etc. Isso moldará o checkout do Aplicativo.
+                        </p>
+                        <Link to="/config/pagamentos-entrega" className="inline-flex items-center px-4 py-2 bg-sky-50 text-sky-700 border border-sky-200 rounded-md shadow-sm text-sm font-medium hover:bg-sky-100 transition-colors">
+                            Configurar Pagamentos da Entrega
+                        </Link>
                     </div>
                 </div>
             </div>
