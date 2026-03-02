@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, NavLink, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, NavLink, Navigate, useLocation } from 'react-router-dom';
 import Catalogo from './pages/Produtos/Catalogo';
 import DetalheProduto from './pages/Produtos/DetalheProduto';
 import ListaProdutos from './pages/Admin/Produtos/ListaProdutos';
@@ -17,7 +17,7 @@ import NovoPedido from './pages/Pedidos/NovoPedido';
 import RotaLeads from './pages/Rota/RotaLeads';
 import Login from './pages/Login/Login';
 
-import { Menu, X, LogOut } from 'lucide-react';
+import { Menu, X, LogOut, ChevronDown } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DiarioProvider } from './contexts/DiarioContext';
@@ -34,7 +34,11 @@ const PrivateRoute = ({ children, tab }) => {
 
 const Layout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAdminDropdownOpen, setIsAdminDropdownOpen] = useState(false);
   const { user, logout, hasPermission, loading } = useAuth();
+  const location = useLocation();
+
+  const isAdminRouteActive = ['/admin', '/config'].some(path => location.pathname.startsWith(path));
 
   // Se não estiver logado, renderiza apenas o conteúdo (tela de login)
   if (!user || loading) return <>{children}</>;
@@ -54,11 +58,11 @@ const Layout = ({ children }) => {
       <nav className="bg-white shadow-sm mb-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex flex-1 overflow-hidden">
-              <Link to="/" className="flex-shrink-0 flex items-center text-primary font-bold mr-4">
+            <div className="flex flex-1">
+              <Link to="/" className="flex-shrink-0 flex items-center text-primary font-bold mr-6 text-lg tracking-tight">
                 Hardt App
               </Link>
-              <div className="hidden sm:flex sm:space-x-2 lg:space-x-4 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div className="hidden sm:flex sm:space-x-8">
                 {hasPermission('catalogo') && (
                   <NavLink to="/" className={({ isActive }) => getNavLinkClass(isActive)}>Catálogo</NavLink>
                 )}
@@ -71,24 +75,40 @@ const Layout = ({ children }) => {
                 {hasPermission('clientes') && (
                   <NavLink to="/clientes" className={({ isActive }) => getNavLinkClass(isActive)}>Clientes</NavLink>
                 )}
-                {hasPermission('produtos') && (
-                  <NavLink to="/admin/produtos" className={({ isActive }) => getNavLinkClass(isActive)}>Produtos</NavLink>
-                )}
-                {hasPermission('vendedores') && (
-                  <NavLink to="/admin/vendedores" className={({ isActive }) => getNavLinkClass(isActive)}>Vendedores</NavLink>
-                )}
-                {(user?.permissoes?.admin || hasPermission('clientes', 'clientes') === 'todos') && (
-                  <NavLink to="/admin/veiculos" className={({ isActive }) => getNavLinkClass(isActive)}>Veículos</NavLink>
-                )}
-                {hasPermission('sync') && (
-                  <NavLink to="/admin/sync" className={({ isActive }) => getNavLinkClass(isActive)}>Sincronizar</NavLink>
-                )}
-                {hasPermission('configuracoes') && (
-                  <>
-                    <NavLink to="/admin/config" className={({ isActive }) => getNavLinkClass(isActive)}>Configurações</NavLink>
-                    <NavLink to="/config/tabela-precos" className={({ isActive }) => getNavLinkClass(isActive)}>Preços</NavLink>
-                    <NavLink to="/config/contas-financeiras" className={({ isActive }) => getNavLinkClass(isActive)}>Bancos</NavLink>
-                  </>
+                {/* AGRUPAMENTO DE ROTINA ADMINISTRATIVA */}
+                {user?.permissoes?.admin && (
+                  <div
+                    className="relative flex items-center"
+                    onMouseEnter={() => setIsAdminDropdownOpen(true)}
+                    onMouseLeave={() => setIsAdminDropdownOpen(false)}
+                  >
+                    <button className={`${getNavLinkClass(isAdminRouteActive)} cursor-default focus:outline-none flex items-center`}>
+                      Painel Admin <ChevronDown className="ml-1 w-4 h-4" />
+                    </button>
+
+                    {isAdminDropdownOpen && (
+                      <div className="absolute top-12 left-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 py-1 z-50">
+                        {hasPermission('produtos') && (
+                          <Link to="/admin/produtos" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Produtos</Link>
+                        )}
+                        {hasPermission('vendedores') && (
+                          <Link to="/admin/vendedores" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Vendedores</Link>
+                        )}
+                        <Link to="/admin/veiculos" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Veículos (Frota)</Link>
+                        {hasPermission('sync') && (
+                          <Link to="/admin/sync" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sincronizar (Erp)</Link>
+                        )}
+                        {hasPermission('configuracoes') && (
+                          <>
+                            <div className="border-t border-gray-100 my-1"></div>
+                            <Link to="/admin/config" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Gerais</Link>
+                            <Link to="/config/tabela-precos" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Preços</Link>
+                            <Link to="/config/contas-financeiras" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Bancos</Link>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

@@ -111,7 +111,7 @@ const DiarioGateway = () => {
     };
 
     if (!signed) return null; // Prevenção se a sessão estiver limpando
-    if (!user?.vendedorId) return null; // Admins ou usuários sem matrícula de vendedor não batem ponto
+    if (!user?.vendedorId) return null; // SE não tem ID de vendedor atrelado (Master puro), pula o ponto. SE TEM ID (é um vendedor), tranca.
 
     if (diarioStatus.loading) {
         return <div className="fixed inset-0 bg-white z-[100] flex justify-center items-center font-semibold text-gray-500">Aguarde, verificando seu Ponto Diário...</div>;
