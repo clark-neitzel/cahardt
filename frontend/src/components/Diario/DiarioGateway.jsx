@@ -123,16 +123,17 @@ const DiarioGateway = () => {
 
     // Modal de Bloqueio Intransponível
     return (
-        <div className="fixed inset-0 bg-gray-100 z-[100] overflow-y-auto w-full h-full flex flex-col justify-center items-center">
+        <div className="fixed inset-0 bg-gray-100 z-[100] overflow-y-auto w-full h-full flex flex-col justify-center items-center py-4 sm:py-0">
 
-            <div className="absolute top-4 right-4 flex items-center space-x-4">
-                <span className="text-gray-600 font-medium">Logado como: {user.nome}</span>
-                <button onClick={logout} className="text-red-500 hover:text-red-700 flex font-bold bg-red-50 p-2 rounded items-center">
-                    <LogOut className="w-4 h-4 mr-2" /> Sair
-                </button>
-            </div>
+            <div className="bg-white mx-4 p-6 sm:p-8 w-full max-w-xl rounded-2xl shadow-xl border border-gray-200 relative">
 
-            <div className="bg-white mx-4 p-8 w-full max-w-xl rounded-2xl shadow-xl border border-gray-200">
+                {/* Header do Gatekeeper */}
+                <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+                    <span className="text-gray-500 font-medium text-sm">Olá, {user.nome?.split(' ')[0]}</span>
+                    <button onClick={logout} className="text-red-500 hover:text-red-700 flex font-bold bg-red-50 hover:bg-red-100 transition-colors p-2 rounded items-center text-sm">
+                        <LogOut className="w-4 h-4 mr-1.5" /> Sair
+                    </button>
+                </div>
 
                 {/* 1. FATURA PENDENTE DE ONTEM */}
                 {step === 1 && (
@@ -174,7 +175,7 @@ const DiarioGateway = () => {
                 {step === 2 && modo === null && (
                     <div className="space-y-6">
                         <div className="text-center">
-                            <h2 className="text-2xl font-bold text-gray-900">Bom dia, {user.nome?.split(' ')[0]}! 🌤️</h2>
+                            <h2 className="text-2xl font-bold text-gray-900">Bom dia! 🌤️</h2>
                             <p className="text-gray-500 mt-2">Antes de acessar o Catálogo e Vendas, inicie o seu dia abaixo.</p>
                         </div>
 
@@ -210,9 +211,17 @@ const DiarioGateway = () => {
                         <Home className="w-20 h-20 text-blue-500 mx-auto" />
                         <h2 className="text-2xl font-bold text-gray-900">Home Office Selecionado</h2>
                         <p className="text-gray-600">Nenhum preenchimento de veículo é exibido. Suas telas serão ativadas na nuvem.</p>
-                        <div className="flex space-x-4 pt-6">
-                            <button onClick={() => setModo(null)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-4 rounded-xl transition-colors">VOLTAR</button>
-                            <button onClick={confirmarHomeOffice} disabled={isSubmitting} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-95">CONFIRMAR INÍCIO</button>
+                        <div className="flex flex-col sm:flex-row gap-3 pt-6">
+                            <button onClick={() => setModo(null)} className="w-full sm:flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-4 rounded-xl transition-colors">
+                                VOLTAR
+                            </button>
+                            <button
+                                onClick={confirmarHomeOffice}
+                                disabled={isSubmitting}
+                                className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-95 flex justify-center items-center"
+                            >
+                                {isSubmitting ? 'Aguarde...' : 'CONFIRMAR INÍCIO'}
+                            </button>
                         </div>
                     </div>
                 )}
