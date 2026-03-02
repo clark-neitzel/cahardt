@@ -24,6 +24,9 @@ const pedidoController = {
     criar: async (req, res) => {
         try {
             const dadosPedido = req.body;
+            if (req.user && req.user.id) {
+                dadosPedido.usuarioLancamentoId = req.user.id;
+            }
             const novoPedido = await pedidoService.criar(dadosPedido);
             res.status(201).json(novoPedido);
         } catch (error) {

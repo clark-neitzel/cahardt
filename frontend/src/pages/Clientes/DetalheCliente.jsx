@@ -208,6 +208,18 @@ const DetalheCliente = () => {
                                 if (item._tipo === 'PEDIDO') {
                                     const pedido = item;
                                     const totalPedido = pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0;
+
+                                    const fmtCanal = (c) => {
+                                        switch (c) {
+                                            case 'VISITA': return 'Visita Presencial';
+                                            case 'AMOSTRA': return 'Amostra';
+                                            case 'LIGACAO': return 'Ligação';
+                                            case 'WHATSAPP': return 'WhatsApp';
+                                            case 'OUTROS': return 'Outros';
+                                            default: return c || 'Direto / Sistema';
+                                        }
+                                    };
+
                                     return (
                                         <div key={`ped-${pedido.id}`} className="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
                                             <div className="flex items-center justify-between mb-3 border-b border-blue-50 pb-2">
@@ -240,11 +252,11 @@ const DetalheCliente = () => {
                                                 </div>
                                                 <div className="text-[10px] text-gray-500 flex items-center gap-1">
                                                     <Phone className="h-3 w-3 text-gray-400" />
-                                                    <span className="font-medium text-gray-700">Tipo de Atendimento:</span> Direto / Sistema
+                                                    <span className="font-medium text-gray-700">Tipo de Atendimento:</span> {fmtCanal(pedido.canalOrigem)}
                                                 </div>
                                                 <div className="text-[10px] text-gray-500 flex items-center gap-1">
                                                     <User className="h-3 w-3 text-gray-400" />
-                                                    <span className="font-medium text-gray-700">Por:</span> Lançamento App
+                                                    <span className="font-medium text-gray-700">Por:</span> {pedido.usuarioLancamento?.nome || 'Lançamento App'}
                                                 </div>
                                             </div>
 

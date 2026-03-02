@@ -19,6 +19,9 @@ const pedidoService = {
                 vendedor: {
                     select: { nome: true }
                 },
+                usuarioLancamento: {
+                    select: { nome: true }
+                },
                 itens: {
                     include: {
                         produto: { select: { nome: true, codigo: true } }
@@ -44,6 +47,8 @@ const pedidoService = {
             idContaFinanceira,
             idCategoria,
             latLng,
+            canalOrigem,
+            usuarioLancamentoId,
             itens, // array de objetos
             statusEnvio // ABERTO ou ENVIAR
         } = dadosPedido;
@@ -124,6 +129,8 @@ const pedidoService = {
                     idContaFinanceira,
                     idCategoria,
                     latLng,
+                    canalOrigem,
+                    ...(usuarioLancamentoId ? { usuarioLancamento: { connect: { id: usuarioLancamentoId } } } : {}),
                     statusEnvio: statusEnvio || 'ABERTO',
                     itens: {
                         create: itensData
@@ -316,7 +323,7 @@ const pedidoService = {
                 valor: true,
                 quantidade: true,
                 produtoId: true,
-                pedido: { select: { dataVenda: true, numero: true } }
+                pedido: { select: { dataVenda: true, numero: true, canalOrigem: true, usuarioLancamento: { select: { nome: true } } } }
             }
         });
 
@@ -358,6 +365,7 @@ const pedidoService = {
             include: {
                 cliente: true,
                 vendedor: true,
+                usuarioLancamento: true,
                 itens: {
                     include: { produto: true }
                 }

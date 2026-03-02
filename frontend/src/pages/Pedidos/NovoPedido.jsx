@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
     ArrowLeft, Save, User, ChevronDown, ChevronUp, Calendar,
     FileText, AlertCircle, X, CheckCircle, Minus, Plus, Clock,
-    ShoppingBag, Search, Trash2, Package, Tag
+    ShoppingBag, Search, Trash2, Package, Tag, Phone
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clienteService from '../../services/clienteService';
@@ -16,6 +16,14 @@ import vendedorService from '../../services/vendedorService';
 import { API_URL } from '../../services/api';
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+
+const TIPOS_ATENDIMENTO = [
+    { value: 'VISITA', label: 'Visita Presencial' },
+    { value: 'AMOSTRA', label: 'Amostra' },
+    { value: 'LIGACAO', label: 'Ligação' },
+    { value: 'WHATSAPP', label: 'WhatsApp' },
+    { value: 'OUTROS', label: 'Outros' }
+];
 
 // Formata data para exibição dd/mm
 const fmtData = (d) => {
@@ -44,6 +52,7 @@ const NovoPedido = () => {
     const [dataEntrega, setDataEntrega] = useState(new Date().toISOString().split('T')[0]);
     const [isEncaixe, setIsEncaixe] = useState(false);
     const [observacoes, setObservacoes] = useState('');
+    const [canalOrigem, setCanalOrigem] = useState('');
 
     // itens: Map produtoId → { quantidade, valorUnitario, valorBase, flexUnitario }
     const [itensMap, setItensMap] = useState(new Map());
@@ -122,6 +131,7 @@ const NovoPedido = () => {
                         setClienteId(pd.clienteId);
                         setObservacoes(pd.observacoes || '');
                         if (pd.dataVenda) setDataEntrega(pd.dataVenda.split('T')[0]);
+                        if (pd.canalOrigem) setCanalOrigem(pd.canalOrigem);
                         const cond = condicoesData.find(c => c.tipoPagamento === pd.tipoPagamento && c.opcaoCondicao === pd.opcaoCondicaoPagamento);
                         if (cond) setTimeout(() => setCondicaoPagamentoId(cond.idCondicao), 500);
 
@@ -155,6 +165,7 @@ const NovoPedido = () => {
                         if (pd.condicaoPagamentoId) setTimeout(() => setCondicaoPagamentoId(pd.condicaoPagamentoId), 600);
                         if (pd.isEncaixe !== undefined) setIsEncaixe(pd.isEncaixe);
                         if (pd.observacoes) setObservacoes(pd.observacoes);
+                        if (pd.canalOrigem) setCanalOrigem(pd.canalOrigem);
                         if (pd.itensMap && Array.isArray(pd.itensMap)) {
                             setItensMap(new Map(pd.itensMap));
                         }
@@ -178,13 +189,14 @@ const NovoPedido = () => {
                 condicaoPagamentoId,
                 isEncaixe,
                 observacoes,
+                canalOrigem,
                 itensMap: Array.from(itensMap.entries())
             };
             try {
                 localStorage.setItem('@CAHardt:NovoPedido_Draft', JSON.stringify(dataToSave));
             } catch (e) { }
         }
-    }, [clienteId, clienteSearchText, dataEntrega, condicaoPagamentoId, isEncaixe, observacoes, itensMap, loading, editId]);
+    }, [clienteId, clienteSearchText, dataEntrega, condicaoPagamentoId, isEncaixe, observacoes, canalOrigem, itensMap, loading, editId]);
 
     // Recalcular flex sempre que itensMap mudar
     useEffect(() => {
@@ -490,6 +502,7 @@ const NovoPedido = () => {
     const handleSalvar = (statusEnvio) => {
         if (!clienteId || itensMap.size === 0) { toast.error("Preencha cliente e adicione itens.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (!condicaoPagamentoId) { toast.error("Selecione uma condição de pagamento.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
+        if (statusEnvio === 'ENVIAR' && !canalOrigem) { toast.error("Informe o Tipo de Atendimento que resultou nesta venda.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
 
         // Bloqueio de valor mínimo
         const valorMinimoReq = Number(condicaoSelecionada?.valorMinimo) || 0;
@@ -537,6 +550,7 @@ const NovoPedido = () => {
             intervaloDias: condicaoSelecionada?.parcelasDias || 0,
             idContaFinanceira: condicaoSelecionada?.bancoPadrao || null,
             idCategoria: null, latLng, statusEnvio,
+            canalOrigem: canalOrigem || null,
             itens: itensLimpos
         };
 
@@ -1060,6 +1074,25 @@ const NovoPedido = () => {
                                             onChange={e => setObservacoes(e.target.value)}
                                         />
                                     )}
+                                </div>
+
+                                {/* Tipo de Atendimento Escolha */}
+                                <div className="pt-2 border-t border-gray-100 mt-2">
+                                    <label className="text-xs text-gray-500 font-medium mb-1.5 flex items-center gap-1.5">
+                                        <Phone className="h-3.5 w-3.5" />
+                                        Qualidade do Atendimento *
+                                    </label>
+                                    <div className="flex flex-wrap gap-1.5 mt-1">
+                                        {TIPOS_ATENDIMENTO.map(t => (
+                                            <button
+                                                key={t.value}
+                                                onClick={() => setCanalOrigem(t.value)}
+                                                className={`px-2.5 py-1.5 rounded text-[12px] font-semibold border transition-colors ${canalOrigem === t.value ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                                            >
+                                                {t.label}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}

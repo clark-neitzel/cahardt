@@ -166,6 +166,10 @@ model Pedido {
   revisaoPendente    Boolean   @default(false) @map("revisao_pendente")
   contaAzulUpdatedAt DateTime? @map("conta_azul_updated_at")
 
+  canalOrigem         String?   @map("canal_origem") // Ex: VISITA, WHATSAPP, LIGACAO
+  usuarioLancamentoId String?   @map("usuario_lancamento_id")
+  usuarioLancamento   Vendedor? @relation("UsuarioLancamento", fields: [usuarioLancamentoId], references: [id])
+
   // Relacionamentos
   clienteId String  @map("cliente_id")
   cliente   Cliente @relation(fields: [clienteId], references: [UUID])
@@ -260,6 +264,7 @@ model Vendedor {
 
   clientes Cliente[]
   pedidos  Pedido[]
+  pedidosLancados Pedido[] @relation("UsuarioLancamento")
   leads    Lead[]
   atendimentos Atendimento[]
 
