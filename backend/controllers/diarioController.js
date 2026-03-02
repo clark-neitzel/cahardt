@@ -4,8 +4,8 @@ const diarioController = {
     // Retorna o status atual do usuário logado (se tem pendência, se abriu hoje)
     meuStatus: async (req, res) => {
         try {
-            const vendedorId = req.user.vendedorId; // do authMiddleware
-            if (!vendedorId) return res.status(403).json({ error: 'Apenas vendedores podem ter diário de bordo.' });
+            const vendedorId = req.user.id; // Pegando adequadamente do token jwt
+            if (!vendedorId) return res.status(403).json({ error: 'Sessão inválida para consultar diário.' });
 
             const status = await diarioService.statusDoDia(vendedorId);
             res.json(status);
@@ -17,8 +17,8 @@ const diarioController = {
 
     iniciar: async (req, res) => {
         try {
-            const vendedorId = req.user.vendedorId;
-            if (!vendedorId) return res.status(403).json({ error: 'Acesso negado.' });
+            const vendedorId = req.user.id;
+            if (!vendedorId) return res.status(403).json({ error: 'Acesso negado. Usuário sem ID na sessão.' });
 
             const diario = await diarioService.iniciarDia(vendedorId, req.body);
             res.status(201).json(diario);
@@ -29,8 +29,8 @@ const diarioController = {
 
     encerrar: async (req, res) => {
         try {
-            const vendedorId = req.user.vendedorId;
-            if (!vendedorId) return res.status(403).json({ error: 'Acesso negado.' });
+            const vendedorId = req.user.id;
+            if (!vendedorId) return res.status(403).json({ error: 'Acesso negado. Usuário sem ID na sessão.' });
 
             const diarioFinalizado = await diarioService.encerrarDia(vendedorId, req.body);
             res.json(diarioFinalizado);
