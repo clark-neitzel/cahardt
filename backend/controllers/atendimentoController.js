@@ -34,7 +34,6 @@ const atendimentoController = {
     listarHojeVendedor: async (req, res) => {
         try {
             const { vendedorId } = req.query;
-            if (!vendedorId) return res.status(400).json({ error: 'vendedorId obrigatório.' });
             const atendimentos = await atendimentoService.listarHojeVendedor(vendedorId);
             res.json(atendimentos);
         } catch (error) {

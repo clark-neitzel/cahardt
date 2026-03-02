@@ -16,9 +16,10 @@ const atendimentoService = {
         return response.data;
     },
 
-    // Retorna todos os atendimentos de hoje para um vendedor específico
+    // Retorna todos os atendimentos de hoje para um vendedor específico (ou todos se não passar ID)
     listarHoje: async (vendedorId) => {
-        const response = await api.get('/atendimentos/hoje', { params: { vendedorId } });
+        const params = vendedorId ? { vendedorId } : {};
+        const response = await api.get('/atendimentos/hoje', { params });
         return response.data;
     }
 };

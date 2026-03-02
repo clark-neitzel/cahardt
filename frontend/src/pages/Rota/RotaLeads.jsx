@@ -246,19 +246,60 @@ const RotaLeads = () => {
     const [modalNovoLead, setModalNovoLead] = useState(false);
 
     const vendedorId = user?.id;
+    const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
+
+    // Filtro mantido no localStorage para não resetar ao voltar pra tela
+    const [vendedorFiltro, setVendedorFiltro] = useState(() => {
+        return localStorage.getItem('rota_vendedorFiltro') || 'todos';
+    });
+    const [vendedores, setVendedores] = useState([]);
+
+    // Se admin, carrega vendedores para o select
+    useEffect(() => {
+        if (podeEscolherVendedor) {
+            import('../../services/vendedorService').then(module => {
+                module.default.listar().then(vends => {
+                    setVendedores(vends.filter(v => v.ativo));
+                }).catch(console.error);
+            });
+        }
+    }, [podeEscolherVendedor]);
+
+    const handleFiltroVendedor = (e) => {
+        const val = e.target.value;
+        setVendedorFiltro(val);
+        localStorage.setItem('rota_vendedorFiltro', val);
+    };
 
     const carregar = useCallback(async () => {
         try {
             setLoading(true);
+
+            // define quem será o alvo das queries
+            let idBusca = vendedorId;
+            if (podeEscolherVendedor) {
+                idBusca = vendedorFiltro === 'todos' ? null : vendedorFiltro;
+            }
+
             const [leadsData, clientesData, atendHojeData] = await Promise.all([
-                leadService.listar(vendedorId),
-                clienteService.listar({ limit: 2000 }),
-                vendedorId ? atendimentoService.listarHoje(vendedorId) : Promise.resolve([])
+                leadService.listar(idBusca), // se null, traz de todos no backend
+                clienteService.listar({ limit: 2000 }), // cliente traz tudo, filtraremos depois
+                idBusca ? atendimentoService.listarHoje(idBusca) : atendimentoService.listarHoje()
             ]);
 
             // Normaliza resposta — pode vir como array ou { data: [] }
             const listaLeads = Array.isArray(leadsData) ? leadsData : (leadsData?.data || []);
-            const listaClientes = Array.isArray(clientesData) ? clientesData : (clientesData?.data || []);
+            let listaClientesRaw = Array.isArray(clientesData) ? clientesData : (clientesData?.data || []);
+
+            // Filtra clientes caso precise (ContaAzul/Prisma)
+            if (idBusca) {
+                listaClientesRaw = listaClientesRaw.filter(c =>
+                    c.idVendedor === idBusca ||
+                    c.vendedor?.id === idBusca ||
+                    c.VendedorUUID === idBusca
+                );
+            }
+            const listaClientes = listaClientesRaw;
             const listaAtendHoje = Array.isArray(atendHojeData) ? atendHojeData : [];
 
             // Mapas: clienteId → [atendimentos hoje] e leadId → [atendimentos hoje]
@@ -297,7 +338,7 @@ const RotaLeads = () => {
         } finally {
             setLoading(false);
         }
-    }, [vendedorId]);
+    }, [vendedorId, podeEscolherVendedor, vendedorFiltro]);
 
     useEffect(() => { carregar(); }, [carregar]);
 
@@ -363,9 +404,23 @@ const RotaLeads = () => {
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
             <div className="bg-white border-b border-gray-200 sticky top-0 z-20">
-                <div className="px-4 pt-4 pb-0">
-                    <h1 className="text-[18px] font-bold text-gray-900">Rota / Leads</h1>
-                    <p className="text-[12px] text-gray-500 mb-3">Dia base: {diaBase} · {new Date().toLocaleDateString('pt-BR')}</p>
+                <div className="px-4 pt-4 pb-3 flex justify-between items-start gap-4">
+                    <div>
+                        <h1 className="text-[18px] font-bold text-gray-900">Rota / Leads</h1>
+                        <p className="text-[12px] text-gray-500 mt-1">Dia base: {diaBase} · {new Date().toLocaleDateString('pt-BR')}</p>
+                    </div>
+                    {podeEscolherVendedor && (
+                        <select
+                            value={vendedorFiltro}
+                            onChange={handleFiltroVendedor}
+                            className="text-[13px] border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:ring-blue-500 focus:border-blue-500 outline-none max-w-[150px] truncate"
+                        >
+                            <option value="todos">Todos Vendedores</option>
+                            {vendedores.map(v => (
+                                <option key={v.id} value={v.id}>{v.nome.split(' ')[0]}</option>
+                            ))}
+                        </select>
+                    )}
                 </div>
 
                 {/* Abas */}
