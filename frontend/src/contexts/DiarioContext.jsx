@@ -15,7 +15,7 @@ export const DiarioProvider = ({ children }) => {
     });
 
     const carregarStatus = async () => {
-        if (!signed || !user?.vendedorId) {
+        if (!signed || !user?.id) {
             setDiarioStatus(prev => ({ ...prev, loading: false }));
             return;
         }
