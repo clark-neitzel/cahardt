@@ -8,6 +8,7 @@ const ListaPedidos = () => {
     const [pedidos, setPedidos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedPedido, setSelectedPedido] = useState(null); // Para o Modal
+    const [busca, setBusca] = useState('');
 
     useEffect(() => {
         carregarPedidos();
@@ -43,27 +44,33 @@ const ListaPedidos = () => {
         );
     };
 
+    // Filtrar pedidos pela busca
+    const pedidosFiltrados = busca.trim()
+        ? pedidos.filter(p => {
+            const termo = busca.toLowerCase();
+            const nomeCliente = (p.cliente?.NomeFantasia || p.cliente?.Nome || '').toLowerCase();
+            const nomeVendedor = (p.vendedor?.nome || '').toLowerCase();
+            const numero = String(p.numero || '');
+            return nomeCliente.includes(termo) || nomeVendedor.includes(termo) || numero.includes(termo);
+        })
+        : pedidos;
+
     return (
         <div className="container mx-auto px-2 py-4">
-            {/* Header ultra compacto: Busca e Novo Pedido na mesma linha */}
-            <div className="flex flex-row justify-between items-center gap-2 mb-3">
+            {/* Header: só Busca (botão Novo removido — pedidos são criados pela Rota) */}
+            <div className="flex flex-row items-center gap-2 mb-3">
                 <div className="relative flex-1">
                     <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
                         <Search className="h-4 w-4 text-gray-400" />
                     </div>
                     <input
                         type="text"
-                        placeholder="Buscar pedido..."
+                        placeholder="Buscar por cliente, número ou vendedor..."
+                        value={busca}
+                        onChange={e => setBusca(e.target.value)}
                         className="block w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                     />
                 </div>
-                <button
-                    onClick={() => navigate('/pedidos/novo')}
-                    className="bg-primary hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded flex items-center justify-center transition-colors shadow-sm text-sm shrink-0"
-                >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Novo
-                </button>
             </div>
 
             <div className="bg-white rounded overflow-hidden border-t sm:border border-gray-100 sm:border-gray-200">
@@ -75,10 +82,12 @@ const ListaPedidos = () => {
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
                             Carregando pedidos...
                         </div>
-                    ) : pedidos.length === 0 ? (
-                        <div className="p-8 text-center text-gray-500">Nenhum pedido encontrado.</div>
+                    ) : pedidosFiltrados.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500">
+                            {busca ? `Nenhum pedido encontrado para "${busca}".` : 'Nenhum pedido encontrado.'}
+                        </div>
                     ) : (
-                        pedidos.map((pedido) => (
+                        pedidosFiltrados.map((pedido) => (
                             <div key={pedido.id} className="p-3 hover:bg-gray-50 flex flex-col justify-between gap-1 border-b border-gray-100 transition-colors">
                                 <div className="flex justify-between items-start gap-2">
                                     <div className="flex-1 min-w-0 pr-1">

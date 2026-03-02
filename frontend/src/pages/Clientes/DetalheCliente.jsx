@@ -6,7 +6,8 @@ import tabelaPrecoService from '../../services/tabelaPrecoService';
 import condicaoPagamentoService from '../../services/condicaoPagamentoService';
 import MultiSelect from '../../components/MultiSelect';
 import atendimentoService from '../../services/atendimentoService';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList } from 'lucide-react';
+import pedidoService from '../../services/pedidoService';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package } from 'lucide-react';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
 
@@ -56,6 +57,7 @@ const DetalheCliente = () => {
     const [loading, setLoading] = useState(true);
     const [abaAtiva, setAbaAtiva] = useState('dados');
     const [atendimentos, setAtendimentos] = useState([]);
+    const [pedidosCliente, setPedidosCliente] = useState([]);
 
     const [formData, setFormData] = useState({
         Dia_de_entrega: '',
@@ -90,6 +92,15 @@ const DetalheCliente = () => {
                 const atends = await atendimentoService.listarPorCliente(uuid);
                 setAtendimentos(Array.isArray(atends) ? atends : []);
             } catch (_) { setAtendimentos([]); }
+
+            try {
+                const peds = await pedidoService.listar({ clienteId: uuid });
+                // Ordenar por data de entrega decrescente
+                const pedsSorted = (Array.isArray(peds) ? peds : []).sort(
+                    (a, b) => new Date(b.dataVenda || b.createdAt) - new Date(a.dataVenda || a.createdAt)
+                );
+                setPedidosCliente(pedsSorted);
+            } catch (_) { setPedidosCliente([]); }
 
             setFormData({
                 Dia_de_entrega: clienteData.Dia_de_entrega || '',
@@ -174,46 +185,117 @@ const DetalheCliente = () => {
                     onClick={() => setAbaAtiva('historico')}
                     className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'historico' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
                 >
-                    Histórico ({atendimentos.length})
+                    Histórico ({atendimentos.length + pedidosCliente.length})
                 </button>
             </div>
 
-            {abaAtiva === 'historico' && (
-                <div className="space-y-3 pb-8">
-                    {atendimentos.length === 0 ? (
-                        <div className="text-center py-12 text-gray-400">
-                            <ClipboardList className="h-10 w-10 mx-auto mb-2" />
-                            <p className="font-semibold">Nenhum atendimento registrado ainda.</p>
-                        </div>
-                    ) : (
-                        atendimentos.map(a => (
-                            <div key={a.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded uppercase">{a.tipo}</span>
-                                        {a.vendedor?.nome && (
-                                            <span className="text-xs text-gray-500 flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
-                                                <User className="h-3 w-3" />
-                                                {a.vendedor.nome}
+            {abaAtiva === 'historico' && (() => {
+                // Unificar atendimentos e pedidos em um único histórico ordenado por data
+                const itensHistorico = [
+                    ...atendimentos.map(a => ({ ...a, _tipo: 'ATENDIMENTO', _data: new Date(a.criadoEm) })),
+                    ...pedidosCliente.map(p => ({ ...p, _tipo: 'PEDIDO', _data: new Date(p.dataVenda || p.createdAt) }))
+                ].sort((a, b) => b._data - a._data);
+
+                return (
+                    <div className="space-y-3 pb-8">
+                        {itensHistorico.length === 0 ? (
+                            <div className="text-center py-12 text-gray-400">
+                                <ClipboardList className="h-10 w-10 mx-auto mb-2" />
+                                <p className="font-semibold">Nenhum histórico registrado ainda.</p>
+                            </div>
+                        ) : (
+                            itensHistorico.map(item => {
+                                if (item._tipo === 'PEDIDO') {
+                                    const pedido = item;
+                                    const totalPedido = pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0;
+                                    return (
+                                        <div key={`ped-${pedido.id}`} className="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold bg-blue-600 text-white px-2 py-0.5 rounded flex items-center gap-1">
+                                                        <ShoppingCart className="h-3 w-3" />
+                                                        PEDIDO {pedido.numero ? `#${pedido.numero}` : ''}
+                                                    </span>
+                                                    {pedido.vendedor?.nome && (
+                                                        <span className="text-xs text-gray-500 flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
+                                                            <User className="h-3 w-3" />
+                                                            {pedido.vendedor.nome}
+                                                        </span>
+                                                    )}
+                                                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${pedido.statusEnvio === 'RECEBIDO' ? 'bg-green-100 text-green-700' :
+                                                            pedido.statusEnvio === 'ERRO' ? 'bg-red-100 text-red-700' :
+                                                                pedido.statusEnvio === 'ENVIAR' ? 'bg-blue-100 text-blue-700' :
+                                                                    'bg-gray-100 text-gray-600'
+                                                        }`}>{pedido.statusEnvio}</span>
+                                                </div>
+                                                <span className="text-xs text-gray-400 flex items-center gap-1">
+                                                    <Clock className="h-3 w-3" />
+                                                    Entrega: {pedido.dataVenda ? new Date(pedido.dataVenda).toLocaleDateString('pt-BR') : '-'}
+                                                </span>
+                                            </div>
+
+                                            {/* Itens do pedido */}
+                                            {pedido.itens && pedido.itens.length > 0 && (
+                                                <div className="mt-2 space-y-1">
+                                                    {pedido.itens.map(it => (
+                                                        <div key={it.id} className="flex items-center justify-between text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded">
+                                                            <span className="flex items-center gap-1">
+                                                                <Package className="h-3 w-3 text-gray-400" />
+                                                                {it.produto?.nome || it.descricao || 'Produto'}
+                                                            </span>
+                                                            <span className="font-semibold text-gray-800 shrink-0 ml-2">
+                                                                {Number(it.quantidade)}x R$ {Number(it.valor).toFixed(2).replace('.', ',')}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Observação e total */}
+                                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+                                                {pedido.observacoes ? (
+                                                    <p className="text-xs text-gray-500 italic flex-1 mr-3">{pedido.observacoes}</p>
+                                                ) : <span />}
+                                                <span className="text-sm font-bold text-blue-700 shrink-0">
+                                                    Total: R$ {totalPedido.toFixed(2).replace('.', ',')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+
+                                // ATENDIMENTO
+                                const a = item;
+                                return (
+                                    <div key={`atend-${a.id}`} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded uppercase">{a.tipo}</span>
+                                                {a.vendedor?.nome && (
+                                                    <span className="text-xs text-gray-500 flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
+                                                        <User className="h-3 w-3" />
+                                                        {a.vendedor.nome}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className="text-xs text-gray-400 flex items-center gap-1">
+                                                <Clock className="h-3 w-3" />
+                                                {new Date(a.criadoEm).toLocaleDateString('pt-BR')} {new Date(a.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                             </span>
+                                        </div>
+                                        {a.observacao && <p className="text-sm text-gray-700 mt-1">{a.observacao}</p>}
+                                        {a.proximaVisita && (
+                                            <p className="text-xs text-blue-600 mt-1 font-semibold">
+                                                📅 Próxima visita: {new Date(a.proximaVisita).toLocaleDateString('pt-BR')}
+                                            </p>
                                         )}
                                     </div>
-                                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                                        <Clock className="h-3 w-3" />
-                                        {new Date(a.criadoEm).toLocaleDateString('pt-BR')} {new Date(a.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                </div>
-                                {a.observacao && <p className="text-sm text-gray-700 mt-1">{a.observacao}</p>}
-                                {a.proximaVisita && (
-                                    <p className="text-xs text-blue-600 mt-1 font-semibold">
-                                        📅 Próxima visita: {new Date(a.proximaVisita).toLocaleDateString('pt-BR')}
-                                    </p>
-                                )}
-                            </div>
-                        ))
-                    )}
-                </div>
-            )}
+                                );
+                            })
+                        )}
+                    </div>
+                );
+            })()}
 
             {abaAtiva === 'dados' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
