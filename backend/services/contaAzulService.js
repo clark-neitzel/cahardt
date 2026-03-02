@@ -823,8 +823,18 @@ const contaAzulService = {
                         });
                         console.log(`🗑️ Pedido #${local.numero} marcado como EXCLUIDO (${motivoExclusao})`);
                         deletadosCount++;
+                    } else if (situacaoNome !== local.situacaoCA) {
+                        // CA relatou um status diferente do que temos salvo localmente (ex: APROVADO -> FATURADO)
+                        // Isso é comum para pedidos antigos que saíram da fila de modificações recentes.
+                        await prisma.pedido.update({
+                            where: { id: local.id },
+                            data: {
+                                situacaoCA: situacaoNome,
+                                contaAzulUpdatedAt: new Date()
+                            }
+                        });
+                        console.log(`🔄 [GARBAGE COLLECTOR] Pedido #${local.numero} corrigido: ${local.situacaoCA} → ${situacaoNome}`);
                     }
-
 
                 } catch (error) {
                     if (error.response && error.response.status === 401) {
