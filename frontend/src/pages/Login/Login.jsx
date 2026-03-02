@@ -8,8 +8,14 @@ const Login = () => {
     const [loginSTR, setLoginSTR] = useState('');
     const [senha, setSenha] = useState('');
     const [loggingIn, setLoggingIn] = useState(false);
-    const { login } = useAuth();
+    const { login, signed } = useAuth();
     const navigate = useNavigate();
+
+    React.useEffect(() => {
+        if (signed) {
+            navigate('/', { replace: true });
+        }
+    }, [signed, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

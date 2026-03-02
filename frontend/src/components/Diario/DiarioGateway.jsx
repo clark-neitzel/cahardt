@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 
 const DiarioGateway = () => {
-    const { logout, user } = useAuth();
+    const { logout, user, signed } = useAuth();
     const { diarioStatus, carregarStatus } = useDiario();
 
     // Passos do modal
@@ -109,6 +109,9 @@ const DiarioGateway = () => {
             setIsSubmitting(false);
         }
     };
+
+    if (!signed) return null; // Prevenção se a sessão estiver limpando
+    if (!user?.vendedorId) return null; // Admins ou usuários sem matrícula de vendedor não batem ponto
 
     if (diarioStatus.loading) {
         return <div className="fixed inset-0 bg-white z-[100] flex justify-center items-center font-semibold text-gray-500">Aguarde, verificando seu Ponto Diário...</div>;
