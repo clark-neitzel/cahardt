@@ -17,6 +17,7 @@ import NovoPedido from './pages/Pedidos/NovoPedido';
 import RotaLeads from './pages/Rota/RotaLeads';
 import Login from './pages/Login/Login';
 
+import { Menu, X, LogOut } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DiarioProvider } from './contexts/DiarioContext';
