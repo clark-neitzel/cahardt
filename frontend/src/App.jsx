@@ -19,6 +19,7 @@ import Login from './pages/Login/Login';
 import PainelEmbarque from './pages/Admin/Embarques/PainelEmbarque';
 import AuditoriaEntregas from './pages/Admin/Embarques/AuditoriaEntregas';
 import FormasPagamentoEntrega from './pages/Configuracoes/FormasPagamentoEntrega';
+import PainelMotorista from './pages/Motorista/Entregas/PainelMotorista';
 
 import { Menu, X, LogOut, ChevronDown } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
@@ -104,6 +105,10 @@ const Layout = ({ children }) => {
                         {hasPermission('Pode_Ver_Todas_Entregas') && (
                           <Link to="/admin/auditoria-entregas" className="block px-4 py-2 text-sm text-amber-700 font-bold bg-amber-50 hover:bg-amber-100">Auditoria (Financeira)</Link>
                         )}
+                        <Link to="/rotas" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Leads (Mapa)</Link>
+                        {hasPermission('Pode_Executar_Entregas') && (
+                          <Link to="/minhas-entregas" className="block px-4 py-2 text-sm text-sky-700 font-bold bg-sky-50 hover:bg-sky-100 border-l-4 border-sky-500">Minhas Viagens (Motorista)</Link>
+                        )}
                         {hasPermission('sync') && (
                           <Link to="/admin/sync" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sincronizar (Erp)</Link>
                         )}
@@ -179,6 +184,10 @@ const Layout = ({ children }) => {
               {hasPermission('Pode_Ver_Todas_Entregas') && (
                 <NavLink to="/admin/auditoria-entregas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Auditoria Financeira</NavLink>
               )}
+              <NavLink to="/rotas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Leads (Mapa)</NavLink>
+              {hasPermission('Pode_Executar_Entregas') && (
+                <NavLink to="/minhas-entregas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `block pl-3 pr-4 py-2 border-l-4 text-base font-bold ${isActive ? 'bg-sky-50 border-sky-500 text-sky-700' : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'}`}>Meus Embarques (Motorista)</NavLink>
+              )}
               {hasPermission('sync') && (
                 <NavLink to="/admin/sync" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Sincronizar</NavLink>
               )}
@@ -238,6 +247,9 @@ function App() {
               {/* Clientes */}
               <Route path="/clientes" element={<PrivateRoute tab="clientes"><ListaClientes /></PrivateRoute>} />
               <Route path="/clientes/:uuid" element={<PrivateRoute tab="clientes"><DetalheCliente /></PrivateRoute>} />
+
+              {/* ROTAS DO MOTORISTA (APP MOBILE) */}
+              <Route path="/minhas-entregas" element={<PrivateRoute tab="Pode_Executar_Entregas"><PainelMotorista /></PrivateRoute>} />
 
               {/* Produtos / Admin */}
               <Route path="/admin/produtos" element={<PrivateRoute tab="produtos"><ListaProdutos /></PrivateRoute>} />
