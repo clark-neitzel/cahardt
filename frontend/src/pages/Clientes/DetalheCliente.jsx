@@ -210,28 +210,42 @@ const DetalheCliente = () => {
                                     const totalPedido = pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0;
                                     return (
                                         <div key={`ped-${pedido.id}`} className="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
-                                            <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center justify-between mb-3 border-b border-blue-50 pb-2">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-bold bg-blue-600 text-white px-2 py-0.5 rounded flex items-center gap-1">
+                                                    <span className="text-xs font-bold bg-blue-600 text-white px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
                                                         <ShoppingCart className="h-3 w-3" />
                                                         PEDIDO {pedido.numero ? `#${pedido.numero}` : ''}
                                                     </span>
-                                                    {pedido.vendedor?.nome && (
-                                                        <span className="text-xs text-gray-500 flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
-                                                            <User className="h-3 w-3" />
-                                                            {pedido.vendedor.nome}
-                                                        </span>
-                                                    )}
-                                                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${pedido.statusEnvio === 'RECEBIDO' ? 'bg-green-100 text-green-700' :
-                                                            pedido.statusEnvio === 'ERRO' ? 'bg-red-100 text-red-700' :
-                                                                pedido.statusEnvio === 'ENVIAR' ? 'bg-blue-100 text-blue-700' :
-                                                                    'bg-gray-100 text-gray-600'
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${pedido.statusEnvio === 'RECEBIDO' ? 'bg-green-100 text-green-700' :
+                                                        pedido.statusEnvio === 'ERRO' ? 'bg-red-100 text-red-700' :
+                                                            pedido.statusEnvio === 'ENVIAR' ? 'bg-blue-100 text-blue-700' :
+                                                                'bg-gray-100 text-gray-600'
                                                         }`}>{pedido.statusEnvio}</span>
                                                 </div>
-                                                <span className="text-xs text-gray-400 flex items-center gap-1">
-                                                    <Clock className="h-3 w-3" />
-                                                    Entrega: {pedido.dataVenda ? new Date(pedido.dataVenda).toLocaleDateString('pt-BR') : '-'}
-                                                </span>
+                                            </div>
+
+                                            {/* Detalhes do Pedido (Novo Header 2 colunas) */}
+                                            <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1 mb-3 bg-white p-2 rounded border border-gray-100">
+                                                <div className="text-[10px] text-gray-500 flex items-center gap-1">
+                                                    <Calendar className="h-3 w-3 text-gray-400" />
+                                                    <span className="font-medium text-gray-700">Criado em:</span> {new Date(pedido.createdAt).toLocaleDateString('pt-BR')} {new Date(pedido.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                                <div className="text-[10px] text-gray-500 flex items-center gap-1">
+                                                    <Clock className="h-3 w-3 text-gray-400" />
+                                                    <span className="font-medium text-gray-700">Entrega:</span> {pedido.dataVenda ? new Date(pedido.dataVenda).toLocaleDateString('pt-BR') : '-'}
+                                                </div>
+                                                <div className="text-[10px] text-gray-500 flex items-center gap-1">
+                                                    <User className="h-3 w-3 text-gray-400" />
+                                                    <span className="font-medium text-gray-700">Vendedor:</span> {pedido.vendedor?.nome || 'N/D'}
+                                                </div>
+                                                <div className="text-[10px] text-gray-500 flex items-center gap-1">
+                                                    <Phone className="h-3 w-3 text-gray-400" />
+                                                    <span className="font-medium text-gray-700">Tipo de Atendimento:</span> Direto / Sistema
+                                                </div>
+                                                <div className="text-[10px] text-gray-500 flex items-center gap-1">
+                                                    <User className="h-3 w-3 text-gray-400" />
+                                                    <span className="font-medium text-gray-700">Por:</span> Lançamento App
+                                                </div>
                                             </div>
 
                                             {/* Itens do pedido */}

@@ -43,7 +43,15 @@ const getAtendimentoHoje = (atendimentos) => {
     return atendimentos.find(a => new Date(a.criadoEm).toDateString() === hoje);
 };
 
-const isAtendidoHoje = (atendimentos) => !!getAtendimentoHoje(atendimentos);
+const getPedidoHoje = (pedidos) => {
+    if (!pedidos || pedidos.length === 0) return null;
+    const hoje = new Date().toDateString();
+    return pedidos.find(p => p.createdAt && new Date(p.createdAt).toDateString() === hoje);
+};
+
+const isAtendidoHoje = (item) => {
+    return !!getAtendimentoHoje(item._atendimentos || item.atendimentos) || !!getPedidoHoje(item._pedidos || item.pedidos);
+};
 
 const isProximaVisitaHoje = (proximaVisita) => {
     if (!proximaVisita) return false;
@@ -73,6 +81,11 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, mostrarAcoes = true
                             {atendHoje && (
                                 <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={atendHoje.vendedor?.nome ? `Atendido por ${atendHoje.vendedor.nome}` : ''}>
                                     <CheckCircle className="h-3 w-3" /> Atendido {atendHoje.vendedor?.nome && `por ${atendHoje.vendedor.nome.split(' ')[0]}`}
+                                </span>
+                            )}
+                            {!atendHoje && getPedidoHoje(cliente._pedidos) && (
+                                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                                    <CheckCircle className="h-3 w-3" /> Com Pedido Hoje
                                 </span>
                             )}
                         </div>
@@ -125,22 +138,22 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, mostrarAcoes = true
                 )}
 
                 {/* Ações */}
-                {mostrarAcoes && (
-                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                    {mostrarAcoes && (
                         <button
                             onClick={() => onAtendimento({ tipo: 'cliente', item: cliente })}
                             className="flex-1 bg-blue-600 text-white text-[13px] font-semibold py-2 rounded-lg flex items-center justify-center gap-1.5 active:opacity-80"
                         >
                             <ClipboardList className="h-4 w-4" /> Registrar Atendimento
                         </button>
-                        <button
-                            onClick={() => onNovoPedido(cliente.UUID)}
-                            className="bg-gray-100 text-gray-700 text-[13px] font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 active:opacity-80"
-                        >
-                            <Package className="h-4 w-4" /> Pedido
-                        </button>
-                    </div>
-                )}
+                    )}
+                    <button
+                        onClick={() => onNovoPedido(cliente.UUID)}
+                        className={`${mostrarAcoes ? 'bg-gray-100 text-gray-700 w-auto' : 'bg-gray-100 text-gray-700 w-full justify-center'} text-[13px] font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 active:opacity-80`}
+                    >
+                        <Package className="h-4 w-4" /> Pedido
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -287,9 +300,17 @@ const RotaLeads = () => {
                 idBusca ? atendimentoService.listarHoje(idBusca) : atendimentoService.listarHoje()
             ]);
 
+            // Se quisermos ver pedidos do dia para abater da rota, precisamos buscar do pedidoService
+            // Aqui eu faço lazy load do módulo de pedidos para evitar import cíclico se houver, ou apenas import global
+            const pedidoService = (await import('../../services/pedidoService')).default;
+            const pedidosDeHojeData = await pedidoService.listar({ statusEnvio: undefined, vendedorId: idBusca || undefined });
+
             // Normaliza resposta — pode vir como array ou { data: [] }
             const listaLeads = Array.isArray(leadsData) ? leadsData : (leadsData?.data || []);
             let listaClientesRaw = Array.isArray(clientesData) ? clientesData : (clientesData?.data || []);
+            let listaPedidos = Array.isArray(pedidosDeHojeData) ? pedidosDeHojeData : [];
+            const hojeDataRaw = new Date().toDateString();
+            listaPedidos = listaPedidos.filter(p => p.createdAt && new Date(p.createdAt).toDateString() === hojeDataRaw);
 
             // Filtra clientes caso precise (ContaAzul/Prisma)
             if (idBusca) {
@@ -302,9 +323,11 @@ const RotaLeads = () => {
             const listaClientes = listaClientesRaw;
             const listaAtendHoje = Array.isArray(atendHojeData) ? atendHojeData : [];
 
-            // Mapas: clienteId → [atendimentos hoje] e leadId → [atendimentos hoje]
+            // Mapas: clienteId → [atendimentos hoje], leadId → [atendimentos hoje]
             const mapClienteAtend = {};
             const mapLeadAtend = {};
+            const mapClientePedidos = {};
+
             listaAtendHoje.forEach(a => {
                 if (a.clienteId) {
                     if (!mapClienteAtend[a.clienteId]) mapClienteAtend[a.clienteId] = [];
@@ -316,10 +339,19 @@ const RotaLeads = () => {
                 }
             });
 
-            // Injetar atendimentos de hoje nos clientes
+            listaPedidos.forEach(p => {
+                if (p.clienteId || p.cliente?.UUID) {
+                    const cid = p.clienteId || p.cliente?.UUID;
+                    if (!mapClientePedidos[cid]) mapClientePedidos[cid] = [];
+                    mapClientePedidos[cid].push(p);
+                }
+            });
+
+            // Injetar atendimentos e pedidos de hoje nos clientes
             const clientesComAtend = listaClientes.map(c => ({
                 ...c,
-                _atendimentos: mapClienteAtend[c.UUID] || []
+                _atendimentos: mapClienteAtend[c.UUID] || [],
+                _pedidos: mapClientePedidos[c.UUID] || []
             }));
 
             // Injetar atendimentos de hoje nos leads
@@ -352,7 +384,7 @@ const RotaLeads = () => {
         const todos = [
             ...clientesComAtendimento.map(c => ({ _tipo: 'cliente', ...c })),
             ...leads.map(l => ({ _tipo: 'lead', ...l }))
-        ].filter(i => !isAtendidoHoje(i._atendimentos || i.atendimentos));
+        ].filter(i => !isAtendidoHoje(i));
 
         const prioridade1 = todos.filter(i => i._tipo === 'cliente' && itemTemDiaBase(i.Dia_de_venda));
         const prioridade2 = todos.filter(i => i._tipo === 'lead' && itemTemDiaBase(i.diasVisita) && !isProximaVisitaHoje(i.proximaVisita));
@@ -370,7 +402,7 @@ const RotaLeads = () => {
             ...clientesComAtendimento.map(c => ({ _tipo: 'cliente', ...c })),
             ...leads.map(l => ({ _tipo: 'lead', ...l }))
         ];
-        return todos.filter(i => isAtendidoHoje(i._atendimentos || i.atendimentos));
+        return todos.filter(i => isAtendidoHoje(i));
     }, [clientesComAtendimento, leads]);
 
     const handleAtendimentoSalvo = () => {
