@@ -62,8 +62,8 @@ const ListaVendedores = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Vendedores</h1>
-                    <p className="mt-1 text-sm text-gray-500">Gerencie limites de Flex e dados de contato</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
+                    <p className="mt-1 text-sm text-gray-500">Gerencie limites de Flex e logísticas da equipe</p>
                 </div>
                 <div className="relative">
                     {/* Search logic optional but good */}
@@ -87,7 +87,7 @@ const ListaVendedores = () => {
                         {loading ? (
                             <tr><td colSpan="5" className="px-6 py-4 text-center">Carregando...</td></tr>
                         ) : filtered.length === 0 ? (
-                            <tr><td colSpan="5" className="px-6 py-4 text-center text-gray-500">Nenhum vendedor encontrado.</td></tr>
+                            <tr><td colSpan="5" className="px-6 py-4 text-center text-gray-500">Nenhum usuário encontrado.</td></tr>
                         ) : filtered.map(vendedor => (
                             <tr key={vendedor.id}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">

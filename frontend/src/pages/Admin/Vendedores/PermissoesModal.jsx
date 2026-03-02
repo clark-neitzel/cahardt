@@ -12,6 +12,11 @@ const DEFAULT_PERMISSIONS = {
     vendedores: { view: false, edit: false },
     sync: { view: false, edit: false },
     configuracoes: { view: false, edit: false },
+    // Módulo de Expedição e Logística
+    Pode_Acessar_Embarque: false,
+    Pode_Executar_Entregas: false,
+    Pode_Ver_Todas_Entregas: false,
+    Pode_Ajustar_Entregas: false,
     admin: false // Flag Global Mestre
 };
 
@@ -21,7 +26,7 @@ const TAB_LABELS = {
     rota: "Rota / Leads",
     clientes: "Clientes",
     produtos: "Produtos",
-    vendedores: "Vendedores",
+    vendedores: "Usuários",
     sync: "Painel Sincronização",
     configuracoes: "Configurações (Bancos/Tabelas)"
 };
@@ -183,6 +188,64 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+
+                    {/* Módulo Embarque e Logística */}
+                    <div className="border-t pt-4">
+                        <h4 className="font-medium text-gray-900 mb-4">Módulo de Expedição e Logística (Embarques)</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-sky-50 p-4 rounded-md border border-sky-200">
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-sky-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-sky-300 text-sky-600 focus:ring-sky-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Acessar_Embarque}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Acessar_Embarque: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-sky-900 font-bold block">Montar Cargas (Expedição)</span>
+                                    <span className="text-sky-700 text-xs">Acessa painel de impressão rápida de Romaneiros A4 e atrela pedidos Faturados.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-sky-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-sky-300 text-sky-600 focus:ring-sky-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Executar_Entregas}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Executar_Entregas: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-sky-900 font-bold block">Motorista (App Mobile)</span>
+                                    <span className="text-sky-700 text-xs">Transforma o usuário em um Caminhoneiro habilitado a checar entregas e lançar dinheiro.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-sky-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-sky-300 text-sky-600 focus:ring-sky-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Ver_Todas_Entregas}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Ver_Todas_Entregas: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-sky-900 font-bold block">Auditor de Entregas</span>
+                                    <span className="text-sky-700 text-xs">Membro do escritório que visualiza a esteira de todos os motoristas ativamente na rua.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-sky-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-red-300 text-red-600 focus:ring-red-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Ajustar_Entregas}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Ajustar_Entregas: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-red-900 font-bold block">Administrador Financeiro de Entrega</span>
+                                    <span className="text-red-700 text-xs">Nível crítico: Pode desmanchar/alterar Devoluções ou Pagamentos efetuados pelo motorista após concluir entrega.</span>
+                                </div>
+                            </label>
                         </div>
                     </div>
 

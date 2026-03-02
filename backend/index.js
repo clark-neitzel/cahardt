@@ -19,6 +19,9 @@ const leadRoutes = require('./routes/leadRoutes'); // CRM: Leads
 const atendimentoRoutes = require('./routes/atendimentoRoutes'); // CRM: Atendimentos
 const veiculoRoutes = require('./routes/veiculos'); // Módulo de Veículos
 const diarioRoutes = require('./routes/diarios'); // Módulo do Diário/Ponto
+const formasPagamentoEntregaRoutes = require('./routes/formasPagamentoEntrega'); // Módulo Pagamento Embarque
+const embarqueRoutes = require('./routes/embarques'); // Módulo de Formação de Carga/Expedição
+const entregasRoutes = require('./routes/entregas'); // Módulo Mobile do Entregador
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -55,6 +58,9 @@ app.use('/api/leads', authMiddleware, leadRoutes); // CRM: Leads
 app.use('/api/atendimentos', authMiddleware, atendimentoRoutes); // CRM: Atendimentos
 app.use('/api/veiculos', authMiddleware, veiculoRoutes); // Módulo de Veículos
 app.use('/api/diarios', authMiddleware, diarioRoutes); // Relatório Diário / Ponto
+app.use('/api/pagamentos-entrega', formasPagamentoEntregaRoutes); // Pagamentos de Entrega
+app.use('/api/embarques', embarqueRoutes); // Montagem Cargas e Despacho Logístico
+app.use('/api/entregas', entregasRoutes); // App Motorista
 
 app.use('/api/migrations', migrationRoutes); // Migration endpoint
 
