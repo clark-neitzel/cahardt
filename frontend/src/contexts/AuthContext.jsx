@@ -50,9 +50,14 @@ export const AuthProvider = ({ children }) => {
     };
 
     const hasPermission = (tab, action = 'view') => {
-        if (!user || (!user.permissoes && action !== 'edit')) return false;
+        if (!user || !user.permissoes) return false;
 
-        const perm = user.permissoes?.[tab];
+        // Se a permissao for boolean direto (novas tags logisticas), responde ela.
+        if (typeof user.permissoes[tab] === 'boolean') {
+            return user.permissoes[tab] === true;
+        }
+
+        const perm = user.permissoes[tab];
         if (!perm) return false;
 
         if (action === 'view') return !!perm.view;

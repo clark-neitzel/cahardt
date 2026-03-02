@@ -16,6 +16,9 @@ import Veiculos from './pages/Veiculos/Veiculos';
 import NovoPedido from './pages/Pedidos/NovoPedido';
 import RotaLeads from './pages/Rota/RotaLeads';
 import Login from './pages/Login/Login';
+import PainelEmbarque from './pages/Admin/Embarques/PainelEmbarque';
+import AuditoriaEntregas from './pages/Admin/Embarques/AuditoriaEntregas';
+import FormasPagamentoEntrega from './pages/Configuracoes/FormasPagamentoEntrega';
 
 import { Menu, X, LogOut, ChevronDown } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
@@ -95,6 +98,12 @@ const Layout = ({ children }) => {
                           <Link to="/admin/vendedores" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Vendedores</Link>
                         )}
                         <Link to="/admin/veiculos" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Veículos (Frota)</Link>
+                        {hasPermission('Pode_Acessar_Embarque') && (
+                          <Link to="/admin/embarques" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Expedição (Cargas)</Link>
+                        )}
+                        {hasPermission('Pode_Ver_Todas_Entregas') && (
+                          <Link to="/admin/auditoria-entregas" className="block px-4 py-2 text-sm text-amber-700 font-bold bg-amber-50 hover:bg-amber-100">Auditoria (Financeira)</Link>
+                        )}
                         {hasPermission('sync') && (
                           <Link to="/admin/sync" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sincronizar (Erp)</Link>
                         )}
@@ -104,6 +113,7 @@ const Layout = ({ children }) => {
                             <Link to="/admin/config" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Gerais</Link>
                             <Link to="/config/tabela-precos" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Preços</Link>
                             <Link to="/config/contas-financeiras" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Bancos</Link>
+                            <Link to="/config/pagamentos-entrega" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Pgto. Logística</Link>
                           </>
                         )}
                       </div>
@@ -163,14 +173,21 @@ const Layout = ({ children }) => {
               {(user?.permissoes?.admin || hasPermission('clientes', 'clientes') === 'todos') && (
                 <NavLink to="/admin/veiculos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Veículos</NavLink>
               )}
+              {hasPermission('Pode_Acessar_Embarque') && (
+                <NavLink to="/admin/embarques" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Expedição</NavLink>
+              )}
+              {hasPermission('Pode_Ver_Todas_Entregas') && (
+                <NavLink to="/admin/auditoria-entregas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Auditoria Financeira</NavLink>
+              )}
               {hasPermission('sync') && (
                 <NavLink to="/admin/sync" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Sincronizar</NavLink>
               )}
               {hasPermission('configuracoes') && (
                 <>
-                  <NavLink to="/admin/config" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Configurações</NavLink>
+                  <NavLink to="/admin/config" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Configurações Gerais</NavLink>
                   <NavLink to="/config/tabela-precos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Preços</NavLink>
                   <NavLink to="/config/contas-financeiras" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Bancos</NavLink>
+                  <NavLink to="/config/pagamentos-entrega" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Pgto. Logística</NavLink>
                 </>
               )}
 
@@ -228,12 +245,15 @@ function App() {
               <Route path="/admin/produtos/:id" element={<PrivateRoute tab="produtos"><GerenciarProduto /></PrivateRoute>} />
 
               {/* Outros Admins */}
+              <Route path="/admin/embarques" element={<PrivateRoute tab="Pode_Acessar_Embarque"><PainelEmbarque /></PrivateRoute>} />
+              <Route path="/admin/auditoria-entregas" element={<PrivateRoute tab="Pode_Ver_Todas_Entregas"><AuditoriaEntregas /></PrivateRoute>} />
               <Route path="/admin/sync" element={<PrivateRoute tab="sync"><PainelSync /></PrivateRoute>} />
               <Route path="/admin/vendedores" element={<PrivateRoute tab="vendedores"><ListaVendedores /></PrivateRoute>} />
               <Route path="/admin/veiculos" element={<PrivateRoute tab="clientes"><Veiculos /></PrivateRoute>} />
               <Route path="/admin/config" element={<PrivateRoute tab="configuracoes"><Configuracoes /></PrivateRoute>} />
               <Route path="/config/tabela-precos" element={<PrivateRoute tab="configuracoes"><TabelaPrecos /></PrivateRoute>} />
               <Route path="/config/contas-financeiras" element={<PrivateRoute tab="configuracoes"><ContasFinanceiras /></PrivateRoute>} />
+              <Route path="/config/pagamentos-entrega" element={<PrivateRoute tab="configuracoes"><FormasPagamentoEntrega /></PrivateRoute>} />
             </Routes>
           </Layout>
           <Toaster position="top-right" />
