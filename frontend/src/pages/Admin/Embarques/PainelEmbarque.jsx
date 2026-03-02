@@ -20,7 +20,19 @@ const PainelEmbarque = () => {
             setEmbarques(dataEmbarques);
 
             const dataVendedores = await vendedorService.listar();
-            setVendedores(dataVendedores.filter(v => v.ativo));
+            // Filtração Avançada: Puxa só quem tá ativo E quem tem a flag 'Pode_Executar_Entregas' ou é Root Admin
+            const motoristas = dataVendedores.filter(v => {
+                if (!v.ativo) return false;
+
+                try {
+                    // Trata string JSON se vier crua do banco, ou objeto já parseado pelo service
+                    const perms = typeof v.permissoes === 'string' ? JSON.parse(v.permissoes) : (v.permissoes || {});
+                    return perms.admin === true || perms.Pode_Executar_Entregas === true;
+                } catch (e) {
+                    return false;
+                }
+            });
+            setVendedores(motoristas);
         } catch (error) {
             console.error('Erro ao buscar dados:', error);
             toast.error('Gargalo de conexão com os embarques ativos.');
