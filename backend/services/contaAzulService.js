@@ -972,6 +972,25 @@ const contaAzulService = {
 
                     if (!ignorar) {
                         const isAprovado = venda.situacao?.nome === 'APROVADO';
+                        let situacaoFinal = venda.situacao?.nome || 'ABERTO';
+
+                        // Descobre se "Aprovado" não é na verdade "Faturado" 
+                        // Através de uma requisição detalhada para ver se existem parcelas (financeiro).
+                        if (isAprovado) {
+                            try {
+                                const tokenFetch = await contaAzulService.getAccessToken();
+                                const urlDet = `https://api-v2.contaazul.com/v1/venda/${venda.id}`;
+                                const resDet = await axios.get(urlDet, { headers: { 'Authorization': `Bearer ${tokenFetch}` } });
+                                const vendaDetalhada = resDet.data?.venda || resDet.data;
+
+                                if (vendaDetalhada && vendaDetalhada.parcelas && vendaDetalhada.parcelas.length > 0) {
+                                    situacaoFinal = 'FATURADO';
+                                    console.log(`💲 [Sync CA] Pedido #${pedidoLocal.numero} diagnosticado como FATURADO (parcelas presentes).`);
+                                }
+                            } catch (eDet) {
+                                console.error(`⚠️ [Sync CA] Erro ao buscar detalhes da venda #${pedidoLocal.numero} para check de Faturamento:`, eDet.message);
+                            }
+                        }
 
                         // Check values divergence
                         const valorLocal = Number(pedidoLocal.itens.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0)).toFixed(2);
@@ -980,17 +999,17 @@ const contaAzulService = {
 
                         if (isAprovado && !mudouValor) {
                             // Se foi aprovado sem diferença de valor, podemos remover o alerta
-                            if (pedidoLocal.revisaoPendente || pedidoLocal.situacaoCA !== venda.situacao?.nome) {
+                            if (pedidoLocal.revisaoPendente || pedidoLocal.situacaoCA !== situacaoFinal) {
                                 await prisma.pedido.update({
                                     where: { id: pedidoLocal.id },
                                     data: {
                                         revisaoPendente: false,
-                                        situacaoCA: venda.situacao?.nome || 'ABERTO',
+                                        situacaoCA: situacaoFinal,
                                         contaAzulUpdatedAt: dataAtualizacaoCA
                                     }
                                 });
                             }
-                        } else if (mudouValor || !pedidoLocal.contaAzulUpdatedAt || pedidoLocal.situacaoCA !== venda.situacao?.nome) {
+                        } else if (mudouValor || !pedidoLocal.contaAzulUpdatedAt || pedidoLocal.situacaoCA !== situacaoFinal) {
                             // Houve diferença de valor, mudança de status ou é a primeira sincronização
 
                             if (mudouValor) {
@@ -1031,7 +1050,7 @@ const contaAzulService = {
                                                 data: {
                                                     numero: venda.numero || pedidoLocal.numero,
                                                     revisaoPendente: true,
-                                                    situacaoCA: venda.situacao?.nome || 'ABERTO',
+                                                    situacaoCA: situacaoFinal,
                                                     contaAzulUpdatedAt: dataAtualizacaoCA,
                                                     itens: { create: novosItens }
                                                 }
@@ -1045,7 +1064,7 @@ const contaAzulService = {
                                             where: { id: pedidoLocal.id },
                                             data: {
                                                 revisaoPendente: true,
-                                                situacaoCA: venda.situacao?.nome || 'ABERTO',
+                                                situacaoCA: situacaoFinal,
                                                 contaAzulUpdatedAt: dataAtualizacaoCA
                                             }
                                         });
@@ -1058,7 +1077,7 @@ const contaAzulService = {
                                         where: { id: pedidoLocal.id },
                                         data: {
                                             revisaoPendente: true,
-                                            situacaoCA: venda.situacao?.nome || 'ABERTO',
+                                            situacaoCA: situacaoFinal,
                                             contaAzulUpdatedAt: dataAtualizacaoCA
                                         }
                                     });
@@ -1070,7 +1089,7 @@ const contaAzulService = {
                                     where: { id: pedidoLocal.id },
                                     data: {
                                         revisaoPendente: false,
-                                        situacaoCA: venda.situacao?.nome || 'ABERTO',
+                                        situacaoCA: situacaoFinal,
                                         contaAzulUpdatedAt: dataAtualizacaoCA
                                     }
                                 });
