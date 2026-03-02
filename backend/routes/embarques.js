@@ -4,10 +4,9 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const verificarAuth = require('../middlewares/authMiddleware');
 
-// Middleware interno de permissão
 const checkAcessoEmbarque = (req, res, next) => {
     const { permissoes } = req.user;
-    if (permissoes && (permissoes.master || permissoes.Pode_Acessar_Embarque)) {
+    if (permissoes && (permissoes.admin || permissoes.Pode_Acessar_Embarque)) {
         return next();
     }
     return res.status(403).json({ error: 'Você não possui permissão para acessar Embarques/Expedição.' });

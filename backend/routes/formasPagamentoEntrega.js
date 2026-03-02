@@ -8,7 +8,7 @@ const verificarAuth = require('../middlewares/authMiddleware');
 router.get('/', verificarAuth, async (req, res) => {
     try {
         const { permissoes } = req.user;
-        const isAdmin = permissoes && (permissoes.master || permissoes.Pode_Ajustar_Entregas || permissoes.Pode_Ver_Todas_Entregas);
+        const isAdmin = permissoes && (permissoes.admin || permissoes.Pode_Ajustar_Entregas || permissoes.Pode_Ver_Todas_Entregas);
 
         const query = { orderBy: { nome: 'asc' } };
 
@@ -28,7 +28,7 @@ router.get('/', verificarAuth, async (req, res) => {
 router.post('/', verificarAuth, async (req, res) => {
     try {
         const { permissoes } = req.user;
-        const isAdmin = permissoes && (permissoes.master || permissoes.Pode_Ajustar_Entregas);
+        const isAdmin = permissoes && (permissoes.admin || permissoes.Pode_Ajustar_Entregas);
 
         if (!isAdmin) {
             return res.status(403).json({ error: 'Acesso negado.' });
@@ -60,7 +60,7 @@ router.post('/', verificarAuth, async (req, res) => {
 router.put('/:id', verificarAuth, async (req, res) => {
     try {
         const { permissoes } = req.user;
-        const isAdmin = permissoes && (permissoes.master || permissoes.Pode_Ajustar_Entregas);
+        const isAdmin = permissoes && (permissoes.admin || permissoes.Pode_Ajustar_Entregas);
 
         if (!isAdmin) {
             return res.status(403).json({ error: 'Acesso negado.' });
@@ -90,7 +90,7 @@ router.put('/:id', verificarAuth, async (req, res) => {
 router.delete('/:id', verificarAuth, async (req, res) => {
     try {
         const { permissoes } = req.user;
-        const isAdmin = permissoes && (permissoes.master || permissoes.Pode_Ajustar_Entregas);
+        const isAdmin = permissoes && (permissoes.admin || permissoes.Pode_Ajustar_Entregas);
 
         if (!isAdmin) {
             return res.status(403).json({ error: 'Acesso negado.' });

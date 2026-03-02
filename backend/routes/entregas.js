@@ -7,7 +7,7 @@ const verificarAuth = require('../middlewares/authMiddleware');
 // Middleware interno: Permissão Entregador
 const checkAcessoEntregador = (req, res, next) => {
     const { permissoes } = req.user;
-    if (permissoes && (permissoes.master || permissoes.Pode_Executar_Entregas)) {
+    if (permissoes && (permissoes.admin || permissoes.Pode_Executar_Entregas)) {
         return next();
     }
     return res.status(403).json({ error: 'Você não tem permissão de Motorista/Entregador.' });
@@ -16,7 +16,7 @@ const checkAcessoEntregador = (req, res, next) => {
 // Middleware interno: Permissão Auditoria/Escritório
 const checkAuditor = (req, res, next) => {
     const { permissoes } = req.user;
-    if (permissoes && (permissoes.master || permissoes.Pode_Ver_Todas_Entregas || permissoes.Pode_Ajustar_Entregas)) {
+    if (permissoes && (permissoes.admin || permissoes.Pode_Ver_Todas_Entregas || permissoes.Pode_Ajustar_Entregas)) {
         return next();
     }
     return res.status(403).json({ error: 'Acesso negado. Requer privilégio de Auditoria Logística.' });
@@ -25,7 +25,7 @@ const checkAuditor = (req, res, next) => {
 // Middleware interno: Permissão Correção Financeira
 const checkAjustador = (req, res, next) => {
     const { permissoes } = req.user;
-    if (permissoes && (permissoes.master || permissoes.Pode_Ajustar_Entregas)) {
+    if (permissoes && (permissoes.admin || permissoes.Pode_Ajustar_Entregas)) {
         return next();
     }
     return res.status(403).json({ error: 'Acesso negado. Ação restritiva ao Financeiro.' });
@@ -102,7 +102,7 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
 
         if (!pedido) return res.status(404).json({ error: 'Pedido não localizado.' });
         if (pedido.statusEntrega !== 'PENDENTE') return res.status(400).json({ error: `Este pedido já foi finalizado anteriormente como ${pedido.statusEntrega}.` });
-        if (pedido.embarque.responsavelId !== req.user.id && !req.user.permissoes.master) {
+        if (pedido.embarque.responsavelId !== req.user.id && !req.user.permissoes.admin) {
             return res.status(403).json({ error: 'Este pedido pertence à carga de outro motorista.' });
         }
 
