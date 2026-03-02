@@ -130,7 +130,7 @@ const pedidoService = {
                     idCategoria,
                     latLng,
                     canalOrigem,
-                    ...(usuarioLancamentoId ? { usuarioLancamento: { connect: { id: usuarioLancamentoId } } } : {}),
+                    usuarioLancamentoId: usuarioLancamentoId || undefined,
                     statusEnvio: statusEnvio || 'ABERTO',
                     itens: {
                         create: itensData
@@ -244,6 +244,7 @@ const pedidoService = {
                     opcaoCondicaoPagamento,
                     idContaFinanceira: dadosPedido.idContaFinanceira,
                     dataVenda: dataVenda ? new Date(dataVenda) : new Date(),
+                    usuarioLancamentoId: dadosPedido.usuarioLancamentoId || undefined,
                     itens: {
                         create: novosItens
                     }
