@@ -62,7 +62,7 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
                 embarque: { select: { numero: true } },
                 vendedor: { select: { id: true, nome: true } },
                 usuarioLancamento: { select: { id: true, nome: true } },
-                itens: { include: { produto: { select: { nome: true, unidade: true } } } }
+                itens: { include: { produto: { select: { id: true, nome: true, unidade: true } } } }
             },
             orderBy: { cliente: { NomeFantasia: 'asc' } }
         });

@@ -273,17 +273,9 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
         }
     };
 
-    // Monta descrição da condição igual à tela de pedidos: "Termo: 1x de 14d · BOLETO_BANCARIO"
-    const descricaoCondicao = (() => {
-        const partes = [];
-        if (pedido.nomeCondicaoPagamento) {
-            partes.push(pedido.nomeCondicaoPagamento);
-        } else if (pedido.qtdParcelas || pedido.intervaloDias) {
-            partes.push(`Termo: ${pedido.qtdParcelas || 1}x de ${pedido.intervaloDias || 0}d`);
-        }
-        if (pedido.tipoPagamento) partes.push(pedido.tipoPagamento);
-        return partes.join(' · ') || null;
-    })();
+    // Descrição legível da condição de pagamento do pedido
+    const descricaoCondicao = pedido.nomeCondicaoPagamento
+        || (pedido.tipoPagamento ? `${pedido.tipoPagamento}${pedido.intervaloDias ? ` ${pedido.qtdParcelas || 1}x de ${pedido.intervaloDias}d` : ''}` : null);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-95 p-2">
