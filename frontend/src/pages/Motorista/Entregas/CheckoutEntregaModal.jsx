@@ -273,6 +273,18 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
         }
     };
 
+    // Monta descrição da condição igual à tela de pedidos: "Termo: 1x de 14d · BOLETO_BANCARIO"
+    const descricaoCondicao = (() => {
+        const partes = [];
+        if (pedido.nomeCondicaoPagamento) {
+            partes.push(pedido.nomeCondicaoPagamento);
+        } else if (pedido.qtdParcelas || pedido.intervaloDias) {
+            partes.push(`Termo: ${pedido.qtdParcelas || 1}x de ${pedido.intervaloDias || 0}d`);
+        }
+        if (pedido.tipoPagamento) partes.push(pedido.tipoPagamento);
+        return partes.join(' · ') || null;
+    })();
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-95 p-2">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg h-[90vh] flex flex-col overflow-hidden relative">
@@ -285,8 +297,8 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                         <p className="text-xs text-sky-100 font-mono">Ped #{pedido.numero || 'X'} / Emb: #{pedido.embarque?.numero}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span className="text-sm font-black text-white">R$ {pedido.itens.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0).toFixed(2)}</span>
-                            {(pedido.nomeCondicaoPagamento || pedido.tipoPagamento) && (
-                                <span className="text-[10px] bg-sky-800 text-sky-100 px-2 py-0.5 rounded-full font-bold">{pedido.nomeCondicaoPagamento || pedido.tipoPagamento}</span>
+                            {descricaoCondicao && (
+                                <span className="text-[10px] bg-sky-800 text-sky-100 px-2 py-0.5 rounded-full font-bold">{descricaoCondicao}</span>
                             )}
                         </div>
                         {(pedido.vendedor || pedido.usuarioLancamento) && (
@@ -429,15 +441,12 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
 
                             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                                 {/* Condição prevista no pedido */}
-                                {(pedido.nomeCondicaoPagamento || pedido.tipoPagamento) && (
+                                {descricaoCondicao && (
                                     <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
                                         <DollarSign className="h-4 w-4 text-blue-500 shrink-0" />
                                         <div>
                                             <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wide">Previsto no Pedido</span>
-                                            <p className="text-sm font-bold text-blue-800">
-                                                {pedido.nomeCondicaoPagamento || pedido.tipoPagamento}
-                                                {pedido.qtdParcelas > 1 && ` (${pedido.qtdParcelas}x)`}
-                                            </p>
+                                            <p className="text-sm font-bold text-blue-800">{descricaoCondicao}</p>
                                         </div>
                                     </div>
                                 )}
