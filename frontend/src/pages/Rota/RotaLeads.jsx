@@ -255,6 +255,7 @@ const STATUS_ENTREGA_CORES = {
 
 const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout }) => {
     const totalValor = pedido.itens?.reduce((s, i) => s + (Number(i.valor) * Number(i.quantidade)), 0) || 0;
+    const motoristaNome = pedido.embarque?.responsavel?.nome;
     const abrirMaps = () => {
         if (!pedido.cliente?.Ponto_GPS) {
             const addr = `${pedido.cliente?.End_Logradouro || ''} ${pedido.cliente?.End_Numero || ''} ${pedido.cliente?.End_Cidade || ''}`;
@@ -269,7 +270,14 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout }) => {
             <div className="p-4">
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                        <span className="text-[11px] font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded uppercase">Carga #{pedido.embarque?.numero}</span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[11px] font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded uppercase">Carga #{pedido.embarque?.numero}</span>
+                            {motoristaNome && (
+                                <span className="text-[11px] text-gray-500 font-semibold flex items-center gap-0.5">
+                                    <User className="h-3 w-3" /> {motoristaNome.split(' ')[0]}
+                                </span>
+                            )}
+                        </div>
                         <p className="font-bold text-[15px] text-gray-900 leading-tight truncate mt-1">{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}</p>
                         {pedido.cliente?.End_Cidade && (
                             <p className="text-[12px] text-gray-500">{pedido.cliente.End_Logradouro} {pedido.cliente.End_Numero} · {pedido.cliente.End_Cidade}</p>
@@ -303,11 +311,12 @@ const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar }) => {
     const cls = STATUS_ENTREGA_CORES[pedido.statusEntrega] || 'bg-gray-100 text-gray-600';
     const labels = { ENTREGUE: 'Entregue', ENTREGUE_PARCIAL: 'Parcial', DEVOLVIDO: 'Devolvido' };
     const totalRecebido = pedido.pagamentosReais?.reduce((s, p) => s + Number(p.valor), 0) || 0;
+    const motoristaNome = pedido.embarque?.responsavel?.nome;
     return (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-3">
             <div className="p-4">
                 <div className="flex items-center justify-between gap-2 mb-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${cls}`}>{labels[pedido.statusEntrega] || pedido.statusEntrega}</span>
                         {pedido.embarque?.numero && <span className="text-[11px] text-gray-400">Carga #{pedido.embarque.numero}</span>}
                     </div>
@@ -321,14 +330,34 @@ const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar }) => {
                     )}
                 </div>
                 <p className="font-bold text-[15px] text-gray-900 leading-tight truncate">{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}</p>
-                {pedido.dataEntrega && (
-                    <p className="text-[12px] text-gray-500 mt-1 flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {new Date(pedido.dataEntrega).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                )}
+                <div className="flex items-center gap-3 mt-1 flex-wrap">
+                    {pedido.dataEntrega && (
+                        <span className="text-[12px] text-gray-500 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {new Date(pedido.dataEntrega).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                    )}
+                    {motoristaNome && (
+                        <span className="text-[11px] text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5">
+                            <User className="h-3 w-3" /> {motoristaNome.split(' ')[0]}
+                        </span>
+                    )}
+                    {pedido.gpsEntrega && pedido.gpsEntrega !== 'FalhaSinal' && (
+                        <a
+                            href={`https://maps.google.com/?q=${pedido.gpsEntrega}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5 hover:bg-blue-100"
+                        >
+                            <MapPin className="h-3 w-3" /> GPS
+                        </a>
+                    )}
+                </div>
                 {totalRecebido > 0 && (
                     <p className="text-[13px] font-bold text-green-700 mt-1">R$ {totalRecebido.toFixed(2)} recebido</p>
+                )}
+                {pedido.divergenciaPagamento && (
+                    <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded mt-1 inline-block">Divergencia de Pagamento</span>
                 )}
                 {pedido.pagamentosReais?.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
@@ -336,6 +365,16 @@ const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar }) => {
                             <span key={i} className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-mono">
                                 {p.formaPagamentoNome}: R$ {Number(p.valor).toFixed(2)}
                             </span>
+                        ))}
+                    </div>
+                )}
+                {pedido.itensDevolvidos?.length > 0 && (
+                    <div className="mt-2 border-t border-gray-100 pt-2">
+                        <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide mb-1">Itens Devolvidos</p>
+                        {pedido.itensDevolvidos.map((item, i) => (
+                            <p key={i} className="text-[11px] text-gray-600">
+                                {item.produto?.nome || 'Produto'} — {item.quantidade}x (R$ {Number(item.valorBaseItem).toFixed(2)}/un)
+                            </p>
                         ))}
                     </div>
                 )}

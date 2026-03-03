@@ -30,13 +30,14 @@ const PainelMotorista = () => {
         fetchEntregas();
     }, [abaAtiva]);
 
-    const handleAbrirWaze = (cliente) => {
+    const handleAbrirMaps = (cliente) => {
         if (!cliente.Ponto_GPS) {
-            const cepEndereco = `${cliente.End_Logradouro || ''} ${cliente.End_Numero || ''} ${cliente.End_Bairro || ''} ${cliente.End_Cidade || ''}`;
-            window.open(`https://waze.com/ul?q=${encodeURIComponent(cepEndereco)}`);
+            const endereco = `${cliente.End_Logradouro || ''} ${cliente.End_Numero || ''} ${cliente.End_Bairro || ''} ${cliente.End_Cidade || ''}`;
+            window.open(`https://maps.google.com/?q=${encodeURIComponent(endereco)}`);
             return;
         }
-        window.open(`https://waze.com/ul?ll=${cliente.Ponto_GPS}&navigate=yes`);
+        const [lat, lng] = cliente.Ponto_GPS.split(',');
+        window.open(`https://maps.google.com/?q=${lat},${lng}`);
     };
 
     const handleCheckoutSuccess = () => {
@@ -113,11 +114,11 @@ const PainelMotorista = () => {
                                 <div className="p-3 bg-gray-50 flex items-center justify-between">
                                     <div className="flex space-x-2 w-full pr-2">
                                         <button
-                                            onClick={() => handleAbrirWaze(entrega.cliente)}
+                                            onClick={() => handleAbrirMaps(entrega.cliente)}
                                             className="flex-1 flex justify-center items-center py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-bold active:bg-blue-100"
                                         >
                                             <Navigation className="h-4 w-4 mr-1" />
-                                            Waze
+                                            Maps
                                         </button>
                                         <button
                                             onClick={() => setEntregaAtivaParaCheckout(entrega)}

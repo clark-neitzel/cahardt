@@ -14,11 +14,14 @@ const getPerms = async (userId) => {
         : (vendedor?.permissoes || {});
 };
 
-// Middleware interno: Permissão Entregador
+// Middleware interno: Permissão Entregador (ou quem pode ver todas entregas)
 const checkAcessoEntregador = async (req, res, next) => {
     try {
         const perms = await getPerms(req.user.id);
-        if (perms.admin || perms.Pode_Executar_Entregas) return next();
+        if (perms.admin || perms.Pode_Executar_Entregas || perms.Pode_Ver_Todas_Entregas) {
+            req._perms = perms; // Salva para uso no handler
+            return next();
+        }
         return res.status(403).json({ error: 'Você não tem permissão de Motorista/Entregador.' });
     } catch (e) {
         return res.status(403).json({ error: 'Erro ao verificar permissão.' });
@@ -52,14 +55,17 @@ const checkAjustador = async (req, res, next) => {
 // ==========================================
 router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) => {
     try {
+        const perms = req._perms || {};
+        const verTodas = perms.admin || perms.Pode_Ver_Todas_Entregas;
+
+        const where = { statusEntrega: 'PENDENTE', embarqueId: { not: null } };
+        if (!verTodas) where.embarque = { responsavelId: req.user.id };
+
         const entregas = await prisma.pedido.findMany({
-            where: {
-                statusEntrega: 'PENDENTE',
-                embarque: { responsavelId: req.user.id }
-            },
+            where,
             include: {
                 cliente: { select: { NomeFantasia: true, Nome: true, End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, Ponto_GPS: true } },
-                embarque: { select: { numero: true } },
+                embarque: { select: { numero: true, responsavel: { select: { id: true, nome: true } } } },
                 vendedor: { select: { id: true, nome: true } },
                 usuarioLancamento: { select: { id: true, nome: true } },
                 itens: { include: { produto: { select: { id: true, nome: true, unidade: true } } } }
@@ -95,14 +101,17 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
 // ==========================================
 router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res) => {
     try {
+        const perms = req._perms || {};
+        const verTodas = perms.admin || perms.Pode_Ver_Todas_Entregas;
+
+        const where = { statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL', 'DEVOLVIDO'] } };
+        if (!verTodas) where.embarque = { responsavelId: req.user.id };
+
         const entregas = await prisma.pedido.findMany({
-            where: {
-                statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL', 'DEVOLVIDO'] },
-                embarque: { responsavelId: req.user.id }
-            },
+            where,
             include: {
                 cliente: { select: { NomeFantasia: true, Nome: true } },
-                embarque: { select: { numero: true } },
+                embarque: { select: { numero: true, responsavel: { select: { id: true, nome: true } } } },
                 pagamentosReais: true,
                 itensDevolvidos: { include: { produto: { select: { nome: true } } } }
             },
