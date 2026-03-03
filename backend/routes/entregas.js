@@ -69,19 +69,19 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
 
         // Enriquece com o nome legível da condição de pagamento (join manual sem FK)
         const condicoesCodigos = [...new Set(entregas.map(e => e.opcaoCondicaoPagamento).filter(Boolean))];
+        let mapaCondicoes = {};
         if (condicoesCodigos.length > 0) {
             const tabelas = await prisma.tabelaPreco.findMany({
                 where: { idCondicao: { in: condicoesCodigos } },
                 select: { idCondicao: true, nomeCondicao: true }
             });
-            const mapaCondicoes = Object.fromEntries(tabelas.map(t => [t.idCondicao, t.nomeCondicao]));
-            return res.json(entregas.map(e => ({
-                ...e,
-                nomeCondicaoPagamento: mapaCondicoes[e.opcaoCondicaoPagamento] || e.opcaoCondicaoPagamento || null
-            })));
+            mapaCondicoes = Object.fromEntries(tabelas.map(t => [t.idCondicao, t.nomeCondicao]));
         }
 
-        res.json(entregas);
+        res.json(entregas.map(e => ({
+            ...e,
+            nomeCondicaoPagamento: mapaCondicoes[e.opcaoCondicaoPagamento] || e.opcaoCondicaoPagamento || null
+        })));
     } catch (error) {
         console.error('Erro ao listar entregas pendentes:', error);
         res.status(500).json({ error: 'Erro ao buscar roteiro logístico.' });

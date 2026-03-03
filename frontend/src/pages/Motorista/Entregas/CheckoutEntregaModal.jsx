@@ -77,25 +77,32 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     // Guarda o valor-alvo do caixa pra usar quando formasDisp carregar
     const [valorAlvoCaixa, setValorAlvoCaixa] = useState(null);
 
+    // Acha o melhor _selectId default: condição do pedido > primeira condição de pagamento > primeira forma
+    const getDefaultSelectId = () => {
+        if (formasDisp.length === 0) return null;
+        // Tenta a condição original do pedido
+        if (pedido.opcaoCondicaoPagamento) {
+            const match = formasDisp.find(f => f._selectId === 'tabela_' + pedido.opcaoCondicaoPagamento);
+            if (match) return match._selectId;
+        }
+        // Fallback: primeira condição de pagamento
+        const primeiraCondicao = formasDisp.find(f => f._grupo === 'Condições de Pagamento');
+        if (primeiraCondicao) return primeiraCondicao._selectId;
+        // Último recurso: primeira forma disponível
+        return formasDisp[0]._selectId;
+    };
+
     // Helper: pré-popula o primeiro pagamento com a forma prevista no pedido
     const autoPopularPagamento = (valorInicial) => {
         setValorAlvoCaixa(valorInicial);
         if (formasDisp.length === 0) return; // useEffect abaixo cuidará quando carregar
-        const previstoId = pedido.opcaoCondicaoPagamento
-            ? formasDisp.find(f => f._selectId === 'tabela_' + pedido.opcaoCondicaoPagamento)?._selectId
-            : null;
-        const defaultSelectId = previstoId || formasDisp[0]._selectId;
-        setPagamentos([{ idLocal: Date.now(), _selectId: defaultSelectId, valor: valorInicial }]);
+        setPagamentos([{ idLocal: Date.now(), _selectId: getDefaultSelectId(), valor: valorInicial }]);
     };
 
     // Quando formasDisp carregar e já tem valor-alvo pendente, auto-popula
     useEffect(() => {
         if (formasDisp.length > 0 && valorAlvoCaixa !== null && pagamentos.length === 0 && step === 3) {
-            const previstoId = pedido.opcaoCondicaoPagamento
-                ? formasDisp.find(f => f._selectId === 'tabela_' + pedido.opcaoCondicaoPagamento)?._selectId
-                : null;
-            const defaultSelectId = previstoId || formasDisp[0]._selectId;
-            setPagamentos([{ idLocal: Date.now(), _selectId: defaultSelectId, valor: valorAlvoCaixa }]);
+            setPagamentos([{ idLocal: Date.now(), _selectId: getDefaultSelectId(), valor: valorAlvoCaixa }]);
         }
     }, [formasDisp, valorAlvoCaixa, step]);
 
@@ -155,12 +162,8 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
 
     const handleAddPagamento = () => {
         if (formasDisp.length === 0) return toast.error('Nenhuma forma de pagamento configurada no painel web.');
-        // Pré-seleciona a forma prevista no pedido, se disponível
-        const previstoId = pedido.opcaoCondicaoPagamento
-            ? formasDisp.find(f => f._selectId === 'tabela_' + pedido.opcaoCondicaoPagamento)?._selectId
-            : null;
-        const defaultSelectId = (pagamentos.length === 0 && previstoId) ? previstoId : formasDisp[0]._selectId;
-        setPagamentos([...pagamentos, { idLocal: Date.now(), _selectId: defaultSelectId, valor: saldoRestante > 0 ? saldoRestante : 0 }]);
+        const defaultId = pagamentos.length === 0 ? getDefaultSelectId() : (formasDisp.find(f => f._grupo === 'Condições de Pagamento')?._selectId || formasDisp[0]._selectId);
+        setPagamentos([...pagamentos, { idLocal: Date.now(), _selectId: defaultId, valor: saldoRestante > 0 ? saldoRestante : 0 }]);
     };
 
     const handleRemovePagamento = (idL) => {
