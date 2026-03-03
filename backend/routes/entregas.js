@@ -134,7 +134,8 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
 
         if (!pedido) return res.status(404).json({ error: 'Pedido não localizado.' });
         if (pedido.statusEntrega !== 'PENDENTE') return res.status(400).json({ error: `Este pedido já foi finalizado anteriormente como ${pedido.statusEntrega}.` });
-        if (pedido.embarque.responsavelId !== req.user.id && !req.user.permissoes.admin) {
+        const permsUser = await getPerms(req.user.id);
+        if (pedido.embarque.responsavelId !== req.user.id && !permsUser.admin) {
             return res.status(403).json({ error: 'Este pedido pertence à carga de outro motorista.' });
         }
 
