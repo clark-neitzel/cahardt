@@ -4,31 +4,47 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const verificarAuth = require('../middlewares/authMiddleware');
 
+const getPerms = async (userId) => {
+    const vendedor = await prisma.vendedor.findUnique({
+        where: { id: userId },
+        select: { permissoes: true }
+    });
+    return typeof vendedor?.permissoes === 'string'
+        ? JSON.parse(vendedor.permissoes)
+        : (vendedor?.permissoes || {});
+};
+
 // Middleware interno: Permissão Entregador
-const checkAcessoEntregador = (req, res, next) => {
-    const { permissoes } = req.user;
-    if (permissoes && (permissoes.admin || permissoes.Pode_Executar_Entregas)) {
-        return next();
+const checkAcessoEntregador = async (req, res, next) => {
+    try {
+        const perms = await getPerms(req.user.id);
+        if (perms.admin || perms.Pode_Executar_Entregas) return next();
+        return res.status(403).json({ error: 'Você não tem permissão de Motorista/Entregador.' });
+    } catch (e) {
+        return res.status(403).json({ error: 'Erro ao verificar permissão.' });
     }
-    return res.status(403).json({ error: 'Você não tem permissão de Motorista/Entregador.' });
 };
 
 // Middleware interno: Permissão Auditoria/Escritório
-const checkAuditor = (req, res, next) => {
-    const { permissoes } = req.user;
-    if (permissoes && (permissoes.admin || permissoes.Pode_Ver_Todas_Entregas || permissoes.Pode_Ajustar_Entregas)) {
-        return next();
+const checkAuditor = async (req, res, next) => {
+    try {
+        const perms = await getPerms(req.user.id);
+        if (perms.admin || perms.Pode_Ver_Todas_Entregas || perms.Pode_Ajustar_Entregas) return next();
+        return res.status(403).json({ error: 'Acesso negado. Requer privilégio de Auditoria Logística.' });
+    } catch (e) {
+        return res.status(403).json({ error: 'Erro ao verificar permissão.' });
     }
-    return res.status(403).json({ error: 'Acesso negado. Requer privilégio de Auditoria Logística.' });
 };
 
 // Middleware interno: Permissão Correção Financeira
-const checkAjustador = (req, res, next) => {
-    const { permissoes } = req.user;
-    if (permissoes && (permissoes.admin || permissoes.Pode_Ajustar_Entregas)) {
-        return next();
+const checkAjustador = async (req, res, next) => {
+    try {
+        const perms = await getPerms(req.user.id);
+        if (perms.admin || perms.Pode_Ajustar_Entregas) return next();
+        return res.status(403).json({ error: 'Acesso negado. Ação restritiva ao Financeiro.' });
+    } catch (e) {
+        return res.status(403).json({ error: 'Erro ao verificar permissão.' });
     }
-    return res.status(403).json({ error: 'Acesso negado. Ação restritiva ao Financeiro.' });
 };
 
 // ==========================================
@@ -44,10 +60,26 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
             include: {
                 cliente: { select: { NomeFantasia: true, Nome: true, End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, Ponto_GPS: true } },
                 embarque: { select: { numero: true } },
+                vendedor: { select: { id: true, nome: true } },
+                usuarioLancamento: { select: { id: true, nome: true } },
                 itens: { include: { produto: { select: { nome: true, unidade: true } } } }
             },
             orderBy: { cliente: { NomeFantasia: 'asc' } }
         });
+
+        // Enriquece com o nome legível da condição de pagamento (join manual sem FK)
+        const condicoesCodigos = [...new Set(entregas.map(e => e.opcaoCondicaoPagamento).filter(Boolean))];
+        if (condicoesCodigos.length > 0) {
+            const tabelas = await prisma.tabelaPreco.findMany({
+                where: { idCondicao: { in: condicoesCodigos } },
+                select: { idCondicao: true, nomeCondicao: true }
+            });
+            const mapaCondicoes = Object.fromEntries(tabelas.map(t => [t.idCondicao, t.nomeCondicao]));
+            return res.json(entregas.map(e => ({
+                ...e,
+                nomeCondicaoPagamento: mapaCondicoes[e.opcaoCondicaoPagamento] || e.opcaoCondicaoPagamento || null
+            })));
+        }
 
         res.json(entregas);
     } catch (error) {

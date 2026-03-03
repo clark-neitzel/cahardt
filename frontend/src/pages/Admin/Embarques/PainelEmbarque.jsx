@@ -27,7 +27,7 @@ const PainelEmbarque = () => {
                 try {
                     // Trata string JSON se vier crua do banco, ou objeto já parseado pelo service
                     const perms = typeof v.permissoes === 'string' ? JSON.parse(v.permissoes) : (v.permissoes || {});
-                    return perms.admin === true || perms.Pode_Executar_Entregas === true;
+                    return !!(perms.admin) || !!(perms.Pode_Executar_Entregas);
                 } catch (e) {
                     return false;
                 }
@@ -35,7 +35,11 @@ const PainelEmbarque = () => {
             setVendedores(motoristas);
         } catch (error) {
             console.error('Erro ao buscar dados:', error);
-            toast.error('Gargalo de conexão com os embarques ativos.');
+            if (error?.response?.status === 403) {
+                toast.error('Sem permissão para acessar Embarques. Verifique suas permissões em Vendedores.');
+            } else {
+                toast.error('Erro ao carregar embarques. Verifique a conexão com o servidor.');
+            }
         } finally {
             setLoading(false);
         }

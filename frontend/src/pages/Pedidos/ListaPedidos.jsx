@@ -124,7 +124,10 @@ const ListaPedidos = () => {
                                             </span>
                                         )}
                                         {pedido.situacaoCA && (
-                                            <span className="text-[9px] font-medium text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded uppercase">
+                                            <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded uppercase border ${pedido.situacaoCA === 'FATURADO'
+                                                ? 'text-green-700 bg-green-50 border-green-200'
+                                                : 'text-blue-700 bg-blue-50 border-blue-100'
+                                                }`}>
                                                 CA: {pedido.situacaoCA}
                                             </span>
                                         )}
@@ -214,7 +217,10 @@ const ListaPedidos = () => {
                                     <div className="mt-1 flex items-center gap-2">
                                         <StatusBadge status={selectedPedido.statusEnvio} />
                                         {selectedPedido.situacaoCA && (
-                                            <span className="text-[10px] font-bold text-blue-800 bg-blue-50 border border-blue-200 px-2 py-1 rounded w-fit uppercase" title="Status Oficial no Conta Azul">
+                                            <span className={`text-[10px] font-bold px-2 py-1 rounded w-fit uppercase border ${selectedPedido.situacaoCA === 'FATURADO'
+                                                    ? 'text-green-800 bg-green-50 border-green-300'
+                                                    : 'text-blue-800 bg-blue-50 border-blue-200'
+                                                }`} title="Status Oficial no Conta Azul">
                                                 CA: {selectedPedido.situacaoCA}
                                             </span>
                                         )}

@@ -4,12 +4,20 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const verificarAuth = require('../middlewares/authMiddleware');
 
-const checkAcessoEmbarque = (req, res, next) => {
-    const { permissoes } = req.user;
-    if (permissoes && (permissoes.admin || permissoes.Pode_Acessar_Embarque)) {
-        return next();
+const checkAcessoEmbarque = async (req, res, next) => {
+    try {
+        const vendedor = await prisma.vendedor.findUnique({
+            where: { id: req.user.id },
+            select: { permissoes: true }
+        });
+        const perms = typeof vendedor?.permissoes === 'string'
+            ? JSON.parse(vendedor.permissoes)
+            : (vendedor?.permissoes || {});
+        if (perms.admin || perms.Pode_Acessar_Embarque) return next();
+        return res.status(403).json({ error: 'Você não possui permissão para acessar Embarques/Expedição.' });
+    } catch (e) {
+        return res.status(403).json({ error: 'Erro ao verificar permissão de embarque.' });
     }
-    return res.status(403).json({ error: 'Você não possui permissão para acessar Embarques/Expedição.' });
 };
 
 // ==========================================

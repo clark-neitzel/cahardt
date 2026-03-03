@@ -8,10 +8,12 @@ import {
 import leadService from '../../services/leadService';
 import clienteService from '../../services/clienteService';
 import atendimentoService from '../../services/atendimentoService';
+import entregasService from '../../services/entregasService';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import ModalAtendimento from './ModalAtendimento';
 import ModalNovoLead from './ModalNovoLead';
+import CheckoutEntregaModal from '../Motorista/Entregas/CheckoutEntregaModal';
 
 const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 const ETAPA_COLORS = {
@@ -243,11 +245,111 @@ const CardLead = ({ lead, onAtendimento, mostrarAcoes = true }) => {
 };
 
 // ================================================
+// Card de Entrega Pendente (Motorista)
+// ================================================
+const STATUS_ENTREGA_CORES = {
+    ENTREGUE: 'bg-green-100 text-green-700',
+    ENTREGUE_PARCIAL: 'bg-yellow-100 text-yellow-700',
+    DEVOLVIDO: 'bg-red-100 text-red-700',
+};
+
+const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout }) => {
+    const totalValor = pedido.itens?.reduce((s, i) => s + (Number(i.valor) * Number(i.quantidade)), 0) || 0;
+    const abrirMaps = () => {
+        if (!pedido.cliente?.Ponto_GPS) {
+            const addr = `${pedido.cliente?.End_Logradouro || ''} ${pedido.cliente?.End_Numero || ''} ${pedido.cliente?.End_Cidade || ''}`;
+            window.open(`https://maps.google.com/?q=${encodeURIComponent(addr)}`);
+            return;
+        }
+        const [lat, lng] = pedido.cliente.Ponto_GPS.split(',');
+        window.open(`https://maps.google.com/?q=${lat},${lng}`);
+    };
+    return (
+        <div className="bg-white rounded-xl border border-sky-400/50 ring-1 ring-sky-500/20 shadow-sm overflow-hidden mb-3">
+            <div className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                        <span className="text-[11px] font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded uppercase">Carga #{pedido.embarque?.numero}</span>
+                        <p className="font-bold text-[15px] text-gray-900 leading-tight truncate mt-1">{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}</p>
+                        {pedido.cliente?.End_Cidade && (
+                            <p className="text-[12px] text-gray-500">{pedido.cliente.End_Logradouro} {pedido.cliente.End_Numero} · {pedido.cliente.End_Cidade}</p>
+                        )}
+                    </div>
+                    <button onClick={abrirMaps} className="p-2 text-sky-500 hover:bg-sky-50 rounded-lg shrink-0">
+                        <Navigation className="h-4 w-4" />
+                    </button>
+                </div>
+                <div className="flex items-center gap-3 mt-2 text-[12px] text-gray-600">
+                    <span className="flex items-center gap-1"><Package className="h-3 w-3" />{pedido.itens?.length || 0} produto(s)</span>
+                    <span className="font-bold text-gray-900">R$ {totalValor.toFixed(2)}</span>
+                </div>
+                {podeCheckout && (
+                    <button
+                        onClick={() => onCheckout(pedido)}
+                        className="w-full mt-3 bg-sky-600 text-white text-[13px] font-semibold py-2 rounded-lg flex items-center justify-center gap-1.5 active:opacity-80"
+                    >
+                        <CheckCircle className="h-4 w-4" /> Dar Baixa na Entrega
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// ================================================
+// Card de Entrega Concluída
+// ================================================
+const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar }) => {
+    const cls = STATUS_ENTREGA_CORES[pedido.statusEntrega] || 'bg-gray-100 text-gray-600';
+    const labels = { ENTREGUE: 'Entregue', ENTREGUE_PARCIAL: 'Parcial', DEVOLVIDO: 'Devolvido' };
+    const totalRecebido = pedido.pagamentosReais?.reduce((s, p) => s + Number(p.valor), 0) || 0;
+    return (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-3">
+            <div className="p-4">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2">
+                        <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${cls}`}>{labels[pedido.statusEntrega] || pedido.statusEntrega}</span>
+                        {pedido.embarque?.numero && <span className="text-[11px] text-gray-400">Carga #{pedido.embarque.numero}</span>}
+                    </div>
+                    {podeAjustar && (
+                        <button
+                            onClick={() => onEstornar(pedido)}
+                            className="text-[11px] font-semibold text-red-500 hover:text-red-700 px-2 py-0.5 rounded border border-red-200 hover:bg-red-50 transition-colors"
+                        >
+                            Estornar
+                        </button>
+                    )}
+                </div>
+                <p className="font-bold text-[15px] text-gray-900 leading-tight truncate">{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}</p>
+                {pedido.dataEntrega && (
+                    <p className="text-[12px] text-gray-500 mt-1 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {new Date(pedido.dataEntrega).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                )}
+                {totalRecebido > 0 && (
+                    <p className="text-[13px] font-bold text-green-700 mt-1">R$ {totalRecebido.toFixed(2)} recebido</p>
+                )}
+                {pedido.pagamentosReais?.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                        {pedido.pagamentosReais.map((p, i) => (
+                            <span key={i} className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-mono">
+                                {p.formaPagamentoNome}: R$ {Number(p.valor).toFixed(2)}
+                            </span>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// ================================================
 // Componente principal: Rota / Leads
 // ================================================
 const RotaLeads = () => {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
 
     const [aba, setAba] = useState('atendimento');
     const [leads, setLeads] = useState([]);
@@ -258,8 +360,18 @@ const RotaLeads = () => {
     const [modalAtendimento, setModalAtendimento] = useState(null); // { tipo: 'lead'|'cliente', item }
     const [modalNovoLead, setModalNovoLead] = useState(false);
 
+    // Entregas (Motorista)
+    const [entregasPendentes, setEntregasPendentes] = useState([]);
+    const [entregasConcluidas, setEntregasConcluidas] = useState([]);
+    const [loadingEntregas, setLoadingEntregas] = useState(false);
+    const [checkoutPedido, setCheckoutPedido] = useState(null);
+
+    useEffect(() => { refreshUser(); }, []); // garante permissões frescas do banco
+
     const vendedorId = user?.id;
     const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
+    const podeEntregas = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Executar_Entregas);
+    const podeAjustar = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ajustar_Entregas);
 
     // Filtro mantido no localStorage para não resetar ao voltar pra tela
     const [vendedorFiltro, setVendedorFiltro] = useState(() => {
@@ -421,6 +533,43 @@ const RotaLeads = () => {
         navigate(`/pedidos/novo?clienteId=${clienteUUID}`);
     };
 
+    const carregarEntregas = useCallback(async (tipo) => {
+        try {
+            setLoadingEntregas(true);
+            if (tipo === 'pendentes') {
+                const data = await entregasService.getPendentes();
+                setEntregasPendentes(data);
+            } else {
+                const data = await entregasService.getConcluidas();
+                setEntregasConcluidas(data);
+            }
+        } catch (e) {
+            // 403 = sem permissão (usuário sem entregas atribuídas); silencia, mostra vazio
+            if (e?.response?.status !== 403) {
+                toast.error('Erro ao carregar entregas.');
+            }
+        } finally {
+            setLoadingEntregas(false);
+        }
+    }, []);
+
+    const handleEstornar = async (pedido) => {
+        if (!window.confirm(`Estornar a entrega de "${pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}"? O pedido voltará ao status PENDENTE.`)) return;
+        try {
+            await entregasService.estornar(pedido.id);
+            toast.success('Entrega estornada. Pedido voltou para PENDENTE.');
+            carregarEntregas('concluidas');
+            carregarEntregas('pendentes');
+        } catch (e) {
+            toast.error(e?.response?.data?.error || 'Erro ao estornar entrega.');
+        }
+    };
+
+    useEffect(() => {
+        if (aba === 'entregas') carregarEntregas('pendentes');
+        if (aba === 'entregues') carregarEntregas('concluidas');
+    }, [aba, carregarEntregas]);
+
     const renderItem = (item) => {
         const mostrarAcoes = aba === 'atendimento';
 
@@ -456,55 +605,112 @@ const RotaLeads = () => {
                 </div>
 
                 {/* Abas */}
-                <div className="flex border-t border-gray-100">
+                <div className="flex border-t border-gray-100 overflow-x-auto">
                     <button
                         onClick={() => setAba('atendimento')}
-                        className={`flex-1 py-3 text-[14px] font-semibold transition-colors border-b-2 ${aba === 'atendimento' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
+                        className={`flex-1 py-3 text-[13px] font-semibold transition-colors border-b-2 whitespace-nowrap px-2 min-w-[90px] ${aba === 'atendimento' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
                     >
                         Atendimento ({itensParaAtender.length})
                     </button>
                     <button
                         onClick={() => setAba('atendidos')}
-                        className={`flex-1 py-3 text-[14px] font-semibold transition-colors border-b-2 ${aba === 'atendidos' ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500'}`}
+                        className={`flex-1 py-3 text-[13px] font-semibold transition-colors border-b-2 whitespace-nowrap px-2 min-w-[80px] ${aba === 'atendidos' ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500'}`}
                     >
                         Atendidos ({itensAtendidos.length})
+                    </button>
+                    <button
+                        onClick={() => setAba('entregas')}
+                        className={`flex-1 py-3 text-[13px] font-semibold transition-colors border-b-2 whitespace-nowrap px-2 min-w-[80px] ${aba === 'entregas' ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-500'}`}
+                    >
+                        Entregas ({entregasPendentes.length})
+                    </button>
+                    <button
+                        onClick={() => setAba('entregues')}
+                        className={`flex-1 py-3 text-[13px] font-semibold transition-colors border-b-2 whitespace-nowrap px-2 min-w-[80px] ${aba === 'entregues' ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-500'}`}
+                    >
+                        Entregues ({entregasConcluidas.length})
                     </button>
                 </div>
             </div>
 
             {/* Conteúdo */}
-            <div className="px-3 pt-3 pb-28">
-                {loading ? (
+            <div className="px-3 pt-3 pb-28 max-w-6xl mx-auto">
+                {(loading && (aba === 'atendimento' || aba === 'atendidos')) ? (
                     <div className="flex items-center justify-center h-40">
                         <Loader className="h-6 w-6 animate-spin text-blue-600" />
+                    </div>
+                ) : (loadingEntregas && (aba === 'entregas' || aba === 'entregues')) ? (
+                    <div className="flex items-center justify-center h-40">
+                        <Loader className="h-6 w-6 animate-spin text-sky-600" />
                     </div>
                 ) : (
                     <>
                         {aba === 'atendimento' && (
-                            <>
-                                {itensParaAtender.length === 0 ? (
-                                    <div className="text-center py-12 text-gray-500">
-                                        <CheckCircle className="h-10 w-10 text-green-500 mx-auto mb-2" />
-                                        <p className="font-bold text-gray-700">Tudo atendido hoje!</p>
-                                        <p className="text-[13px]">Nenhum item pendente na sua rota.</p>
-                                    </div>
-                                ) : (
-                                    itensParaAtender.map(renderItem)
-                                )}
-                            </>
+                            itensParaAtender.length === 0 ? (
+                                <div className="text-center py-12 text-gray-500">
+                                    <CheckCircle className="h-10 w-10 text-green-500 mx-auto mb-2" />
+                                    <p className="font-bold text-gray-700">Tudo atendido hoje!</p>
+                                    <p className="text-[13px]">Nenhum item pendente na sua rota.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                                    {itensParaAtender.map(renderItem)}
+                                </div>
+                            )
                         )}
 
                         {aba === 'atendidos' && (
-                            <>
-                                {itensAtendidos.length === 0 ? (
-                                    <div className="text-center py-12 text-gray-500">
-                                        <ClipboardList className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-                                        <p className="font-bold text-gray-700">Nenhum atendimento hoje ainda.</p>
-                                    </div>
-                                ) : (
-                                    itensAtendidos.map(renderItem)
-                                )}
-                            </>
+                            itensAtendidos.length === 0 ? (
+                                <div className="text-center py-12 text-gray-500">
+                                    <ClipboardList className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                                    <p className="font-bold text-gray-700">Nenhum atendimento hoje ainda.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                                    {itensAtendidos.map(renderItem)}
+                                </div>
+                            )
+                        )}
+
+                        {aba === 'entregas' && (
+                            entregasPendentes.length === 0 ? (
+                                <div className="text-center py-12 text-gray-500">
+                                    <CheckCircle className="h-10 w-10 text-sky-400 mx-auto mb-2" />
+                                    <p className="font-bold text-gray-700">Nenhuma entrega pendente.</p>
+                                    <p className="text-[13px]">Todas as entregas do seu roteiro estão concluídas.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                                    {entregasPendentes.map(p => (
+                                        <CardEntregaPendente
+                                            key={p.id}
+                                            pedido={p}
+                                            onCheckout={setCheckoutPedido}
+                                            podeCheckout={podeEntregas}
+                                        />
+                                    ))}
+                                </div>
+                            )
+                        )}
+
+                        {aba === 'entregues' && (
+                            entregasConcluidas.length === 0 ? (
+                                <div className="text-center py-12 text-gray-500">
+                                    <ClipboardList className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                                    <p className="font-bold text-gray-700">Nenhuma entrega finalizada ainda.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                                    {entregasConcluidas.map(p => (
+                                        <CardEntregaConcluida
+                                            key={p.id}
+                                            pedido={p}
+                                            podeAjustar={podeAjustar}
+                                            onEstornar={handleEstornar}
+                                        />
+                                    ))}
+                                </div>
+                            )
                         )}
                     </>
                 )}
@@ -534,6 +740,20 @@ const RotaLeads = () => {
                     onClose={() => setModalNovoLead(false)}
                     onSalvo={handleNovoLeadSalvo}
                     user={user}
+                />
+            )}
+
+            {/* Modal Checkout Entrega (Motorista) */}
+            {checkoutPedido && (
+                <CheckoutEntregaModal
+                    pedido={checkoutPedido}
+                    onClose={() => setCheckoutPedido(null)}
+                    onSuccess={() => {
+                        setCheckoutPedido(null);
+                        carregarEntregas('pendentes');
+                        carregarEntregas('concluidas');
+                        toast.success('Entrega registrada com sucesso!');
+                    }}
                 />
             )}
         </div>

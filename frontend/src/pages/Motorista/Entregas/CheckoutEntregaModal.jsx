@@ -3,6 +3,7 @@ import { X, CheckCircle, Package, ArrowRight, Save, Navigation, DollarSign, Aler
 import toast from 'react-hot-toast';
 import entregasService from '../../../services/entregasService';
 import formasPagamentoService from '../../../services/formasPagamentoService';
+import tabelaPrecoService from '../../../services/tabelaPrecoService';
 import { useAuth } from '../../../contexts/AuthContext';
 
 const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
@@ -30,9 +31,29 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
         const fetchF = async () => {
             setLoadingFormas(true);
             try {
-                const data = await formasPagamentoService.listar();
-                // Filtra as ativas
-                setFormasDisp(data.filter(f => f.ativo));
+                const [customForms, tabelaForms] = await Promise.all([
+                    formasPagamentoService.listar(),
+                    tabelaPrecoService.listar(true)
+                ]);
+                // Formas de entrega personalizadas (Escritório, Vendedor responsável, etc.)
+                const ativas = customForms.filter(f => f.ativo).map(f => ({
+                    _selectId: f.id,
+                    nome: f.nome,
+                    formaPagamentoEntregaId: f.id,
+                    permiteVendedorResponsavel: f.permiteVendedorResponsavel,
+                    permiteEscritorioResponsavel: f.permiteEscritorioResponsavel,
+                    _grupo: 'Formas de Entrega'
+                }));
+                // Condições de pagamento padrão (Dinheiro, PIX, Boleto, etc.) da tabela de preços
+                const tabelas = tabelaForms.map(t => ({
+                    _selectId: 'tabela_' + t.idCondicao,
+                    nome: t.nomeCondicao,
+                    formaPagamentoEntregaId: null,
+                    permiteVendedorResponsavel: false,
+                    permiteEscritorioResponsavel: false,
+                    _grupo: 'Formas de Pagamento'
+                }));
+                setFormasDisp([...ativas, ...tabelas]);
             } catch (error) {
                 toast.error('Erro ao buscar Formas de Pagamento.');
             } finally {
@@ -52,11 +73,37 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
         setItensDevolvidos(devs);
     }, [pedido]);
 
+    // Guarda o valor-alvo do caixa pra usar quando formasDisp carregar
+    const [valorAlvoCaixa, setValorAlvoCaixa] = useState(null);
+
+    // Helper: pré-popula o primeiro pagamento com a forma prevista no pedido
+    const autoPopularPagamento = (valorInicial) => {
+        setValorAlvoCaixa(valorInicial);
+        if (formasDisp.length === 0) return; // useEffect abaixo cuidará quando carregar
+        const previstoId = pedido.opcaoCondicaoPagamento
+            ? formasDisp.find(f => f._selectId === 'tabela_' + pedido.opcaoCondicaoPagamento)?._selectId
+            : null;
+        const defaultSelectId = previstoId || formasDisp[0]._selectId;
+        setPagamentos([{ idLocal: Date.now(), _selectId: defaultSelectId, valor: valorInicial }]);
+    };
+
+    // Quando formasDisp carregar e já tem valor-alvo pendente, auto-popula
+    useEffect(() => {
+        if (formasDisp.length > 0 && valorAlvoCaixa !== null && pagamentos.length === 0 && step === 3) {
+            const previstoId = pedido.opcaoCondicaoPagamento
+                ? formasDisp.find(f => f._selectId === 'tabela_' + pedido.opcaoCondicaoPagamento)?._selectId
+                : null;
+            const defaultSelectId = previstoId || formasDisp[0]._selectId;
+            setPagamentos([{ idLocal: Date.now(), _selectId: defaultSelectId, valor: valorAlvoCaixa }]);
+        }
+    }, [formasDisp, valorAlvoCaixa, step]);
+
     // Navegação Status Físico
     const handleSelectStatus = (s) => {
         setStatusFinal(s);
         if (s === 'ENTREGUE') {
             setItensDevolvidos(itensDevolvidos.map(i => ({ ...i, quantidadeDevolvida: 0 })));
+            autoPopularPagamento(totalBrutoOriginal);
             setStep(3); // Pula direto pro Caixa
         } else if (s === 'DEVOLVIDO') {
             // Conta morre
@@ -89,6 +136,9 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
         if (!temDevolucao) {
             return toast.error('Se você marcou PARCIAL, deve registrar ao menos 1 item devolvido ou riscado.');
         }
+        // saldoLiquidoDevedor já é calculado do estado atualizado de itensDevolvidos
+        const saldoPos = Number((totalBrutoOriginal - itensDevolvidos.reduce((a, i) => a + (i.quantidadeDevolvida * i.valorBaseItem), 0)).toFixed(2));
+        autoPopularPagamento(saldoPos);
         setStep(3);
     };
 
@@ -104,7 +154,12 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
 
     const handleAddPagamento = () => {
         if (formasDisp.length === 0) return toast.error('Nenhuma forma de pagamento configurada no painel web.');
-        setPagamentos([...pagamentos, { idLocal: Date.now(), formaPagamentoEntregaId: formasDisp[0].id, valor: saldoRestante > 0 ? saldoRestante : 0 }]);
+        // Pré-seleciona a forma prevista no pedido, se disponível
+        const previstoId = pedido.opcaoCondicaoPagamento
+            ? formasDisp.find(f => f._selectId === 'tabela_' + pedido.opcaoCondicaoPagamento)?._selectId
+            : null;
+        const defaultSelectId = (pagamentos.length === 0 && previstoId) ? previstoId : formasDisp[0]._selectId;
+        setPagamentos([...pagamentos, { idLocal: Date.now(), _selectId: defaultSelectId, valor: saldoRestante > 0 ? saldoRestante : 0 }]);
     };
 
     const handleRemovePagamento = (idL) => {
@@ -181,14 +236,14 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
 
             if (statusFinal !== 'DEVOLVIDO') {
                 payload.pagamentos = pagamentos.map(p => {
-                    const formaConfig = formasDisp.find(f => f.id === p.formaPagamentoEntregaId);
+                    const formaConfig = formasDisp.find(f => f._selectId === p._selectId);
                     return {
-                        formaPagamentoEntregaId: p.formaPagamentoEntregaId,
-                        formaPagamentoNome: formaConfig.nome,
+                        formaPagamentoEntregaId: formaConfig?.formaPagamentoEntregaId || null,
+                        formaPagamentoNome: formaConfig?.nome || p._selectId,
                         valor: p.valor,
-                        vendedorResponsavelId: formaConfig.permiteVendedorResponsavel ? user.id : null,
-                        escritorioResponsavel: formaConfig.permiteEscritorioResponsavel
-                    }
+                        vendedorResponsavelId: formaConfig?.permiteVendedorResponsavel ? user.id : null,
+                        escritorioResponsavel: !!formaConfig?.permiteEscritorioResponsavel
+                    };
                 });
             }
 
@@ -224,6 +279,19 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                         <span className="text-xs uppercase font-bold text-sky-200 tracking-wider">Check-in de Doca</span>
                         <h3 className="text-lg font-bold truncate leading-tight">{pedido.cliente?.NomeFantasia}</h3>
                         <p className="text-xs text-sky-100 font-mono">Ped #{pedido.numero || 'X'} / Emb: #{pedido.embarque?.numero}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="text-sm font-black text-white">R$ {pedido.itens.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0).toFixed(2)}</span>
+                            {pedido.nomeCondicaoPagamento && (
+                                <span className="text-[10px] bg-sky-800 text-sky-100 px-2 py-0.5 rounded-full font-bold">{pedido.nomeCondicaoPagamento}</span>
+                            )}
+                        </div>
+                        {(pedido.vendedor || pedido.usuarioLancamento) && (
+                            <p className="text-[10px] text-sky-200 mt-0.5 truncate">
+                                {pedido.vendedor && <>Vend: {pedido.vendedor.nome}</>}
+                                {pedido.vendedor && pedido.usuarioLancamento && ' · '}
+                                {pedido.usuarioLancamento && <>Lanç: {pedido.usuarioLancamento.nome}</>}
+                            </p>
+                        )}
                     </div>
                     <button onClick={onClose} className="p-2 ml-2 bg-sky-700 hover:bg-sky-800 rounded-full text-white">
                         <X className="h-5 w-5" />
@@ -356,6 +424,31 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                {/* Condição prevista no pedido */}
+                                {pedido.nomeCondicaoPagamento && (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+                                        <DollarSign className="h-4 w-4 text-blue-500 shrink-0" />
+                                        <div>
+                                            <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wide">Previsto no Pedido</span>
+                                            <p className="text-sm font-bold text-blue-800">{pedido.nomeCondicaoPagamento}</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Linha informativa de Devolução (quando parcial) */}
+                                {totalDescontoDevolucao > 0 && (
+                                    <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Package className="h-4 w-4 text-orange-500 shrink-0" />
+                                            <div>
+                                                <span className="text-[10px] font-bold text-orange-500 uppercase tracking-wide">Devolução de Mercadoria</span>
+                                                <p className="text-xs text-orange-700">Itens retornados ao estoque</p>
+                                            </div>
+                                        </div>
+                                        <span className="text-base font-black text-orange-700">- R$ {totalDescontoDevolucao.toFixed(2)}</span>
+                                    </div>
+                                )}
+
                                 {pagamentos.length === 0 ? (
                                     <div className="text-center py-10 opacity-70">
                                         <DollarSign className="h-10 w-10 text-gray-400 mx-auto mb-2" />
@@ -373,12 +466,20 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                                 <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wide">Como pagou?</label>
                                                 <select
                                                     className="w-full mt-1 border-b-2 border-gray-300 focus:border-sky-500 bg-transparent py-1 text-sm font-bold text-gray-800 focus:outline-none"
-                                                    value={pg.formaPagamentoEntregaId}
-                                                    onChange={(e) => updatePagamento(pg.idLocal, 'formaPagamentoEntregaId', e.target.value)}
+                                                    value={pg._selectId}
+                                                    onChange={(e) => updatePagamento(pg.idLocal, '_selectId', e.target.value)}
                                                 >
-                                                    {formasDisp.map(f => (
-                                                        <option key={f.id} value={f.id}>{f.nome}</option>
-                                                    ))}
+                                                    {['Formas de Entrega', 'Formas de Pagamento'].map(grupo => {
+                                                        const itens = formasDisp.filter(f => f._grupo === grupo);
+                                                        if (itens.length === 0) return null;
+                                                        return (
+                                                            <optgroup key={grupo} label={grupo}>
+                                                                {itens.map(f => (
+                                                                    <option key={f._selectId} value={f._selectId}>{f.nome}</option>
+                                                                ))}
+                                                            </optgroup>
+                                                        );
+                                                    })}
                                                 </select>
                                             </div>
 

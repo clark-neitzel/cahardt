@@ -159,7 +159,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
 
                         <h4 className="font-medium text-gray-900 mb-4">Permissões de Abas</h4>
                         <div className="space-y-3">
-                            {Object.keys(DEFAULT_PERMISSIONS).filter(k => k !== 'admin').map(tabKey => (
+                            {Object.keys(TAB_LABELS).map(tabKey => (
                                 <div key={tabKey} className="flex flex-col sm:flex-row sm:items-center justify-between bg-gray-50 p-3 rounded-md border border-gray-200">
                                     <span className="font-medium text-sm text-gray-700 mb-2 sm:mb-0 w-1/3">
                                         {TAB_LABELS[tabKey] || tabKey}

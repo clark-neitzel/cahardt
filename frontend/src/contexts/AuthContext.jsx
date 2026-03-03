@@ -49,6 +49,15 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const refreshUser = async () => {
+        try {
+            const userData = await appAuthService.me();
+            setUser(userData);
+        } catch (error) {
+            console.error('Erro ao atualizar dados do usuário:', error);
+        }
+    };
+
     const hasPermission = (tab, action = 'view') => {
         if (!user || !user.permissoes) return false;
 
@@ -67,7 +76,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, signed: !!user, loading, login, logout, hasPermission }}>
+        <AuthContext.Provider value={{ user, signed: !!user, loading, login, logout, hasPermission, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

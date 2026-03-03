@@ -12,6 +12,9 @@ const entregasService = {
     concluirEntrega: async (id, dados) => {
         const response = await api.post(`/entregas/${id}/concluir`, dados);
         return response.data;
+    },
+    estornar: async (id) => {
+        await api.delete(`/entregas/${id}/estorno`);
     }
 };
 

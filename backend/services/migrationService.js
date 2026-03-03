@@ -351,7 +351,13 @@ const migrationService = {
                 "criado_em" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT "atendimentos_pkey" PRIMARY KEY ("id")
             );`,
-            `ALTER TABLE "atendimentos" ADD CONSTRAINT IF NOT EXISTS "atendimentos_lead_id_fkey" FOREIGN KEY ("lead_id") REFERENCES "leads"("id") ON DELETE SET NULL ON UPDATE CASCADE;`,
+            `DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'atendimentos_lead_id_fkey'
+                ) THEN
+                    ALTER TABLE "atendimentos" ADD CONSTRAINT "atendimentos_lead_id_fkey" FOREIGN KEY ("lead_id") REFERENCES "leads"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
             `CREATE INDEX IF NOT EXISTS "atendimentos_lead_id_idx" ON "atendimentos"("lead_id");`,
             `CREATE INDEX IF NOT EXISTS "atendimentos_cliente_id_idx" ON "atendimentos"("cliente_id");`,
             `CREATE INDEX IF NOT EXISTS "atendimentos_id_vendedor_idx" ON "atendimentos"("id_vendedor");`,
