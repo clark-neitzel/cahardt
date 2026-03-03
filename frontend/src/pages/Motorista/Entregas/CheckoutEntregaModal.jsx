@@ -80,9 +80,9 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     // Acha o melhor _selectId default: condição do pedido > primeira condição de pagamento > primeira forma
     const getDefaultSelectId = () => {
         if (formasDisp.length === 0) return null;
-        // Tenta a condição original do pedido
-        if (pedido.opcaoCondicaoPagamento) {
-            const match = formasDisp.find(f => f._selectId === 'tabela_' + pedido.opcaoCondicaoPagamento);
+        // Tenta a condição original do pedido (idCondicaoResolvido vem do backend, mapeado de opcaoCondicao -> idCondicao)
+        if (pedido.idCondicaoResolvido) {
+            const match = formasDisp.find(f => f._selectId === 'tabela_' + pedido.idCondicaoResolvido);
             if (match) return match._selectId;
         }
         // Fallback: primeira condição de pagamento

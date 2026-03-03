@@ -68,19 +68,21 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
         });
 
         // Enriquece com o nome legível da condição de pagamento (join manual sem FK)
+        // O pedido salva opcaoCondicaoPagamento = opcaoCondicao da TabelaPreco (não idCondicao!)
         const condicoesCodigos = [...new Set(entregas.map(e => e.opcaoCondicaoPagamento).filter(Boolean))];
         let mapaCondicoes = {};
         if (condicoesCodigos.length > 0) {
             const tabelas = await prisma.tabelaPreco.findMany({
-                where: { idCondicao: { in: condicoesCodigos } },
-                select: { idCondicao: true, nomeCondicao: true }
+                where: { opcaoCondicao: { in: condicoesCodigos } },
+                select: { opcaoCondicao: true, nomeCondicao: true, idCondicao: true }
             });
-            mapaCondicoes = Object.fromEntries(tabelas.map(t => [t.idCondicao, t.nomeCondicao]));
+            mapaCondicoes = Object.fromEntries(tabelas.map(t => [t.opcaoCondicao, { nome: t.nomeCondicao, idCondicao: t.idCondicao }]));
         }
 
         res.json(entregas.map(e => ({
             ...e,
-            nomeCondicaoPagamento: mapaCondicoes[e.opcaoCondicaoPagamento] || e.opcaoCondicaoPagamento || null
+            nomeCondicaoPagamento: mapaCondicoes[e.opcaoCondicaoPagamento]?.nome || e.opcaoCondicaoPagamento || null,
+            idCondicaoResolvido: mapaCondicoes[e.opcaoCondicaoPagamento]?.idCondicao || null
         })));
     } catch (error) {
         console.error('Erro ao listar entregas pendentes:', error);
