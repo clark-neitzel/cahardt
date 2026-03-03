@@ -48,10 +48,11 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                 const tabelas = tabelaForms.map(t => ({
                     _selectId: 'tabela_' + t.idCondicao,
                     nome: t.nomeCondicao,
+                    descricao: t.tipoPagamento || '',
                     formaPagamentoEntregaId: null,
                     permiteVendedorResponsavel: false,
                     permiteEscritorioResponsavel: false,
-                    _grupo: 'Formas de Pagamento'
+                    _grupo: 'Condições de Pagamento'
                 }));
                 setFormasDisp([...ativas, ...tabelas]);
             } catch (error) {
@@ -281,8 +282,8 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                         <p className="text-xs text-sky-100 font-mono">Ped #{pedido.numero || 'X'} / Emb: #{pedido.embarque?.numero}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span className="text-sm font-black text-white">R$ {pedido.itens.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0).toFixed(2)}</span>
-                            {pedido.nomeCondicaoPagamento && (
-                                <span className="text-[10px] bg-sky-800 text-sky-100 px-2 py-0.5 rounded-full font-bold">{pedido.nomeCondicaoPagamento}</span>
+                            {(pedido.nomeCondicaoPagamento || pedido.tipoPagamento) && (
+                                <span className="text-[10px] bg-sky-800 text-sky-100 px-2 py-0.5 rounded-full font-bold">{pedido.nomeCondicaoPagamento || pedido.tipoPagamento}</span>
                             )}
                         </div>
                         {(pedido.vendedor || pedido.usuarioLancamento) && (
@@ -425,12 +426,15 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
 
                             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                                 {/* Condição prevista no pedido */}
-                                {pedido.nomeCondicaoPagamento && (
+                                {(pedido.nomeCondicaoPagamento || pedido.tipoPagamento) && (
                                     <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
                                         <DollarSign className="h-4 w-4 text-blue-500 shrink-0" />
                                         <div>
                                             <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wide">Previsto no Pedido</span>
-                                            <p className="text-sm font-bold text-blue-800">{pedido.nomeCondicaoPagamento}</p>
+                                            <p className="text-sm font-bold text-blue-800">
+                                                {pedido.nomeCondicaoPagamento || pedido.tipoPagamento}
+                                                {pedido.qtdParcelas > 1 && ` (${pedido.qtdParcelas}x)`}
+                                            </p>
                                         </div>
                                     </div>
                                 )}
@@ -469,13 +473,15 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                                     value={pg._selectId}
                                                     onChange={(e) => updatePagamento(pg.idLocal, '_selectId', e.target.value)}
                                                 >
-                                                    {['Formas de Entrega', 'Formas de Pagamento'].map(grupo => {
+                                                    {['Condições de Pagamento', 'Formas de Entrega'].map(grupo => {
                                                         const itens = formasDisp.filter(f => f._grupo === grupo);
                                                         if (itens.length === 0) return null;
                                                         return (
                                                             <optgroup key={grupo} label={grupo}>
                                                                 {itens.map(f => (
-                                                                    <option key={f._selectId} value={f._selectId}>{f.nome}</option>
+                                                                    <option key={f._selectId} value={f._selectId}>
+                                                                        {f.nome}{f.descricao ? ` (${f.descricao})` : ''}
+                                                                    </option>
                                                                 ))}
                                                             </optgroup>
                                                         );
