@@ -190,18 +190,32 @@ router.get('/resumo', async (req, res) => {
             const isDevolvido = e.statusEntrega === 'DEVOLVIDO';
 
             const pagamentos = e.pagamentosReais.map(p => {
-                const debitaCaixa = condicaoDebitaCaixa;
+                // Formas de Entrega sobrescrevem a condição do pedido:
+                // - Escritório responsável: NÃO debita (o escritório resolve)
+                // - Vendedor responsável: DEBITA (motorista carrega o dinheiro)
+                // - Sem forma especial: usa a condição da TabelaPreco
+                let debitaCaixa;
+                let labelCondicao = nomeCondicao;
+                if (p.escritorioResponsavel) {
+                    debitaCaixa = false;
+                    labelCondicao = p.formaPagamentoNome || 'Escritório responsável';
+                } else if (p.vendedorResponsavelId) {
+                    debitaCaixa = true;
+                    labelCondicao = p.formaPagamentoNome || 'Vendedor responsável';
+                } else {
+                    debitaCaixa = condicaoDebitaCaixa;
+                }
                 const val = Number(p.valor);
 
                 if (!isDevolvido) {
                     if (debitaCaixa) totalRecebidoCaixa += val;
                     else totalRecebidoOutros += val;
 
-                    // Agrupar por condição de pagamento
-                    if (!recebidoPorCondicao[nomeCondicao]) {
-                        recebidoPorCondicao[nomeCondicao] = { total: 0, debitaCaixa };
+                    // Agrupar por condição/forma de pagamento
+                    if (!recebidoPorCondicao[labelCondicao]) {
+                        recebidoPorCondicao[labelCondicao] = { total: 0, debitaCaixa };
                     }
-                    recebidoPorCondicao[nomeCondicao].total += val;
+                    recebidoPorCondicao[labelCondicao].total += val;
                 }
 
                 return {
@@ -351,14 +365,17 @@ router.post('/fechar', async (req, res) => {
             // Devolvido não conta (mercadoria volta, motorista não recebeu)
             if (e.statusEntrega === 'DEVOLVIDO') return;
 
-            const debitaCaixa = mapaDebitaCaixa[e.opcaoCondicaoPagamento] || false;
+            const condicaoDebitaCaixa = mapaDebitaCaixa[e.opcaoCondicaoPagamento] || false;
             e.pagamentosReais.forEach(p => {
                 const val = Number(p.valor);
-                if (debitaCaixa) {
-                    totalRecebidoCaixa += val;
-                } else {
-                    totalRecebidoOutros += val;
-                }
+                // Formas de Entrega sobrescrevem a condição
+                let debita;
+                if (p.escritorioResponsavel) debita = false;
+                else if (p.vendedorResponsavelId) debita = true;
+                else debita = condicaoDebitaCaixa;
+
+                if (debita) totalRecebidoCaixa += val;
+                else totalRecebidoOutros += val;
             });
         });
 
@@ -568,11 +585,13 @@ router.get('/relatorio', async (req, res) => {
                     condicao: condicaoInfo?.nome || e.opcaoCondicaoPagamento || '-',
                     valorPedido: Math.round(valorPedido * 100) / 100,
                     status: e.statusEntrega,
-                    pagamentos: e.pagamentosReais.map(p => ({
-                        forma: p.formaPagamentoNome,
-                        valor: Number(p.valor),
-                        debitaCaixa: condicaoDebitaCaixa
-                    })),
+                    pagamentos: e.pagamentosReais.map(p => {
+                        let debita;
+                        if (p.escritorioResponsavel) debita = false;
+                        else if (p.vendedorResponsavelId) debita = true;
+                        else debita = condicaoDebitaCaixa;
+                        return { forma: p.formaPagamentoNome, valor: Number(p.valor), debitaCaixa: debita };
+                    }),
                     conferido: conferencia?.conferido || false
                 };
             }),

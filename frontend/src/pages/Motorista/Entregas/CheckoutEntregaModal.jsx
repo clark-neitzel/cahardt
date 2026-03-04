@@ -45,16 +45,20 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                     _grupo: 'Formas de Entrega'
                 }));
                 // Condições de pagamento padrão (Dinheiro, PIX, Boleto, etc.) da tabela de preços
-                const tabelas = tabelaForms.map(t => ({
-                    _selectId: 'tabela_' + t.idCondicao,
-                    nome: t.nomeCondicao,
-                    descricao: t.tipoPagamento || '',
-                    formaPagamentoEntregaId: null,
-                    permiteVendedorResponsavel: false,
-                    permiteEscritorioResponsavel: false,
-                    _grupo: 'Condições de Pagamento'
-                }));
-                setFormasDisp([...ativas, ...tabelas]);
+                // Filtrar condições que já existem como Formas de Entrega (evitar duplicação)
+                const nomesFormas = new Set(ativas.map(f => f.nome.toLowerCase().trim()));
+                const tabelas = tabelaForms
+                    .filter(t => !nomesFormas.has(t.nomeCondicao.toLowerCase().trim()))
+                    .map(t => ({
+                        _selectId: 'tabela_' + t.idCondicao,
+                        nome: t.nomeCondicao,
+                        descricao: t.tipoPagamento || '',
+                        formaPagamentoEntregaId: null,
+                        permiteVendedorResponsavel: false,
+                        permiteEscritorioResponsavel: false,
+                        _grupo: 'Condições de Pagamento'
+                    }));
+                setFormasDisp([...tabelas, ...ativas]);
             } catch (error) {
                 toast.error('Erro ao buscar Formas de Pagamento.');
             } finally {
