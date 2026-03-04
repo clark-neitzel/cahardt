@@ -3,12 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import {
     MapPin, Phone, MessageCircle, User, Plus, ChevronRight,
     Clock, Calendar, Tag, CheckCircle, ClipboardList, Star,
-    Package, X, Navigation, Loader
+    Package, X, Navigation, Loader, Search, Truck, Edit3,
+    DollarSign, Trash2, Save, ChevronDown, ChevronUp
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import leadService from '../../services/leadService';
 import clienteService from '../../services/clienteService';
 import atendimentoService from '../../services/atendimentoService';
 import entregasService from '../../services/entregasService';
+import formasPagamentoService from '../../services/formasPagamentoService';
+import tabelaPrecoService from '../../services/tabelaPrecoService';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import ModalAtendimento from './ModalAtendimento';
@@ -266,37 +270,39 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout }) => {
         window.open(`https://maps.google.com/?q=${lat},${lng}`);
     };
     return (
-        <div className="bg-white rounded-xl border border-sky-400/50 ring-1 ring-sky-500/20 shadow-sm overflow-hidden mb-3">
-            <div className="p-4">
+        <div className="bg-white rounded-xl border border-sky-400/50 ring-1 ring-sky-500/20 shadow-sm overflow-hidden mb-2">
+            <div className="p-3 md:p-4">
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[11px] font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded uppercase">Carga #{pedido.embarque?.numero}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            <Link to="/admin/embarques" className="text-[10px] md:text-[11px] font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded uppercase hover:bg-sky-100 transition-colors">
+                                Carga #{pedido.embarque?.numero}
+                            </Link>
                             {motoristaNome && (
-                                <span className="text-[11px] text-gray-500 font-semibold flex items-center gap-0.5">
-                                    <User className="h-3 w-3" /> {motoristaNome.split(' ')[0]}
+                                <span className="text-[10px] md:text-[11px] text-gray-500 font-semibold flex items-center gap-0.5">
+                                    <Truck className="h-3 w-3" /> {motoristaNome.split(' ')[0]}
                                 </span>
                             )}
                         </div>
-                        <p className="font-bold text-[15px] text-gray-900 leading-tight truncate mt-1">{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}</p>
+                        <p className="font-bold text-[13px] md:text-[15px] text-gray-900 leading-tight truncate mt-0.5">{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}</p>
                         {pedido.cliente?.End_Cidade && (
-                            <p className="text-[12px] text-gray-500">{pedido.cliente.End_Logradouro} {pedido.cliente.End_Numero} · {pedido.cliente.End_Cidade}</p>
+                            <p className="text-[11px] md:text-[12px] text-gray-500 truncate">{pedido.cliente.End_Logradouro} {pedido.cliente.End_Numero} · {pedido.cliente.End_Cidade}</p>
                         )}
                     </div>
-                    <button onClick={abrirMaps} className="p-2 text-sky-500 hover:bg-sky-50 rounded-lg shrink-0">
+                    <button onClick={abrirMaps} className="p-1.5 text-sky-500 hover:bg-sky-50 rounded-lg shrink-0">
                         <Navigation className="h-4 w-4" />
                     </button>
                 </div>
-                <div className="flex items-center gap-3 mt-2 text-[12px] text-gray-600">
-                    <span className="flex items-center gap-1"><Package className="h-3 w-3" />{pedido.itens?.length || 0} produto(s)</span>
+                <div className="flex items-center gap-3 mt-1.5 text-[11px] md:text-[12px] text-gray-600">
+                    <span className="flex items-center gap-1"><Package className="h-3 w-3" />{pedido.itens?.length || 0} prod.</span>
                     <span className="font-bold text-gray-900">R$ {totalValor.toFixed(2)}</span>
                 </div>
                 {podeCheckout && (
                     <button
                         onClick={() => onCheckout(pedido)}
-                        className="w-full mt-3 bg-sky-600 text-white text-[13px] font-semibold py-2 rounded-lg flex items-center justify-center gap-1.5 active:opacity-80"
+                        className="w-full mt-2 bg-sky-600 text-white text-[12px] md:text-[13px] font-semibold py-1.5 md:py-2 rounded-lg flex items-center justify-center gap-1.5 active:opacity-80"
                     >
-                        <CheckCircle className="h-4 w-4" /> Dar Baixa na Entrega
+                        <CheckCircle className="h-4 w-4" /> Dar Baixa
                     </button>
                 )}
             </div>
@@ -307,77 +313,335 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout }) => {
 // ================================================
 // Card de Entrega Concluída
 // ================================================
-const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar }) => {
+const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar, onEditar }) => {
+    const [aberto, setAberto] = useState(false);
     const cls = STATUS_ENTREGA_CORES[pedido.statusEntrega] || 'bg-gray-100 text-gray-600';
     const labels = { ENTREGUE: 'Entregue', ENTREGUE_PARCIAL: 'Parcial', DEVOLVIDO: 'Devolvido' };
     const totalRecebido = pedido.pagamentosReais?.reduce((s, p) => s + Number(p.valor), 0) || 0;
+    const totalBruto = pedido.itens?.reduce((s, i) => s + (Number(i.valor) * Number(i.quantidade)), 0) || 0;
     const motoristaNome = pedido.embarque?.responsavel?.nome;
+    const vendedorNome = pedido.vendedor?.nome;
+
     return (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-3">
-            <div className="p-4">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${cls}`}>{labels[pedido.statusEntrega] || pedido.statusEntrega}</span>
-                        {pedido.embarque?.numero && <span className="text-[11px] text-gray-400">Carga #{pedido.embarque.numero}</span>}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-2 cursor-pointer" onClick={() => setAberto(!aberto)}>
+            <div className="p-3 md:p-4">
+                {/* Resumo compacto (sempre visível) */}
+                <div className="flex items-center justify-between gap-2 mb-0.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`text-[10px] md:text-[11px] font-bold px-1.5 py-0.5 rounded ${cls}`}>{labels[pedido.statusEntrega] || pedido.statusEntrega}</span>
+                        {pedido.embarque?.numero && (
+                            <Link to="/admin/embarques" onClick={e => e.stopPropagation()} className="text-[10px] md:text-[11px] text-gray-400 hover:text-sky-600 transition-colors">
+                                Carga #{pedido.embarque.numero}
+                            </Link>
+                        )}
+                        {motoristaNome && (
+                            <span className="text-[10px] text-sky-600 bg-sky-50 px-1 py-0.5 rounded font-semibold flex items-center gap-0.5">
+                                <Truck className="h-3 w-3" /> {motoristaNome.split(' ')[0]}
+                            </span>
+                        )}
                     </div>
-                    {podeAjustar && (
-                        <button
-                            onClick={() => onEstornar(pedido)}
-                            className="text-[11px] font-semibold text-red-500 hover:text-red-700 px-2 py-0.5 rounded border border-red-200 hover:bg-red-50 transition-colors"
-                        >
-                            Estornar
-                        </button>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        {pedido.dataEntrega && (
+                            <span className="text-[10px] md:text-[11px] text-gray-400 flex items-center gap-0.5">
+                                <Clock className="h-3 w-3" />
+                                {new Date(pedido.dataEntrega).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        )}
+                        {aberto ? <ChevronUp className="h-3.5 w-3.5 text-gray-400" /> : <ChevronDown className="h-3.5 w-3.5 text-gray-400" />}
+                    </div>
                 </div>
-                <p className="font-bold text-[15px] text-gray-900 leading-tight truncate">{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}</p>
-                <div className="flex items-center gap-3 mt-1 flex-wrap">
-                    {pedido.dataEntrega && (
-                        <span className="text-[12px] text-gray-500 flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {new Date(pedido.dataEntrega).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                    )}
-                    {motoristaNome && (
-                        <span className="text-[11px] text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5">
-                            <User className="h-3 w-3" /> {motoristaNome.split(' ')[0]}
-                        </span>
-                    )}
-                    {pedido.gpsEntrega && pedido.gpsEntrega !== 'FalhaSinal' && (
-                        <a
-                            href={`https://maps.google.com/?q=${pedido.gpsEntrega}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[11px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5 hover:bg-blue-100"
-                        >
-                            <MapPin className="h-3 w-3" /> GPS
-                        </a>
-                    )}
+                <div className="flex items-center justify-between gap-2">
+                    <p className="font-bold text-[13px] md:text-[15px] text-gray-900 leading-tight truncate">{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}</p>
+                    {totalRecebido > 0 && <span className="text-[11px] md:text-[12px] font-bold text-green-700 shrink-0">R$ {totalRecebido.toFixed(2)}</span>}
                 </div>
-                {totalRecebido > 0 && (
-                    <p className="text-[13px] font-bold text-green-700 mt-1">R$ {totalRecebido.toFixed(2)} recebido</p>
-                )}
-                {pedido.divergenciaPagamento && (
-                    <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded mt-1 inline-block">Divergencia de Pagamento</span>
-                )}
-                {pedido.pagamentosReais?.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
+                {!aberto && pedido.pagamentosReais?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
                         {pedido.pagamentosReais.map((p, i) => (
-                            <span key={i} className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-mono">
+                            <span key={i} className="text-[9px] md:text-[10px] bg-gray-100 text-gray-600 px-1 py-0.5 rounded font-mono">
                                 {p.formaPagamentoNome}: R$ {Number(p.valor).toFixed(2)}
                             </span>
                         ))}
                     </div>
                 )}
-                {pedido.itensDevolvidos?.length > 0 && (
-                    <div className="mt-2 border-t border-gray-100 pt-2">
-                        <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide mb-1">Itens Devolvidos</p>
-                        {pedido.itensDevolvidos.map((item, i) => (
-                            <p key={i} className="text-[11px] text-gray-600">
-                                {item.produto?.nome || 'Produto'} — {item.quantidade}x (R$ {Number(item.valorBaseItem).toFixed(2)}/un)
-                            </p>
-                        ))}
+
+                {/* Detalhes expandidos */}
+                {aberto && (
+                    <div className="mt-3 border-t border-gray-100 pt-3 space-y-2" onClick={e => e.stopPropagation()}>
+                        {/* Info geral */}
+                        <div className="flex flex-wrap gap-2">
+                            {vendedorNome && (
+                                <span className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5">
+                                    <User className="h-3 w-3" /> Vend: {vendedorNome.split(' ')[0]}
+                                </span>
+                            )}
+                            {pedido.gpsEntrega && pedido.gpsEntrega !== 'FalhaSinal' && (
+                                <a href={`https://maps.google.com/?q=${pedido.gpsEntrega}`} target="_blank" rel="noopener noreferrer"
+                                    className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5 hover:bg-blue-100">
+                                    <MapPin className="h-3 w-3" /> GPS Entrega
+                                </a>
+                            )}
+                            {pedido.divergenciaPagamento && (
+                                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Divergencia Pgto</span>
+                            )}
+                        </div>
+
+                        {/* Valor do pedido */}
+                        {totalBruto > 0 && (
+                            <p className="text-[11px] text-gray-500">Valor Pedido: <span className="font-bold text-gray-700">R$ {totalBruto.toFixed(2)}</span></p>
+                        )}
+
+                        {/* Itens do pedido */}
+                        {pedido.itens?.length > 0 && (
+                            <div>
+                                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-0.5">Itens do Pedido</p>
+                                {pedido.itens.map((it, i) => (
+                                    <p key={i} className="text-[11px] text-gray-600">
+                                        {it.produto?.nome} — {it.quantidade}x R$ {Number(it.valor).toFixed(2)}
+                                    </p>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Pagamentos */}
+                        {pedido.pagamentosReais?.length > 0 && (
+                            <div>
+                                <p className="text-[10px] font-bold text-green-600 uppercase tracking-wide mb-0.5">Pagamentos Recebidos</p>
+                                {pedido.pagamentosReais.map((p, i) => (
+                                    <p key={i} className="text-[11px] text-gray-600">
+                                        {p.formaPagamentoNome}: <span className="font-bold">R$ {Number(p.valor).toFixed(2)}</span>
+                                    </p>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Itens devolvidos */}
+                        {pedido.itensDevolvidos?.length > 0 && (
+                            <div>
+                                <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide mb-0.5">Itens Devolvidos</p>
+                                {pedido.itensDevolvidos.map((item, i) => (
+                                    <p key={i} className="text-[11px] text-gray-600">
+                                        {item.produto?.nome || 'Produto'} — {item.quantidade}x (R$ {Number(item.valorBaseItem).toFixed(2)}/un)
+                                    </p>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Ações admin */}
+                        {podeAjustar && (
+                            <div className="flex gap-2 pt-2 border-t border-gray-100">
+                                <button
+                                    onClick={() => onEditar(pedido)}
+                                    className="flex-1 text-[11px] md:text-[12px] font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 transition-colors"
+                                >
+                                    <Edit3 className="h-3.5 w-3.5" /> Editar Lançamento
+                                </button>
+                                <button
+                                    onClick={() => onEstornar(pedido)}
+                                    className="text-[11px] md:text-[12px] font-semibold text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
+                                >
+                                    Estornar
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
+            </div>
+        </div>
+    );
+};
+
+// ================================================
+// Modal de Edição de Entrega (Admin)
+// ================================================
+const EditarEntregaModal = ({ pedido, onClose, onSuccess }) => {
+    const [statusEntrega, setStatusEntrega] = useState(pedido.statusEntrega || 'ENTREGUE');
+    const [divergencia, setDivergencia] = useState(!!pedido.divergenciaPagamento);
+    const [pagamentos, setPagamentos] = useState(
+        (pedido.pagamentosReais || []).map(p => ({ forma: p.formaPagamentoNome || '', valor: Number(p.valor) || 0 }))
+    );
+    const [devolvidos, setDevolvidos] = useState(
+        (pedido.itensDevolvidos || []).map(d => ({
+            produtoId: d.produtoId,
+            produtoNome: d.produto?.nome || 'Produto',
+            quantidade: d.quantidade,
+            valorBaseItem: Number(d.valorBaseItem) || 0
+        }))
+    );
+    const [formasDisp, setFormasDisp] = useState([]);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        const carregarFormas = async () => {
+            try {
+                const [customForms, tabelaForms] = await Promise.all([
+                    formasPagamentoService.listar(),
+                    tabelaPrecoService.listar(true)
+                ]);
+                const nomes = [
+                    ...customForms.filter(f => f.ativo).map(f => f.nome),
+                    ...tabelaForms.map(t => t.nomeCondicao)
+                ];
+                setFormasDisp([...new Set(nomes)]);
+            } catch {
+                // silencia
+            }
+        };
+        carregarFormas();
+    }, []);
+
+    const addPagamento = () => setPagamentos([...pagamentos, { forma: formasDisp[0] || '', valor: 0 }]);
+    const removePagamento = (i) => setPagamentos(pagamentos.filter((_, idx) => idx !== i));
+    const updatePagamento = (i, field, val) => {
+        const copy = [...pagamentos];
+        copy[i] = { ...copy[i], [field]: field === 'valor' ? Number(val) || 0 : val };
+        setPagamentos(copy);
+    };
+
+    const updateDevolvido = (i, field, val) => {
+        const copy = [...devolvidos];
+        copy[i] = { ...copy[i], [field]: Number(val) || 0 };
+        setDevolvidos(copy);
+    };
+    const removeDevolvido = (i) => setDevolvidos(devolvidos.filter((_, idx) => idx !== i));
+
+    // Adicionar produto devolvido da lista de itens do pedido
+    const addDevolvido = () => {
+        const itensDisponiveis = (pedido.itens || []).filter(it =>
+            !devolvidos.some(d => d.produtoId === it.produtoId)
+        );
+        if (itensDisponiveis.length === 0) {
+            toast.error('Todos os itens já estão na lista de devolvidos.');
+            return;
+        }
+        const primeiro = itensDisponiveis[0];
+        setDevolvidos([...devolvidos, {
+            produtoId: primeiro.produtoId,
+            produtoNome: primeiro.produto?.nome || 'Produto',
+            quantidade: 1,
+            valorBaseItem: Number(primeiro.valor) || 0
+        }]);
+    };
+
+    const handleSalvar = async () => {
+        setSaving(true);
+        try {
+            await entregasService.editarEntrega(pedido.id, {
+                statusEntrega,
+                divergenciaPagamento: divergencia,
+                pagamentos: pagamentos.map(p => ({
+                    formaPagamentoNome: p.forma,
+                    valor: p.valor
+                })),
+                itensDevolvidos: devolvidos.map(d => ({
+                    produtoId: d.produtoId,
+                    quantidade: d.quantidade,
+                    valorBaseItem: d.valorBaseItem
+                }))
+            });
+            toast.success('Lançamento atualizado!');
+            onSuccess();
+        } catch (e) {
+            toast.error(e?.response?.data?.error || 'Erro ao salvar edição.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                {/* Header */}
+                <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between rounded-t-xl z-10">
+                    <div>
+                        <h2 className="text-[15px] font-bold text-gray-900">Editar Lançamento</h2>
+                        <p className="text-[12px] text-gray-500">{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}</p>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                        <X className="h-5 w-5 text-gray-500" />
+                    </button>
+                </div>
+
+                <div className="p-4 space-y-4">
+                    {/* Status */}
+                    <div>
+                        <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1">Status da Entrega</label>
+                        <select value={statusEntrega} onChange={e => setStatusEntrega(e.target.value)}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-[13px] focus:ring-sky-500 focus:border-sky-500 outline-none">
+                            <option value="ENTREGUE">Entregue</option>
+                            <option value="ENTREGUE_PARCIAL">Entregue Parcial</option>
+                            <option value="DEVOLVIDO">Devolvido 100%</option>
+                        </select>
+                    </div>
+
+                    {/* Divergência */}
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={divergencia} onChange={e => setDivergencia(e.target.checked)}
+                            className="w-4 h-4 text-amber-500 border-gray-300 rounded focus:ring-amber-400" />
+                        <span className="text-[12px] font-semibold text-gray-700">Divergência de pagamento</span>
+                    </label>
+
+                    {/* Pagamentos */}
+                    <div>
+                        <div className="flex items-center justify-between mb-1">
+                            <label className="text-[11px] font-bold text-green-600 uppercase tracking-wide">Pagamentos Recebidos</label>
+                            <button onClick={addPagamento} className="text-[11px] text-sky-600 font-semibold hover:underline flex items-center gap-0.5">
+                                <Plus className="h-3 w-3" /> Adicionar
+                            </button>
+                        </div>
+                        {pagamentos.length === 0 && <p className="text-[11px] text-gray-400 italic">Nenhum pagamento registrado.</p>}
+                        {pagamentos.map((p, i) => (
+                            <div key={i} className="flex items-center gap-2 mb-1.5">
+                                <select value={p.forma} onChange={e => updatePagamento(i, 'forma', e.target.value)}
+                                    className="flex-1 border border-gray-200 rounded px-2 py-1.5 text-[12px] outline-none focus:border-sky-400">
+                                    {formasDisp.map(f => <option key={f} value={f}>{f}</option>)}
+                                    {p.forma && !formasDisp.includes(p.forma) && <option value={p.forma}>{p.forma}</option>}
+                                </select>
+                                <div className="relative w-28">
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-gray-400">R$</span>
+                                    <input type="number" step="0.01" value={p.valor || ''} onChange={e => updatePagamento(i, 'valor', e.target.value)}
+                                        className="w-full pl-7 pr-2 py-1.5 border border-gray-200 rounded text-[12px] outline-none focus:border-sky-400 text-right" />
+                                </div>
+                                <button onClick={() => removePagamento(i)} className="text-red-400 hover:text-red-600 p-1">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Itens Devolvidos */}
+                    <div>
+                        <div className="flex items-center justify-between mb-1">
+                            <label className="text-[11px] font-bold text-red-500 uppercase tracking-wide">Itens Devolvidos</label>
+                            <button onClick={addDevolvido} className="text-[11px] text-sky-600 font-semibold hover:underline flex items-center gap-0.5">
+                                <Plus className="h-3 w-3" /> Adicionar
+                            </button>
+                        </div>
+                        {devolvidos.length === 0 && <p className="text-[11px] text-gray-400 italic">Nenhum item devolvido.</p>}
+                        {devolvidos.map((d, i) => (
+                            <div key={i} className="flex items-center gap-2 mb-1.5">
+                                <span className="flex-1 text-[12px] text-gray-700 truncate">{d.produtoNome}</span>
+                                <input type="number" min="1" value={d.quantidade} onChange={e => updateDevolvido(i, 'quantidade', e.target.value)}
+                                    className="w-16 border border-gray-200 rounded px-2 py-1.5 text-[12px] text-center outline-none focus:border-sky-400" />
+                                <span className="text-[10px] text-gray-400 w-16 text-right">R$ {d.valorBaseItem.toFixed(2)}</span>
+                                <button onClick={() => removeDevolvido(i)} className="text-red-400 hover:text-red-600 p-1">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 flex gap-2 rounded-b-xl">
+                    <button onClick={onClose} className="flex-1 py-2 text-[13px] font-semibold text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                        Cancelar
+                    </button>
+                    <button onClick={handleSalvar} disabled={saving}
+                        className="flex-[2] py-2 text-[13px] font-semibold text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-50 flex items-center justify-center gap-1.5">
+                        <Save className="h-4 w-4" />
+                        {saving ? 'Salvando...' : 'Salvar Alterações'}
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -394,10 +658,12 @@ const RotaLeads = () => {
     const [leads, setLeads] = useState([]);
     const [clientes, setClientes] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [busca, setBusca] = useState('');
 
     // Modais
     const [modalAtendimento, setModalAtendimento] = useState(null); // { tipo: 'lead'|'cliente', item }
     const [modalNovoLead, setModalNovoLead] = useState(false);
+    const [editarEntregaPedido, setEditarEntregaPedido] = useState(null); // pedido para edição admin
 
     // Entregas (Motorista)
     const [entregasPendentes, setEntregasPendentes] = useState([]);
@@ -530,12 +796,20 @@ const RotaLeads = () => {
         return clientes.filter(c => c.Dia_de_venda || c.Dia_de_entrega);
     }, [clientes]);
 
+    // Helper: filtro de busca por nome
+    const matchBusca = useCallback((nome) => {
+        if (!busca.trim()) return true;
+        return (nome || '').toLowerCase().includes(busca.toLowerCase());
+    }, [busca]);
+
     // Ordenar itens da aba "Atendimento" (não atendidos hoje)
     const itensParaAtender = useMemo(() => {
         const todos = [
             ...clientesComAtendimento.map(c => ({ _tipo: 'cliente', ...c })),
             ...leads.map(l => ({ _tipo: 'lead', ...l }))
-        ].filter(i => !isAtendidoHoje(i));
+        ].filter(i => !isAtendidoHoje(i)).filter(i =>
+            matchBusca(i._tipo === 'cliente' ? (i.NomeFantasia || i.Nome) : i.nomeEstabelecimento)
+        );
 
         const prioridade1 = todos.filter(i => i._tipo === 'cliente' && itemTemDiaBase(i.Dia_de_venda));
         const prioridade2 = todos.filter(i => i._tipo === 'lead' && itemTemDiaBase(i.diasVisita) && !isProximaVisitaHoje(i.proximaVisita));
@@ -545,7 +819,7 @@ const RotaLeads = () => {
         );
 
         return [...prioridade1, ...prioridade2, ...prioridade3, ...demais];
-    }, [clientesComAtendimento, leads]);
+    }, [clientesComAtendimento, leads, matchBusca]);
 
     // Itens atendidos hoje
     const itensAtendidos = useMemo(() => {
@@ -553,8 +827,20 @@ const RotaLeads = () => {
             ...clientesComAtendimento.map(c => ({ _tipo: 'cliente', ...c })),
             ...leads.map(l => ({ _tipo: 'lead', ...l }))
         ];
-        return todos.filter(i => isAtendidoHoje(i));
-    }, [clientesComAtendimento, leads]);
+        return todos.filter(i => isAtendidoHoje(i)).filter(i =>
+            matchBusca(i._tipo === 'cliente' ? (i.NomeFantasia || i.Nome) : i.nomeEstabelecimento)
+        );
+    }, [clientesComAtendimento, leads, matchBusca]);
+
+    // Entregas filtradas por busca
+    const entregasPendentesFiltradas = useMemo(() =>
+        entregasPendentes.filter(p => matchBusca(p.cliente?.NomeFantasia || p.cliente?.Nome)),
+        [entregasPendentes, matchBusca]
+    );
+    const entregasConcluidasFiltradas = useMemo(() =>
+        entregasConcluidas.filter(p => matchBusca(p.cliente?.NomeFantasia || p.cliente?.Nome)),
+        [entregasConcluidas, matchBusca]
+    );
 
     const handleAtendimentoSalvo = () => {
         setModalAtendimento(null);
@@ -620,20 +906,27 @@ const RotaLeads = () => {
 
     const diaBase = getDiaSigla(getDiaBase());
 
+    const ABAS = [
+        { id: 'atendimento', label: 'Atendimento', icon: ClipboardList, count: itensParaAtender.length, activeColor: 'border-blue-600 text-blue-600' },
+        { id: 'atendidos', label: 'Atendidos', icon: CheckCircle, count: itensAtendidos.length, activeColor: 'border-green-600 text-green-600' },
+        { id: 'entregas', label: 'Entregas', icon: Package, count: entregasPendentesFiltradas.length, activeColor: 'border-sky-600 text-sky-600' },
+        { id: 'entregues', label: 'Entregues', icon: Truck, count: entregasConcluidasFiltradas.length, activeColor: 'border-sky-600 text-sky-600' },
+    ];
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
             <div className="bg-white border-b border-gray-200 sticky top-0 z-20">
-                <div className="px-4 pt-4 pb-3 flex justify-between items-start gap-4">
-                    <div>
-                        <h1 className="text-[18px] font-bold text-gray-900">Rota / Leads</h1>
-                        <p className="text-[12px] text-gray-500 mt-1">Dia base: {diaBase} · {new Date().toLocaleDateString('pt-BR')}</p>
+                <div className="px-3 md:px-4 pt-3 md:pt-4 pb-2 md:pb-3 flex justify-between items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-[16px] md:text-[18px] font-bold text-gray-900">Rota / Leads</h1>
+                        <p className="text-[11px] md:text-[12px] text-gray-500 mt-0.5">Dia base: {diaBase} · {new Date().toLocaleDateString('pt-BR')}</p>
                     </div>
                     {podeEscolherVendedor && (
                         <select
                             value={vendedorFiltro}
                             onChange={handleFiltroVendedor}
-                            className="text-[13px] border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:ring-blue-500 focus:border-blue-500 outline-none max-w-[150px] truncate"
+                            className="text-[12px] md:text-[13px] border border-gray-300 rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:ring-blue-500 focus:border-blue-500 outline-none max-w-[130px] md:max-w-[150px] truncate"
                         >
                             <option value="todos">Todos Vendedores</option>
                             {vendedores.map(v => (
@@ -643,32 +936,42 @@ const RotaLeads = () => {
                     )}
                 </div>
 
-                {/* Abas */}
-                <div className="flex border-t border-gray-100 overflow-x-auto">
-                    <button
-                        onClick={() => setAba('atendimento')}
-                        className={`flex-1 py-3 text-[13px] font-semibold transition-colors border-b-2 whitespace-nowrap px-2 min-w-[90px] ${aba === 'atendimento' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
-                    >
-                        Atendimento ({itensParaAtender.length})
-                    </button>
-                    <button
-                        onClick={() => setAba('atendidos')}
-                        className={`flex-1 py-3 text-[13px] font-semibold transition-colors border-b-2 whitespace-nowrap px-2 min-w-[80px] ${aba === 'atendidos' ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500'}`}
-                    >
-                        Atendidos ({itensAtendidos.length})
-                    </button>
-                    <button
-                        onClick={() => setAba('entregas')}
-                        className={`flex-1 py-3 text-[13px] font-semibold transition-colors border-b-2 whitespace-nowrap px-2 min-w-[80px] ${aba === 'entregas' ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-500'}`}
-                    >
-                        Entregas ({entregasPendentes.length})
-                    </button>
-                    <button
-                        onClick={() => setAba('entregues')}
-                        className={`flex-1 py-3 text-[13px] font-semibold transition-colors border-b-2 whitespace-nowrap px-2 min-w-[80px] ${aba === 'entregues' ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-500'}`}
-                    >
-                        Entregues ({entregasConcluidas.length})
-                    </button>
+                {/* Campo de pesquisa */}
+                <div className="px-3 md:px-4 pb-2">
+                    <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Buscar por nome..."
+                            value={busca}
+                            onChange={e => setBusca(e.target.value)}
+                            className="w-full pl-8 pr-3 py-1.5 text-[12px] md:text-[13px] border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-blue-400 outline-none transition-colors"
+                        />
+                        {busca && (
+                            <button onClick={() => setBusca('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Abas com ícones responsivos */}
+                <div className="flex border-t border-gray-100">
+                    {ABAS.map(tab => {
+                        const Icon = tab.icon;
+                        const isActive = aba === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setAba(tab.id)}
+                                className={`flex-1 py-2.5 md:py-3 text-[11px] md:text-[13px] font-semibold transition-colors border-b-2 flex items-center justify-center gap-1 md:gap-1.5 ${isActive ? tab.activeColor : 'border-transparent text-gray-400'}`}
+                            >
+                                <Icon className="h-4 w-4" />
+                                <span className={`${isActive ? 'inline' : 'hidden md:inline'}`}>{tab.label}</span>
+                                <span className="text-[10px] md:text-[11px] opacity-70">({tab.count})</span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
@@ -712,7 +1015,7 @@ const RotaLeads = () => {
                         )}
 
                         {aba === 'entregas' && (
-                            entregasPendentes.length === 0 ? (
+                            entregasPendentesFiltradas.length === 0 ? (
                                 <div className="text-center py-12 text-gray-500">
                                     <CheckCircle className="h-10 w-10 text-sky-400 mx-auto mb-2" />
                                     <p className="font-bold text-gray-700">Nenhuma entrega pendente.</p>
@@ -720,7 +1023,7 @@ const RotaLeads = () => {
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-                                    {entregasPendentes.map(p => (
+                                    {entregasPendentesFiltradas.map(p => (
                                         <CardEntregaPendente
                                             key={p.id}
                                             pedido={p}
@@ -733,19 +1036,20 @@ const RotaLeads = () => {
                         )}
 
                         {aba === 'entregues' && (
-                            entregasConcluidas.length === 0 ? (
+                            entregasConcluidasFiltradas.length === 0 ? (
                                 <div className="text-center py-12 text-gray-500">
                                     <ClipboardList className="h-10 w-10 text-gray-300 mx-auto mb-2" />
                                     <p className="font-bold text-gray-700">Nenhuma entrega finalizada ainda.</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-                                    {entregasConcluidas.map(p => (
+                                    {entregasConcluidasFiltradas.map(p => (
                                         <CardEntregaConcluida
                                             key={p.id}
                                             pedido={p}
                                             podeAjustar={podeAjustar}
                                             onEstornar={handleEstornar}
+                                            onEditar={setEditarEntregaPedido}
                                         />
                                     ))}
                                 </div>
@@ -792,6 +1096,19 @@ const RotaLeads = () => {
                         carregarEntregas('pendentes');
                         carregarEntregas('concluidas');
                         toast.success('Entrega registrada com sucesso!');
+                    }}
+                />
+            )}
+
+            {/* Modal Edição de Entrega (Admin) */}
+            {editarEntregaPedido && (
+                <EditarEntregaModal
+                    pedido={editarEntregaPedido}
+                    onClose={() => setEditarEntregaPedido(null)}
+                    onSuccess={() => {
+                        setEditarEntregaPedido(null);
+                        carregarEntregas('concluidas');
+                        carregarEntregas('pendentes');
                     }}
                 />
             )}

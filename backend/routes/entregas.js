@@ -112,8 +112,10 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
             include: {
                 cliente: { select: { NomeFantasia: true, Nome: true } },
                 embarque: { select: { numero: true, responsavel: { select: { id: true, nome: true } } } },
+                vendedor: { select: { id: true, nome: true } },
+                itens: { include: { produto: { select: { id: true, nome: true, unidade: true } } } },
                 pagamentosReais: true,
-                itensDevolvidos: { include: { produto: { select: { nome: true } } } }
+                itensDevolvidos: { include: { produto: { select: { id: true, nome: true } } } }
             },
             orderBy: { dataEntrega: 'desc' },
             take: 50
@@ -234,6 +236,71 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
     } catch (error) {
         console.error('Erro na submissão de baixa logística:', error);
         res.status(500).json({ error: 'Erro crítico ao processar o fechamento de caixa do motorista.' });
+    }
+});
+
+// ==========================================
+// 3b. ADMIN: EDITAR LANÇAMENTO DE ENTREGA
+// ==========================================
+router.patch('/:id/editar', verificarAuth, checkAjustador, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { statusEntrega, divergenciaPagamento, pagamentos, itensDevolvidos } = req.body;
+
+        const pedido = await prisma.pedido.findUnique({ where: { id }, include: { itens: true } });
+        if (!pedido) return res.status(404).json({ error: 'Pedido não localizado.' });
+        if (pedido.statusEntrega === 'PENDENTE') return res.status(400).json({ error: 'Este pedido ainda não foi finalizado.' });
+
+        if (statusEntrega && !['ENTREGUE', 'ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(statusEntrega)) {
+            return res.status(400).json({ error: 'Status de Entrega inválido.' });
+        }
+
+        await prisma.$transaction(async (tx) => {
+            // Atualiza campos do pedido
+            const updateData = {};
+            if (statusEntrega) updateData.statusEntrega = statusEntrega;
+            if (divergenciaPagamento !== undefined) updateData.divergenciaPagamento = divergenciaPagamento;
+            if (Object.keys(updateData).length > 0) {
+                await tx.pedido.update({ where: { id }, data: updateData });
+            }
+
+            // Se pagamentos foram enviados, reescreve todos
+            if (pagamentos) {
+                await tx.pedidoPagamentoReal.deleteMany({ where: { pedidoId: id } });
+                if (pagamentos.length > 0) {
+                    await tx.pedidoPagamentoReal.createMany({
+                        data: pagamentos.map(p => ({
+                            pedidoId: id,
+                            formaPagamentoEntregaId: p.formaPagamentoEntregaId || null,
+                            formaPagamentoNome: p.formaPagamentoNome,
+                            valor: Number(p.valor),
+                            vendedorResponsavelId: p.vendedorResponsavelId || null,
+                            escritorioResponsavel: p.escritorioResponsavel || false
+                        }))
+                    });
+                }
+            }
+
+            // Se itensDevolvidos foram enviados, reescreve todos
+            if (itensDevolvidos) {
+                await tx.entregaItemDevolvido.deleteMany({ where: { pedidoId: id } });
+                if (itensDevolvidos.length > 0) {
+                    await tx.entregaItemDevolvido.createMany({
+                        data: itensDevolvidos.map(i => ({
+                            pedidoId: id,
+                            produtoId: i.produtoId,
+                            quantidade: Number(i.quantidade),
+                            valorBaseItem: Number(i.valorBaseItem)
+                        }))
+                    });
+                }
+            }
+        });
+
+        res.json({ message: 'Lançamento de entrega atualizado com sucesso.' });
+    } catch (error) {
+        console.error('Erro ao editar lançamento de entrega:', error);
+        res.status(500).json({ error: 'Erro ao atualizar lançamento.' });
     }
 });
 

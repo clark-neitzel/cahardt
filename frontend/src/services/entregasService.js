@@ -15,6 +15,10 @@ const entregasService = {
     },
     estornar: async (id) => {
         await api.delete(`/entregas/${id}/estorno`);
+    },
+    editarEntrega: async (id, dados) => {
+        const response = await api.patch(`/entregas/${id}/editar`, dados);
+        return response.data;
     }
 };
 
