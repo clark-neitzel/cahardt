@@ -252,21 +252,31 @@ const Configuracoes = () => {
                             <p className="text-sm text-gray-400 text-center py-4">
                                 Nenhuma condição de pagamento cadastrada.
                             </p>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {condicoesPagamento.map(cond => (
-                                    <label key={cond.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded border border-gray-200 hover:bg-amber-50 cursor-pointer transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            className="h-5 w-5 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
-                                            checked={condicoesDebitaCaixa.includes(cond.opcaoCondicao || cond.id)}
-                                            onChange={() => handleToggleCondicaoDebita(cond.opcaoCondicao || cond.id)}
-                                        />
-                                        <span className="text-sm text-gray-700 font-medium">{cond.nomeCondicao || cond.nome}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        )}
+                        ) : (() => {
+                            // Deduplicar por opcaoCondicao (várias entradas podem ter a mesma condição)
+                            const seen = new Set();
+                            const condicoesUnicas = condicoesPagamento.filter(cond => {
+                                const key = cond.opcaoCondicao || cond.id;
+                                if (seen.has(key)) return false;
+                                seen.add(key);
+                                return true;
+                            });
+                            return (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {condicoesUnicas.map(cond => (
+                                        <label key={cond.opcaoCondicao || cond.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded border border-gray-200 hover:bg-amber-50 cursor-pointer transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                className="h-5 w-5 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                                                checked={condicoesDebitaCaixa.includes(cond.opcaoCondicao || cond.id)}
+                                                onChange={() => handleToggleCondicaoDebita(cond.opcaoCondicao || cond.id)}
+                                            />
+                                            <span className="text-sm text-gray-700 font-medium">{cond.nomeCondicao || cond.nome}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            );
+                        })()}
 
                         <div className="mt-2 text-right text-xs text-gray-500">
                             {condicoesDebitaCaixa.length} condições selecionadas como débito do caixa.

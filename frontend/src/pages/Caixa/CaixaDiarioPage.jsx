@@ -395,14 +395,58 @@ const CaixaDiarioPage = () => {
                     </div>
 
                     {/* VALOR A PRESTAR */}
-                    <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-6 text-center">
-                        <p className="text-sm font-medium text-amber-700 mb-1">VALOR A PRESTAR</p>
-                        <p className="text-4xl font-black text-amber-900">
+                    <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-6">
+                        <p className="text-sm font-medium text-amber-700 mb-1 text-center">VALOR A PRESTAR</p>
+                        <p className="text-4xl font-black text-amber-900 text-center">
                             R$ {Number(resumo.valorAPrestar || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </p>
-                        <p className="text-xs text-amber-600 mt-2">
-                            Adiantamento + Recebido (Caixa) − Despesas
-                        </p>
+
+                        {/* Detalhamento */}
+                        <div className="mt-4 border-t border-amber-200 pt-3 space-y-1 text-sm">
+                            {Number(resumo.caixa?.adiantamento || 0) > 0 && (
+                                <div className="flex justify-between text-green-700">
+                                    <span>+ Adiantamento</span>
+                                    <span className="font-medium">R$ {Number(resumo.caixa.adiantamento).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            )}
+
+                            {/* Condições que debitam do caixa */}
+                            {(resumo.detalhamentoCaixa || []).filter(d => d.debitaCaixa).map((d, i) => (
+                                <div key={i} className="flex justify-between text-green-700">
+                                    <span>+ {d.condicao}</span>
+                                    <span className="font-medium">R$ {Number(d.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            ))}
+
+                            {/* Despesas */}
+                            {Number(resumo.totalDespesas || 0) > 0 && (
+                                <div className="flex justify-between text-red-700">
+                                    <span>− Despesas</span>
+                                    <span className="font-medium">R$ {Number(resumo.totalDespesas).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            )}
+
+                            {/* Separador */}
+                            {(resumo.detalhamentoCaixa || []).some(d => !d.debitaCaixa) && (
+                                <>
+                                    <div className="border-t border-amber-200 my-2"></div>
+                                    <p className="text-xs text-amber-600 font-medium">Outros (não debitam do caixa):</p>
+                                    {(resumo.detalhamentoCaixa || []).filter(d => !d.debitaCaixa).map((d, i) => (
+                                        <div key={i} className="flex justify-between text-gray-500">
+                                            <span>{d.condicao}</span>
+                                            <span>R$ {Number(d.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+
+                            {/* Devolvidos */}
+                            {(resumo.contagens?.devolvidos || 0) > 0 && (
+                                <div className="flex justify-between text-gray-400 text-xs italic mt-1">
+                                    <span>{resumo.contagens.devolvidos} devolução(ões) — não descontam</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Ações */}

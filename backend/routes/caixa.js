@@ -174,9 +174,11 @@ router.get('/resumo', async (req, res) => {
         }
 
         // 8. Classificar pagamentos e calcular totais
+        // DEVOLVIDO não conta nos totais (mercadoria volta, motorista não recebeu dinheiro)
         let totalRecebidoCaixa = 0;
         let totalRecebidoOutros = 0;
         let entreguesCount = 0, parciaisCount = 0, devolvidosCount = 0;
+        const recebidoPorCondicao = {}; // { "À Vista": 500, "30 Dias": 200, ... }
 
         const entregasFormatadas = entregas.map(e => {
             if (e.statusEntrega === 'ENTREGUE') entreguesCount++;
@@ -188,12 +190,25 @@ router.get('/resumo', async (req, res) => {
 
             // Condição do pedido debita caixa? Se sim, todos os pagamentos debitam
             const condicaoDebitaCaixa = condicoesQueDebitam.includes(e.opcaoCondicaoPagamento);
+            const nomeCondicao = mapaCondicoes[e.opcaoCondicaoPagamento] || e.opcaoCondicaoPagamento || 'Outros';
+
+            // Devolvido: não conta nos totais de pagamento
+            const isDevolvido = e.statusEntrega === 'DEVOLVIDO';
 
             const pagamentos = e.pagamentosReais.map(p => {
                 const debitaCaixa = condicaoDebitaCaixa || formasQueDebitam.includes(p.formaPagamentoEntregaId);
                 const val = Number(p.valor);
-                if (debitaCaixa) totalRecebidoCaixa += val;
-                else totalRecebidoOutros += val;
+
+                if (!isDevolvido) {
+                    if (debitaCaixa) totalRecebidoCaixa += val;
+                    else totalRecebidoOutros += val;
+
+                    // Agrupar por condição de pagamento
+                    if (!recebidoPorCondicao[nomeCondicao]) {
+                        recebidoPorCondicao[nomeCondicao] = { total: 0, debitaCaixa };
+                    }
+                    recebidoPorCondicao[nomeCondicao].total += val;
+                }
 
                 return {
                     id: p.id,
@@ -214,7 +229,7 @@ router.get('/resumo', async (req, res) => {
                 clienteNome: e.cliente?.NomeFantasia || e.cliente?.Nome || 'N/A',
                 vendedorNome: e.vendedor?.nome,
                 embarqueNumero: e.embarque?.numero,
-                condicaoPagamento: mapaCondicoes[e.opcaoCondicaoPagamento] || e.opcaoCondicaoPagamento || '-',
+                condicaoPagamento: nomeCondicao,
                 valorPedido: Math.round(valorPedido * 100) / 100,
                 statusEntrega: e.statusEntrega,
                 dataEntrega: e.dataEntrega,
@@ -232,6 +247,13 @@ router.get('/resumo', async (req, res) => {
 
         totalRecebidoCaixa = Math.round(totalRecebidoCaixa * 100) / 100;
         totalRecebidoOutros = Math.round(totalRecebidoOutros * 100) / 100;
+
+        // Breakdown por condição (arredondar valores)
+        const detalhamentoCaixa = Object.entries(recebidoPorCondicao).map(([nome, info]) => ({
+            condicao: nome,
+            valor: Math.round(info.total * 100) / 100,
+            debitaCaixa: info.debitaCaixa
+        }));
 
         const valorAPrestar = Math.round((Number(caixa.adiantamento) + totalRecebidoCaixa - totalDespesas) * 100) / 100;
 
@@ -259,6 +281,7 @@ router.get('/resumo', async (req, res) => {
             totalRecebidoCaixa,
             totalRecebidoOutros,
             totalRecebido: Math.round((totalRecebidoCaixa + totalRecebidoOutros) * 100) / 100,
+            detalhamentoCaixa,
             valorAPrestar
         });
     } catch (error) {
@@ -326,6 +349,9 @@ router.post('/fechar', async (req, res) => {
         let totalRecebidoOutros = 0;
 
         entregas.forEach(e => {
+            // Devolvido não conta (mercadoria volta, motorista não recebeu)
+            if (e.statusEntrega === 'DEVOLVIDO') return;
+
             const condicaoDebitaCaixa = condicoesQueDebitam.includes(e.opcaoCondicaoPagamento);
             e.pagamentosReais.forEach(p => {
                 const val = Number(p.valor);
