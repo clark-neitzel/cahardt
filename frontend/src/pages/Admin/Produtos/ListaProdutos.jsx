@@ -310,10 +310,10 @@ const ListaProdutos = () => {
                 </div>
                 {/* Paginação */}
                 <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6">
-                    <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div className="flex-1 flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-700">
-                                Mostrando página <span className="font-medium">{page}</span> de <span className="font-medium">{totalPages}</span>
+                            <p className="text-xs sm:text-sm text-gray-700">
+                                Página <span className="font-medium">{page}</span> de <span className="font-medium">{totalPages}</span>
                             </p>
                         </div>
                         <div>
@@ -321,14 +321,14 @@ const ListaProdutos = () => {
                                 <button
                                     onClick={() => setPage(p => Math.max(1, p - 1))}
                                     disabled={page === 1}
-                                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-xs sm:text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
                                 >
                                     Anterior
                                 </button>
                                 <button
                                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                     disabled={page === totalPages}
-                                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-xs sm:text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
                                 >
                                     Próxima
                                 </button>

@@ -464,8 +464,8 @@ const ListaClientes = () => {
             </div>
 
             {/* Paginação e Limite */}
-            <div className="hidden md:flex flex-col md:flex-row justify-between items-center mt-6 gap-4">
-                <div className="flex items-center gap-2">
+            <div className="flex flex-col md:flex-row justify-between items-center mt-4 md:mt-6 gap-3 md:gap-4 px-1 md:px-0">
+                <div className="hidden md:flex items-center gap-2">
                     <span className="text-sm text-gray-600">Exibir</span>
                     <select
                         className="border border-gray-300 rounded text-sm p-1.5 focus:ring-primary bg-white text-gray-900"
@@ -480,21 +480,21 @@ const ListaClientes = () => {
                     <span className="text-sm text-gray-600">por página</span>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
                     <button
                         onClick={() => setPage(page - 1)}
                         disabled={page === 1}
-                        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                        className="px-3 md:px-4 py-2 border border-gray-300 rounded-md text-xs md:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                     >
                         Anterior
                     </button>
-                    <span className="px-4 py-2 text-sm text-gray-700 font-medium bg-white border border-gray-200 rounded-md">
+                    <span className="px-3 md:px-4 py-2 text-xs md:text-sm text-gray-700 font-medium bg-white border border-gray-200 rounded-md">
                         {page} / {totalPages}
                     </span>
                     <button
                         onClick={() => setPage(page + 1)}
                         disabled={page === totalPages}
-                        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                        className="px-3 md:px-4 py-2 border border-gray-300 rounded-md text-xs md:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
                     >
                         Próximo
                     </button>

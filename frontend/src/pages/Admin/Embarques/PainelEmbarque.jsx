@@ -56,27 +56,28 @@ const PainelEmbarque = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto py-8">
-            <div className="flex justify-between items-center bg-white p-6 rounded-t-lg shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-3 md:px-0 py-4 md:py-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 md:p-6 rounded-t-lg shadow-sm border-b gap-3">
                 <div className="flex items-center space-x-3">
                     <div className="bg-sky-100 p-2 rounded-lg">
-                        <Truck className="h-6 w-6 text-sky-600" />
+                        <Truck className="h-5 w-5 md:h-6 md:w-6 text-sky-600" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Painel de Expedição</h1>
-                        <p className="text-sm text-gray-500">Gestão Logística de Romaneios, Veículos e Motoristas da Rota</p>
+                        <h1 className="text-lg md:text-2xl font-bold text-gray-900 tracking-tight">Painel de Expedição</h1>
+                        <p className="text-xs md:text-sm text-gray-500 hidden sm:block">Gestão Logística de Romaneios, Veículos e Motoristas da Rota</p>
                     </div>
                 </div>
                 <button
                     onClick={() => setIsNovaCargaOpen(true)}
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors"
+                    className="inline-flex items-center px-3 md:px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 transition-colors w-full sm:w-auto justify-center"
                 >
                     <Plus className="-ml-1 mr-2 h-5 w-5" />
                     Montar Nova Carga
                 </button>
             </div>
 
-            <div className="bg-white shadow overflow-hidden sm:rounded-b-lg">
+            {/* Desktop: Tabela */}
+            <div className="hidden md:block bg-white shadow overflow-hidden sm:rounded-b-lg">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
@@ -90,8 +91,8 @@ const PainelEmbarque = () => {
                     <tbody className="bg-white divide-y divide-gray-200 text-sm">
                         {loading ? (
                             <tr>
-                                <td colSpan="5" className="px-6 py-8 text-center text-gray-500 flex flex-col items-center">
-                                    <Truck className="h-8 w-8 text-gray-300 animate-bounce mb-2" />
+                                <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                                    <Truck className="h-8 w-8 text-gray-300 animate-bounce mb-2 mx-auto" />
                                     Buscando frota...
                                 </td>
                             </tr>
@@ -127,6 +128,46 @@ const PainelEmbarque = () => {
                         ))}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile: Cards */}
+            <div className="md:hidden bg-white rounded-b-lg shadow-sm">
+                {loading ? (
+                    <div className="text-center py-8 text-gray-500">
+                        <Truck className="h-8 w-8 text-gray-300 animate-bounce mb-2 mx-auto" />
+                        Buscando frota...
+                    </div>
+                ) : embarques.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">Nenhuma carga despachada recentemente.</div>
+                ) : (
+                    <div className="divide-y divide-gray-100">
+                        {embarques.map((emb) => (
+                            <div
+                                key={emb.id}
+                                onClick={() => setCargaSelecionadaId(emb.id)}
+                                className="p-3 active:bg-sky-50 cursor-pointer"
+                            >
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="font-mono font-bold text-[14px] text-gray-900">Carga #{emb.numero}</span>
+                                    <span className="bg-gray-100 px-2 py-0.5 rounded-full text-[11px] font-bold border border-gray-200 text-gray-700">
+                                        {emb._count?.pedidos} pedidos
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-500">
+                                    <span>{new Date(emb.dataSaida).toLocaleDateString('pt-BR')}</span>
+                                    <span className="font-medium text-gray-700">
+                                        {emb.responsavel?.nome || <span className="text-red-500">Sem motorista</span>}
+                                    </span>
+                                </div>
+                                <div className="flex justify-end mt-1">
+                                    <span className="text-sky-600 text-[11px] font-semibold flex items-center gap-0.5">
+                                        <FileText className="h-3 w-3" /> Analisar
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {isNovaCargaOpen && (

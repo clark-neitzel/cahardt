@@ -79,13 +79,13 @@ const TabelaPrecos = () => {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                    <BadgeDollarSign className="h-8 w-8 text-primary" />
+        <div className="space-y-4 md:space-y-6 px-3 md:px-0">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <BadgeDollarSign className="h-6 w-6 md:h-8 md:w-8 text-primary" />
                     Preços e Condições
                 </h1>
-                <div className="text-sm font-medium text-gray-500 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-100">
+                <div className="text-xs md:text-sm font-medium text-gray-500 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-100">
                     {condicoes.length} tabelas no sistema
                 </div>
             </div>
@@ -93,89 +93,129 @@ const TabelaPrecos = () => {
             {loading ? (
                 <div className="text-center py-10 text-gray-500">Carregando dados...</div>
             ) : (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50/80">
-                            <tr>
-                                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Descrição</th>
-                                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Forma de Pag.</th>
-                                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acréscimo</th>
-                                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Valor Mínimo</th>
-                                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Regras / Status</th>
-                                <th className="px-5 py-3.5 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-100">
-                            {condicoes.map((item) => (
-                                <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                                    {/* DESCRIÇÃO E ID */}
-                                    <td className="px-5 py-4 whitespace-nowrap">
-                                        <div className="text-sm font-bold text-gray-900">{item.nomeCondicao}</div>
-                                        <div className="text-xs text-gray-500 bg-gray-100 inline-block px-1.5 py-0.5 rounded mt-1 font-mono">
-                                            ID: {item.idCondicao}
-                                        </div>
-                                    </td>
-
-                                    {/* TIPO E PRAZO */}
-                                    <td className="px-5 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-700 font-medium">{item.tipoPagamento || '-'}</div>
-                                        <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                                            <span>{item.opcaoCondicao || "N/A"}</span>
-                                            <span className="text-gray-300">•</span>
-                                            <span>{item.qtdParcelas}x</span>
-                                            <span className="text-gray-300">•</span>
-                                            <span>{item.parcelasDias} dias</span>
-                                        </div>
-                                    </td>
-
-                                    {/* ACRÉSCIMO */}
-                                    <td className="px-5 py-4 whitespace-nowrap">
-                                        {item.acrescimoPreco > 0 ? (
-                                            <span className="text-sm font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">
-                                                +{item.acrescimoPreco}%
+                <>
+                    {/* Desktop: Tabela */}
+                    <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50/80">
+                                <tr>
+                                    <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Descrição</th>
+                                    <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Forma de Pag.</th>
+                                    <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acréscimo</th>
+                                    <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Valor Mínimo</th>
+                                    <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Regras / Status</th>
+                                    <th className="px-5 py-3.5 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-100">
+                                {condicoes.map((item) => (
+                                    <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                                        <td className="px-5 py-4 whitespace-nowrap">
+                                            <div className="text-sm font-bold text-gray-900">{item.nomeCondicao}</div>
+                                            <div className="text-xs text-gray-500 bg-gray-100 inline-block px-1.5 py-0.5 rounded mt-1 font-mono">
+                                                ID: {item.idCondicao}
+                                            </div>
+                                        </td>
+                                        <td className="px-5 py-4 whitespace-nowrap">
+                                            <div className="text-sm text-gray-700 font-medium">{item.tipoPagamento || '-'}</div>
+                                            <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                                <span>{item.opcaoCondicao || "N/A"}</span>
+                                                <span className="text-gray-300">•</span>
+                                                <span>{item.qtdParcelas}x</span>
+                                                <span className="text-gray-300">•</span>
+                                                <span>{item.parcelasDias} dias</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-5 py-4 whitespace-nowrap">
+                                            {item.acrescimoPreco > 0 ? (
+                                                <span className="text-sm font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">
+                                                    +{item.acrescimoPreco}%
+                                                </span>
+                                            ) : (
+                                                <span className="text-sm font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                                                    Sem Juros
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-5 py-4 whitespace-nowrap">
+                                            <span className={`text-sm ${item.valorMinimo > 0 ? "font-bold text-blue-700" : "font-medium text-gray-400"}`}>
+                                                {item.valorMinimo > 0 ? formatCurrency(item.valorMinimo) : 'Retalho (S/ Limite)'}
                                             </span>
+                                        </td>
+                                        <td className="px-5 py-4 whitespace-nowrap">
+                                            <div className="flex flex-col gap-1.5 items-start">
+                                                <span className={`px-2 py-0.5 inline-flex text-[11px] font-bold rounded-full uppercase tracking-wide border ${item.ativo ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                                    {item.ativo ? 'Ativo' : 'Inativo'}
+                                                </span>
+                                                {item.exigeBanco && (
+                                                    <div className="flex items-center gap-1 text-orange-600 text-xs font-medium" title={item.bancoPadrao}>
+                                                        <Landmark className="h-3 w-3" /> Exige Banco
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-5 py-4 whitespace-nowrap text-right">
+                                            <button
+                                                onClick={() => handleEditClick(item)}
+                                                className="text-blue-600 hover:text-blue-800 font-semibold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors text-sm"
+                                            >
+                                                Editar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Mobile: Cards */}
+                    <div className="md:hidden space-y-2">
+                        {condicoes.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500">Nenhuma condição cadastrada.</div>
+                        ) : condicoes.map(item => (
+                            <div key={item.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                                <div className="flex items-start justify-between mb-1.5">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-[14px] text-gray-900">{item.nomeCondicao}</p>
+                                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">ID: {item.idCondicao}</p>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 ml-2">
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${item.ativo ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                            {item.ativo ? 'Ativo' : 'Inativo'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-500 mb-2">
+                                    <span className="bg-gray-100 px-1.5 py-0.5 rounded font-medium">{item.tipoPagamento || '-'}</span>
+                                    <span>{item.opcaoCondicao || 'N/A'} | {item.qtdParcelas}x | {item.parcelasDias} dias</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex gap-2">
+                                        {item.acrescimoPreco > 0 ? (
+                                            <span className="text-[11px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">+{item.acrescimoPreco}%</span>
                                         ) : (
-                                            <span className="text-sm font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
-                                                Sem Juros
+                                            <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Sem Juros</span>
+                                        )}
+                                        <span className={`text-[11px] ${item.valorMinimo > 0 ? 'font-bold text-blue-700' : 'text-gray-400'}`}>
+                                            {item.valorMinimo > 0 ? formatCurrency(item.valorMinimo) : 'S/ Limite'}
+                                        </span>
+                                        {item.exigeBanco && (
+                                            <span className="text-[11px] text-orange-600 font-medium flex items-center gap-0.5">
+                                                <Landmark className="h-3 w-3" /> Banco
                                             </span>
                                         )}
-                                    </td>
-
-                                    {/* VALOR MÍNIMO */}
-                                    <td className="px-5 py-4 whitespace-nowrap">
-                                        <span className={`text-sm ${item.valorMinimo > 0 ? "font-bold text-blue-700" : "font-medium text-gray-400"}`}>
-                                            {item.valorMinimo > 0 ? formatCurrency(item.valorMinimo) : 'Retalho (S/ Limite)'}
-                                        </span>
-                                    </td>
-
-                                    {/* REGRAS E STATUS */}
-                                    <td className="px-5 py-4 whitespace-nowrap">
-                                        <div className="flex flex-col gap-1.5 items-start">
-                                            <span className={`px-2 py-0.5 inline-flex text-[11px] font-bold rounded-full uppercase tracking-wide border ${item.ativo ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                                                {item.ativo ? 'Ativo' : 'Inativo'}
-                                            </span>
-                                            {item.exigeBanco && (
-                                                <div className="flex items-center gap-1 text-orange-600 text-xs font-medium" title={item.bancoPadrao}>
-                                                    <Landmark className="h-3 w-3" /> Exige Banco
-                                                </div>
-                                            )}
-                                        </div>
-                                    </td>
-
-                                    {/* AÇÕES */}
-                                    <td className="px-5 py-4 whitespace-nowrap text-right">
-                                        <button
-                                            onClick={() => handleEditClick(item)}
-                                            className="text-blue-600 hover:text-blue-800 font-semibold bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors text-sm"
-                                        >
-                                            Editar
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleEditClick(item)}
+                                        className="text-blue-600 font-semibold bg-blue-50 px-2.5 py-1 rounded-lg text-[12px]"
+                                    >
+                                        Editar
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
             )}
 
             {/* MODAL DE EDIÇÃO */}

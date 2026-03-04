@@ -10,11 +10,7 @@ const Veiculos = () => {
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [veiculoHistorico, setVeiculoHistorico] = useState(null);
     const [formData, setFormData] = useState({
-        id: null,
-        placa: '',
-        modelo: '',
-        documentoUrl: '',
-        ativo: true
+        id: null, placa: '', modelo: '', documentoUrl: '', ativo: true
     });
 
     const carregarVeiculos = async () => {
@@ -28,16 +24,11 @@ const Veiculos = () => {
         }
     };
 
-    useEffect(() => {
-        carregarVeiculos();
-    }, []);
+    useEffect(() => { carregarVeiculos(); }, []);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : value
-        }));
+        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
 
     const handleSubmit = async (e) => {
@@ -45,10 +36,10 @@ const Veiculos = () => {
         try {
             if (formData.id) {
                 await api.put(`/veiculos/${formData.id}`, formData);
-                toast.success('Veículo atualizado com sucesso!');
+                toast.success('Veículo atualizado!');
             } else {
                 await api.post('/veiculos', formData);
-                toast.success('Veículo cadastrado com sucesso!');
+                toast.success('Veículo cadastrado!');
             }
             setIsModalOpen(false);
             carregarVeiculos();
@@ -58,28 +49,21 @@ const Veiculos = () => {
     };
 
     const openEdit = (veiculo) => {
-        setFormData({
-            id: veiculo.id,
-            placa: veiculo.placa,
-            modelo: veiculo.modelo,
-            documentoUrl: veiculo.documentoUrl || '',
-            ativo: veiculo.ativo
-        });
+        setFormData({ id: veiculo.id, placa: veiculo.placa, modelo: veiculo.modelo, documentoUrl: veiculo.documentoUrl || '', ativo: veiculo.ativo });
         setIsModalOpen(true);
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Tem certeza que deseja apagar este veículo? Dependendo do histórico, a melhor opção é inativá-lo.')) return;
+        if (!window.confirm('Tem certeza que deseja apagar este veículo?')) return;
         try {
             await api.delete(`/veiculos/${id}`);
-            toast.success('Veículo excluído com sucesso');
+            toast.success('Veículo excluído');
             carregarVeiculos();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao excluir');
         }
     };
 
-    // Caregar histórico de uso do veiculo
     const openHistory = async (veiculo) => {
         setVeiculoHistorico(null);
         setIsHistoryModalOpen(true);
@@ -87,41 +71,37 @@ const Veiculos = () => {
             const { data } = await api.get(`/veiculos/${veiculo.id}`);
             setVeiculoHistorico(data);
         } catch (error) {
-            toast.error('Erro ao buscar histórico desse veículo.');
+            toast.error('Erro ao buscar histórico.');
             setIsHistoryModalOpen(false);
         }
-    }
+    };
 
     const formatDate = (dateString) => {
         if (!dateString) return '-';
-        // DateString looks like 2026-03-02
         const parts = dateString.split('-');
         if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
         return dateString;
-    }
+    };
 
     if (loading) return <div className="p-8 text-center text-gray-500">Carregando veículos...</div>;
 
     return (
         <div className="bg-white rounded-lg shadow mt-4">
-            <div className="p-4 sm:p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-center sm:items-start space-y-4 sm:space-y-0">
+            <div className="p-3 md:p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900">Veículos</h2>
-                    <p className="text-sm text-gray-500 mt-1">Gerencie a frota de veículos e acompanhe o histórico de uso</p>
+                    <h2 className="text-lg md:text-xl font-bold text-gray-900">Veículos</h2>
+                    <p className="text-xs md:text-sm text-gray-500 mt-0.5">Gerencie a frota e acompanhe o histórico</p>
                 </div>
                 <button
-                    onClick={() => {
-                        setFormData({ id: null, placa: '', modelo: '', documentoUrl: '', ativo: true });
-                        setIsModalOpen(true);
-                    }}
-                    className="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark w-full sm:w-auto"
+                    onClick={() => { setFormData({ id: null, placa: '', modelo: '', documentoUrl: '', ativo: true }); setIsModalOpen(true); }}
+                    className="flex items-center justify-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark w-full sm:w-auto"
                 >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Veículo
+                    <Plus className="h-4 w-4 mr-2" /> Novo Veículo
                 </button>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Desktop: Tabela */}
+            <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
@@ -130,7 +110,6 @@ const Veiculos = () => {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modelo</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -138,54 +117,63 @@ const Veiculos = () => {
                             <tr key={veiculo.id} className="hover:bg-gray-50">
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <div className="flex space-x-2">
-                                        <button onClick={() => openEdit(veiculo)} className="text-primary hover:text-primary-dark bg-blue-50 p-1.5 rounded-full" title="Editar Veículo">
-                                            <Edit2 className="h-4 w-4" />
-                                        </button>
-                                        <button onClick={() => openHistory(veiculo)} className="text-gray-600 hover:text-gray-900 bg-gray-100 p-1.5 rounded-full" title="Histórico de Uso">
-                                            <History className="h-4 w-4" />
-                                        </button>
-                                        <button onClick={() => handleDelete(veiculo.id)} className="text-red-600 hover:text-red-900 bg-red-50 p-1.5 rounded-full" title="Excluir Veículo">
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
+                                        <button onClick={() => openEdit(veiculo)} className="text-primary bg-blue-50 p-1.5 rounded-full"><Edit2 className="h-4 w-4" /></button>
+                                        <button onClick={() => openHistory(veiculo)} className="text-gray-600 bg-gray-100 p-1.5 rounded-full"><History className="h-4 w-4" /></button>
+                                        <button onClick={() => handleDelete(veiculo.id)} className="text-red-600 bg-red-50 p-1.5 rounded-full"><Trash2 className="h-4 w-4" /></button>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                                    {veiculo.placa}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                                    {veiculo.modelo}
-                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{veiculo.placa}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-gray-500">{veiculo.modelo}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     {veiculo.documentoUrl ? (
                                         <a href={veiculo.documentoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center">
-                                            <FileText className="h-4 w-4 mr-1" />
-                                            Ver Documento
+                                            <FileText className="h-4 w-4 mr-1" /> Ver Documento
                                         </a>
-                                    ) : (
-                                        <span className="text-gray-400">Nenhum</span>
-                                    )}
+                                    ) : <span className="text-gray-400">Nenhum</span>}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm">
                                     {veiculo.ativo ? (
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                            <Check className="w-3 h-3 mr-1" /> Ativo
-                                        </span>
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800"><Check className="w-3 h-3 mr-1" /> Ativo</span>
                                     ) : (
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                                            <X className="w-3 h-3 mr-1" /> Inativo
-                                        </span>
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800"><X className="w-3 h-3 mr-1" /> Inativo</span>
                                     )}
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
+                {veiculos.length === 0 && <div className="text-center py-12 text-gray-500">Nenhum veículo cadastrado.</div>}
+            </div>
 
-                {veiculos.length === 0 && (
-                    <div className="text-center py-12 text-gray-500">
-                        Nenhum veículo cadastrado.
+            {/* Mobile: Cards */}
+            <div className="md:hidden p-3 space-y-2">
+                {veiculos.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">Nenhum veículo cadastrado.</div>
+                ) : veiculos.map(veiculo => (
+                    <div key={veiculo.id} className="bg-gray-50 rounded-xl border border-gray-200 p-3">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-[15px] text-gray-900 uppercase">{veiculo.placa}</span>
+                                {veiculo.ativo ? (
+                                    <span className="text-[10px] font-bold bg-green-100 text-green-800 px-1.5 py-0.5 rounded">Ativo</span>
+                                ) : (
+                                    <span className="text-[10px] font-bold bg-red-100 text-red-800 px-1.5 py-0.5 rounded">Inativo</span>
+                                )}
+                            </div>
+                            <div className="flex gap-1">
+                                <button onClick={() => openEdit(veiculo)} className="p-1.5 bg-blue-50 text-primary rounded-lg"><Edit2 className="h-4 w-4" /></button>
+                                <button onClick={() => openHistory(veiculo)} className="p-1.5 bg-gray-100 text-gray-600 rounded-lg"><History className="h-4 w-4" /></button>
+                                <button onClick={() => handleDelete(veiculo.id)} className="p-1.5 bg-red-50 text-red-600 rounded-lg"><Trash2 className="h-4 w-4" /></button>
+                            </div>
+                        </div>
+                        <p className="text-[12px] text-gray-500">{veiculo.modelo}</p>
+                        {veiculo.documentoUrl && (
+                            <a href={veiculo.documentoUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-600 flex items-center gap-0.5 mt-1">
+                                <FileText className="h-3 w-3" /> Ver Documento
+                            </a>
+                        )}
                     </div>
-                )}
+                ))}
             </div>
 
             {/* Modal de Cadastro/Edição */}
@@ -193,108 +181,59 @@ const Veiculos = () => {
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
                     <div className="relative p-5 border w-full max-w-lg shadow-lg rounded-md bg-white mx-4">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-medium text-gray-900">
-                                {formData.id ? 'Editar Veículo' : 'Novo Veículo'}
-                            </h3>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-500">
-                                <X className="h-6 w-6" />
-                            </button>
+                            <h3 className="text-lg font-medium text-gray-900">{formData.id ? 'Editar Veículo' : 'Novo Veículo'}</h3>
+                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-500"><X className="h-6 w-6" /></button>
                         </div>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Placa * (sem traços)</label>
-                                <input
-                                    type="text"
-                                    name="placa"
-                                    required
-                                    value={formData.placa}
-                                    onChange={handleChange}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 uppercase"
-                                    placeholder="AAA9A99"
-                                    maxLength={7}
-                                />
+                                <label className="block text-sm font-medium text-gray-700">Placa *</label>
+                                <input type="text" name="placa" required value={formData.placa} onChange={handleChange}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 uppercase" placeholder="AAA9A99" maxLength={7} />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Modelo *</label>
-                                <input
-                                    type="text"
-                                    name="modelo"
-                                    required
-                                    value={formData.modelo}
-                                    onChange={handleChange}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
-                                    placeholder="Ex: Fiat Fiorino / Baú"
-                                />
+                                <input type="text" name="modelo" required value={formData.modelo} onChange={handleChange}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50" placeholder="Ex: Fiat Fiorino / Baú" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Link do Documento (opcional)</label>
-                                <input
-                                    type="url"
-                                    name="documentoUrl"
-                                    value={formData.documentoUrl}
-                                    onChange={handleChange}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
-                                    placeholder="https://"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">Insira uma URL pública ou de Drive do PDF do documento para fácil acesso dos motoristas.</p>
+                                <input type="url" name="documentoUrl" value={formData.documentoUrl} onChange={handleChange}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50" placeholder="https://" />
                             </div>
                             <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    name="ativo"
-                                    id="ativo"
-                                    checked={formData.ativo}
-                                    onChange={handleChange}
-                                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                                />
-                                <label htmlFor="ativo" className="ml-2 block text-sm text-gray-900">
-                                    Veículo em operação (Ativo)
-                                </label>
+                                <input type="checkbox" name="ativo" id="ativo" checked={formData.ativo} onChange={handleChange}
+                                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" />
+                                <label htmlFor="ativo" className="ml-2 block text-sm text-gray-900">Ativo</label>
                             </div>
-                            <div className="mt-5 sm:flex sm:flex-row-reverse">
-                                <button
-                                    type="submit"
-                                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-dark sm:ml-3 sm:w-auto sm:text-sm"
-                                >
-                                    Salvar
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsModalOpen(false)}
-                                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:w-auto sm:text-sm"
-                                >
-                                    Cancelar
-                                </button>
+                            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                                <button type="button" onClick={() => setIsModalOpen(false)}
+                                    className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Cancelar</button>
+                                <button type="submit"
+                                    className="w-full sm:w-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark">Salvar</button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* Modal de Histórico de Viagens Lateral (Slide over) */}
+            {/* Modal de Histórico */}
             {isHistoryModalOpen && (
                 <div className="fixed inset-0 overflow-hidden z-[60]">
                     <div className="absolute inset-0 overflow-hidden">
                         <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setIsHistoryModalOpen(false)} />
-
-                        <div className="fixed inset-y-0 right-0 pl-10 max-w-full flex">
+                        <div className="fixed inset-y-0 right-0 pl-0 md:pl-10 max-w-full flex">
                             <div className="w-screen max-w-md">
                                 <div className="h-full flex flex-col bg-white shadow-xl overflow-y-scroll">
-                                    <div className="p-6 bg-primary">
+                                    <div className="p-4 md:p-6 bg-primary">
                                         <div className="flex items-center justify-between">
-                                            <h2 className="text-lg font-medium text-white">Histórico de Corridas</h2>
-                                            <button onClick={() => setIsHistoryModalOpen(false)} className="text-gray-200 hover:text-white">
-                                                <X className="h-6 w-6" />
-                                            </button>
+                                            <h2 className="text-base md:text-lg font-medium text-white">Histórico de Corridas</h2>
+                                            <button onClick={() => setIsHistoryModalOpen(false)} className="text-gray-200 hover:text-white"><X className="h-6 w-6" /></button>
                                         </div>
-                                        <div className="mt-1">
-                                            <p className="text-sm text-primary-100">
-                                                {veiculoHistorico ? `${veiculoHistorico.placa} - ${veiculoHistorico.modelo}` : 'Carregando...'}
-                                            </p>
-                                        </div>
+                                        <p className="text-sm text-primary-100 mt-1">
+                                            {veiculoHistorico ? `${veiculoHistorico.placa} - ${veiculoHistorico.modelo}` : 'Carregando...'}
+                                        </p>
                                     </div>
-
-                                    <div className="relative flex-1 p-6">
+                                    <div className="relative flex-1 p-4 md:p-6">
                                         {!veiculoHistorico ? (
                                             <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
                                         ) : veiculoHistorico.diarios && veiculoHistorico.diarios.length > 0 ? (
@@ -303,15 +242,11 @@ const Veiculos = () => {
                                                     {veiculoHistorico.diarios.map((diario, idx) => (
                                                         <li key={diario.id}>
                                                             <div className="relative pb-8">
-                                                                {idx !== veiculoHistorico.diarios.length - 1 ? (
-                                                                    <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
-                                                                ) : null}
+                                                                {idx !== veiculoHistorico.diarios.length - 1 && <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" />}
                                                                 <div className="relative flex space-x-3">
-                                                                    <div>
-                                                                        <span className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center ring-8 ring-white">
-                                                                            <History className="h-4 w-4 text-blue-500" />
-                                                                        </span>
-                                                                    </div>
+                                                                    <span className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center ring-8 ring-white">
+                                                                        <History className="h-4 w-4 text-blue-500" />
+                                                                    </span>
                                                                     <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
                                                                         <div>
                                                                             <p className="text-sm text-gray-500">
@@ -321,12 +256,12 @@ const Veiculos = () => {
                                                                                 <p>KM Início: <span className="font-mono">{diario.kmInicial || '-'}</span></p>
                                                                                 <p>KM Fim: <span className="font-mono">{diario.kmFinal || '-'}</span></p>
                                                                                 {diario.kmFinal && diario.kmInicial && (
-                                                                                    <p className="text-primary font-bold">Resumo: +{diario.kmFinal - diario.kmInicial} km rodados</p>
+                                                                                    <p className="text-primary font-bold">+{diario.kmFinal - diario.kmInicial} km</p>
                                                                                 )}
                                                                             </div>
                                                                         </div>
                                                                         <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                                                                            <time dateTime={diario.dataReferencia}>{formatDate(diario.dataReferencia)}</time>
+                                                                            <time>{formatDate(diario.dataReferencia)}</time>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -336,9 +271,7 @@ const Veiculos = () => {
                                                 </ul>
                                             </div>
                                         ) : (
-                                            <div className="text-center text-gray-500 py-10">
-                                                Nenhum histórico de viagem foi encontrado para este veículo.
-                                            </div>
+                                            <div className="text-center text-gray-500 py-10">Nenhum histórico encontrado.</div>
                                         )}
                                     </div>
                                 </div>
