@@ -21,10 +21,10 @@ const DespesasPage = () => {
 
     const today = new Date().toISOString().split('T')[0];
     const [data, setData] = useState(today);
-    const [vendedorId, setVendedorId] = useState(user?.vendedorId || '');
+    const [vendedorId, setVendedorId] = useState(isAdmin ? '' : (user?.id || ''));
     const [vendedores, setVendedores] = useState([]);
     const [despesas, setDespesas] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [despesaEditando, setDespesaEditando] = useState(null);
 

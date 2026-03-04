@@ -5,9 +5,10 @@ import vendedorService from '../../services/vendedorService';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     Wallet, Truck, Fuel, Package, CheckCircle, AlertTriangle,
-    Lock, Printer, ClipboardCheck, ChevronDown, ChevronUp, ReceiptText
+    Lock, Printer, ClipboardCheck, ChevronDown, ChevronUp, ReceiptText, Plus
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import NovaDespesaModal from './NovaDespesaModal';
 
 const STATUS_BADGES = {
     ABERTO: { label: 'Aberto', class: 'bg-green-100 text-green-800' },
@@ -22,7 +23,7 @@ const CaixaDiarioPage = () => {
 
     const today = new Date().toISOString().split('T')[0];
     const [data, setData] = useState(today);
-    const [vendedorId, setVendedorId] = useState(user?.vendedorId || '');
+    const [vendedorId, setVendedorId] = useState(isAdmin ? '' : (user?.id || ''));
     const [vendedores, setVendedores] = useState([]);
     const [resumo, setResumo] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -30,6 +31,7 @@ const CaixaDiarioPage = () => {
     const [savingAdiantamento, setSavingAdiantamento] = useState(false);
     const [expandedEntregas, setExpandedEntregas] = useState(false);
     const [obsAdmin, setObsAdmin] = useState('');
+    const [showDespesaModal, setShowDespesaModal] = useState(false);
 
     useEffect(() => {
         if (isAdmin) {
@@ -220,9 +222,17 @@ const CaixaDiarioPage = () => {
                                 <ReceiptText className="h-5 w-5 text-red-500" />
                                 <h3 className="text-sm font-semibold text-gray-700">Despesas do Dia</h3>
                             </div>
-                            <Link to={`/despesas?data=${data}&vendedorId=${vendedorId}`} className="text-xs text-primary hover:underline">
-                                Ver detalhes →
-                            </Link>
+                            <div className="flex items-center space-x-3">
+                                <button
+                                    onClick={() => setShowDespesaModal(true)}
+                                    className="inline-flex items-center text-xs px-2 py-1 bg-primary text-white rounded font-medium hover:bg-blue-700"
+                                >
+                                    <Plus className="h-3 w-3 mr-1" /> Nova Despesa
+                                </button>
+                                <Link to={`/despesas?data=${data}&vendedorId=${vendedorId}`} className="text-xs text-primary hover:underline">
+                                    Ver todas →
+                                </Link>
+                            </div>
                         </div>
                         <p className="text-2xl font-bold text-red-600">
                             R$ {Number(resumo.totalDespesas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -432,6 +442,14 @@ const CaixaDiarioPage = () => {
                         )}
                     </div>
                 </div>
+            )}
+            {showDespesaModal && (
+                <NovaDespesaModal
+                    onClose={() => setShowDespesaModal(false)}
+                    onSaved={() => { setShowDespesaModal(false); toast.success('Despesa criada!'); fetchResumo(); }}
+                    vendedorId={vendedorId}
+                    dataReferencia={data}
+                />
             )}
         </div>
     );

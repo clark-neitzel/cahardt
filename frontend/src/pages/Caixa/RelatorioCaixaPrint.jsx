@@ -138,7 +138,7 @@ const RelatorioCaixaPrint = () => {
                     <div style={{ flex: 1, border: '1px solid #999', padding: '6px' }}>
                         <strong>Adiantamento:</strong> R$ {Number(relatorio.caixa?.adiantamento || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         <br />
-                        <strong>Média Combustível:</strong> {relatorio.mediaCombustivel3Meses ? `${relatorio.mediaCombustivel3Meses.toFixed(2)} km/L` : '—'}
+                        <strong>Média Combustível:</strong> {(relatorio.mediaCombustivel3Meses || relatorio.mediaCombustivel) ? `${(relatorio.mediaCombustivel3Meses || relatorio.mediaCombustivel).toFixed(2)} km/L` : '—'}
                     </div>
                 </div>
 
@@ -220,15 +220,15 @@ const RelatorioCaixaPrint = () => {
                                             <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {e.clienteNome}
                                             </td>
-                                            <td>{e.condicaoPagamento}</td>
+                                            <td>{e.condicaoPagamento || e.condicao}</td>
                                             <td style={{ textAlign: 'right' }}>
                                                 R$ {Number(e.valorPedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                             </td>
-                                            <td style={{ textAlign: 'center', fontSize: '9px' }}>{e.statusEntrega}</td>
+                                            <td style={{ textAlign: 'center', fontSize: '9px' }}>{e.statusEntrega || e.status}</td>
                                             <td style={{ fontSize: '9px' }}>
-                                                {e.pagamentos?.map(p => `${p.formaNome}: R$${Number(p.valor).toFixed(2)}`).join(' | ')}
+                                                {e.pagamentos?.map(p => `${p.formaNome || p.forma}: R$${Number(p.valor).toFixed(2)}`).join(' | ')}
                                             </td>
-                                            <td style={{ textAlign: 'center' }}>{e.conferida ? '✓' : '☐'}</td>
+                                            <td style={{ textAlign: 'center' }}>{e.conferida || e.conferido ? '✓' : '☐'}</td>
                                         </tr>
                                     ))}
                                 </tbody>
