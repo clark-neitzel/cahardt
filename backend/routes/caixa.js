@@ -154,9 +154,13 @@ router.get('/resumo', async (req, res) => {
             orderBy: { dataEntrega: 'asc' }
         });
 
-        // 6. Carregar config: quais formas debitam do caixa
-        const configDebita = await prisma.appConfig.findUnique({ where: { key: 'formas_pagamento_debita_caixa' } });
+        // 6. Carregar config: quais formas e condições debitam do caixa
+        const [configDebita, configCondicoes] = await Promise.all([
+            prisma.appConfig.findUnique({ where: { key: 'formas_pagamento_debita_caixa' } }),
+            prisma.appConfig.findUnique({ where: { key: 'condicoes_pagamento_debita_caixa' } })
+        ]);
         const formasQueDebitam = configDebita?.value || [];
+        const condicoesQueDebitam = configCondicoes?.value || [];
 
         // 7. Enriquecer condição de pagamento
         const condicoesCodigos = [...new Set(entregas.map(e => e.opcaoCondicaoPagamento).filter(Boolean))];
@@ -182,8 +186,11 @@ router.get('/resumo', async (req, res) => {
             const valorPedido = e.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0);
             const valorDevolvido = e.itensDevolvidos.reduce((s, i) => s + Number(i.valorBaseItem) * Number(i.quantidade), 0);
 
+            // Condição do pedido debita caixa? Se sim, todos os pagamentos debitam
+            const condicaoDebitaCaixa = condicoesQueDebitam.includes(e.opcaoCondicaoPagamento);
+
             const pagamentos = e.pagamentosReais.map(p => {
-                const debitaCaixa = formasQueDebitam.includes(p.formaPagamentoEntregaId);
+                const debitaCaixa = condicaoDebitaCaixa || formasQueDebitam.includes(p.formaPagamentoEntregaId);
                 const val = Number(p.valor);
                 if (debitaCaixa) totalRecebidoCaixa += val;
                 else totalRecebidoOutros += val;
@@ -308,16 +315,21 @@ router.post('/fechar', async (req, res) => {
             include: { pagamentosReais: true }
         });
 
-        const configDebita = await prisma.appConfig.findUnique({ where: { key: 'formas_pagamento_debita_caixa' } });
-        const formasQueDebitam = configDebita?.value || [];
+        const [configDebitaFechar, configCondicoesFechar] = await Promise.all([
+            prisma.appConfig.findUnique({ where: { key: 'formas_pagamento_debita_caixa' } }),
+            prisma.appConfig.findUnique({ where: { key: 'condicoes_pagamento_debita_caixa' } })
+        ]);
+        const formasQueDebitam = configDebitaFechar?.value || [];
+        const condicoesQueDebitam = configCondicoesFechar?.value || [];
 
         let totalRecebidoCaixa = 0;
         let totalRecebidoOutros = 0;
 
         entregas.forEach(e => {
+            const condicaoDebitaCaixa = condicoesQueDebitam.includes(e.opcaoCondicaoPagamento);
             e.pagamentosReais.forEach(p => {
                 const val = Number(p.valor);
-                if (formasQueDebitam.includes(p.formaPagamentoEntregaId)) {
+                if (condicaoDebitaCaixa || formasQueDebitam.includes(p.formaPagamentoEntregaId)) {
                     totalRecebidoCaixa += val;
                 } else {
                     totalRecebidoOutros += val;
@@ -472,8 +484,12 @@ router.get('/relatorio', async (req, res) => {
         }
 
         // Config debita caixa
-        const configDebita = await prisma.appConfig.findUnique({ where: { key: 'formas_pagamento_debita_caixa' } });
-        const formasQueDebitam = configDebita?.value || [];
+        const [configDebitaRel, configCondicoesRel] = await Promise.all([
+            prisma.appConfig.findUnique({ where: { key: 'formas_pagamento_debita_caixa' } }),
+            prisma.appConfig.findUnique({ where: { key: 'condicoes_pagamento_debita_caixa' } })
+        ]);
+        const formasQueDebitam = configDebitaRel?.value || [];
+        const condicoesQueDebitamRel = configCondicoesRel?.value || [];
 
         // Média combustível
         const mediaCombustivel = diario?.veiculoId ? await calcularMediaCombustivel(diario.veiculoId) : null;
@@ -525,6 +541,7 @@ router.get('/relatorio', async (req, res) => {
             entregas: entregas.map(e => {
                 const valorPedido = e.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0);
                 const conferencia = caixa?.entregasConferidas?.find(c => c.pedidoId === e.id);
+                const condicaoDebitaCaixa = condicoesQueDebitamRel.includes(e.opcaoCondicaoPagamento);
 
                 return {
                     numero: e.numero,
@@ -535,7 +552,7 @@ router.get('/relatorio', async (req, res) => {
                     pagamentos: e.pagamentosReais.map(p => ({
                         forma: p.formaPagamentoNome,
                         valor: Number(p.valor),
-                        debitaCaixa: formasQueDebitam.includes(p.formaPagamentoEntregaId)
+                        debitaCaixa: condicaoDebitaCaixa || formasQueDebitam.includes(p.formaPagamentoEntregaId)
                     })),
                     conferido: conferencia?.conferido || false
                 };

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import configService from '../../../services/configService';
 import formasPagamentoService from '../../../services/formasPagamentoService';
-import { Save, AlertCircle, CheckCircle, Truck, Wallet } from 'lucide-react';
+import tabelaPrecoService from '../../../services/tabelaPrecoService';
+import { Save, AlertCircle, CheckCircle, Truck, Wallet, CreditCard } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Configuracoes = () => {
@@ -14,6 +15,8 @@ const Configuracoes = () => {
     // Caixa Diário config
     const [formasPagamento, setFormasPagamento] = useState([]);
     const [formasDebitaCaixa, setFormasDebitaCaixa] = useState([]);
+    const [condicoesPagamento, setCondicoesPagamento] = useState([]);
+    const [condicoesDebitaCaixa, setCondicoesDebitaCaixa] = useState([]);
     const [savingCaixa, setSavingCaixa] = useState(false);
     const [messageCaixa, setMessageCaixa] = useState(null);
 
@@ -24,16 +27,20 @@ const Configuracoes = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [cats, currentConfig, formas, debitaCaixaConfig] = await Promise.all([
+            const [cats, currentConfig, formas, debitaCaixaConfig, condicoes, condicoesDebitaConfig] = await Promise.all([
                 configService.getCategorias(),
                 configService.get('categorias_vendas'),
                 formasPagamentoService.listar().catch(() => []),
-                configService.get('formas_pagamento_debita_caixa').catch(() => [])
+                configService.get('formas_pagamento_debita_caixa').catch(() => []),
+                tabelaPrecoService.listar(true).catch(() => []),
+                configService.get('condicoes_pagamento_debita_caixa').catch(() => [])
             ]);
             setCategorias(cats);
             setSelectedCategorias(Array.isArray(currentConfig) ? currentConfig : []);
             setFormasPagamento(Array.isArray(formas) ? formas : []);
             setFormasDebitaCaixa(Array.isArray(debitaCaixaConfig) ? debitaCaixaConfig : []);
+            setCondicoesPagamento(Array.isArray(condicoes) ? condicoes : []);
+            setCondicoesDebitaCaixa(Array.isArray(condicoesDebitaConfig) ? condicoesDebitaConfig : []);
         } catch (error) {
             console.error('Erro ao carregar configurações:', error);
             setMessage({ type: 'error', text: 'Erro ao carregar dados.' });
@@ -62,11 +69,24 @@ const Configuracoes = () => {
         });
     };
 
+    const handleToggleCondicaoDebita = (condicaoId) => {
+        setCondicoesDebitaCaixa(prev => {
+            if (prev.includes(condicaoId)) {
+                return prev.filter(id => id !== condicaoId);
+            } else {
+                return [...prev, condicaoId];
+            }
+        });
+    };
+
     const handleSaveCaixa = async () => {
         try {
             setSavingCaixa(true);
             setMessageCaixa(null);
-            await configService.save('formas_pagamento_debita_caixa', formasDebitaCaixa);
+            await Promise.all([
+                configService.save('formas_pagamento_debita_caixa', formasDebitaCaixa),
+                configService.save('condicoes_pagamento_debita_caixa', condicoesDebitaCaixa)
+            ]);
             setMessageCaixa({ type: 'success', text: 'Configuração do caixa salva!' });
             setTimeout(() => setMessageCaixa(null), 3000);
         } catch (error) {
@@ -216,6 +236,41 @@ const Configuracoes = () => {
 
                     <div className="mt-2 text-right text-xs text-gray-500">
                         {formasDebitaCaixa.length} formas selecionadas como débito do caixa.
+                    </div>
+
+                    {/* Condições de Pagamento dos Pedidos */}
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                        <h3 className="text-md font-semibold text-gray-700 flex items-center mb-1">
+                            <CreditCard className="h-4 w-4 mr-2 text-amber-600" />
+                            Condições de Pagamento dos Pedidos
+                        </h3>
+                        <p className="text-xs text-gray-500 mb-4">
+                            Selecione quais condições de pagamento usadas nos pedidos também devem ser consideradas como "dinheiro em mãos" do motorista.
+                        </p>
+
+                        {condicoesPagamento.length === 0 ? (
+                            <p className="text-sm text-gray-400 text-center py-4">
+                                Nenhuma condição de pagamento cadastrada.
+                            </p>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {condicoesPagamento.map(cond => (
+                                    <label key={cond.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded border border-gray-200 hover:bg-amber-50 cursor-pointer transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            className="h-5 w-5 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                                            checked={condicoesDebitaCaixa.includes(cond.opcaoCondicao || cond.id)}
+                                            onChange={() => handleToggleCondicaoDebita(cond.opcaoCondicao || cond.id)}
+                                        />
+                                        <span className="text-sm text-gray-700 font-medium">{cond.nomeCondicao || cond.nome}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="mt-2 text-right text-xs text-gray-500">
+                            {condicoesDebitaCaixa.length} condições selecionadas como débito do caixa.
+                        </div>
                     </div>
 
                     {messageCaixa && (
