@@ -121,7 +121,21 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
             take: 50
         });
 
-        res.json(entregas);
+        // Enriquece com o nome legível da condição de pagamento
+        const condicoesCodigos = [...new Set(entregas.map(e => e.opcaoCondicaoPagamento).filter(Boolean))];
+        let mapaCondicoes = {};
+        if (condicoesCodigos.length > 0) {
+            const tabelas = await prisma.tabelaPreco.findMany({
+                where: { opcaoCondicao: { in: condicoesCodigos } },
+                select: { opcaoCondicao: true, nomeCondicao: true }
+            });
+            mapaCondicoes = Object.fromEntries(tabelas.map(t => [t.opcaoCondicao, t.nomeCondicao]));
+        }
+
+        res.json(entregas.map(e => ({
+            ...e,
+            condicaoNome: mapaCondicoes[e.opcaoCondicaoPagamento] || e.opcaoCondicaoPagamento || null
+        })));
     } catch (error) {
         console.error('Erro ao listar entregas finalizadas:', error);
         res.status(500).json({ error: 'Erro ao buscar histórico logístico.' });

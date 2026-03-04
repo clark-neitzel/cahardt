@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, MapPin, Loader } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, MapPin, Loader, Mic, MicOff } from 'lucide-react';
 import leadService from '../../services/leadService';
 import vendedorService from '../../services/vendedorService';
 import toast from 'react-hot-toast';
@@ -26,6 +26,10 @@ const ModalNovoLead = ({ onClose, onSalvo, user }) => {
     const [capturandoGps, setCapturandoGps] = useState(false);
     const [saving, setSaving] = useState(false);
     const [vendedores, setVendedores] = useState([]);
+    const [isListening, setIsListening] = useState(false);
+    const recognitionRef = useRef(null);
+    const originalTextRef = useRef('');
+    const stoppedRef = useRef(false);
 
     // Verifica se usuário pode ver todos os clientes (portanto, pode escolher o vendedor para o lead)
     const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
@@ -54,6 +58,76 @@ const ModalNovoLead = ({ onClose, onSalvo, user }) => {
             vendedorService.listar().then(setVendedores).catch(console.error);
         }
     }, [podeEscolherVendedor]);
+
+    const toggleMicrophone = () => {
+        if (isListening) {
+            stoppedRef.current = true;
+            if (recognitionRef.current) recognitionRef.current.stop();
+            recognitionRef.current = null;
+            setIsListening(false);
+            return;
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            toast.error('Reconhecimento de voz não suportado neste navegador/dispositivo.');
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'pt-BR';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        stoppedRef.current = false;
+        originalTextRef.current = form.observacoes;
+
+        recognition.onstart = () => setIsListening(true);
+
+        recognition.onresult = (event) => {
+            if (stoppedRef.current) return;
+
+            let finalTranscript = '';
+            let interimTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript + ' ';
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+
+            setForm(f => {
+                const updatedBase = (originalTextRef.current + ' ' + finalTranscript).replace(/\s+/g, ' ').trim();
+                return { ...f, observacoes: (updatedBase + ' ' + interimTranscript).trim() };
+            });
+
+            if (finalTranscript !== '') {
+                originalTextRef.current = (originalTextRef.current + ' ' + finalTranscript).replace(/\s+/g, ' ').trim();
+            }
+        };
+
+        recognition.onerror = (event) => {
+            if (event.error !== 'aborted') {
+                toast.error('Grave de mais perto ou verifique sua conexão.');
+            }
+            setIsListening(false);
+        };
+
+        recognition.onend = () => {
+            recognitionRef.current = null;
+            setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+        try {
+            recognition.start();
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     const capturarGps = () => {
         if (!navigator.geolocation) {
@@ -213,10 +287,29 @@ const ModalNovoLead = ({ onClose, onSalvo, user }) => {
 
                     {/* Observações */}
                     <div>
-                        <label className="block text-[13px] font-semibold text-gray-700 mb-1">Observações</label>
+                        <div className="flex items-center justify-between mb-1">
+                            <label className="block text-[13px] font-semibold text-gray-700">Observações</label>
+                            <button
+                                type="button"
+                                onClick={toggleMicrophone}
+                                className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition-colors ${isListening
+                                    ? 'bg-red-50 text-red-600 border-red-200 animate-pulse'
+                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                    }`}
+                            >
+                                {isListening ? (
+                                    <><MicOff className="h-3 w-3" /> Ouvindo...</>
+                                ) : (
+                                    <><Mic className="h-3 w-3" /> Ditar por Voz</>
+                                )}
+                            </button>
+                        </div>
                         <textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))}
-                            rows={3} placeholder="Informações relevantes sobre o estabelecimento..."
-                            className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500 resize-none" />
+                            rows={3} placeholder={isListening ? 'Fale agora...' : 'Informações relevantes sobre o estabelecimento...'}
+                            className={`block w-full border rounded-lg p-3 text-[14px] resize-none transition-colors ${isListening
+                                ? 'border-red-400 bg-red-50/30 ring-1 ring-red-400'
+                                : 'border-gray-300 bg-white focus:ring-orange-500 focus:border-orange-500'
+                                }`} />
                     </div>
 
                     <button onClick={handleSalvar} disabled={saving}

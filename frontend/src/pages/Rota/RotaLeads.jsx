@@ -562,6 +562,35 @@ const EditarEntregaModal = ({ pedido, onClose, onSuccess }) => {
                 </div>
 
                 <div className="p-4 space-y-4">
+                    {/* Resumo do Pedido */}
+                    <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
+                        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Dados do Pedido</p>
+                        {pedido.itens?.length > 0 && (
+                            <div className="space-y-0.5">
+                                {pedido.itens.map((it, i) => (
+                                    <p key={i} className="text-[12px] text-gray-700">
+                                        {it.produto?.nome} — {it.quantidade}x R$ {Number(it.valor).toFixed(2)}
+                                    </p>
+                                ))}
+                            </div>
+                        )}
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 border-t border-gray-200">
+                            {(() => {
+                                const total = pedido.itens?.reduce((s, i) => s + (Number(i.valor) * Number(i.quantidade)), 0) || 0;
+                                return total > 0 && <span className="text-[12px] font-bold text-gray-800">Total: R$ {total.toFixed(2)}</span>;
+                            })()}
+                            {pedido.opcaoCondicaoPagamento && (
+                                <span className="text-[12px] text-gray-600">Condição: <span className="font-semibold">{pedido.condicaoNome || pedido.opcaoCondicaoPagamento}</span></span>
+                            )}
+                            {pedido.vendedor?.nome && (
+                                <span className="text-[12px] text-gray-600">Vendedor: <span className="font-semibold">{pedido.vendedor.nome}</span></span>
+                            )}
+                            {pedido.embarque?.responsavel?.nome && (
+                                <span className="text-[12px] text-gray-600">Motorista: <span className="font-semibold">{pedido.embarque.responsavel.nome}</span></span>
+                            )}
+                        </div>
+                    </div>
+
                     {/* Status */}
                     <div>
                         <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1">Status da Entrega</label>

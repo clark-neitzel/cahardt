@@ -30,10 +30,13 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = React.useRef(null);
     const originalTextRef = React.useRef('');
+    const stoppedRef = React.useRef(false);
 
     const toggleMicrophone = () => {
         if (isListening) {
+            stoppedRef.current = true;
             if (recognitionRef.current) recognitionRef.current.stop();
+            recognitionRef.current = null;
             setIsListening(false);
             return;
         }
@@ -49,11 +52,14 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
         recognition.continuous = true;
         recognition.interimResults = true;
 
+        stoppedRef.current = false;
         originalTextRef.current = form.observacao; // Salva o texto base
 
         recognition.onstart = () => setIsListening(true);
 
         recognition.onresult = (event) => {
+            if (stoppedRef.current) return; // Ignora resultados após parar
+
             let finalTranscript = '';
             let interimTranscript = '';
 
@@ -86,7 +92,10 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
             setIsListening(false);
         };
 
-        recognition.onend = () => setIsListening(false);
+        recognition.onend = () => {
+            recognitionRef.current = null;
+            setIsListening(false);
+        };
 
         recognitionRef.current = recognition;
         try {
