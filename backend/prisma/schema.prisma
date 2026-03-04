@@ -190,6 +190,7 @@ model Pedido {
 
   pagamentosReais      PedidoPagamentoReal[]
   itensDevolvidos      EntregaItemDevolvido[]
+  caixaConferencias    CaixaEntregaConferida[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -197,6 +198,7 @@ model Pedido {
   @@index([statusEnvio])
   @@index([vendedorId])
   @@index([clienteId])
+  @@index([dataEntrega])
   @@map("pedidos")
 }
 
@@ -283,6 +285,8 @@ model Vendedor {
 
   embarques           Embarque[]
   pagamentosFiados    PedidoPagamentoReal[] @relation("PagamentosFiados")
+  despesas            Despesa[] @relation("DespesasDoVendedor")
+  caixasDiarios       CaixaDiario[]
 
   @@map("vendedores")
 }
@@ -456,7 +460,10 @@ model Veiculo {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  diarios DiarioVendedor[]
+  diarios           DiarioVendedor[]
+  despesas          Despesa[]
+  alertasManutencao ManutencaoAlerta[]
+  capacidadeTanque  Decimal? @map("capacidade_tanque") @db.Decimal(8, 2)
 
   @@map("veiculos")
 }
@@ -556,5 +563,118 @@ model EntregaItemDevolvido {
   createdAt     DateTime @default(now()) @map("created_at")
 
   @@map("entrega_itens_devolvidos")
+}
+
+// =============================================
+// MÓDULO CAIXA DIÁRIO E DESPESAS
+// =============================================
+
+model Despesa {
+  id             String   @id @default(uuid())
+  vendedorId     String   @map("vendedor_id")
+  dataReferencia String   @map("data_referencia") // YYYY-MM-DD
+
+  categoria      String   // MERCADORIA_EMPRESA | COMBUSTIVEL | PEDAGIO_BALSA | HOTEL_HOSPEDAGEM | MANUTENCAO_VEICULO | OUTRO
+  descricao      String?  @db.Text
+  valor          Decimal  @db.Decimal(12, 2)
+
+  // Combustivel-specific
+  veiculoId         String?  @map("veiculo_id")
+  litros            Decimal? @db.Decimal(10, 3)
+  kmNoAbastecimento Int?     @map("km_no_abastecimento")
+
+  // Manutencao-specific
+  tipoManutencao String? @map("tipo_manutencao") // LAMPADA | PNEU | OLEO | FILTRO | OUTRO
+
+  criadoPor  String   @map("criado_por")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  vendedor Vendedor @relation("DespesasDoVendedor", fields: [vendedorId], references: [id])
+  veiculo  Veiculo? @relation(fields: [veiculoId], references: [id])
+
+  @@index([vendedorId])
+  @@index([dataReferencia])
+  @@index([categoria])
+  @@map("despesas")
+}
+
+model CaixaDiario {
+  id             String   @id @default(uuid())
+  vendedorId     String   @map("vendedor_id")
+  dataReferencia String   @map("data_referencia") // YYYY-MM-DD
+
+  adiantamento Decimal @default(0) @db.Decimal(12, 2)
+  status       String  @default("ABERTO") // ABERTO | FECHADO | CONFERIDO
+
+  // Snapshots ao fechar
+  totalDespesas      Decimal? @db.Decimal(12, 2) @map("total_despesas")
+  totalRecebidoCaixa Decimal? @db.Decimal(12, 2) @map("total_recebido_caixa")
+  totalRecebidoOutros Decimal? @db.Decimal(12, 2) @map("total_recebido_outros")
+  valorAPrestar      Decimal? @db.Decimal(12, 2) @map("valor_a_prestar")
+
+  conferidoPor String?   @map("conferido_por")
+  conferidoEm  DateTime? @map("conferido_em")
+  obsAdmin     String?   @map("obs_admin") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  vendedor            Vendedor                @relation(fields: [vendedorId], references: [id])
+  entregasConferidas  CaixaEntregaConferida[]
+
+  @@unique([vendedorId, dataReferencia])
+  @@index([vendedorId])
+  @@index([dataReferencia])
+  @@index([status])
+  @@map("caixa_diario")
+}
+
+model CaixaEntregaConferida {
+  id            String   @id @default(uuid())
+  caixaDiarioId String   @map("caixa_diario_id")
+  pedidoId      String   @map("pedido_id")
+
+  conferido    Boolean  @default(false)
+  conferidoPor String?  @map("conferido_por")
+  conferidoEm  DateTime? @map("conferido_em")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  caixaDiario CaixaDiario @relation(fields: [caixaDiarioId], references: [id], onDelete: Cascade)
+  pedido      Pedido      @relation(fields: [pedidoId], references: [id])
+
+  @@unique([caixaDiarioId, pedidoId])
+  @@map("caixa_entrega_conferida")
+}
+
+// =============================================
+// MÓDULO MANUTENÇÃO DE VEÍCULOS
+// =============================================
+
+model ManutencaoAlerta {
+  id        String  @id @default(uuid())
+  veiculoId String  @map("veiculo_id")
+
+  tipo      String  // REVISAO | RODIZIO_PNEUS | TROCA_OLEO | TROCA_FILTRO | OUTRO
+  descricao String? @db.Text
+
+  kmAlerta   Int?      @map("km_alerta")
+  dataAlerta DateTime? @map("data_alerta")
+
+  concluido    Boolean   @default(false)
+  concluidoEm  DateTime? @map("concluido_em")
+  concluidoPor String?   @map("concluido_por")
+
+  criadoPor String   @map("criado_por")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  veiculo Veiculo @relation(fields: [veiculoId], references: [id])
+
+  @@index([veiculoId])
+  @@index([concluido])
+  @@map("manutencao_alertas")
 }
 

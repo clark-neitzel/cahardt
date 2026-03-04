@@ -20,6 +20,9 @@ import PainelEmbarque from './pages/Admin/Embarques/PainelEmbarque';
 import AuditoriaEntregas from './pages/Admin/Embarques/AuditoriaEntregas';
 import FormasPagamentoEntrega from './pages/Configuracoes/FormasPagamentoEntrega';
 import PainelMotorista from './pages/Motorista/Entregas/PainelMotorista';
+import DespesasPage from './pages/Caixa/DespesasPage';
+import CaixaDiarioPage from './pages/Caixa/CaixaDiarioPage';
+import RelatorioCaixaPrint from './pages/Caixa/RelatorioCaixaPrint';
 
 import { Menu, X, LogOut, ChevronDown } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
@@ -85,6 +88,9 @@ const Layout = ({ children }) => {
                 {hasPermission('Pode_Executar_Entregas') && (
                   <NavLink to="/minhas-entregas" className={({ isActive }) => getNavLinkClass(isActive)}>Entregas</NavLink>
                 )}
+                {hasPermission('Pode_Acessar_Caixa') && (
+                  <NavLink to="/caixa" className={({ isActive }) => getNavLinkClass(isActive)}>Caixa</NavLink>
+                )}
                 {/* AGRUPAMENTO DE ROTINA ADMINISTRATIVA */}
                 {(hasPermission('produtos') || hasPermission('vendedores') || hasPermission('sync') || hasPermission('configuracoes') || hasPermission('clientes', 'clientes') === 'todos' || user?.permissoes?.admin) && (
                   <div
@@ -107,6 +113,9 @@ const Layout = ({ children }) => {
                         <Link to="/admin/veiculos" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Veículos (Frota)</Link>
                         {hasPermission('Pode_Ver_Todas_Entregas') && (
                           <Link to="/admin/auditoria-entregas" className="block px-4 py-2 text-sm text-amber-700 font-bold bg-amber-50 hover:bg-amber-100">Auditoria (Financeira)</Link>
+                        )}
+                        {hasPermission('Pode_Editar_Caixa') && (
+                          <Link to="/caixa" className="block px-4 py-2 text-sm text-amber-700 font-bold bg-amber-50 hover:bg-amber-100">Caixa Diário (Conferência)</Link>
                         )}
                         {hasPermission('sync') && (
                           <Link to="/admin/sync" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sincronizar (Erp)</Link>
@@ -172,6 +181,12 @@ const Layout = ({ children }) => {
               )}
               {hasPermission('Pode_Executar_Entregas') && (
                 <NavLink to="/minhas-entregas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Entregas</NavLink>
+              )}
+              {hasPermission('Pode_Acessar_Caixa') && (
+                <NavLink to="/caixa" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Caixa</NavLink>
+              )}
+              {hasPermission('Pode_Acessar_Caixa') && (
+                <NavLink to="/despesas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Despesas</NavLink>
               )}
               {hasPermission('produtos') && (
                 <NavLink to="/admin/produtos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Produtos</NavLink>
@@ -246,6 +261,11 @@ function App() {
 
               {/* ROTAS DO MOTORISTA (APP MOBILE) */}
               <Route path="/minhas-entregas" element={<PrivateRoute tab="Pode_Executar_Entregas"><PainelMotorista /></PrivateRoute>} />
+
+              {/* Caixa Diário e Despesas */}
+              <Route path="/despesas" element={<PrivateRoute tab="Pode_Acessar_Caixa"><DespesasPage /></PrivateRoute>} />
+              <Route path="/caixa" element={<PrivateRoute tab="Pode_Acessar_Caixa"><CaixaDiarioPage /></PrivateRoute>} />
+              <Route path="/caixa/impressao" element={<PrivateRoute tab="Pode_Acessar_Caixa"><RelatorioCaixaPrint /></PrivateRoute>} />
 
               {/* Produtos / Admin */}
               <Route path="/admin/produtos" element={<PrivateRoute tab="produtos"><ListaProdutos /></PrivateRoute>} />

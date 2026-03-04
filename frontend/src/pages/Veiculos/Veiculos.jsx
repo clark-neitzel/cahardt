@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Check, X, FileText, History } from 'lucide-react';
+import { Plus, Edit2, Trash2, Check, X, FileText, History, BellRing, Wrench } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 
@@ -9,6 +9,13 @@ const Veiculos = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [veiculoHistorico, setVeiculoHistorico] = useState(null);
+    const [isManutencaoOpen, setIsManutencaoOpen] = useState(false);
+    const [manutencaoVeiculoId, setManutencaoVeiculoId] = useState(null);
+    const [manutencaoVeiculoNome, setManutencaoVeiculoNome] = useState('');
+    const [alertas, setAlertas] = useState([]);
+    const [loadingAlertas, setLoadingAlertas] = useState(false);
+    const [novoAlerta, setNovoAlerta] = useState({ tipo: '', descricao: '', kmAlerta: '', dataAlerta: '' });
+    const [alertasPendentes, setAlertasPendentes] = useState({});
     const [formData, setFormData] = useState({
         id: null, placa: '', modelo: '', documentoUrl: '', ativo: true
     });
@@ -83,6 +90,74 @@ const Veiculos = () => {
         return dateString;
     };
 
+    // Carregar alertas pendentes de todos os veículos
+    useEffect(() => {
+        api.get('/veiculos/alertas-pendentes').then(res => {
+            const pending = {};
+            (res.data || []).forEach(a => {
+                if (!pending[a.veiculoId]) pending[a.veiculoId] = 0;
+                pending[a.veiculoId]++;
+            });
+            setAlertasPendentes(pending);
+        }).catch(() => {});
+    }, []);
+
+    const openManutencao = async (veiculo) => {
+        setManutencaoVeiculoId(veiculo.id);
+        setManutencaoVeiculoNome(`${veiculo.placa} — ${veiculo.modelo}`);
+        setIsManutencaoOpen(true);
+        setNovoAlerta({ tipo: '', descricao: '', kmAlerta: '', dataAlerta: '' });
+        setLoadingAlertas(true);
+        try {
+            const res = await api.get(`/veiculos/${veiculo.id}/manutencao`);
+            setAlertas(res.data || []);
+        } catch {
+            toast.error('Erro ao buscar manutenções.');
+        } finally {
+            setLoadingAlertas(false);
+        }
+    };
+
+    const handleCriarAlerta = async (e) => {
+        e.preventDefault();
+        if (!novoAlerta.tipo) return;
+        try {
+            await api.post(`/veiculos/${manutencaoVeiculoId}/manutencao`, {
+                tipo: novoAlerta.tipo,
+                descricao: novoAlerta.descricao || null,
+                kmAlerta: novoAlerta.kmAlerta ? parseInt(novoAlerta.kmAlerta) : null,
+                dataAlerta: novoAlerta.dataAlerta || null
+            });
+            toast.success('Alerta criado!');
+            setNovoAlerta({ tipo: '', descricao: '', kmAlerta: '', dataAlerta: '' });
+            const res = await api.get(`/veiculos/${manutencaoVeiculoId}/manutencao`);
+            setAlertas(res.data || []);
+            setAlertasPendentes(prev => ({ ...prev, [manutencaoVeiculoId]: (prev[manutencaoVeiculoId] || 0) + 1 }));
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao criar alerta.');
+        }
+    };
+
+    const handleConcluirAlerta = async (alertaId) => {
+        try {
+            await api.patch(`/veiculos/manutencao/${alertaId}/concluir`);
+            toast.success('Alerta concluído!');
+            const res = await api.get(`/veiculos/${manutencaoVeiculoId}/manutencao`);
+            setAlertas(res.data || []);
+            setAlertasPendentes(prev => ({ ...prev, [manutencaoVeiculoId]: Math.max(0, (prev[manutencaoVeiculoId] || 1) - 1) }));
+        } catch {
+            toast.error('Erro ao concluir alerta.');
+        }
+    };
+
+    const TIPOS_MANUTENCAO = [
+        { value: 'REVISAO', label: 'Revisão' },
+        { value: 'RODIZIO_PNEUS', label: 'Rodízio de Pneus' },
+        { value: 'TROCA_OLEO', label: 'Troca de Óleo' },
+        { value: 'TROCA_FILTRO', label: 'Troca de Filtro' },
+        { value: 'OUTRO', label: 'Outro' }
+    ];
+
     if (loading) return <div className="p-8 text-center text-gray-500">Carregando veículos...</div>;
 
     return (
@@ -119,6 +194,14 @@ const Veiculos = () => {
                                     <div className="flex space-x-2">
                                         <button onClick={() => openEdit(veiculo)} className="text-primary bg-blue-50 p-1.5 rounded-full"><Edit2 className="h-4 w-4" /></button>
                                         <button onClick={() => openHistory(veiculo)} className="text-gray-600 bg-gray-100 p-1.5 rounded-full"><History className="h-4 w-4" /></button>
+                                        <button onClick={() => openManutencao(veiculo)} className="relative text-amber-600 bg-amber-50 p-1.5 rounded-full">
+                                            <Wrench className="h-4 w-4" />
+                                            {alertasPendentes[veiculo.id] > 0 && (
+                                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                                                    {alertasPendentes[veiculo.id]}
+                                                </span>
+                                            )}
+                                        </button>
                                         <button onClick={() => handleDelete(veiculo.id)} className="text-red-600 bg-red-50 p-1.5 rounded-full"><Trash2 className="h-4 w-4" /></button>
                                     </div>
                                 </td>
@@ -163,6 +246,14 @@ const Veiculos = () => {
                             <div className="flex gap-1">
                                 <button onClick={() => openEdit(veiculo)} className="p-1.5 bg-blue-50 text-primary rounded-lg"><Edit2 className="h-4 w-4" /></button>
                                 <button onClick={() => openHistory(veiculo)} className="p-1.5 bg-gray-100 text-gray-600 rounded-lg"><History className="h-4 w-4" /></button>
+                                <button onClick={() => openManutencao(veiculo)} className="relative p-1.5 bg-amber-50 text-amber-600 rounded-lg">
+                                    <Wrench className="h-4 w-4" />
+                                    {alertasPendentes[veiculo.id] > 0 && (
+                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                                            {alertasPendentes[veiculo.id]}
+                                        </span>
+                                    )}
+                                </button>
                                 <button onClick={() => handleDelete(veiculo.id)} className="p-1.5 bg-red-50 text-red-600 rounded-lg"><Trash2 className="h-4 w-4" /></button>
                             </div>
                         </div>
@@ -273,6 +364,120 @@ const Veiculos = () => {
                                         ) : (
                                             <div className="text-center text-gray-500 py-10">Nenhum histórico encontrado.</div>
                                         )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Modal de Manutenção */}
+            {isManutencaoOpen && (
+                <div className="fixed inset-0 overflow-hidden z-[60]">
+                    <div className="absolute inset-0 overflow-hidden">
+                        <div className="absolute inset-0 bg-gray-500 bg-opacity-75" onClick={() => setIsManutencaoOpen(false)} />
+                        <div className="fixed inset-y-0 right-0 pl-0 md:pl-10 max-w-full flex">
+                            <div className="w-screen max-w-md">
+                                <div className="h-full flex flex-col bg-white shadow-xl overflow-y-scroll">
+                                    <div className="p-4 md:p-6 bg-amber-600">
+                                        <div className="flex items-center justify-between">
+                                            <h2 className="text-base md:text-lg font-medium text-white flex items-center">
+                                                <Wrench className="h-5 w-5 mr-2" /> Manutenção
+                                            </h2>
+                                            <button onClick={() => setIsManutencaoOpen(false)} className="text-amber-200 hover:text-white"><X className="h-6 w-6" /></button>
+                                        </div>
+                                        <p className="text-sm text-amber-100 mt-1">{manutencaoVeiculoNome}</p>
+                                    </div>
+
+                                    <div className="flex-1 p-4 md:p-6 space-y-6">
+                                        {/* Formulário Novo Alerta */}
+                                        <form onSubmit={handleCriarAlerta} className="bg-amber-50 p-4 rounded-lg border border-amber-200 space-y-3">
+                                            <h3 className="text-sm font-bold text-amber-900">Novo Alerta</h3>
+                                            <select
+                                                value={novoAlerta.tipo}
+                                                onChange={(e) => setNovoAlerta(prev => ({ ...prev, tipo: e.target.value }))}
+                                                className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                                                required
+                                            >
+                                                <option value="">Tipo de manutenção...</option>
+                                                {TIPOS_MANUTENCAO.map(t => (
+                                                    <option key={t.value} value={t.value}>{t.label}</option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                type="text"
+                                                placeholder="Descrição (opcional)"
+                                                value={novoAlerta.descricao}
+                                                onChange={(e) => setNovoAlerta(prev => ({ ...prev, descricao: e.target.value }))}
+                                                className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                                            />
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="block text-xs text-gray-600 mb-1">Alerta por KM</label>
+                                                    <input
+                                                        type="number"
+                                                        placeholder="Ex: 150000"
+                                                        value={novoAlerta.kmAlerta}
+                                                        onChange={(e) => setNovoAlerta(prev => ({ ...prev, kmAlerta: e.target.value }))}
+                                                        className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs text-gray-600 mb-1">Alerta por Data</label>
+                                                    <input
+                                                        type="date"
+                                                        value={novoAlerta.dataAlerta}
+                                                        onChange={(e) => setNovoAlerta(prev => ({ ...prev, dataAlerta: e.target.value }))}
+                                                        className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <button type="submit" className="w-full px-4 py-2 bg-amber-600 text-white rounded-md text-sm font-medium hover:bg-amber-700">
+                                                Criar Alerta
+                                            </button>
+                                        </form>
+
+                                        {/* Lista de Alertas */}
+                                        <div>
+                                            <h3 className="text-sm font-bold text-gray-700 mb-3">Alertas Cadastrados</h3>
+                                            {loadingAlertas ? (
+                                                <div className="flex justify-center py-6"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600"></div></div>
+                                            ) : alertas.length === 0 ? (
+                                                <p className="text-center text-gray-400 py-6">Nenhum alerta cadastrado.</p>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    {alertas.map(a => (
+                                                        <div key={a.id} className={`p-3 rounded-lg border ${a.concluido ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-white border-amber-200'}`}>
+                                                            <div className="flex items-start justify-between">
+                                                                <div>
+                                                                    <div className="flex items-center space-x-2">
+                                                                        {a.concluido ? (
+                                                                            <Check className="h-4 w-4 text-green-600" />
+                                                                        ) : (
+                                                                            <BellRing className="h-4 w-4 text-amber-600" />
+                                                                        )}
+                                                                        <span className="text-sm font-medium text-gray-900">{a.tipo?.replace(/_/g, ' ')}</span>
+                                                                    </div>
+                                                                    {a.descricao && <p className="text-xs text-gray-500 mt-1 ml-6">{a.descricao}</p>}
+                                                                    <div className="text-xs text-gray-400 mt-1 ml-6 space-x-3">
+                                                                        {a.kmAlerta && <span>KM: {a.kmAlerta.toLocaleString('pt-BR')}</span>}
+                                                                        {a.dataAlerta && <span>Data: {new Date(a.dataAlerta).toLocaleDateString('pt-BR')}</span>}
+                                                                    </div>
+                                                                </div>
+                                                                {!a.concluido && (
+                                                                    <button
+                                                                        onClick={() => handleConcluirAlerta(a.id)}
+                                                                        className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded font-medium hover:bg-green-200"
+                                                                    >
+                                                                        Concluir
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -17,6 +17,9 @@ const DEFAULT_PERMISSIONS = {
     Pode_Executar_Entregas: false,
     Pode_Ver_Todas_Entregas: false,
     Pode_Ajustar_Entregas: false,
+    // Módulo Caixa Diário e Despesas
+    Pode_Acessar_Caixa: false,
+    Pode_Editar_Caixa: false,
     admin: false // Flag Global Mestre
 };
 
@@ -244,6 +247,38 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <div>
                                     <span className="text-red-900 font-bold block">Administrador Financeiro de Entrega</span>
                                     <span className="text-red-700 text-xs">Nível crítico: Pode desmanchar/alterar Devoluções ou Pagamentos efetuados pelo motorista após concluir entrega.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Módulo Caixa Diário e Despesas */}
+                    <div className="border-t pt-4">
+                        <h4 className="font-medium text-gray-900 mb-4">Módulo Caixa Diário e Despesas</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-amber-50 p-4 rounded-md border border-amber-200">
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-amber-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-amber-300 text-amber-600 focus:ring-amber-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Acessar_Caixa}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Acessar_Caixa: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-amber-900 font-bold block">Acessar Caixa/Despesas</span>
+                                    <span className="text-amber-700 text-xs">Visualiza e lança despesas, abre caixa diário, define adiantamento e fecha caixa.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-red-50 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-red-300 text-red-600 focus:ring-red-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Editar_Caixa}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Editar_Caixa: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-red-900 font-bold block">Auditor Financeiro do Caixa</span>
+                                    <span className="text-red-700 text-xs">Nível crítico: Confere caixas de outros usuários, edita despesas alheias e marca entregas como conferidas.</span>
                                 </div>
                             </label>
                         </div>

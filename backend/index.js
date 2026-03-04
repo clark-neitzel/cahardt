@@ -22,6 +22,8 @@ const diarioRoutes = require('./routes/diarios'); // Módulo do Diário/Ponto
 const formasPagamentoEntregaRoutes = require('./routes/formasPagamentoEntrega'); // Módulo Pagamento Embarque
 const embarqueRoutes = require('./routes/embarques'); // Módulo de Formação de Carga/Expedição
 const entregasRoutes = require('./routes/entregas'); // Módulo Mobile do Entregador
+const despesasRoutes = require('./routes/despesas'); // Módulo de Despesas
+const caixaRoutes = require('./routes/caixa'); // Módulo Caixa Diário
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -61,6 +63,8 @@ app.use('/api/diarios', authMiddleware, diarioRoutes); // Relatório Diário / P
 app.use('/api/pagamentos-entrega', formasPagamentoEntregaRoutes); // Pagamentos de Entrega
 app.use('/api/embarques', embarqueRoutes); // Montagem Cargas e Despacho Logístico
 app.use('/api/entregas', entregasRoutes); // App Motorista
+app.use('/api/despesas', despesasRoutes); // Módulo de Despesas
+app.use('/api/caixa', caixaRoutes); // Módulo Caixa Diário
 
 app.use('/api/migrations', migrationRoutes); // Migration endpoint
 

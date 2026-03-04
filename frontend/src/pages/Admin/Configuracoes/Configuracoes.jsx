@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import configService from '../../../services/configService';
-import { Save, AlertCircle, CheckCircle, Truck } from 'lucide-react';
+import formasPagamentoService from '../../../services/formasPagamentoService';
+import { Save, AlertCircle, CheckCircle, Truck, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Configuracoes = () => {
@@ -10,6 +11,12 @@ const Configuracoes = () => {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState(null);
 
+    // Caixa Diário config
+    const [formasPagamento, setFormasPagamento] = useState([]);
+    const [formasDebitaCaixa, setFormasDebitaCaixa] = useState([]);
+    const [savingCaixa, setSavingCaixa] = useState(false);
+    const [messageCaixa, setMessageCaixa] = useState(null);
+
     useEffect(() => {
         loadData();
     }, []);
@@ -17,12 +24,16 @@ const Configuracoes = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [cats, currentConfig] = await Promise.all([
+            const [cats, currentConfig, formas, debitaCaixaConfig] = await Promise.all([
                 configService.getCategorias(),
-                configService.get('categorias_vendas')
+                configService.get('categorias_vendas'),
+                formasPagamentoService.listar().catch(() => []),
+                configService.get('formas_pagamento_debita_caixa').catch(() => [])
             ]);
             setCategorias(cats);
             setSelectedCategorias(Array.isArray(currentConfig) ? currentConfig : []);
+            setFormasPagamento(Array.isArray(formas) ? formas : []);
+            setFormasDebitaCaixa(Array.isArray(debitaCaixaConfig) ? debitaCaixaConfig : []);
         } catch (error) {
             console.error('Erro ao carregar configurações:', error);
             setMessage({ type: 'error', text: 'Erro ao carregar dados.' });
@@ -39,6 +50,31 @@ const Configuracoes = () => {
                 return [...prev, cat];
             }
         });
+    };
+
+    const handleToggleDebitaCaixa = (formaId) => {
+        setFormasDebitaCaixa(prev => {
+            if (prev.includes(formaId)) {
+                return prev.filter(id => id !== formaId);
+            } else {
+                return [...prev, formaId];
+            }
+        });
+    };
+
+    const handleSaveCaixa = async () => {
+        try {
+            setSavingCaixa(true);
+            setMessageCaixa(null);
+            await configService.save('formas_pagamento_debita_caixa', formasDebitaCaixa);
+            setMessageCaixa({ type: 'success', text: 'Configuração do caixa salva!' });
+            setTimeout(() => setMessageCaixa(null), 3000);
+        } catch (error) {
+            console.error('Erro ao salvar config caixa:', error);
+            setMessageCaixa({ type: 'error', text: 'Erro ao salvar configuração do caixa.' });
+        } finally {
+            setSavingCaixa(false);
+        }
     };
 
     const handleSave = async () => {
@@ -143,6 +179,62 @@ const Configuracoes = () => {
                         <Link to="/config/pagamentos-entrega" className="inline-flex items-center px-4 py-2 bg-sky-50 text-sky-700 border border-sky-200 rounded-md shadow-sm text-sm font-medium hover:bg-sky-100 transition-colors">
                             Configurar Pagamentos da Entrega
                         </Link>
+                    </div>
+                </div>
+            </div>
+            {/* Seção Caixa Diário */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden mt-8">
+                <div className="p-6 border-b border-gray-100 bg-gray-50">
+                    <h2 className="text-lg font-semibold text-gray-700 flex items-center">
+                        <Wallet className="h-5 w-5 mr-2 text-amber-600" />
+                        Caixa Diário — Formas que Debitam do Caixa
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Selecione quais formas de pagamento de entrega são consideradas "dinheiro em mãos" do motorista e devem ser descontadas no caixa diário.
+                    </p>
+                </div>
+                <div className="p-6">
+                    {formasPagamento.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-4">
+                            Nenhuma forma de pagamento de entrega cadastrada. <Link to="/config/pagamentos-entrega" className="text-primary hover:underline">Cadastre primeiro.</Link>
+                        </p>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {formasPagamento.filter(f => f.ativo !== false).map(forma => (
+                                <label key={forma.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded border border-gray-200 hover:bg-amber-50 cursor-pointer transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        className="h-5 w-5 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                                        checked={formasDebitaCaixa.includes(forma.id)}
+                                        onChange={() => handleToggleDebitaCaixa(forma.id)}
+                                    />
+                                    <span className="text-sm text-gray-700 font-medium">{forma.nome}</span>
+                                </label>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="mt-2 text-right text-xs text-gray-500">
+                        {formasDebitaCaixa.length} formas selecionadas como débito do caixa.
+                    </div>
+
+                    {messageCaixa && (
+                        <div className={`p-4 rounded-md mt-4 flex items-center ${messageCaixa.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                            {messageCaixa.type === 'success' ? <CheckCircle className="h-5 w-5 mr-2" /> : <AlertCircle className="h-5 w-5 mr-2" />}
+                            {messageCaixa.text}
+                        </div>
+                    )}
+
+                    <div className="flex justify-end pt-4 border-t border-gray-100 mt-4">
+                        <button
+                            onClick={handleSaveCaixa}
+                            disabled={savingCaixa}
+                            className={`flex items-center px-6 py-2 bg-amber-600 text-white rounded-md font-medium shadow-sm hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors
+                                ${savingCaixa ? 'opacity-75' : ''}`}
+                        >
+                            <Save className="h-5 w-5 mr-2" />
+                            {savingCaixa ? 'Salvando...' : 'Salvar Config. Caixa'}
+                        </button>
                     </div>
                 </div>
             </div>
