@@ -11,8 +11,13 @@ const CATEGORIA_LABELS = {
     OUTRO: 'Outro'
 };
 
-const LINHAS_POR_PAGINA = 45;
+const STATUS_LABELS = { ENTREGUE: 'ENTREGUE', ENTREGUE_PARCIAL: 'PARCIAL', DEVOLVIDO: 'DEVOLVIDO' };
+
+const ENTREGAS_POR_PAGINA = 45;
+const ATENDIMENTOS_POR_PAGINA = 30;
 const LINHAS_BLANK_FORM = 20;
+
+const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
 const RelatorioCaixaPrint = () => {
     const [searchParams] = useSearchParams();
@@ -39,20 +44,20 @@ const RelatorioCaixaPrint = () => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-screen">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-700 mr-3"></div>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'Arial, sans-serif', fontSize: '16px' }}>
                 Preparando relatório...
             </div>
         );
     }
 
     if (!relatorio) {
-        return <div className="text-center p-8 text-gray-500">Dados não encontrados.</div>;
+        return <div style={{ textAlign: 'center', padding: '40px', fontFamily: 'Arial, sans-serif', color: '#666' }}>Dados não encontrados.</div>;
     }
 
     const dataFormatada = new Date(data + 'T12:00:00').toLocaleDateString('pt-BR');
     const entregas = relatorio.entregas || [];
     const despesas = relatorio.despesas || [];
+    const atendimentos = relatorio.atendimentos || [];
     const temDados = entregas.length > 0 || despesas.length > 0;
 
     // Agrupar despesas por categoria
@@ -63,273 +68,321 @@ const RelatorioCaixaPrint = () => {
         despesasPorCategoria[cat] += Number(d.valor);
     });
 
-    // Dividir entregas em páginas de 45 linhas
+    // Paginar entregas (45 por página)
     const paginasEntregas = [];
     if (entregas.length > 0) {
-        for (let i = 0; i < entregas.length; i += LINHAS_POR_PAGINA) {
-            paginasEntregas.push(entregas.slice(i, i + LINHAS_POR_PAGINA));
+        for (let i = 0; i < entregas.length; i += ENTREGAS_POR_PAGINA) {
+            paginasEntregas.push(entregas.slice(i, i + ENTREGAS_POR_PAGINA));
         }
     }
 
-    // Atendimentos (Página 2)
-    const atendimentos = relatorio.atendimentos || [];
+    // Paginar atendimentos (30 por página)
+    const paginasAtendimentos = [];
+    if (atendimentos.length > 0) {
+        for (let i = 0; i < atendimentos.length; i += ATENDIMENTOS_POR_PAGINA) {
+            paginasAtendimentos.push(atendimentos.slice(i, i + ATENDIMENTOS_POR_PAGINA));
+        }
+    }
+
+    // Calcular totais recebidos do relatório (se não vier calculado)
+    let totalCaixa = 0;
+    let totalOutros = 0;
+    entregas.forEach(e => {
+        if ((e.status || e.statusEntrega) === 'DEVOLVIDO') return;
+        (e.pagamentos || []).forEach(p => {
+            if (p.debitaCaixa) totalCaixa += Number(p.valor);
+            else totalOutros += Number(p.valor);
+        });
+    });
+    const recCaixa = relatorio.totalRecebidoCaixa ?? totalCaixa;
+    const recOutros = relatorio.totalRecebidoOutros ?? totalOutros;
+    const adiantamento = Number(relatorio.caixa?.adiantamento || 0);
+    const totalDesp = Number(relatorio.totalDespesas || 0);
+    const valorAPrestar = relatorio.valorAPrestar ?? (adiantamento + recCaixa - totalDesp);
 
     return (
-        <div className="print-report">
+        <>
             <style>{`
                 @media print {
-                    body { margin: 0; padding: 0; }
+                    body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     .no-print { display: none !important; }
-                    .print-report { font-size: 10px; }
                     .page-break { page-break-before: always; }
-                    @page { margin: 10mm; size: A4; }
+                    @page { margin: 8mm 10mm; size: A4; }
                 }
-                .print-report { font-family: 'Courier New', monospace; max-width: 210mm; margin: 0 auto; }
-                .print-report table { border-collapse: collapse; width: 100%; }
-                .print-report th, .print-report td { border: 1px solid #999; padding: 2px 4px; text-align: left; }
-                .print-report th { background: #e5e5e5; font-weight: bold; }
-                .print-report .header-box { border: 2px solid #333; padding: 8px; margin-bottom: 8px; }
-                .print-report .total-box { border: 3px solid #000; padding: 10px; text-align: center; font-size: 16px; font-weight: bold; margin: 8px 0; }
-                .print-report .dashed-line { border-bottom: 1px dashed #999; height: 20px; }
+                .rpt {
+                    font-family: Arial, Helvetica, sans-serif;
+                    max-width: 190mm;
+                    margin: 0 auto;
+                    color: #000;
+                }
+                .rpt table { border-collapse: collapse; width: 100%; }
+                .rpt th, .rpt td { border: 1px solid #555; padding: 3px 5px; }
+                .rpt th { background: #ddd; font-weight: 700; font-size: 11px; }
+                .rpt td { font-size: 11px; }
+                .rpt .hdr { border: 2px solid #000; padding: 8px 12px; margin-bottom: 10px; background: #f5f5f5; }
+                .rpt .hdr-title { font-size: 16px; font-weight: 900; letter-spacing: 0.5px; }
+                .rpt .hdr-sub { font-size: 12px; font-weight: 700; margin-top: 2px; }
+                .rpt .box { border: 1px solid #666; padding: 6px 10px; }
+                .rpt .box-title { font-size: 12px; font-weight: 900; margin-bottom: 4px; text-transform: uppercase; }
+                .rpt .total-box {
+                    border: 3px solid #000; padding: 10px 16px; text-align: center;
+                    font-size: 20px; font-weight: 900; margin: 10px 0; background: #f0f0f0;
+                }
+                .rpt .stat-box { border: 1px solid #666; padding: 6px; text-align: center; flex: 1; }
+                .rpt .stat-num { font-size: 18px; font-weight: 900; }
+                .rpt .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; }
+                .rpt .sign-line { border-top: 1px solid #000; width: 45%; text-align: center; padding-top: 4px; font-size: 11px; font-weight: 700; }
+                .rpt .dashed-line { border-bottom: 1px dashed #aaa; height: 18px; }
             `}</style>
 
-            {/* Botão Imprimir (não imprime) */}
-            <div className="no-print text-center py-4 bg-gray-100 mb-4 sticky top-0 z-10">
-                <button
-                    onClick={() => window.print()}
-                    className="px-6 py-2 bg-gray-800 text-white rounded font-medium hover:bg-gray-900 mr-3"
-                >
+            {/* Botões (não imprime) */}
+            <div className="no-print" style={{ textAlign: 'center', padding: '12px', background: '#f3f4f6', position: 'sticky', top: 0, zIndex: 10 }}>
+                <button onClick={() => window.print()} style={{ padding: '8px 24px', background: '#1f2937', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', marginRight: '10px' }}>
                     Imprimir
                 </button>
-                <button
-                    onClick={() => window.history.back()}
-                    className="px-6 py-2 bg-gray-300 text-gray-800 rounded font-medium hover:bg-gray-400"
-                >
+                <button onClick={() => window.history.back()} style={{ padding: '8px 24px', background: '#d1d5db', color: '#374151', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
                     Voltar
                 </button>
             </div>
 
-            {/* ═════════ PÁGINA 1: CAIXA ═════════ */}
-            <div style={{ padding: '5mm' }}>
-                {/* Cabeçalho */}
-                <div className="header-box">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="rpt">
+
+                {/* ═══════════════════ PÁGINA 1: CAIXA DIÁRIO ═══════════════════ */}
+                <div style={{ padding: '2mm 0' }}>
+
+                    {/* Cabeçalho */}
+                    <div className="hdr" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
-                            <strong style={{ fontSize: '14px' }}>HARDT — CAIXA DIÁRIO</strong>
-                            <br />
-                            <span>Data: {dataFormatada}</span>
+                            <div className="hdr-title">HARDT — CAIXA DIÁRIO</div>
+                            <div className="hdr-sub">Data: {dataFormatada}</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                            <span>Motorista/Vendedor: <strong>{relatorio.vendedorNome || '_______________'}</strong></span>
-                            <br />
-                            <span>Status: <strong>{relatorio.caixa?.status || 'ABERTO'}</strong></span>
+                            <div style={{ fontSize: '13px', fontWeight: 700 }}>Motorista: {relatorio.vendedorNome || '_______________'}</div>
+                            <div style={{ fontSize: '12px', fontWeight: 700 }}>Status: {relatorio.caixa?.status || 'ABERTO'}</div>
                         </div>
                     </div>
-                </div>
 
-                {/* Grid: Veículo + Adiantamento */}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                    <div style={{ flex: 1, border: '1px solid #999', padding: '6px' }}>
-                        <strong>Veículo:</strong> {relatorio.diario?.placa || '________'} — {relatorio.diario?.modelo || '________'}
-                        <br />
-                        <strong>KM:</strong> {relatorio.diario?.kmInicial || '______'} → {relatorio.diario?.kmFinal || '______'}
-                        {relatorio.diario?.totalKm > 0 && <span> ({relatorio.diario.totalKm} km)</span>}
+                    {/* Veículo + Adiantamento */}
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                        <div className="box" style={{ flex: 1 }}>
+                            <div style={{ fontSize: '12px' }}>
+                                <strong>Veículo:</strong> {relatorio.diario?.placa || '____________'} — {relatorio.diario?.modelo || '____________'}
+                            </div>
+                            <div style={{ fontSize: '12px', marginTop: '3px' }}>
+                                <strong>KM:</strong> {relatorio.diario?.kmInicial || '________'} → {relatorio.diario?.kmFinal || '________'}
+                                {relatorio.diario?.totalKm > 0 && <span> ({relatorio.diario.totalKm} km rodados)</span>}
+                            </div>
+                        </div>
+                        <div className="box" style={{ flex: 1 }}>
+                            <div style={{ fontSize: '12px' }}>
+                                <strong>Adiantamento:</strong> R$ {fmt(adiantamento)}
+                            </div>
+                            <div style={{ fontSize: '12px', marginTop: '3px' }}>
+                                <strong>Média Combustível:</strong> {(relatorio.mediaCombustivel3Meses || relatorio.mediaCombustivel) ? `${(relatorio.mediaCombustivel3Meses || relatorio.mediaCombustivel).toFixed(2)} km/L` : '—'}
+                            </div>
+                        </div>
                     </div>
-                    <div style={{ flex: 1, border: '1px solid #999', padding: '6px' }}>
-                        <strong>Adiantamento:</strong> R$ {Number(relatorio.caixa?.adiantamento || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        <br />
-                        <strong>Média Combustível:</strong> {(relatorio.mediaCombustivel3Meses || relatorio.mediaCombustivel) ? `${(relatorio.mediaCombustivel3Meses || relatorio.mediaCombustivel).toFixed(2)} km/L` : '—'}
-                    </div>
-                </div>
 
-                {/* Despesas por Categoria */}
-                <div style={{ border: '1px solid #999', padding: '6px', marginBottom: '8px' }}>
-                    <strong>DESPESAS DO DIA</strong>
-                    <table style={{ marginTop: '4px' }}>
-                        <thead>
-                            <tr>
-                                <th>Categoria</th>
-                                <th style={{ textAlign: 'right', width: '100px' }}>Valor</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {Object.keys(CATEGORIA_LABELS).map(cat => {
-                                const valor = despesasPorCategoria[cat];
-                                if (!valor) return null;
-                                return (
-                                    <tr key={cat}>
-                                        <td>{CATEGORIA_LABELS[cat]}</td>
-                                        <td style={{ textAlign: 'right' }}>R$ {valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                    </tr>
-                                );
-                            })}
-                            <tr style={{ fontWeight: 'bold', borderTop: '2px solid #333' }}>
-                                <td>TOTAL DESPESAS</td>
-                                <td style={{ textAlign: 'right' }}>R$ {Number(relatorio.totalDespesas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Resumo Entregas */}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                    <div style={{ flex: 1, border: '1px solid #999', padding: '6px', textAlign: 'center' }}>
-                        <strong>{relatorio.contagens?.totalEntregas || 0}</strong><br /><span style={{ fontSize: '9px' }}>Total</span>
-                    </div>
-                    <div style={{ flex: 1, border: '1px solid #999', padding: '6px', textAlign: 'center' }}>
-                        <strong>{relatorio.contagens?.entregues || 0}</strong><br /><span style={{ fontSize: '9px' }}>Entregues</span>
-                    </div>
-                    <div style={{ flex: 1, border: '1px solid #999', padding: '6px', textAlign: 'center' }}>
-                        <strong>{relatorio.contagens?.parciais || 0}</strong><br /><span style={{ fontSize: '9px' }}>Parciais</span>
-                    </div>
-                    <div style={{ flex: 1, border: '1px solid #999', padding: '6px', textAlign: 'center' }}>
-                        <strong>{relatorio.contagens?.devolvidos || 0}</strong><br /><span style={{ fontSize: '9px' }}>Devolvidos</span>
-                    </div>
-                </div>
-
-                {/* VALOR A PRESTAR */}
-                <div className="total-box">
-                    VALOR A PRESTAR: R$ {Number(relatorio.valorAPrestar || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </div>
-
-                {/* Tabela de Entregas (ou Formulário em Branco) */}
-                {temDados ? (
-                    paginasEntregas.map((pagina, pageIdx) => (
-                        <div key={pageIdx} className={pageIdx > 0 ? 'page-break' : ''}>
-                            {pageIdx > 0 && (
-                                <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>
-                                    HARDT — CAIXA DIÁRIO — {dataFormatada} — Pág. {pageIdx + 1}
-                                </div>
-                            )}
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th style={{ width: '25px' }}>#</th>
-                                        <th>Cliente</th>
-                                        <th style={{ width: '80px' }}>Cond. Pgto</th>
-                                        <th style={{ width: '80px', textAlign: 'right' }}>Valor</th>
-                                        <th style={{ width: '55px', textAlign: 'center' }}>Tipo</th>
-                                        <th>Pagamentos</th>
-                                        <th style={{ width: '25px', textAlign: 'center' }}>☐</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pagina.map((e, i) => (
-                                        <tr key={e.pedidoId}>
-                                            <td>{pageIdx * LINHAS_POR_PAGINA + i + 1}</td>
-                                            <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {e.clienteNome}
-                                            </td>
-                                            <td>{e.condicaoPagamento || e.condicao}</td>
-                                            <td style={{ textAlign: 'right' }}>
-                                                R$ {Number(e.valorPedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                            </td>
-                                            <td style={{ textAlign: 'center', fontSize: '9px' }}>{e.statusEntrega || e.status}</td>
-                                            <td style={{ fontSize: '9px' }}>
-                                                {e.pagamentos?.map(p => `${p.formaNome || p.forma}: R$${Number(p.valor).toFixed(2)}`).join(' | ')}
-                                            </td>
-                                            <td style={{ textAlign: 'center' }}>{e.conferida || e.conferido ? '✓' : '☐'}</td>
+                    {/* Despesas */}
+                    <div className="box" style={{ marginBottom: '10px' }}>
+                        <div className="box-title">Despesas do Dia</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style={{ textAlign: 'left' }}>Categoria</th>
+                                    <th style={{ textAlign: 'right', width: '120px' }}>Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {Object.keys(CATEGORIA_LABELS).map(cat => {
+                                    const valor = despesasPorCategoria[cat];
+                                    if (!valor) return null;
+                                    return (
+                                        <tr key={cat}>
+                                            <td style={{ fontWeight: 600 }}>{CATEGORIA_LABELS[cat]}</td>
+                                            <td style={{ textAlign: 'right', fontWeight: 600 }}>R$ {fmt(valor)}</td>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    ))
-                ) : (
-                    /* Formulário em branco */
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style={{ width: '25px' }}>#</th>
-                                <th>Cliente</th>
-                                <th style={{ width: '80px' }}>Cond. Pgto</th>
-                                <th style={{ width: '80px', textAlign: 'right' }}>Valor</th>
-                                <th style={{ width: '55px', textAlign: 'center' }}>Tipo</th>
-                                <th>Pagamentos</th>
-                                <th style={{ width: '25px', textAlign: 'center' }}>☐</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {Array.from({ length: LINHAS_BLANK_FORM }, (_, i) => (
-                                <tr key={i}>
-                                    <td>{i + 1}</td>
-                                    <td className="dashed-line"></td>
-                                    <td className="dashed-line"></td>
-                                    <td className="dashed-line"></td>
-                                    <td className="dashed-line"></td>
-                                    <td className="dashed-line"></td>
-                                    <td>☐</td>
+                                    );
+                                })}
+                                {Object.keys(despesasPorCategoria).length === 0 && (
+                                    <tr><td colSpan={2} style={{ textAlign: 'center', color: '#999', fontStyle: 'italic' }}>Sem despesas</td></tr>
+                                )}
+                                <tr style={{ fontWeight: 900, borderTop: '2px solid #000', fontSize: '12px' }}>
+                                    <td>TOTAL DESPESAS</td>
+                                    <td style={{ textAlign: 'right' }}>R$ {fmt(totalDesp)}</td>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+                            </tbody>
+                        </table>
+                    </div>
 
-                {/* Rodapé Pg 1 */}
-                <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #999', paddingTop: '6px' }}>
-                    <div>
-                        <strong>Recebido Caixa:</strong> R$ {Number(relatorio.totalRecebidoCaixa || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {/* Contadores de Entregas */}
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                        {[
+                            { label: 'Total', val: entregas.length },
+                            { label: 'Entregues', val: entregas.filter(e => (e.status || e.statusEntrega) === 'ENTREGUE').length },
+                            { label: 'Parciais', val: entregas.filter(e => (e.status || e.statusEntrega) === 'ENTREGUE_PARCIAL').length },
+                            { label: 'Devolvidos', val: entregas.filter(e => (e.status || e.statusEntrega) === 'DEVOLVIDO').length }
+                        ].map(s => (
+                            <div key={s.label} className="stat-box">
+                                <div className="stat-num">{s.val}</div>
+                                <div className="stat-label">{s.label}</div>
+                            </div>
+                        ))}
                     </div>
-                    <div>
-                        <strong>Recebido Outros:</strong> R$ {Number(relatorio.totalRecebidoOutros || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </div>
-                </div>
 
-                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
-                    <div style={{ borderTop: '1px solid #333', width: '45%', textAlign: 'center', paddingTop: '4px' }}>
-                        Assinatura Motorista
+                    {/* VALOR A PRESTAR */}
+                    <div className="total-box">
+                        VALOR A PRESTAR: R$ {fmt(valorAPrestar)}
                     </div>
-                    <div style={{ borderTop: '1px solid #333', width: '45%', textAlign: 'center', paddingTop: '4px' }}>
-                        Assinatura Conferente
-                    </div>
-                </div>
-            </div>
 
-            {/* ═════════ PÁGINA 2: ATENDIMENTOS ═════════ */}
-            <div className="page-break" style={{ padding: '5mm' }}>
-                <div className="header-box">
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <div>
-                            <strong style={{ fontSize: '14px' }}>HARDT — ATENDIMENTOS DO DIA</strong>
-                            <br />
-                            <span>Data: {dataFormatada} — {relatorio.vendedorNome || ''}</span>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                            <span>Total: <strong>{atendimentos.length}</strong> atendimentos</span>
-                        </div>
-                    </div>
-                </div>
-
-                {atendimentos.length > 0 ? (
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style={{ width: '25px' }}>#</th>
-                                <th style={{ width: '60px' }}>Tipo</th>
-                                <th>Cliente / Lead</th>
-                                <th style={{ width: '80px' }}>Pedido</th>
-                                <th style={{ width: '50px' }}>Hora</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {atendimentos.map((a, i) => (
-                                <tr key={i}>
-                                    <td>{i + 1}</td>
-                                    <td>{a.tipo}</td>
-                                    <td>{a.nome}</td>
-                                    <td>{a.pedido || '—'}</td>
-                                    <td>{a.hora || '—'}</td>
+                    {/* Tabela de Entregas */}
+                    {temDados ? (
+                        paginasEntregas.map((pagina, pageIdx) => (
+                            <div key={pageIdx} className={pageIdx > 0 ? 'page-break' : ''}>
+                                {pageIdx > 0 && (
+                                    <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: 900 }}>
+                                        HARDT — CAIXA DIÁRIO — {dataFormatada} — {relatorio.vendedorNome} — Pág. {pageIdx + 1}
+                                    </div>
+                                )}
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th style={{ width: '22px', textAlign: 'center' }}>#</th>
+                                            <th style={{ textAlign: 'left' }}>Cliente</th>
+                                            <th style={{ width: '90px', textAlign: 'left' }}>Cond. Pgto</th>
+                                            <th style={{ width: '75px', textAlign: 'right' }}>Valor</th>
+                                            <th style={{ width: '60px', textAlign: 'center' }}>Tipo</th>
+                                            <th style={{ textAlign: 'left' }}>Pagamentos</th>
+                                            <th style={{ width: '22px', textAlign: 'center' }}>✓</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {pagina.map((e, i) => {
+                                            const st = e.statusEntrega || e.status;
+                                            return (
+                                                <tr key={i}>
+                                                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{pageIdx * ENTREGAS_POR_PAGINA + i + 1}</td>
+                                                    <td style={{ fontWeight: 700, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {e.clienteNome}
+                                                    </td>
+                                                    <td style={{ fontSize: '10px', fontWeight: 600 }}>{e.condicaoPagamento || e.condicao}</td>
+                                                    <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                                                        {fmt(e.valorPedido)}
+                                                    </td>
+                                                    <td style={{ textAlign: 'center', fontSize: '9px', fontWeight: 700 }}>{STATUS_LABELS[st] || st}</td>
+                                                    <td style={{ fontSize: '10px', fontWeight: 600 }}>
+                                                        {e.pagamentos?.map(p => `${p.formaNome || p.forma}: ${fmt(p.valor)}`).join(' | ')}
+                                                    </td>
+                                                    <td style={{ textAlign: 'center', fontSize: '13px', fontWeight: 900 }}>{e.conferida || e.conferido ? '✓' : '☐'}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ))
+                    ) : (
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style={{ width: '22px', textAlign: 'center' }}>#</th>
+                                    <th>Cliente</th>
+                                    <th style={{ width: '90px' }}>Cond. Pgto</th>
+                                    <th style={{ width: '75px', textAlign: 'right' }}>Valor</th>
+                                    <th style={{ width: '60px', textAlign: 'center' }}>Tipo</th>
+                                    <th>Pagamentos</th>
+                                    <th style={{ width: '22px', textAlign: 'center' }}>✓</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                ) : (
-                    <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                        Nenhum atendimento registrado no dia.
+                            </thead>
+                            <tbody>
+                                {Array.from({ length: LINHAS_BLANK_FORM }, (_, i) => (
+                                    <tr key={i}>
+                                        <td style={{ textAlign: 'center' }}>{i + 1}</td>
+                                        <td className="dashed-line"></td>
+                                        <td className="dashed-line"></td>
+                                        <td className="dashed-line"></td>
+                                        <td className="dashed-line"></td>
+                                        <td className="dashed-line"></td>
+                                        <td style={{ textAlign: 'center' }}>☐</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+
+                    {/* Rodapé - Recebidos + Assinaturas */}
+                    <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #000', paddingTop: '8px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 900 }}>
+                            Recebido Caixa: R$ {fmt(recCaixa)}
+                        </div>
+                        <div style={{ fontSize: '13px', fontWeight: 900 }}>
+                            Recebido Outros: R$ {fmt(recOutros)}
+                        </div>
+                    </div>
+
+                    <div style={{ marginTop: '30px', display: 'flex', justifyContent: 'space-between' }}>
+                        <div className="sign-line">Assinatura Motorista</div>
+                        <div className="sign-line">Assinatura Conferente</div>
+                    </div>
+                </div>
+
+                {/* ═══════════════════ PÁGINA 2+: ATENDIMENTOS ═══════════════════ */}
+                {paginasAtendimentos.map((pagina, pageIdx) => (
+                    <div key={pageIdx} className="page-break" style={{ padding: '2mm 0' }}>
+                        <div className="hdr" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                                <div className="hdr-title">HARDT — ATENDIMENTOS DO DIA</div>
+                                <div className="hdr-sub">Data: {dataFormatada} — {relatorio.vendedorNome || ''}</div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '13px', fontWeight: 700 }}>Total: {atendimentos.length} atendimentos</div>
+                                {paginasAtendimentos.length > 1 && (
+                                    <div style={{ fontSize: '11px', fontWeight: 600 }}>Pág. {pageIdx + 1} de {paginasAtendimentos.length}</div>
+                                )}
+                            </div>
+                        </div>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style={{ width: '25px', textAlign: 'center' }}>#</th>
+                                    <th style={{ width: '80px', textAlign: 'left' }}>Tipo</th>
+                                    <th style={{ textAlign: 'left' }}>Cliente / Lead</th>
+                                    <th style={{ width: '90px', textAlign: 'left' }}>Pedido</th>
+                                    <th style={{ width: '60px', textAlign: 'center' }}>Hora</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {pagina.map((a, i) => (
+                                    <tr key={i}>
+                                        <td style={{ textAlign: 'center', fontWeight: 700 }}>{pageIdx * ATENDIMENTOS_POR_PAGINA + i + 1}</td>
+                                        <td style={{ fontWeight: 700 }}>{a.tipo}</td>
+                                        <td style={{ fontWeight: 600 }}>{a.clienteNome || a.nome || '—'}</td>
+                                        <td style={{ fontWeight: 600 }}>{a.pedidoId || a.pedido || '—'}</td>
+                                        <td style={{ textAlign: 'center', fontWeight: 600 }}>
+                                            {a.hora ? new Date(a.hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ))}
+
+                {/* Se não tem atendimentos, mostra página vazia */}
+                {atendimentos.length === 0 && (
+                    <div className="page-break" style={{ padding: '2mm 0' }}>
+                        <div className="hdr">
+                            <div className="hdr-title">HARDT — ATENDIMENTOS DO DIA</div>
+                            <div className="hdr-sub">Data: {dataFormatada} — {relatorio.vendedorNome || ''}</div>
+                        </div>
+                        <div style={{ textAlign: 'center', padding: '60px 0', fontSize: '14px', color: '#999', fontWeight: 600 }}>
+                            Nenhum atendimento registrado no dia.
+                        </div>
                     </div>
                 )}
             </div>
-        </div>
+        </>
     );
 };
 
