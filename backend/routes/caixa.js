@@ -154,20 +154,23 @@ router.get('/resumo', async (req, res) => {
             orderBy: { dataEntrega: 'asc' }
         });
 
-        // 6. Buscar TODAS as condições da TabelaPreco (para mapear por nome e por opcaoCondicao)
+        // 6. Buscar TODAS as condições da TabelaPreco (sem distinct, cada nomeCondicao pode ter debitaCaixa diferente)
         const todasCondicoes = await prisma.tabelaPreco.findMany({
             where: { ativo: true },
-            select: { opcaoCondicao: true, nomeCondicao: true, debitaCaixa: true },
-            distinct: ['opcaoCondicao']
+            select: { opcaoCondicao: true, nomeCondicao: true, debitaCaixa: true }
         });
-        // Mapa por opcaoCondicao (para enriquecer nome da condição do pedido)
-        const mapaCondicoes = Object.fromEntries(
-            todasCondicoes.map(t => [t.opcaoCondicao, { nome: t.nomeCondicao, debitaCaixa: t.debitaCaixa }])
-        );
         // Mapa por nomeCondicao (para classificar pagamento real pelo nome usado no checkout)
         const mapaCondicoesPorNome = Object.fromEntries(
             todasCondicoes.map(t => [t.nomeCondicao, t.debitaCaixa])
         );
+        // Mapa por opcaoCondicao (para enriquecer nome da condição original do pedido)
+        // Se várias entradas com mesmo opcaoCondicao, pega a primeira (para exibição)
+        const mapaCondicoes = {};
+        for (const t of todasCondicoes) {
+            if (!mapaCondicoes[t.opcaoCondicao]) {
+                mapaCondicoes[t.opcaoCondicao] = { nome: t.nomeCondicao, debitaCaixa: t.debitaCaixa };
+            }
+        }
 
         // 7. Classificar pagamentos e calcular totais
         // DEVOLVIDO não conta nos totais (mercadoria volta, motorista não recebeu dinheiro)
@@ -352,14 +355,16 @@ router.post('/fechar', async (req, res) => {
             include: { pagamentosReais: true }
         });
 
-        // Buscar TODAS as condições da TabelaPreco para classificar por nome do pagamento real
+        // Buscar TODAS as condições da TabelaPreco (sem distinct)
         const todasCondicoesFechar = await prisma.tabelaPreco.findMany({
             where: { ativo: true },
-            select: { opcaoCondicao: true, nomeCondicao: true, debitaCaixa: true },
-            distinct: ['opcaoCondicao']
+            select: { opcaoCondicao: true, nomeCondicao: true, debitaCaixa: true }
         });
-        const mapaDebitaPorOpcao = Object.fromEntries(todasCondicoesFechar.map(t => [t.opcaoCondicao, t.debitaCaixa]));
         const mapaDebitaPorNome = Object.fromEntries(todasCondicoesFechar.map(t => [t.nomeCondicao, t.debitaCaixa]));
+        const mapaDebitaPorOpcao = {};
+        for (const t of todasCondicoesFechar) {
+            if (!mapaDebitaPorOpcao[t.opcaoCondicao]) mapaDebitaPorOpcao[t.opcaoCondicao] = t.debitaCaixa;
+        }
 
         let totalRecebidoCaixa = 0;
         let totalRecebidoOutros = 0;
@@ -516,18 +521,20 @@ router.get('/relatorio', async (req, res) => {
             orderBy: { dataEntrega: 'asc' }
         });
 
-        // Buscar TODAS as condições da TabelaPreco para classificar por nome do pagamento real
+        // Buscar TODAS as condições da TabelaPreco (sem distinct)
         const todasCondicoesRel = await prisma.tabelaPreco.findMany({
             where: { ativo: true },
-            select: { opcaoCondicao: true, nomeCondicao: true, debitaCaixa: true },
-            distinct: ['opcaoCondicao']
+            select: { opcaoCondicao: true, nomeCondicao: true, debitaCaixa: true }
         });
-        const mapaCondicoes = Object.fromEntries(
-            todasCondicoesRel.map(t => [t.opcaoCondicao, { nome: t.nomeCondicao, debitaCaixa: t.debitaCaixa }])
-        );
         const mapaDebitaPorNomeRel = Object.fromEntries(
             todasCondicoesRel.map(t => [t.nomeCondicao, t.debitaCaixa])
         );
+        const mapaCondicoes = {};
+        for (const t of todasCondicoesRel) {
+            if (!mapaCondicoes[t.opcaoCondicao]) {
+                mapaCondicoes[t.opcaoCondicao] = { nome: t.nomeCondicao, debitaCaixa: t.debitaCaixa };
+            }
+        }
 
         // Média combustível
         const mediaCombustivel = diario?.veiculoId ? await calcularMediaCombustivel(diario.veiculoId) : null;
