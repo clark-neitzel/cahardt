@@ -23,6 +23,45 @@ const tabelaPrecoController = {
         }
     },
 
+    // Criar nova condição de pagamento
+    criar: async (req, res) => {
+        try {
+            const { id, idCondicao, nomeCondicao, tipoPagamento, opcaoCondicao, qtdParcelas, parcelasDias, acrescimoPreco, valorMinimo, exigeBanco, bancoPadrao, debitaCaixa } = req.body;
+
+            if (!id || !idCondicao || !nomeCondicao) {
+                return res.status(400).json({ error: 'Campos obrigatórios: id, idCondicao, nomeCondicao.' });
+            }
+
+            const exists = await prisma.tabelaPreco.findUnique({ where: { id } });
+            if (exists) {
+                return res.status(400).json({ error: 'Já existe uma condição com este ID.' });
+            }
+
+            const nova = await prisma.tabelaPreco.create({
+                data: {
+                    id,
+                    idCondicao,
+                    nomeCondicao,
+                    tipoPagamento: tipoPagamento || null,
+                    opcaoCondicao: opcaoCondicao || null,
+                    qtdParcelas: Number(qtdParcelas) || 1,
+                    parcelasDias: Number(parcelasDias) || 0,
+                    acrescimoPreco: Number(acrescimoPreco) || 0,
+                    valorMinimo: Number(valorMinimo) || 0,
+                    exigeBanco: exigeBanco || false,
+                    bancoPadrao: bancoPadrao || null,
+                    debitaCaixa: debitaCaixa || false,
+                    ativo: true
+                }
+            });
+
+            res.status(201).json(nova);
+        } catch (error) {
+            console.error('Erro ao criar condição:', error);
+            res.status(500).json({ error: 'Erro ao criar condição de pagamento.' });
+        }
+    },
+
     // Atualizar uma condição de pagamento (Edição inline)
     atualizar: async (req, res) => {
         try {
@@ -42,6 +81,7 @@ const tabelaPrecoController = {
             const updateData = {};
 
             if (ativo !== undefined) updateData.ativo = ativo;
+            if (req.body.debitaCaixa !== undefined) updateData.debitaCaixa = req.body.debitaCaixa;
             if (exigeBanco !== undefined) updateData.exigeBanco = exigeBanco;
             if (bancoPadrao !== undefined) updateData.bancoPadrao = bancoPadrao;
             if (nomeCondicao !== undefined) updateData.nomeCondicao = nomeCondicao;

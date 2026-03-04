@@ -311,6 +311,7 @@ model TabelaPreco {
   valorMinimo         Decimal? @default(0) @map("valor_minimo") @db.Decimal(12, 2)
   exigeBanco          Boolean  @default(false) @map("exige_banco")
   bancoPadrao         String?  @map("banco_padrao")
+  debitaCaixa         Boolean  @default(false) @map("debita_caixa")
   ativo               Boolean  @default(true)
   obs                 String?
   createdAt           DateTime @default(now()) @map("created_at")

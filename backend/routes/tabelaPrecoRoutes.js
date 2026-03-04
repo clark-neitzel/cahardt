@@ -4,6 +4,7 @@ const tabelaPrecoController = require('../controllers/tabelaPrecoController');
 
 // Rotas: /api/tabela-precos
 router.get('/', tabelaPrecoController.listar);
+router.post('/', tabelaPrecoController.criar);
 router.patch('/:id', tabelaPrecoController.atualizar);
 
 module.exports = router;

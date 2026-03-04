@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
 import contaFinanceiraService from '../../services/contaFinanceiraService';
-import { BadgeDollarSign, Landmark, X, Save } from 'lucide-react';
+import { BadgeDollarSign, Landmark, X, Save, Plus, Wallet } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const TabelaPrecos = () => {
     const [condicoes, setCondicoes] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Estados do Modal de Edição
+    // Estados do Modal de Edição/Criação
     const [bancos, setBancos] = useState([]);
     const [editingItem, setEditingItem] = useState(null);
+    const [isCreating, setIsCreating] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [editForm, setEditForm] = useState({ acrescimoPreco: 0, valorMinimo: 0, ativo: true });
+    const [editForm, setEditForm] = useState({ acrescimoPreco: 0, valorMinimo: 0, ativo: true, debitaCaixa: false });
 
     useEffect(() => {
         carregarDados();
@@ -26,7 +27,7 @@ const TabelaPrecos = () => {
                 contaFinanceiraService.listar()
             ]);
             setCondicoes(dados);
-            setBancos(bancosData.filter(b => b.ativo)); // apenas bancos ativos
+            setBancos(bancosData.filter(b => b.ativo));
         } catch (error) {
             toast.error('Erro ao carregar dados');
             console.error(error);
@@ -36,6 +37,7 @@ const TabelaPrecos = () => {
     };
 
     const handleEditClick = (item) => {
+        setIsCreating(false);
         setEditingItem(item);
         setEditForm({
             nomeCondicao: item.nomeCondicao || '',
@@ -47,28 +49,60 @@ const TabelaPrecos = () => {
             bancoPadrao: item.bancoPadrao || '',
             acrescimoPreco: item.acrescimoPreco || 0,
             valorMinimo: item.valorMinimo || 0,
+            debitaCaixa: item.debitaCaixa || false,
             ativo: item.ativo
+        });
+    };
+
+    const handleNewClick = () => {
+        setIsCreating(true);
+        setEditingItem({ id: '', idCondicao: '' });
+        setEditForm({
+            id: '',
+            idCondicao: '',
+            nomeCondicao: '',
+            tipoPagamento: '',
+            opcaoCondicao: '',
+            qtdParcelas: 1,
+            parcelasDias: 0,
+            exigeBanco: false,
+            bancoPadrao: '',
+            acrescimoPreco: 0,
+            valorMinimo: 0,
+            debitaCaixa: false,
+            ativo: true
         });
     };
 
     const handleCloseModal = () => {
         setEditingItem(null);
+        setIsCreating(false);
     };
 
     const handleSaveEdit = async () => {
         if (!editingItem) return;
         try {
             setSaving(true);
-            const updated = await tabelaPrecoService.atualizar(editingItem.id, editForm);
 
-            // Atualizar lista local
-            setCondicoes(condicoes.map(c => c.id === editingItem.id ? { ...c, ...updated } : c));
+            if (isCreating) {
+                if (!editForm.id || !editForm.idCondicao || !editForm.nomeCondicao) {
+                    toast.error('Preencha ID, Código e Nome da condição.');
+                    setSaving(false);
+                    return;
+                }
+                const nova = await tabelaPrecoService.criar(editForm);
+                setCondicoes([...condicoes, nova]);
+                toast.success('Condição criada com sucesso');
+            } else {
+                const updated = await tabelaPrecoService.atualizar(editingItem.id, editForm);
+                setCondicoes(condicoes.map(c => c.id === editingItem.id ? { ...c, ...updated } : c));
+                toast.success('Condição atualizada com sucesso');
+            }
 
-            toast.success('Condição atualizada com sucesso');
             handleCloseModal();
         } catch (error) {
             console.error(error);
-            toast.error('Erro ao atualizar condição');
+            toast.error(error.response?.data?.error || (isCreating ? 'Erro ao criar condição' : 'Erro ao atualizar condição'));
         } finally {
             setSaving(false);
         }
@@ -85,8 +119,16 @@ const TabelaPrecos = () => {
                     <BadgeDollarSign className="h-6 w-6 md:h-8 md:w-8 text-primary" />
                     Preços e Condições
                 </h1>
-                <div className="text-xs md:text-sm font-medium text-gray-500 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-100">
-                    {condicoes.length} tabelas no sistema
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleNewClick}
+                        className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg shadow-sm text-sm font-medium hover:bg-blue-700 transition-colors"
+                    >
+                        <Plus className="h-4 w-4 mr-1" /> Nova Condição
+                    </button>
+                    <div className="text-xs md:text-sm font-medium text-gray-500 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-100">
+                        {condicoes.length} tabelas no sistema
+                    </div>
                 </div>
             </div>
 
@@ -147,6 +189,11 @@ const TabelaPrecos = () => {
                                                 <span className={`px-2 py-0.5 inline-flex text-[11px] font-bold rounded-full uppercase tracking-wide border ${item.ativo ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                                                     {item.ativo ? 'Ativo' : 'Inativo'}
                                                 </span>
+                                                {item.debitaCaixa && (
+                                                    <div className="flex items-center gap-1 text-amber-600 text-xs font-medium">
+                                                        <Wallet className="h-3 w-3" /> Debita Caixa
+                                                    </div>
+                                                )}
                                                 {item.exigeBanco && (
                                                     <div className="flex items-center gap-1 text-orange-600 text-xs font-medium" title={item.bancoPadrao}>
                                                         <Landmark className="h-3 w-3" /> Exige Banco
@@ -180,6 +227,11 @@ const TabelaPrecos = () => {
                                         <p className="text-[10px] text-gray-400 font-mono mt-0.5">ID: {item.idCondicao}</p>
                                     </div>
                                     <div className="flex items-center gap-1.5 ml-2">
+                                        {item.debitaCaixa && (
+                                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
+                                                Caixa
+                                            </span>
+                                        )}
                                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${item.ativo ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                                             {item.ativo ? 'Ativo' : 'Inativo'}
                                         </span>
@@ -218,15 +270,19 @@ const TabelaPrecos = () => {
                 </>
             )}
 
-            {/* MODAL DE EDIÇÃO */}
+            {/* MODAL DE EDIÇÃO / CRIAÇÃO */}
             {editingItem && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
                         {/* Header */}
                         <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50/50">
                             <div>
-                                <h3 className="text-lg font-bold text-gray-900 leading-tight">Configurar Tabela</h3>
-                                <p className="text-sm text-gray-500 mt-0.5">Editando ID: {editingItem.idCondicao}</p>
+                                <h3 className="text-lg font-bold text-gray-900 leading-tight">
+                                    {isCreating ? 'Nova Condição' : 'Configurar Tabela'}
+                                </h3>
+                                <p className="text-sm text-gray-500 mt-0.5">
+                                    {isCreating ? 'Preencha os dados da nova condição' : `Editando ID: ${editingItem.idCondicao}`}
+                                </p>
                             </div>
                             <button
                                 onClick={handleCloseModal}
@@ -236,8 +292,34 @@ const TabelaPrecos = () => {
                             </button>
                         </div>
 
-                        {/* Body - adicionado Max Height para scroll caso tenham muitos campos */}
+                        {/* Body */}
                         <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+
+                            {/* ID e Código (só na criação) */}
+                            {isCreating && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">ID (Ex: 1009)</label>
+                                        <input
+                                            type="text"
+                                            className="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 px-3 bg-white text-gray-900 font-medium"
+                                            value={editForm.id}
+                                            onChange={(e) => setEditForm({ ...editForm, id: e.target.value })}
+                                            placeholder="1009"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">Código (Ex: BOL_35)</label>
+                                        <input
+                                            type="text"
+                                            className="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 px-3 bg-white text-gray-900 font-medium"
+                                            value={editForm.idCondicao}
+                                            onChange={(e) => setEditForm({ ...editForm, idCondicao: e.target.value })}
+                                            placeholder="BOL_35"
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Descrição (Nome)</label>
@@ -246,6 +328,7 @@ const TabelaPrecos = () => {
                                     className="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 px-3 bg-white text-gray-900 font-medium"
                                     value={editForm.nomeCondicao}
                                     onChange={(e) => setEditForm({ ...editForm, nomeCondicao: e.target.value })}
+                                    placeholder="Ex: 35 dias - Boleto"
                                 />
                             </div>
 
@@ -340,6 +423,23 @@ const TabelaPrecos = () => {
                                 </div>
                             </div>
 
+                            {/* Debita Caixa */}
+                            <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-gray-300 text-amber-600 focus:ring-amber-500 h-4 w-4"
+                                        checked={editForm.debitaCaixa}
+                                        onChange={(e) => setEditForm({ ...editForm, debitaCaixa: e.target.checked })}
+                                    />
+                                    <Wallet className="h-4 w-4 text-amber-600" />
+                                    <span className="text-sm font-semibold text-amber-800">Debita do Caixa do Motorista</span>
+                                </label>
+                                <p className="text-[11px] text-amber-600 mt-1 ml-6">
+                                    Marque se o motorista recebe o dinheiro em mãos (ex: À vista Dinheiro). Não marque se o pagamento vai pelo banco (ex: Pix, Boleto).
+                                </p>
+                            </div>
+
                             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
@@ -376,8 +476,8 @@ const TabelaPrecos = () => {
                                     value={editForm.ativo ? 'true' : 'false'}
                                     onChange={(e) => setEditForm({ ...editForm, ativo: e.target.value === 'true' })}
                                 >
-                                    <option value="true">🟢 Ativa para vendas</option>
-                                    <option value="false">🔴 Inativa (Oculta do Vendedor)</option>
+                                    <option value="true">Ativa para vendas</option>
+                                    <option value="false">Inativa (Oculta do Vendedor)</option>
                                 </select>
                             </div>
                         </div>
@@ -406,7 +506,7 @@ const TabelaPrecos = () => {
                                 ) : (
                                     <>
                                         <Save className="h-4 w-4" />
-                                        <span>Salvar Alterações</span>
+                                        <span>{isCreating ? 'Criar Condição' : 'Salvar Alterações'}</span>
                                     </>
                                 )}
                             </button>

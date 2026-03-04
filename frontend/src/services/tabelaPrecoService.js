@@ -9,6 +9,11 @@ const tabelaPrecoService = {
         return response.data;
     },
 
+    criar: async (dados) => {
+        const response = await api.post('/tabela-precos', dados);
+        return response.data;
+    },
+
     atualizar: async (id, dados) => {
         const response = await api.patch(`/tabela-precos/${id}`, dados);
         return response.data;

@@ -154,26 +154,19 @@ router.get('/resumo', async (req, res) => {
             orderBy: { dataEntrega: 'asc' }
         });
 
-        // 6. Carregar config: quais formas e condições debitam do caixa
-        const [configDebita, configCondicoes] = await Promise.all([
-            prisma.appConfig.findUnique({ where: { key: 'formas_pagamento_debita_caixa' } }),
-            prisma.appConfig.findUnique({ where: { key: 'condicoes_pagamento_debita_caixa' } })
-        ]);
-        const formasQueDebitam = configDebita?.value || [];
-        const condicoesQueDebitam = configCondicoes?.value || [];
-
-        // 7. Enriquecer condição de pagamento
+        // 6. Buscar TabelaPreco para mapear condições e debitaCaixa
         const condicoesCodigos = [...new Set(entregas.map(e => e.opcaoCondicaoPagamento).filter(Boolean))];
-        let mapaCondicoes = {};
+        let mapaCondicoes = {}; // opcaoCondicao -> { nome, debitaCaixa }
         if (condicoesCodigos.length > 0) {
             const tabelas = await prisma.tabelaPreco.findMany({
                 where: { opcaoCondicao: { in: condicoesCodigos } },
-                select: { opcaoCondicao: true, nomeCondicao: true }
+                select: { opcaoCondicao: true, nomeCondicao: true, debitaCaixa: true },
+                distinct: ['opcaoCondicao']
             });
-            mapaCondicoes = Object.fromEntries(tabelas.map(t => [t.opcaoCondicao, t.nomeCondicao]));
+            mapaCondicoes = Object.fromEntries(tabelas.map(t => [t.opcaoCondicao, { nome: t.nomeCondicao, debitaCaixa: t.debitaCaixa }]));
         }
 
-        // 8. Classificar pagamentos e calcular totais
+        // 7. Classificar pagamentos e calcular totais
         // DEVOLVIDO não conta nos totais (mercadoria volta, motorista não recebeu dinheiro)
         let totalRecebidoCaixa = 0;
         let totalRecebidoOutros = 0;
@@ -188,15 +181,16 @@ router.get('/resumo', async (req, res) => {
             const valorPedido = e.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0);
             const valorDevolvido = e.itensDevolvidos.reduce((s, i) => s + Number(i.valorBaseItem) * Number(i.quantidade), 0);
 
-            // Condição do pedido debita caixa? Se sim, todos os pagamentos debitam
-            const condicaoDebitaCaixa = condicoesQueDebitam.includes(e.opcaoCondicaoPagamento);
-            const nomeCondicao = mapaCondicoes[e.opcaoCondicaoPagamento] || e.opcaoCondicaoPagamento || 'Outros';
+            // Condição do pedido debita caixa? Buscar direto da TabelaPreco
+            const condicaoInfo = mapaCondicoes[e.opcaoCondicaoPagamento];
+            const condicaoDebitaCaixa = condicaoInfo?.debitaCaixa || false;
+            const nomeCondicao = condicaoInfo?.nome || e.opcaoCondicaoPagamento || 'Outros';
 
             // Devolvido: não conta nos totais de pagamento
             const isDevolvido = e.statusEntrega === 'DEVOLVIDO';
 
             const pagamentos = e.pagamentosReais.map(p => {
-                const debitaCaixa = condicaoDebitaCaixa || formasQueDebitam.includes(p.formaPagamentoEntregaId);
+                const debitaCaixa = condicaoDebitaCaixa;
                 const val = Number(p.valor);
 
                 if (!isDevolvido) {
@@ -338,12 +332,17 @@ router.post('/fechar', async (req, res) => {
             include: { pagamentosReais: true }
         });
 
-        const [configDebitaFechar, configCondicoesFechar] = await Promise.all([
-            prisma.appConfig.findUnique({ where: { key: 'formas_pagamento_debita_caixa' } }),
-            prisma.appConfig.findUnique({ where: { key: 'condicoes_pagamento_debita_caixa' } })
-        ]);
-        const formasQueDebitam = configDebitaFechar?.value || [];
-        const condicoesQueDebitam = configCondicoesFechar?.value || [];
+        // Buscar TabelaPreco para debitaCaixa
+        const condicoesCodigos = [...new Set(entregas.map(e => e.opcaoCondicaoPagamento).filter(Boolean))];
+        let mapaDebitaCaixa = {};
+        if (condicoesCodigos.length > 0) {
+            const tabelas = await prisma.tabelaPreco.findMany({
+                where: { opcaoCondicao: { in: condicoesCodigos } },
+                select: { opcaoCondicao: true, debitaCaixa: true },
+                distinct: ['opcaoCondicao']
+            });
+            mapaDebitaCaixa = Object.fromEntries(tabelas.map(t => [t.opcaoCondicao, t.debitaCaixa]));
+        }
 
         let totalRecebidoCaixa = 0;
         let totalRecebidoOutros = 0;
@@ -352,10 +351,10 @@ router.post('/fechar', async (req, res) => {
             // Devolvido não conta (mercadoria volta, motorista não recebeu)
             if (e.statusEntrega === 'DEVOLVIDO') return;
 
-            const condicaoDebitaCaixa = condicoesQueDebitam.includes(e.opcaoCondicaoPagamento);
+            const debitaCaixa = mapaDebitaCaixa[e.opcaoCondicaoPagamento] || false;
             e.pagamentosReais.forEach(p => {
                 const val = Number(p.valor);
-                if (condicaoDebitaCaixa || formasQueDebitam.includes(p.formaPagamentoEntregaId)) {
+                if (debitaCaixa) {
                     totalRecebidoCaixa += val;
                 } else {
                     totalRecebidoOutros += val;
@@ -498,24 +497,17 @@ router.get('/relatorio', async (req, res) => {
             orderBy: { dataEntrega: 'asc' }
         });
 
-        // Buscar condições
+        // Buscar condições + debitaCaixa da TabelaPreco
         const condicoesCodigos = [...new Set(entregas.map(e => e.opcaoCondicaoPagamento).filter(Boolean))];
-        let mapaCondicoes = {};
+        let mapaCondicoes = {}; // opcaoCondicao -> { nome, debitaCaixa }
         if (condicoesCodigos.length > 0) {
             const tabelas = await prisma.tabelaPreco.findMany({
                 where: { opcaoCondicao: { in: condicoesCodigos } },
-                select: { opcaoCondicao: true, nomeCondicao: true }
+                select: { opcaoCondicao: true, nomeCondicao: true, debitaCaixa: true },
+                distinct: ['opcaoCondicao']
             });
-            mapaCondicoes = Object.fromEntries(tabelas.map(t => [t.opcaoCondicao, t.nomeCondicao]));
+            mapaCondicoes = Object.fromEntries(tabelas.map(t => [t.opcaoCondicao, { nome: t.nomeCondicao, debitaCaixa: t.debitaCaixa }]));
         }
-
-        // Config debita caixa
-        const [configDebitaRel, configCondicoesRel] = await Promise.all([
-            prisma.appConfig.findUnique({ where: { key: 'formas_pagamento_debita_caixa' } }),
-            prisma.appConfig.findUnique({ where: { key: 'condicoes_pagamento_debita_caixa' } })
-        ]);
-        const formasQueDebitam = configDebitaRel?.value || [];
-        const condicoesQueDebitamRel = configCondicoesRel?.value || [];
 
         // Média combustível
         const mediaCombustivel = diario?.veiculoId ? await calcularMediaCombustivel(diario.veiculoId) : null;
@@ -567,18 +559,19 @@ router.get('/relatorio', async (req, res) => {
             entregas: entregas.map(e => {
                 const valorPedido = e.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0);
                 const conferencia = caixa?.entregasConferidas?.find(c => c.pedidoId === e.id);
-                const condicaoDebitaCaixa = condicoesQueDebitamRel.includes(e.opcaoCondicaoPagamento);
+                const condicaoInfo = mapaCondicoes[e.opcaoCondicaoPagamento];
+                const condicaoDebitaCaixa = condicaoInfo?.debitaCaixa || false;
 
                 return {
                     numero: e.numero,
                     clienteNome: e.cliente?.NomeFantasia || e.cliente?.Nome || 'N/A',
-                    condicao: mapaCondicoes[e.opcaoCondicaoPagamento] || e.opcaoCondicaoPagamento || '-',
+                    condicao: condicaoInfo?.nome || e.opcaoCondicaoPagamento || '-',
                     valorPedido: Math.round(valorPedido * 100) / 100,
                     status: e.statusEntrega,
                     pagamentos: e.pagamentosReais.map(p => ({
                         forma: p.formaPagamentoNome,
                         valor: Number(p.valor),
-                        debitaCaixa: condicaoDebitaCaixa || formasQueDebitam.includes(p.formaPagamentoEntregaId)
+                        debitaCaixa: condicaoDebitaCaixa
                     })),
                     conferido: conferencia?.conferido || false
                 };
