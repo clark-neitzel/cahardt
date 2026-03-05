@@ -26,6 +26,10 @@ const CaixaDiarioPage = () => {
     const podeDefinirAdiantamento = user?.permissoes?.admin
         || user?.permissoes?.Pode_Editar_Caixa
         || user?.permissoes?.Pode_Definir_Adiantamento;
+    // Permissão para ver caixas de outros dias (sem essa flag, o usuário vê APENAS hoje)
+    const podeVerHistorico = user?.permissoes?.admin
+        || user?.permissoes?.Pode_Editar_Caixa
+        || user?.permissoes?.Pode_Ver_Historico_Caixa;
 
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
@@ -39,7 +43,8 @@ const CaixaDiarioPage = () => {
     };
 
     const session = restoreSession();
-    const [data, setData] = useState(session?.data || today);
+    // Se pode ver histórico, restaura data salva; caso contrário, sempre hoje
+    const [data, setData] = useState(podeVerHistorico ? (session?.data || today) : today);
     const [vendedorId, setVendedorId] = useState(
         session?.vendedorId !== undefined ? session.vendedorId : (isAdmin ? '' : (user?.id || ''))
     );
@@ -156,7 +161,11 @@ const CaixaDiarioPage = () => {
                         type="date"
                         value={data}
                         onChange={(e) => setData(e.target.value)}
-                        className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm bg-white text-gray-900"
+                        disabled={!podeVerHistorico}
+                        max={!podeVerHistorico ? today : undefined}
+                        className={`border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm bg-white text-gray-900 ${!podeVerHistorico ? 'opacity-60 cursor-not-allowed' : ''
+                            }`}
+                        title={!podeVerHistorico ? 'Você só pode visualizar o caixa do dia atual.' : ''}
                     />
                     {isAdmin && (
                         <select

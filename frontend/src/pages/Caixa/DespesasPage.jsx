@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import despesaService from '../../services/despesaService';
-import vendedorService from '../../services/vendedorService';
 import NovaDespesaModal from './NovaDespesaModal';
 import { Plus, Trash2, Edit, Fuel, Hotel, Wrench, DollarSign, ReceiptText, CircleEllipsis, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -47,8 +46,7 @@ const DespesasPage = () => {
     };
 
     const [data, setData] = useState(getInitialData);
-    const [vendedorId, setVendedorId] = useState(getInitialVendedor);
-    const [vendedores, setVendedores] = useState([]);
+    const [vendedorId] = useState(getInitialVendedor); // imutável: vem do contexto do caixa
     const [despesas, setDespesas] = useState([]);
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -58,12 +56,6 @@ const DespesasPage = () => {
     useEffect(() => {
         sessionStorage.setItem(SESSION_KEY, JSON.stringify({ data, vendedorId }));
     }, [data, vendedorId]);
-
-    useEffect(() => {
-        if (isAdmin) {
-            vendedorService.listar().then(res => setVendedores(res || [])).catch(() => { });
-        }
-    }, [isAdmin]);
 
     useEffect(() => {
         if (vendedorId && data) fetchDespesas();
@@ -134,7 +126,7 @@ const DespesasPage = () => {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                    {/* Só mostra filtro de data se não veio direto do caixa */}
+                    {/* Filtro de data: só exibe quando não veio do caixa direta */}
                     {!fromCaixa && (
                         <input
                             type="date"
@@ -142,19 +134,6 @@ const DespesasPage = () => {
                             onChange={(e) => setData(e.target.value)}
                             className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm bg-white text-gray-900 focus:ring-primary focus:border-primary"
                         />
-                    )}
-
-                    {isAdmin && (
-                        <select
-                            value={vendedorId}
-                            onChange={(e) => setVendedorId(e.target.value)}
-                            className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                        >
-                            <option value="">Selecione vendedor...</option>
-                            {vendedores.map(v => (
-                                <option key={v.id} value={v.id}>{v.nome}</option>
-                            ))}
-                        </select>
                     )}
 
                     <button

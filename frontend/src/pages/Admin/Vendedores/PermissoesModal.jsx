@@ -21,6 +21,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Acessar_Caixa: false,
     Pode_Editar_Caixa: false,
     Pode_Definir_Adiantamento: false,
+    Pode_Ver_Historico_Caixa: false,
     admin: false // Flag Global Mestre
 };
 
@@ -292,7 +293,20 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 />
                                 <div>
                                     <span className="text-amber-900 font-bold block">Pode Definir Adiantamento</span>
-                                    <span className="text-amber-700 text-xs">Permite que o usuário edite o valor de adiantamento do caixa diário. Sem esta permissão, o adiantamento fica apenas em modo leitura.</span>
+                                    <span className="text-amber-700 text-xs">Permite editar o valor de adiantamento do caixa diário. Sem esta permissão, o adiantamento fica em modo leitura.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-amber-100 rounded transition-colors col-span-full">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-amber-300 text-amber-600 focus:ring-amber-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Ver_Historico_Caixa}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Ver_Historico_Caixa: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-amber-900 font-bold block">Pode Ver Caixas de Outros Dias</span>
+                                    <span className="text-amber-700 text-xs">Permite navegar por datas passadas ou futuras no caixa diário. Sem esta permissão, o usuário vê apenas o caixa de hoje.</span>
                                 </div>
                             </label>
                         </div>
