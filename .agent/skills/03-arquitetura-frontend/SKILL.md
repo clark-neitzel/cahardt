@@ -138,3 +138,66 @@ module.exports = {
 2.  **Bordas Escuras**: Evite bordas pretas ou cinza-escuras em inputs. Use `border-gray-300` com hover/focus coloridos.
 3.  **Botões Genéricos**: Evite botões cinza padrão do navegador. Sempre estilize com classes Tailwind.
 4.  **Tabelas sem Espaçamento**: Tabelas devem ter padding generoso nas células (`py-3 px-4`) para leitura confortável.
+
+---
+
+## 📱 PADRÃO RESPONSIVO OBRIGATÓRIO (Mobile First)
+
+Todo módulo com listagem deve implementar **dupla renderização**: tabela para desktop, cards para mobile.
+
+```jsx
+{/* Desktop: Tabela */}
+<div className="hidden md:block bg-white shadow overflow-x-auto rounded-lg">
+    <table>...</table>
+</div>
+
+{/* Mobile: Cards */}
+<div className="md:hidden space-y-2">
+    {itens.map(item => (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+            {/* Conteúdo compacto */}
+        </div>
+    ))}
+</div>
+```
+
+**Regras de responsividade:**
+- Fonte: `text-[13px] md:text-sm` — menor no mobile
+- Padding: `p-3 md:p-6` — menor no mobile
+- Títulos: `text-lg md:text-2xl`
+- Padding dos containers: `px-3 md:px-6`
+- Inputs/selects no header: `max-w-[130px] md:max-w-[150px]`
+
+---
+
+## 🔐 AUTH CONTEXT — FUNCIONALIDADES ATUAIS
+
+O `AuthContext.jsx` exporta:
+```jsx
+const { user, signed, loading, login, logout, hasPermission, refreshUser } = useAuth();
+```
+
+- **`hasPermission(tab, action?)`** — verifica permissões de abas (ex: `hasPermission('pedidos', 'view')`)
+- **`hasPermission('Pode_Executar_Entregas')`** — verifica flags booleanas diretas (módulo logístico)
+- **`refreshUser()`** — rebusca o usuário do backend e atualiza o estado. **Use ao carregar telas logísticas** para garantir que permissões salvas no banco estejam atualizadas sem logout.
+
+```jsx
+// Padrão nas telas logísticas
+useEffect(() => { refreshUser(); }, []);
+const podeEntregas = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Executar_Entregas);
+```
+
+---
+
+## 📂 ORGANIZAÇÃO DE PÁGINAS (`src/pages/`)
+
+| Pasta | Descrição |
+|---|---|
+| `Admin/Embarques/` | PainelEmbarque, NovaCargaModal, AuditoriaEntregas |
+| `Admin/Produtos/` | Lista, Gerenciar |
+| `Admin/Vendedores/` | ListaVendedores, PermissoesModal |
+| `Motorista/Entregas/` | PainelMotorista, CheckoutEntregaModal |
+| `Caixa/` | CaixaDiarioPage, DespesasPage, RelatorioCaixaPrint |
+| `Rota/` | RotaLeads (inclui abas Entregas/Entregues) |
+| `Veiculos/` | Veiculos (inclui modal de Manutenção) |
+| `Configuracoes/` | FormasPagamentoEntrega, outros |

@@ -60,6 +60,50 @@ module.exports = controller;
 - Sempre trate erros com `try/catch`.
 - **MUITO IMPORTANTE**: Ao rodar scripts locais fora do container, verifique se a `DATABASE_URL` aponta para `localhost` e não para o nome do serviço docker (`db`).
 
+---
+
+## 🔐 PADRÃO OBRIGATÓRIO: PERMISSÕES VIA BANCO (getPerms)
+
+**CRÍTICO:** O campo `permissoes` do model `Vendedor` é um **JSON armazenado como STRING** no banco PostgreSQL. O middleware `verificarAuth` popula `req.user` com o payload do JWT (que pode estar desatualizado). **NUNCA** use `req.user.permissoes` para checar permissões logísticas.
+
+**SEMPRE** busque as permissões diretamente do banco com o helper padrão:
+
+```javascript
+const getPerms = async (userId) => {
+    const vendedor = await prisma.vendedor.findUnique({
+        where: { id: userId },
+        select: { permissoes: true }
+    });
+    return typeof vendedor?.permissoes === 'string'
+        ? JSON.parse(vendedor.permissoes)
+        : (vendedor?.permissoes || {});
+};
+```
+
+Este padrão está implementado em: `embarques.js`, `entregas.js`, `caixa.js`, `despesas.js`. Reutilize sempre.
+
+## 📋 ROTAS REGISTRADAS (index.js — Referência)
+
+| Prefixo | Arquivo | Módulo |
+|---|---|---|
+| `/api/auth` | `authRoutes.js` | Login / JWT |
+| `/api/vendedores` | `vendedorRoutes.js` | Usuários/Vendedores |
+| `/api/clientes` | `clienteRoutes.js` | Clientes |
+| `/api/produtos` | `produtoRoutes.js` | Produtos |
+| `/api/pedidos` | `pedidoRoutes.js` | Pedidos |
+| `/api/sync` | `syncRoutes.js` | Sync Conta Azul |
+| `/api/tabela-precos` | `tabelaPrecoRoutes.js` | Tabela de Preços |
+| `/api/leads` | `leadRoutes.js` | Leads |
+| `/api/atendimentos` | `atendimentoRoutes.js` | Atendimentos |
+| `/api/veiculos` | `veiculos.js` | Veículos + Manutenção |
+| `/api/diarios` | `diarios.js` | Diários do Motorista |
+| `/api/pagamentos-entrega` | `formasPagamentoEntrega.js` | Formas de Pagamento Logística |
+| `/api/embarques` | `embarques.js` | Expedição e Cargas |
+| `/api/entregas` | `entregas.js` | Checkout do Motorista |
+| `/api/despesas` | `despesas.js` | Despesas da Rota |
+| `/api/caixa` | `caixa.js` | Caixa Diário |
+| `/api/migrations` | `migrationRoutes.js` | Migration Automática |
+
 -------------------------------------------------
 ## CONTEÚDO ORIGINAL DE: login
 -------------------------------------------------

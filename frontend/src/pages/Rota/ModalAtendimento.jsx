@@ -216,7 +216,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
                         <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Próxima Visita (opcional)</label>
                         <input
                             type="date"
-                            min={new Date().toISOString().split('T')[0]}
+                            min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })}
                             value={form.proximaVisita}
                             onChange={e => setForm(f => ({ ...f, proximaVisita: e.target.value }))}
                             className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-blue-500 focus:border-blue-500"

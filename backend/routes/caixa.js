@@ -50,7 +50,7 @@ const calcularMediaCombustivel = async (veiculoId) => {
 
     const tresMesesAtras = new Date();
     tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 3);
-    const dataRef = tresMesesAtras.toISOString().split('T')[0];
+    const dataRef = tresMesesAtras.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
     const despesas = await prisma.despesa.findMany({
         where: {

@@ -21,7 +21,7 @@ const CaixaDiarioPage = () => {
     const navigate = useNavigate();
     const isAdmin = user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Caixa;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
     const [data, setData] = useState(today);
     const [vendedorId, setVendedorId] = useState(isAdmin ? '' : (user?.id || ''));
     const [vendedores, setVendedores] = useState([]);
@@ -35,7 +35,7 @@ const CaixaDiarioPage = () => {
 
     useEffect(() => {
         if (isAdmin) {
-            vendedorService.listar().then(res => setVendedores(res || [])).catch(() => {});
+            vendedorService.listar().then(res => setVendedores(res || [])).catch(() => { });
         }
     }, [isAdmin]);
 
@@ -327,11 +327,10 @@ const CaixaDiarioPage = () => {
                                                         R$ {Number(e.valorPedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                     </td>
                                                     <td className="py-2 px-2 text-center">
-                                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                                            e.statusEntrega === 'ENTREGUE' ? 'bg-green-100 text-green-700' :
-                                                            e.statusEntrega === 'PARCIAL' ? 'bg-yellow-100 text-yellow-700' :
-                                                            'bg-red-100 text-red-700'
-                                                        }`}>
+                                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${e.statusEntrega === 'ENTREGUE' ? 'bg-green-100 text-green-700' :
+                                                                e.statusEntrega === 'PARCIAL' ? 'bg-yellow-100 text-yellow-700' :
+                                                                    'bg-red-100 text-red-700'
+                                                            }`}>
                                                             {e.statusEntrega}
                                                         </span>
                                                     </td>
@@ -368,11 +367,10 @@ const CaixaDiarioPage = () => {
                                                     <p className="font-bold text-gray-900 text-sm">
                                                         R$ {Number(e.valorPedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                     </p>
-                                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                                        e.statusEntrega === 'ENTREGUE' ? 'bg-green-100 text-green-700' :
-                                                        e.statusEntrega === 'PARCIAL' ? 'bg-yellow-100 text-yellow-700' :
-                                                        'bg-red-100 text-red-700'
-                                                    }`}>
+                                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${e.statusEntrega === 'ENTREGUE' ? 'bg-green-100 text-green-700' :
+                                                            e.statusEntrega === 'PARCIAL' ? 'bg-yellow-100 text-yellow-700' :
+                                                                'bg-red-100 text-red-700'
+                                                        }`}>
                                                         {e.statusEntrega}
                                                     </span>
                                                     {isAdmin && (

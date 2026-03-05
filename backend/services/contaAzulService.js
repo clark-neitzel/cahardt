@@ -894,8 +894,8 @@ const contaAzulService = {
         try {
             // Buscar vendas modificadas nos últimos 2 dias ou na última hora.
             // Ampliando para últimos 10 dias para garantir que pegamos o pedido BROTHAUS antigo do screenshot
-            const diasAtrasDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            const dataAtualDate = new Date(Date.now()).toISOString().split('T')[0];
+            const diasAtrasDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+            const dataAtualDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
             // Formatação Exata (YYYY-MM-DDTHH:mm:ss) exigida pela API V2, mas ignorando horas fracionadas para evitar corte fuso horário
             const diasAtras = `${diasAtrasDate}T00:00:00`;

@@ -100,3 +100,36 @@ Diferente do Conta Azul (que usa UUIDs opacos), esta tabela usa IDs semânticos 
 
 *   **Endpoint**: `GET /api/tabela-precos`
 *   **Uso**: Dropdowns de seleção de condição de pagamento e cálculo de totais de pedidos.
+
+---
+
+## Campo `debitaCaixa` (Adicionado 2026)
+
+O campo `debitaCaixa` (BOOLEAN, default `false`) foi adicionado à `tabela_precos` para indicar se aquela condição de pagamento resulta em **dinheiro entregue ao motorista** (que deve prestar contas).
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `debita_caixa` | Boolean | `true` = Dinheiro/PIX — motorista recebe em mãos. `false` = Boleto/Prazo — cobrado depois. |
+
+**Uso na classificação do Caixa Diário:**
+```javascript
+// buscar tabelaPreco por nomeCondicao (nome real pago no checkout)
+const mapaDebitaPorNome = Object.fromEntries(
+    todasCondicoes.map(t => [t.nomeCondicao, t.debitaCaixa])
+);
+// Classificar pagamento real
+const debitaCaixa = mapaDebitaPorNome[pagamento.formaPagamentoNome] ?? false;
+```
+
+**Migration SQL:**
+```sql
+ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "debita_caixa" BOOLEAN DEFAULT FALSE;
+```
+
+**Seeds de referência (valores padrão):**
+| Condição | `debitaCaixa` |
+|---|---|
+| À Vista - Dinheiro | `true` |
+| À Vista - PIX | `true` |
+| 7/14/28 dias - Boleto | `false` |
+| 30/45/60 dias | `false` |

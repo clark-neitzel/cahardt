@@ -5,8 +5,7 @@ import embarqueService from '../../../services/embarqueService';
 
 const NovaCargaModal = ({ onClose, vendedores, onSuccess }) => {
     const [dataSaida, setDataSaida] = useState(() => {
-        const today = new Date();
-        return today.toISOString().split('T')[0];
+        return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
     });
     const [responsavelId, setResponsavelId] = useState('');
     const [saving, setSaving] = useState(false);

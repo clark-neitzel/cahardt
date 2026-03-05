@@ -49,7 +49,7 @@ const NovoPedido = () => {
     const [clienteId, setClienteId] = useState('');
     const [vendedorId, setVendedorId] = useState(null);
     const [condicaoPagamentoId, setCondicaoPagamentoId] = useState('');
-    const [dataEntrega, setDataEntrega] = useState(new Date().toISOString().split('T')[0]);
+    const [dataEntrega, setDataEntrega] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }));
     const [isEncaixe, setIsEncaixe] = useState(false);
     const [observacoes, setObservacoes] = useState('');
     const [canalOrigem, setCanalOrigem] = useState('');
