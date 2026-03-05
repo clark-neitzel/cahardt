@@ -105,7 +105,7 @@ const RelatorioCaixaPrint = () => {
             <style>{`
                 @media print {
                     body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    .no-print { display: none !important; }
+                    .no-print, nav, header { display: none !important; }
                     .page-break { page-break-before: always; }
                     @page { margin: 8mm 10mm; size: A4; }
                 }
