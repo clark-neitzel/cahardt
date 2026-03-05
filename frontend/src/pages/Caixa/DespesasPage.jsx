@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import despesaService from '../../services/despesaService';
 import vendedorService from '../../services/vendedorService';
 import NovaDespesaModal from './NovaDespesaModal';
-import { Plus, Trash2, Edit, Fuel, Hotel, Wrench, DollarSign, ReceiptText, CircleEllipsis } from 'lucide-react';
+import { Plus, Trash2, Edit, Fuel, Hotel, Wrench, DollarSign, ReceiptText, CircleEllipsis, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const SESSION_KEY = '@CAHardt:CaixaFiltros';
 
 const CATEGORIA_CONFIG = {
     MERCADORIA_EMPRESA: { label: 'Mercadoria', icon: ReceiptText, color: 'bg-blue-100 text-blue-700' },
@@ -17,16 +20,44 @@ const CATEGORIA_CONFIG = {
 
 const DespesasPage = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const isAdmin = user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Caixa;
 
+    // Prioridade: URL params → sessão salva → defaults
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-    const [data, setData] = useState(today);
-    const [vendedorId, setVendedorId] = useState(isAdmin ? '' : (user?.id || ''));
+    const urlData = searchParams.get('data');
+    const urlVendedorId = searchParams.get('vendedorId');
+    const fromCaixa = searchParams.get('from') === 'caixa';
+
+    const getInitialData = () => {
+        if (urlData) return urlData;
+        try {
+            const session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}');
+            return session.data || today;
+        } catch { return today; }
+    };
+
+    const getInitialVendedor = () => {
+        if (urlVendedorId !== null) return urlVendedorId;
+        try {
+            const session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}');
+            return session.vendedorId !== undefined ? session.vendedorId : (isAdmin ? '' : (user?.id || ''));
+        } catch { return isAdmin ? '' : (user?.id || ''); }
+    };
+
+    const [data, setData] = useState(getInitialData);
+    const [vendedorId, setVendedorId] = useState(getInitialVendedor);
     const [vendedores, setVendedores] = useState([]);
     const [despesas, setDespesas] = useState([]);
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [despesaEditando, setDespesaEditando] = useState(null);
+
+    // Persistir filtros na sessão sempre que mudarem
+    useEffect(() => {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({ data, vendedorId }));
+    }, [data, vendedorId]);
 
     useEffect(() => {
         if (isAdmin) {
@@ -73,6 +104,10 @@ const DespesasPage = () => {
         fetchDespesas();
     };
 
+    const handleVoltar = () => {
+        navigate('/caixa');
+    };
+
     const totalDespesas = despesas.reduce((sum, d) => sum + Number(d.valor || 0), 0);
 
     const getCatConfig = (cat) => CATEGORIA_CONFIG[cat] || CATEGORIA_CONFIG.OUTRO;
@@ -80,21 +115,40 @@ const DespesasPage = () => {
     return (
         <div className="container mx-auto px-4 py-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <h1 className="text-2xl font-bold text-gray-800">Despesas</h1>
+                <div className="flex items-center gap-3">
+                    {fromCaixa && (
+                        <button
+                            onClick={handleVoltar}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            Voltar ao Caixa
+                        </button>
+                    )}
+                    <h1 className="text-2xl font-bold text-gray-800">Despesas</h1>
+                    {fromCaixa && (
+                        <span className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                            {data}
+                        </span>
+                    )}
+                </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                    <input
-                        type="date"
-                        value={data}
-                        onChange={(e) => setData(e.target.value)}
-                        className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:ring-primary focus:border-primary"
-                    />
+                    {/* Só mostra filtro de data se não veio direto do caixa */}
+                    {!fromCaixa && (
+                        <input
+                            type="date"
+                            value={data}
+                            onChange={(e) => setData(e.target.value)}
+                            className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                        />
+                    )}
 
                     {isAdmin && (
                         <select
                             value={vendedorId}
                             onChange={(e) => setVendedorId(e.target.value)}
-                            className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:ring-primary focus:border-primary"
+                            className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm bg-white text-gray-900 focus:ring-primary focus:border-primary"
                         >
                             <option value="">Selecione vendedor...</option>
                             {vendedores.map(v => (

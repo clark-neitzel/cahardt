@@ -10,6 +10,8 @@ import {
 import toast from 'react-hot-toast';
 import NovaDespesaModal from './NovaDespesaModal';
 
+const SESSION_KEY = '@CAHardt:CaixaFiltros';
+
 const STATUS_BADGES = {
     ABERTO: { label: 'Aberto', class: 'bg-green-100 text-green-800' },
     FECHADO: { label: 'Fechado', class: 'bg-yellow-100 text-yellow-800' },
@@ -20,10 +22,27 @@ const CaixaDiarioPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const isAdmin = user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Caixa;
+    // Permissão específica para definir adiantamento (admin ou quem tiver a flag)
+    const podeDefinirAdiantamento = user?.permissoes?.admin
+        || user?.permissoes?.Pode_Editar_Caixa
+        || user?.permissoes?.Pode_Definir_Adiantamento;
 
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-    const [data, setData] = useState(today);
-    const [vendedorId, setVendedorId] = useState(isAdmin ? '' : (user?.id || ''));
+
+    // Restaurar filtros da sessão se existirem
+    const restoreSession = () => {
+        try {
+            const saved = sessionStorage.getItem(SESSION_KEY);
+            if (saved) return JSON.parse(saved);
+        } catch { }
+        return null;
+    };
+
+    const session = restoreSession();
+    const [data, setData] = useState(session?.data || today);
+    const [vendedorId, setVendedorId] = useState(
+        session?.vendedorId !== undefined ? session.vendedorId : (isAdmin ? '' : (user?.id || ''))
+    );
     const [vendedores, setVendedores] = useState([]);
     const [resumo, setResumo] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -32,6 +51,11 @@ const CaixaDiarioPage = () => {
     const [expandedEntregas, setExpandedEntregas] = useState(false);
     const [obsAdmin, setObsAdmin] = useState('');
     const [showDespesaModal, setShowDespesaModal] = useState(false);
+
+    // Persistir filtros na sessão sempre que mudarem
+    useEffect(() => {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({ data, vendedorId }));
+    }, [data, vendedorId]);
 
     useEffect(() => {
         if (isAdmin) {
@@ -132,13 +156,13 @@ const CaixaDiarioPage = () => {
                         type="date"
                         value={data}
                         onChange={(e) => setData(e.target.value)}
-                        className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm"
+                        className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm bg-white text-gray-900"
                     />
                     {isAdmin && (
                         <select
                             value={vendedorId}
                             onChange={(e) => setVendedorId(e.target.value)}
-                            className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm"
+                            className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm bg-white text-gray-900"
                         >
                             <option value="">Selecione vendedor...</option>
                             {vendedores.map(v => (
@@ -182,25 +206,35 @@ const CaixaDiarioPage = () => {
                         {/* Adiantamento */}
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                             <h3 className="text-sm font-semibold text-gray-700 mb-2">Adiantamento (R$)</h3>
-                            <div className="flex items-center space-x-2">
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={adiantamento}
-                                    onChange={(e) => setAdiantamento(e.target.value)}
-                                    disabled={!isAberto}
-                                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm disabled:bg-gray-100"
-                                />
-                                {isAberto && (
-                                    <button
-                                        onClick={handleSaveAdiantamento}
-                                        disabled={savingAdiantamento}
-                                        className="px-3 py-2 bg-amber-600 text-white rounded-md text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
-                                    >
-                                        {savingAdiantamento ? '...' : 'Salvar'}
-                                    </button>
-                                )}
-                            </div>
+                            {podeDefinirAdiantamento ? (
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={adiantamento}
+                                        onChange={(e) => setAdiantamento(e.target.value)}
+                                        disabled={!isAberto}
+                                        className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm disabled:bg-gray-100 bg-white text-gray-900"
+                                    />
+                                    {isAberto && (
+                                        <button
+                                            onClick={handleSaveAdiantamento}
+                                            disabled={savingAdiantamento}
+                                            className="px-3 py-2 bg-amber-600 text-white rounded-md text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
+                                        >
+                                            {savingAdiantamento ? '...' : 'Salvar'}
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                // Sem permissão: apenas exibe o valor, sem editar
+                                <div className="flex items-center space-x-2">
+                                    <p className="text-2xl font-bold text-gray-900">
+                                        R$ {Number(resumo.caixa?.adiantamento || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </p>
+                                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">somente leitura</span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Média Combustível */}
@@ -229,7 +263,10 @@ const CaixaDiarioPage = () => {
                                 >
                                     <Plus className="h-3 w-3 mr-1" /> Nova Despesa
                                 </button>
-                                <Link to={`/despesas?data=${data}&vendedorId=${vendedorId}`} className="text-xs text-primary hover:underline">
+                                <Link
+                                    to={`/despesas?data=${data}&vendedorId=${vendedorId}&from=caixa`}
+                                    className="text-xs text-primary hover:underline"
+                                >
                                     Ver todas →
                                 </Link>
                             </div>
@@ -328,8 +365,8 @@ const CaixaDiarioPage = () => {
                                                     </td>
                                                     <td className="py-2 px-2 text-center">
                                                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${e.statusEntrega === 'ENTREGUE' ? 'bg-green-100 text-green-700' :
-                                                                e.statusEntrega === 'PARCIAL' ? 'bg-yellow-100 text-yellow-700' :
-                                                                    'bg-red-100 text-red-700'
+                                                            e.statusEntrega === 'PARCIAL' ? 'bg-yellow-100 text-yellow-700' :
+                                                                'bg-red-100 text-red-700'
                                                             }`}>
                                                             {e.statusEntrega}
                                                         </span>
@@ -368,8 +405,8 @@ const CaixaDiarioPage = () => {
                                                         R$ {Number(e.valorPedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                     </p>
                                                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${e.statusEntrega === 'ENTREGUE' ? 'bg-green-100 text-green-700' :
-                                                            e.statusEntrega === 'PARCIAL' ? 'bg-yellow-100 text-yellow-700' :
-                                                                'bg-red-100 text-red-700'
+                                                        e.statusEntrega === 'PARCIAL' ? 'bg-yellow-100 text-yellow-700' :
+                                                            'bg-red-100 text-red-700'
                                                         }`}>
                                                         {e.statusEntrega}
                                                     </span>
@@ -472,7 +509,7 @@ const CaixaDiarioPage = () => {
                                     value={obsAdmin}
                                     onChange={(e) => setObsAdmin(e.target.value)}
                                     placeholder="Observação (opcional)"
-                                    className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm w-full sm:w-48"
+                                    className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm w-full sm:w-48 bg-white text-gray-900"
                                 />
                                 <button
                                     onClick={handleConferir}

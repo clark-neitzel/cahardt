@@ -20,6 +20,7 @@ const DEFAULT_PERMISSIONS = {
     // Módulo Caixa Diário e Despesas
     Pode_Acessar_Caixa: false,
     Pode_Editar_Caixa: false,
+    Pode_Definir_Adiantamento: false,
     admin: false // Flag Global Mestre
 };
 
@@ -279,6 +280,19 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <div>
                                     <span className="text-red-900 font-bold block">Auditor Financeiro do Caixa</span>
                                     <span className="text-red-700 text-xs">Nível crítico: Confere caixas de outros usuários, edita despesas alheias e marca entregas como conferidas.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-amber-100 rounded transition-colors col-span-full">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-amber-300 text-amber-600 focus:ring-amber-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Definir_Adiantamento}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Definir_Adiantamento: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-amber-900 font-bold block">Pode Definir Adiantamento</span>
+                                    <span className="text-amber-700 text-xs">Permite que o usuário edite o valor de adiantamento do caixa diário. Sem esta permissão, o adiantamento fica apenas em modo leitura.</span>
                                 </div>
                             </label>
                         </div>
