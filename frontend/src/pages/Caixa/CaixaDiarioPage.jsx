@@ -46,7 +46,9 @@ const CaixaDiarioPage = () => {
     // Se pode ver histórico, restaura data salva; caso contrário, sempre hoje
     const [data, setData] = useState(podeVerHistorico ? (session?.data || today) : today);
     const [vendedorId, setVendedorId] = useState(
-        session?.vendedorId !== undefined ? session.vendedorId : (isAdmin ? '' : (user?.id || ''))
+        // Não-admin: SEMPRE o próprio user.id — nunca restaura da sessão
+        // Admin: restaura da sessão para manter o vendedor que estava visualizando
+        isAdmin ? (session?.vendedorId || '') : (user?.id || '')
     );
     const [vendedores, setVendedores] = useState([]);
     const [resumo, setResumo] = useState(null);
