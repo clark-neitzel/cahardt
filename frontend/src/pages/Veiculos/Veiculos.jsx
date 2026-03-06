@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Check, X, FileText, History, BellRing, Wrench } from 'lucide-react';
+import { Plus, Edit2, Trash2, Check, X, FileText, Wrench, BellRing, ChevronRight } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
+import VeiculoFicha from './VeiculoFicha';
 
 const Veiculos = () => {
     const [veiculos, setVeiculos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-    const [veiculoHistorico, setVeiculoHistorico] = useState(null);
+    const [veiculoFichaId, setVeiculoFichaId] = useState(null); // painel de ficha
     const [isManutencaoOpen, setIsManutencaoOpen] = useState(false);
     const [manutencaoVeiculoId, setManutencaoVeiculoId] = useState(null);
     const [manutencaoVeiculoNome, setManutencaoVeiculoNome] = useState('');
@@ -99,7 +99,7 @@ const Veiculos = () => {
                 pending[a.veiculoId]++;
             });
             setAlertasPendentes(pending);
-        }).catch(() => {});
+        }).catch(() => { });
     }, []);
 
     const openManutencao = async (veiculo) => {
@@ -180,36 +180,29 @@ const Veiculos = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Placa</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modelo</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {veiculos.map(veiculo => (
-                            <tr key={veiculo.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <div className="flex space-x-2">
-                                        <button onClick={() => openEdit(veiculo)} className="text-primary bg-blue-50 p-1.5 rounded-full"><Edit2 className="h-4 w-4" /></button>
-                                        <button onClick={() => openHistory(veiculo)} className="text-gray-600 bg-gray-100 p-1.5 rounded-full"><History className="h-4 w-4" /></button>
-                                        <button onClick={() => openManutencao(veiculo)} className="relative text-amber-600 bg-amber-50 p-1.5 rounded-full">
-                                            <Wrench className="h-4 w-4" />
-                                            {alertasPendentes[veiculo.id] > 0 && (
-                                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
-                                                    {alertasPendentes[veiculo.id]}
-                                                </span>
-                                            )}
-                                        </button>
-                                        <button onClick={() => handleDelete(veiculo.id)} className="text-red-600 bg-red-50 p-1.5 rounded-full"><Trash2 className="h-4 w-4" /></button>
+                            <tr key={veiculo.id} onClick={() => setVeiculoFichaId(veiculo.id)}
+                                className="hover:bg-blue-50 cursor-pointer transition-colors">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-gray-900 font-mono tracking-wider">{veiculo.placa}</span>
+                                        <ChevronRight className="h-3 w-3 text-gray-400" />
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{veiculo.placa}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-gray-500">{veiculo.modelo}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     {veiculo.documentoUrl ? (
-                                        <a href={veiculo.documentoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center">
+                                        <a href={veiculo.documentoUrl} target="_blank" rel="noopener noreferrer"
+                                            onClick={e => e.stopPropagation()}
+                                            className="text-blue-600 hover:underline flex items-center">
                                             <FileText className="h-4 w-4 mr-1" /> Ver Documento
                                         </a>
                                     ) : <span className="text-gray-400">Nenhum</span>}
@@ -220,6 +213,20 @@ const Veiculos = () => {
                                     ) : (
                                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800"><X className="w-3 h-3 mr-1" /> Inativo</span>
                                     )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                    <div className="flex justify-end space-x-2" onClick={e => e.stopPropagation()}>
+                                        <button onClick={() => openEdit(veiculo)} className="text-primary bg-blue-50 p-1.5 rounded-full" title="Editar"><Edit2 className="h-4 w-4" /></button>
+                                        <button onClick={() => openManutencao(veiculo)} className="relative text-amber-600 bg-amber-50 p-1.5 rounded-full" title="Manutenção">
+                                            <Wrench className="h-4 w-4" />
+                                            {alertasPendentes[veiculo.id] > 0 && (
+                                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                                                    {alertasPendentes[veiculo.id]}
+                                                </span>
+                                            )}
+                                        </button>
+                                        <button onClick={() => handleDelete(veiculo.id)} className="text-red-600 bg-red-50 p-1.5 rounded-full" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -233,19 +240,19 @@ const Veiculos = () => {
                 {veiculos.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">Nenhum veículo cadastrado.</div>
                 ) : veiculos.map(veiculo => (
-                    <div key={veiculo.id} className="bg-gray-50 rounded-xl border border-gray-200 p-3">
+                    <div key={veiculo.id} className="bg-gray-50 rounded-xl border border-gray-200 p-3"
+                        onClick={() => setVeiculoFichaId(veiculo.id)}>
                         <div className="flex items-center justify-between mb-1.5">
                             <div className="flex items-center gap-2">
-                                <span className="font-bold text-[15px] text-gray-900 uppercase">{veiculo.placa}</span>
+                                <span className="font-bold text-[15px] text-gray-900 uppercase font-mono">{veiculo.placa}</span>
                                 {veiculo.ativo ? (
                                     <span className="text-[10px] font-bold bg-green-100 text-green-800 px-1.5 py-0.5 rounded">Ativo</span>
                                 ) : (
                                     <span className="text-[10px] font-bold bg-red-100 text-red-800 px-1.5 py-0.5 rounded">Inativo</span>
                                 )}
                             </div>
-                            <div className="flex gap-1">
+                            <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                                 <button onClick={() => openEdit(veiculo)} className="p-1.5 bg-blue-50 text-primary rounded-lg"><Edit2 className="h-4 w-4" /></button>
-                                <button onClick={() => openHistory(veiculo)} className="p-1.5 bg-gray-100 text-gray-600 rounded-lg"><History className="h-4 w-4" /></button>
                                 <button onClick={() => openManutencao(veiculo)} className="relative p-1.5 bg-amber-50 text-amber-600 rounded-lg">
                                     <Wrench className="h-4 w-4" />
                                     {alertasPendentes[veiculo.id] > 0 && (
@@ -258,11 +265,10 @@ const Veiculos = () => {
                             </div>
                         </div>
                         <p className="text-[12px] text-gray-500">{veiculo.modelo}</p>
-                        {veiculo.documentoUrl && (
-                            <a href={veiculo.documentoUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-600 flex items-center gap-0.5 mt-1">
-                                <FileText className="h-3 w-3" /> Ver Documento
-                            </a>
-                        )}
+                        <div className="flex items-center gap-1 mt-1">
+                            <ChevronRight className="h-3 w-3 text-blue-400" />
+                            <span className="text-[11px] text-blue-600">Toque para ver ficha completa</span>
+                        </div>
                     </div>
                 ))}
             </div>
@@ -307,69 +313,13 @@ const Veiculos = () => {
                 </div>
             )}
 
-            {/* Modal de Histórico */}
-            {isHistoryModalOpen && (
-                <div className="fixed inset-0 overflow-hidden z-[60]">
-                    <div className="absolute inset-0 overflow-hidden">
-                        <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setIsHistoryModalOpen(false)} />
-                        <div className="fixed inset-y-0 right-0 pl-0 md:pl-10 max-w-full flex">
-                            <div className="w-screen max-w-md">
-                                <div className="h-full flex flex-col bg-white shadow-xl overflow-y-scroll">
-                                    <div className="p-4 md:p-6 bg-primary">
-                                        <div className="flex items-center justify-between">
-                                            <h2 className="text-base md:text-lg font-medium text-white">Histórico de Corridas</h2>
-                                            <button onClick={() => setIsHistoryModalOpen(false)} className="text-gray-200 hover:text-white"><X className="h-6 w-6" /></button>
-                                        </div>
-                                        <p className="text-sm text-primary-100 mt-1">
-                                            {veiculoHistorico ? `${veiculoHistorico.placa} - ${veiculoHistorico.modelo}` : 'Carregando...'}
-                                        </p>
-                                    </div>
-                                    <div className="relative flex-1 p-4 md:p-6">
-                                        {!veiculoHistorico ? (
-                                            <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
-                                        ) : veiculoHistorico.diarios && veiculoHistorico.diarios.length > 0 ? (
-                                            <div className="flow-root">
-                                                <ul className="-mb-8">
-                                                    {veiculoHistorico.diarios.map((diario, idx) => (
-                                                        <li key={diario.id}>
-                                                            <div className="relative pb-8">
-                                                                {idx !== veiculoHistorico.diarios.length - 1 && <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" />}
-                                                                <div className="relative flex space-x-3">
-                                                                    <span className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center ring-8 ring-white">
-                                                                        <History className="h-4 w-4 text-blue-500" />
-                                                                    </span>
-                                                                    <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                                                                        <div>
-                                                                            <p className="text-sm text-gray-500">
-                                                                                Vendedor: <span className="font-medium text-gray-900">{diario.vendedor?.nome || 'Desconhecido'}</span>
-                                                                            </p>
-                                                                            <div className="mt-2 text-sm text-gray-600 space-y-1 bg-gray-50 p-2 rounded border border-gray-100">
-                                                                                <p>KM Início: <span className="font-mono">{diario.kmInicial || '-'}</span></p>
-                                                                                <p>KM Fim: <span className="font-mono">{diario.kmFinal || '-'}</span></p>
-                                                                                {diario.kmFinal && diario.kmInicial && (
-                                                                                    <p className="text-primary font-bold">+{diario.kmFinal - diario.kmInicial} km</p>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                                                                            <time>{formatDate(diario.dataReferencia)}</time>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        ) : (
-                                            <div className="text-center text-gray-500 py-10">Nenhum histórico encontrado.</div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            {/* Ficha Completa do Veículo */}
+            {veiculoFichaId && (
+                <VeiculoFicha
+                    veiculoId={veiculoFichaId}
+                    onClose={() => setVeiculoFichaId(null)}
+                    onUpdate={carregarVeiculos}
+                />
             )}
             {/* Modal de Manutenção */}
             {isManutencaoOpen && (

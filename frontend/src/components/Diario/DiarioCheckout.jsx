@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogOut, X } from 'lucide-react';
+import { LogOut, X, AlertTriangle } from 'lucide-react';
 import { useDiario } from '../../contexts/DiarioContext';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
@@ -10,29 +10,48 @@ const DiarioCheckout = () => {
     const [kmFinal, setKmFinal] = useState('');
     const [obsFinal, setObsFinal] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [confirmacaoKm, setConfirmacaoKm] = useState(false); // Modal de alerta de KM excessivo
 
     // Só exibe se o dia estiver iniciado em modo PRESENCIAL
     if (!diarioStatus.diarioHoje || diarioStatus.diarioHoje.modo !== 'PRESENCIAL' || diarioStatus.diarioHoje.kmFinal) {
         return null;
     }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const diario = diarioStatus.diarioHoje;
+    const kmRodados = kmFinal && diario.kmInicial ? parseInt(kmFinal) - diario.kmInicial : 0;
+
+    // Média de KM por dia do veículo (vem do veiculo aninhado se disponível)
+    const mediaKmDia = diario.veiculo?.kmMedioSugerido || null;
+    const kmExcessivo = mediaKmDia && kmRodados > 0 && kmRodados > (mediaKmDia * 1.5);
+
+    const executarEnvio = async () => {
         try {
             setIsSubmitting(true);
             await api.post('/diarios/encerrar', {
-                diarioId: diarioStatus.diarioHoje.id,
+                diarioId: diario.id,
                 kmFinal: parseInt(kmFinal),
                 obsFinal
             });
             toast.success('Expediente presencial encerrado com sucesso!');
             await carregarStatus();
             setIsOpen(false);
+            setConfirmacaoKm(false);
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao finalizar o dia');
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!kmFinal) return;
+        // Se KM for excessivo, abre modal de confirmação primeiro
+        if (kmExcessivo) {
+            setConfirmacaoKm(true);
+            return;
+        }
+        await executarEnvio();
     };
 
     return (
@@ -51,9 +70,8 @@ const DiarioCheckout = () => {
                 onClick={() => setIsOpen(true)}
                 className="sm:hidden w-full text-left bg-red-50 border-l-4 border-red-500 text-red-700 block pl-3 pr-4 py-2 text-base font-medium hover:bg-red-100"
             >
-                Finalizar Expediente ({diarioStatus.diarioHoje.veiculo?.placa})
+                Finalizar Expediente ({diario.veiculo?.placa})
             </button>
-
 
             {isOpen && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
@@ -70,7 +88,7 @@ const DiarioCheckout = () => {
 
                         <div className="bg-blue-50 p-3 rounded-lg flex items-center justify-between text-blue-900 border border-blue-200 mb-4">
                             <span className="text-sm font-medium">Você saiu com:</span>
-                            <span className="font-mono text-lg font-bold">{diarioStatus.diarioHoje.kmInicial} <span className="text-xs">KM</span></span>
+                            <span className="font-mono text-lg font-bold">{diario.kmInicial} <span className="text-xs">KM</span></span>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
@@ -85,9 +103,17 @@ const DiarioCheckout = () => {
                                     value={kmFinal}
                                     onChange={(e) => setKmFinal(e.target.value)}
                                     placeholder="00000"
-                                    min={diarioStatus.diarioHoje.kmInicial}
+                                    min={diario.kmInicial}
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Deve ser igual ou maior que a saída.</p>
+                                <div className="flex justify-between mt-1">
+                                    <p className="text-xs text-gray-500">Deve ser igual ou maior que a saída.</p>
+                                    {kmRodados > 0 && (
+                                        <p className={`text-xs font-bold ${kmExcessivo ? 'text-amber-600' : 'text-gray-500'}`}>
+                                            {kmExcessivo && '⚠️ '}+{kmRodados.toLocaleString('pt-BR')} km rodados
+                                            {mediaKmDia && ` (média: ${mediaKmDia} km/dia)`}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
 
                             <div>
@@ -109,6 +135,40 @@ const DiarioCheckout = () => {
                                 CONFIRMAR E ENTREGAR VEÍCULO
                             </button>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Confirmação de KM Excessivo */}
+            {confirmacaoKm && (
+                <div className="fixed inset-0 bg-gray-900 bg-opacity-80 z-[60] flex items-center justify-center">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 p-6 space-y-4">
+                        <div className="flex flex-col items-center text-amber-600">
+                            <AlertTriangle className="w-16 h-16 mb-3" />
+                            <h3 className="text-xl font-bold text-gray-900 text-center">KM Acima da Média!</h3>
+                        </div>
+                        <p className="text-gray-600 text-sm text-center">
+                            Foram registrados <strong className="text-gray-900">{kmRodados.toLocaleString('pt-BR')} km</strong> percorridos hoje.<br />
+                            A média deste veículo é de <strong>{mediaKmDia} km/dia</strong>.
+                        </p>
+                        <p className="text-sm text-center text-gray-700 font-medium">
+                            Confirma que o odômetro <strong>{parseInt(kmFinal).toLocaleString('pt-BR')} km</strong> está correto?
+                        </p>
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                            <button
+                                onClick={() => setConfirmacaoKm(false)}
+                                className="w-full py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-bold hover:bg-gray-50"
+                            >
+                                ✏️ Corrigir KM
+                            </button>
+                            <button
+                                onClick={executarEnvio}
+                                disabled={isSubmitting}
+                                className="w-full py-3 bg-red-600 rounded-xl text-white font-bold hover:bg-red-700 disabled:opacity-50"
+                            >
+                                {isSubmitting ? 'Aguarde...' : '✅ Sim, confirmar'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

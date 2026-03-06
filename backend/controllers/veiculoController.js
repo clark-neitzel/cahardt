@@ -31,9 +31,30 @@ const veiculoController = {
         }
     },
 
+    // Ficha completa com médias calculadas
+    obterFicha: async (req, res) => {
+        try {
+            const ficha = await veiculoService.obterFicha(req.params.id);
+            res.json(ficha);
+        } catch (error) {
+            console.error('Erro ao obter ficha do veículo:', error);
+            res.status(404).json({ error: error.message });
+        }
+    },
+
+    // Retorna o último KM final do veículo para pré-preencher KM inicial
+    ultimoKmFinal: async (req, res) => {
+        try {
+            const resultado = await veiculoService.ultimoKmFinal(req.params.id);
+            res.json(resultado);
+        } catch (error) {
+            console.error('Erro ao buscar último KM:', error);
+            res.status(500).json({ error: 'Erro ao buscar último KM.' });
+        }
+    },
+
     criar: async (req, res) => {
         try {
-            // Apenas admins? Já verificado pelo middleware nas rotas se configurado
             const novoVeiculo = await veiculoService.criar(req.body);
             res.status(201).json(novoVeiculo);
         } catch (error) {

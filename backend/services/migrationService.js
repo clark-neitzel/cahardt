@@ -364,7 +364,14 @@ const migrationService = {
 
             // Update 24: Campos de Horário nos Clientes
             `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "Horario_Atendimento" TEXT;`,
-            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "Horario_Entrega" TEXT;`
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "Horario_Entrega" TEXT;`,
+
+            // Update 25: Ficha Completa de Veículos — seguro, km médio sugerido, observações
+            `ALTER TABLE "veiculos" ADD COLUMN IF NOT EXISTS "seguro_vencimento" TIMESTAMP;`,
+            `ALTER TABLE "veiculos" ADD COLUMN IF NOT EXISTS "seguro_apolice" TEXT;`,
+            `ALTER TABLE "veiculos" ADD COLUMN IF NOT EXISTS "seguro_seguradora" TEXT;`,
+            `ALTER TABLE "veiculos" ADD COLUMN IF NOT EXISTS "km_medio_sugerido" INTEGER;`,
+            `ALTER TABLE "veiculos" ADD COLUMN IF NOT EXISTS "observacoes" TEXT;`
         ];
 
         for (const [index, cmd] of commands.entries()) {

@@ -33,7 +33,7 @@ router.get('/alertas-pendentes', authMiddleware, async (req, res) => {
             ...a,
             kmAtual: ultimosKm[a.veiculoId] || null,
             vencido: (a.kmAlerta && ultimosKm[a.veiculoId] && ultimosKm[a.veiculoId] >= a.kmAlerta) ||
-                     (a.dataAlerta && new Date(a.dataAlerta) <= new Date())
+                (a.dataAlerta && new Date(a.dataAlerta) <= new Date())
         }));
 
         res.json(resultado);
@@ -43,6 +43,8 @@ router.get('/alertas-pendentes', authMiddleware, async (req, res) => {
     }
 });
 
+router.get('/:id/ultimo-km', authMiddleware, veiculoController.ultimoKmFinal);
+router.get('/:id/ficha', authMiddleware, veiculoController.obterFicha);
 router.get('/:id', authMiddleware, veiculoController.obterPorId);
 
 // Rotas Administrativas (apenas quem gerencia)
@@ -50,6 +52,7 @@ router.get('/admin/todos', authMiddleware, veiculoController.listarTodos);
 router.post('/', authMiddleware, veiculoController.criar);
 router.put('/:id', authMiddleware, veiculoController.atualizar);
 router.delete('/:id', authMiddleware, veiculoController.excluir);
+
 
 // ── Manutenção de Veículos ──
 

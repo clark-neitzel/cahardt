@@ -22,6 +22,7 @@ const DiarioGateway = () => {
     const [modo, setModo] = useState(null); // 'HOME_OFFICE' ou 'PRESENCIAL'
     const [veiculoId, setVeiculoId] = useState('');
     const [kmInicial, setKmInicial] = useState('');
+    const [ultimoKm, setUltimoKm] = useState(null); // { kmFinal, dataReferencia }
     const [obs, setObs] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -49,6 +50,17 @@ const DiarioGateway = () => {
             api.get('/veiculos').then(res => setVeiculos(res.data)).catch(console.error);
         }
     }, [modo]);
+
+    // Ao selecionar veículo, busca o último KM final registrado
+    useEffect(() => {
+        if (!veiculoId) { setUltimoKm(null); setKmInicial(''); return; }
+        api.get(`/veiculos/${veiculoId}/ultimo-km`)
+            .then(res => {
+                setUltimoKm(res.data);
+                if (res.data?.kmFinal) setKmInicial(String(res.data.kmFinal));
+            })
+            .catch(() => setUltimoKm(null));
+    }, [veiculoId]);
 
     const handleChecklist = (field) => {
         setChecklist(prev => ({ ...prev, [field]: !prev[field] }));
@@ -273,14 +285,29 @@ const DiarioGateway = () => {
 
                                 <div className="sm:col-span-2">
                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Quilometragem Inicial Certa (KM)*</label>
+                                    {ultimoKm?.kmFinal && (
+                                        <div className="mb-2 flex items-center gap-2 text-xs bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5 text-blue-800">
+                                            <span>📍 Último KM registrado:</span>
+                                            <span className="font-mono font-bold">{ultimoKm.kmFinal.toLocaleString('pt-BR')} km</span>
+                                            <span className="text-blue-500">({ultimoKm.dataReferencia}) — não pode ser menor</span>
+                                        </div>
+                                    )}
                                     <input
                                         type="number"
                                         required
                                         className="mt-1 flex-1 block w-full bg-gray-50 focus:bg-white rounded-md border-gray-300 flex text-center text-3xl font-mono h-14 font-bold focus:border-green-500 focus:ring-green-500"
                                         value={kmInicial}
-                                        onChange={(e) => setKmInicial(e.target.value)}
+                                        onChange={(e) => {
+                                            const val = parseInt(e.target.value);
+                                            if (ultimoKm?.kmFinal && val < ultimoKm.kmFinal) return; // bloqueia valor menor
+                                            setKmInicial(e.target.value);
+                                        }}
+                                        min={ultimoKm?.kmFinal || 0}
                                         placeholder="00000"
                                     />
+                                    {ultimoKm?.kmFinal && (
+                                        <p className="text-xs text-amber-600 mt-1">⚠️ O odômetro não pode retroceder. Mínimo: {ultimoKm.kmFinal.toLocaleString('pt-BR')} km</p>
+                                    )}
                                 </div>
                             </div>
 

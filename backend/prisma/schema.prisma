@@ -461,10 +461,19 @@ model Veiculo {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  // Seguro
+  seguroVencimento  DateTime? @map("seguro_vencimento")
+  seguroApolice     String?   @map("seguro_apolice")
+  seguroSeguradora  String?   @map("seguro_seguradora")
+
+  // Métricas e Configurações
+  capacidadeTanque  Decimal?  @map("capacidade_tanque") @db.Decimal(8, 2)
+  kmMedioSugerido   Int?      @map("km_medio_sugerido")
+  observacoes       String?   @db.Text
+
   diarios           DiarioVendedor[]
   despesas          Despesa[]
   alertasManutencao ManutencaoAlerta[]
-  capacidadeTanque  Decimal? @map("capacidade_tanque") @db.Decimal(8, 2)
 
   @@map("veiculos")
 }

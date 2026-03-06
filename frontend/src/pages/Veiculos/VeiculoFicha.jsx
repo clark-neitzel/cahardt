@@ -1,0 +1,520 @@
+import React, { useState, useEffect } from 'react';
+import {
+    X, Car, FileText, Shield, Wrench, Fuel, Users, MessageSquare,
+    AlertTriangle, CheckCircle, BellRing, ChevronRight, Edit3, Save, TrendingUp
+} from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import api from '../../services/api';
+
+const TABS = [
+    { id: 'resumo', label: 'Resumo', icon: Car },
+    { id: 'documentos', label: 'Documentos', icon: FileText },
+    { id: 'manutencao', label: 'Manutenção', icon: Wrench },
+    { id: 'consumo', label: 'Consumo', icon: Fuel },
+    { id: 'historico', label: 'Motoristas', icon: Users },
+    { id: 'obs', label: 'Obs.', icon: MessageSquare },
+];
+
+const TIPOS_MANUTENCAO = [
+    { value: 'REVISAO', label: 'Revisão' },
+    { value: 'RODIZIO_PNEUS', label: 'Rodízio de Pneus' },
+    { value: 'TROCA_OLEO', label: 'Troca de Óleo' },
+    { value: 'TROCA_FILTRO', label: 'Troca de Filtro' },
+    { value: 'OUTRO', label: 'Outro' }
+];
+
+const formatDate = (d) => {
+    if (!d) return '—';
+    const parts = String(d).split('T')[0].split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return d;
+};
+
+const diasParaVencer = (dateStr) => {
+    if (!dateStr) return null;
+    return Math.ceil((new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24));
+};
+
+const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
+    const [activeTab, setActiveTab] = useState('resumo');
+    const [ficha, setFicha] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [editando, setEditando] = useState(false);
+    const [form, setForm] = useState({});
+    const [saving, setSaving] = useState(false);
+    const [novoAlerta, setNovoAlerta] = useState({ tipo: '', descricao: '', kmAlerta: '', dataAlerta: '' });
+    const [savingAlerta, setSavingAlerta] = useState(false);
+
+    const carregarFicha = async () => {
+        try {
+            setLoading(true);
+            const res = await api.get(`/veiculos/${veiculoId}/ficha`);
+            setFicha(res.data);
+            setForm({
+                seguroVencimento: res.data.seguroVencimento ? res.data.seguroVencimento.split('T')[0] : '',
+                seguroApolice: res.data.seguroApolice || '',
+                seguroSeguradora: res.data.seguroSeguradora || '',
+                capacidadeTanque: res.data.capacidadeTanque || '',
+                kmMedioSugerido: res.data.kmMedioSugerido || '',
+                observacoes: res.data.observacoes || '',
+                documentoUrl: res.data.documentoUrl || '',
+            });
+        } catch (e) {
+            toast.error('Erro ao carregar ficha do veículo.');
+            onClose();
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { if (veiculoId) carregarFicha(); }, [veiculoId]);
+
+    const salvarFicha = async () => {
+        try {
+            setSaving(true);
+            await api.put(`/veiculos/${veiculoId}`, form);
+            toast.success('Ficha atualizada!');
+            setEditando(false);
+            carregarFicha();
+            if (onUpdate) onUpdate();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao salvar.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleCriarAlerta = async (e) => {
+        e.preventDefault();
+        if (!novoAlerta.tipo) return;
+        try {
+            setSavingAlerta(true);
+            await api.post(`/veiculos/${veiculoId}/manutencao`, {
+                tipo: novoAlerta.tipo,
+                descricao: novoAlerta.descricao || null,
+                kmAlerta: novoAlerta.kmAlerta ? parseInt(novoAlerta.kmAlerta) : null,
+                dataAlerta: novoAlerta.dataAlerta || null
+            });
+            toast.success('Alerta criado!');
+            setNovoAlerta({ tipo: '', descricao: '', kmAlerta: '', dataAlerta: '' });
+            carregarFicha();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao criar alerta.');
+        } finally {
+            setSavingAlerta(false);
+        }
+    };
+
+    const handleConcluirAlerta = async (alertaId) => {
+        try {
+            await api.patch(`/veiculos/manutencao/${alertaId}/concluir`);
+            toast.success('Alerta concluído!');
+            carregarFicha();
+        } catch { toast.error('Erro ao concluir alerta.'); }
+    };
+
+    if (loading) {
+        return (
+            <div className="fixed inset-0 z-[70] flex">
+                <div className="ml-auto w-full max-w-2xl h-full bg-white shadow-2xl flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+                </div>
+            </div>
+        );
+    }
+
+    const stats = ficha?.stats || {};
+    const diasSeguro = diasParaVencer(ficha?.seguroVencimento);
+    const pendentes = ficha?.alertasManutencao?.filter(a => !a.concluido) || [];
+
+    return (
+        <div className="fixed inset-0 z-[70] flex">
+            {/* Overlay */}
+            <div className="flex-1 bg-black bg-opacity-50" onClick={onClose} />
+
+            {/* Painel */}
+            <div className="w-full max-w-2xl h-full bg-white shadow-2xl flex flex-col overflow-hidden">
+                {/* Header */}
+                <div className="bg-gray-900 text-white px-5 py-4 flex items-center justify-between shrink-0">
+                    <div>
+                        <div className="flex items-center gap-3">
+                            <Car className="h-5 w-5 text-blue-400" />
+                            <span className="text-lg font-bold font-mono tracking-wider">{ficha?.placa}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ficha?.ativo ? 'bg-green-800 text-green-200' : 'bg-red-900 text-red-200'}`}>
+                                {ficha?.ativo ? 'Ativo' : 'Inativo'}
+                            </span>
+                        </div>
+                        <p className="text-sm text-gray-400 mt-0.5">{ficha?.modelo}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {editando ? (
+                            <>
+                                <button onClick={() => setEditando(false)} className="text-gray-400 hover:text-gray-200 text-sm px-3 py-1.5 border border-gray-600 rounded-md">Cancelar</button>
+                                <button onClick={salvarFicha} disabled={saving} className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-md font-medium">
+                                    <Save className="h-4 w-4" /> {saving ? 'Salvando...' : 'Salvar'}
+                                </button>
+                            </>
+                        ) : (
+                            <button onClick={() => setEditando(true)} className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-md">
+                                <Edit3 className="h-4 w-4" /> Editar
+                            </button>
+                        )}
+                        <button onClick={onClose} className="text-gray-400 hover:text-white ml-1"><X className="h-6 w-6" /></button>
+                    </div>
+                </div>
+
+                {/* Abas */}
+                <div className="border-b border-gray-200 bg-white shrink-0 overflow-x-auto">
+                    <div className="flex">
+                        {TABS.map(tab => {
+                            const Icon = tab.icon;
+                            const hasBadge = (tab.id === 'manutencao' && pendentes.length > 0) ||
+                                (tab.id === 'documentos' && diasSeguro !== null && diasSeguro <= 30);
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`relative flex items-center gap-1.5 px-4 py-3 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    <Icon className="h-4 w-4" />
+                                    {tab.label}
+                                    {hasBadge && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Conteúdo */}
+                <div className="flex-1 overflow-y-auto p-5">
+
+                    {/* ── RESUMO ── */}
+                    {activeTab === 'resumo' && (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {[
+                                    { label: 'KM Atual', value: stats.kmAtual ? `${stats.kmAtual.toLocaleString('pt-BR')} km` : '—', color: 'bg-blue-50 text-blue-900' },
+                                    { label: 'KM Médio/Dia', value: stats.kmMedioPorDia ? `${stats.kmMedioPorDia.toLocaleString('pt-BR')} km` : '—', color: 'bg-green-50 text-green-900' },
+                                    { label: 'Consumo Médio', value: stats.consumoMedioReal ? `${stats.consumoMedioReal} km/L` : '—', color: 'bg-orange-50 text-orange-900' },
+                                    { label: 'Dias Rodados', value: stats.totalDiarios, color: 'bg-gray-50 text-gray-900' },
+                                    { label: 'Abastecimentos', value: stats.totalAbastecimentos, color: 'bg-gray-50 text-gray-900' },
+                                    { label: 'Alertas Pendentes', value: stats.alertasPendentes, color: stats.alertasPendentes > 0 ? 'bg-red-50 text-red-900' : 'bg-gray-50 text-gray-900' },
+                                ].map(({ label, value, color }) => (
+                                    <div key={label} className={`${color} rounded-xl p-3 text-center`}>
+                                        <p className="text-2xl font-bold font-mono">{value}</p>
+                                        <p className="text-xs mt-1 opacity-70">{label}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Últimos usos */}
+                            {ficha?.diarios?.slice(0, 3).map(d => (
+                                <div key={d.id} className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-900">{d.vendedor?.nome}</p>
+                                        <p className="text-xs text-gray-500">{formatDate(d.dataReferencia)}</p>
+                                    </div>
+                                    {d.kmInicial && d.kmFinal ? (
+                                        <div className="text-right">
+                                            <p className="text-sm font-mono font-bold text-gray-800">+{(d.kmFinal - d.kmInicial).toLocaleString('pt-BR')} km</p>
+                                            <p className="text-xs text-gray-500">{d.kmInicial.toLocaleString('pt-BR')} → {d.kmFinal.toLocaleString('pt-BR')}</p>
+                                        </div>
+                                    ) : <span className="text-xs text-gray-400">Pendente</span>}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* ── DOCUMENTOS ── */}
+                    {activeTab === 'documentos' && (
+                        <div className="space-y-5">
+                            <div>
+                                <h3 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2"><FileText className="h-4 w-4" /> CRLV / Documento</h3>
+                                {editando ? (
+                                    <input type="url" value={form.documentoUrl} onChange={e => setForm(p => ({ ...p, documentoUrl: e.target.value }))}
+                                        placeholder="https://link-do-documento.com"
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                                ) : ficha?.documentoUrl ? (
+                                    <a href={ficha.documentoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100">
+                                        <FileText className="h-4 w-4" /> Ver Documento
+                                    </a>
+                                ) : <p className="text-sm text-gray-400">Nenhum documento anexado.</p>}
+                            </div>
+
+                            <hr />
+
+                            <div>
+                                <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                    <Shield className="h-4 w-4" /> Seguro
+                                    {diasSeguro !== null && diasSeguro <= 30 && (
+                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${diasSeguro <= 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                                            {diasSeguro <= 0 ? '🚨 Vencido!' : `⚠️ Vence em ${diasSeguro} dias`}
+                                        </span>
+                                    )}
+                                </h3>
+
+                                {editando ? (
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1">Seguradora</label>
+                                                <input type="text" value={form.seguroSeguradora} onChange={e => setForm(p => ({ ...p, seguroSeguradora: e.target.value }))}
+                                                    placeholder="Ex: Porto Seguro" className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1">Apólice Nº</label>
+                                                <input type="text" value={form.seguroApolice} onChange={e => setForm(p => ({ ...p, seguroApolice: e.target.value }))}
+                                                    placeholder="Número da apólice" className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-500 mb-1">Vencimento do Seguro</label>
+                                            <input type="date" value={form.seguroVencimento} onChange={e => setForm(p => ({ ...p, seguroVencimento: e.target.value }))}
+                                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">Seguradora</span>
+                                            <span className="font-medium text-gray-900">{ficha?.seguroSeguradora || '—'}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">Apólice</span>
+                                            <span className="font-medium text-gray-900">{ficha?.seguroApolice || '—'}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">Vencimento</span>
+                                            <span className={`font-medium ${diasSeguro !== null && diasSeguro <= 30 ? 'text-red-600' : 'text-gray-900'}`}>
+                                                {formatDate(ficha?.seguroVencimento)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── MANUTENÇÃO ── */}
+                    {activeTab === 'manutencao' && (
+                        <div className="space-y-5">
+                            {/* Form novo alerta */}
+                            <form onSubmit={handleCriarAlerta} className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                                <h3 className="text-sm font-bold text-amber-900">Novo Alerta de Manutenção</h3>
+                                <select required value={novoAlerta.tipo} onChange={e => setNovoAlerta(p => ({ ...p, tipo: e.target.value }))}
+                                    className="w-full border border-gray-300 rounded-md p-2 text-sm">
+                                    <option value="">Tipo de manutenção...</option>
+                                    {TIPOS_MANUTENCAO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                </select>
+                                <input type="text" placeholder="Descrição (opcional)" value={novoAlerta.descricao}
+                                    onChange={e => setNovoAlerta(p => ({ ...p, descricao: e.target.value }))}
+                                    className="w-full border border-gray-300 rounded-md p-2 text-sm" />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-gray-600 mb-1">Alerta por KM</label>
+                                        <input type="number" placeholder="Ex: 150000" value={novoAlerta.kmAlerta}
+                                            onChange={e => setNovoAlerta(p => ({ ...p, kmAlerta: e.target.value }))}
+                                            className="w-full border border-gray-300 rounded-md p-2 text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-600 mb-1">Alerta por Data</label>
+                                        <input type="date" value={novoAlerta.dataAlerta}
+                                            onChange={e => setNovoAlerta(p => ({ ...p, dataAlerta: e.target.value }))}
+                                            className="w-full border border-gray-300 rounded-md p-2 text-sm" />
+                                    </div>
+                                </div>
+                                <button type="submit" disabled={savingAlerta} className="w-full py-2 bg-amber-600 text-white rounded-md text-sm font-medium hover:bg-amber-700 disabled:opacity-50">
+                                    {savingAlerta ? 'Criando...' : 'Criar Alerta'}
+                                </button>
+                            </form>
+
+                            {/* Lista de alertas */}
+                            <div className="space-y-2">
+                                {(ficha?.alertasManutencao || []).map(a => (
+                                    <div key={a.id} className={`p-3 rounded-lg border ${a.concluido ? 'bg-gray-50 border-gray-200 opacity-50' : 'bg-white border-amber-200'}`}>
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    {a.concluido ? <CheckCircle className="h-4 w-4 text-green-600" /> : <BellRing className="h-4 w-4 text-amber-600" />}
+                                                    <span className="text-sm font-medium">{a.tipo?.replace(/_/g, ' ')}</span>
+                                                </div>
+                                                {a.descricao && <p className="text-xs text-gray-500 mt-1 ml-6">{a.descricao}</p>}
+                                                <div className="text-xs text-gray-400 mt-1 ml-6 space-x-3">
+                                                    {a.kmAlerta && <span>KM: {a.kmAlerta.toLocaleString('pt-BR')}</span>}
+                                                    {a.dataAlerta && <span>Data: {new Date(a.dataAlerta).toLocaleDateString('pt-BR')}</span>}
+                                                </div>
+                                            </div>
+                                            {!a.concluido && (
+                                                <button onClick={() => handleConcluirAlerta(a.id)}
+                                                    className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded font-medium hover:bg-green-200">
+                                                    Concluir
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                                {ficha?.alertasManutencao?.length === 0 && (
+                                    <p className="text-center text-gray-400 py-6 text-sm">Nenhum alerta cadastrado.</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── CONSUMO ── */}
+                    {activeTab === 'consumo' && (
+                        <div className="space-y-5">
+                            {/* Cards de médias */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
+                                    <div className="flex justify-center mb-2"><TrendingUp className="h-6 w-6 text-orange-500" /></div>
+                                    <p className="text-2xl font-bold font-mono text-orange-900">
+                                        {stats.consumoMedioReal ? `${stats.consumoMedioReal} km/L` : '—'}
+                                    </p>
+                                    <p className="text-xs text-orange-700 mt-1">Consumo médio real</p>
+                                    <p className="text-[10px] text-orange-500 mt-0.5">calculado dos abastecimentos</p>
+                                </div>
+                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                                    <div className="flex justify-center mb-2"><ChevronRight className="h-6 w-6 text-blue-500" /></div>
+                                    <p className="text-2xl font-bold font-mono text-blue-900">
+                                        {stats.kmMedioPorDia ? `${stats.kmMedioPorDia.toLocaleString('pt-BR')} km` : '—'}
+                                    </p>
+                                    <p className="text-xs text-blue-700 mt-1">KM médio por dia</p>
+                                    <p className="text-[10px] text-blue-500 mt-0.5">baseado em {ficha?.diarios?.filter(d => d.kmFinal).length || 0} diárias</p>
+                                </div>
+                            </div>
+
+                            {/* Base manual de KM médio */}
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                    🎯 KM Médio Sugerido (base manual)
+                                </h3>
+                                <p className="text-xs text-gray-500">
+                                    Defina uma estimativa inicial de quantos km este veículo roda por dia. Com o tempo, a média real calculada dos diários substituirá esse valor como referência.
+                                </p>
+                                {editando ? (
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">KM por dia (estimativa)</label>
+                                        <input type="number" value={form.kmMedioSugerido}
+                                            onChange={e => setForm(p => ({ ...p, kmMedioSugerido: e.target.value }))}
+                                            placeholder="Ex: 150"
+                                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-gray-600">Estimativa configurada:</span>
+                                        <span className="font-bold text-gray-900 font-mono">
+                                            {ficha?.kmMedioSugerido ? `${ficha.kmMedioSugerido} km/dia` : 'Não definido'}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Capacidade do tanque */}
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                <h3 className="text-sm font-bold text-gray-700 mb-2">⛽ Capacidade do Tanque</h3>
+                                {editando ? (
+                                    <input type="number" step="0.5" value={form.capacidadeTanque}
+                                        onChange={e => setForm(p => ({ ...p, capacidadeTanque: e.target.value }))}
+                                        placeholder="Ex: 50 (litros)"
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                                ) : (
+                                    <p className="text-lg font-bold text-gray-900 font-mono">
+                                        {ficha?.capacidadeTanque ? `${Number(ficha.capacidadeTanque)} L` : '—'}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Últimos abastecimentos */}
+                            {ficha?.despesas?.filter(d => d.categoria === 'COMBUSTIVEL').length > 0 && (
+                                <div>
+                                    <h3 className="text-sm font-bold text-gray-700 mb-2">Últimos Abastecimentos</h3>
+                                    <div className="space-y-2">
+                                        {ficha.despesas.filter(d => d.categoria === 'COMBUSTIVEL').slice(0, 5).map(d => (
+                                            <div key={d.id} className="flex items-center justify-between bg-orange-50 rounded-lg px-3 py-2 text-sm">
+                                                <span className="text-gray-600">{formatDate(d.dataReferencia)}</span>
+                                                <div className="text-right">
+                                                    {d.litros && <span className="text-gray-800 font-medium">{Number(d.litros)}L</span>}
+                                                    <span className="text-gray-900 font-bold ml-3">R$ {Number(d.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ── HISTÓRICO MOTORISTAS ── */}
+                    {activeTab === 'historico' && (
+                        <div className="space-y-2">
+                            {(ficha?.diarios || []).length === 0 ? (
+                                <p className="text-center text-gray-400 py-10 text-sm">Nenhum histórico de uso.</p>
+                            ) : ficha.diarios.map((d, idx) => (
+                                <div key={d.id} className="bg-white border border-gray-200 rounded-lg p-3 hover:bg-gray-50">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-start gap-3">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${d.kmFinal ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                {idx + 1}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-gray-900">{d.vendedor?.nome || '—'}</p>
+                                                <p className="text-xs text-gray-500">{formatDate(d.dataReferencia)} · {d.modo === 'PRESENCIAL' ? '🚗 Presencial' : '🏠 Home Office'}</p>
+                                                {d.kmInicial && (
+                                                    <p className="text-xs text-gray-600 mt-1 font-mono">
+                                                        KM {d.kmInicial.toLocaleString('pt-BR')} → {d.kmFinal ? d.kmFinal.toLocaleString('pt-BR') : '⏳ pendente'}
+                                                        {d.kmFinal && <span className="ml-2 font-bold text-blue-700">+{(d.kmFinal - d.kmInicial).toLocaleString('pt-BR')} km</span>}
+                                                    </p>
+                                                )}
+                                                {d.obs && <p className="text-xs text-amber-700 mt-1 bg-amber-50 px-2 py-0.5 rounded">📝 {d.obs}</p>}
+                                            </div>
+                                        </div>
+                                        {!d.kmFinal && d.modo === 'PRESENCIAL' && (
+                                            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Pendente</span>
+                                        )}
+                                    </div>
+                                    {/* Checklist resumo */}
+                                    {d.checklist && (
+                                        <div className="mt-2 flex gap-1 flex-wrap ml-11">
+                                            {Object.entries(d.checklist).map(([key, val]) => (
+                                                <span key={key} className={`text-[10px] px-1.5 py-0.5 rounded ${val ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                                                    {val ? '✓' : '✗'} {key.replace(/Ok$/, '')}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* ── OBSERVAÇÕES ── */}
+                    {activeTab === 'obs' && (
+                        <div className="space-y-3">
+                            {editando ? (
+                                <textarea
+                                    value={form.observacoes}
+                                    onChange={e => setForm(p => ({ ...p, observacoes: e.target.value }))}
+                                    rows={12}
+                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                                    placeholder="Observações gerais sobre o veículo (avarias, histórico, particularidades...)"
+                                />
+                            ) : ficha?.observacoes ? (
+                                <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap border border-gray-200">
+                                    {ficha.observacoes}
+                                </div>
+                            ) : (
+                                <div className="text-center text-gray-400 py-10">
+                                    <MessageSquare className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                                    <p className="text-sm">Nenhuma observação registrada.</p>
+                                    <button onClick={() => setEditando(true)} className="mt-3 text-xs text-blue-600 hover:underline">Adicionar observação</button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default VeiculoFicha;
