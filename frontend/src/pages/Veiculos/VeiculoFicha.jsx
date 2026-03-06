@@ -429,40 +429,47 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                 <div>
                                     <h3 className="text-sm font-bold text-gray-700 mb-2">Últimos Abastecimentos</h3>
                                     <div className="space-y-2">
-                                        {/* Ordena por KM decrescente para exibição (mais recente no topo) */}
+                                        {/* Ordena por KM decrescente (mais recente no topo), sem KM vai para o final */}
                                         {[...ficha.despesas]
-                                            .sort((a, b) => (b.km || 0) - (a.km || 0))
+                                            .sort((a, b) => (Number(b.kmNoAbastecimento) || 0) - (Number(a.kmNoAbastecimento) || 0))
                                             .slice(0, 10)
                                             .map((d, idx, arr) => {
-                                                // Calcula km/L deste segmento (comparando com o próximo na lista ordenada por km asc)
-                                                const kmAtual = d.km || d.kmNoAbastecimento;
-                                                const proxItem = arr[idx + 1]; // próximo é o anterior (km menor)
-                                                const kmAnterior = proxItem ? (proxItem.km || proxItem.kmNoAbastecimento) : null;
+                                                const kmAtual = d.kmNoAbastecimento ? Number(d.kmNoAbastecimento) : null;
+                                                // Próximo item na lista ordenada desc = abastecimento anterior (km menor)
+                                                const proxItem = arr[idx + 1];
+                                                const kmAnterior = proxItem?.kmNoAbastecimento ? Number(proxItem.kmNoAbastecimento) : null;
                                                 const kmRodados = kmAtual && kmAnterior ? kmAtual - kmAnterior : null;
-                                                const eficiencia = kmRodados && d.litros ? (kmRodados / Number(d.litros)).toFixed(1) : null;
+                                                const litros = d.litros ? Number(d.litros) : 0;
+                                                const eficiencia = kmRodados && litros >= 5 ? (kmRodados / litros).toFixed(1) : null;
                                                 return (
                                                     <div key={d.id} className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5">
-                                                        <div className="flex items-center justify-between">
-                                                            <div>
-                                                                <p className="text-xs text-gray-500">{formatDate(d.dataReferencia)}</p>
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-[11px] text-gray-400">{formatDate(d.dataReferencia)}</p>
                                                                 {kmAtual ? (
-                                                                    <p className="text-sm font-bold font-mono text-gray-800 mt-0.5">
+                                                                    <p className="text-[13px] font-bold font-mono text-gray-800 mt-0.5">
                                                                         📍 {kmAtual.toLocaleString('pt-BR')} km
                                                                     </p>
                                                                 ) : (
-                                                                    <p className="text-xs text-amber-600 mt-0.5">⚠️ KM não informado</p>
+                                                                    <p className="text-[11px] text-amber-600 mt-0.5">⚠️ KM não informado</p>
                                                                 )}
-                                                                {kmRodados !== null && (
-                                                                    <p className="text-[11px] text-gray-500">
+                                                                {kmRodados !== null && kmRodados > 0 && (
+                                                                    <p className="text-[11px] text-gray-500 mt-0.5">
                                                                         {kmRodados.toLocaleString('pt-BR')} km rodados
-                                                                        {eficiencia && <span className="ml-1.5 text-orange-600 font-semibold">· {eficiencia} km/L</span>}
+                                                                        {eficiencia && (
+                                                                            <span className={`ml-1.5 font-semibold ${Number(eficiencia) > 20 ? 'text-green-600' : 'text-orange-600'}`}>
+                                                                                · {eficiencia} km/L
+                                                                            </span>
+                                                                        )}
                                                                     </p>
                                                                 )}
                                                             </div>
-                                                            <div className="text-right">
-                                                                {d.litros && <p className="text-sm text-gray-700 font-mono">{Number(d.litros)}L</p>}
-                                                                <p className="text-sm font-bold text-gray-900 font-mono">
-                                                                    R$ {Number(d.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            <div className="text-right shrink-0">
+                                                                {litros > 0 && (
+                                                                    <p className="text-[12px] text-gray-600 font-mono">{litros}L</p>
+                                                                )}
+                                                                <p className="text-[13px] font-bold text-gray-900 font-mono">
+                                                                    R$ {Number(d.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -470,9 +477,9 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                                 );
                                             })}
                                     </div>
-                                    {ficha.despesas.some(d => !d.km && !d.kmNoAbastecimento) && (
+                                    {ficha.despesas.some(d => !d.kmNoAbastecimento) && (
                                         <p className="text-[11px] text-gray-400 mt-2 italic">
-                                            💡 Abastecimentos sem KM não entram no cálculo de consumo. Edite-os pelo caixa para incluir o hodômetro.
+                                            💡 Abastecimentos sem KM não entram no cálculo de consumo. Edite pelo Caixa para incluir o hodômetro.
                                         </p>
                                     )}
                                 </div>

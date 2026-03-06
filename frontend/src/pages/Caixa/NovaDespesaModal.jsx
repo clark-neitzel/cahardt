@@ -48,21 +48,30 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
         }
     }, [despesaEditando]);
 
-    // Quando selecionar veículo em Combustível, busca último km para validação
+    // Quando selecionar veículo em Combustível, busca último km para pré-preenchimento e validação
     useEffect(() => {
         if (categoria !== 'COMBUSTIVEL' || !veiculoId) {
             setKmMinimo(null);
             return;
         }
-        api.get(`/veiculos/${veiculoId}/ultimo-km-abastecimento`)
-            .then(res => {
-                if (res.data?.kmNoAbastecimento) {
-                    setKmMinimo(res.data.kmNoAbastecimento);
-                } else {
-                    setKmMinimo(null);
+        // Busca em paralelo: último KM do diário E último KM de abastecimento
+        Promise.all([
+            api.get(`/veiculos/${veiculoId}/ultimo-km`).catch(() => ({ data: null })),
+            api.get(`/veiculos/${veiculoId}/ultimo-km-abastecimento`).catch(() => ({ data: null }))
+        ]).then(([diarioRes, abastecRes]) => {
+            const kmDiario = diarioRes.data?.kmFinal ? Number(diarioRes.data.kmFinal) : 0;
+            const kmAbast = abastecRes.data?.kmNoAbastecimento ? Number(abastecRes.data.kmNoAbastecimento) : 0;
+            const maiorKm = Math.max(kmDiario, kmAbast);
+            if (maiorKm > 0) {
+                setKmMinimo(maiorKm);
+                // Só pré-preenche se o campo estiver vazio ou for menor
+                if (!despesaEditando) {
+                    setKmNoAbastecimento(String(maiorKm));
                 }
-            })
-            .catch(() => setKmMinimo(null));
+            } else {
+                setKmMinimo(null);
+            }
+        });
     }, [veiculoId, categoria]);
 
     const handleKmChange = (e) => {

@@ -88,22 +88,27 @@ const veiculoService = {
 
         // Calcular média de consumo real (km/L) a partir dos abastecimentos com KM registrado
         // Lógica: entre cada par de abastecimentos consecutivos, km_percorridos / litros_no_2o_abastecimento
-        const abastecimentos = veiculo.despesas
-            .filter(d => d.litros && Number(d.litros) > 0 && d.kmNoAbastecimento)
-            .map(d => ({ litros: Number(d.litros), km: d.kmNoAbastecimento, data: d.dataReferencia, id: d.id }))
+        const combsComKm = veiculo.despesas
+            .filter(d => d.litros && Number(d.litros) > 0 && d.kmNoAbastecimento && Number(d.kmNoAbastecimento) > 0)
+            .map(d => ({ litros: Number(d.litros), km: Number(d.kmNoAbastecimento), data: d.dataReferencia }))
             .sort((a, b) => a.km - b.km); // ordena por km crescente
 
         let consumoMedioReal = null;
         const parcelasConsumo = [];
 
-        if (abastecimentos.length >= 2) {
-            // Calcula eficiência de cada segmento: km rodados / litros do abastecimento seguinte
-            // Ex: KM 1000 → 1100 (+100km) com 10L no 2o abastecimento = 10 km/L
-            for (let i = 1; i < abastecimentos.length; i++) {
-                const kmRodados = abastecimentos[i].km - abastecimentos[i - 1].km;
-                const litrosNoPonto = abastecimentos[i].litros;
-                if (kmRodados > 0 && litrosNoPonto > 0) {
-                    parcelasConsumo.push(parseFloat((kmRodados / litrosNoPonto).toFixed(2)));
+        if (combsComKm.length >= 2) {
+            for (let i = 1; i < combsComKm.length; i++) {
+                const kmRodados = combsComKm[i].km - combsComKm[i - 1].km;
+                const litrosNoPonto = combsComKm[i].litros;
+                // Sanity check: ignora segmentos inválidos
+                // - KM rodados deve ser > 0 e < 5000 (mais que 5000km entre abastecimentos é dado errado)
+                // - km/L deve ser <= 50 (acima disso é abastecimento parcial/1L ou dado errado)
+                // - litros deve ser >= 5 (menos que 5L é abastecimento parcial - afeta a média)
+                if (kmRodados > 0 && kmRodados < 5000 && litrosNoPonto >= 5) {
+                    const eficiencia = kmRodados / litrosNoPonto;
+                    if (eficiencia <= 50) {
+                        parcelasConsumo.push(eficiencia);
+                    }
                 }
             }
 
@@ -118,18 +123,15 @@ const veiculoService = {
 
         return {
             ...veiculo,
-            // Retorna abastecimentos já ordenados com kmNoAbastecimento
-            despesas: abastecimentos.length > 0
-                ? [...abastecimentos].sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0)) // desc para exibição
-                : veiculo.despesas.filter(d => d.categoria === 'COMBUSTIVEL' || d.litros),
+            // IMPORTANTE: retorna veiculo.despesas original (com todos os campos: valor, categoria, kmNoAbastecimento, etc)
+            // Não sobrescreve! O spread ...veiculo já inclui despesas; apenas stats são adicionados
             stats: {
                 kmAtual,
                 kmMedioPorDia,
                 consumoMedioReal,
                 totalDiarios: veiculo.diarios.length,
-                totalAbastecimentos: abastecimentos.length,
+                totalAbastecimentos: veiculo.despesas.filter(d => d.litros && Number(d.litros) > 0).length,
                 alertasPendentes: veiculo.alertasManutencao.filter(a => !a.concluido).length,
-                // Alerta de seguro próximo do vencimento (30 dias)
                 seguroVencendoEm30Dias: veiculo.seguroVencimento
                     ? (new Date(veiculo.seguroVencimento) - new Date()) < 30 * 24 * 60 * 60 * 1000
                     : false
