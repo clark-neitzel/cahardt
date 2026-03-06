@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, MapPin, Navigation, Loader, Mic, MicOff } from 'lucide-react';
 import atendimentoService from '../../services/atendimentoService';
+import configService from '../../services/configService';
 import toast from 'react-hot-toast';
 
-const TIPOS = [
+const TIPOS_PADRAO = [
     { value: 'VISITA', label: 'Visita Presencial' },
     { value: 'AMOSTRA', label: 'Amostra' },
     { value: 'LIGACAO', label: 'Ligação' },
@@ -17,6 +18,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
     const { tipo, item } = dados; // tipo: 'lead' | 'cliente'
     const isLead = tipo === 'lead';
 
+    const [tipos, setTipos] = useState(TIPOS_PADRAO);
     const [form, setForm] = useState({
         tipoAtendimento: 'VISITA',
         observacao: '',
@@ -26,6 +28,19 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
     const [gps, setGps] = useState(null);
     const [loadingGps, setLoadingGps] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    // Carrega tipos de atendimento da configuração
+    useEffect(() => {
+        configService.get('tipos_atendimento').then(data => {
+            if (Array.isArray(data) && data.length > 0) {
+                setTipos(data);
+                // ajusta default se não existir mais
+                if (!data.some(t => t.value === 'VISITA')) {
+                    setForm(f => ({ ...f, tipoAtendimento: data[0]?.value || '' }));
+                }
+            }
+        }).catch(() => { }); // silencia — usa padrão
+    }, []);
 
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = React.useRef(null);
@@ -185,7 +200,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
                     <div>
                         <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Tipo de Atendimento *</label>
                         <div className="flex flex-wrap gap-2">
-                            {TIPOS.map(t => (
+                            {tipos.map(t => (
                                 <button
                                     key={t.value}
                                     onClick={() => setForm(f => ({ ...f, tipoAtendimento: t.value }))}

@@ -18,6 +18,7 @@ import toast from 'react-hot-toast';
 import ModalAtendimento from './ModalAtendimento';
 import ModalNovoLead from './ModalNovoLead';
 import CheckoutEntregaModal from '../Motorista/Entregas/CheckoutEntregaModal';
+import ClientePopup from './ClientePopup';
 
 const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 const ETAPA_COLORS = {
@@ -73,9 +74,10 @@ const abrirMapa = (gps) => {
 // ================================================
 // Card de Cliente
 // ================================================
-const CardCliente = ({ cliente, onAtendimento, onNovoPedido, mostrarAcoes = true }) => {
+const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false }) => {
     const atendHoje = getAtendimentoHoje(cliente._atendimentos);
     const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
+    const vendedorNome = cliente.vendedor?.nome || cliente.Vendedor?.nome;
 
     return (
         <div className={`bg-white rounded-xl border shadow-sm overflow-hidden mb-3 ${doDia ? 'border-green-500/50 ring-1 ring-green-500/20' : 'border-gray-200'}`}>
@@ -95,8 +97,20 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, mostrarAcoes = true
                                 </span>
                             )}
                         </div>
-                        <p className="font-bold text-[15px] text-gray-900 leading-tight truncate">{cliente.NomeFantasia || cliente.Nome}</p>
+                        {/* Nome clicável */}
+                        <button
+                            onClick={() => onVerCliente(cliente)}
+                            className="text-left font-bold text-[15px] text-gray-900 leading-tight truncate w-full hover:text-blue-700 transition-colors"
+                        >
+                            {cliente.NomeFantasia || cliente.Nome}
+                        </button>
                         {cliente.End_Cidade && <p className="text-[12px] text-gray-500 mt-0.5">{cliente.End_Cidade}</p>}
+                        {/* Badge vendedor (admin vendo todos) */}
+                        {podeEscolherVendedor && vendedorNome && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded font-semibold mt-1">
+                                <User className="h-2.5 w-2.5" /> {vendedorNome.split(' ')[0]}
+                            </span>
+                        )}
                     </div>
                     {cliente.Ponto_GPS && (
                         <button onClick={() => abrirMapa(cliente.Ponto_GPS)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg shrink-0">
@@ -168,9 +182,10 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, mostrarAcoes = true
 // ================================================
 // Card de Lead
 // ================================================
-const CardLead = ({ lead, onAtendimento, mostrarAcoes = true }) => {
+const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false }) => {
     const atendHoje = getAtendimentoHoje(lead.atendimentos);
     const proxHoje = isProximaVisitaHoje(lead.proximaVisita);
+    const vendedorNome = lead.vendedor?.nome;
 
     // Prospectos/Leads ficam com destaque laranja
     return (
@@ -188,8 +203,20 @@ const CardLead = ({ lead, onAtendimento, mostrarAcoes = true }) => {
                             )}
                             {proxHoje && !atendHoje && <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><Star className="h-3 w-3" /> Visita Hoje!</span>}
                         </div>
-                        <p className="font-bold text-[15px] text-gray-900 leading-tight truncate">{lead.nomeEstabelecimento}</p>
+                        {/* Nome do lead clicável */}
+                        <button
+                            onClick={() => onVerCliente(lead)}
+                            className="text-left font-bold text-[15px] text-gray-900 leading-tight truncate w-full hover:text-orange-600 transition-colors"
+                        >
+                            {lead.nomeEstabelecimento}
+                        </button>
                         {lead.contato && <p className="text-[12px] text-gray-500 mt-0.5">{lead.contato}</p>}
+                        {/* Badge vendedor (admin) */}
+                        {podeEscolherVendedor && vendedorNome && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded font-semibold mt-1">
+                                <User className="h-2.5 w-2.5" /> {vendedorNome.split(' ')[0]}
+                            </span>
+                        )}
                     </div>
                     {lead.pontoGps && (
                         <button onClick={() => abrirMapa(lead.pontoGps)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg shrink-0">
@@ -257,9 +284,10 @@ const STATUS_ENTREGA_CORES = {
     DEVOLVIDO: 'bg-red-100 text-red-700',
 };
 
-const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout }) => {
+const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente }) => {
     const totalValor = pedido.itens?.reduce((s, i) => s + (Number(i.valor) * Number(i.quantidade)), 0) || 0;
     const motoristaNome = pedido.embarque?.responsavel?.nome;
+    const vendedorNome = pedido.vendedor?.nome;
     const abrirMaps = () => {
         if (!pedido.cliente?.Ponto_GPS) {
             const addr = `${pedido.cliente?.End_Logradouro || ''} ${pedido.cliente?.End_Numero || ''} ${pedido.cliente?.End_Cidade || ''}`;
@@ -283,8 +311,18 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout }) => {
                                     <Truck className="h-3 w-3" /> {motoristaNome.split(' ')[0]}
                                 </span>
                             )}
+                            {vendedorNome && (
+                                <span className="text-[10px] text-purple-600 bg-purple-50 px-1 py-0.5 rounded font-semibold flex items-center gap-0.5">
+                                    <User className="h-3 w-3" /> {vendedorNome.split(' ')[0]}
+                                </span>
+                            )}
                         </div>
-                        <p className="font-bold text-[13px] md:text-[15px] text-gray-900 leading-tight truncate mt-0.5">{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}</p>
+                        <button
+                            onClick={() => onVerCliente && onVerCliente(pedido.cliente)}
+                            className="text-left font-bold text-[13px] md:text-[15px] text-gray-900 leading-tight truncate mt-0.5 w-full hover:text-sky-700 transition-colors"
+                        >
+                            {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}
+                        </button>
                         {pedido.cliente?.End_Cidade && (
                             <p className="text-[11px] md:text-[12px] text-gray-500 truncate">{pedido.cliente.End_Logradouro} {pedido.cliente.End_Numero} · {pedido.cliente.End_Cidade}</p>
                         )}
@@ -313,7 +351,7 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout }) => {
 // ================================================
 // Card de Entrega Concluída
 // ================================================
-const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar, onEditar }) => {
+const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar, onEditar, onVerCliente }) => {
     const [aberto, setAberto] = useState(false);
     const cls = STATUS_ENTREGA_CORES[pedido.statusEntrega] || 'bg-gray-100 text-gray-600';
     const labels = { ENTREGUE: 'Entregue', ENTREGUE_PARCIAL: 'Parcial', DEVOLVIDO: 'Devolvido' };
@@ -323,7 +361,7 @@ const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar, onEditar }) => 
     const vendedorNome = pedido.vendedor?.nome;
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-2 cursor-pointer" onClick={() => setAberto(!aberto)}>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-2" onClick={() => setAberto(!aberto)}>
             <div className="p-3 md:p-4">
                 {/* Resumo compacto (sempre visível) */}
                 <div className="flex items-center justify-between gap-2 mb-0.5">
@@ -339,6 +377,12 @@ const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar, onEditar }) => 
                                 <Truck className="h-3 w-3" /> {motoristaNome.split(' ')[0]}
                             </span>
                         )}
+                        {/* Vendedor sempre visível no resumo compacto */}
+                        {vendedorNome && (
+                            <span className="text-[10px] text-purple-600 bg-purple-50 px-1 py-0.5 rounded font-semibold flex items-center gap-0.5">
+                                <User className="h-3 w-3" /> {vendedorNome.split(' ')[0]}
+                            </span>
+                        )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                         {pedido.dataEntrega && (
@@ -351,7 +395,12 @@ const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar, onEditar }) => 
                     </div>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                    <p className="font-bold text-[13px] md:text-[15px] text-gray-900 leading-tight truncate">{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}</p>
+                    <button
+                        onClick={e => { e.stopPropagation(); if (onVerCliente && pedido.cliente) onVerCliente(pedido.cliente); }}
+                        className="text-left font-bold text-[13px] md:text-[15px] text-gray-900 leading-tight truncate hover:text-sky-700 transition-colors"
+                    >
+                        {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}
+                    </button>
                     {totalRecebido > 0 && <span className="text-[11px] md:text-[12px] font-bold text-green-700 shrink-0">R$ {totalRecebido.toFixed(2)}</span>}
                 </div>
                 {!aberto && pedido.pagamentosReais?.length > 0 && (
@@ -688,6 +737,7 @@ const RotaLeads = () => {
     const [clientes, setClientes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [busca, setBusca] = useState('');
+    const [clientePopupItem, setClientePopupItem] = useState(null); // popup de dados
 
     // Modais
     const [modalAtendimento, setModalAtendimento] = useState(null); // { tipo: 'lead'|'cliente', item }
@@ -928,9 +978,9 @@ const RotaLeads = () => {
         const mostrarAcoes = aba === 'atendimento';
 
         if (item._tipo === 'cliente') {
-            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} mostrarAcoes={mostrarAcoes} />;
+            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} />;
         }
-        return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} mostrarAcoes={mostrarAcoes} />;
+        return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} />;
     };
 
     const diaBase = getDiaSigla(getDiaBase());
@@ -1058,6 +1108,7 @@ const RotaLeads = () => {
                                             pedido={p}
                                             onCheckout={setCheckoutPedido}
                                             podeCheckout={podeEntregas}
+                                            onVerCliente={setClientePopupItem}
                                         />
                                     ))}
                                 </div>
@@ -1079,6 +1130,7 @@ const RotaLeads = () => {
                                             podeAjustar={podeAjustar}
                                             onEstornar={handleEstornar}
                                             onEditar={setEditarEntregaPedido}
+                                            onVerCliente={setClientePopupItem}
                                         />
                                     ))}
                                 </div>
@@ -1138,6 +1190,21 @@ const RotaLeads = () => {
                         setEditarEntregaPedido(null);
                         carregarEntregas('concluidas');
                         carregarEntregas('pendentes');
+                    }}
+                />
+            )}
+
+            {/* Popup de Dados do Cliente/Lead */}
+            {clientePopupItem && (
+                <ClientePopup
+                    cliente={clientePopupItem}
+                    onClose={() => setClientePopupItem(null)}
+                    onAtualizado={(updated) => {
+                        // Atualiza o GPS localmente sem recarregar tudo
+                        setClientes(prev => prev.map(c =>
+                            c.UUID === updated.UUID ? { ...c, Ponto_GPS: updated.Ponto_GPS } : c
+                        ));
+                        setClientePopupItem(null);
                     }}
                 />
             )}
