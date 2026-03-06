@@ -44,6 +44,16 @@ router.get('/alertas-pendentes', authMiddleware, async (req, res) => {
 });
 
 router.get('/:id/ultimo-km', authMiddleware, veiculoController.ultimoKmFinal);
+router.get('/:id/ultimo-km-abastecimento', authMiddleware, async (req, res) => {
+    try {
+        const veiculoService = require('../services/veiculoService');
+        const dado = await veiculoService.ultimoKmAbastecimento(req.params.id);
+        res.json(dado || null);
+    } catch (error) {
+        console.error('Erro ao buscar último KM abastecimento:', error);
+        res.status(500).json({ error: 'Erro ao buscar último KM.' });
+    }
+});
 router.get('/:id/ficha', authMiddleware, veiculoController.obterFicha);
 router.get('/:id', authMiddleware, veiculoController.obterPorId);
 

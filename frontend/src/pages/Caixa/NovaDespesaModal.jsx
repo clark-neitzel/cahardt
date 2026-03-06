@@ -26,12 +26,14 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
     const [veiculoId, setVeiculoId] = useState('');
     const [litros, setLitros] = useState('');
     const [kmNoAbastecimento, setKmNoAbastecimento] = useState('');
+    const [kmMinimo, setKmMinimo] = useState(null); // último km registrado
     const [tipoManutencao, setTipoManutencao] = useState('');
     const [veiculos, setVeiculos] = useState([]);
     const [saving, setSaving] = useState(false);
+    const [erroKm, setErroKm] = useState(false);
 
     useEffect(() => {
-        api.get('/veiculos').then(res => setVeiculos(res.data || [])).catch(() => {});
+        api.get('/veiculos').then(res => setVeiculos(res.data || [])).catch(() => { });
     }, []);
 
     useEffect(() => {
@@ -46,9 +48,36 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
         }
     }, [despesaEditando]);
 
+    // Quando selecionar veículo em Combustível, busca último km para validação
+    useEffect(() => {
+        if (categoria !== 'COMBUSTIVEL' || !veiculoId) {
+            setKmMinimo(null);
+            return;
+        }
+        api.get(`/veiculos/${veiculoId}/ultimo-km-abastecimento`)
+            .then(res => {
+                if (res.data?.kmNoAbastecimento) {
+                    setKmMinimo(res.data.kmNoAbastecimento);
+                } else {
+                    setKmMinimo(null);
+                }
+            })
+            .catch(() => setKmMinimo(null));
+    }, [veiculoId, categoria]);
+
+    const handleKmChange = (e) => {
+        const v = e.target.value;
+        setKmNoAbastecimento(v);
+        setErroKm(kmMinimo !== null && parseInt(v) < kmMinimo);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!categoria || !valor) return;
+        if (erroKm) {
+            alert(`O KM informado (${kmNoAbastecimento}) é menor que o último abastecimento (${kmMinimo} km). Corrija antes de salvar.`);
+            return;
+        }
 
         try {
             setSaving(true);
@@ -143,14 +172,23 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">KM Hodômetro</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        KM Hodômetro
+                                        {kmMinimo && <span className="ml-1 text-xs text-gray-400">(mín: {kmMinimo.toLocaleString('pt-BR')})</span>}
+                                    </label>
                                     <input
                                         type="number"
                                         value={kmNoAbastecimento}
-                                        onChange={(e) => setKmNoAbastecimento(e.target.value)}
-                                        className="w-full border-gray-300 rounded-md shadow-sm text-sm focus:ring-primary focus:border-primary p-2 border"
-                                        placeholder="Ex: 125430"
+                                        onChange={handleKmChange}
+                                        className={`w-full rounded-md shadow-sm text-sm p-2 border focus:ring-primary focus:border-primary ${erroKm ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                                            }`}
+                                        placeholder={kmMinimo ? `≥ ${kmMinimo.toLocaleString('pt-BR')}` : 'Ex: 125430'}
                                     />
+                                    {erroKm && (
+                                        <p className="text-xs text-red-600 mt-1">
+                                            ⚠️ KM não pode ser menor que o último abastecimento ({kmMinimo?.toLocaleString('pt-BR')})
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </>

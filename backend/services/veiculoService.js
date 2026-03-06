@@ -31,7 +31,7 @@ const veiculoService = {
         return veiculo;
     },
 
-    // Retorna o último KM final registrado para pré-preenchimento do KM inicial
+    // Retorna o último KM final registrado nos diários para pré-preenchimento do KM inicial
     ultimoKmFinal: async (veiculoId) => {
         const ultimo = await prisma.diarioVendedor.findFirst({
             where: { veiculoId, kmFinal: { not: null } },
@@ -39,6 +39,20 @@ const veiculoService = {
             select: { kmFinal: true, dataReferencia: true }
         });
         return ultimo || null;
+    },
+
+    // Retorna o maior KM registrado em abastecimentos para validação ao registrar novo
+    ultimoKmAbastecimento: async (veiculoId) => {
+        const resultado = await prisma.despesa.findFirst({
+            where: {
+                veiculoId,
+                categoria: 'COMBUSTIVEL',
+                kmNoAbastecimento: { not: null }
+            },
+            orderBy: { kmNoAbastecimento: 'desc' },
+            select: { kmNoAbastecimento: true, dataReferencia: true, litros: true }
+        });
+        return resultado || null;
     },
 
     // Ficha completa do veículo com médias calculadas
@@ -72,29 +86,30 @@ const veiculoService = {
             ? Math.round(diariosComKm.reduce((sum, d) => sum + (d.kmFinal - d.kmInicial), 0) / diariosComKm.length)
             : null;
 
-        // Calcular média de consumo real (km/L) a partir dos abastecimentos
-        // Junta abastecimentos com dados de km do diário do mesmo dia e veículo
-        const abastecimentos = veiculo.despesas.filter(d => d.litros && Number(d.litros) > 0);
+        // Calcular média de consumo real (km/L) a partir dos abastecimentos com KM registrado
+        // Lógica: entre cada par de abastecimentos consecutivos, km_percorridos / litros_no_2o_abastecimento
+        const abastecimentos = veiculo.despesas
+            .filter(d => d.litros && Number(d.litros) > 0 && d.kmNoAbastecimento)
+            .map(d => ({ litros: Number(d.litros), km: d.kmNoAbastecimento, data: d.dataReferencia, id: d.id }))
+            .sort((a, b) => a.km - b.km); // ordena por km crescente
+
         let consumoMedioReal = null;
+        const parcelasConsumo = [];
+
         if (abastecimentos.length >= 2) {
-            // Precisa de pelo menos 2 abastecimentos para calcular (entre-pontos)
-            // Busca diários correspondentes por data
-            const diasAbastecimento = abastecimentos.map(a => a.dataReferencia);
-            const diariosMap = {};
-            veiculo.diarios.forEach(d => { diariosMap[d.dataReferencia] = d; });
+            // Calcula eficiência de cada segmento: km rodados / litros do abastecimento seguinte
+            // Ex: KM 1000 → 1100 (+100km) com 10L no 2o abastecimento = 10 km/L
+            for (let i = 1; i < abastecimentos.length; i++) {
+                const kmRodados = abastecimentos[i].km - abastecimentos[i - 1].km;
+                const litrosNoPonto = abastecimentos[i].litros;
+                if (kmRodados > 0 && litrosNoPonto > 0) {
+                    parcelasConsumo.push(parseFloat((kmRodados / litrosNoPonto).toFixed(2)));
+                }
+            }
 
-            const pontos = abastecimentos
-                .map(a => {
-                    const diario = diariosMap[a.dataReferencia];
-                    return diario ? { litros: Number(a.litros), kmFinal: diario.kmFinal } : null;
-                })
-                .filter(Boolean)
-                .sort((a, b) => a.kmFinal - b.kmFinal);
-
-            if (pontos.length >= 2) {
-                const totalLitros = pontos.reduce((s, p) => s + p.litros, 0);
-                const kmTotal = pontos[pontos.length - 1].kmFinal - pontos[0].kmFinal;
-                consumoMedioReal = totalLitros > 0 ? parseFloat((kmTotal / totalLitros).toFixed(2)) : null;
+            if (parcelasConsumo.length > 0) {
+                const somaConsumo = parcelasConsumo.reduce((s, v) => s + v, 0);
+                consumoMedioReal = parseFloat((somaConsumo / parcelasConsumo.length).toFixed(2));
             }
         }
 
@@ -103,6 +118,10 @@ const veiculoService = {
 
         return {
             ...veiculo,
+            // Retorna abastecimentos já ordenados com kmNoAbastecimento
+            despesas: abastecimentos.length > 0
+                ? [...abastecimentos].sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0)) // desc para exibição
+                : veiculo.despesas.filter(d => d.categoria === 'COMBUSTIVEL' || d.litros),
             stats: {
                 kmAtual,
                 kmMedioPorDia,
