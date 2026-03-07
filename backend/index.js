@@ -24,6 +24,7 @@ const embarqueRoutes = require('./routes/embarques'); // Módulo de Formação d
 const entregasRoutes = require('./routes/entregas'); // Módulo Mobile do Entregador
 const despesasRoutes = require('./routes/despesas'); // Módulo de Despesas
 const caixaRoutes = require('./routes/caixa'); // Módulo Caixa Diário
+const adminResetRoutes = require('./routes/adminReset'); // Reset Transacional (Admin)
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -65,6 +66,7 @@ app.use('/api/embarques', embarqueRoutes); // Montagem Cargas e Despacho Logíst
 app.use('/api/entregas', entregasRoutes); // App Motorista
 app.use('/api/despesas', despesasRoutes); // Módulo de Despesas
 app.use('/api/caixa', caixaRoutes); // Módulo Caixa Diário
+app.use('/api/admin', adminResetRoutes); // Admin: Reset, Utilitários
 
 app.use('/api/migrations', migrationRoutes); // Migration endpoint
 
