@@ -9,6 +9,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
     const [loading, setLoading] = useState(true);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [removerLoader, setRemoverLoader] = useState(null);
+    const [showPreview, setShowPreview] = useState(false);
 
     // Referencia para o Print
     const printRef = useRef();
@@ -108,22 +109,33 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4 py-8">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
-                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 rounded-t-lg">
+                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 rounded-t-lg shadow-sm z-10">
                     <h3 className="text-lg font-bold text-gray-900 flex items-center">
-                        <Package className="h-5 w-5 mr-2 text-sky-600" />
-                        Gerenciamento da Carga #{embarque?.numero || '...'}
+                        {showPreview ? <Printer className="h-5 w-5 mr-2 text-sky-600" /> : <Package className="h-5 w-5 mr-2 text-sky-600" />}
+                        {showPreview ? `Pré-visualização (Romaneio Carga #${embarque?.numero || '...'})` : `Gerenciamento da Carga #${embarque?.numero || '...'}`}
                     </h3>
                     <div className="flex space-x-2">
-                        <button onClick={handlePrint} disabled={!embarque} className="p-2 text-sky-600 hover:bg-sky-100 rounded-md transition-colors" title="Imprimir PDF (Romaneio e Separação)">
-                            <Printer className="h-5 w-5" />
-                        </button>
-                        <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-500 rounded-md">
-                            <X className="h-5 w-5" />
-                        </button>
+                        {showPreview ? (
+                            <>
+                                <button onClick={() => setShowPreview(false)} className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 hover:bg-gray-100 rounded-md transition-colors shadow-sm">Voltar</button>
+                                <button onClick={handlePrint} className="px-4 py-2 text-sm font-bold bg-sky-600 hover:bg-sky-700 text-white rounded-md flex items-center shadow-md">
+                                    <Printer className="h-4 w-4 mr-2" /> Imprimir Agora
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button onClick={() => setShowPreview(true)} disabled={!embarque} className="p-2 text-sky-600 bg-sky-50 hover:bg-sky-100 border border-sky-100 rounded-md transition-colors" title="Visualizar e Imprimir (PDF)">
+                                    <Printer className="h-5 w-5" />
+                                </button>
+                                <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-500 rounded-md">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 bg-white">
+                <div className={`flex-1 overflow-y-auto p-4 md:p-6 bg-white ${showPreview ? 'hidden' : 'block'}`}>
                     {loading ? (
                         <div className="text-center py-20 text-gray-500">Lendo escopo do caminhão...</div>
                     ) : !embarque ? (
@@ -205,9 +217,22 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                 />
             )}
 
-            {/* DOM HIDDEN PARA IMPRESSAO EM A4 */}
-            <div className="hidden">
-                <div ref={printRef} className="print-container">
+            {/* DOM PARA PREVIEW E IMPRESSAO EM A4 */}
+            <div className={showPreview ? "flex-1 overflow-y-auto bg-gray-200 p-4 print:-m-4 print:p-0" : "hidden"}>
+                <div ref={printRef} className="print-container print-preview bg-white mx-auto shadow-md border border-gray-300 relative text-gray-900" style={{ minHeight: '297mm', maxWidth: '210mm', padding: '15mm' }}>
+                    <style>
+                        {`
+                          .print-preview table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                          .print-preview th, .print-preview td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
+                          .print-preview th { background-color: #f3f4f6; color: #333; }
+                          .print-preview h1 { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #111; }
+                          .print-preview h2 { font-size: 14px; font-weight: bold; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px; color: #333; }
+                          @media print {
+                              .print-preview { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
+                              .page-break { page-break-before: always; }
+                          }
+                        `}
+                    </style>
                     {/* Página 1: Roteiro Motorista */}
                     <h1>Roteiro de Entrega Oficial - Carga #${embarque?.numero || '000'}</h1>
                     <div className="text-sm" style={{ marginBottom: '20px' }}>

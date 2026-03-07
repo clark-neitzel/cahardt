@@ -89,9 +89,6 @@ const Layout = ({ children }) => {
                 {hasPermission('Pode_Ver_Todas_Entregas') && (
                   <NavLink to="/entregas" className={({ isActive }) => getNavLinkClass(isActive)}>Entregas</NavLink>
                 )}
-                {hasPermission('Pode_Executar_Entregas') && (
-                  <NavLink to="/minhas-entregas" className={({ isActive }) => getNavLinkClass(isActive)}>Rota Motorista</NavLink>
-                )}
                 {hasPermission('Pode_Acessar_Caixa') && (
                   <NavLink to="/caixa" className={({ isActive }) => getNavLinkClass(isActive)}>Caixa</NavLink>
                 )}
@@ -185,9 +182,6 @@ const Layout = ({ children }) => {
               )}
               {hasPermission('Pode_Ver_Todas_Entregas') && (
                 <NavLink to="/entregas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Entregas</NavLink>
-              )}
-              {hasPermission('Pode_Executar_Entregas') && (
-                <NavLink to="/minhas-entregas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Rota Motorista</NavLink>
               )}
               {hasPermission('Pode_Acessar_Caixa') && (
                 <NavLink to="/caixa" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Caixa</NavLink>
