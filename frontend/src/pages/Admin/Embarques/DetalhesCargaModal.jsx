@@ -107,6 +107,20 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
     }
 
     if (showPreview) {
+        // Lógica de Paginação Artificial (40 por página)
+        const CHUNK_SIZE = 40;
+        const chunkArray = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size));
+
+        const pedidosPaginados = chunkArray(embarque?.pedidos || [], CHUNK_SIZE);
+        if (pedidosPaginados.length === 0) pedidosPaginados.push([]); // Garante Pelo menos 1 página vazia
+
+        const arrConsolidado = Object.entries(consolidado).sort((a, b) => a[0].localeCompare(b[0]));
+        const produtosPaginados = chunkArray(arrConsolidado, CHUNK_SIZE);
+        if (produtosPaginados.length === 0) produtosPaginados.push([]);
+
+        const totalPages = pedidosPaginados.length + produtosPaginados.length;
+        let globalPageCount = 1;
+
         return (
             <div className="fixed inset-0 z-[9999] bg-gray-800 overflow-y-auto flex flex-col print:bg-white print:overflow-visible text-gray-900 font-sans">
                 {/* ActionBar Fixa */}
@@ -135,101 +149,123 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                             .print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; color: #000; text-transform: uppercase; }
                             .print-container h2 { font-size: 11px; font-weight: bold; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px; color: #000; }
                             @media print {
-                                .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 0 !important; }
+                                @page { size: A4 portrait; margin: 10mm; }
+                                .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 0 !important; page-break-after: always; }
+                                /* Evita página em branco extra no final do documento */
+                                .print-page:last-child { page-break-after: auto; }
                                 .page-break { page-break-before: always; }
                                 .print-container { transform: scale(1) !important; margin: 0 !important; }
                             }
                             `}
                         </style>
 
-                        {/* Página 1 */}
-                        <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '10mm 15mm' }}>
-                            <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">Página 1 de 2</div>
+                        {/* Paginação do Roteiro */}
+                        {pedidosPaginados.map((chunkPedidos, idx) => {
+                            const thisPage = globalPageCount++;
+                            return (
+                                <React.Fragment key={`roteiro-${idx}`}>
+                                    <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '10mm 15mm' }}>
+                                        <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">
+                                            Página {thisPage} de {totalPages}
+                                        </div>
 
-                            <h1>Roteiro de Entrega - Carga #{embarque?.numero || '000'}</h1>
-                            <div className="text-[9px] flex justify-between border-b border-gray-400 pb-2 mb-2">
-                                <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
-                                <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
-                                <div><strong>Qtd NFs:</strong> {embarque?.pedidos?.length || 0}</div>
-                            </div>
+                                        <h1>Roteiro de Entrega - Carga #{embarque?.numero || '000'} {pedidosPaginados.length > 1 ? `(Pt. ${idx + 1})` : ''}</h1>
+                                        <div className="text-[9px] flex justify-between border-b border-gray-400 pb-2 mb-2">
+                                            <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
+                                            <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
+                                            <div><strong>Qtd NFs (Total):</strong> {embarque?.pedidos?.length || 0}</div>
+                                        </div>
 
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th style={{ width: '5%' }}>Nº</th>
-                                        <th style={{ width: '25%' }}>Cliente (Razão / Fantasia)</th>
-                                        <th style={{ width: '20%' }}>Observação</th>
-                                        <th style={{ width: '12%' }}>Pgto</th>
-                                        <th style={{ width: '10%' }}>Valor</th>
-                                        <th style={{ width: '28%' }}>Entrega (Check)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {embarque?.pedidos?.map(p => {
-                                        // Calcula Total do Pedido
-                                        const totalPedido = p.itens?.reduce((acc, i) => acc + (Number(i.valor || 0) * Number(i.quantidade || 0)), 0) || 0;
-                                        const pgto = p.opcaoCondicaoPagamento || p.tipoPagamento || '-';
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th style={{ width: '5%' }}>Nº</th>
+                                                    <th style={{ width: '25%' }}>Cliente (Razão / Fantasia)</th>
+                                                    <th style={{ width: '20%' }}>Observação</th>
+                                                    <th style={{ width: '12%' }}>Pgto</th>
+                                                    <th style={{ width: '10%' }}>Valor</th>
+                                                    <th style={{ width: '28%' }}>Entrega (Check)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {chunkPedidos.map(p => {
+                                                    const totalPedido = p.itens?.reduce((acc, i) => acc + (Number(i.valor || 0) * Number(i.quantidade || 0)), 0) || 0;
+                                                    const pgto = p.opcaoCondicaoPagamento || p.tipoPagamento || '-';
 
-                                        return (
-                                            <tr key={p.id}>
-                                                <td className="font-bold text-center">{p.numero || 'N/A'}</td>
-                                                <td>
-                                                    <div className="font-bold truncate max-w-[150px]">{p.cliente?.NomeFantasia}</div>
-                                                    <div className="text-[7px] text-gray-700 truncate max-w-[150px]">{p.cliente?.Nome}</div>
-                                                </td>
-                                                <td className="text-[7px] italic">{p.observacoes || ''}</td>
-                                                <td className="text-[7px] truncate max-w-[70px]">{pgto}</td>
-                                                <td className="font-mono text-right">R$ {totalPedido.toFixed(2)}</td>
-                                                <td className="text-[8px] whitespace-nowrap">
-                                                    [  ] Total &nbsp; [  ] Parcial &nbsp; [  ] Devolução
-                                                </td>
-                                            </tr>
-                                        )
-                                    })}
-                                    {embarque?.pedidos?.length === 0 && (
-                                        <tr><td colSpan="6" style={{ textAlign: 'center' }}>Vazio.</td></tr>
+                                                    return (
+                                                        <tr key={p.id}>
+                                                            <td className="font-bold text-center">{p.numero || 'N/A'}</td>
+                                                            <td>
+                                                                <div className="font-bold truncate max-w-[150px]">{p.cliente?.NomeFantasia}</div>
+                                                                <div className="text-[7px] text-gray-700 truncate max-w-[150px]">{p.cliente?.Nome}</div>
+                                                            </td>
+                                                            <td className="text-[7px] italic">{p.observacoes || ''}</td>
+                                                            <td className="text-[7px] truncate max-w-[70px]">{pgto}</td>
+                                                            <td className="font-mono text-right">R$ {totalPedido.toFixed(2)}</td>
+                                                            <td className="text-[8px] whitespace-nowrap">
+                                                                [  ] Total &nbsp; [  ] Parcial &nbsp; [  ] Devolução
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                })}
+                                                {chunkPedidos.length === 0 && (
+                                                    <tr><td colSpan="6" style={{ textAlign: 'center' }}>Vazio.</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="w-full border-b-2 border-dashed border-gray-600 print:hidden relative h-4"></div>
+                                </React.Fragment>
+                            );
+                        })}
+
+                        {/* Paginação da Separação */}
+                        {produtosPaginados.map((chunkProdutos, idx) => {
+                            const thisPage = globalPageCount++;
+                            return (
+                                <React.Fragment key={`separacao-${idx}`}>
+                                    <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '10mm 15mm' }}>
+                                        <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">
+                                            Página {thisPage} de {totalPages}
+                                        </div>
+
+                                        <h1>Separação Produtos - Carga #{embarque?.numero || '000'} {produtosPaginados.length > 1 ? `(Pt. ${idx + 1})` : ''}</h1>
+                                        <div className="text-[9px] flex justify-between border-b border-gray-400 pb-2 mb-2">
+                                            <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
+                                            <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
+                                        </div>
+
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th style={{ width: '55%' }}>Produto</th>
+                                                    <th style={{ width: '10%' }}>Unidade</th>
+                                                    <th style={{ width: '20%', textAlign: 'center' }}>Quantidade</th>
+                                                    <th style={{ width: '15%', textAlign: 'center' }}>Conferido</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {chunkProdutos.map(([nome, info]) => (
+                                                    <tr key={nome}>
+                                                        <td className="font-bold">{nome}</td>
+                                                        <td className="text-center">{info.und}</td>
+                                                        <td className="text-center font-bold">{Number(info.qtde).toFixed(2)}</td>
+                                                        <td></td>
+                                                    </tr>
+                                                ))}
+                                                {chunkProdutos.length === 0 && (
+                                                    <tr><td colSpan="4" style={{ textAlign: 'center' }}>Nenhum produto atrelado.</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {/* Adiciona separador web a menos que seja a ultima pagina gerada */}
+                                    {idx < produtosPaginados.length - 1 && (
+                                        <div className="w-full border-b-2 border-dashed border-gray-600 print:hidden relative h-4"></div>
                                     )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Linha separadora virtual de páginas (apenas no browser) */}
-                        <div className="w-full border-b-2 border-dashed border-gray-600 print:hidden relative h-4"></div>
-
-                        {/* Página 2 */}
-                        <div className="print-page page-break bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '10mm 15mm' }}>
-                            <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">Página 2 de 2</div>
-
-                            <h1>Separação Produtos - Carga #{embarque?.numero || '000'}</h1>
-                            <div className="text-[9px] flex justify-between border-b border-gray-400 pb-2 mb-2">
-                                <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
-                                <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
-                            </div>
-
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th style={{ width: '55%' }}>Produto</th>
-                                        <th style={{ width: '10%' }}>Unidade</th>
-                                        <th style={{ width: '20%', textAlign: 'center' }}>Quantidade</th>
-                                        <th style={{ width: '15%', textAlign: 'center' }}>Conferido</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {Object.entries(consolidado).sort((a, b) => a[0].localeCompare(b[0])).map(([nome, info]) => (
-                                        <tr key={nome}>
-                                            <td className="font-bold">{nome}</td>
-                                            <td className="text-center">{info.und}</td>
-                                            <td className="text-center font-bold">{Number(info.qtde).toFixed(2)}</td>
-                                            <td></td>
-                                        </tr>
-                                    ))}
-                                    {Object.keys(consolidado).length === 0 && (
-                                        <tr><td colSpan="4" style={{ textAlign: 'center' }}>Nenhum produto atrelado.</td></tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                </React.Fragment>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
