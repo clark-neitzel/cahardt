@@ -18,6 +18,7 @@ import RotaLeads from './pages/Rota/RotaLeads';
 import Login from './pages/Login/Login';
 import PainelEmbarque from './pages/Admin/Embarques/PainelEmbarque';
 import AuditoriaEntregas from './pages/Admin/Embarques/AuditoriaEntregas';
+import ListaEntregasGerencial from './pages/Admin/Embarques/ListaEntregasGerencial';
 import FormasPagamentoEntrega from './pages/Configuracoes/FormasPagamentoEntrega';
 import PainelMotorista from './pages/Motorista/Entregas/PainelMotorista';
 import DespesasPage from './pages/Caixa/DespesasPage';
@@ -85,8 +86,11 @@ const Layout = ({ children }) => {
                 {hasPermission('Pode_Acessar_Embarque') && (
                   <NavLink to="/admin/embarques" className={({ isActive }) => getNavLinkClass(isActive)}>Embarque</NavLink>
                 )}
+                {hasPermission('Pode_Ver_Todas_Entregas') && (
+                  <NavLink to="/entregas" className={({ isActive }) => getNavLinkClass(isActive)}>Entregas</NavLink>
+                )}
                 {hasPermission('Pode_Executar_Entregas') && (
-                  <NavLink to="/minhas-entregas" className={({ isActive }) => getNavLinkClass(isActive)}>Entregas</NavLink>
+                  <NavLink to="/minhas-entregas" className={({ isActive }) => getNavLinkClass(isActive)}>Rota Motorista</NavLink>
                 )}
                 {hasPermission('Pode_Acessar_Caixa') && (
                   <NavLink to="/caixa" className={({ isActive }) => getNavLinkClass(isActive)}>Caixa</NavLink>
@@ -179,8 +183,11 @@ const Layout = ({ children }) => {
               {hasPermission('Pode_Acessar_Embarque') && (
                 <NavLink to="/admin/embarques" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Embarque</NavLink>
               )}
+              {hasPermission('Pode_Ver_Todas_Entregas') && (
+                <NavLink to="/entregas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Entregas</NavLink>
+              )}
               {hasPermission('Pode_Executar_Entregas') && (
-                <NavLink to="/minhas-entregas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Entregas</NavLink>
+                <NavLink to="/minhas-entregas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Rota Motorista</NavLink>
               )}
               {hasPermission('Pode_Acessar_Caixa') && (
                 <NavLink to="/caixa" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Caixa</NavLink>
@@ -258,6 +265,9 @@ function App() {
               {/* Clientes */}
               <Route path="/clientes" element={<PrivateRoute tab="clientes"><ListaClientes /></PrivateRoute>} />
               <Route path="/clientes/:uuid" element={<PrivateRoute tab="clientes"><DetalheCliente /></PrivateRoute>} />
+
+              {/* LISTA GERENCIAL DE ENTREGAS */}
+              <Route path="/entregas" element={<PrivateRoute tab="Pode_Ver_Todas_Entregas"><ListaEntregasGerencial /></PrivateRoute>} />
 
               {/* ROTAS DO MOTORISTA (APP MOBILE) */}
               <Route path="/minhas-entregas" element={<PrivateRoute tab="Pode_Executar_Entregas"><PainelMotorista /></PrivateRoute>} />

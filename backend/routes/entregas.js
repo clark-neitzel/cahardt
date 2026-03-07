@@ -349,6 +349,79 @@ router.get('/auditoria', verificarAuth, checkAuditor, async (req, res) => {
 });
 
 // ==========================================
+// 4b. ADMIN: LISTAGEM GERENCIAL (LOGÍSTICA COMPLETA)
+// ==========================================
+router.get('/gerencial', verificarAuth, checkAuditor, async (req, res) => {
+    try {
+        const { search, dataInicio, dataFim, vendedorId, entregadorId, status, page = 1, limit = 20 } = req.query;
+        const skip = (Number(page) - 1) * Number(limit);
+
+        const where = {};
+
+        // Filtros (Só finalizadas, assim como na auditoria, ou PENDENTES tbm? O usuario diz "entregas realizadas")
+        if (status) {
+            where.statusEntrega = status;
+        } else {
+            where.statusEntrega = { not: 'PENDENTE' }; // Default: apenas já realizadas
+        }
+
+        if (search) {
+            where.cliente = {
+                OR: [
+                    { NomeFantasia: { contains: search, mode: 'insensitive' } },
+                    { Nome: { contains: search, mode: 'insensitive' } },
+                    { Documento: { contains: search } }
+                ]
+            };
+        }
+
+        if (vendedorId) where.vendedorId = vendedorId;
+
+        if (entregadorId) {
+            where.embarque = { responsavelId: entregadorId };
+        }
+
+        if (dataInicio || dataFim) {
+            where.dataEntrega = {};
+            if (dataInicio) {
+                where.dataEntrega.gte = new Date(`${dataInicio}T00:00:00.000Z`);
+            }
+            if (dataFim) {
+                where.dataEntrega.lte = new Date(`${dataFim}T23:59:59.999Z`);
+            }
+        }
+
+        const [total, entregas] = await prisma.$transaction([
+            prisma.pedido.count({ where }),
+            prisma.pedido.findMany({
+                where,
+                include: {
+                    cliente: { select: { NomeFantasia: true, Nome: true, Documento: true, End_Cidade: true } },
+                    embarque: { select: { numero: true, responsavel: { select: { id: true, nome: true } } } },
+                    vendedor: { select: { id: true, nome: true } },
+                    itens: { include: { produto: { select: { nome: true } } } },
+                    itensDevolvidos: { include: { produto: { select: { nome: true } } } },
+                    pagamentosReais: true
+                },
+                orderBy: { dataEntrega: 'desc' },
+                skip,
+                take: Number(limit)
+            })
+        ]);
+
+        const totalPages = Math.ceil(total / Number(limit));
+
+        res.json({
+            data: entregas,
+            meta: { total, totalPages, currentPage: Number(page) }
+        });
+    } catch (error) {
+        console.error('Erro ao listar entregas gerencial:', error);
+        res.status(500).json({ error: 'Erro ao buscar dados logísticos.' });
+    }
+});
+
+// ==========================================
 // 5. ADMIN FINANCEIRO: ESTORNO LOGÍSTICO (UNDO)
 // ==========================================
 router.delete('/:id/estorno', verificarAuth, checkAjustador, async (req, res) => {
