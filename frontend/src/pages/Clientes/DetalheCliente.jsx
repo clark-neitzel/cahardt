@@ -222,8 +222,9 @@ const DetalheCliente = () => {
 
                                     return (
                                         <div key={`ped-${pedido.id}`} className="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
+                                            {/* Header do Pedido */}
                                             <div className="flex items-center justify-between mb-3 border-b border-blue-50 pb-2">
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2 flex-wrap">
                                                     <span className="text-xs font-bold bg-blue-600 text-white px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
                                                         <ShoppingCart className="h-3 w-3" />
                                                         PEDIDO {pedido.numero ? `#${pedido.numero}` : ''}
@@ -233,10 +234,21 @@ const DetalheCliente = () => {
                                                             pedido.statusEnvio === 'ENVIAR' ? 'bg-blue-100 text-blue-700' :
                                                                 'bg-gray-100 text-gray-600'
                                                         }`}>{pedido.statusEnvio}</span>
+                                                    {/* Badge entrega */}
+                                                    {pedido.statusEntrega && pedido.statusEntrega !== 'PENDENTE' && (
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase flex items-center gap-0.5 ${pedido.statusEntrega === 'ENTREGUE' ? 'bg-green-50 text-green-700 border border-green-200' :
+                                                                pedido.statusEntrega === 'ENTREGUE_PARCIAL' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                                                    'bg-red-50 text-red-700 border border-red-200'
+                                                            }`}>
+                                                            <Package className="h-2.5 w-2.5" />
+                                                            {pedido.statusEntrega === 'ENTREGUE' ? 'Entregue' : pedido.statusEntrega === 'ENTREGUE_PARCIAL' ? 'Parcial' : 'Devolvido'}
+                                                            {pedido.dataEntrega && ` · ${new Date(pedido.dataEntrega).toLocaleDateString('pt-BR')}`}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
 
-                                            {/* Detalhes do Pedido (Novo Header 2 colunas) */}
+                                            {/* Meta do pedido */}
                                             <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1 mb-3 bg-white p-2 rounded border border-gray-100">
                                                 <div className="text-[10px] text-gray-500 flex items-center gap-1">
                                                     <Calendar className="h-3 w-3 text-gray-400" />
@@ -254,30 +266,76 @@ const DetalheCliente = () => {
                                                     <Phone className="h-3 w-3 text-gray-400" />
                                                     <span className="font-medium text-gray-700">Tipo de Atendimento:</span> {fmtCanal(pedido.canalOrigem)}
                                                 </div>
-                                                <div className="text-[10px] text-gray-500 flex items-center gap-1">
-                                                    <User className="h-3 w-3 text-gray-400" />
-                                                    <span className="font-medium text-gray-700">Por:</span> {pedido.usuarioLancamento?.nome || 'Lançamento App'}
-                                                </div>
+                                                {pedido.usuarioLancamento?.nome && (
+                                                    <div className="text-[10px] text-gray-500 flex items-center gap-1 col-span-2">
+                                                        <User className="h-3 w-3 text-gray-400" />
+                                                        <span className="font-medium text-gray-700">Digitado por:</span> {pedido.usuarioLancamento.nome}
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Itens do pedido */}
                                             {pedido.itens && pedido.itens.length > 0 && (
                                                 <div className="mt-2 space-y-1">
-                                                    {pedido.itens.map(it => (
-                                                        <div key={it.id} className="flex items-center justify-between text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded">
-                                                            <span className="flex items-center gap-1">
-                                                                <Package className="h-3 w-3 text-gray-400" />
-                                                                {it.produto?.nome || it.descricao || 'Produto'}
-                                                            </span>
-                                                            <span className="font-semibold text-gray-800 shrink-0 ml-2">
-                                                                {Number(it.quantidade)}x R$ {Number(it.valor).toFixed(2).replace('.', ',')}
-                                                            </span>
+                                                    {pedido.itens.map(it => {
+                                                        const qtdDevolvida = pedido.itensDevolvidos?.filter(d => d.produtoId === it.produtoId)?.reduce((s, d) => s + Number(d.quantidade), 0) || 0;
+                                                        const qtdEntregue = Number(it.quantidade) - qtdDevolvida;
+                                                        return (
+                                                            <div key={it.id} className="flex items-center justify-between text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded">
+                                                                <span className="flex items-center gap-1">
+                                                                    <Package className="h-3 w-3 text-gray-400" />
+                                                                    {it.produto?.nome || it.descricao || 'Produto'}
+                                                                </span>
+                                                                <span className="font-semibold text-gray-800 shrink-0 ml-2">
+                                                                    {qtdDevolvida > 0
+                                                                        ? <>{qtdEntregue}x <span className="text-green-600">entregue</span> · <span className="text-red-500 line-through">{Number(it.quantidade)}x</span></>
+                                                                        : <>{Number(it.quantidade)}x</>
+                                                                    } R$ {Number(it.valor).toFixed(2).replace('.', ',')}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            {/* Pagamentos Reais (se entregue) */}
+                                            {pedido.pagamentosReais && pedido.pagamentosReais.length > 0 && (
+                                                <div className="mt-3 bg-green-50 border border-green-100 rounded-lg p-2">
+                                                    <p className="text-[10px] font-bold text-green-700 uppercase tracking-wide mb-1 flex items-center gap-1">
+                                                        <DollarSign className="h-3 w-3" /> Pagamentos Recebidos
+                                                    </p>
+                                                    {pedido.pagamentosReais.map((pg, idx) => (
+                                                        <div key={idx} className="flex justify-between text-xs text-green-800 font-medium">
+                                                            <span>{pg.formaPagamentoNome}</span>
+                                                            <span>R$ {Number(pg.valor).toFixed(2).replace('.', ',')}</span>
                                                         </div>
                                                     ))}
                                                 </div>
                                             )}
 
-                                            {/* Observação e total */}
+                                            {/* Itens Devolvidos (se parcial) */}
+                                            {pedido.itensDevolvidos && pedido.itensDevolvidos.length > 0 && (
+                                                <div className="mt-2 bg-red-50 border border-red-100 rounded-lg p-2">
+                                                    <p className="text-[10px] font-bold text-red-600 uppercase tracking-wide mb-1 flex items-center gap-1">
+                                                        <Package className="h-3 w-3" /> Itens Devolvidos
+                                                    </p>
+                                                    {pedido.itensDevolvidos.map((d, idx) => (
+                                                        <div key={idx} className="text-xs text-red-700">
+                                                            {d.produto?.nome || d.produtoId} · {Number(d.quantidade)}x (R$ {Number(d.valorBaseItem).toFixed(2).replace('.', ',')}/un)
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Motivo da Devolução */}
+                                            {pedido.motivoDevolucao && (
+                                                <div className="mt-2 bg-amber-50 border border-amber-100 rounded-lg p-2">
+                                                    <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide mb-0.5">Motivo da Devolução</p>
+                                                    <p className="text-xs text-amber-800 italic">"{pedido.motivoDevolucao}"</p>
+                                                </div>
+                                            )}
+
+                                            {/* Total e observações */}
                                             <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
                                                 {pedido.observacoes ? (
                                                     <p className="text-xs text-gray-500 italic flex-1 mr-3">{pedido.observacoes}</p>

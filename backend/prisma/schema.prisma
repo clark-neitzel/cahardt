@@ -187,6 +187,8 @@ model Pedido {
   dataEntrega          DateTime? @map("data_entrega")
   gpsEntrega           String?   @map("gps_entrega")
   divergenciaPagamento Boolean   @default(false) @map("divergencia_pagamento")
+  motivoDevolucao      String?   @map("motivo_devolucao") @db.Text // Motivo geral da devolução (parcial ou total)
+  observacaoEntrega    String?   @map("observacao_entrega") @db.Text // Observação geral do motorista na entrega
 
   pagamentosReais      PedidoPagamentoReal[]
   itensDevolvidos      EntregaItemDevolvido[]

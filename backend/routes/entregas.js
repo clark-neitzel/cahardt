@@ -148,7 +148,7 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
 router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, res) => {
     try {
         const { id } = req.params;
-        const { statusEntrega, gpsEntrega, divergenciaPagamento, pagamentos, itensDevolvidos } = req.body;
+        const { statusEntrega, gpsEntrega, divergenciaPagamento, pagamentos, itensDevolvidos, motivoDevolucao, observacaoEntrega } = req.body;
 
         if (!['ENTREGUE', 'ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(statusEntrega)) {
             return res.status(400).json({ error: 'Status de Entrega inválido.' });
@@ -228,8 +228,10 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
                 data: {
                     statusEntrega,
                     gpsEntrega: gpsEntrega || null,
-                    divergenciaPagamento: divergenciaPagamento || false, // Quando o vendedor previu A Prazo mas o cara pagou PIX na hora.
-                    dataEntrega: new Date()
+                    divergenciaPagamento: divergenciaPagamento || false,
+                    dataEntrega: new Date(),
+                    motivoDevolucao: motivoDevolucao || null,
+                    observacaoEntrega: observacaoEntrega || null
                 }
             });
 
@@ -259,7 +261,7 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
 router.patch('/:id/editar', verificarAuth, checkAjustador, async (req, res) => {
     try {
         const { id } = req.params;
-        const { statusEntrega, divergenciaPagamento, pagamentos, itensDevolvidos } = req.body;
+        const { statusEntrega, divergenciaPagamento, pagamentos, itensDevolvidos, motivoDevolucao, observacaoEntrega } = req.body;
 
         const pedido = await prisma.pedido.findUnique({ where: { id }, include: { itens: true } });
         if (!pedido) return res.status(404).json({ error: 'Pedido não localizado.' });
@@ -274,6 +276,8 @@ router.patch('/:id/editar', verificarAuth, checkAjustador, async (req, res) => {
             const updateData = {};
             if (statusEntrega) updateData.statusEntrega = statusEntrega;
             if (divergenciaPagamento !== undefined) updateData.divergenciaPagamento = divergenciaPagamento;
+            if (motivoDevolucao !== undefined) updateData.motivoDevolucao = motivoDevolucao || null;
+            if (observacaoEntrega !== undefined) updateData.observacaoEntrega = observacaoEntrega || null;
             if (Object.keys(updateData).length > 0) {
                 await tx.pedido.update({ where: { id }, data: updateData });
             }

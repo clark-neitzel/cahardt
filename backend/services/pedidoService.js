@@ -26,6 +26,14 @@ const pedidoService = {
                     include: {
                         produto: { select: { nome: true, codigo: true } }
                     }
+                },
+                itensDevolvidos: {
+                    include: {
+                        produto: { select: { nome: true } }
+                    }
+                },
+                pagamentosReais: {
+                    select: { formaPagamentoNome: true, valor: true }
                 }
             },
             orderBy: { createdAt: 'desc' }

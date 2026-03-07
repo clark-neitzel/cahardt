@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, Package, ArrowRight, Save, Navigation, DollarSign, AlertCircle, Trash2, Plus } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, CheckCircle, Package, ArrowRight, Save, Navigation, DollarSign, AlertCircle, Trash2, Plus, Mic, MicOff, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 import entregasService from '../../../services/entregasService';
 import formasPagamentoService from '../../../services/formasPagamentoService';
@@ -18,6 +18,11 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     const [pagamentos, setPagamentos] = useState([]);
     const [formasDisp, setFormasDisp] = useState([]);
     const [loadingFormas, setLoadingFormas] = useState(false);
+
+    // Motivo de Devolução
+    const [motivoDevolucao, setMotivoDevolucao] = useState('');
+    const [gravandoVoz, setGravandoVoz] = useState(false);
+    const recognitionRef = useRef(null);
 
     // Geolocation
     const [gpsCoords, setGpsCoords] = useState(null);
@@ -116,13 +121,12 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
         if (s === 'ENTREGUE') {
             setItensDevolvidos(itensDevolvidos.map(i => ({ ...i, quantidadeDevolvida: 0 })));
             autoPopularPagamento(totalBrutoOriginal);
-            setStep(3); // Pula direto pro Caixa
+            setStep(3);
         } else if (s === 'DEVOLVIDO') {
-            // Conta morre
-            setItensDevolvidos(itensDevolvidos.map(i => ({ ...i, quantidadeDevolvida: i.maximo }))); // Tudo Devolvido
-            setStep(4); // Pula direto pra Assinatura / GPS
+            setItensDevolvidos(itensDevolvidos.map(i => ({ ...i, quantidadeDevolvida: i.maximo })));
+            setStep(5); // Step 5 = Motivo obrigatório
         } else if (s === 'ENTREGUE_PARCIAL') {
-            setStep(2); // Vai pro Carrinho Reverso
+            setStep(2);
         }
     };
 
@@ -148,7 +152,9 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
         if (!temDevolucao) {
             return toast.error('Se você marcou PARCIAL, deve registrar ao menos 1 item devolvido ou riscado.');
         }
-        // saldoLiquidoDevedor já é calculado do estado atualizado de itensDevolvidos
+        if (!motivoDevolucao.trim()) {
+            return toast.error('Informe o motivo da devolução antes de avançar.');
+        }
         const saldoPos = Number((totalBrutoOriginal - itensDevolvidos.reduce((a, i) => a + (i.quantidadeDevolvida * i.valorBaseItem), 0)).toFixed(2));
         autoPopularPagamento(saldoPos);
         setStep(3);
@@ -238,6 +244,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                 statusEntrega: statusFinal,
                 gpsEntrega: gpsCoords,
                 divergenciaPagamento: divergencia,
+                motivoDevolucao: motivoDevolucao.trim() || null,
                 pagamentos: [],
                 itensDevolvidos: []
             };
@@ -393,6 +400,9 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                         </div>
                                     </div>
                                 ))}
+
+                                {/* Campo de Motivo da Devolução Parcial */}
+                                <MotivoInput motivo={motivoDevolucao} setMotivo={setMotivoDevolucao} gravandoVoz={gravandoVoz} setGravandoVoz={setGravandoVoz} recognitionRef={recognitionRef} />
                             </div>
 
                             <div className="p-4 bg-white border-t border-gray-200 px-6">
@@ -563,38 +573,56 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                 <div>
                                     <h4 className="text-2xl font-black text-gray-800">Verificação Final GPS</h4>
                                     <p className="text-sm text-gray-500 mt-2 px-6">
-                                        O Sistema Logístico Hardt requer que você dispare um "Localizador de Trajeto" neste momento de frente ao estabelecimento para auditar quem entregou o pedido.
+                                        O Sistema Logístico Hardt requer que você dispare um "Localizador de Trajeto" neste momento de frente ao estabelecimento.
                                     </p>
                                 </div>
-
                                 <div className="w-full">
                                     {gpsCoords ? (
                                         <div className="bg-green-50 border border-green-200 p-4 rounded-xl flex items-center justify-center text-green-700 font-mono text-xs font-bold shadow-sm">
                                             <CheckCircle className="h-4 w-4 mr-2" /> Geo Capturado: {gpsCoords}
                                         </div>
                                     ) : (
-                                        <button
-                                            onClick={capturarGPS}
-                                            disabled={capturingGps}
-                                            className="w-full bg-blue-100 text-blue-800 font-bold py-4 rounded-xl border border-blue-200 flex items-center justify-center active:bg-blue-200 transition-colors shadow-sm"
-                                        >
+                                        <button onClick={capturarGPS} disabled={capturingGps} className="w-full bg-blue-100 text-blue-800 font-bold py-4 rounded-xl border border-blue-200 flex items-center justify-center active:bg-blue-200 transition-colors shadow-sm">
                                             {capturingGps ? 'Pescando Satélites...' : '1. Obter Localização Exata (MAPS)'}
                                         </button>
                                     )}
                                 </div>
                             </div>
-
                             <div className="p-4 bg-gray-50 border-t border-gray-200">
                                 <div className="flex space-x-3">
-                                    <button onClick={() => statusFinal === 'DEVOLVIDO' ? setStep(1) : setStep(3)} className="w-1/3 py-4 text-sm font-bold text-gray-600 bg-white border border-gray-300 rounded-xl active:bg-gray-100">
-                                        Voltar
-                                    </button>
-                                    <button
-                                        onClick={handleFinalizar}
-                                        disabled={submitting || !gpsCoords}
-                                        className="w-2/3 py-4 text-lg font-black text-white bg-green-500 rounded-xl flex items-center justify-center active:bg-green-600 shadow-xl disabled:opacity-50 disabled:bg-gray-400 disabled:shadow-none transition-all"
-                                    >
+                                    <button onClick={() => statusFinal === 'DEVOLVIDO' ? setStep(5) : setStep(3)} className="w-1/3 py-4 text-sm font-bold text-gray-600 bg-white border border-gray-300 rounded-xl active:bg-gray-100">Voltar</button>
+                                    <button onClick={handleFinalizar} disabled={submitting || !gpsCoords} className="w-2/3 py-4 text-lg font-black text-white bg-green-500 rounded-xl flex items-center justify-center active:bg-green-600 shadow-xl disabled:opacity-50 disabled:bg-gray-400 disabled:shadow-none transition-all">
                                         {submitting ? 'Transmitindo...' : '2. FINALIZAR Rota'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+
+                    {/* =========== STEP 5: MOTIVO DA DEVOLUÇÃO TOTAL =========== */}
+                    {step === 5 && (
+                        <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4">
+                            <div className="p-5 bg-red-50 border-b border-red-200">
+                                <h4 className="font-bold text-red-800 text-lg flex items-center gap-2">
+                                    <ArrowRight className="h-5 w-5 transform rotate-180" /> Devolução Total
+                                </h4>
+                                <p className="text-xs text-red-700 mt-1">Informe o motivo pelo qual o pedido não foi entregue. Você pode digitar ou usar o microfone.</p>
+                            </div>
+                            <div className="flex-1 p-5">
+                                <MotivoInput motivo={motivoDevolucao} setMotivo={setMotivoDevolucao} gravandoVoz={gravandoVoz} setGravandoVoz={setGravandoVoz} recognitionRef={recognitionRef} />
+                            </div>
+                            <div className="p-4 bg-white border-t border-gray-200">
+                                <div className="flex space-x-3">
+                                    <button onClick={() => setStep(1)} className="flex-1 py-3 text-sm font-bold text-gray-600 bg-gray-100 rounded-xl active:bg-gray-200">Voltar</button>
+                                    <button
+                                        onClick={() => {
+                                            if (!motivoDevolucao.trim()) return toast.error('Informe o motivo da devolução.');
+                                            setStep(4);
+                                        }}
+                                        className="flex-[2] py-3 text-sm font-bold text-white bg-red-600 rounded-xl active:bg-red-700 shadow-md"
+                                    >
+                                        Ir para Finalização
                                     </button>
                                 </div>
                             </div>
@@ -602,6 +630,57 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                     )}
                 </div>
             </div>
+        </div>
+    );
+};
+
+// Componente auxiliar: Campo de Motivo com Microfone
+const MotivoInput = ({ motivo, setMotivo, gravandoVoz, setGravandoVoz, recognitionRef }) => {
+    const iniciarGravacao = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return toast.error('Reconhecimento de voz não suportado neste dispositivo.');
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'pt-BR';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            setMotivo(prev => prev ? prev + ' ' + transcript : transcript);
+            setGravandoVoz(false);
+        };
+        recognition.onerror = () => setGravandoVoz(false);
+        recognition.onend = () => setGravandoVoz(false);
+        recognitionRef.current = recognition;
+        recognition.start();
+        setGravandoVoz(true);
+    };
+
+    const pararGravacao = () => {
+        if (recognitionRef.current) recognitionRef.current.stop();
+        setGravandoVoz(false);
+    };
+
+    return (
+        <div className="bg-white border-2 border-orange-200 rounded-xl p-4 mt-2">
+            <div className="flex items-center gap-2 mb-2">
+                <MessageSquare className="h-4 w-4 text-orange-500" />
+                <span className="text-xs font-bold text-orange-700 uppercase tracking-wide">Motivo da Devolução *</span>
+            </div>
+            <textarea
+                className="w-full text-sm text-gray-800 bg-orange-50 border border-orange-100 rounded-lg p-3 min-h-[90px] resize-none focus:outline-none focus:border-orange-400"
+                placeholder="Ex: Cliente não estava, disse que não pediu, produto errado, sem dinheiro..."
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+            />
+            <button
+                onClick={gravandoVoz ? pararGravacao : iniciarGravacao}
+                className={`mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-colors ${gravandoVoz
+                    ? 'bg-red-100 text-red-700 border-2 border-red-400 animate-pulse'
+                    : 'bg-orange-100 text-orange-700 border border-orange-300 hover:bg-orange-200'
+                    }`}
+            >
+                {gravandoVoz ? <><MicOff className="h-4 w-4" /> Parar Gravação</> : <><Mic className="h-4 w-4" /> Falar pelo Microfone</>}
+            </button>
         </div>
     );
 };
