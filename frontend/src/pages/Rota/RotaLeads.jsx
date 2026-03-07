@@ -92,8 +92,8 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                                 </span>
                             )}
                             {!atendHoje && getPedidoHoje(cliente._pedidos) && (
-                                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                                    <CheckCircle className="h-3 w-3" /> Com Pedido Hoje
+                                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome) ? `Pedido por ${getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome}` : ''}>
+                                    <CheckCircle className="h-3 w-3" /> Com Pedido {(getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome) && `por ${(getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome).split(' ')[0]}`}
                                 </span>
                             )}
                         </div>
@@ -201,6 +201,11 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
                                 </span>
                             )}
                             {proxHoje && !atendHoje && <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><Star className="h-3 w-3" /> Visita Hoje!</span>}
+                            {!atendHoje && getPedidoHoje(lead._pedidos || lead.pedidos) && (
+                                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(getPedidoHoje(lead._pedidos || lead.pedidos).usuarioLancamento?.nome || getPedidoHoje(lead._pedidos || lead.pedidos).vendedor?.nome) ? `Pedido por ${getPedidoHoje(lead._pedidos || lead.pedidos).usuarioLancamento?.nome || getPedidoHoje(lead._pedidos || lead.pedidos).vendedor?.nome}` : ''}>
+                                    <CheckCircle className="h-3 w-3" /> Com Pedido {(getPedidoHoje(lead._pedidos || lead.pedidos).usuarioLancamento?.nome || getPedidoHoje(lead._pedidos || lead.pedidos).vendedor?.nome) && `por ${(getPedidoHoje(lead._pedidos || lead.pedidos).usuarioLancamento?.nome || getPedidoHoje(lead._pedidos || lead.pedidos).vendedor?.nome).split(' ')[0]}`}
+                                </span>
+                            )}
                         </div>
                         {/* Nome do lead clicável */}
                         {podeEscolherVendedor && vendedorNome && (
