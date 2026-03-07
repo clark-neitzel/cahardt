@@ -17,6 +17,25 @@ import { API_URL } from '../../services/api';
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
+const calcularProximaData = (diasAbertosStr) => {
+    if (!diasAbertosStr) return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+
+    const hojeApp = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    const baseDate = new Date(hojeApp + 'T12:00:00Z');
+    const diasPermitidos = diasAbertosStr.split(',').map(s => s.trim().toUpperCase());
+
+    for (let i = 0; i <= 7; i++) {
+        const d = new Date(baseDate.getTime());
+        d.setUTCDate(baseDate.getUTCDate() + i);
+        const dayOfWeekStr = DIA_SEMANA_MAP[d.getUTCDay()];
+
+        if (diasPermitidos.includes(dayOfWeekStr)) {
+            return d.toISOString().split('T')[0];
+        }
+    }
+    return hojeApp;
+};
+
 const TIPOS_ATENDIMENTO = [
     { value: 'VISITA', label: 'Visita Presencial' },
     { value: 'AMOSTRA', label: 'Amostra' },
@@ -107,6 +126,10 @@ const NovoPedido = () => {
             // Pré-selecionar cliente vindo da URL (?clienteId=...)
             if (clienteIdFromUrl && !editId) {
                 setClienteId(clienteIdFromUrl);
+                const pCliente = clientesList.find(c => c.UUID === clienteIdFromUrl);
+                if (pCliente && pCliente.Dia_de_entrega) {
+                    setDataEntrega(calcularProximaData(pCliente.Dia_de_entrega));
+                }
             }
             const listaProdutos = produtosData.data || produtosData || [];
             setProdutos(listaProdutos);
@@ -1022,6 +1045,13 @@ const NovoPedido = () => {
                                         onChange={e => setDataEntrega(e.target.value)}
                                         onClick={e => { try { if (e.target.showPicker) e.target.showPicker(); } catch (err) { } }}
                                     />
+                                    {isEncaixe && (
+                                        <div className="mt-1 flex">
+                                            <span className="text-xs text-amber-600 font-bold bg-amber-50 rounded px-2 py-1 border border-amber-200 shadow-sm uppercase tracking-wide">
+                                                Encaixe
+                                            </span>
+                                        </div>
+                                    )}
                                     {clienteSelecionado?.Dia_de_entrega && (
                                         <p className="text-xs text-gray-400 mt-1">Dias do cliente: <b>{clienteSelecionado.Dia_de_entrega}</b></p>
                                     )}
@@ -1086,7 +1116,10 @@ const NovoPedido = () => {
                                         {TIPOS_ATENDIMENTO.map(t => (
                                             <button
                                                 key={t.value}
-                                                onClick={() => setCanalOrigem(t.value)}
+                                                onClick={() => {
+                                                    setCanalOrigem(t.value);
+                                                    setMostrarFormulario(false);
+                                                }}
                                                 className={`px-2.5 py-1.5 rounded text-[12px] font-semibold border transition-colors ${canalOrigem === t.value ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
                                             >
                                                 {t.label}
@@ -1101,7 +1134,7 @@ const NovoPedido = () => {
             </div>
 
             {/* ===== LISTA DE PRODUTOS ===== */}
-            {clienteId && condicaoPagamentoId && (
+            {clienteId && condicaoPagamentoId && canalOrigem && (
                 <div className="flex-1">
                     {/* Campo de busca de produto fixo */}
                     <div className="bg-gray-100 px-3 py-2 sticky top-[72px] z-10 border-b border-gray-200">
@@ -1167,13 +1200,23 @@ const NovoPedido = () => {
                 </div>
             )}
 
-            {/* Placeholder quando sem condição */}
-            {clienteId && !condicaoPagamentoId && (
-                <div className="flex-1 flex items-center justify-center p-8 text-center">
-                    <div>
-                        <AlertCircle className="h-10 w-10 text-amber-400 mx-auto mb-3" />
-                        <p className="text-sm text-gray-600 font-medium">Selecione uma condição de pagamento</p>
-                        <p className="text-xs text-gray-400 mt-1">Toque na barra acima para expandir o formulário</p>
+            {/* Placeholder quando sem condição/qualidade */}
+            {clienteId && (!condicaoPagamentoId || !canalOrigem) && (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gray-50 bg-opacity-70">
+                    <div className="max-w-xs space-y-6">
+                        {!condicaoPagamentoId ? (
+                            <div>
+                                <AlertCircle className="h-10 w-10 text-amber-400 mx-auto mb-3" />
+                                <p className="text-sm text-gray-900 font-bold">Selecione a Condição de Pagamento</p>
+                                <p className="text-xs text-gray-500 mt-1 font-medium">Você precisa definir a tabela e juros base no topo.</p>
+                            </div>
+                        ) : (
+                            <div>
+                                <Phone className="h-10 w-10 text-blue-500 mx-auto mb-3" />
+                                <p className="text-sm text-gray-900 font-bold">Qualidade do Atendimento Pendente</p>
+                                <p className="text-xs text-gray-500 mt-1 font-medium">Escolha no topo se foi visita, WhatsApp, ligação, etc para liberar os produtos.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -1260,6 +1303,9 @@ const NovoPedido = () => {
                                         setClienteId(c.UUID);
                                         setShowClienteModal(false);
                                         setClienteSearchText(c.NomeFantasia || c.Nome);
+                                        if (c.Dia_de_entrega) {
+                                            setDataEntrega(calcularProximaData(c.Dia_de_entrega));
+                                        }
                                     }}
                                 >
                                     <div className="font-bold text-[15px] text-gray-900 mb-1 leading-tight tracking-tight">{c.NomeFantasia || c.Nome}</div>
