@@ -106,36 +106,142 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
         });
     }
 
-    return (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 transition-all ${showPreview ? 'p-0' : 'px-4 py-8'}`}>
-            <div className={`shadow-2xl flex flex-col w-full transition-all ${showPreview ? 'h-full bg-gray-200' : 'bg-white max-w-5xl max-h-[90vh] rounded-lg'}`}>
-                <div className={`px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 shadow-sm z-10 flex-shrink-0 ${showPreview ? '' : 'rounded-t-lg'}`}>
-                    <h3 className="text-lg font-bold text-gray-900 flex items-center">
-                        {showPreview ? <Printer className="h-5 w-5 mr-2 text-sky-600" /> : <Package className="h-5 w-5 mr-2 text-sky-600" />}
-                        {showPreview ? `Pré-visualização (Romaneio Carga #${embarque?.numero || '...'})` : `Gerenciamento da Carga #${embarque?.numero || '...'}`}
+    if (showPreview) {
+        return (
+            <div className="fixed inset-0 z-[9999] bg-gray-800 overflow-y-auto flex flex-col print:bg-white print:overflow-visible text-gray-900 font-sans">
+                {/* ActionBar Fixa */}
+                <div className="sticky top-0 z-10 w-full bg-gray-900 border-b border-gray-700 px-6 py-4 flex items-center justify-between shadow-2xl print:hidden flex-shrink-0">
+                    <h3 className="text-white font-bold flex items-center">
+                        <Printer className="w-5 h-5 mr-3 text-sky-400" />
+                        Pré-visualização do Relatório (A4)
                     </h3>
-                    <div className="flex space-x-2">
-                        {showPreview ? (
-                            <>
-                                <button onClick={() => setShowPreview(false)} className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 hover:bg-gray-100 rounded-md transition-colors shadow-sm">Voltar</button>
-                                <button onClick={handlePrint} className="px-4 py-2 text-sm font-bold bg-sky-600 hover:bg-sky-700 text-white rounded-md flex items-center shadow-md">
-                                    <Printer className="h-4 w-4 mr-2" /> Imprimir Agora
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <button onClick={() => setShowPreview(true)} disabled={!embarque} className="p-2 text-sky-600 bg-sky-50 hover:bg-sky-100 border border-sky-100 rounded-md transition-colors" title="Visualizar e Imprimir (PDF)">
-                                    <Printer className="h-5 w-5" />
-                                </button>
-                                <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-500 rounded-md">
-                                    <X className="h-5 w-5" />
-                                </button>
-                            </>
-                        )}
+                    <div className="flex gap-3">
+                        <button onClick={() => setShowPreview(false)} className="px-5 py-2 border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md text-sm font-medium transition-colors cursor-pointer">Voltar para Edição</button>
+                        <button onClick={handlePrint} className="px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-md flex items-center shadow-lg text-sm font-bold transition-all cursor-pointer">
+                            <Printer className="w-4 h-4 mr-2" /> Imprimir / PDF
+                        </button>
                     </div>
                 </div>
 
-                <div className={`flex-1 overflow-y-auto p-4 md:p-6 bg-white ${showPreview ? 'hidden' : 'block'}`}>
+                {/* Área Scrollável (Fundo Escuro) */}
+                <div className="flex-1 w-full flex flex-col items-center py-8 print:py-0 print:block">
+                    {/* Container de Impressão */}
+                    <div ref={printRef} className="print-container flex flex-col gap-10 print:gap-0 print:block">
+                        <style>
+                            {`
+                            .print-container table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                            .print-container th, .print-container td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
+                            .print-container th { background-color: #f3f4f6; color: #333; }
+                            .print-container h1 { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #111; }
+                            .print-container h2 { font-size: 14px; font-weight: bold; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px; color: #333; }
+                            @media print {
+                                .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 0 !important; }
+                                .page-break { page-break-before: always; }
+                            }
+                            `}
+                        </style>
+
+                        {/* Página 1 */}
+                        <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '15mm' }}>
+                            {/* Dica visual pra web */}
+                            <div className="absolute top-2 right-2 text-[10px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">Página 1 de 2</div>
+
+                            <h1>Roteiro de Entrega Oficial - Carga #${embarque?.numero || '000'}</h1>
+                            <div className="text-sm" style={{ marginBottom: '20px' }}>
+                                <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
+                                <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
+                                <div><strong>Qtd NFs:</strong> {embarque?.pedidos?.length || 0}</div>
+                            </div>
+
+                            <h2>Rota / Lista de Clientes</h2>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Nº Pedido</th>
+                                        <th>Cliente</th>
+                                        <th>Endereço Completo</th>
+                                        <th>Status Físico</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {embarque?.pedidos?.map(p => (
+                                        <tr key={p.id}>
+                                            <td><strong>{p.numero || 'N/A'}</strong></td>
+                                            <td><strong>{p.cliente?.NomeFantasia}</strong></td>
+                                            <td className="text-xs">{p.cliente?.End_Logradouro}, {p.cliente?.End_Numero} - {p.cliente?.End_Bairro} ({p.cliente?.End_Cidade})</td>
+                                            <td>[  ] Entregue <br />[  ] Devolvido</td>
+                                        </tr>
+                                    ))}
+                                    {embarque?.pedidos?.length === 0 && (
+                                        <tr><td colSpan="4" style={{ textAlign: 'center' }}>Vazio.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Linha separadora virtual de páginas (apenas no browser) */}
+                        <div className="w-full border-b-2 border-dashed border-gray-600 print:hidden relative"></div>
+
+                        {/* Página 2 */}
+                        <div className="print-page page-break bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '15mm' }}>
+                            <div className="absolute top-2 right-2 text-[10px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">Página 2 de 2</div>
+
+                            <h1>Retirada de Saldo (Câmara Fria) - Carga #${embarque?.numero || '000'}</h1>
+                            <div className="text-sm" style={{ marginBottom: '20px' }}>
+                                <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
+                                <div><strong>Objetivo:</strong> Resumo consolidado para separação otimizada no estoque antes do carregamento do veículo.</div>
+                            </div>
+
+                            <h2>Totalização por SKU (Agrupado)</h2>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th>Unidade</th>
+                                        <th>Quantidade Total a Separar</th>
+                                        <th>Visto Inspetor (Check)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {Object.entries(consolidado).sort((a, b) => a[0].localeCompare(b[0])).map(([nome, info]) => (
+                                        <tr key={nome}>
+                                            <td><strong>{nome}</strong></td>
+                                            <td>{info.und}</td>
+                                            <td><strong>{Number(info.qtde).toFixed(2)}</strong></td>
+                                            <td></td>
+                                        </tr>
+                                    ))}
+                                    {Object.keys(consolidado).length === 0 && (
+                                        <tr><td colSpan="4" style={{ textAlign: 'center' }}>Nenhum produto atrelado.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4 py-8">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 rounded-t-lg shadow-sm z-10 flex-shrink-0">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                        <Package className="h-5 w-5 mr-2 text-sky-600" />
+                        Gerenciamento da Carga #{embarque?.numero || '...'}
+                    </h3>
+                    <div className="flex space-x-2">
+                        <button onClick={() => setShowPreview(true)} disabled={!embarque} className="px-4 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 rounded-md transition-colors flex items-center font-bold text-sm shadow-sm" title="Visualizar Relatório e Imprimir">
+                            <Printer className="h-4 w-4 mr-2" /> Relatório Múltiplo / Imprimir
+                        </button>
+                        <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-md">
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-white">
                     {loading ? (
                         <div className="text-center py-20 text-gray-500">Lendo escopo do caminhão...</div>
                     ) : !embarque ? (
@@ -205,7 +311,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
             </div>
 
             {/* Sub Modal para add pedidos */}
-            {isAddOpen && !showPreview && (
+            {isAddOpen && (
                 <AdicionarPedidosModal
                     embarqueId={embarqueId}
                     onClose={() => setIsAddOpen(false)}
@@ -216,95 +322,9 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                     }}
                 />
             )}
-
-            {/* DOM PARA PREVIEW E IMPRESSAO EM A4 */}
-            <div className={showPreview ? "flex-1 overflow-y-auto bg-gray-200 p-4 sm:p-8 md:p-12 print:-m-4 print:p-0 flex items-start justify-center" : "hidden"}>
-                <div ref={printRef} className="print-container print-preview bg-white shadow-xl border border-gray-300 text-gray-900 w-full" style={{ minHeight: '297mm', maxWidth: '210mm', padding: '15mm', margin: '0 auto' }}>
-                    <style>
-                        {`
-                          .print-preview table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-                          .print-preview th, .print-preview td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
-                          .print-preview th { background-color: #f3f4f6; color: #333; }
-                          .print-preview h1 { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #111; }
-                          .print-preview h2 { font-size: 14px; font-weight: bold; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px; color: #333; }
-                          @media print {
-
-                              .print-preview { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
-                              .page-break { page-break-before: always; }
-                          }
-                        `}
-                    </style>
-                    {/* Página 1: Roteiro Motorista */}
-                    <h1>Roteiro de Entrega Oficial - Carga #${embarque?.numero || '000'}</h1>
-                    <div className="text-sm" style={{ marginBottom: '20px' }}>
-                        <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
-                        <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
-                        <div><strong>Qtd NFs:</strong> {embarque?.pedidos?.length || 0}</div>
-                    </div>
-
-                    <h2>Rota / Lista de Clientes</h2>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Nº Pedido</th>
-                                <th>Cliente</th>
-                                <th>Endereço Completo</th>
-                                <th>Status Físico</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {embarque?.pedidos?.map(p => (
-                                <tr key={p.id}>
-                                    <td><strong>{p.numero || 'N/A'}</strong></td>
-                                    <td><strong>{p.cliente?.NomeFantasia}</strong></td>
-                                    <td className="text-xs">{p.cliente?.End_Logradouro}, {p.cliente?.End_Numero} - {p.cliente?.End_Bairro} ({p.cliente?.End_Cidade})</td>
-                                    <td>[  ] Entregue <br />[  ] Devolvido</td>
-                                </tr>
-                            ))}
-                            {embarque?.pedidos?.length === 0 && (
-                                <tr><td colSpan="4" style={{ textAlign: 'center' }}>Vazio.</td></tr>
-                            )}
-                        </tbody>
-                    </table>
-
-                    {/* Quebra de página estrita */}
-                    <div className="page-break"></div>
-
-                    {/* Página 2: Almoxarifado / Separação */}
-                    <h1>Retirada de Saldo (Câmara Fria) - Carga #${embarque?.numero || '000'}</h1>
-                    <div className="text-sm" style={{ marginBottom: '20px' }}>
-                        <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
-                        <div><strong>Objetivo:</strong> Resumo consolidado para separação otimizada no estoque antes do carregamento do veículo.</div>
-                    </div>
-
-                    <h2>Totalização por SKU (Agrupado)</h2>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Produto</th>
-                                <th>Unidade</th>
-                                <th>Quantidade Total a Separar</th>
-                                <th>Visto Inspetor (Check)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {Object.entries(consolidado).sort((a, b) => a[0].localeCompare(b[0])).map(([nome, info]) => (
-                                <tr key={nome}>
-                                    <td><strong>{nome}</strong></td>
-                                    <td>{info.und}</td>
-                                    <td><strong>{Number(info.qtde).toFixed(2)}</strong></td>
-                                    <td></td>
-                                </tr>
-                            ))}
-                            {Object.keys(consolidado).length === 0 && (
-                                <tr><td colSpan="4" style={{ textAlign: 'center' }}>Nenhum produto atrelado.</td></tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </div>
     );
+
 };
 
 export default DetalhesCargaModal;
