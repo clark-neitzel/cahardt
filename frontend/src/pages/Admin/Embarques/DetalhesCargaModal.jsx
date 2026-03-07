@@ -107,9 +107,9 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4 py-8">
-            <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
-                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 rounded-t-lg shadow-sm z-10">
+        <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 transition-all ${showPreview ? 'p-0' : 'px-4 py-8'}`}>
+            <div className={`shadow-2xl flex flex-col w-full transition-all ${showPreview ? 'h-full bg-gray-200' : 'bg-white max-w-5xl max-h-[90vh] rounded-lg'}`}>
+                <div className={`px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 shadow-sm z-10 flex-shrink-0 ${showPreview ? '' : 'rounded-t-lg'}`}>
                     <h3 className="text-lg font-bold text-gray-900 flex items-center">
                         {showPreview ? <Printer className="h-5 w-5 mr-2 text-sky-600" /> : <Package className="h-5 w-5 mr-2 text-sky-600" />}
                         {showPreview ? `Pré-visualização (Romaneio Carga #${embarque?.numero || '...'})` : `Gerenciamento da Carga #${embarque?.numero || '...'}`}
