@@ -12,13 +12,23 @@ const ListaClientes = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
 
-    // Filtros Estado Inicial
-    const initialSearch = searchParams.get('search') || '';
+    // Helpers para LocalStorage
+    const getSaved = (key, defaultVal) => {
+        const saved = localStorage.getItem(`clientesFiltro_${key}`);
+        return saved !== null ? saved : defaultVal;
+    };
+    const saveToLocal = (key, val) => {
+        if (val) localStorage.setItem(`clientesFiltro_${key}`, val);
+        else localStorage.removeItem(`clientesFiltro_${key}`);
+    };
+
+    // Filtros Estado Inicial (Busca da URL -> LocalStorage -> Padrão)
+    const initialSearch = searchParams.get('search') !== null ? searchParams.get('search') : getSaved('search', '');
     const initialPage = parseInt(searchParams.get('page')) || 1;
-    const initialLimit = parseInt(searchParams.get('limit')) || 12;
-    const initialVendedor = searchParams.get('idVendedor') || '';
-    const initialDiaEntrega = searchParams.get('diaEntrega') || '';
-    const initialDiaVenda = searchParams.get('diaVenda') || '';
+    const initialLimit = parseInt(searchParams.get('limit')) || parseInt(getSaved('limit', '12'));
+    const initialVendedor = searchParams.get('idVendedor') !== null ? searchParams.get('idVendedor') : getSaved('idVendedor', '');
+    const initialDiaEntrega = searchParams.get('diaEntrega') !== null ? searchParams.get('diaEntrega') : getSaved('diaEntrega', '');
+    const initialDiaVenda = searchParams.get('diaVenda') !== null ? searchParams.get('diaVenda') : getSaved('diaVenda', '');
 
     // Estados de Dados
     const [clientes, setClientes] = useState([]);
@@ -31,7 +41,7 @@ const ListaClientes = () => {
     const [search, setSearch] = useState(initialSearch);
     const [page, setPage] = useState(initialPage);
     const [limit, setLimit] = useState(initialLimit);
-    const [activeTab, setActiveTab] = useState('ativos'); // 'ativos' ou 'inativos'
+    const [activeTab, setActiveTab] = useState(getSaved('activeTab', 'ativos')); // 'ativos' ou 'inativos'
 
     // Filtros Avançados
     const [idVendedor, setIdVendedor] = useState(initialVendedor);
@@ -61,7 +71,7 @@ const ListaClientes = () => {
         loadVendedores();
     }, []);
 
-    // Sync State -> URL
+    // Sync State -> URL e LocalStorage
     useEffect(() => {
         const params = {};
         if (search) params.search = search;
@@ -71,7 +81,15 @@ const ListaClientes = () => {
         if (diaEntrega) params.diaEntrega = diaEntrega;
         if (diaVenda) params.diaVenda = diaVenda;
         setSearchParams(params, { replace: true });
-    }, [search, page, limit, idVendedor, diaEntrega, diaVenda, setSearchParams]);
+
+        // Salvar no localStorage
+        saveToLocal('search', search);
+        saveToLocal('limit', limit !== 12 ? limit.toString() : '');
+        saveToLocal('idVendedor', idVendedor);
+        saveToLocal('diaEntrega', diaEntrega);
+        saveToLocal('diaVenda', diaVenda);
+        saveToLocal('activeTab', activeTab);
+    }, [search, page, limit, idVendedor, diaEntrega, diaVenda, activeTab, setSearchParams]);
 
     // Fetch Clientes
     const fetchClientes = async () => {
@@ -111,6 +129,14 @@ const ListaClientes = () => {
     // Handlers
     const handleSearch = (e) => {
         setSearch(e.target.value);
+        setPage(1);
+    };
+
+    const handleClearFilters = () => {
+        setSearch('');
+        setIdVendedor('');
+        setDiaEntrega('');
+        setDiaVenda('');
         setPage(1);
     };
 
@@ -181,13 +207,11 @@ const ListaClientes = () => {
 
     // Render
     return (
-        <div className="container mx-auto px-4 py-8 relative">
-            {/* Header - Apenas botões de ação (Título e contadores removidos para manter design clean) */}
-            <div className="flex flex-col md:flex-row justify-end items-start md:items-center mb-6 gap-4">
-
-
-                {selectedIds.length > 0 && (
-                    <div className="flex items-center gap-4 bg-blue-50 px-4 py-2 rounded-lg border border-blue-200 animate-in fade-in slide-in-from-top-2">
+        <div className="container mx-auto px-4 py-4 md:py-8 relative">
+            {/* Header - Ações em Lote */}
+            {selectedIds.length > 0 && (
+                <div className="flex flex-col md:flex-row justify-end items-start md:items-center mb-4 gap-4">
+                    <div className="flex items-center gap-4 bg-blue-50 px-4 py-2 rounded-lg border border-blue-200 shadow-sm animate-in fade-in slide-in-from-top-2 w-full md:w-auto">
                         <span className="text-sm font-medium text-blue-700">{selectedIds.length} selecionados</span>
                         <button
                             onClick={() => setIsBatchModalOpen(true)}
@@ -196,15 +220,15 @@ const ListaClientes = () => {
                             <Settings className="h-4 w-4" />
                             Alterar em Lote
                         </button>
-                        <button onClick={() => setSelectedIds([])} className="text-blue-500 hover:text-blue-700">
+                        <button onClick={() => setSelectedIds([])} className="text-blue-500 hover:text-blue-700 ml-auto md:ml-0">
                             <X className="h-4 w-4" />
                         </button>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* Abas */}
-            <div className="flex border-b border-gray-200 mb-6">
+            <div className="flex border-b border-gray-200 mb-4">
                 <button
                     onClick={() => { setActiveTab('ativos'); setPage(1); }}
                     className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'ativos' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
@@ -220,7 +244,7 @@ const ListaClientes = () => {
             </div>
 
             {/* Filtros e Busca */}
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 space-y-4">
+            <div className="bg-white p-3 md:p-4 rounded-lg shadow-sm border border-gray-200 mb-4 space-y-4">
                 {/* Linha de Busca + Toggle Filtros Mobile */}
                 <div className="flex items-center gap-4">
                     <div className="relative flex-1">
@@ -244,7 +268,7 @@ const ListaClientes = () => {
                 </div>
 
                 {/* Filtros Avançados (Grid) */}
-                <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${showFilters ? 'block' : 'hidden md:grid'}`}>
+                <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 ${showFilters ? 'block' : 'hidden md:grid'}`}>
                     {/* Filtro Vendedor */}
                     <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">Vendedor</label>
@@ -288,6 +312,16 @@ const ListaClientes = () => {
                                 <option key={dia} value={dia}>{dia}</option>
                             ))}
                         </select>
+                    </div>
+
+                    {/* Botão Limpar */}
+                    <div className="flex items-end">
+                        <button
+                            onClick={handleClearFilters}
+                            className="w-full text-sm py-2 text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-md transition-colors"
+                        >
+                            Limpar Filtros
+                        </button>
                     </div>
                 </div>
             </div>
@@ -351,14 +385,20 @@ const ListaClientes = () => {
                                             <MapPin className="h-3 w-3" />
                                             {cliente.End_Cidade}/{cliente.End_Estado}
                                         </div>
-                                        <div className="flex gap-1 mt-1">
-                                            {(cliente.Formas_Atendimento || []).map(forma => (
-                                                <span key={forma} title={forma} className="p-0.5 bg-gray-50 rounded text-gray-500 border border-gray-100">
-                                                    {forma === 'Presencial' && <User className="h-3 w-3" />}
-                                                    {forma === 'Whatsapp' && <MessageCircle className="h-3 w-3" />}
-                                                    {forma === 'Telefone' && <Phone className="h-3 w-3" />}
-                                                </span>
-                                            ))}
+                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                            {(cliente.Formas_Atendimento || []).map(forma => {
+                                                let colors = "bg-gray-50 text-gray-600 border-gray-200";
+                                                let icon = null;
+                                                if (forma === 'Presencial') { colors = "bg-blue-50 text-blue-700 border-blue-200"; icon = <User className="h-3 w-3" />; }
+                                                else if (forma === 'Whatsapp') { colors = "bg-green-50 text-green-700 border-green-200"; icon = <MessageCircle className="h-3 w-3" />; }
+                                                else if (forma === 'Telefone') { colors = "bg-purple-50 text-purple-700 border-purple-200"; icon = <Phone className="h-3 w-3" />; }
+                                                return (
+                                                    <span key={forma} className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-medium ${colors}`}>
+                                                        {icon}
+                                                        {forma}
+                                                    </span>
+                                                )
+                                            })}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-500">
@@ -429,13 +469,18 @@ const ListaClientes = () => {
                                 {/* Formas de Atendimento integradas na mesma linha do Endereço */}
                                 {cliente.Formas_Atendimento && cliente.Formas_Atendimento.length > 0 && (
                                     <div className="flex gap-1 ml-auto md:ml-0">
-                                        {cliente.Formas_Atendimento.map(forma => (
-                                            <span key={forma} title={forma} className="p-1 bg-gray-50 rounded text-gray-400 border border-gray-100 flex items-center">
-                                                {forma === 'Presencial' && <User className="h-3 w-3" />}
-                                                {forma === 'Whatsapp' && <MessageCircle className="h-3 w-3" />}
-                                                {forma === 'Telefone' && <Phone className="h-3 w-3" />}
-                                            </span>
-                                        ))}
+                                        {cliente.Formas_Atendimento.map(forma => {
+                                            let colors = "bg-gray-50 text-gray-400 border-gray-100";
+                                            let icon = null;
+                                            if (forma === 'Presencial') { colors = "bg-blue-50 text-blue-600 border-blue-100"; icon = <User className="h-3.5 w-3.5" />; }
+                                            else if (forma === 'Whatsapp') { colors = "bg-green-50 text-green-600 border-green-100"; icon = <MessageCircle className="h-3.5 w-3.5" />; }
+                                            else if (forma === 'Telefone') { colors = "bg-purple-50 text-purple-600 border-purple-100"; icon = <Phone className="h-3.5 w-3.5" />; }
+                                            return (
+                                                <span key={forma} title={forma} className={`p-1 rounded border flex items-center shadow-sm ${colors}`}>
+                                                    {icon}
+                                                </span>
+                                            )
+                                        })}
                                     </div>
                                 )}
                             </div>
