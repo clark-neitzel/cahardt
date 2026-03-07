@@ -98,23 +98,22 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                             )}
                         </div>
                         {/* Nome clicável */}
+                        {podeEscolherVendedor && vendedorNome && (
+                            <div className="mb-0.5 mt-0.5 inline-flex items-center gap-0.5 text-[9px] text-purple-600 bg-purple-50 px-1 py-0.5 rounded font-semibold">
+                                <User className="h-2 w-2" /> {vendedorNome.split(' ')[0]}
+                            </div>
+                        )}
                         <button
                             onClick={() => onVerCliente(cliente)}
-                            className="text-left font-bold text-[15px] text-gray-900 leading-tight truncate w-full hover:text-blue-700 transition-colors"
+                            className="text-left font-bold text-[14px] leading-tight text-gray-900 truncate w-full hover:text-blue-700 transition-colors"
                         >
                             {cliente.NomeFantasia || cliente.Nome}
                         </button>
-                        {cliente.End_Cidade && <p className="text-[12px] text-gray-500 mt-0.5">{cliente.End_Cidade}</p>}
-                        {/* Badge vendedor (admin vendo todos) */}
-                        {podeEscolherVendedor && vendedorNome && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded font-semibold mt-1">
-                                <User className="h-2.5 w-2.5" /> {vendedorNome.split(' ')[0]}
-                            </span>
-                        )}
+                        {cliente.End_Cidade && <p className="text-[11px] text-gray-500 mt-0.5">{cliente.End_Cidade}</p>}
                     </div>
                     {cliente.Ponto_GPS && (
-                        <button onClick={() => abrirMapa(cliente.Ponto_GPS)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg shrink-0">
-                            <MapPin className="h-4 w-4" />
+                        <button onClick={() => abrirMapa(cliente.Ponto_GPS)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded shrink-0">
+                            <MapPin className="h-3.5 w-3.5" />
                         </button>
                     )}
                 </div>
@@ -148,30 +147,30 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
 
                 {/* Exibir observação se já atendido */}
                 {atendHoje?.observacao && (
-                    <div className="mt-3 bg-gray-50 border border-gray-100 rounded-lg p-3">
-                        <p className="text-[12px] font-semibold text-gray-700 mb-0.5 flex items-center gap-1">
+                    <div className="mt-2 bg-gray-50 border border-gray-100 rounded p-2">
+                        <p className="text-[11px] font-semibold text-gray-700 mb-0.5 flex items-center gap-1">
                             <ClipboardList className="h-3 w-3" />
-                            Observação do Atendimento
+                            Obs. Atendimento
                         </p>
-                        <p className="text-[13px] text-gray-600 line-clamp-3">{atendHoje.observacao}</p>
+                        <p className="text-[12px] text-gray-600 line-clamp-2">{atendHoje.observacao}</p>
                     </div>
                 )}
 
                 {/* Ações */}
-                <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                <div className="flex gap-1.5 mt-2 pt-2 border-t border-gray-100">
                     {mostrarAcoes && (
                         <button
                             onClick={() => onAtendimento({ tipo: 'cliente', item: cliente })}
-                            className="flex-1 bg-blue-600 text-white text-[13px] font-semibold py-2 rounded-lg flex items-center justify-center gap-1.5 active:opacity-80"
+                            className="flex-1 bg-blue-600 text-white text-[12px] font-semibold py-1.5 rounded flex items-center justify-center gap-1 active:opacity-80"
                         >
-                            <ClipboardList className="h-4 w-4" /> Registrar Atendimento
+                            <ClipboardList className="h-3.5 w-3.5" /> Atender
                         </button>
                     )}
                     <button
                         onClick={() => onNovoPedido(cliente.UUID)}
-                        className={`${mostrarAcoes ? 'bg-gray-100 text-gray-700 w-auto' : 'bg-gray-100 text-gray-700 w-full justify-center'} text-[13px] font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 active:opacity-80`}
+                        className={`${mostrarAcoes ? 'bg-gray-100 text-gray-700 w-auto' : 'bg-gray-100 text-gray-700 w-full justify-center'} text-[12px] font-semibold px-2 cursor-pointer py-1.5 rounded flex items-center gap-1 active:opacity-80 hover:bg-gray-200 transition-colors`}
                     >
-                        <Package className="h-4 w-4" /> Pedido
+                        <Package className="h-3.5 w-3.5" /> Pedido
                     </button>
                 </div>
             </div>
@@ -204,23 +203,22 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
                             {proxHoje && !atendHoje && <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><Star className="h-3 w-3" /> Visita Hoje!</span>}
                         </div>
                         {/* Nome do lead clicável */}
+                        {podeEscolherVendedor && vendedorNome && (
+                            <div className="mb-0.5 mt-0.5 inline-flex items-center gap-0.5 text-[9px] text-purple-600 bg-purple-50 px-1 py-0.5 rounded font-semibold">
+                                <User className="h-2 w-2" /> {vendedorNome.split(' ')[0]}
+                            </div>
+                        )}
                         <button
                             onClick={() => onVerCliente(lead)}
-                            className="text-left font-bold text-[15px] text-gray-900 leading-tight truncate w-full hover:text-orange-600 transition-colors"
+                            className="text-left font-bold text-[14px] leading-tight text-gray-900 truncate w-full hover:text-orange-600 transition-colors"
                         >
                             {lead.nomeEstabelecimento}
                         </button>
-                        {lead.contato && <p className="text-[12px] text-gray-500 mt-0.5">{lead.contato}</p>}
-                        {/* Badge vendedor (admin) */}
-                        {podeEscolherVendedor && vendedorNome && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded font-semibold mt-1">
-                                <User className="h-2.5 w-2.5" /> {vendedorNome.split(' ')[0]}
-                            </span>
-                        )}
+                        {lead.contato && <p className="text-[11px] text-gray-500 mt-0.5">{lead.contato}</p>}
                     </div>
                     {lead.pontoGps && (
-                        <button onClick={() => abrirMapa(lead.pontoGps)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg shrink-0">
-                            <MapPin className="h-4 w-4" />
+                        <button onClick={() => abrirMapa(lead.pontoGps)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded shrink-0">
+                            <MapPin className="h-3.5 w-3.5" />
                         </button>
                     )}
                 </div>
@@ -251,22 +249,22 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
 
                 {/* Exibir observação se já atendido */}
                 {atendHoje?.observacao && (
-                    <div className="mt-3 bg-gray-50 border border-gray-100 rounded-lg p-3">
-                        <p className="text-[12px] font-semibold text-gray-700 mb-0.5 flex items-center gap-1">
+                    <div className="mt-2 bg-gray-50 border border-gray-100 rounded p-2">
+                        <p className="text-[11px] font-semibold text-gray-700 mb-0.5 flex items-center gap-1">
                             <ClipboardList className="h-3 w-3" />
-                            Observação do Atendimento
+                            Obs. Atendimento
                         </p>
-                        <p className="text-[13px] text-gray-600 line-clamp-3">{atendHoje.observacao}</p>
+                        <p className="text-[12px] text-gray-600 line-clamp-2">{atendHoje.observacao}</p>
                     </div>
                 )}
 
                 {mostrarAcoes && (
-                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                    <div className="flex gap-1.5 mt-2 pt-2 border-t border-gray-100">
                         <button
                             onClick={() => onAtendimento({ tipo: 'lead', item: lead })}
-                            className="flex-1 bg-orange-500 text-white text-[13px] font-semibold py-2 rounded-lg flex items-center justify-center gap-1.5 active:opacity-80"
+                            className="flex-1 bg-orange-500 text-white text-[12px] font-semibold py-1.5 rounded flex items-center justify-center gap-1 active:opacity-80"
                         >
-                            <ClipboardList className="h-4 w-4" /> Registrar Atendimento
+                            <ClipboardList className="h-3.5 w-3.5" /> Atender
                         </button>
                     </div>
                 )}
@@ -1074,7 +1072,7 @@ const RotaLeads = () => {
                                     <p className="text-[13px]">Nenhum item pendente na sua rota.</p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                                <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 lg:gap-3">
                                     {itensParaAtender.map(renderItem)}
                                 </div>
                             )
@@ -1087,7 +1085,7 @@ const RotaLeads = () => {
                                     <p className="font-bold text-gray-700">Nenhum atendimento hoje ainda.</p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                                <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 lg:gap-3">
                                     {itensAtendidos.map(renderItem)}
                                 </div>
                             )
