@@ -227,23 +227,7 @@ const ListaClientes = () => {
                 </div>
             )}
 
-            {/* Abas */}
-            <div className="flex border-b border-gray-200 mb-4">
-                <button
-                    onClick={() => { setActiveTab('ativos'); setPage(1); }}
-                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'ativos' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                >
-                    Ativos
-                </button>
-                <button
-                    onClick={() => { setActiveTab('inativos'); setPage(1); }}
-                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'inativos' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                >
-                    Inativos
-                </button>
-            </div>
-
-            {/* Filtros e Busca */}
+            {/* Filtros e Busca (Agora sem Abas Separadas) */}
             <div className="bg-white p-3 md:p-4 rounded-lg shadow-sm border border-gray-200 mb-4 space-y-4">
                 {/* Linha de Busca + Toggle Filtros Mobile */}
                 <div className="flex items-center gap-4">
@@ -268,7 +252,20 @@ const ListaClientes = () => {
                 </div>
 
                 {/* Filtros Avançados (Grid) */}
-                <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 ${showFilters ? 'block' : 'hidden md:grid'}`}>
+                <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 ${showFilters ? 'block' : 'hidden md:grid'}`}>
+                    {/* Filtro Status (Novo) */}
+                    <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                        <select
+                            className="block w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                            value={activeTab}
+                            onChange={(e) => { setActiveTab(e.target.value); setPage(1); }}
+                        >
+                            <option value="ativos">Apenas Ativos</option>
+                            <option value="inativos">Apenas Inativos</option>
+                        </select>
+                    </div>
+
                     {/* Filtro Vendedor */}
                     <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">Vendedor</label>

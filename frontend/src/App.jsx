@@ -61,8 +61,8 @@ const Layout = ({ children }) => {
       : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm mb-4">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <nav className="bg-white shadow-sm mb-4 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex flex-1">
@@ -227,7 +227,7 @@ const Layout = ({ children }) => {
       {/* GATEKEEPER DO DIÁRIO / PONTO */}
       <DiarioGateway />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pb-10">
         {children}
       </main>
     </div>
