@@ -87,8 +87,8 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                         <div className="flex items-center gap-2 mb-1">
                             <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-wide">Cliente</span>
                             {atendHoje && (
-                                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={atendHoje.vendedor?.nome ? `Atendido por ${atendHoje.vendedor.nome}` : ''}>
-                                    <CheckCircle className="h-3 w-3" /> Atendido {atendHoje.vendedor?.nome && `por ${atendHoje.vendedor.nome.split(' ')[0]}`}
+                                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) ? `Atendido por ${atendHoje.usuario?.nome || atendHoje.vendedor?.nome}` : ''}>
+                                    <CheckCircle className="h-3 w-3" /> Atendido {(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) && `por ${(atendHoje.usuario?.nome || atendHoje.vendedor?.nome).split(' ')[0]}`}
                                 </span>
                             )}
                             {!atendHoje && getPedidoHoje(cliente._pedidos) && (
@@ -196,8 +196,8 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
                             <span className="text-[11px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded uppercase tracking-wide">Lead #{lead.numero || '?'}</span>
                             <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${ETAPA_COLORS[lead.etapa] || 'bg-gray-100 text-gray-600'}`}>{lead.etapa}</span>
                             {atendHoje && (
-                                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={atendHoje.vendedor?.nome ? `Atendido por ${atendHoje.vendedor.nome}` : ''}>
-                                    <CheckCircle className="h-3 w-3" /> Atendido {atendHoje.vendedor?.nome && `por ${atendHoje.vendedor.nome.split(' ')[0]}`}
+                                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) ? `Atendido por ${atendHoje.usuario?.nome || atendHoje.vendedor?.nome}` : ''}>
+                                    <CheckCircle className="h-3 w-3" /> Atendido {(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) && `por ${(atendHoje.usuario?.nome || atendHoje.vendedor?.nome).split(' ')[0]}`}
                                 </span>
                             )}
                             {proxHoje && !atendHoje && <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><Star className="h-3 w-3" /> Visita Hoje!</span>}
