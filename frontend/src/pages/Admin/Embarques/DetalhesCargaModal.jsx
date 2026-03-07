@@ -205,7 +205,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
             </div>
 
             {/* Sub Modal para add pedidos */}
-            {isAddOpen && (
+            {isAddOpen && !showPreview && (
                 <AdicionarPedidosModal
                     embarqueId={embarqueId}
                     onClose={() => setIsAddOpen(false)}
@@ -218,8 +218,8 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
             )}
 
             {/* DOM PARA PREVIEW E IMPRESSAO EM A4 */}
-            <div className={showPreview ? "flex-1 overflow-y-auto bg-gray-200 p-4 print:-m-4 print:p-0" : "hidden"}>
-                <div ref={printRef} className="print-container print-preview bg-white mx-auto shadow-md border border-gray-300 relative text-gray-900" style={{ minHeight: '297mm', maxWidth: '210mm', padding: '15mm' }}>
+            <div className={showPreview ? "flex-1 overflow-y-auto bg-gray-200 p-4 sm:p-8 md:p-12 print:-m-4 print:p-0 flex items-start justify-center" : "hidden"}>
+                <div ref={printRef} className="print-container print-preview bg-white shadow-xl border border-gray-300 text-gray-900 w-full" style={{ minHeight: '297mm', maxWidth: '210mm', padding: '15mm', margin: '0 auto' }}>
                     <style>
                         {`
                           .print-preview table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -228,6 +228,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                           .print-preview h1 { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #111; }
                           .print-preview h2 { font-size: 14px; font-weight: bold; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px; color: #333; }
                           @media print {
+
                               .print-preview { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
                               .page-break { page-break-before: always; }
                           }
