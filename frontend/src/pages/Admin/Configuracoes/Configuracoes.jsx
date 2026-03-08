@@ -3,6 +3,7 @@ import configService from '../../../services/configService';
 import { Save, AlertCircle, CheckCircle, Truck, Plus, X, ClipboardList } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import RotasAtivasPreview from './RotasAtivasPreview';
 
 const TIPOS_PADRAO = [
     { value: 'VISITA', label: 'Visita Presencial' },
@@ -234,6 +235,9 @@ const Configuracoes = () => {
                     </div>
                 </div>
             </div>
+
+            {/* ── Rotas Ativas (Roteirização) ── */}
+            <RotasAtivasPreview />
         </div>
     );
 };

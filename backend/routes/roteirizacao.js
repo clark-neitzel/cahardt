@@ -106,8 +106,14 @@ router.post('/', verificarAuth, async (req, res) => {
             return res.json({ sequencia: [], semGPS: [], resumo: { totalParadas: 0, totalSemGPS: 0, duracaoTotalMin: 0, distanciaTotalKm: '0.0', motorista: '' } });
         }
 
-        const motoristaInfo = pedidos[0].embarque?.responsavelId ? pedidos[0].embarque : null;
-        const responsavelNome = motoristaInfo?.responsavelId ? await prisma.vendedor.findUnique({ where: { id: motoristaInfo.responsavelId }, select: { nome: true } }).then(u => u?.nome) : '';
+        let responsavelNome = '';
+        if (pedidos[0].embarque?.responsavelId) {
+            const vend = await prisma.vendedor.findUnique({
+                where: { id: pedidos[0].embarque.responsavelId },
+                select: { nome: true }
+            });
+            if (vend) responsavelNome = vend.nome;
+        }
 
         // 5. Separar pedidos com e sem GPS no cliente
         const comGPS = [];
@@ -280,22 +286,45 @@ router.post('/', verificarAuth, async (req, res) => {
         const duracaoTotalRota = Math.round((rota.duration || 0) / 60) + ((tempoParadaMin || 10) * listaClientes.length);
         const distanciaTotalRota = ((rota.distance || 0) / 1000).toFixed(1);
 
+        const seq_final = sequencia;
+        const sem_final = semGPS.map(p => ({
+            pedidoId: p.id,
+            numero: p.numero,
+            clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome,
+            motivo: 'Sem GPS no cadastro'
+        }));
+        const resumo_final = {
+            totalParadas: sequencia.length,
+            totalSemGPS: semGPS.length,
+            duracaoTotalMin: duracaoTotalRota,
+            distanciaTotalKm: distanciaTotalRota,
+            motorista: responsavelNome
+        };
+        const config_final = { horaSaida, tempoParadaMin, lat, lng };
+
+        // 8. Salvar no banco (Sobrescrevendo a anterior deste vendedorId)
+        await prisma.roteirizacao.upsert({
+            where: { vendedorId: targetVendedorId },
+            update: {
+                dadosConfig: config_final,
+                sequencia: seq_final,
+                semGPS: sem_final,
+                resumo: resumo_final
+            },
+            create: {
+                vendedorId: targetVendedorId,
+                dadosConfig: config_final,
+                sequencia: seq_final,
+                semGPS: sem_final,
+                resumo: resumo_final
+            }
+        });
+
         releaseLock();
         return res.json({
-            sequencia,
-            semGPS: semGPS.map(p => ({
-                pedidoId: p.id,
-                numero: p.numero,
-                clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome,
-                motivo: 'Sem GPS no cadastro'
-            })),
-            resumo: {
-                totalParadas: sequencia.length,
-                totalSemGPS: semGPS.length,
-                duracaoTotalMin: duracaoTotalRota,
-                distanciaTotalKm: distanciaTotalRota,
-                motorista: responsavelNome
-            }
+            sequencia: seq_final,
+            semGPS: sem_final,
+            resumo: resumo_final
         });
 
     } catch (error) {
@@ -313,6 +342,92 @@ router.get('/status', verificarAuth, (req, res) => {
         return res.json({ ocupado: true, iniciadoEm: new Date(lock.iniciadoEm).toISOString() });
     }
     return res.json({ ocupado: false });
+});
+
+// ── GET /api/roteirizar ──────────────────────────────────────────────────────
+// Retorna a roteirização salva para o vendedor atual logado.
+router.get('/', verificarAuth, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const perms = await getPerms(userId);
+        const isAdmin = perms.admin || perms.Pode_Ver_Todos_Clientes;
+
+        // Se for admin e passar ID, pode buscar de outro. Senão, busca de si próprio.
+        const targetVendedorId = (isAdmin && req.query.vendedorId) ? req.query.vendedorId : userId;
+
+        const rotaSalva = await prisma.roteirizacao.findUnique({
+            where: { vendedorId: targetVendedorId }
+        });
+
+        if (!rotaSalva) {
+            return res.status(204).send(); // 204 No Content se não houver rota salva.
+        }
+
+        return res.json({
+            sequencia: rotaSalva.sequencia,
+            semGPS: rotaSalva.semGPS,
+            resumo: rotaSalva.resumo,
+            dadosConfig: rotaSalva.dadosConfig,
+            updatedAt: rotaSalva.updatedAt
+        });
+    } catch (error) {
+        console.error('[Roteirizacao GET] Erro:', error);
+        res.status(500).json({ error: 'Erro ao buscar roteirização.' });
+    }
+});
+
+// ── DELETE /api/roteirizar ───────────────────────────────────────────────────
+// Limpa a roteirização do próprio vendedor logado
+router.delete('/', verificarAuth, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        // admin can clear someone else's by passing id, otherwise clear own
+        const perms = await getPerms(userId);
+        const isAdmin = perms.admin || perms.Pode_Ver_Todos_Clientes;
+        const targetVendedorId = (isAdmin && req.query.vendedorId) ? req.query.vendedorId : userId;
+
+        await prisma.roteirizacao.deleteMany({
+            where: { vendedorId: targetVendedorId }
+        });
+
+        return res.json({ success: true });
+    } catch (error) {
+        console.error('[Roteirizacao DELETE] Erro:', error);
+        res.status(500).json({ error: 'Erro ao limpar roteirização.' });
+    }
+});
+
+// ── GET /api/roteirizar/admin/todas ──────────────────────────────────────────
+// Lista todas as roteirizações salvas de todos os vendedores (Visão Admin)
+router.get('/admin/todas', verificarAuth, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const perms = await getPerms(userId);
+        const isAdmin = perms.admin || perms.Pode_Ver_Todos_Clientes;
+
+        if (!isAdmin) {
+            return res.status(403).json({ error: 'Acesso negado. Apenas administradores.' });
+        }
+
+        const rotasSalvas = await prisma.roteirizacao.findMany({
+            include: {
+                vendedor: { select: { nome: true } }
+            },
+            orderBy: { updatedAt: 'desc' }
+        });
+
+        const formatedData = rotasSalvas.map(r => ({
+            vendedorId: r.vendedorId,
+            vendedorNome: r.vendedor?.nome || 'Desconhecido',
+            resumo: r.resumo,
+            updatedAt: r.updatedAt
+        }));
+
+        return res.json(formatedData);
+    } catch (error) {
+        console.error('[Roteirizacao ADMIN GET] Erro:', error);
+        res.status(500).json({ error: 'Erro ao buscar todas roteirizações.' });
+    }
 });
 
 module.exports = router;

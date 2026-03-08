@@ -26,6 +26,7 @@ const despesasRoutes = require('./routes/despesas'); // Módulo de Despesas
 const caixaRoutes = require('./routes/caixa'); // Módulo Caixa Diário
 const adminResetRoutes = require('./routes/adminReset'); // Reset Transacional (Admin)
 const roteirizacaoRoutes = require('./routes/roteirizacao'); // Roteirizador de Entregas
+const metaRoutes = require('./routes/metaRoutes'); // Gestão de Metas e Dashboard Vendas
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -67,6 +68,7 @@ app.use('/api/embarques', embarqueRoutes); // Montagem Cargas e Despacho Logíst
 app.use('/api/entregas', entregasRoutes); // App Motorista
 app.use('/api/despesas', despesasRoutes); // Módulo de Despesas
 app.use('/api/caixa', caixaRoutes); // Módulo Caixa Diário
+app.use('/api/metas', metaRoutes); // Módulo de Metas e Dashboard
 app.use('/api/admin', adminResetRoutes); // Admin: Reset, Utilitários
 app.use('/api/roteirizar', roteirizacaoRoutes); // Roteirizador de Entregas (OSRM)
 

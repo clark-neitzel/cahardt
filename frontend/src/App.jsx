@@ -11,6 +11,8 @@ import ListaVendedores from './pages/Admin/Vendedores/ListaVendedores';
 import Configuracoes from './pages/Admin/Configuracoes/Configuracoes';
 import TabelaPrecos from './pages/Configuracoes/TabelaPrecos';
 import ContasFinanceiras from './pages/Configuracoes/ContasFinanceiras';
+import GerenciarMetas from './pages/Configuracoes/Metas/GerenciarMetas';
+import DashboardVendedor from './pages/Dashboard/DashboardVendedor';
 import ListaPedidos from './pages/Pedidos/ListaPedidos';
 import Veiculos from './pages/Veiculos/Veiculos';
 import NovoPedido from './pages/Pedidos/NovoPedido';
@@ -71,8 +73,9 @@ const Layout = ({ children }) => {
                 Hardt App
               </Link>
               <div className="hidden sm:flex sm:space-x-8">
+                <NavLink to="/" className={({ isActive }) => getNavLinkClass(isActive)}>Dashboard</NavLink>
                 {hasPermission('catalogo') && (
-                  <NavLink to="/" className={({ isActive }) => getNavLinkClass(isActive)}>Catálogo</NavLink>
+                  <NavLink to="/catalogo" className={({ isActive }) => getNavLinkClass(isActive)}>Catálogo</NavLink>
                 )}
                 {hasPermission('pedidos') && (
                   <NavLink to="/pedidos" className={({ isActive }) => getNavLinkClass(isActive)}>Pedidos</NavLink>
@@ -127,6 +130,7 @@ const Layout = ({ children }) => {
                             <Link to="/admin/config" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Gerais</Link>
                             <Link to="/config/tabela-precos" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Preços</Link>
                             <Link to="/config/contas-financeiras" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Bancos</Link>
+                            <Link to="/config/metas" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Metas de Vendas</Link>
                           </>
                         )}
                       </div>
@@ -165,8 +169,9 @@ const Layout = ({ children }) => {
         {isMobileMenuOpen && (
           <div className="sm:hidden">
             <div className="pt-2 pb-3 space-y-1">
+              <NavLink to="/" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Dashboard</NavLink>
               {hasPermission('catalogo') && (
-                <NavLink to="/" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Catálogo</NavLink>
+                <NavLink to="/catalogo" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Catálogo</NavLink>
               )}
               {hasPermission('pedidos') && (
                 <NavLink to="/pedidos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Pedidos</NavLink>
@@ -209,6 +214,7 @@ const Layout = ({ children }) => {
                   <NavLink to="/admin/config" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Configurações Gerais</NavLink>
                   <NavLink to="/config/tabela-precos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Preços</NavLink>
                   <NavLink to="/config/contas-financeiras" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Bancos</NavLink>
+                  <NavLink to="/config/metas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Metas de Vendas</NavLink>
                 </>
               )}
 
@@ -244,8 +250,11 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
 
+              {/* Dashboard Inicial */}
+              <Route path="/" element={<PrivateRoute><DashboardVendedor /></PrivateRoute>} />
+
               {/* Catálogo */}
-              <Route path="/" element={<PrivateRoute tab="catalogo"><Catalogo /></PrivateRoute>} />
+              <Route path="/catalogo" element={<PrivateRoute tab="catalogo"><Catalogo /></PrivateRoute>} />
               <Route path="/produto/:id" element={<PrivateRoute tab="catalogo"><DetalheProduto /></PrivateRoute>} />
 
               {/* Pedidos */}
@@ -286,6 +295,7 @@ function App() {
               <Route path="/config/tabela-precos" element={<PrivateRoute tab="configuracoes"><TabelaPrecos /></PrivateRoute>} />
               <Route path="/config/contas-financeiras" element={<PrivateRoute tab="configuracoes"><ContasFinanceiras /></PrivateRoute>} />
               <Route path="/config/pagamentos-entrega" element={<PrivateRoute tab="configuracoes"><FormasPagamentoEntrega /></PrivateRoute>} />
+              <Route path="/config/metas" element={<PrivateRoute tab="configuracoes"><GerenciarMetas /></PrivateRoute>} />
             </Routes>
           </Layout>
           <Toaster position="top-right" />

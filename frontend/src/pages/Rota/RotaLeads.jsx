@@ -789,7 +789,7 @@ const RotaLeads = () => {
                         setShowOrganizarRota(false);
                         const total = result.sequencia?.length || 0;
                         const semGPS = result.semGPS?.length || 0;
-                        toast.success(`Rota organizada! ${total} parada${total !== 1 ? 's' : ''} ordenadas.${semGPS > 0 ? ` (${semGPS} sem GPS)` : ''}`);
+                        toast.success(`Rota organizada e salva! ${total} parada${total !== 1 ? 's' : ''} ordenadas.${semGPS > 0 ? ` (${semGPS} sem GPS)` : ''}`);
                     } catch (err) {
                         if (err?.response?.status === 423) {
                             toast.error('Roteirização em uso por outro usuário. Aguarde.');
@@ -923,15 +923,36 @@ const RotaLeads = () => {
 
             setLeads(leadsComAtend);
             setClientes(clientesComAtend);
+
+            // 3. Buscar Roteirização Salva
+            if (user?.permissoes?.app_motorista || user?.permissoes?.admin || user?.permissoes?.Pode_Executar_Entregas) {
+                const rotaSalva = await roteirizacaoService.getRotaSalva(idBusca); // Busca a do vendedor selecionado no combobox
+                if (rotaSalva) {
+                    setRotaOrganizada(rotaSalva);
+                } else {
+                    setRotaOrganizada(null);
+                }
+            }
+
         } catch (e) {
             console.error(e);
             toast.error('Erro ao carregar dados da rota.', { duration: 5000 });
         } finally {
             setLoading(false);
         }
-    }, [vendedorId, podeEscolherVendedor, vendedorFiltro]);
+    }, [vendedorId, podeEscolherVendedor, vendedorFiltro, user]);
 
     useEffect(() => { carregar(); }, [carregar]);
+
+    const handleLimparRota = async (mostrarToast = true) => {
+        try {
+            await roteirizacaoService.limparRota();
+            setRotaOrganizada(null);
+            if (mostrarToast) toast.success('Rota limpa com sucesso.');
+        } catch (error) {
+            toast.error('Erro ao limpar a rota.');
+        }
+    };
 
     // Filtra clientes com rota definida (atendimentos já injetados no carregar)
     const clientesComAtendimento = useMemo(() => {
@@ -1157,9 +1178,48 @@ const RotaLeads = () => {
                                     <p className="text-[13px]">Nenhum item pendente na sua rota.</p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 lg:gap-3">
-                                    {itensParaAtender.map(renderItem)}
-                                </div>
+                                <>
+                                    {/* Resumo da Rota Organizada */}
+                                    {rotaOrganizada && (
+                                        <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 mb-4 shadow-sm relative">
+                                            <h3 className="text-[13px] font-bold text-sky-800 flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-1.5"><Route className="h-4 w-4" /> Resumo da Rota Otimizada</div>
+                                                <button onClick={() => handleLimparRota()} className="text-[11px] bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded font-semibold transition-colors">
+                                                    Limpar Rota
+                                                </button>
+                                            </h3>
+                                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                                <div className="bg-white p-2 rounded border border-sky-100">
+                                                    <p className="text-[10px] uppercase font-bold text-gray-500">Paradas GPS</p>
+                                                    <p className="text-[15px] font-bold text-sky-900">{rotaOrganizada.resumo.totalParadas}</p>
+                                                </div>
+                                                <div className="bg-white p-2 rounded border border-sky-100">
+                                                    <p className="text-[10px] uppercase font-bold text-gray-500">Duração Aprox.</p>
+                                                    <p className="text-[15px] font-bold text-sky-900">{rotaOrganizada.resumo.duracaoTotalMin} min</p>
+                                                </div>
+                                                <div className="bg-white p-2 rounded border border-sky-100">
+                                                    <p className="text-[10px] uppercase font-bold text-gray-500">Distância</p>
+                                                    <p className="text-[15px] font-bold text-sky-900">{rotaOrganizada.resumo.distanciaTotalKm} km</p>
+                                                </div>
+                                                {rotaOrganizada.resumo.totalSemGPS > 0 && (
+                                                    <div className="bg-white p-2 rounded border border-orange-200">
+                                                        <p className="text-[10px] uppercase font-bold text-orange-600">Sem Cadastro GPS</p>
+                                                        <p className="text-[15px] font-bold text-orange-700">{rotaOrganizada.resumo.totalSemGPS}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {rotaOrganizada.updatedAt && (
+                                                <p className="text-[10px] text-sky-600 mt-2 text-right">
+                                                    Gerada em: {new Date(rotaOrganizada.updatedAt).toLocaleString('pt-BR')}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 lg:gap-3">
+                                        {itensParaAtender.map(renderItem)}
+                                    </div>
+                                </>
                             )
                         )}
 
@@ -1378,7 +1438,13 @@ const RotaLeads = () => {
                     onClose={() => setCheckoutPedido(null)}
                     onSuccess={() => {
                         setCheckoutPedido(null);
-                        setRotaOrganizada(null); // Limpa a rota para forçar recalculo e tirar o concluído
+
+                        // Automaticamente limpa a rota se foi a ultima entrega
+                        if (entregasPendentes.length <= 1) {
+                            handleLimparRota(false);
+                        } else {
+                            setRotaOrganizada(null); // Limpa a rota para forçar recalculo e tirar o concluído
+                        }
                         carregarEntregas('pendentes');
                         carregarEntregas('concluidas');
                         toast.success('Entrega registrada com sucesso!');
