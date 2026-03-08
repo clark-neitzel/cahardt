@@ -4,7 +4,7 @@ import {
     MapPin, Phone, MessageCircle, User, Plus, ChevronRight,
     Clock, Calendar, Tag, CheckCircle, ClipboardList, Star,
     Package, X, Navigation, Loader, Search, Truck, Edit3,
-    DollarSign, Trash2, Save, ChevronDown, ChevronUp
+    DollarSign, Trash2, Save, ChevronDown, ChevronUp, Route
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import leadService from '../../services/leadService';
@@ -19,6 +19,7 @@ import ModalAtendimento from './ModalAtendimento';
 import ModalNovoLead from './ModalNovoLead';
 import CheckoutEntregaModal from '../Motorista/Entregas/CheckoutEntregaModal';
 import ClientePopup from './ClientePopup';
+import roteirizacaoService from '../../services/roteirizacaoService';
 
 const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 const ETAPA_COLORS = {
@@ -753,6 +754,83 @@ const RotaLeads = () => {
     const [loadingEntregas, setLoadingEntregas] = useState(false);
     const [checkoutPedido, setCheckoutPedido] = useState(null);
 
+    // Roteirizador
+    const [rotaOrganizada, setRotaOrganizada] = useState(null); // { sequencia: [...], semGPS: [...], resumo: {...} }
+    const [showOrganizarRota, setShowOrganizarRota] = useState(false);
+    const [isRoteirizando, setIsRoteirizando] = useState(false);
+    const [rotaConfig, setRotaConfig] = useState({
+        horaSaida: new Date().toTimeString().slice(0, 5),
+        tempoParadaMin: 10,
+        vendedorIdRota: ''
+    });
+
+    // Mapa pedidoId -> dados da rota para exibição nos cards
+    const mapaRota = useMemo(() => {
+        if (!rotaOrganizada) return {};
+        const mapa = {};
+        rotaOrganizada.sequencia.forEach(p => { mapa[p.pedidoId] = p; });
+        return mapa;
+    }, [rotaOrganizada]);
+
+    const handleOrganizarRota = async () => {
+        setIsRoteirizando(true);
+        try {
+            navigator.geolocation.getCurrentPosition(
+                async (pos) => {
+                    try {
+                        const { latitude: lat, longitude: lng } = pos.coords;
+                        const result = await roteirizacaoService.roteirizar({
+                            lat, lng,
+                            horaSaida: rotaConfig.horaSaida,
+                            tempoParadaMin: rotaConfig.tempoParadaMin,
+                            vendedorId: rotaConfig.vendedorIdRota || undefined
+                        });
+                        setRotaOrganizada(result);
+                        setShowOrganizarRota(false);
+                        const total = result.sequencia?.length || 0;
+                        const semGPS = result.semGPS?.length || 0;
+                        toast.success(`Rota organizada! ${total} parada${total !== 1 ? 's' : ''} ordenadas.${semGPS > 0 ? ` (${semGPS} sem GPS)` : ''}`);
+                    } catch (err) {
+                        if (err?.response?.status === 423) {
+                            toast.error('Roteirização em uso por outro usuário. Aguarde.');
+                        } else {
+                            toast.error(err?.response?.data?.error || 'Erro ao roteirizar. Verifique se o serviço OSRM está ativo.');
+                        }
+                    } finally {
+                        setIsRoteirizando(false);
+                    }
+                },
+                (geoErr) => {
+                    setIsRoteirizando(false);
+                    toast.error('GPS negado. Permita o acesso à localização no navegador.');
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        } catch (e) {
+            setIsRoteirizando(false);
+            toast.error('Erro ao capturar localização.');
+        }
+    };
+
+    // Ordena entregas pendentes conforme a rota calculada
+    const entregasPendentesOrdenadas = useMemo(() => {
+        if (!rotaOrganizada || !rotaOrganizada.sequencia?.length) return entregasPendentesFiltradas;
+        const ordemIds = rotaOrganizada.sequencia.map(p => p.pedidoId);
+        const ordenadas = [...entregasPendentesFiltradas].sort((a, b) => {
+            const ia = ordemIds.indexOf(a.id);
+            const ib = ordemIds.indexOf(b.id);
+            if (ia === -1 && ib === -1) return 0;
+            if (ia === -1) return 1;
+            if (ib === -1) return -1;
+            return ia - ib;
+        });
+        // Appenda ao final os que estão no semGPS
+        const semGPSIds = new Set(rotaOrganizada.semGPS?.map(p => p.pedidoId) || []);
+        const principal = ordenadas.filter(p => !semGPSIds.has(p.id));
+        const semGPSPedidos = ordenadas.filter(p => semGPSIds.has(p.id));
+        return [...principal, ...semGPSPedidos];
+    }, [rotaOrganizada, entregasPendentesFiltradas]);
+
     useEffect(() => { refreshUser(); }, []); // garante permissões frescas do banco
 
     const vendedorId = user?.id;
@@ -1097,25 +1175,145 @@ const RotaLeads = () => {
                         )}
 
                         {aba === 'entregas' && (
-                            entregasPendentesFiltradas.length === 0 ? (
-                                <div className="text-center py-12 text-gray-500">
-                                    <CheckCircle className="h-10 w-10 text-sky-400 mx-auto mb-2" />
-                                    <p className="font-bold text-gray-700">Nenhuma entrega pendente.</p>
-                                    <p className="text-[13px]">Todas as entregas do seu roteiro estão concluídas.</p>
+                            <>
+                                {/* Botão Organizar Rota + Modal de Configuração */}
+                                <div className="mb-3">
+                                    {!showOrganizarRota ? (
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setShowOrganizarRota(true)}
+                                                className="flex items-center gap-1.5 px-3 py-2 bg-sky-600 hover:bg-sky-700 text-white text-[12px] font-bold rounded-lg shadow-sm transition-colors"
+                                            >
+                                                <Route className="h-4 w-4" />
+                                                Organizar Rota
+                                            </button>
+                                            {rotaOrganizada && (
+                                                <>
+                                                    <span className="text-[11px] text-sky-700 font-semibold bg-sky-50 border border-sky-200 px-2 py-1 rounded-lg">
+                                                        🗺️ {rotaOrganizada.resumo?.totalParadas} paradas · {rotaOrganizada.resumo?.distanciaTotalKm} km · {rotaOrganizada.resumo?.duracaoTotalMin} min estimados
+                                                    </span>
+                                                    <button onClick={() => setRotaOrganizada(null)} className="text-gray-400 hover:text-gray-600 p-1" title="Limpar rota">
+                                                        <X className="h-4 w-4" />
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="bg-white border border-sky-200 rounded-xl p-4 shadow-sm">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h3 className="text-[13px] font-bold text-sky-800 flex items-center gap-1.5">
+                                                    <Route className="h-4 w-4" /> Configurar Rota
+                                                </h3>
+                                                <button onClick={() => setShowOrganizarRota(false)} className="text-gray-400 hover:text-gray-600">
+                                                    <X className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                                <div>
+                                                    <label className="text-[10px] font-semibold text-gray-500 uppercase mb-1 block">Horário de Saída</label>
+                                                    <input
+                                                        type="time"
+                                                        value={rotaConfig.horaSaida}
+                                                        onChange={e => setRotaConfig(c => ({ ...c, horaSaida: e.target.value }))}
+                                                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-sky-400"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-semibold text-gray-500 uppercase mb-1 block">Tempo por Entrega (min)</label>
+                                                    <input
+                                                        type="number"
+                                                        min="1" max="120"
+                                                        value={rotaConfig.tempoParadaMin}
+                                                        onChange={e => setRotaConfig(c => ({ ...c, tempoParadaMin: Number(e.target.value) }))}
+                                                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-sky-400"
+                                                    />
+                                                </div>
+                                            </div>
+                                            {podeEscolherVendedor && vendedores.length > 0 && (
+                                                <div className="mb-3">
+                                                    <label className="text-[10px] font-semibold text-gray-500 uppercase mb-1 block">Motorista</label>
+                                                    <select
+                                                        value={rotaConfig.vendedorIdRota}
+                                                        onChange={e => setRotaConfig(c => ({ ...c, vendedorIdRota: e.target.value }))}
+                                                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-sky-400"
+                                                    >
+                                                        <option value="">Minha rota</option>
+                                                        {vendedores.map(v => (
+                                                            <option key={v.id} value={v.id}>{v.nome}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+                                            <button
+                                                onClick={handleOrganizarRota}
+                                                disabled={isRoteirizando}
+                                                className="w-full py-2.5 bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white text-[13px] font-bold rounded-lg flex items-center justify-center gap-2 transition-colors"
+                                            >
+                                                {isRoteirizando ? (
+                                                    <><Loader className="h-4 w-4 animate-spin" /> Calculando rota...</>
+                                                ) : (
+                                                    <><Navigation className="h-4 w-4" /> Capturar GPS e Gerar Rota</>
+                                                )}
+                                            </button>
+                                            <p className="text-[10px] text-gray-400 text-center mt-2">O navegador pedirá permissão de localização</p>
+                                        </div>
+                                    )}
                                 </div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-                                    {entregasPendentesFiltradas.map(p => (
-                                        <CardEntregaPendente
-                                            key={p.id}
-                                            pedido={p}
-                                            onCheckout={setCheckoutPedido}
-                                            podeCheckout={podeEntregas}
-                                            onVerCliente={setClientePopupItem}
-                                        />
-                                    ))}
-                                </div>
-                            )
+
+                                {/* Aviso de clientes sem GPS (quando rota está calculada) */}
+                                {rotaOrganizada?.semGPS?.length > 0 && (
+                                    <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                                        <MapPin className="h-4 w-4 text-amber-500 shrink-0" />
+                                        <p className="text-[11px] text-amber-700">
+                                            <strong>{rotaOrganizada.semGPS.length}</strong> entrega{rotaOrganizada.semGPS.length > 1 ? 's' : ''} sem GPS no cadastro (listada{rotaOrganizada.semGPS.length > 1 ? 's' : ''} ao final).
+                                        </p>
+                                    </div>
+                                )}
+
+                                {entregasPendentesFiltradas.length === 0 ? (
+                                    <div className="text-center py-12 text-gray-500">
+                                        <CheckCircle className="h-10 w-10 text-sky-400 mx-auto mb-2" />
+                                        <p className="font-bold text-gray-700">Nenhuma entrega pendente.</p>
+                                        <p className="text-[13px]">Todas as entregas do seu roteiro estão concluídas.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                                        {entregasPendentesOrdenadas.map(p => {
+                                            const rotaInfo = mapaRota[p.id];
+                                            return (
+                                                <div key={p.id} className="relative">
+                                                    {/* Badge de sequência */}
+                                                    {rotaInfo && (
+                                                        <div className="absolute -top-1.5 -left-1.5 z-10 flex items-center gap-1">
+                                                            <span className="bg-sky-700 text-white text-[11px] font-extrabold w-6 h-6 rounded-full flex items-center justify-center shadow-md">
+                                                                {rotaInfo.sequencia}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {/* ETA abaixo do badge */}
+                                                    {rotaInfo && (
+                                                        <div className="bg-sky-50 border border-sky-100 rounded-t-lg px-3 py-1.5 flex items-center gap-3 text-[10px] text-sky-700 font-semibold">
+                                                            <span className="flex items-center gap-0.5">
+                                                                <Clock className="h-3 w-3" /> Chegada: {rotaInfo.previsaoChegada}
+                                                            </span>
+                                                            <span className="text-sky-400">·</span>
+                                                            <span className="flex items-center gap-0.5">
+                                                                <Navigation className="h-3 w-3" /> {rotaInfo.distanciaKm} km · {rotaInfo.duracaoTrajetoMin} min
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    <CardEntregaPendente
+                                                        pedido={p}
+                                                        onCheckout={setCheckoutPedido}
+                                                        podeCheckout={podeEntregas}
+                                                        onVerCliente={setClientePopupItem}
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </>
                         )}
 
                         {aba === 'entregues' && (
