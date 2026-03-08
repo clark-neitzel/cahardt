@@ -925,13 +925,11 @@ const RotaLeads = () => {
             setClientes(clientesComAtend);
 
             // 3. Buscar Roteirização Salva
-            if (user?.permissoes?.app_motorista || user?.permissoes?.admin || user?.permissoes?.Pode_Executar_Entregas) {
-                const rotaSalva = await roteirizacaoService.getRotaSalva(idBusca); // Busca a do vendedor selecionado no combobox
-                if (rotaSalva) {
-                    setRotaOrganizada(rotaSalva);
-                } else {
-                    setRotaOrganizada(null);
-                }
+            const rotaSalva = await roteirizacaoService.getRotaSalva(idBusca); // Busca a do vendedor selecionado no combobox
+            if (rotaSalva) {
+                setRotaOrganizada(rotaSalva);
+            } else {
+                setRotaOrganizada(null);
             }
 
         } catch (e) {

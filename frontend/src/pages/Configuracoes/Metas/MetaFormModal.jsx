@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 import dayjs from 'dayjs';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -76,7 +76,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
         }
 
         if (formData.diasTrabalho.length === 0) {
-            toast.warning("Selecione os dias de trabalho deste mês no calendário");
+            toast.error("Selecione os dias de trabalho deste mês no calendário");
             return;
         }
 

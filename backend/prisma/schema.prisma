@@ -45,6 +45,7 @@ model Produto {
   itens           PedidoItem[]
   promocoes       Promocao[]
   itensDevolvidos EntregaItemDevolvido[]
+  metasProdutos   MetaProduto[]
 
   @@map("produtos")
 }
@@ -290,6 +291,7 @@ model Vendedor {
   despesas            Despesa[] @relation("DespesasDoVendedor")
   caixasDiarios       CaixaDiario[]
   metasMensais        MetaMensalVendedor[]
+  roteirizacao        Roteirizacao?
 
   @@map("vendedores")
 }
@@ -363,6 +365,7 @@ model Promocao {
 
   produto  Produto                @relation(fields: [produtoId], references: [id])
   grupos   PromocaoCondicaoGrupo[]
+  metasPromocoes MetaPromocao[]
 
   @@index([produtoId])
   @@index([status])

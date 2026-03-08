@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import MUIDataTable from "mui-datatables";
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { IconButton } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
 import dayjs from 'dayjs';
+import { Pencil, Plus } from 'lucide-react';
+import toast from 'react-hot-toast';
 import MetaFormModal from './MetaFormModal';
-import { toast } from 'react-toastify';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -70,63 +67,12 @@ const GerenciarMetas = () => {
         if (saved) fetchMetas();
     };
 
-    // Columns configuration for MUI Datatables
-    const columns = [
-        {
-            name: "vendedor",
-            label: "Vendedor",
-            options: { filter: true, sort: true, customBodyRender: (v) => v?.nome || '-' }
-        },
-        {
-            name: "valorMensal",
-            label: "Meta Mensal (R$)",
-            options: { filter: true, sort: true, customBodyRender: (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` }
-        },
-        {
-            name: "diasTrabalho",
-            label: "Dias de Atuação",
-            options: {
-                filter: false, sort: false, customBodyRender: (v) => {
-                    const arr = typeof v === 'string' ? JSON.parse(v) : v;
-                    return arr ? `${arr.length} dias` : '0 dias';
-                }
-            }
-        },
-        {
-            name: "id",
-            label: "Ações",
-            options: {
-                filter: false, sort: false,
-                customBodyRenderLite: (dataIndex) => {
-                    const meta = metas[dataIndex];
-                    return (
-                        <div className="flex justify-center">
-                            <IconButton onClick={() => handleEditClick(meta)} color="primary">
-                                <EditIcon />
-                            </IconButton>
-                        </div>
-                    );
-                }
-            }
-        }
-    ];
+    const formatCurrency = (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
-    const options = {
-        filterType: 'checkbox',
-        selectableRows: 'none',
-        print: false,
-        download: false,
-        viewColumns: false,
-        textLabels: {
-            body: { noMatch: "Desculpe, nenhum registro encontrado" },
-            pagination: { next: "Próxima", previous: "Anterior", rowsPerPage: "Linhas por página:", displayRows: "de" },
-            toolbar: { search: "Pesquisar", filterTable: "Filtrar" },
-        }
+    const parseDias = (v) => {
+        const arr = typeof v === 'string' ? JSON.parse(v) : v;
+        return arr ? `${arr.length} dias` : '0 dias';
     };
-
-    const getMuiTheme = () => createTheme({
-        components: { MUIDataTableHeadCell: { styleOverrides: { root: { fontWeight: 'bold' } } } }
-    });
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -146,22 +92,56 @@ const GerenciarMetas = () => {
 
                     <button
                         onClick={handleNewClick}
-                        className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition-colors"
+                        className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition-colors flex items-center gap-2"
                     >
-                        + Nova Meta
+                        <Plus size={18} /> Nova Meta
                     </button>
                 </div>
             </div>
 
             <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
-                <ThemeProvider theme={getMuiTheme()}>
-                    <MUIDataTable
-                        title={`Metas Definidas para ${dayjs(mesAtual).format('MM/YYYY')}`}
-                        data={metas}
-                        columns={columns}
-                        options={options}
-                    />
-                </ThemeProvider>
+                <div className="px-4 py-3 border-b bg-gray-50">
+                    <h2 className="text-lg font-semibold text-gray-700">
+                        Metas Definidas para {dayjs(mesAtual).format('MM/YYYY')}
+                    </h2>
+                </div>
+
+                {loading ? (
+                    <div className="p-8 text-center text-gray-500">Carregando...</div>
+                ) : metas.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">Nenhuma meta definida para este mês.</div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
+                                <tr>
+                                    <th className="px-4 py-3">Vendedor</th>
+                                    <th className="px-4 py-3">Meta Mensal (R$)</th>
+                                    <th className="px-4 py-3">Dias de Atuação</th>
+                                    <th className="px-4 py-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {metas.map((meta) => (
+                                    <tr key={meta.id} className="hover:bg-gray-50">
+                                        <td className="px-4 py-3 font-medium">{meta.vendedor?.nome || '-'}</td>
+                                        <td className="px-4 py-3">{formatCurrency(meta.valorMensal)}</td>
+                                        <td className="px-4 py-3">{parseDias(meta.diasTrabalho)}</td>
+                                        <td className="px-4 py-3 text-center">
+                                            <button
+                                                onClick={() => handleEditClick(meta)}
+                                                className="text-blue-600 hover:text-blue-800 p-1"
+                                                title="Editar"
+                                            >
+                                                <Pencil size={18} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
 
             {isModalOpen && (

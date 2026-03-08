@@ -7,7 +7,7 @@ import {
     TrendingUp, Calendar, Target, AlertTriangle,
     Map as MapIcon, ShoppingCart, Wallet, CheckCircle2
 } from 'lucide-react';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
