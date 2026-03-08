@@ -7,7 +7,8 @@ import condicaoPagamentoService from '../../services/condicaoPagamentoService';
 import MultiSelect from '../../components/MultiSelect';
 import atendimentoService from '../../services/atendimentoService';
 import pedidoService from '../../services/pedidoService';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package } from 'lucide-react';
+import categoriaClienteService from '../../services/categoriaClienteService';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles } from 'lucide-react';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
 
@@ -54,6 +55,7 @@ const DetalheCliente = () => {
     const [condicoesPagamento, setCondicoesPagamento] = useState([]);
     const [condicoesPagamentoCA, setCondicoesPagamentoCA] = useState([]);
     const [vendedores, setVendedores] = useState([]);
+    const [categoriasCliente, setCategoriasCliente] = useState([]);
     const [loading, setLoading] = useState(true);
     const [abaAtiva, setAbaAtiva] = useState('dados');
     const [atendimentos, setAtendimentos] = useState([]);
@@ -67,7 +69,11 @@ const DetalheCliente = () => {
         Condicao_de_pagamento: '',
         idVendedor: '',
         Formas_Atendimento: [],
-        condicoes_pagamento_permitidas: []
+        condicoes_pagamento_permitidas: [],
+        categoriaClienteId: '',
+        cicloCompraPersonalizadoDias: '',
+        insightAtivo: true,
+        observacaoComercialFixa: ''
     });
 
     useEffect(() => {
@@ -76,17 +82,19 @@ const DetalheCliente = () => {
 
     const fetchData = async () => {
         try {
-            const [clienteData, condicoesData, condicoesCAData, vendedoresData] = await Promise.all([
+            const [clienteData, condicoesData, condicoesCAData, vendedoresData, categoriasCli] = await Promise.all([
                 clienteService.detalhar(uuid),
                 tabelaPrecoService.listar(),
                 condicaoPagamentoService.listar(),
-                vendedorService.listar()
+                vendedorService.listar(),
+                categoriaClienteService.listar().catch(() => [])
             ]);
 
             setCliente(clienteData);
             setCondicoesPagamento(condicoesData);
             setCondicoesPagamentoCA(condicoesCAData);
             setVendedores(vendedoresData);
+            setCategoriasCliente(categoriasCli);
 
             try {
                 const atends = await atendimentoService.listarPorCliente(uuid);
@@ -110,7 +118,11 @@ const DetalheCliente = () => {
                 Condicao_de_pagamento: clienteData.Condicao_de_pagamento || '',
                 idVendedor: clienteData.idVendedor || '',
                 Formas_Atendimento: clienteData.Formas_Atendimento || [],
-                condicoes_pagamento_permitidas: clienteData.condicoes_pagamento_permitidas || []
+                condicoes_pagamento_permitidas: clienteData.condicoes_pagamento_permitidas || [],
+                categoriaClienteId: clienteData.categoriaClienteId || '',
+                cicloCompraPersonalizadoDias: clienteData.cicloCompraPersonalizadoDias || '',
+                insightAtivo: clienteData.insightAtivo !== undefined ? clienteData.insightAtivo : true,
+                observacaoComercialFixa: clienteData.observacaoComercialFixa || ''
             });
 
         } catch (error) {
@@ -237,8 +249,8 @@ const DetalheCliente = () => {
                                                     {/* Badge entrega */}
                                                     {pedido.statusEntrega && pedido.statusEntrega !== 'PENDENTE' && (
                                                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase flex items-center gap-0.5 ${pedido.statusEntrega === 'ENTREGUE' ? 'bg-green-50 text-green-700 border border-green-200' :
-                                                                pedido.statusEntrega === 'ENTREGUE_PARCIAL' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                                                                    'bg-red-50 text-red-700 border border-red-200'
+                                                            pedido.statusEntrega === 'ENTREGUE_PARCIAL' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                                                'bg-red-50 text-red-700 border border-red-200'
                                                             }`}>
                                                             <Package className="h-2.5 w-2.5" />
                                                             {pedido.statusEntrega === 'ENTREGUE' ? 'Entregue' : pedido.statusEntrega === 'ENTREGUE_PARCIAL' ? 'Parcial' : 'Devolvido'}
@@ -640,11 +652,63 @@ const DetalheCliente = () => {
                                 />
                             </div>
 
+                            {/* INTELIGÊNCIA COMERCIAL */}
+                            <div className="pt-4 border-t border-gray-200">
+                                <h3 className="text-md font-semibold text-purple-700 mb-4 flex items-center">
+                                    <Sparkles className="h-4 w-4 mr-2" /> Inteligência Comercial
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Categoria (Segmento)</label>
+                                        <select
+                                            className="block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                                            value={formData.categoriaClienteId}
+                                            onChange={(e) => setFormData({ ...formData, categoriaClienteId: e.target.value })}
+                                        >
+                                            <option value="">Selecione a categoria...</option>
+                                            {categoriasCliente.map(c => (
+                                                <option key={c.id} value={c.id}>{c.nome} (Ciclo: {c.cicloPadraoDias} dias)</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Sobrescrever Ciclo (Dias)</label>
+                                        <input
+                                            type="number"
+                                            className="block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                                            placeholder="Ex: 5"
+                                            value={formData.cicloCompraPersonalizadoDias}
+                                            onChange={(e) => setFormData({ ...formData, cicloCompraPersonalizadoDias: e.target.value ? parseInt(e.target.value) : '' })}
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Deixe em branco para usar o da categoria.</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Aviso Comercial Fixado</label>
+                                    <textarea
+                                        className="block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                                        rows="2"
+                                        placeholder="Alerta importante sobre venda/negociação para este cliente..."
+                                        value={formData.observacaoComercialFixa}
+                                        onChange={(e) => setFormData({ ...formData, observacaoComercialFixa: e.target.value })}
+                                    />
+                                </div>
+                                <label className="flex items-center space-x-2 mt-4">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.insightAtivo}
+                                        onChange={(e) => setFormData({ ...formData, insightAtivo: e.target.checked })}
+                                        className="h-4 w-4 text-primary bg-white focus:ring-primary border-gray-300 rounded"
+                                    />
+                                    <span className="text-gray-900 text-sm font-medium">Insights Ativos (Sugerir produtos na venda)</span>
+                                </label>
+                            </div>
+
                             {/* Observações */}
-                            <div>
+                            <div className="pt-4 border-t border-gray-200">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     <FileText className="h-4 w-4 inline mr-1" />
-                                    Observações Gerais
+                                    Observações Gerais (Backend)
                                 </label>
                                 <textarea
                                     className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary"

@@ -12,6 +12,8 @@ import Configuracoes from './pages/Admin/Configuracoes/Configuracoes';
 import TabelaPrecos from './pages/Configuracoes/TabelaPrecos';
 import ContasFinanceiras from './pages/Configuracoes/ContasFinanceiras';
 import GerenciarMetas from './pages/Configuracoes/Metas/GerenciarMetas';
+import CategoriasProduto from './pages/Configuracoes/CategoriasProduto';
+import CategoriasCliente from './pages/Configuracoes/CategoriasCliente';
 import DashboardVendedor from './pages/Dashboard/DashboardVendedor';
 import ListaPedidos from './pages/Pedidos/ListaPedidos';
 import Veiculos from './pages/Veiculos/Veiculos';
@@ -131,6 +133,8 @@ const Layout = ({ children }) => {
                             <Link to="/config/tabela-precos" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Preços</Link>
                             <Link to="/config/contas-financeiras" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Bancos</Link>
                             <Link to="/config/metas" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Metas de Vendas</Link>
+                            <Link to="/config/categorias-produto" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Cat. de Produtos</Link>
+                            <Link to="/config/categorias-cliente" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Cat. de Clientes</Link>
                           </>
                         )}
                       </div>
@@ -215,6 +219,8 @@ const Layout = ({ children }) => {
                   <NavLink to="/config/tabela-precos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Preços</NavLink>
                   <NavLink to="/config/contas-financeiras" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Bancos</NavLink>
                   <NavLink to="/config/metas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Metas de Vendas</NavLink>
+                  <NavLink to="/config/categorias-produto" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Cat. de Produtos</NavLink>
+                  <NavLink to="/config/categorias-cliente" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Cat. de Clientes</NavLink>
                 </>
               )}
 
@@ -296,6 +302,8 @@ function App() {
               <Route path="/config/contas-financeiras" element={<PrivateRoute tab="configuracoes"><ContasFinanceiras /></PrivateRoute>} />
               <Route path="/config/pagamentos-entrega" element={<PrivateRoute tab="configuracoes"><FormasPagamentoEntrega /></PrivateRoute>} />
               <Route path="/config/metas" element={<PrivateRoute tab="configuracoes"><GerenciarMetas /></PrivateRoute>} />
+              <Route path="/config/categorias-produto" element={<PrivateRoute tab="configuracoes"><CategoriasProduto /></PrivateRoute>} />
+              <Route path="/config/categorias-cliente" element={<PrivateRoute tab="configuracoes"><CategoriasCliente /></PrivateRoute>} />
             </Routes>
           </Layout>
           <Toaster position="top-right" />

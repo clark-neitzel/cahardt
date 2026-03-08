@@ -415,7 +415,70 @@ const migrationService = {
                 CONSTRAINT "meta_promocoes_meta_mensal_vendedor_id_fkey" FOREIGN KEY ("meta_mensal_vendedor_id") REFERENCES "meta_mensal_vendedor"("id") ON DELETE CASCADE ON UPDATE CASCADE,
                 CONSTRAINT "meta_promocoes_promocao_id_fkey" FOREIGN KEY ("promocao_id") REFERENCES "promocoes"("id") ON DELETE RESTRICT ON UPDATE CASCADE
             );`,
-            `CREATE UNIQUE INDEX IF NOT EXISTS "meta_promocoes_meta_mensal_vendedor_id_promocao_idx" ON "meta_promocoes"("meta_mensal_vendedor_id", "promocao_id");`
+            `CREATE UNIQUE INDEX IF NOT EXISTS "meta_promocoes_meta_mensal_vendedor_id_promocao_idx" ON "meta_promocoes"("meta_mensal_vendedor_id", "promocao_id");`,
+
+            // Update 27: Módulo Inteligência Comercial — Categorias de Produto e Cliente
+            `CREATE TABLE IF NOT EXISTS "categorias_produto" (
+                "id" TEXT NOT NULL,
+                "nome" VARCHAR(100) NOT NULL,
+                "descricao" TEXT,
+                "ordem_exibicao" INTEGER NOT NULL DEFAULT 0,
+                "cor_tag" VARCHAR(20),
+                "ativo" BOOLEAN NOT NULL DEFAULT true,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL,
+                CONSTRAINT "categorias_produto_pkey" PRIMARY KEY ("id")
+            );`,
+            `CREATE UNIQUE INDEX IF NOT EXISTS "categorias_produto_nome_key" ON "categorias_produto"("nome");`,
+
+            `CREATE TABLE IF NOT EXISTS "categorias_cliente" (
+                "id" TEXT NOT NULL,
+                "nome" VARCHAR(100) NOT NULL,
+                "descricao" TEXT,
+                "ciclo_padrao_dias" INTEGER NOT NULL DEFAULT 7,
+                "ativo" BOOLEAN NOT NULL DEFAULT true,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL,
+                CONSTRAINT "categorias_cliente_pkey" PRIMARY KEY ("id")
+            );`,
+            `CREATE UNIQUE INDEX IF NOT EXISTS "categorias_cliente_nome_key" ON "categorias_cliente"("nome");`,
+
+            // Update 28: Adicionar campos no Produto para Inteligência Comercial
+            `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "categoria_produto_id" TEXT;`,
+            `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "produto_substituto_id" TEXT;`,
+            `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "permite_recomendacao" BOOLEAN NOT NULL DEFAULT true;`,
+            `ALTER TABLE "produtos" ADD COLUMN IF NOT EXISTS "prioridade_recomendacao" INTEGER NOT NULL DEFAULT 1;`,
+
+            // Update 29: Adicionar campos no Cliente para Inteligência Comercial
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "categoria_cliente_id" TEXT;`,
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "ciclo_compra_personalizado_dias" INTEGER;`,
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "insight_ativo" BOOLEAN NOT NULL DEFAULT true;`,
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "observacao_comercial_fixa" TEXT;`,
+
+            // Relacionamentos para garantir consistência (Idempotent com DO $$)
+            `DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'produtos_categoria_produto_id_fkey'
+                ) THEN
+                    ALTER TABLE "produtos" ADD CONSTRAINT "produtos_categoria_produto_id_fkey" FOREIGN KEY ("categoria_produto_id") REFERENCES "categorias_produto"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+
+            `DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'produtos_produto_substituto_id_fkey'
+                ) THEN
+                    ALTER TABLE "produtos" ADD CONSTRAINT "produtos_produto_substituto_id_fkey" FOREIGN KEY ("produto_substituto_id") REFERENCES "produtos"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+
+            `DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'clientes_categoria_cliente_id_fkey'
+                ) THEN
+                    ALTER TABLE "clientes" ADD CONSTRAINT "clientes_categoria_cliente_id_fkey" FOREIGN KEY ("categoria_cliente_id") REFERENCES "categorias_cliente"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+                END IF;
+            END $$;`
         ];
 
         for (const [index, cmd] of commands.entries()) {

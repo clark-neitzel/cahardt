@@ -27,6 +27,8 @@ const caixaRoutes = require('./routes/caixa'); // Módulo Caixa Diário
 const adminResetRoutes = require('./routes/adminReset'); // Reset Transacional (Admin)
 const roteirizacaoRoutes = require('./routes/roteirizacao'); // Roteirizador de Entregas
 const metaRoutes = require('./routes/metaRoutes'); // Gestão de Metas e Dashboard Vendas
+const categoriasProdutoRoutes = require('./routes/categoriasProduto'); // Inteligência Comercial
+const categoriasClienteRoutes = require('./routes/categoriasCliente'); // Inteligência Comercial
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -71,6 +73,8 @@ app.use('/api/caixa', caixaRoutes); // Módulo Caixa Diário
 app.use('/api/metas', metaRoutes); // Módulo de Metas e Dashboard
 app.use('/api/admin', adminResetRoutes); // Admin: Reset, Utilitários
 app.use('/api/roteirizar', roteirizacaoRoutes); // Roteirizador de Entregas (OSRM)
+app.use('/api/categorias-produto', authMiddleware, categoriasProdutoRoutes); // Inteligência Comercial
+app.use('/api/categorias-cliente', authMiddleware, categoriasClienteRoutes); // Inteligência Comercial
 
 app.use('/api/migrations', migrationRoutes); // Migration endpoint
 

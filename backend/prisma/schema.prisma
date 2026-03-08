@@ -47,6 +47,15 @@ model Produto {
   itensDevolvidos EntregaItemDevolvido[]
   metasProdutos   MetaProduto[]
 
+  // Inteligência Comercial
+  categoriaProdutoId      String?           @map("categoria_produto_id")
+  categoriaProduto        CategoriaProduto? @relation(fields: [categoriaProdutoId], references: [id])
+  produtoSubstitutoId     String?           @map("produto_substituto_id")
+  produtoSubstituto       Produto?          @relation("Substituto", fields: [produtoSubstitutoId], references: [id])
+  produtoSubstitutoSource Produto[]         @relation("Substituto")
+  permiteRecomendacao     Boolean           @default(true) @map("permite_recomendacao")
+  prioridadeRecomendacao  Int               @default(1) @map("prioridade_recomendacao")
+
   @@map("produtos")
 }
 
@@ -133,6 +142,13 @@ model Cliente {
 
   arquivos ClienteArquivo[]
   pedidos  Pedido[]
+
+  // Inteligência Comercial
+  categoriaClienteId             String?           @map("categoria_cliente_id")
+  categoriaCliente               CategoriaCliente? @relation(fields: [categoriaClienteId], references: [id])
+  cicloCompraPersonalizadoDias   Int?              @map("ciclo_compra_personalizado_dias")
+  insightAtivo                   Boolean           @default(true) @map("insight_ativo")
+  observacaoComercialFixa        String?           @map("observacao_comercial_fixa") @db.Text
 
   @@index([Nome])
   @@index([NomeFantasia])
@@ -772,5 +788,38 @@ model MetaPromocao {
 
   @@unique([metaMensalVendedorId, promocaoId])
   @@map("meta_promocoes")
+}
+
+// =============================================
+// MÓDULO INTELIGÊNCIA COMERCIAL (BASE CADASTRAL)
+// =============================================
+
+model CategoriaProduto {
+  id            String   @id @default(uuid())
+  nome          String   @unique
+  descricao     String?  @db.Text
+  ordemExibicao Int      @default(0) @map("ordem_exibicao")
+  corTag        String?  @map("cor_tag")
+  ativo         Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  produtos Produto[]
+
+  @@map("categorias_produto")
+}
+
+model CategoriaCliente {
+  id              String   @id @default(uuid())
+  nome            String   @unique
+  descricao       String?  @db.Text
+  cicloPadraoDias Int      @default(7) @map("ciclo_padrao_dias")
+  ativo           Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  clientes Cliente[]
+
+  @@map("categorias_cliente")
 }
 

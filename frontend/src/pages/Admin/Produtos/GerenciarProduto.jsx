@@ -5,9 +5,11 @@ import produtoServiceFront from '../../../services/produtoService';
 import configService from '../../../services/configService';
 import promocaoService from '../../../services/promocaoService';
 import { API_URL } from '../../../services/api';
+import categoriaProdutoService from '../../../services/categoriaProdutoService';
+import toast from 'react-hot-toast';
 import {
     ArrowLeft, Loader, AlertCircle, Camera, Tag, Plus, X,
-    CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Trash2, Search
+    CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Trash2, Search, Save, Sparkles
 } from 'lucide-react';
 
 // Componente autocomplete de produto por nome
@@ -527,6 +529,9 @@ const GerenciarProduto = () => {
     // Data States
     const [produto, setProduto] = useState(null);
     const [imagemAtual, setImagemAtual] = useState(0);
+    const [categoriasProduto, setCategoriasProduto] = useState([]);
+    const [todosProdutos, setTodosProdutos] = useState([]);
+    const [salvandoComercial, setSalvandoComercial] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -541,14 +546,27 @@ const GerenciarProduto = () => {
         pesoLiquido: '',
         descricao: '',
         contaAzulUpdatedAt: '',
-        ativo: true
+        ativo: true,
+        // Inteligência Comercial
+        categoriaProdutoId: '',
+        produtoSubstitutoId: '',
+        permiteRecomendacao: true,
+        prioridadeRecomendacao: 1
     });
 
     useEffect(() => {
         const fetchDetalhe = async () => {
             try {
-                const data = await produtoService.detalhar(id);
+                const [data, cats, todos] = await Promise.all([
+                    produtoService.detalhar(id),
+                    categoriaProdutoService.listar().catch(() => []),
+                    produtoService.listar({ limit: 1000, ativo: true }).catch(() => ({ data: [] }))
+                ]);
+
                 setProduto(data);
+                setCategoriasProduto(cats);
+                setTodosProdutos(todos.data || todos || []);
+
                 setFormData({
                     nome: data.nome || '',
                     codigo: data.codigo || '',
@@ -561,7 +579,11 @@ const GerenciarProduto = () => {
                     pesoLiquido: data.pesoLiquido || '',
                     descricao: data.descricao || '',
                     contaAzulUpdatedAt: data.contaAzulUpdatedAt || '',
-                    ativo: data.ativo
+                    ativo: data.ativo,
+                    categoriaProdutoId: data.categoriaProdutoId || '',
+                    produtoSubstitutoId: data.produtoSubstitutoId || '',
+                    permiteRecomendacao: data.permiteRecomendacao !== false,
+                    prioridadeRecomendacao: data.prioridadeRecomendacao || 1
                 });
             } catch (error) {
                 console.error('Erro ao carregar produto:', error);
@@ -585,6 +607,24 @@ const GerenciarProduto = () => {
             navigate(`/admin/produtos?${params.toString()}`);
         } else {
             navigate(-1);
+        }
+    };
+
+    const handleSaveComercial = async () => {
+        setSalvandoComercial(true);
+        try {
+            await produtoService.atualizar(id, {
+                categoriaProdutoId: formData.categoriaProdutoId || null,
+                produtoSubstitutoId: formData.produtoSubstitutoId || null,
+                permiteRecomendacao: formData.permiteRecomendacao,
+                prioridadeRecomendacao: parseInt(formData.prioridadeRecomendacao) || 1
+            });
+            toast.success('Configurações comerciais salvas!');
+        } catch (error) {
+            console.error(error);
+            toast.error('Erro ao salvar as configurações.');
+        } finally {
+            setSalvandoComercial(false);
         }
     };
 
@@ -774,6 +814,78 @@ const GerenciarProduto = () => {
                                 <div className="p-4">
                                     <textarea rows={4} value={formData.descricao} readOnly
                                         className="w-full rounded-md border-gray-300 py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed" />
+                                </div>
+                            </div>
+
+                            {/* INTELIGÊNCIA COMERCIAL (Editável) */}
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                                <div className="p-4 border-b border-gray-100 bg-purple-50 flex justify-between items-center">
+                                    <h3 className="font-semibold text-purple-800 flex items-center">
+                                        <Sparkles className="h-4 w-4 mr-2" /> Inteligência Comercial (Exclusivo App)
+                                    </h3>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Categoria Comercial</label>
+                                            <select
+                                                className="w-full rounded-md border border-gray-300 py-2 px-3 bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                                                value={formData.categoriaProdutoId}
+                                                onChange={(e) => setFormData({ ...formData, categoriaProdutoId: e.target.value })}
+                                            >
+                                                <option value="">Selecione...</option>
+                                                {categoriasProduto.map(c => (
+                                                    <option key={c.id} value={c.id}>{c.nome}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Produto Substituto Base</label>
+                                            <div className="w-full h-[38px] flex items-center">
+                                                <BuscaProduto
+                                                    value={formData.produtoSubstitutoId}
+                                                    onChange={(val) => setFormData({ ...formData, produtoSubstitutoId: val })}
+                                                    todosOsProdutos={todosProdutos}
+                                                />
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">Sugerido caso haja falta de estoque.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-2">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Prioridade Recomendação</label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="99"
+                                                value={formData.prioridadeRecomendacao}
+                                                onChange={(e) => setFormData({ ...formData, prioridadeRecomendacao: e.target.value })}
+                                                className="w-full rounded-md border border-gray-300 py-2 px-3 bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">1 é a mais alta.</p>
+                                        </div>
+                                        <div className="flex items-center space-x-2 mt-4">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.permiteRecomendacao}
+                                                onChange={(e) => setFormData({ ...formData, permiteRecomendacao: e.target.checked })}
+                                                className="h-4 w-4 text-primary bg-white focus:ring-primary border-gray-300 rounded"
+                                            />
+                                            <span className="text-gray-900 text-sm font-medium">Permitir Sugestão do Produto</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 flex justify-end">
+                                        <button
+                                            onClick={handleSaveComercial}
+                                            disabled={salvandoComercial}
+                                            className="px-4 py-2 bg-purple-600 font-semibold text-white rounded hover:bg-purple-700 disabled:opacity-50 flex items-center"
+                                        >
+                                            <Save className="h-4 w-4 mr-2" />
+                                            {salvandoComercial ? 'Salvando...' : 'Salvar Dados Comerciais'}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
