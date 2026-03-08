@@ -371,7 +371,51 @@ const migrationService = {
             `ALTER TABLE "veiculos" ADD COLUMN IF NOT EXISTS "seguro_apolice" TEXT;`,
             `ALTER TABLE "veiculos" ADD COLUMN IF NOT EXISTS "seguro_seguradora" TEXT;`,
             `ALTER TABLE "veiculos" ADD COLUMN IF NOT EXISTS "km_medio_sugerido" INTEGER;`,
-            `ALTER TABLE "veiculos" ADD COLUMN IF NOT EXISTS "observacoes" TEXT;`
+            `ALTER TABLE "veiculos" ADD COLUMN IF NOT EXISTS "observacoes" TEXT;`,
+
+            // Update 26: Módulo Metas Mensais de Vendas (Dashboard)
+            `CREATE TABLE IF NOT EXISTS "meta_mensal_vendedor" (
+                "id" TEXT NOT NULL,
+                "vendedor_id" TEXT NOT NULL,
+                "mes_referencia" TEXT NOT NULL,
+                "dias_trabalho" JSONB NOT NULL,
+                "valor_mensal" DECIMAL(12,2) NOT NULL,
+                "flex_mensal" DECIMAL(12,2) NOT NULL DEFAULT 0,
+                "criado_por" TEXT NOT NULL,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL,
+                CONSTRAINT "meta_mensal_vendedor_pkey" PRIMARY KEY ("id"),
+                CONSTRAINT "meta_mensal_vendedor_vendedor_id_fkey" FOREIGN KEY ("vendedor_id") REFERENCES "vendedores"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+            );`,
+            `CREATE UNIQUE INDEX IF NOT EXISTS "meta_mensal_vendedor_vendedor_id_mes_referencia_key" ON "meta_mensal_vendedor"("vendedor_id", "mes_referencia");`,
+            `CREATE INDEX IF NOT EXISTS "meta_mensal_vendedor_vendedor_id_idx" ON "meta_mensal_vendedor"("vendedor_id");`,
+            `CREATE INDEX IF NOT EXISTS "meta_mensal_vendedor_mes_referencia_idx" ON "meta_mensal_vendedor"("mes_referencia");`,
+
+            `CREATE TABLE IF NOT EXISTS "meta_produtos" (
+                "id" TEXT NOT NULL,
+                "meta_mensal_vendedor_id" TEXT NOT NULL,
+                "produto_id" TEXT NOT NULL,
+                "quantidade" DECIMAL(12,3) NOT NULL,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL,
+                CONSTRAINT "meta_produtos_pkey" PRIMARY KEY ("id"),
+                CONSTRAINT "meta_produtos_meta_mensal_vendedor_id_fkey" FOREIGN KEY ("meta_mensal_vendedor_id") REFERENCES "meta_mensal_vendedor"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+                CONSTRAINT "meta_produtos_produto_id_fkey" FOREIGN KEY ("produto_id") REFERENCES "produtos"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+            );`,
+            `CREATE UNIQUE INDEX IF NOT EXISTS "meta_produtos_meta_mensal_vendedor_id_produto_idx" ON "meta_produtos"("meta_mensal_vendedor_id", "produto_id");`,
+
+            `CREATE TABLE IF NOT EXISTS "meta_promocoes" (
+                "id" TEXT NOT NULL,
+                "meta_mensal_vendedor_id" TEXT NOT NULL,
+                "promocao_id" TEXT NOT NULL,
+                "quantidade_pedidos" INTEGER NOT NULL,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL,
+                CONSTRAINT "meta_promocoes_pkey" PRIMARY KEY ("id"),
+                CONSTRAINT "meta_promocoes_meta_mensal_vendedor_id_fkey" FOREIGN KEY ("meta_mensal_vendedor_id") REFERENCES "meta_mensal_vendedor"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+                CONSTRAINT "meta_promocoes_promocao_id_fkey" FOREIGN KEY ("promocao_id") REFERENCES "promocoes"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+            );`,
+            `CREATE UNIQUE INDEX IF NOT EXISTS "meta_promocoes_meta_mensal_vendedor_id_promocao_idx" ON "meta_promocoes"("meta_mensal_vendedor_id", "promocao_id");`
         ];
 
         for (const [index, cmd] of commands.entries()) {
