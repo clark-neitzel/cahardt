@@ -117,7 +117,10 @@ const GerenciarMetas = () => {
                                 <tr>
                                     <th className="px-4 py-3">Vendedor</th>
                                     <th className="px-4 py-3">Meta Mensal (R$)</th>
-                                    <th className="px-4 py-3">Dias de Atuação</th>
+                                    <th className="px-4 py-3">Flex (R$)</th>
+                                    <th className="px-4 py-3">Dias</th>
+                                    <th className="px-4 py-3">Produtos</th>
+                                    <th className="px-4 py-3">Promoções</th>
                                     <th className="px-4 py-3 text-center">Ações</th>
                                 </tr>
                             </thead>
@@ -126,7 +129,18 @@ const GerenciarMetas = () => {
                                     <tr key={meta.id} className="hover:bg-gray-50">
                                         <td className="px-4 py-3 font-medium">{meta.vendedor?.nome || '-'}</td>
                                         <td className="px-4 py-3">{formatCurrency(meta.valorMensal)}</td>
+                                        <td className="px-4 py-3">{Number(meta.flexMensal) > 0 ? formatCurrency(meta.flexMensal) : '-'}</td>
                                         <td className="px-4 py-3">{parseDias(meta.diasTrabalho)}</td>
+                                        <td className="px-4 py-3">
+                                            {meta.metasProdutos?.length > 0 ? (
+                                                <span className="text-green-700 bg-green-50 px-2 py-0.5 rounded text-xs font-medium">{meta.metasProdutos.length} prod.</span>
+                                            ) : <span className="text-gray-400">-</span>}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {meta.metasPromocoes?.length > 0 ? (
+                                                <span className="text-purple-700 bg-purple-50 px-2 py-0.5 rounded text-xs font-medium">{meta.metasPromocoes.length} promo.</span>
+                                            ) : <span className="text-gray-400">-</span>}
+                                        </td>
                                         <td className="px-4 py-3 text-center">
                                             <button
                                                 onClick={() => handleEditClick(meta)}
