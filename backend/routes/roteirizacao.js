@@ -107,7 +107,7 @@ router.post('/', verificarAuth, async (req, res) => {
         }
 
         const motoristaInfo = pedidos[0].embarque?.responsavelId ? pedidos[0].embarque : null;
-        const responsavelNome = motoristaInfo?.responsavelId ? await prisma.usuario.findUnique({ where: { id: motoristaInfo.responsavelId }, select: { nome: true } }).then(u => u?.nome) : '';
+        const responsavelNome = motoristaInfo?.responsavelId ? await prisma.vendedor.findUnique({ where: { id: motoristaInfo.responsavelId }, select: { nome: true } }).then(u => u?.nome) : '';
 
         // 5. Separar pedidos com e sem GPS no cliente
         const comGPS = [];
