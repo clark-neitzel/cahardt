@@ -103,8 +103,11 @@ router.post('/', verificarAuth, async (req, res) => {
 
         if (pedidos.length === 0) {
             releaseLock();
-            return res.json({ sequencia: [], semGPS: [], resumo: { totalParadas: 0, totalSemGPS: 0, duracaoTotalMin: 0, distanciaTotalKm: '0.0' } });
+            return res.json({ sequencia: [], semGPS: [], resumo: { totalParadas: 0, totalSemGPS: 0, duracaoTotalMin: 0, distanciaTotalKm: '0.0', motorista: '' } });
         }
+
+        const motoristaInfo = pedidos[0].embarque?.responsavelId ? pedidos[0].embarque : null;
+        const responsavelNome = motoristaInfo?.responsavelId ? await prisma.usuario.findUnique({ where: { id: motoristaInfo.responsavelId }, select: { nome: true } }).then(u => u?.nome) : '';
 
         // 5. Separar pedidos com e sem GPS no cliente
         const comGPS = [];
@@ -273,8 +276,8 @@ router.post('/', verificarAuth, async (req, res) => {
             });
         }
 
-        // Sumário considera o total da Route (que vai perfeitamente até a Base no final)
-        const duracaoTotalRota = Math.round((rota.duration || 0) / 60);
+        // Sumário considera o total da Route (que vai perfeitamente até a Base no final) e soma o tempo em que o motorista ficou parado entregando
+        const duracaoTotalRota = Math.round((rota.duration || 0) / 60) + ((tempoParadaMin || 10) * listaClientes.length);
         const distanciaTotalRota = ((rota.distance || 0) / 1000).toFixed(1);
 
         releaseLock();
@@ -290,7 +293,8 @@ router.post('/', verificarAuth, async (req, res) => {
                 totalParadas: sequencia.length,
                 totalSemGPS: semGPS.length,
                 duracaoTotalMin: duracaoTotalRota,
-                distanciaTotalKm: distanciaTotalRota
+                distanciaTotalKm: distanciaTotalRota,
+                motorista: responsavelNome
             }
         });
 

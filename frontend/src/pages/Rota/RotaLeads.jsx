@@ -1191,8 +1191,9 @@ const RotaLeads = () => {
                                             </button>
                                             {rotaOrganizada && (
                                                 <>
-                                                    <span className="text-[11px] text-sky-700 font-semibold bg-sky-50 border border-sky-200 px-2 py-1 rounded-lg">
-                                                        🗺️ {rotaOrganizada.resumo?.totalParadas} paradas · {rotaOrganizada.resumo?.distanciaTotalKm} km · {rotaOrganizada.resumo?.duracaoTotalMin} min estimados
+                                                    <span className="text-[11px] text-sky-700 font-semibold bg-sky-50 border border-sky-200 px-2 py-1 rounded-lg flex items-center gap-1">
+                                                        <span title="Motorista">{rotaOrganizada.resumo?.motorista ? `🚚 ${rotaOrganizada.resumo.motorista.split(' ')[0]} - ` : '🗺️ '}</span>
+                                                        {rotaOrganizada.resumo?.totalParadas} paradas · {rotaOrganizada.resumo?.distanciaTotalKm} km · {rotaOrganizada.resumo?.duracaoTotalMin} min est.
                                                     </span>
                                                     <button onClick={() => setRotaOrganizada(null)} className="text-gray-400 hover:text-gray-600 p-1" title="Limpar rota">
                                                         <X className="h-4 w-4" />
@@ -1377,6 +1378,7 @@ const RotaLeads = () => {
                     onClose={() => setCheckoutPedido(null)}
                     onSuccess={() => {
                         setCheckoutPedido(null);
+                        setRotaOrganizada(null); // Limpa a rota para forçar recalculo e tirar o concluído
                         carregarEntregas('pendentes');
                         carregarEntregas('concluidas');
                         toast.success('Entrega registrada com sucesso!');
@@ -1391,6 +1393,7 @@ const RotaLeads = () => {
                     onClose={() => setEditarEntregaPedido(null)}
                     onSuccess={() => {
                         setEditarEntregaPedido(null);
+                        setRotaOrganizada(null); // Limpa a rota para evitar dessincronia
                         carregarEntregas('concluidas');
                         carregarEntregas('pendentes');
                     }}
