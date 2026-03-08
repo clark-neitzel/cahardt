@@ -1090,8 +1090,10 @@ const RotaLeads = () => {
     const ABAS = [
         { id: 'atendimento', label: 'Atendimento', icon: ClipboardList, count: itensParaAtender.length, activeColor: 'border-blue-600 text-blue-600' },
         { id: 'atendidos', label: 'Atendidos', icon: CheckCircle, count: itensAtendidos.length, activeColor: 'border-green-600 text-green-600' },
-        { id: 'entregas', label: 'Entregas', icon: Package, count: entregasPendentesFiltradas.length, activeColor: 'border-sky-600 text-sky-600' },
-        { id: 'entregues', label: 'Entregues', icon: Truck, count: entregasConcluidasFiltradas.length, activeColor: 'border-sky-600 text-sky-600' },
+        ...(podeEntregas ? [
+            { id: 'entregas', label: 'Entregas', icon: Package, count: entregasPendentesFiltradas.length, activeColor: 'border-sky-600 text-sky-600' },
+            { id: 'entregues', label: 'Entregues', icon: Truck, count: entregasConcluidasFiltradas.length, activeColor: 'border-sky-600 text-sky-600' },
+        ] : []),
     ];
 
     return (
@@ -1176,48 +1178,9 @@ const RotaLeads = () => {
                                     <p className="text-[13px]">Nenhum item pendente na sua rota.</p>
                                 </div>
                             ) : (
-                                <>
-                                    {/* Resumo da Rota Organizada */}
-                                    {rotaOrganizada && (
-                                        <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 mb-4 shadow-sm relative">
-                                            <h3 className="text-[13px] font-bold text-sky-800 flex items-center justify-between mb-2">
-                                                <div className="flex items-center gap-1.5"><Route className="h-4 w-4" /> Resumo da Rota Otimizada</div>
-                                                <button onClick={() => handleLimparRota()} className="text-[11px] bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded font-semibold transition-colors">
-                                                    Limpar Rota
-                                                </button>
-                                            </h3>
-                                            <div className="grid grid-cols-2 gap-2 mt-2">
-                                                <div className="bg-white p-2 rounded border border-sky-100">
-                                                    <p className="text-[10px] uppercase font-bold text-gray-500">Paradas GPS</p>
-                                                    <p className="text-[15px] font-bold text-sky-900">{rotaOrganizada.resumo.totalParadas}</p>
-                                                </div>
-                                                <div className="bg-white p-2 rounded border border-sky-100">
-                                                    <p className="text-[10px] uppercase font-bold text-gray-500">Duração Aprox.</p>
-                                                    <p className="text-[15px] font-bold text-sky-900">{rotaOrganizada.resumo.duracaoTotalMin} min</p>
-                                                </div>
-                                                <div className="bg-white p-2 rounded border border-sky-100">
-                                                    <p className="text-[10px] uppercase font-bold text-gray-500">Distância</p>
-                                                    <p className="text-[15px] font-bold text-sky-900">{rotaOrganizada.resumo.distanciaTotalKm} km</p>
-                                                </div>
-                                                {rotaOrganizada.resumo.totalSemGPS > 0 && (
-                                                    <div className="bg-white p-2 rounded border border-orange-200">
-                                                        <p className="text-[10px] uppercase font-bold text-orange-600">Sem Cadastro GPS</p>
-                                                        <p className="text-[15px] font-bold text-orange-700">{rotaOrganizada.resumo.totalSemGPS}</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {rotaOrganizada.updatedAt && (
-                                                <p className="text-[10px] text-sky-600 mt-2 text-right">
-                                                    Gerada em: {new Date(rotaOrganizada.updatedAt).toLocaleString('pt-BR')}
-                                                </p>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 lg:gap-3">
-                                        {itensParaAtender.map(renderItem)}
-                                    </div>
-                                </>
+                                <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 lg:gap-3">
+                                    {itensParaAtender.map(renderItem)}
+                                </div>
                             )
                         )}
 

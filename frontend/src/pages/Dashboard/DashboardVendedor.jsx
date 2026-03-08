@@ -88,11 +88,11 @@ const DashboardVendedor = () => {
                     <span className="text-sm font-medium text-gray-700">Rotas e Leads</span>
                 </Link>
 
-                <Link to="/pedidos/novo" className="bg-white border hover:border-green-500 hover:shadow-md transition-all rounded-xl p-4 flex flex-col items-center justify-center gap-2 text-center group">
+                <Link to="/pedidos" className="bg-white border hover:border-green-500 hover:shadow-md transition-all rounded-xl p-4 flex flex-col items-center justify-center gap-2 text-center group">
                     <div className="bg-green-50 text-green-600 p-3 rounded-full group-hover:bg-green-100">
                         <ShoppingCart size={24} />
                     </div>
-                    <span className="text-sm font-medium text-gray-700">Novo Pedido</span>
+                    <span className="text-sm font-medium text-gray-700">Pedidos</span>
                 </Link>
 
                 <Link to="/caixa" className="bg-white border hover:border-amber-500 hover:shadow-md transition-all rounded-xl p-4 flex flex-col items-center justify-center gap-2 text-center group">
