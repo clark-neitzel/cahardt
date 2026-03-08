@@ -144,14 +144,14 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                         <style>
                             {`
                             .print-container table { width: 100%; border-collapse: collapse; margin-top: 5px; }
-                            .print-container th, .print-container td { border: 1px solid #444; padding: 2px 4px; text-align: left; font-size: 8px; line-height: 1.1; }
-                            .print-container th { background-color: #f3f4f6; color: #111; font-weight: bold; }
+                            .print-container th, .print-container td { border: 1px solid #000; padding: 2px 4px; text-align: left; font-size: 8px; line-height: 1.1; color: #000; }
+                            .print-container th { background-color: #f3f4f6; color: #000; font-weight: bold; }
                             .print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; color: #000; text-transform: uppercase; }
                             .print-container h2 { font-size: 11px; font-weight: bold; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px; color: #000; }
                             @media print {
                                 @page { size: A4 portrait; margin: 3mm; }
-                                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                                .print-container th, .print-container td { font-size: 8px !important; padding: 2px 3px !important; line-height: 1 !important; white-space: nowrap !important; }
+                                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #000 !important; }
+                                .print-container th, .print-container td { font-size: 8px !important; padding: 2px 3px !important; line-height: 1 !important; white-space: nowrap !important; color: #000 !important; border-color: #000 !important; }
                                 .print-container td.wrap-text { white-space: normal !important; word-wrap: break-word !important; }
                                 .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 0 !important; page-break-after: always; }
                                 /* Evita página em branco extra no final do documento */
@@ -168,12 +168,12 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                             return (
                                 <React.Fragment key={`roteiro-${idx}`}>
                                     <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '6mm' }}>
-                                        <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">
+                                        <div className="absolute top-2 right-2 text-[8px] font-bold uppercase tracking-wider print:hidden text-black">
                                             Página {thisPage} de {totalPages}
                                         </div>
 
                                         <h1>Roteiro de Entrega - Carga #{embarque?.numero || '000'} {pedidosPaginados.length > 1 ? `(Pt. ${idx + 1})` : ''}</h1>
-                                        <div className="text-[9px] flex justify-between border-b border-gray-400 pb-2 mb-2">
+                                        <div className="text-[9px] flex justify-between border-b border-black pb-2 mb-2 text-black font-semibold">
                                             <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
                                             <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
                                             <div><strong>Qtd NFs (Total):</strong> {embarque?.pedidos?.length || 0}</div>
@@ -199,13 +199,13 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                                                         <tr key={p.id}>
                                                             <td className="font-bold text-center">{p.numero || 'N/A'}</td>
                                                             <td className="wrap-text leading-tight">
-                                                                <div className="font-bold">{p.cliente?.NomeFantasia}</div>
-                                                                <div className="text-[7px] text-gray-700">{p.cliente?.Nome}</div>
+                                                                <div className="font-bold text-black">{p.cliente?.NomeFantasia}</div>
+                                                                <div className="text-[7px] text-black font-semibold">{p.cliente?.Nome}</div>
                                                             </td>
                                                             <td className="text-[7px] italic wrap-text">{p.observacoes || ''}</td>
                                                             <td className="text-[7px] wrap-text font-bold leading-tight">{pgto}</td>
                                                             <td className="font-mono text-right font-bold whitespace-nowrap">R$ {totalPedido.toFixed(2)}</td>
-                                                            <td className="text-[8px] whitespace-nowrap">
+                                                            <td className="text-[8px] whitespace-nowrap font-bold">
                                                                 [  ] Total &nbsp; [  ] Parcial &nbsp; [  ] Devolução
                                                             </td>
                                                         </tr>
