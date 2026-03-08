@@ -221,7 +221,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                 }))
             };
 
-            await axios.post(`${API_URL}/metas`, payload, {
+            await axios.post(`${API_URL}/api/metas`, payload, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             toast.success("Meta gravada com sucesso!");

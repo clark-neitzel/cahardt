@@ -23,7 +23,7 @@ const GerenciarMetas = () => {
 
     const fetchVendedores = async () => {
         try {
-            const res = await axios.get(`${API_URL}/vendedores`, getAuthHeader());
+            const res = await axios.get(`${API_URL}/api/vendedores`, getAuthHeader());
             setVendedores(Array.isArray(res.data) ? res.data : []);
         } catch (error) {
             console.error("Erro ao carregar vendedores", error);
@@ -34,7 +34,7 @@ const GerenciarMetas = () => {
     const fetchMetas = async () => {
         setLoading(true);
         try {
-            const res = await axios.get(`${API_URL}/metas?mesReferencia=${mesAtual}`, getAuthHeader());
+            const res = await axios.get(`${API_URL}/api/metas?mesReferencia=${mesAtual}`, getAuthHeader());
             setMetas(Array.isArray(res.data) ? res.data : []);
         } catch (error) {
             console.error('Erro ao buscar metas:', error);

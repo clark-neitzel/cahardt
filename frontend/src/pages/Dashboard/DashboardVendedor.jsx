@@ -19,7 +19,7 @@ const DashboardVendedor = () => {
     useEffect(() => {
         const fetchDashboard = async () => {
             try {
-                const res = await axios.get(`${API_URL}/metas/dashboard`, {
+                const res = await axios.get(`${API_URL}/api/metas/dashboard`, {
                     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                 });
                 setData(res.data);
