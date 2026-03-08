@@ -149,7 +149,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                             .print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; color: #000; text-transform: uppercase; }
                             .print-container h2 { font-size: 11px; font-weight: bold; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px; color: #000; }
                             @media print {
-                                @page { size: A4 portrait; margin: 3mm; }
+                                @page { size: A4 portrait; margin: 8mm 3mm 3mm 3mm; }
                                 * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #000 !important; }
                                 .print-container th, .print-container td { font-size: 8px !important; padding: 2px 3px !important; line-height: 1 !important; white-space: nowrap !important; color: #000 !important; border-color: #000 !important; }
                                 .print-container td.wrap-text { white-space: normal !important; word-wrap: break-word !important; }
@@ -167,12 +167,12 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                             const thisPage = globalPageCount++;
                             return (
                                 <React.Fragment key={`roteiro-${idx}`}>
-                                    <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '6mm' }}>
-                                        <div className="absolute top-2 right-2 text-[8px] font-bold uppercase tracking-wider print:hidden text-black">
+                                    <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '0mm 6mm' }}>
+                                        <div className="absolute top-0 right-2 text-[8px] font-bold uppercase tracking-wider print:hidden text-black">
                                             Página {thisPage} de {totalPages}
                                         </div>
 
-                                        <h1>Roteiro de Entrega - Carga #{embarque?.numero || '000'} {pedidosPaginados.length > 1 ? `(Pt. ${idx + 1})` : ''}</h1>
+                                        <h1 className="pt-4">Roteiro de Entrega - Carga #{embarque?.numero || '000'} {pedidosPaginados.length > 1 ? `(Pt. ${idx + 1})` : ''}</h1>
                                         <div className="text-[9px] flex justify-between border-b border-black pb-2 mb-2 text-black font-semibold">
                                             <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
                                             <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
