@@ -77,16 +77,12 @@ router.post('/', verificarAuth, async (req, res) => {
     setLock(targetVendedorId);
 
     try {
-        // 4. Buscar entregas pendentes do motorista, incluindo GPS do cliente
-        const hoje = new Date();
-        const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0);
-        const fimDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59);
-
+        // 4. Buscar entregas pendentes do motorista — igual ao GET /api/entregas/pendentes
         const pedidos = await prisma.pedido.findMany({
             where: {
+                embarqueId: { not: null },
                 embarque: { responsavelId: targetVendedorId },
-                dataVenda: { gte: inicioDia, lte: fimDia },
-                statusEntrega: { in: ['PENDENTE', 'EM_ROTA', null] }
+                statusEntrega: 'PENDENTE'
             },
             include: {
                 cliente: {
@@ -107,7 +103,7 @@ router.post('/', verificarAuth, async (req, res) => {
 
         if (pedidos.length === 0) {
             releaseLock();
-            return res.json({ sequencia: [], semGPS: [] });
+            return res.json({ sequencia: [], semGPS: [], resumo: { totalParadas: 0, totalSemGPS: 0, duracaoTotalMin: 0, distanciaTotalKm: '0.0' } });
         }
 
         // 5. Separar pedidos com e sem GPS no cliente
