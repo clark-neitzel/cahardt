@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -8,8 +7,7 @@ import {
     Map as MapIcon, ShoppingCart, Wallet, CheckCircle2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-const API_URL = import.meta.env.VITE_API_URL;
+import api from '../../services/api';
 
 const DashboardVendedor = () => {
     const { user } = useAuth();
@@ -19,9 +17,7 @@ const DashboardVendedor = () => {
     useEffect(() => {
         const fetchDashboard = async () => {
             try {
-                const res = await axios.get(`${API_URL}/api/metas/dashboard`, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                });
+                const res = await api.get('/metas/dashboard');
                 setData(res.data);
             } catch (error) {
                 console.error("Erro ao carregar metas", error);

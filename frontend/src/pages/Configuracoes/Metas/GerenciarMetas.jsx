@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import dayjs from 'dayjs';
 import { Pencil, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '../../../services/api';
 import MetaFormModal from './MetaFormModal';
-
-const API_URL = import.meta.env.VITE_API_URL;
 
 const GerenciarMetas = () => {
     const [mesAtual, setMesAtual] = useState(dayjs().format('YYYY-MM'));
@@ -17,13 +15,9 @@ const GerenciarMetas = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedMeta, setSelectedMeta] = useState(null);
 
-    const getAuthHeader = () => ({
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    });
-
     const fetchVendedores = async () => {
         try {
-            const res = await axios.get(`${API_URL}/api/vendedores`, getAuthHeader());
+            const res = await api.get('/vendedores');
             setVendedores(Array.isArray(res.data) ? res.data : []);
         } catch (error) {
             console.error("Erro ao carregar vendedores", error);
@@ -34,7 +28,7 @@ const GerenciarMetas = () => {
     const fetchMetas = async () => {
         setLoading(true);
         try {
-            const res = await axios.get(`${API_URL}/api/metas?mesReferencia=${mesAtual}`, getAuthHeader());
+            const res = await api.get('/metas', { params: { mesReferencia: mesAtual } });
             setMetas(Array.isArray(res.data) ? res.data : []);
         } catch (error) {
             console.error('Erro ao buscar metas:', error);

@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import dayjs from 'dayjs';
 import { Trash2, Search } from 'lucide-react';
+import api from '../../../services/api';
 import produtoService from '../../../services/produtoService';
 import promocaoService from '../../../services/promocaoService';
-
-const API_URL = import.meta.env.VITE_API_URL;
 
 const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) => {
     const [formData, setFormData] = useState({
@@ -221,9 +219,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                 }))
             };
 
-            await axios.post(`${API_URL}/api/metas`, payload, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
+            await api.post('/metas', payload);
             toast.success("Meta gravada com sucesso!");
             onClose(true);
         } catch (error) {
