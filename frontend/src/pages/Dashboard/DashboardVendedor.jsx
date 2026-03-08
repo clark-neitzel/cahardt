@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
     TrendingUp, Calendar, Target, AlertTriangle,
-    Map as MapIcon, ShoppingCart, Wallet, CheckCircle2
+    Map as MapIcon, ShoppingCart, Wallet, CheckCircle2, Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -13,11 +13,28 @@ const DashboardVendedor = () => {
     const { user } = useAuth();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [vendedores, setVendedores] = useState([]);
+    const [vendedorSelecionado, setVendedorSelecionado] = useState('');
+
+    const isAdmin = user?.permissoes?.pedidos?.clientes === 'todos';
+
+    useEffect(() => {
+        if (isAdmin) {
+            api.get('/vendedores').then(res => {
+                setVendedores(Array.isArray(res.data) ? res.data : []);
+            }).catch(() => {});
+        }
+    }, [isAdmin]);
 
     useEffect(() => {
         const fetchDashboard = async () => {
+            setLoading(true);
             try {
-                const res = await api.get('/metas/dashboard');
+                const params = {};
+                if (isAdmin && vendedorSelecionado) {
+                    params.vendedorId = vendedorSelecionado;
+                }
+                const res = await api.get('/metas/dashboard', { params });
                 setData(res.data);
             } catch (error) {
                 console.error("Erro ao carregar metas", error);
@@ -27,7 +44,7 @@ const DashboardVendedor = () => {
             }
         };
         fetchDashboard();
-    }, []);
+    }, [vendedorSelecionado]);
 
     const formatCurrency = (value) => {
         return `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -70,8 +87,27 @@ const DashboardVendedor = () => {
         <div className="max-w-4xl mx-auto py-6 px-4">
             {/* Cabecalho e Saudacao */}
             <div className="mb-8">
-                <h1 className="text-2xl font-bold text-gray-800">Boas compras, {user?.nome?.split(' ')[0]}!</h1>
-                <p className="text-gray-600">Acompanhe seu desempenho e metas de {dayjs().format('MMMM/YYYY')}.</p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800">Olá, {user?.nome?.split(' ')[0]}!</h1>
+                        <p className="text-gray-600">Acompanhe {isAdmin && vendedorSelecionado ? 'o desempenho' : 'seu desempenho'} e metas de {dayjs().format('MMMM/YYYY')}.</p>
+                    </div>
+                    {isAdmin && vendedores.length > 0 && (
+                        <div className="flex items-center gap-2">
+                            <Users size={18} className="text-gray-500" />
+                            <select
+                                value={vendedorSelecionado}
+                                onChange={(e) => setVendedorSelecionado(e.target.value)}
+                                className="border p-2 rounded shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <option value="">Meu Dashboard</option>
+                                {vendedores.map(v => (
+                                    <option key={v.id} value={v.id}>{v.nome}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Atalhos Rápidos */}

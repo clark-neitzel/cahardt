@@ -47,13 +47,15 @@ const metaController = {
      */
     obterDashboardVendedor: async (req, res) => {
         try {
-            // Em req.user está o ID do vendedor logado usando o app
-            const vendedorId = req.user?.id;
-            if (!vendedorId) {
+            const userId = req.user?.id;
+            if (!userId) {
                 return res.status(401).json({ error: "Usuário não autenticado." });
             }
 
-            // Permite passar data customizada para debug, senao pega o dia de hoje
+            // Admin (pode ver todos os clientes) pode consultar dashboard de outro vendedor
+            const isAdmin = req.user?.permissoes?.pedidos?.clientes === 'todos';
+            const vendedorId = (isAdmin && req.query.vendedorId) ? req.query.vendedorId : userId;
+
             const dataAtual = req.query.dataAtual || null;
 
             const dashboardData = await metaService.calcularDashboardVendedor(vendedorId, dataAtual);

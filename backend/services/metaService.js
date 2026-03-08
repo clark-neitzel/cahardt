@@ -202,9 +202,9 @@ const metaService = {
             hojeEhDiaTrabalho,
             resumoCalendario: {
                 totalDiasMes,
-                diasTrabalhadosMesAteHoje,
+                diasTrabalhadosMesAteHoje: qtdDiasTrabalhadosMesAteHoje,
                 totalDiasSemana,
-                diasTrabalhadosSemanaAteHoje
+                diasTrabalhadosSemanaAteHoje: qtdDiasTrabalhadosSemanaAteHoje
             },
             metasAlvo: {
                 mensal: valorMensalTarget,
