@@ -149,7 +149,10 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                             .print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; color: #000; text-transform: uppercase; }
                             .print-container h2 { font-size: 11px; font-weight: bold; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px; color: #000; }
                             @media print {
-                                @page { size: A4 portrait; margin: 10mm; }
+                                @page { size: A4 portrait; margin: 3mm; }
+                                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                                .print-container th, .print-container td { font-size: 8px !important; padding: 2px 3px !important; line-height: 1 !important; white-space: nowrap !important; }
+                                .print-container td.wrap-text { white-space: normal !important; word-wrap: break-word !important; }
                                 .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 0 !important; page-break-after: always; }
                                 /* Evita página em branco extra no final do documento */
                                 .print-page:last-child { page-break-after: auto; }
@@ -179,12 +182,12 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                                         <table>
                                             <thead>
                                                 <tr>
-                                                    <th style={{ width: '5%' }}>Nº</th>
+                                                    <th style={{ width: '4%' }}>Nº</th>
                                                     <th style={{ width: '25%' }}>Cliente (Razão / Fantasia)</th>
-                                                    <th style={{ width: '20%' }}>Observação</th>
-                                                    <th style={{ width: '12%' }}>Pgto</th>
-                                                    <th style={{ width: '10%' }}>Valor</th>
-                                                    <th style={{ width: '28%' }}>Entrega (Check)</th>
+                                                    <th style={{ width: '22%' }}>Observação</th>
+                                                    <th style={{ width: '13%' }}>Pgto</th>
+                                                    <th style={{ width: '11%' }}>Valor</th>
+                                                    <th style={{ width: '25%' }}>Entrega (Check)</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -195,13 +198,13 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                                                     return (
                                                         <tr key={p.id}>
                                                             <td className="font-bold text-center">{p.numero || 'N/A'}</td>
-                                                            <td>
-                                                                <div className="font-bold truncate max-w-[150px]">{p.cliente?.NomeFantasia}</div>
-                                                                <div className="text-[7px] text-gray-700 truncate max-w-[150px]">{p.cliente?.Nome}</div>
+                                                            <td className="wrap-text leading-tight">
+                                                                <div className="font-bold">{p.cliente?.NomeFantasia}</div>
+                                                                <div className="text-[7px] text-gray-700">{p.cliente?.Nome}</div>
                                                             </td>
-                                                            <td className="text-[7px] italic">{p.observacoes || ''}</td>
-                                                            <td className="text-[7px] truncate max-w-[70px]">{pgto}</td>
-                                                            <td className="font-mono text-right">R$ {totalPedido.toFixed(2)}</td>
+                                                            <td className="text-[7px] italic wrap-text">{p.observacoes || ''}</td>
+                                                            <td className="text-[7px]">{pgto}</td>
+                                                            <td className="font-mono text-right font-bold whitespace-nowrap">R$ {totalPedido.toFixed(2)}</td>
                                                             <td className="text-[8px] whitespace-nowrap">
                                                                 [  ] Total &nbsp; [  ] Parcial &nbsp; [  ] Devolução
                                                             </td>
