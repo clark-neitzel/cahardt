@@ -167,7 +167,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                             const thisPage = globalPageCount++;
                             return (
                                 <React.Fragment key={`roteiro-${idx}`}>
-                                    <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group flex flex-col" style={{ minHeight: '297mm', width: '210mm', padding: '6mm' }}>
+                                    <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '6mm' }}>
                                         <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">
                                             Página {thisPage} de {totalPages}
                                         </div>
@@ -179,7 +179,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                                             <div><strong>Qtd NFs (Total):</strong> {embarque?.pedidos?.length || 0}</div>
                                         </div>
 
-                                        <table className="flex-1">
+                                        <table>
                                             <thead>
                                                 <tr>
                                                     <th style={{ width: '4%' }}>Nº</th>
