@@ -3,7 +3,7 @@ const router = express.Router();
 const metaController = require('../controllers/metaController');
 
 // Define middlewares
-const verificarAuth = require('../middlewares/verificarAuth');
+const verificarAuth = require('../middlewares/authMiddleware');
 const logFunction = (req, res, next) => {
     console.log(`[Router Metas] ${req.method} ${req.url}`);
     next();
