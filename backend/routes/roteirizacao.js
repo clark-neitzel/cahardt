@@ -135,19 +135,18 @@ router.post('/', verificarAuth, async (req, res) => {
         // 6. Montar query para OSRM
         // Formato: lng,lat (OSRM usa longitude primeiro!)
         // Ponto 0 = localização do motorista (source=first)
+        // Último Ponto = Base Hardt Salgados (destination=last) -26.189979, -48.910794
         const coordsString = [
             `${lng},${lat}`, // ponto de partida do motorista
-            ...comGPS.map(({ gps }) => `${gps.lng},${gps.lat}`)
+            ...comGPS.map(({ gps }) => `${gps.lng},${gps.lat}`),
+            `-48.91079499767414,-26.189979385982618` // Ponto Final Fixo: Base
         ].join(';');
 
-        // Trip API exige mínimo 3 waypoints com roundtrip=false.
-        // Com 1 destino, usa a Route API que aceita exatamente 2 pontos.
-        const usarRouteAPI = comGPS.length === 1;
-        const osrmUrl = usarRouteAPI
-            ? `${OSRM_URL}/route/v1/driving/${coordsString}?overview=false&annotations=duration,distance`
-            : `${OSRM_URL}/trip/v1/driving/${coordsString}?roundtrip=false&source=first&annotations=duration,distance`;
+        // Agora sempre teremos no mínimo 3 waypoints (Motorista + (N Clientes) + Base).
+        // Isso resolve o erro 400 (roundtrip=false exige min 3 pontos) e atende ao requisito de sempre voltar para a base.
+        const osrmUrl = `${OSRM_URL}/trip/v1/driving/${coordsString}?roundtrip=false&source=first&destination=last&annotations=duration,distance`;
 
-        console.log(`[OSRM] Chamando ${usarRouteAPI ? 'Route' : 'Trip'} API: ${osrmUrl}`);
+        console.log(`[OSRM] Chamando Trip API: ${osrmUrl}`);
 
         let osrmData;
         try {
@@ -169,45 +168,6 @@ router.post('/', verificarAuth, async (req, res) => {
             return res.status(502).json({ error: 'OSRM retornou resposta inválida.', osrmCode: osrmData.code });
         }
 
-        // Para Route API, normalizar para o mesmo formato do Trip
-        if (usarRouteAPI) {
-            const rota = osrmData.routes?.[0];
-            if (!rota) {
-                releaseLock();
-                return res.status(502).json({ error: 'OSRM não encontrou rota.' });
-            }
-            // Montar sequencia direto sem ordenaçao (só 1 destino)
-            const leg = rota.legs?.[0] || {};
-            let horarioAtual = new Date();
-            if (horaSaida) {
-                const [hh, mm] = horaSaida.split(':').map(Number);
-                horarioAtual = new Date();
-                horarioAtual.setHours(hh, mm, 0, 0);
-            }
-            const chegada = new Date(horarioAtual.getTime() + (leg.duration || 0) * 1000);
-            const clienteEntry = comGPS[0];
-            const seq = [{
-                sequencia: 1,
-                pedidoId: clienteEntry.pedido.id,
-                numero: clienteEntry.pedido.numero,
-                clienteId: clienteEntry.pedido.clienteId,
-                clienteNome: clienteEntry.pedido.cliente?.NomeFantasia || clienteEntry.pedido.cliente?.Nome,
-                endereco: [clienteEntry.pedido.cliente?.End_Logradouro, clienteEntry.pedido.cliente?.End_Numero, clienteEntry.pedido.cliente?.End_Cidade].filter(Boolean).join(', '),
-                gps: clienteEntry.gps,
-                duracaoTrajetoSeg: Math.round(leg.duration || 0),
-                distanciaMetros: Math.round(leg.distance || 0),
-                duracaoTrajetoMin: Math.round((leg.duration || 0) / 60),
-                distanciaKm: ((leg.distance || 0) / 1000).toFixed(1),
-                previsaoChegada: formatHorario(chegada),
-                previsaoSaida: formatHorario(new Date(chegada.getTime() + (tempoParadaMin || 10) * 60000))
-            }];
-            releaseLock();
-            return res.json({
-                sequencia: seq,
-                semGPS: semGPS.map(p => ({ pedidoId: p.id, numero: p.numero, clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome, motivo: 'Sem GPS no cadastro' })),
-                resumo: { totalParadas: seq.length, totalSemGPS: semGPS.length, duracaoTotalMin: seq[0].duracaoTrajetoMin, distanciaTotalKm: seq[0].distanciaKm }
-            });
-        }
 
         if (!osrmData.waypoints || !osrmData.trips) {
             releaseLock();
@@ -239,7 +199,7 @@ router.post('/', verificarAuth, async (req, res) => {
         const sequencia = [];
         let legIndex = 0; // leg 0 = motorista → 1ª parada
 
-        for (let i = 1; i < waypointsOrdenados.length; i++) {
+        for (let i = 1; i < waypointsOrdenados.length - 1; i++) { // Ignora [0] que é a origem, e [n-1] que é a Base
             const wp = waypointsOrdenados[i];
             // wp.hint mapeia para o índice original em comGPS (offset -1 pois motorista é idx 0)
             const originalIndex = wp.trips_index !== undefined
@@ -259,7 +219,7 @@ router.post('/', verificarAuth, async (req, res) => {
             horarioAtual = new Date(chegada.getTime() + tempoParadaSegundos * 1000);
 
             sequencia.push({
-                sequencia: i,
+                sequencia: sequencia.length + 1, // Sequência linear (1, 2, 3...)
                 pedidoId: clienteEntry.pedido.id,
                 numero: clienteEntry.pedido.numero,
                 clienteId: clienteEntry.pedido.clienteId,
