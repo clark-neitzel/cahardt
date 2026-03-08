@@ -145,7 +145,8 @@ router.post('/', verificarAuth, async (req, res) => {
         // Agora sempre teremos no mínimo 3 waypoints (Motorista + (N Clientes) + Base).
         // Isso resolve o erro 400 (roundtrip=false exige min 3 pontos) da Trip API.
         // OBS: O OSRM/MLD não suporta destination=last com source=first, então não usamos destination=last
-        const osrmUrl = `${OSRM_URL}/trip/v1/driving/${coordsString}?roundtrip=false&source=first&annotations=duration,distance`;
+        // A Trip API também não suporta annotations=duration,distance no motor MLD. Calculamos com base nos legs.
+        const osrmUrl = `${OSRM_URL}/trip/v1/driving/${coordsString}?roundtrip=false&source=first`;
 
         console.log(`[OSRM] Chamando Trip API: ${osrmUrl}`);
 
