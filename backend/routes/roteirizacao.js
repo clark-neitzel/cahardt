@@ -132,59 +132,103 @@ router.post('/', verificarAuth, async (req, res) => {
             });
         }
 
-        // 6. Montar query para OSRM
-        // Formato: lng,lat (OSRM usa longitude primeiro!)
-        // Ponto 0 = localização do motorista (source=first)
-        // Último Ponto = Base Hardt Salgados (destination=last) -26.189979, -48.910794
+        // 6. Montar coordendas (Motorista + Clientes + Base)
         const coordsString = [
-            `${lng},${lat}`, // ponto de partida do motorista
+            `${lng},${lat}`, // Motorista (Index 0)
             ...comGPS.map(({ gps }) => `${gps.lng},${gps.lat}`),
-            `-48.91079499767414,-26.189979385982618` // Ponto Final Fixo: Base
+            `-48.91079499767414,-26.189979385982618` // Base (Index N+1)
         ].join(';');
 
-        // Agora sempre teremos no mínimo 3 waypoints (Motorista + (N Clientes) + Base).
-        // Isso resolve o erro 400 (roundtrip=false exige min 3 pontos) da Trip API.
-        // OBS: O OSRM/MLD não suporta destination=last com source=first, então não usamos destination=last
-        // A Trip API também não suporta annotations=duration,distance no motor MLD. Calculamos com base nos legs.
-        const osrmUrl = `${OSRM_URL}/trip/v1/driving/${coordsString}?roundtrip=false&source=first`;
+        let routeData;
 
-        console.log(`[OSRM] Chamando Trip API: ${osrmUrl}`);
+        // Se houver apenas 1 cliente, a rota é simplesmente: Motorista -> Cliente -> Base
+        if (comGPS.length === 1) {
+            const routeUrl = `${OSRM_URL}/route/v1/driving/${coordsString}?overview=false&annotations=duration,distance`;
+            console.log(`[OSRM] Chamando Route API para 1 destino: ${routeUrl}`);
+            try {
+                const res = await axios.get(routeUrl, { timeout: 10000 });
+                routeData = res.data;
+            } catch (err) {
+                console.error('[OSRM] Erro Route API:', err.message);
+                releaseLock();
+                return res.status(502).json({ error: 'Erro Route API', detalhe: err.message });
+            }
+        } else {
+            // Se houver mais de 1 cliente, usamos a Trip API *sem flags* pra descobrir o circuito ótimo
+            const tripUrl = `${OSRM_URL}/trip/v1/driving/${coordsString}`;
+            console.log(`[OSRM] Chamando Trip API para descobrir ordem: ${tripUrl}`);
 
-        let osrmData;
-        try {
-            const osrmRes = await axios.get(osrmUrl, { timeout: 10000 });
-            osrmData = osrmRes.data;
-        } catch (osrmErr) {
-            const body = osrmErr.response?.data;
-            console.error('[OSRM] Erro ao chamar OSRM:', osrmErr.message, body ? JSON.stringify(body) : '');
-            releaseLock();
-            return res.status(502).json({
-                error: 'Serviço de roteirização indisponível. Verifique se o OSRM está rodando.',
-                detalhe: osrmErr.message
-            });
+            let tripData;
+            try {
+                const tripRes = await axios.get(tripUrl, { timeout: 10000 });
+                tripData = tripRes.data;
+            } catch (err) {
+                console.error('[OSRM] Erro Trip API:', err.message);
+                releaseLock();
+                return res.status(502).json({ error: 'Erro Trip API', detalhe: err.message });
+            }
+
+            if (tripData.code !== 'Ok' || !tripData.waypoints) {
+                releaseLock();
+                return res.status(502).json({ error: 'OSRM retornou Trip inválida.' });
+            }
+
+            // Mapear qual índice original está em qual posição do loop do OSRM
+            const tripOrder = [];
+            for (let i = 0; i < tripData.waypoints.length; i++) {
+                tripOrder[tripData.waypoints[i].waypoint_index] = i;
+            }
+
+            const startIdx = tripOrder.indexOf(0); // Index do Motorista no array
+            const baseOriginalIndex = comGPS.length + 1; // Index original da Base
+
+            let forwardOrder = [];
+            let reverseOrder = [];
+            for (let i = 1; i < tripOrder.length; i++) {
+                forwardOrder.push(tripOrder[(startIdx + i) % tripOrder.length]);
+                reverseOrder.push(tripOrder[(startIdx - i + tripOrder.length) % tripOrder.length]);
+            }
+
+            // Escolhemos o sentido do circuito em que a Base aparece por último
+            const fBaseIdx = forwardOrder.indexOf(baseOriginalIndex);
+            const rBaseIdx = reverseOrder.indexOf(baseOriginalIndex);
+            const bestOrder = rBaseIdx > fBaseIdx ? reverseOrder : forwardOrder;
+
+            // Removemos a base da ordem, mantendo só os clientes na sequência que serão visitados
+            const clientesOrder = bestOrder.filter(idx => idx !== baseOriginalIndex && idx !== 0);
+
+            // Agora garantimos a direção final com a poderosa Route API
+            // Rota exata: Motorista -> (Clientes Ordenados) -> Base
+            const orderedCoords = [
+                `${lng},${lat}`,
+                ...clientesOrder.map(idx => {
+                    const gps = comGPS[idx - 1].gps;
+                    return `${gps.lng},${gps.lat}`;
+                }),
+                `-48.91079499767414,-26.189979385982618`
+            ].join(';');
+
+            const routeUrl = `${OSRM_URL}/route/v1/driving/${orderedCoords}?overview=false&annotations=duration,distance`;
+            console.log(`[OSRM] Chamando Route API para calcular ETAs finais: ${routeUrl}`);
+            try {
+                const res = await axios.get(routeUrl, { timeout: 10000 });
+                routeData = res.data;
+            } catch (err) {
+                console.error('[OSRM] Erro Route API (ETAs):', err.message);
+                releaseLock();
+                return res.status(502).json({ error: 'Erro Route API', detalhe: err.message });
+            }
+
+            // Armazena a lista de clientes já na posição exata para iterarmos abaixo
+            routeData._clientesInOrder = clientesOrder.map(idx => comGPS[idx - 1]);
         }
 
-        if (osrmData.code !== 'Ok') {
-            console.error('[OSRM] Resposta inválida:', JSON.stringify(osrmData));
+        if (routeData.code !== 'Ok' || !routeData.routes || routeData.routes.length === 0) {
             releaseLock();
-            return res.status(502).json({ error: 'OSRM retornou resposta inválida.', osrmCode: osrmData.code });
+            return res.status(502).json({ error: 'OSRM não encontrou rota.' });
         }
 
-
-        if (!osrmData.waypoints || !osrmData.trips) {
-            releaseLock();
-            return res.status(502).json({ error: 'OSRM retornou resposta inválida.', osrmCode: osrmData.code });
-        }
-
-        // 7. Ordenar as paradas conforme a resposta do OSRM
-        // osrmData.waypoints[i].waypoint_index = posição na rota otimizada
-        // waypoints[0] = ponto de partida (motorista) → ignorar
-        const waypointsOrdenados = osrmData.waypoints
-            .filter(w => w.waypoint_index !== undefined)
-            .sort((a, b) => a.waypoint_index - b.waypoint_index);
-
-        // 8. Calcular ETAs progressivos
-        // horaSaida pode vir como "HH:MM" ou undefined (usa hora atual)
+        // 7. Calcular ETAs progressivos exatos
         let horarioAtual = new Date();
         if (horaSaida) {
             const [hh, mm] = horaSaida.split(':').map(Number);
@@ -193,35 +237,23 @@ router.post('/', verificarAuth, async (req, res) => {
         }
 
         const tempoParadaSegundos = (tempoParadaMin || 10) * 60;
-        const trip = osrmData.trips[0];
-        const legs = trip.legs || [];
+        const rota = routeData.routes[0];
+        const legs = rota.legs || []; // Array de percursos exatos de A->B, B->C, etc.
 
-        // O primeiro leg (idx 0) é do ponto de partida até a 1ª parada
-        // waypointsOrdenados[0] = ponto motorista (waypoint_index=0), demais = clientes
         const sequencia = [];
-        let legIndex = 0; // leg 0 = motorista → 1ª parada
+        const listaClientes = routeData._clientesInOrder || comGPS;
 
-        for (let i = 1; i < waypointsOrdenados.length - 1; i++) { // Ignora [0] que é a origem, e [n-1] que é a Base
-            const wp = waypointsOrdenados[i];
-            // wp.hint mapeia para o índice original em comGPS (offset -1 pois motorista é idx 0)
-            const originalIndex = wp.trips_index !== undefined
-                ? comGPS.findIndex((_, idx) => osrmData.waypoints[idx + 1]?.waypoint_index === wp.waypoint_index)
-                : i - 1;
-
-            const clienteEntry = comGPS[originalIndex < 0 ? i - 1 : originalIndex];
-            if (!clienteEntry) continue;
-
-            const leg = legs[legIndex] || {};
+        for (let i = 0; i < listaClientes.length; i++) {
+            const clienteEntry = listaClientes[i];
+            const leg = legs[i] || {};
             const duracaoTrajetoSeg = leg.duration || 0;
             const distanciaMetros = leg.distance || 0;
 
-            // Hora de chegada = hora atual + tempo de trajeto
             const chegada = new Date(horarioAtual.getTime() + duracaoTrajetoSeg * 1000);
-            // Próxima partida = chegada + tempo médio de parada
             horarioAtual = new Date(chegada.getTime() + tempoParadaSegundos * 1000);
 
             sequencia.push({
-                sequencia: sequencia.length + 1, // Sequência linear (1, 2, 3...)
+                sequencia: i + 1,
                 pedidoId: clienteEntry.pedido.id,
                 numero: clienteEntry.pedido.numero,
                 clienteId: clienteEntry.pedido.clienteId,
@@ -234,15 +266,16 @@ router.post('/', verificarAuth, async (req, res) => {
                 gps: clienteEntry.gps,
                 duracaoTrajetoSeg: Math.round(duracaoTrajetoSeg),
                 distanciaMetros: Math.round(distanciaMetros),
-                // Formatados para exibição
                 duracaoTrajetoMin: Math.round(duracaoTrajetoSeg / 60),
                 distanciaKm: (distanciaMetros / 1000).toFixed(1),
                 previsaoChegada: formatHorario(chegada),
                 previsaoSaida: formatHorario(horarioAtual)
             });
-
-            legIndex++;
         }
+
+        // Sumário considera o total da Route (que vai perfeitamente até a Base no final)
+        const duracaoTotalRota = Math.round((rota.duration || 0) / 60);
+        const distanciaTotalRota = ((rota.distance || 0) / 1000).toFixed(1);
 
         releaseLock();
         return res.json({
@@ -256,8 +289,8 @@ router.post('/', verificarAuth, async (req, res) => {
             resumo: {
                 totalParadas: sequencia.length,
                 totalSemGPS: semGPS.length,
-                duracaoTotalMin: sequencia.reduce((s, p) => s + p.duracaoTrajetoMin, 0),
-                distanciaTotalKm: (sequencia.reduce((s, p) => s + p.distanciaMetros, 0) / 1000).toFixed(1)
+                duracaoTotalMin: duracaoTotalRota,
+                distanciaTotalKm: distanciaTotalRota
             }
         });
 
