@@ -812,24 +812,6 @@ const RotaLeads = () => {
         }
     };
 
-    // Ordena entregas pendentes conforme a rota calculada
-    const entregasPendentesOrdenadas = useMemo(() => {
-        if (!rotaOrganizada || !rotaOrganizada.sequencia?.length) return entregasPendentesFiltradas;
-        const ordemIds = rotaOrganizada.sequencia.map(p => p.pedidoId);
-        const ordenadas = [...entregasPendentesFiltradas].sort((a, b) => {
-            const ia = ordemIds.indexOf(a.id);
-            const ib = ordemIds.indexOf(b.id);
-            if (ia === -1 && ib === -1) return 0;
-            if (ia === -1) return 1;
-            if (ib === -1) return -1;
-            return ia - ib;
-        });
-        // Appenda ao final os que estão no semGPS
-        const semGPSIds = new Set(rotaOrganizada.semGPS?.map(p => p.pedidoId) || []);
-        const principal = ordenadas.filter(p => !semGPSIds.has(p.id));
-        const semGPSPedidos = ordenadas.filter(p => semGPSIds.has(p.id));
-        return [...principal, ...semGPSPedidos];
-    }, [rotaOrganizada, entregasPendentesFiltradas]);
 
     useEffect(() => { refreshUser(); }, []); // garante permissões frescas do banco
 
@@ -997,6 +979,26 @@ const RotaLeads = () => {
         entregasPendentes.filter(p => matchBusca(p.cliente?.NomeFantasia || p.cliente?.Nome)),
         [entregasPendentes, matchBusca]
     );
+
+    // Ordena entregas pendentes conforme a rota calculada (DEVE vir APÓS o filtro)
+    const entregasPendentesOrdenadas = useMemo(() => {
+        if (!rotaOrganizada || !rotaOrganizada.sequencia?.length) return entregasPendentesFiltradas;
+        const ordemIds = rotaOrganizada.sequencia.map(p => p.pedidoId);
+        const ordenadas = [...entregasPendentesFiltradas].sort((a, b) => {
+            const ia = ordemIds.indexOf(a.id);
+            const ib = ordemIds.indexOf(b.id);
+            if (ia === -1 && ib === -1) return 0;
+            if (ia === -1) return 1;
+            if (ib === -1) return -1;
+            return ia - ib;
+        });
+        // Appenda ao final os que estão no semGPS
+        const semGPSIds = new Set(rotaOrganizada.semGPS?.map(p => p.pedidoId) || []);
+        const principal = ordenadas.filter(p => !semGPSIds.has(p.id));
+        const semGPSPedidos = ordenadas.filter(p => semGPSIds.has(p.id));
+        return [...principal, ...semGPSPedidos];
+    }, [rotaOrganizada, entregasPendentesFiltradas]);
+
     const entregasConcluidasFiltradas = useMemo(() =>
         entregasConcluidas.filter(p => matchBusca(p.cliente?.NomeFantasia || p.cliente?.Nome)),
         [entregasConcluidas, matchBusca]
