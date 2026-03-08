@@ -167,7 +167,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                             const thisPage = globalPageCount++;
                             return (
                                 <React.Fragment key={`roteiro-${idx}`}>
-                                    <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '10mm 15mm' }}>
+                                    <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group flex flex-col" style={{ minHeight: '297mm', width: '210mm', padding: '6mm' }}>
                                         <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">
                                             Página {thisPage} de {totalPages}
                                         </div>
@@ -179,7 +179,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                                             <div><strong>Qtd NFs (Total):</strong> {embarque?.pedidos?.length || 0}</div>
                                         </div>
 
-                                        <table>
+                                        <table className="flex-1">
                                             <thead>
                                                 <tr>
                                                     <th style={{ width: '4%' }}>Nº</th>
@@ -193,7 +193,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                                             <tbody>
                                                 {chunkPedidos.map(p => {
                                                     const totalPedido = p.itens?.reduce((acc, i) => acc + (Number(i.valor || 0) * Number(i.quantidade || 0)), 0) || 0;
-                                                    const pgto = p.opcaoCondicaoPagamento || p.tipoPagamento || '-';
+                                                    const pgto = p.nomeCondicaoPagamento || p.opcaoCondicaoPagamento || p.tipoPagamento || '-';
 
                                                     return (
                                                         <tr key={p.id}>
@@ -203,7 +203,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                                                                 <div className="text-[7px] text-gray-700">{p.cliente?.Nome}</div>
                                                             </td>
                                                             <td className="text-[7px] italic wrap-text">{p.observacoes || ''}</td>
-                                                            <td className="text-[7px]">{pgto}</td>
+                                                            <td className="text-[7px] wrap-text font-bold leading-tight">{pgto}</td>
                                                             <td className="font-mono text-right font-bold whitespace-nowrap">R$ {totalPedido.toFixed(2)}</td>
                                                             <td className="text-[8px] whitespace-nowrap">
                                                                 [  ] Total &nbsp; [  ] Parcial &nbsp; [  ] Devolução

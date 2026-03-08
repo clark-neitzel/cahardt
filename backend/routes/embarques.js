@@ -83,7 +83,7 @@ router.get('/pedidos-disponiveis', verificarAuth, checkAcessoEmbarque, async (re
 });
 
 // ==========================================
-// 3. DETALHAR UM EMBARQUE (Para Separação)
+// 3. DETALHAR UM EMBARQUE (Para Separação e Impressão)
 // ==========================================
 router.get('/:id', verificarAuth, checkAcessoEmbarque, async (req, res) => {
     try {
@@ -104,6 +104,26 @@ router.get('/:id', verificarAuth, checkAcessoEmbarque, async (req, res) => {
         });
 
         if (!embarque) return res.status(404).json({ error: 'Embarque não encontrado.' });
+
+        // Buscar nomes por extenso das condições de pagamento (banco de dados)
+        // O Pedido salva varchar `opcaoCondicaoPagamento` (normalmente o código ou identificador numérico interno).
+        const condicoesCodigos = [...new Set(embarque.pedidos.map(p => p.opcaoCondicaoPagamento).filter(Boolean))];
+        let mapaCondicoes = {};
+        if (condicoesCodigos.length > 0) {
+            const conds = await prisma.condicaoPagamento.findMany({
+                where: { codigo: { in: condicoesCodigos } }
+            });
+            conds.forEach(c => mapaCondicoes[c.codigo] = c.nome);
+        }
+
+        // Injetar dado mastigado no array pra exibição
+        embarque.pedidos = embarque.pedidos.map(p => {
+            return {
+                ...p,
+                nomeCondicaoPagamento: mapaCondicoes[p.opcaoCondicaoPagamento] || p.opcaoCondicaoPagamento || p.tipoPagamento || '-'
+            };
+        });
+
         res.json(embarque);
     } catch (error) {
         console.error('Erro ao detalhar embarque:', error);
