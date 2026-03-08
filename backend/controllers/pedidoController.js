@@ -1,4 +1,6 @@
 const pedidoService = require('../services/pedidoService');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 const pedidoController = {
     listar: async (req, res) => {
@@ -38,6 +40,21 @@ const pedidoController = {
     atualizar: async (req, res) => {
         try {
             const id = req.params.id;
+
+            // 🔒 Bloqueio: pedidos recebidos pelo CA não podem ser editados aqui
+            const pedidoAtual = await prisma.pedido.findUnique({
+                where: { id },
+                select: { statusEnvio: true, situacaoCA: true }
+            });
+            if (!pedidoAtual) return res.status(404).json({ error: 'Pedido não encontrado.' });
+
+            const situacoesCABloqueadas = ['APROVADO', 'FATURADO', 'EM_ABERTO'];
+            if (pedidoAtual.statusEnvio === 'RECEBIDO' || situacoesCABloqueadas.includes(pedidoAtual.situacaoCA)) {
+                return res.status(403).json({
+                    error: 'Este pedido já foi recebido pelo Conta Azul e não pode ser editado por aqui. Faça as alterações diretamente no ERP.'
+                });
+            }
+
             const dadosPedido = req.body;
             const pedidoAtualizado = await pedidoService.editar(id, dadosPedido);
             res.json(pedidoAtualizado);

@@ -132,18 +132,27 @@ const ListaPedidos = () => {
                                             </span>
                                         )}
                                     </div>
-                                    <button
-                                        className={`text-[11px] font-bold px-3 py-1 rounded transition-colors shadow-sm outline-none border ${pedido.statusEnvio === 'ABERTO'
-                                            ? 'bg-blue-50 border-blue-200 text-blue-700 active:bg-blue-100'
-                                            : 'bg-white border-gray-200 text-gray-600 active:bg-gray-50'
-                                            }`}
-                                        onClick={() => {
-                                            if (pedido.statusEnvio === 'ABERTO') navigate(`/pedidos/editar/${pedido.id}`);
-                                            else setSelectedPedido(pedido);
-                                        }}
-                                    >
-                                        {pedido.statusEnvio === 'ABERTO' ? 'Editar' : 'Detalhes'}
-                                    </button>
+                                    {(() => {
+                                        const bloqueadoNoCA = pedido.statusEnvio === 'RECEBIDO' || ['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA);
+                                        const podeEditar = pedido.statusEnvio === 'ABERTO' && !bloqueadoNoCA;
+                                        return (
+                                            <button
+                                                className={`text-[11px] font-bold px-3 py-1 rounded transition-colors shadow-sm outline-none border ${podeEditar
+                                                        ? 'bg-blue-50 border-blue-200 text-blue-700 active:bg-blue-100'
+                                                        : bloqueadoNoCA
+                                                            ? 'bg-green-50 border-green-200 text-green-700 cursor-default'
+                                                            : 'bg-white border-gray-200 text-gray-600 active:bg-gray-50'
+                                                    }`}
+                                                onClick={() => {
+                                                    if (podeEditar) navigate(`/pedidos/editar/${pedido.id}`);
+                                                    else setSelectedPedido(pedido);
+                                                }}
+                                                title={bloqueadoNoCA ? 'Pedido recebido pelo Conta Azul. Edite direto no ERP.' : undefined}
+                                            >
+                                                {podeEditar ? 'Editar' : bloqueadoNoCA ? 'Ver no CA' : 'Detalhes'}
+                                            </button>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         ))
@@ -218,8 +227,8 @@ const ListaPedidos = () => {
                                         <StatusBadge status={selectedPedido.statusEnvio} />
                                         {selectedPedido.situacaoCA && (
                                             <span className={`text-[10px] font-bold px-2 py-1 rounded w-fit uppercase border ${selectedPedido.situacaoCA === 'FATURADO'
-                                                    ? 'text-green-800 bg-green-50 border-green-300'
-                                                    : 'text-blue-800 bg-blue-50 border-blue-200'
+                                                ? 'text-green-800 bg-green-50 border-green-300'
+                                                : 'text-blue-800 bg-blue-50 border-blue-200'
                                                 }`} title="Status Oficial no Conta Azul">
                                                 CA: {selectedPedido.situacaoCA}
                                             </span>
