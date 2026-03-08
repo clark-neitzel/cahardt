@@ -105,15 +105,17 @@ router.get('/:id', verificarAuth, checkAcessoEmbarque, async (req, res) => {
 
         if (!embarque) return res.status(404).json({ error: 'Embarque não encontrado.' });
 
-        // Buscar nomes por extenso das condições de pagamento (banco de dados)
-        // O Pedido salva varchar `opcaoCondicaoPagamento` (normalmente o código ou identificador numérico interno).
-        const condicoesCodigos = [...new Set(embarque.pedidos.map(p => p.opcaoCondicaoPagamento).filter(Boolean))];
-        let mapaCondicoes = {};
-        if (condicoesCodigos.length > 0) {
-            const conds = await prisma.condicaoPagamento.findMany({
-                where: { codigo: { in: condicoesCodigos } }
-            });
-            conds.forEach(c => mapaCondicoes[c.codigo] = c.nome);
+        // Buscar nomes por extenso das condições de pagamento via TabelaPreco
+        // O Pedido salva opcaoCondicaoPagamento = opcaoCondicao da TabelaPreco (não idCondicao!)
+        const todasCondicoes = await prisma.tabelaPreco.findMany({
+            where: { ativo: true },
+            select: { opcaoCondicao: true, nomeCondicao: true }
+        });
+        const mapaCondicoes = {};
+        for (const t of todasCondicoes) {
+            if (!mapaCondicoes[t.opcaoCondicao]) {
+                mapaCondicoes[t.opcaoCondicao] = t.nomeCondicao;
+            }
         }
 
         // Injetar dado mastigado no array pra exibição
