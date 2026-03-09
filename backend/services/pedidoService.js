@@ -51,6 +51,7 @@ const pedidoService = {
             observacoes,
             tipoPagamento,
             opcaoCondicaoPagamento,
+            nomeCondicaoPagamento,
             qtdParcelas,
             primeiroVencimento,
             intervaloDias,
@@ -133,6 +134,7 @@ const pedidoService = {
                     observacoes,
                     tipoPagamento,
                     opcaoCondicaoPagamento,
+                    nomeCondicaoPagamento: nomeCondicaoPagamento || null,
                     qtdParcelas: qtdParcelas ? parseInt(qtdParcelas) : 1,
                     primeiroVencimento: primeiroVencimento ? new Date(primeiroVencimento) : undefined,
                     intervaloDias: intervaloDias ? parseInt(intervaloDias) : 0,
@@ -198,7 +200,7 @@ const pedidoService = {
     },
 
     editar: async (id, dadosPedido) => {
-        const { clienteId, vendedorId, itens, statusEnvio, observacoes, dataVenda, opcaoCondicaoPagamento } = dadosPedido;
+        const { clienteId, vendedorId, itens, statusEnvio, observacoes, dataVenda, opcaoCondicaoPagamento, nomeCondicaoPagamento } = dadosPedido;
 
         return await prisma.$transaction(async (tx) => {
             const pedidoAntigo = await tx.pedido.findUnique({
@@ -259,6 +261,7 @@ const pedidoService = {
                     statusEnvio,
                     observacoes,
                     opcaoCondicaoPagamento,
+                    nomeCondicaoPagamento: nomeCondicaoPagamento || undefined,
                     idContaFinanceira: dadosPedido.idContaFinanceira,
                     dataVenda: dataVenda ? new Date(dataVenda) : new Date(),
                     usuarioLancamentoId: dadosPedido.usuarioLancamentoId || undefined,

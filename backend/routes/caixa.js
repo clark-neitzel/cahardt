@@ -193,10 +193,10 @@ router.get('/resumo', async (req, res) => {
             const valorPedido = e.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0);
             const valorDevolvido = e.itensDevolvidos.reduce((s, i) => s + Number(i.valorBaseItem) * Number(i.quantidade), 0);
 
-            // Condição original do pedido (para exibição) — usa chave composta para evitar colisão
+            // Condição original do pedido (para exibição) — usa nome salvo direto, com fallback para lookup por chave composta
             const chaveCondicao = `${e.tipoPagamento || ''}|${e.opcaoCondicaoPagamento || ''}`;
             const condicaoInfo = mapaCondicoes[chaveCondicao] || mapaCondicoesPorOpcao[e.opcaoCondicaoPagamento];
-            const nomeCondicao = condicaoInfo?.nome || e.opcaoCondicaoPagamento || 'Outros';
+            const nomeCondicao = e.nomeCondicaoPagamento || condicaoInfo?.nome || e.opcaoCondicaoPagamento || 'Outros';
 
             // Devolvido: não conta nos totais de pagamento
             const isDevolvido = e.statusEntrega === 'DEVOLVIDO';
@@ -604,7 +604,7 @@ router.get('/relatorio', async (req, res) => {
                 return {
                     numero: e.numero,
                     clienteNome: e.cliente?.NomeFantasia || e.cliente?.Nome || 'N/A',
-                    condicao: condicaoInfo?.nome || e.opcaoCondicaoPagamento || '-',
+                    condicao: e.nomeCondicaoPagamento || condicaoInfo?.nome || e.opcaoCondicaoPagamento || '-',
                     valorPedido: Math.round(valorPedido * 100) / 100,
                     status: e.statusEntrega,
                     pagamentos: e.pagamentosReais.map(p => {

@@ -540,7 +540,11 @@ const migrationService = {
                 ) THEN
                     ALTER TABLE "leads" ADD CONSTRAINT "leads_cliente_id_fkey" FOREIGN KEY ("cliente_id") REFERENCES "clientes"("UUID") ON DELETE SET NULL ON UPDATE CASCADE;
                 END IF;
-            END $$;`
+            END $$;`,
+
+            // Update 33: Persistir nome completo da condição de pagamento no pedido
+            // Evita lookup reverso frágil quando múltiplas condições têm o mesmo opcaoCondicao
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "nome_condicao_pagamento" TEXT;`
         ];
 
         for (const [index, cmd] of commands.entries()) {

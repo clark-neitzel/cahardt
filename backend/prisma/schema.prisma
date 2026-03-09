@@ -170,6 +170,7 @@ model Pedido {
   idCategoria            String?   @map("id_categoria")
   tipoPagamento          String?   @map("tipo_pagamento")
   opcaoCondicaoPagamento String?   @map("opcao_condicao_pagamento")
+  nomeCondicaoPagamento  String?   @map("nome_condicao_pagamento") // Nome completo salvo no momento da criação
   qtdParcelas            Int       @default(1) @map("qtd_parcelas")
   primeiroVencimento     DateTime? @map("primeiro_vencimento")
   intervaloDias          Int       @default(0) @map("intervalo_dias")

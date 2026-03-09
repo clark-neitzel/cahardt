@@ -568,6 +568,7 @@ const NovoPedido = () => {
             observacoes: obsFinal,
             tipoPagamento: condicaoSelecionada?.tipoPagamento,
             opcaoCondicaoPagamento: condicaoSelecionada?.opcaoCondicao,
+            nomeCondicaoPagamento: condicaoSelecionada?.nomeCondicao || null,
             qtdParcelas: condicaoSelecionada?.qtdParcelas || 1,
             primeiroVencimento: null,
             intervaloDias: condicaoSelecionada?.parcelasDias || 0,

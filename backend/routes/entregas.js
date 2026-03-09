@@ -95,7 +95,7 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
             const info = mapaCondicoes[chave] || mapaCondicoesPorOpcao[e.opcaoCondicaoPagamento];
             return {
                 ...e,
-                nomeCondicaoPagamento: info?.nome || e.opcaoCondicaoPagamento || null,
+                nomeCondicaoPagamento: e.nomeCondicaoPagamento || info?.nome || e.opcaoCondicaoPagamento || null,
                 idCondicaoResolvido: info?.idCondicao || null
             };
         }));
@@ -150,7 +150,7 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
             const chave = `${e.tipoPagamento || ''}|${e.opcaoCondicaoPagamento || ''}`;
             return {
                 ...e,
-                condicaoNome: mapaCondicoes[chave] || mapaCondicoesPorOpcao2[e.opcaoCondicaoPagamento] || e.opcaoCondicaoPagamento || null
+                condicaoNome: e.nomeCondicaoPagamento || mapaCondicoes[chave] || mapaCondicoesPorOpcao2[e.opcaoCondicaoPagamento] || e.opcaoCondicaoPagamento || null
             };
         }));
     } catch (error) {

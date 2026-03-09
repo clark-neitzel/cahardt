@@ -125,7 +125,7 @@ router.get('/:id', verificarAuth, checkAcessoEmbarque, async (req, res) => {
             const chave = `${p.tipoPagamento || ''}|${p.opcaoCondicaoPagamento || ''}`;
             return {
                 ...p,
-                nomeCondicaoPagamento: mapaCondicoes[chave] || mapaCondicoesPorOpcao[p.opcaoCondicaoPagamento] || p.opcaoCondicaoPagamento || p.tipoPagamento || '-'
+                nomeCondicaoPagamento: p.nomeCondicaoPagamento || mapaCondicoes[chave] || mapaCondicoesPorOpcao[p.opcaoCondicaoPagamento] || p.opcaoCondicaoPagamento || p.tipoPagamento || '-'
             };
         });
 
