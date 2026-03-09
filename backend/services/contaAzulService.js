@@ -1167,25 +1167,111 @@ const contaAzulService = {
                         const dataVendaCA = venda.data ? new Date(venda.data) : new Date();
                         const dataAltCA = venda.data_alteracao ? new Date(venda.data_alteracao) : new Date();
 
+                        // === ENRIQUECIMENTO: Buscar detalhes completos da venda no CA ===
+                        let vendedorId = null;
+                        let tipoPagamento = null;
+                        let opcaoCondicaoPagamento = null;
+                        let nomeCondicaoPagamento = null;
+                        let itensImportados = [];
+
+                        try {
+                            const tokenDet = await contaAzulService.getAccessToken();
+                            const resDet = await axios.get(
+                                `https://api-v2.contaazul.com/v1/venda/${venda.id}`,
+                                { headers: { 'Authorization': `Bearer ${tokenDet}` } }
+                            );
+                            const vendaDet = resDet.data?.venda || resDet.data || {};
+
+                            // 1. Vendedor
+                            const idVendedorCA = vendaDet.id_vendedor || resDet.data?.vendedor?.id || null;
+                            if (idVendedorCA) {
+                                const vendedorLocal = await prisma.vendedor.findUnique({ where: { id: idVendedorCA } });
+                                if (vendedorLocal) {
+                                    vendedorId = vendedorLocal.id;
+                                    console.log(`[Sync CA] Pedido #${venda.numero}: vendedor → ${vendedorLocal.nome}`);
+                                }
+                            }
+
+                            // 2. Condição de pagamento — mapeia na TabelaPreco local
+                            const condCA = vendaDet.condicao_pagamento || {};
+                            const tipoRaw = condCA.tipo_pagamento || null;
+                            const opcaoRaw = condCA.opcao_condicao_pagamento || null;
+                            tipoPagamento = tipoRaw;
+                            opcaoCondicaoPagamento = opcaoRaw;
+                            if (tipoRaw || opcaoRaw) {
+                                const condicaoLocal = await prisma.tabelaPreco.findFirst({
+                                    where: {
+                                        ativo: true,
+                                        ...(tipoRaw ? { tipoPagamento: tipoRaw } : {}),
+                                        ...(opcaoRaw ? { opcaoCondicao: opcaoRaw } : {})
+                                    }
+                                });
+                                nomeCondicaoPagamento = condicaoLocal?.nomeCondicao || null;
+                                if (nomeCondicaoPagamento) {
+                                    console.log(`[Sync CA] Pedido #${venda.numero}: condição → ${nomeCondicaoPagamento}`);
+                                }
+                            }
+
+                            // 3. Itens
+                            const resItens = await axios.get(
+                                `https://api-v2.contaazul.com/v1/venda/${venda.id}/itens?pagina=1&tamanho_pagina=100`,
+                                { headers: { 'Authorization': `Bearer ${tokenDet}` } }
+                            );
+                            const itensCA = resItens.data?.itens || [];
+                            for (const itemCA of itensCA) {
+                                const produtoLocal = await prisma.produto.findFirst({
+                                    where: { contaAzulId: itemCA.id_item }
+                                });
+                                const valorBase = produtoLocal ? Number(produtoLocal.valorVenda) : Number(itemCA.valor);
+                                itensImportados.push({
+                                    produtoId: produtoLocal?.id || null,
+                                    descricao: itemCA.nome || itemCA.descricao || 'Produto CA',
+                                    quantidade: Number(itemCA.quantidade),
+                                    valor: Number(itemCA.valor),
+                                    valorBase,
+                                    flexGerado: (Number(itemCA.valor) - valorBase) * Number(itemCA.quantidade)
+                                });
+                            }
+                            if (itensImportados.length > 0) {
+                                console.log(`[Sync CA] Pedido #${venda.numero}: ${itensImportados.length} itens importados.`);
+                            }
+                        } catch (detErr) {
+                            console.error(`[Sync CA] Aviso: não foi possível buscar detalhes completos do pedido #${venda.numero}:`, detErr.message);
+                        }
+
                         await prisma.pedido.create({
                             data: {
                                 numero: venda.numero,
                                 dataVenda: dataVendaCA,
                                 clienteId: clienteLocal.UUID,
+                                ...(vendedorId ? { vendedorId } : {}),
                                 statusEnvio: 'RECEBIDO',
                                 idVendaContaAzul: venda.id,
                                 situacaoCA: venda.situacao?.nome || null,
                                 contaAzulUpdatedAt: dataAltCA,
-                                observacoes: `Pedido importado do Conta Azul (não encontrado localmente). Total CA: R$${venda.total}`,
-                                updatedAt: new Date()
+                                tipoPagamento,
+                                opcaoCondicaoPagamento,
+                                nomeCondicaoPagamento,
+                                observacoes: `Importado do Conta Azul. Total CA: R$${venda.total}`,
+                                updatedAt: new Date(),
+                                ...(itensImportados.length > 0 ? { itens: { create: itensImportados } } : {})
                             }
                         });
 
-                        console.log(`✅ [Sync CA] Pedido #${venda.numero} importado com sucesso do CA.`);
+                        // Disparar atualização do histórico do cliente (como pedido digitado no app)
+                        try {
+                            const clienteInsightService = require('./clienteInsightService');
+                            setImmediate(() => clienteInsightService.recalcularCliente(clienteLocal.UUID).catch(console.error));
+                        } catch (_) {
+                            // não-crítico
+                        }
+
+                        console.log(`✅ [Sync CA] Pedido #${venda.numero} importado (vendedor: ${vendedorId ? 'vinculado' : 'N/D'}, itens: ${itensImportados.length}).`);
                         count++;
                     } catch (importErr) {
                         console.error(`[Sync CA] ❌ Falha ao importar pedido #${venda.numero}:`, importErr.message);
                     }
+
                 }
             }
 
