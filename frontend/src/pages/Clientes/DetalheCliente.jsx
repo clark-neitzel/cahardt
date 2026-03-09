@@ -9,7 +9,9 @@ import atendimentoService from '../../services/atendimentoService';
 import pedidoService from '../../services/pedidoService';
 import categoriaClienteService from '../../services/categoriaClienteService';
 import clienteInsightService from '../../services/clienteInsightService';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw } from 'lucide-react';
+import leadService from '../../services/leadService';
+import { API_URL } from '../../services/api';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image } from 'lucide-react';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
 
@@ -66,6 +68,9 @@ const DetalheCliente = () => {
     const [insight, setInsight] = useState(null);
     const [recalculandoInsight, setRecalculandoInsight] = useState(false);
 
+    // Leads vinculados
+    const [leadsCliente, setLeadsCliente] = useState([]);
+
     const [formData, setFormData] = useState({
         Dia_de_entrega: '',
         Dia_de_venda: '',
@@ -120,12 +125,16 @@ const DetalheCliente = () => {
             }
             try {
                 const peds = await pedidoService.listar({ clienteId: uuid });
-                // Ordenar por data de entrega decrescente
                 const pedsSorted = (Array.isArray(peds) ? peds : []).sort(
                     (a, b) => new Date(b.dataVenda || b.createdAt) - new Date(a.dataVenda || a.createdAt)
                 );
                 setPedidosCliente(pedsSorted);
             } catch (_) { setPedidosCliente([]); }
+
+            try {
+                const leadsData = await leadService.buscarPorCliente(uuid);
+                setLeadsCliente(leadsData || []);
+            } catch (_) { setLeadsCliente([]); }
 
             setFormData({
                 Dia_de_entrega: clienteData.Dia_de_entrega || '',
@@ -228,6 +237,14 @@ const DetalheCliente = () => {
                 >
                     Histórico ({atendimentos.length + pedidosCliente.length})
                 </button>
+                {leadsCliente.length > 0 && (
+                    <button
+                        onClick={() => setAbaAtiva('lead')}
+                        className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'lead' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500'}`}
+                    >
+                        Lead ({leadsCliente.length})
+                    </button>
+                )}
             </div>
 
             {abaAtiva === 'historico' && (() => {
@@ -421,6 +438,78 @@ const DetalheCliente = () => {
                     </div>
                 );
             })()}
+
+            {abaAtiva === 'lead' && leadsCliente.length > 0 && (
+                <div className="space-y-6 pb-8">
+                    {leadsCliente.map(lead => (
+                        <div key={lead.id} className="bg-white rounded-lg border border-orange-200 overflow-hidden">
+                            {/* Dados do Lead */}
+                            <div className="p-4 bg-orange-50 border-b border-orange-200">
+                                <div className="flex gap-4">
+                                    {lead.fotoFachada ? (
+                                        <img
+                                            src={`${API_URL}${lead.fotoFachada}`}
+                                            alt="Fachada"
+                                            className="h-20 w-20 rounded-lg object-cover border border-orange-200 flex-shrink-0"
+                                        />
+                                    ) : (
+                                        <div className="h-20 w-20 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+                                            <Image className="h-6 w-6 text-orange-300" />
+                                        </div>
+                                    )}
+                                    <div className="flex-1">
+                                        <h3 className="font-bold text-gray-900">{lead.nomeEstabelecimento}</h3>
+                                        <p className="text-xs text-gray-400 font-mono">#{lead.numero}</p>
+                                        <div className="flex flex-wrap gap-2 mt-1.5 text-xs text-gray-600">
+                                            {lead.contato && <span className="flex items-center gap-1"><User className="h-3 w-3" /> {lead.contato}</span>}
+                                            {lead.whatsapp && <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {lead.whatsapp}</span>}
+                                            {lead.diasVisita && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {lead.diasVisita}</span>}
+                                        </div>
+                                        <div className="flex gap-2 mt-1.5">
+                                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${lead.etapa === 'CONVERTIDO' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                {lead.etapa}
+                                            </span>
+                                            <span className="text-[10px] text-gray-400">Criado em {new Date(lead.createdAt).toLocaleDateString('pt-BR')}</span>
+                                        </div>
+                                        {lead.observacoes && <p className="text-xs text-gray-500 mt-1.5 italic">{lead.observacoes}</p>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Histórico de atendimentos do Lead */}
+                            <div className="p-4">
+                                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+                                    <ClipboardList className="h-4 w-4 text-orange-500" />
+                                    Histórico do Lead ({lead.atendimentos?.length || 0})
+                                </h4>
+                                {(!lead.atendimentos || lead.atendimentos.length === 0) ? (
+                                    <p className="text-xs text-gray-400 text-center py-4">Nenhum atendimento registrado para este lead.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {lead.atendimentos.map(atend => (
+                                            <div key={atend.id} className="border border-gray-100 rounded-lg p-3 bg-gray-50">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold">{atend.tipo}</span>
+                                                        {atend.etapaNova && (
+                                                            <span className="text-[10px] text-gray-500">
+                                                                {atend.etapaAnterior} → {atend.etapaNova}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[10px] text-gray-400">{new Date(atend.criadoEm).toLocaleDateString('pt-BR')}</span>
+                                                </div>
+                                                {atend.observacao && <p className="text-xs text-gray-600">{atend.observacao}</p>}
+                                                {atend.vendedor && <p className="text-[10px] text-gray-400 mt-1">Por: {atend.vendedor.nome}</p>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {abaAtiva === 'dados' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

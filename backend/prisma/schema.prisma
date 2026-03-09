@@ -142,6 +142,7 @@ model Cliente {
 
   arquivos ClienteArquivo[]
   pedidos  Pedido[]
+  leads    Lead[]
 
   // Inteligência Comercial
   categoriaClienteId           String?           @map("categoria_cliente_id")
@@ -437,6 +438,9 @@ model Lead {
   idVendedor String?   @map("id_vendedor")
   vendedor   Vendedor? @relation(fields: [idVendedor], references: [id])
 
+  clienteId String?  @map("cliente_id")
+  cliente   Cliente? @relation(fields: [clienteId], references: [UUID])
+
   atendimentos Atendimento[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -444,6 +448,7 @@ model Lead {
 
   @@index([idVendedor])
   @@index([etapa])
+  @@index([clienteId])
   @@map("leads")
 }
 

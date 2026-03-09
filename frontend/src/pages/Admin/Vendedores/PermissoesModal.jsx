@@ -30,7 +30,7 @@ const DEFAULT_PERMISSIONS = {
 const TAB_LABELS = {
     catalogo: "Catálogo",
     pedidos: "Pedidos",
-    rota: "Rota / Leads",
+    rota: "Rota e Leads",
     clientes: "Clientes",
     produtos: "Produtos",
     vendedores: "Usuários",

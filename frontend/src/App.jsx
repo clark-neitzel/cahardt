@@ -19,6 +19,7 @@ import ListaPedidos from './pages/Pedidos/ListaPedidos';
 import Veiculos from './pages/Veiculos/Veiculos';
 import NovoPedido from './pages/Pedidos/NovoPedido';
 import RotaLeads from './pages/Rota/RotaLeads';
+import ListaLeads from './pages/Leads/ListaLeads';
 import Login from './pages/Login/Login';
 import PainelEmbarque from './pages/Admin/Embarques/PainelEmbarque';
 import AuditoriaEntregas from './pages/Admin/Embarques/AuditoriaEntregas';
@@ -84,6 +85,9 @@ const Layout = ({ children }) => {
                 )}
                 {hasPermission('pedidos') && (
                   <NavLink to="/rota" className={({ isActive }) => getNavLinkClass(isActive)}>Rota</NavLink>
+                )}
+                {hasPermission('rota') && (
+                  <NavLink to="/leads" className={({ isActive }) => getNavLinkClass(isActive)}>Leads</NavLink>
                 )}
                 {hasPermission('clientes') && (
                   <NavLink to="/clientes" className={({ isActive }) => getNavLinkClass(isActive)}>Clientes</NavLink>
@@ -183,6 +187,9 @@ const Layout = ({ children }) => {
               {hasPermission('pedidos') && (
                 <NavLink to="/rota" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Rota / Leads</NavLink>
               )}
+              {hasPermission('rota') && (
+                <NavLink to="/leads" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Leads</NavLink>
+              )}
               {hasPermission('clientes') && (
                 <NavLink to="/clientes" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Clientes</NavLink>
               )}
@@ -270,6 +277,7 @@ function App() {
 
               {/* Rota / Leads (CRM) */}
               <Route path="/rota" element={<PrivateRoute tab="pedidos"><RotaLeads /></PrivateRoute>} />
+              <Route path="/leads" element={<PrivateRoute tab="rota"><ListaLeads /></PrivateRoute>} />
 
               {/* Clientes */}
               <Route path="/clientes" element={<PrivateRoute tab="clientes"><ListaClientes /></PrivateRoute>} />

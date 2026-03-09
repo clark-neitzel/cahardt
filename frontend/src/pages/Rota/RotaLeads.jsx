@@ -854,7 +854,7 @@ const RotaLeads = () => {
             }
 
             const [leadsData, clientesData, atendHojeData] = await Promise.all([
-                leadService.listar(idBusca), // se null, traz de todos no backend
+                leadService.listarParaRota(idBusca), // se null, traz de todos no backend
                 clienteService.listar({ limit: 2000 }), // cliente traz tudo, filtraremos depois
                 idBusca ? atendimentoService.listarHoje(idBusca) : atendimentoService.listarHoje()
             ]);

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, MapPin, Loader, Mic, MicOff } from 'lucide-react';
+import { X, MapPin, Loader, Mic, MicOff, Camera } from 'lucide-react';
 import leadService from '../../services/leadService';
 import vendedorService from '../../services/vendedorService';
 import toast from 'react-hot-toast';
@@ -11,7 +11,8 @@ const CANAIS = [
     { value: 'TELEFONE', label: 'Telefone' },
 ];
 
-const ModalNovoLead = ({ onClose, onSalvo, user }) => {
+const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVendedorId, podeEscolherVendedor: propPodeEscolher, vendedores: propVendedores }) => {
+    const callback = onSalvo || onCriado;
     const [form, setForm] = useState({
         nomeEstabelecimento: '',
         contato: '',
@@ -21,18 +22,20 @@ const ModalNovoLead = ({ onClose, onSalvo, user }) => {
         formasAtendimento: [],
         pontoGps: '',
         observacoes: '',
-        idVendedor: user?.id || ''
+        idVendedor: propVendedorId || user?.id || ''
     });
+    const [fotoFile, setFotoFile] = useState(null);
+    const [fotoPreviewUrl, setFotoPreviewUrl] = useState(null);
     const [capturandoGps, setCapturandoGps] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [vendedores, setVendedores] = useState([]);
+    const [vendedores, setVendedores] = useState(propVendedores || []);
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = useRef(null);
     const originalTextRef = useRef('');
     const stoppedRef = useRef(false);
+    const fotoInputRef = useRef(null);
 
-    // Verifica se usuário pode ver todos os clientes (portanto, pode escolher o vendedor para o lead)
-    const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
+    const podeEscolherVendedor = propPodeEscolher ?? (user?.permissoes?.pedidos?.clientes === 'todos');
 
     const toggleDia = (dia) => {
         setForm(f => ({
@@ -52,12 +55,11 @@ const ModalNovoLead = ({ onClose, onSalvo, user }) => {
         }));
     };
 
-    // Carrega vendedores apenas se o usuário puder ver todos
     React.useEffect(() => {
-        if (podeEscolherVendedor) {
+        if (podeEscolherVendedor && (!propVendedores || propVendedores.length === 0)) {
             vendedorService.listar().then(setVendedores).catch(console.error);
         }
-    }, [podeEscolherVendedor]);
+    }, [podeEscolherVendedor, propVendedores]);
 
     const toggleMicrophone = () => {
         if (isListening) {
@@ -150,6 +152,14 @@ const ModalNovoLead = ({ onClose, onSalvo, user }) => {
         );
     };
 
+    const handleFotoChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setFotoFile(file);
+            setFotoPreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
     const handleSalvar = async () => {
         if (!form.nomeEstabelecimento.trim()) {
             toast.error('Informe o nome do estabelecimento.');
@@ -159,14 +169,26 @@ const ModalNovoLead = ({ onClose, onSalvo, user }) => {
             toast.error('Selecione pelo menos um dia de visita.');
             return;
         }
+        if (!fotoFile) {
+            toast.error('Tire uma foto da fachada do estabelecimento.');
+            return;
+        }
         try {
             setSaving(true);
-            await leadService.criar({
+            const lead = await leadService.criar({
                 ...form,
                 diasVisita: form.diasVisita.join(','),
                 idVendedor: form.idVendedor || user?.id,
             });
-            onSalvo();
+
+            // Upload da foto
+            if (fotoFile) {
+                const formData = new FormData();
+                formData.append('foto', fotoFile);
+                await leadService.uploadFoto(lead.id, formData);
+            }
+
+            callback();
         } catch (e) {
             console.error(e);
             toast.error('Erro ao criar lead.', { duration: 5000 });
@@ -268,6 +290,38 @@ const ModalNovoLead = ({ onClose, onSalvo, user }) => {
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Foto da Fachada */}
+                    <div>
+                        <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Foto da Fachada *</label>
+                        <input
+                            ref={fotoInputRef}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handleFotoChange}
+                            className="hidden"
+                        />
+                        {fotoPreviewUrl ? (
+                            <div className="relative">
+                                <img src={fotoPreviewUrl} alt="Fachada" className="w-full h-40 object-cover rounded-lg border border-gray-200" />
+                                <button
+                                    onClick={() => fotoInputRef.current?.click()}
+                                    className="absolute bottom-2 right-2 bg-white/90 text-gray-700 px-3 py-1.5 rounded-lg text-[12px] font-semibold border border-gray-200 flex items-center gap-1"
+                                >
+                                    <Camera className="h-3.5 w-3.5" /> Trocar
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => fotoInputRef.current?.click()}
+                                className="w-full h-32 border-2 border-dashed border-orange-300 rounded-lg bg-orange-50/50 flex flex-col items-center justify-center gap-1.5 text-orange-500 hover:bg-orange-50 transition-colors"
+                            >
+                                <Camera className="h-6 w-6" />
+                                <span className="text-[13px] font-semibold">Tirar Foto da Fachada</span>
+                            </button>
+                        )}
                     </div>
 
                     {/* GPS */}

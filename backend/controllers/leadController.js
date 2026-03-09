@@ -3,12 +3,33 @@ const leadService = require('../services/leadService');
 const leadController = {
     listar: async (req, res) => {
         try {
-            const vendedorId = req.query.vendedorId || null;
-            const leads = await leadService.listar(vendedorId);
-            res.json(leads);
+            const { vendedorId, search, etapa, page, limit, mode } = req.query;
+            const result = await leadService.listar({
+                vendedorId: vendedorId || null,
+                search: search || null,
+                etapa: etapa || null,
+                page: parseInt(page) || 1,
+                limit: parseInt(limit) || 25,
+                mode: mode || null
+            });
+            res.json(result);
         } catch (error) {
             console.error('[leadController.listar]', error);
             res.status(500).json({ error: 'Erro ao listar leads.' });
+        }
+    },
+
+    /**
+     * Lista simples para a rota (sem paginação, compatível com RotaLeads)
+     */
+    listarParaRota: async (req, res) => {
+        try {
+            const vendedorId = req.query.vendedorId || null;
+            const leads = await leadService.listarParaRota(vendedorId);
+            res.json(leads);
+        } catch (error) {
+            console.error('[leadController.listarParaRota]', error);
+            res.status(500).json({ error: 'Erro ao listar leads da rota.' });
         }
     },
 
@@ -50,6 +71,45 @@ const leadController = {
         } catch (error) {
             console.error('[leadController.finalizar]', error);
             res.status(500).json({ error: 'Erro ao finalizar lead.' });
+        }
+    },
+
+    uploadFoto: async (req, res) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json({ error: 'Nenhuma imagem enviada.' });
+            }
+            const leadId = req.params.id;
+            const fotoPath = `/uploads/leads/${leadId}/${req.file.filename}`;
+            const lead = await leadService.atualizar(leadId, { fotoFachada: fotoPath });
+            res.json(lead);
+        } catch (error) {
+            console.error('[leadController.uploadFoto]', error);
+            res.status(500).json({ error: 'Erro ao salvar foto.' });
+        }
+    },
+
+    referenciarCliente: async (req, res) => {
+        try {
+            const { clienteId } = req.body;
+            if (!clienteId) {
+                return res.status(400).json({ error: 'clienteId é obrigatório.' });
+            }
+            const lead = await leadService.referenciarCliente(req.params.id, clienteId);
+            res.json(lead);
+        } catch (error) {
+            console.error('[leadController.referenciarCliente]', error);
+            res.status(500).json({ error: 'Erro ao referenciar cliente.' });
+        }
+    },
+
+    buscarPorCliente: async (req, res) => {
+        try {
+            const leads = await leadService.buscarPorCliente(req.params.clienteId);
+            res.json(leads);
+        } catch (error) {
+            console.error('[leadController.buscarPorCliente]', error);
+            res.status(500).json({ error: 'Erro ao buscar leads do cliente.' });
         }
     }
 };

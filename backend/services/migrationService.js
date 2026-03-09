@@ -529,7 +529,18 @@ const migrationService = {
             `CREATE INDEX IF NOT EXISTS "atendimentos_cliente_id_criado_em_idx" ON "atendimentos"("cliente_id", "criado_em" DESC);`,
             `CREATE INDEX IF NOT EXISTS "cliente_insights_recalculado_em_idx" ON "cliente_insights"("recalculado_em" DESC);`,
             `CREATE INDEX IF NOT EXISTS "cliente_insights_status_recompra_idx" ON "cliente_insights"("status_recompra");`,
-            `CREATE INDEX IF NOT EXISTS "cliente_insights_score_risco_idx" ON "cliente_insights"("score_risco");`
+            `CREATE INDEX IF NOT EXISTS "cliente_insights_score_risco_idx" ON "cliente_insights"("score_risco");`,
+
+            // Update 32: Lead → Cliente (vínculo quando lead vira cliente)
+            `ALTER TABLE "leads" ADD COLUMN IF NOT EXISTS "cliente_id" TEXT;`,
+            `CREATE INDEX IF NOT EXISTS "leads_cliente_id_idx" ON "leads"("cliente_id");`,
+            `DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'leads_cliente_id_fkey'
+                ) THEN
+                    ALTER TABLE "leads" ADD CONSTRAINT "leads_cliente_id_fkey" FOREIGN KEY ("cliente_id") REFERENCES "clientes"("UUID") ON DELETE SET NULL ON UPDATE CASCADE;
+                END IF;
+            END $$;`
         ];
 
         for (const [index, cmd] of commands.entries()) {
