@@ -123,6 +123,31 @@ const syncPedidosService = {
 
             let contaFinId = pedido.idContaFinanceira || undefined;
 
+            // Validar compatibilidade entre conta financeira e tipo de pagamento
+            // O CA rejeita combinações inválidas (ex: BOLETO_BANCARIO + conta de DINHEIRO)
+            if (contaFinId && pedido.tipoPagamento) {
+                try {
+                    const contaFin = await prisma.contaFinanceira.findUnique({ where: { id: contaFinId } });
+                    if (contaFin) {
+                        // Mapa de compatibilidade: tipoUso da conta → tipos de pagamento aceitos
+                        const compatMap = {
+                            'DINHEIRO': ['DINHEIRO'],
+                            'PIX': ['PIX'],
+                            'BOLETO_BANCARIO': ['BOLETO_BANCARIO', 'A_PRAZO'],
+                            'CARTAO': ['CARTAO'],
+                        };
+                        const tiposAceitos = compatMap[contaFin.tipoUso] || [];
+                        if (tiposAceitos.length > 0 && !tiposAceitos.includes(pedido.tipoPagamento)) {
+                            console.warn(`[Pedido ${pedido.id}] ⚠️ Conta "${contaFin.nomeBanco}" (${contaFin.tipoUso}) incompatível com tipoPagamento "${pedido.tipoPagamento}". Omitindo id_conta_financeira do payload.`);
+                            contaFinId = undefined;
+                        }
+                    }
+                } catch (contaErr) {
+                    console.warn(`[Pedido ${pedido.id}] Erro ao validar conta financeira: ${contaErr.message}`);
+                }
+            }
+
+
             // Montar linha de promoções nos produtos do pedido
             const itensEmPromocao = pedido.itens.filter(item => item.emPromocao && item.nomePromocao);
             const linhaPromo = itensEmPromocao.length > 0
