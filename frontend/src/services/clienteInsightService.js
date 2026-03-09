@@ -4,7 +4,7 @@ const clienteInsightService = {
     // Busca dados analíticos do cliente (etapa 2)
     obterInsightPorCliente: async (clienteId) => {
         try {
-            const response = await api.get(`/api/insights/clientes/${clienteId}`);
+            const response = await api.get(`/insights/clientes/${clienteId}`);
             return response.data; // Pode ser null se não houver cálculo ainda
         } catch (error) {
             console.error('Erro ao buscar insights do cliente:', error);
@@ -15,7 +15,7 @@ const clienteInsightService = {
     // Força o recálculo imediato (útil pro botão de Recalcular na UI)
     recalcularManual: async (clienteId) => {
         try {
-            const response = await api.post(`/api/insights/clientes/${clienteId}/recalcular`);
+            const response = await api.post(`/insights/clientes/${clienteId}/recalcular`);
             return response.data;
         } catch (error) {
             console.error('Erro ao recalcular insights do cliente:', error);
