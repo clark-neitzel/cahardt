@@ -135,7 +135,7 @@ model Cliente {
   Formas_Atendimento             String[] @default([])
 
   contaAzulUpdatedAt DateTime? @map("conta_azul_updated_at")
-  updated_at DateTime @updatedAt
+  updated_at         DateTime  @updatedAt
 
   idVendedor String?   @map("id_vendedor")
   vendedor   Vendedor? @relation(fields: [idVendedor], references: [id])
@@ -144,11 +144,12 @@ model Cliente {
   pedidos  Pedido[]
 
   // Inteligência Comercial
-  categoriaClienteId             String?           @map("categoria_cliente_id")
-  categoriaCliente               CategoriaCliente? @relation(fields: [categoriaClienteId], references: [id])
-  cicloCompraPersonalizadoDias   Int?              @map("ciclo_compra_personalizado_dias")
-  insightAtivo                   Boolean           @default(true) @map("insight_ativo")
-  observacaoComercialFixa        String?           @map("observacao_comercial_fixa") @db.Text
+  categoriaClienteId           String?           @map("categoria_cliente_id")
+  categoriaCliente             CategoriaCliente? @relation(fields: [categoriaClienteId], references: [id])
+  cicloCompraPersonalizadoDias Int?              @map("ciclo_compra_personalizado_dias")
+  insightAtivo                 Boolean           @default(true) @map("insight_ativo")
+  observacaoComercialFixa      String?           @map("observacao_comercial_fixa") @db.Text
+  clienteInsights              ClienteInsight[]
 
   @@index([Nome])
   @@index([NomeFantasia])
@@ -172,11 +173,11 @@ model Pedido {
   primeiroVencimento     DateTime? @map("primeiro_vencimento")
   intervaloDias          Int       @default(0) @map("intervalo_dias")
   // Status de Integração 
-  statusEnvio      String    @default("ABERTO") @map("status_envio") // ABERTO, ENVIAR, SINCRONIZANDO, RECEBIDO, ERRO
-  idVendaContaAzul String?   @map("id_venda_contaazul") // ID gerado na API 
-  situacaoCA       String?   @map("situacao_ca") // APROVADO, FATURADO, EM_ABERTO (Conta Azul Oficial)
-  erroEnvio        String?   @map("erro_envio") @db.Text
-  enviadoEm        DateTime? @map("enviado_em")
+  statusEnvio            String    @default("ABERTO") @map("status_envio") // ABERTO, ENVIAR, SINCRONIZANDO, RECEBIDO, ERRO
+  idVendaContaAzul       String?   @map("id_venda_contaazul") // ID gerado na API 
+  situacaoCA             String?   @map("situacao_ca") // APROVADO, FATURADO, EM_ABERTO (Conta Azul Oficial)
+  erroEnvio              String?   @map("erro_envio") @db.Text
+  enviadoEm              DateTime? @map("enviado_em")
 
   // UX e Mobile
   flexTotal          Decimal   @default(0) @map("flex_total") @db.Decimal(12, 2)
@@ -207,9 +208,9 @@ model Pedido {
   motivoDevolucao      String?   @map("motivo_devolucao") @db.Text // Motivo geral da devolução (parcial ou total)
   observacaoEntrega    String?   @map("observacao_entrega") @db.Text // Observação geral do motorista na entrega
 
-  pagamentosReais      PedidoPagamentoReal[]
-  itensDevolvidos      EntregaItemDevolvido[]
-  caixaConferencias    CaixaEntregaConferida[]
+  pagamentosReais   PedidoPagamentoReal[]
+  itensDevolvidos   EntregaItemDevolvido[]
+  caixaConferencias CaixaEntregaConferida[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -279,35 +280,35 @@ model ContaAzulConfig {
 }
 
 model Vendedor {
-  id             String   @id // CA UUID
-  nome           String
-  email          String?
-  idLegado       String?  @map("id_legado")
-  flexMensal     Decimal  @default(0) @map("flex_mensal") @db.Decimal(12, 2)
-  flexDisponivel Decimal  @default(0) @map("flex_disponivel") @db.Decimal(12, 2)
-  maxDescontoFlex Decimal @default(100) @map("max_desconto_flex") @db.Decimal(5, 2)
-  ativo          Boolean  @default(true)
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id              String   @id // CA UUID
+  nome            String
+  email           String?
+  idLegado        String?  @map("id_legado")
+  flexMensal      Decimal  @default(0) @map("flex_mensal") @db.Decimal(12, 2)
+  flexDisponivel  Decimal  @default(0) @map("flex_disponivel") @db.Decimal(12, 2)
+  maxDescontoFlex Decimal  @default(100) @map("max_desconto_flex") @db.Decimal(5, 2)
+  ativo           Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   // Auth / App
   login      String? @unique
   senha      String?
   permissoes Json?
 
-  clientes Cliente[]
-  pedidos  Pedido[]
-  pedidosLancados Pedido[] @relation("UsuarioLancamento")
-  leads    Lead[]
-  atendimentos Atendimento[]
-  diarios  DiarioVendedor[]
+  clientes        Cliente[]
+  pedidos         Pedido[]
+  pedidosLancados Pedido[]         @relation("UsuarioLancamento")
+  leads           Lead[]
+  atendimentos    Atendimento[]
+  diarios         DiarioVendedor[]
 
-  embarques           Embarque[]
-  pagamentosFiados    PedidoPagamentoReal[] @relation("PagamentosFiados")
-  despesas            Despesa[] @relation("DespesasDoVendedor")
-  caixasDiarios       CaixaDiario[]
-  metasMensais        MetaMensalVendedor[]
-  roteirizacao        Roteirizacao?
+  embarques        Embarque[]
+  pagamentosFiados PedidoPagamentoReal[] @relation("PagamentosFiados")
+  despesas         Despesa[]             @relation("DespesasDoVendedor")
+  caixasDiarios    CaixaDiario[]
+  metasMensais     MetaMensalVendedor[]
+  roteirizacao     Roteirizacao?
 
   @@map("vendedores")
 }
@@ -361,26 +362,26 @@ model ContaFinanceira {
 // =============================================
 
 model Promocao {
-  id           String   @id @default(uuid())
-  produtoId    String   @map("produto_id")
-  nome         String
-  tipo         String   // SIMPLES ou CONDICIONAL
-  precoPromocional Decimal @map("preco_promocional") @db.Decimal(10, 2)
-  dataInicio   DateTime @map("data_inicio")
-  dataFim      DateTime @map("data_fim")
-  status       String   @default("ATIVA") // ATIVA ou ENCERRADA
+  id               String   @id @default(uuid())
+  produtoId        String   @map("produto_id")
+  nome             String
+  tipo             String // SIMPLES ou CONDICIONAL
+  precoPromocional Decimal  @map("preco_promocional") @db.Decimal(10, 2)
+  dataInicio       DateTime @map("data_inicio")
+  dataFim          DateTime @map("data_fim")
+  status           String   @default("ATIVA") // ATIVA ou ENCERRADA
 
   // Auditoria de criação
-  criadoPor    String   @map("criado_por") // vendedorId
-  criadoEm    DateTime  @default(now()) @map("criado_em")
+  criadoPor String   @map("criado_por") // vendedorId
+  criadoEm  DateTime @default(now()) @map("criado_em")
 
   // Auditoria de encerramento
-  encerradoPor            String?   @map("encerrado_por") // vendedorId
-  encerradoEm             DateTime? @map("encerrado_em")
-  encerradaAntesPrevisto  Boolean?  @map("encerrada_antes_previsto")
+  encerradoPor           String?   @map("encerrado_por") // vendedorId
+  encerradoEm            DateTime? @map("encerrado_em")
+  encerradaAntesPrevisto Boolean?  @map("encerrada_antes_previsto")
 
-  produto  Produto                @relation(fields: [produtoId], references: [id])
-  grupos   PromocaoCondicaoGrupo[]
+  produto        Produto                 @relation(fields: [produtoId], references: [id])
+  grupos         PromocaoCondicaoGrupo[]
   metasPromocoes MetaPromocao[]
 
   @@index([produtoId])
@@ -392,8 +393,8 @@ model PromocaoCondicaoGrupo {
   id         String @id @default(uuid())
   promocaoId String @map("promocao_id")
 
-  promocao   Promocao           @relation(fields: [promocaoId], references: [id], onDelete: Cascade)
-  condicoes  PromocaoCondicao[]
+  promocao  Promocao           @relation(fields: [promocaoId], references: [id], onDelete: Cascade)
+  condicoes PromocaoCondicao[]
 
   @@index([promocaoId])
   @@map("promocao_condicao_grupos")
@@ -402,12 +403,12 @@ model PromocaoCondicaoGrupo {
 model PromocaoCondicao {
   id               String   @id @default(uuid())
   grupoId          String   @map("grupo_id")
-  tipo             String   // PRODUTO_QUANTIDADE ou VALOR_TOTAL
+  tipo             String // PRODUTO_QUANTIDADE ou VALOR_TOTAL
   produtoId        String?  @map("produto_id") // Para tipo PRODUTO_QUANTIDADE
   quantidadeMinima Decimal? @map("quantidade_minima") @db.Decimal(12, 3)
   valorMinimo      Decimal? @map("valor_minimo") @db.Decimal(12, 2)
 
-  grupo   PromocaoCondicaoGrupo @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  grupo PromocaoCondicaoGrupo @relation(fields: [grupoId], references: [id], onDelete: Cascade)
 
   @@index([grupoId])
   @@map("promocao_condicoes")
@@ -418,28 +419,28 @@ model PromocaoCondicao {
 // =============================================
 
 model Lead {
-  id                  String   @id @default(uuid())
-  numero              Int      @default(autoincrement())
-  nomeEstabelecimento String   @map("nome_estabelecimento")
+  id                  String    @id @default(uuid())
+  numero              Int       @default(autoincrement())
+  nomeEstabelecimento String    @map("nome_estabelecimento")
   contato             String?
   whatsapp            String?
-  diasVisita          String?  @map("dias_visita")
-  horarioAtendimento  String?  @map("horario_atendimento")
-  horarioEntrega      String?  @map("horario_entrega")
-  formasAtendimento   String[] @default([]) @map("formas_atendimento")
-  pontoGps            String?  @map("ponto_gps")
-  etapa               String   @default("NOVO")
+  diasVisita          String?   @map("dias_visita")
+  horarioAtendimento  String?   @map("horario_atendimento")
+  horarioEntrega      String?   @map("horario_entrega")
+  formasAtendimento   String[]  @default([]) @map("formas_atendimento")
+  pontoGps            String?   @map("ponto_gps")
+  etapa               String    @default("NOVO")
   proximaVisita       DateTime? @map("proxima_visita")
-  observacoes         String?  @db.Text
-  fotoFachada         String?  @map("foto_fachada")
+  observacoes         String?   @db.Text
+  fotoFachada         String?   @map("foto_fachada")
 
-  idVendedor          String?   @map("id_vendedor")
-  vendedor            Vendedor? @relation(fields: [idVendedor], references: [id])
+  idVendedor String?   @map("id_vendedor")
+  vendedor   Vendedor? @relation(fields: [idVendedor], references: [id])
 
-  atendimentos        Atendimento[]
+  atendimentos Atendimento[]
 
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([idVendedor])
   @@index([etapa])
@@ -447,29 +448,30 @@ model Lead {
 }
 
 model Atendimento {
-  id              String   @id @default(uuid())
-  tipo            String
-  observacao      String?  @db.Text
-  etapaAnterior   String?  @map("etapa_anterior")
-  etapaNova       String?  @map("etapa_nova")
-  proximaVisita   DateTime? @map("proxima_visita")
-  gpsVendedor     String?  @map("gps_vendedor")
-  pedidoId        String?  @map("pedido_id")
+  id            String    @id @default(uuid())
+  tipo          String
+  observacao    String?   @db.Text
+  etapaAnterior String?   @map("etapa_anterior")
+  etapaNova     String?   @map("etapa_nova")
+  proximaVisita DateTime? @map("proxima_visita")
+  gpsVendedor   String?   @map("gps_vendedor")
+  pedidoId      String?   @map("pedido_id")
 
-  leadId          String?  @map("lead_id")
-  lead            Lead?    @relation(fields: [leadId], references: [id])
-  clienteId       String?  @map("cliente_id")
+  leadId    String? @map("lead_id")
+  lead      Lead?   @relation(fields: [leadId], references: [id])
+  clienteId String? @map("cliente_id")
 
-  idVendedor      String   @map("id_vendedor")
-  vendedor        Vendedor @relation(fields: [idVendedor], references: [id])
+  idVendedor String   @map("id_vendedor")
+  vendedor   Vendedor @relation(fields: [idVendedor], references: [id])
 
-  criadoEm        DateTime @default(now()) @map("criado_em")
+  criadoEm DateTime @default(now()) @map("criado_em")
 
   @@index([leadId])
   @@index([clienteId])
   @@index([idVendedor])
   @@map("atendimentos")
 }
+
 // =============================================
 // MÓDULO PONTO E VEÍCULOS (DIÁRIO / GATE)
 // =============================================
@@ -484,14 +486,14 @@ model Veiculo {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Seguro
-  seguroVencimento  DateTime? @map("seguro_vencimento")
-  seguroApolice     String?   @map("seguro_apolice")
-  seguroSeguradora  String?   @map("seguro_seguradora")
+  seguroVencimento DateTime? @map("seguro_vencimento")
+  seguroApolice    String?   @map("seguro_apolice")
+  seguroSeguradora String?   @map("seguro_seguradora")
 
   // Métricas e Configurações
-  capacidadeTanque  Decimal?  @map("capacidade_tanque") @db.Decimal(8, 2)
-  kmMedioSugerido   Int?      @map("km_medio_sugerido")
-  observacoes       String?   @db.Text
+  capacidadeTanque Decimal? @map("capacidade_tanque") @db.Decimal(8, 2)
+  kmMedioSugerido  Int?     @map("km_medio_sugerido")
+  observacoes      String?  @db.Text
 
   diarios           DiarioVendedor[]
   despesas          Despesa[]
@@ -501,21 +503,21 @@ model Veiculo {
 }
 
 model DiarioVendedor {
-  id             String   @id @default(uuid())
-  vendedorId     String   @map("vendedor_id")
-  modo           String   // HOME_OFFICE ou PRESENCIAL
-  dataReferencia String   @map("data_referencia") // YYYY-MM-DD para busca exata (sem HH:MM)
-  
+  id             String @id @default(uuid())
+  vendedorId     String @map("vendedor_id")
+  modo           String // HOME_OFFICE ou PRESENCIAL
+  dataReferencia String @map("data_referencia") // YYYY-MM-DD para busca exata (sem HH:MM)
+
   // Se Presencial
-  veiculoId      String?  @map("veiculo_id")
-  kmInicial      Int?     @map("km_inicial")
-  kmFinal        Int?     @map("km_final")
-  checklist      Json?    // Array de booleans/strings
-  obs            String?  @db.Text
+  veiculoId String? @map("veiculo_id")
+  kmInicial Int?    @map("km_inicial")
+  kmFinal   Int?    @map("km_final")
+  checklist Json? // Array de booleans/strings
+  obs       String? @db.Text
 
   // Timestamps de Ponto
-  inicioHora     DateTime @default(now()) @map("inicio_hora")
-  fimHora        DateTime? @map("fim_hora")
+  inicioHora DateTime  @default(now()) @map("inicio_hora")
+  fimHora    DateTime? @map("fim_hora")
 
   vendedor Vendedor @relation(fields: [vendedorId], references: [id])
   veiculo  Veiculo? @relation(fields: [veiculoId], references: [id])
@@ -532,19 +534,59 @@ model DiarioVendedor {
 // =============================================
 
 model Embarque {
-  id             String   @id @default(uuid())
-  numero         Int      @default(autoincrement())
-  dataSaida      DateTime @map("data_saida")
-  
-  responsavelId  String   @map("responsavel_id") // Vendedor/Usuário responsável
-  responsavel    Vendedor @relation(fields: [responsavelId], references: [id])
+  id        String   @id @default(uuid())
+  numero    Int      @default(autoincrement())
+  dataSaida DateTime @map("data_saida")
 
-  pedidos        Pedido[]
+  responsavelId String   @map("responsavel_id") // Vendedor/Usuário responsável
+  responsavel   Vendedor @relation(fields: [responsavelId], references: [id])
 
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  pedidos Pedido[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("embarques")
+}
+
+model ClienteInsight {
+  clienteId                   String    @id @map("cliente_id")
+  dataUltimoPedido            DateTime? @map("data_ultimo_pedido")
+  diasSemComprar              Int?      @map("dias_sem_comprar")
+  cicloReferenciaDias         Int       @map("ciclo_referencia_dias")
+  origemCiclo                 String    @map("origem_ciclo") // PERSONALIZADO, CATEGORIA, PADRAO
+  statusRecompra              String    @map("status_recompra") // SEM_HISTORICO, NO_PRAZO, ATENCAO, ATRASADO, CRITICO
+  qtdPedidosUltimos30d        Int       @default(0) @map("qtd_pedidos_ultimos_30d")
+  ticketMedioBase             Decimal?  @map("ticket_medio_base") @db.Decimal(12, 2)
+  ticketMedioRecente          Decimal?  @map("ticket_medio_recente") @db.Decimal(12, 2)
+  variacaoTicketPct           Decimal?  @map("variacao_ticket_pct") @db.Decimal(8, 2)
+  itensMediosBase             Decimal?  @map("itens_medios_base") @db.Decimal(10, 2)
+  itensMediosRecentes         Decimal?  @map("itens_medios_recentes") @db.Decimal(10, 2)
+  variacaoItensPct            Decimal?  @map("variacao_itens_pct") @db.Decimal(8, 2)
+  produtoAusenteId            String?   @map("produto_ausente_id")
+  produtoAusenteFrequencia    Int       @default(0) @map("produto_ausente_frequencia")
+  produtoAusenteDesdePedidos  Int       @default(0) @map("produto_ausente_desde_pedidos")
+  categoriaEmQuedaId          String?   @map("categoria_em_queda_id")
+  categoriaQuedaPct           Decimal?  @map("categoria_queda_pct") @db.Decimal(8, 2)
+  teveDevolucaoRecente        Boolean   @default(false) @map("teve_devolucao_recente")
+  dataUltimaDevolucao         DateTime? @map("data_ultima_devolucao")
+  motivoUltimaDevolucao       String?   @map("motivo_ultima_devolucao") @db.Text
+  qtdAtendimentosSemPedido30d Int       @default(0) @map("qtd_atendimentos_sem_pedido_30d")
+  dataUltimoAtendimento       DateTime? @map("data_ultimo_atendimento")
+  canalUltimoAtendimento      String?   @map("canal_ultimo_atendimento")
+  scoreRisco                  Int       @default(0) @map("score_risco")
+  scoreOportunidade           Int       @default(0) @map("score_oportunidade")
+  insightPrincipalTipo        String?   @map("insight_principal_tipo")
+  insightPrincipalResumo      String?   @map("insight_principal_resumo") @db.Text
+  proximaAcaoSugerida         String?   @map("proxima_acao_sugerida") @db.Text
+  recalculadoEm               DateTime  @map("recalculado_em")
+
+  cliente Cliente @relation(fields: [clienteId], references: [UUID], onDelete: Cascade)
+
+  @@index([recalculadoEm(sort: Desc)])
+  @@index([statusRecompra])
+  @@index([scoreRisco])
+  @@map("cliente_insights")
 }
 
 model FormaPagamentoEntrega {
@@ -556,43 +598,43 @@ model FormaPagamentoEntrega {
   createdAt                    DateTime @default(now()) @map("created_at")
   updatedAt                    DateTime @updatedAt @map("updated_at")
 
-  pagamentosReais              PedidoPagamentoReal[]
+  pagamentosReais PedidoPagamentoReal[]
 
   @@map("formas_pagamento_entrega")
 }
 
 model PedidoPagamentoReal {
-  id                      String   @id @default(uuid())
-  pedidoId                String   @map("pedido_id")
-  formaPagamentoEntregaId String?  @map("forma_pagamento_entrega_id")
-  
-  formaPagamentoNome      String   @map("forma_pagamento_nome") // Nome na hora, para histórico
-  valor                   Decimal  @db.Decimal(12, 2)
-  
+  id                      String  @id @default(uuid())
+  pedidoId                String  @map("pedido_id")
+  formaPagamentoEntregaId String? @map("forma_pagamento_entrega_id")
+
+  formaPagamentoNome String  @map("forma_pagamento_nome") // Nome na hora, para histórico
+  valor              Decimal @db.Decimal(12, 2)
+
   // Responsabilidade em caso de Dívida/Ação
-  vendedorResponsavelId   String?  @map("vendedor_responsavel_id")
-  escritorioResponsavel   Boolean  @default(false) @map("escritorio_responsavel")
+  vendedorResponsavelId String? @map("vendedor_responsavel_id")
+  escritorioResponsavel Boolean @default(false) @map("escritorio_responsavel")
 
-  pedido                  Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-  formaPagamento          FormaPagamentoEntrega? @relation(fields: [formaPagamentoEntregaId], references: [id])
-  vendedorResponsavel     Vendedor? @relation("PagamentosFiados", fields: [vendedorResponsavelId], references: [id])
+  pedido              Pedido                 @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  formaPagamento      FormaPagamentoEntrega? @relation(fields: [formaPagamentoEntregaId], references: [id])
+  vendedorResponsavel Vendedor?              @relation("PagamentosFiados", fields: [vendedorResponsavelId], references: [id])
 
-  createdAt               DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@map("pedido_pagamentos_reais")
 }
 
 model EntregaItemDevolvido {
-  id            String   @id @default(uuid())
-  pedidoId      String   @map("pedido_id")
-  produtoId     String   @map("produto_id")
-  quantidade    Decimal  @db.Decimal(12, 3)
-  valorBaseItem Decimal  @db.Decimal(12, 2) @map("valor_base_item") // Valor do item devolvido para registro e cálculo de estorno
-  
-  pedido        Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-  produto       Produto  @relation(fields: [produtoId], references: [id])
+  id            String  @id @default(uuid())
+  pedidoId      String  @map("pedido_id")
+  produtoId     String  @map("produto_id")
+  quantidade    Decimal @db.Decimal(12, 3)
+  valorBaseItem Decimal @map("valor_base_item") @db.Decimal(12, 2) // Valor do item devolvido para registro e cálculo de estorno
 
-  createdAt     DateTime @default(now()) @map("created_at")
+  pedido  Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto Produto @relation(fields: [produtoId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@map("entrega_itens_devolvidos")
 }
@@ -602,13 +644,13 @@ model EntregaItemDevolvido {
 // =============================================
 
 model Despesa {
-  id             String   @id @default(uuid())
-  vendedorId     String   @map("vendedor_id")
-  dataReferencia String   @map("data_referencia") // YYYY-MM-DD
+  id             String @id @default(uuid())
+  vendedorId     String @map("vendedor_id")
+  dataReferencia String @map("data_referencia") // YYYY-MM-DD
 
-  categoria      String   // MERCADORIA_EMPRESA | COMBUSTIVEL | PEDAGIO_BALSA | HOTEL_HOSPEDAGEM | MANUTENCAO_VEICULO | OUTRO
-  descricao      String?  @db.Text
-  valor          Decimal  @db.Decimal(12, 2)
+  categoria String // MERCADORIA_EMPRESA | COMBUSTIVEL | PEDAGIO_BALSA | HOTEL_HOSPEDAGEM | MANUTENCAO_VEICULO | OUTRO
+  descricao String? @db.Text
+  valor     Decimal @db.Decimal(12, 2)
 
   // Combustivel-specific
   veiculoId         String?  @map("veiculo_id")
@@ -618,9 +660,9 @@ model Despesa {
   // Manutencao-specific
   tipoManutencao String? @map("tipo_manutencao") // LAMPADA | PNEU | OLEO | FILTRO | OUTRO
 
-  criadoPor  String   @map("criado_por")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  criadoPor String   @map("criado_por")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   vendedor Vendedor @relation("DespesasDoVendedor", fields: [vendedorId], references: [id])
   veiculo  Veiculo? @relation(fields: [veiculoId], references: [id])
@@ -632,18 +674,18 @@ model Despesa {
 }
 
 model CaixaDiario {
-  id             String   @id @default(uuid())
-  vendedorId     String   @map("vendedor_id")
-  dataReferencia String   @map("data_referencia") // YYYY-MM-DD
+  id             String @id @default(uuid())
+  vendedorId     String @map("vendedor_id")
+  dataReferencia String @map("data_referencia") // YYYY-MM-DD
 
   adiantamento Decimal @default(0) @db.Decimal(12, 2)
   status       String  @default("ABERTO") // ABERTO | FECHADO | CONFERIDO
 
   // Snapshots ao fechar
-  totalDespesas      Decimal? @db.Decimal(12, 2) @map("total_despesas")
-  totalRecebidoCaixa Decimal? @db.Decimal(12, 2) @map("total_recebido_caixa")
-  totalRecebidoOutros Decimal? @db.Decimal(12, 2) @map("total_recebido_outros")
-  valorAPrestar      Decimal? @db.Decimal(12, 2) @map("valor_a_prestar")
+  totalDespesas       Decimal? @map("total_despesas") @db.Decimal(12, 2)
+  totalRecebidoCaixa  Decimal? @map("total_recebido_caixa") @db.Decimal(12, 2)
+  totalRecebidoOutros Decimal? @map("total_recebido_outros") @db.Decimal(12, 2)
+  valorAPrestar       Decimal? @map("valor_a_prestar") @db.Decimal(12, 2)
 
   conferidoPor String?   @map("conferido_por")
   conferidoEm  DateTime? @map("conferido_em")
@@ -652,8 +694,8 @@ model CaixaDiario {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  vendedor            Vendedor                @relation(fields: [vendedorId], references: [id])
-  entregasConferidas  CaixaEntregaConferida[]
+  vendedor           Vendedor                @relation(fields: [vendedorId], references: [id])
+  entregasConferidas CaixaEntregaConferida[]
 
   @@unique([vendedorId, dataReferencia])
   @@index([vendedorId])
@@ -663,12 +705,12 @@ model CaixaDiario {
 }
 
 model CaixaEntregaConferida {
-  id            String   @id @default(uuid())
-  caixaDiarioId String   @map("caixa_diario_id")
-  pedidoId      String   @map("pedido_id")
+  id            String @id @default(uuid())
+  caixaDiarioId String @map("caixa_diario_id")
+  pedidoId      String @map("pedido_id")
 
-  conferido    Boolean  @default(false)
-  conferidoPor String?  @map("conferido_por")
+  conferido    Boolean   @default(false)
+  conferidoPor String?   @map("conferido_por")
   conferidoEm  DateTime? @map("conferido_em")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -686,10 +728,10 @@ model CaixaEntregaConferida {
 // =============================================
 
 model ManutencaoAlerta {
-  id        String  @id @default(uuid())
-  veiculoId String  @map("veiculo_id")
+  id        String @id @default(uuid())
+  veiculoId String @map("veiculo_id")
 
-  tipo      String  // REVISAO | RODIZIO_PNEUS | TROCA_OLEO | TROCA_FILTRO | OUTRO
+  tipo      String // REVISAO | RODIZIO_PNEUS | TROCA_OLEO | TROCA_FILTRO | OUTRO
   descricao String? @db.Text
 
   kmAlerta   Int?      @map("km_alerta")
@@ -715,18 +757,18 @@ model ManutencaoAlerta {
 // =============================================
 
 model Roteirizacao {
-  id          String   @id @default(uuid())
-  vendedorId  String   @unique @map("vendedor_id")
-  
-  dadosConfig Json     // configs used { horaSaida, tempoParadaMin, etc }
-  sequencia   Json     // the actual route array
-  semGPS      Json     // orders without GPS
-  resumo      Json     // distance/duration summary
-  
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id         String @id @default(uuid())
+  vendedorId String @unique @map("vendedor_id")
 
-  vendedor    Vendedor @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+  dadosConfig Json // configs used { horaSaida, tempoParadaMin, etc }
+  sequencia   Json // the actual route array
+  semGPS      Json // orders without GPS
+  resumo      Json // distance/duration summary
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  vendedor Vendedor @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
 
   @@map("roteirizacoes")
 }
@@ -736,19 +778,19 @@ model Roteirizacao {
 // =============================================
 
 model MetaMensalVendedor {
-  id             String   @id @default(uuid())
-  vendedorId     String   @map("vendedor_id")
-  mesReferencia  String   @map("mes_referencia") // Formato "YYYY-MM" (ex: "2026-03")
-  
-  diasTrabalho   Json     @map("dias_trabalho") // Array de strings "YYYY-MM-DD" representando dias úteis atuantes
-  valorMensal    Decimal  @map("valor_mensal") @db.Decimal(12, 2)
-  flexMensal     Decimal  @default(0) @map("flex_mensal") @db.Decimal(12, 2)
+  id            String @id @default(uuid())
+  vendedorId    String @map("vendedor_id")
+  mesReferencia String @map("mes_referencia") // Formato "YYYY-MM" (ex: "2026-03")
 
-  criadoPor      String   @map("criado_por")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  diasTrabalho Json    @map("dias_trabalho") // Array de strings "YYYY-MM-DD" representando dias úteis atuantes
+  valorMensal  Decimal @map("valor_mensal") @db.Decimal(12, 2)
+  flexMensal   Decimal @default(0) @map("flex_mensal") @db.Decimal(12, 2)
 
-  vendedor       Vendedor @relation(fields: [vendedorId], references: [id])
+  criadoPor String   @map("criado_por")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  vendedor       Vendedor       @relation(fields: [vendedorId], references: [id])
   metasProdutos  MetaProduto[]
   metasPromocoes MetaPromocao[]
 
@@ -759,32 +801,32 @@ model MetaMensalVendedor {
 }
 
 model MetaProduto {
-  id                   String   @id @default(uuid())
-  metaMensalVendedorId String   @map("meta_mensal_vendedor_id")
-  produtoId            String   @map("produto_id")
-  quantidade           Decimal  @db.Decimal(12, 3)
+  id                   String  @id @default(uuid())
+  metaMensalVendedorId String  @map("meta_mensal_vendedor_id")
+  produtoId            String  @map("produto_id")
+  quantidade           Decimal @db.Decimal(12, 3)
 
-  metaMensalVendedor   MetaMensalVendedor @relation(fields: [metaMensalVendedorId], references: [id], onDelete: Cascade)
-  produto              Produto            @relation(fields: [produtoId], references: [id])
+  metaMensalVendedor MetaMensalVendedor @relation(fields: [metaMensalVendedorId], references: [id], onDelete: Cascade)
+  produto            Produto            @relation(fields: [produtoId], references: [id])
 
-  createdAt            DateTime @default(now()) @map("created_at")
-  updatedAt            DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([metaMensalVendedorId, produtoId])
   @@map("meta_produtos")
 }
 
 model MetaPromocao {
-  id                   String   @id @default(uuid())
-  metaMensalVendedorId String   @map("meta_mensal_vendedor_id")
-  promocaoId           String   @map("promocao_id")
-  quantidadePedidos    Int      @map("quantidade_pedidos") // Quantos pedidos com a promoção devem ser feitos
+  id                   String @id @default(uuid())
+  metaMensalVendedorId String @map("meta_mensal_vendedor_id")
+  promocaoId           String @map("promocao_id")
+  quantidadePedidos    Int    @map("quantidade_pedidos") // Quantos pedidos com a promoção devem ser feitos
 
-  metaMensalVendedor   MetaMensalVendedor @relation(fields: [metaMensalVendedorId], references: [id], onDelete: Cascade)
-  promocao             Promocao           @relation(fields: [promocaoId], references: [id])
+  metaMensalVendedor MetaMensalVendedor @relation(fields: [metaMensalVendedorId], references: [id], onDelete: Cascade)
+  promocao           Promocao           @relation(fields: [promocaoId], references: [id])
 
-  createdAt            DateTime @default(now()) @map("created_at")
-  updatedAt            DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([metaMensalVendedorId, promocaoId])
   @@map("meta_promocoes")
@@ -822,4 +864,3 @@ model CategoriaCliente {
 
   @@map("categorias_cliente")
 }
-

@@ -1,5 +1,7 @@
 const prisma = require('../config/database');
 const promocaoService = require('./promocaoService');
+const clienteInsightService = require('./clienteInsightService');
+
 const pedidoService = {
     // 1. Listagem de pedidos com filtros (para a tela de histórico)
     listar: async (filtros) => {
@@ -184,6 +186,13 @@ const pedidoService = {
                 }
             }
 
+            // 🟢 Async Detached Trigger para Etapa 2 Comercial Intelligence
+            if (novoPedido.statusEnvio === 'ENVIAR') {
+                setTimeout(() => {
+                    clienteInsightService.recalcularCliente(clienteId).catch(console.error);
+                }, 0);
+            }
+
             return novoPedido;
         });
     },
@@ -285,6 +294,11 @@ const pedidoService = {
                         }
                     });
                 }
+
+                // 🟢 Async Detached Trigger para Etapa 2 Comercial Intelligence
+                setTimeout(() => {
+                    clienteInsightService.recalcularCliente(clienteId).catch(console.error);
+                }, 0);
             }
 
             return pedidoAtualizado;

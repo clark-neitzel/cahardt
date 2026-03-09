@@ -8,7 +8,8 @@ import MultiSelect from '../../components/MultiSelect';
 import atendimentoService from '../../services/atendimentoService';
 import pedidoService from '../../services/pedidoService';
 import categoriaClienteService from '../../services/categoriaClienteService';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles } from 'lucide-react';
+import clienteInsightService from '../../services/clienteInsightService';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw } from 'lucide-react';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
 
@@ -61,6 +62,10 @@ const DetalheCliente = () => {
     const [atendimentos, setAtendimentos] = useState([]);
     const [pedidosCliente, setPedidosCliente] = useState([]);
 
+    // Stage 2: Insights
+    const [insight, setInsight] = useState(null);
+    const [recalculandoInsight, setRecalculandoInsight] = useState(false);
+
     const [formData, setFormData] = useState({
         Dia_de_entrega: '',
         Dia_de_venda: '',
@@ -98,9 +103,21 @@ const DetalheCliente = () => {
 
             try {
                 const atends = await atendimentoService.listarPorCliente(uuid);
-                setAtendimentos(Array.isArray(atends) ? atends : []);
-            } catch (_) { setAtendimentos([]); }
+                setAtendimentos(atends);
+            } catch (e) {
+                console.groupCollapsed('⚠️ Erro ao listar atendimentos');
+                console.error(e);
+                console.groupEnd();
+            }
 
+            try {
+                const insightsData = await clienteInsightService.obterInsightPorCliente(uuid);
+                setInsight(insightsData);
+            } catch (e) {
+                console.groupCollapsed('⚠️ Erro ao buscar insights do cliente');
+                console.error(e);
+                console.groupEnd();
+            }
             try {
                 const peds = await pedidoService.listar({ clienteId: uuid });
                 // Ordenar por data de entrega decrescente
@@ -135,12 +152,24 @@ const DetalheCliente = () => {
     const handleSave = async () => {
         try {
             await clienteService.atualizar(uuid, formData);
-            const updated = await clienteService.detalhar(uuid);
-            setCliente(updated);
-            alert('Dados salvos com sucesso!');
+            alert('Dados atualizados com sucesso!');
+            fetchData();
         } catch (error) {
-            alert('Erro ao salvar alterações');
-            console.error(error);
+            alert('Erro ao atualizar cliente: ' + (error.response?.data?.error || error.message));
+        }
+    };
+
+    const handleRecalcularInsight = async () => {
+        if (!window.confirm('Forçar o recálculo imediato dos indicadores deste cliente?')) return;
+        setRecalculandoInsight(true);
+        try {
+            const novoInsight = await clienteInsightService.recalcularManual(uuid);
+            setInsight(novoInsight);
+            alert('Insights recalculados com sucesso!');
+        } catch (error) {
+            alert('Erro ao recalcular insights: ' + (error.response?.data?.error || error.message));
+        } finally {
+            setRecalculandoInsight(false);
         }
     };
 
@@ -148,7 +177,7 @@ const DetalheCliente = () => {
         navigate('/clientes');
     };
 
-    if (loading) return <div className="p-8 text-center text-gray-600">Carregando detalhes...</div>;
+    if (loading) return <div className="p-8 text-center text-gray-500">Carregando detalhes do cliente...</div>;
     if (!cliente) return <div className="p-8 text-center text-gray-600">Cliente não encontrado.</div>;
 
     return (
@@ -497,6 +526,85 @@ const DetalheCliente = () => {
 
                     {/* SEÇÃO 2: DADOS OPERACIONAIS (EDITÁVEIS) */}
                     <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+                        {/* INTELIGÊNCIA COMERCIAL: ADMIN DEBUG BLOCK */}
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-5 mb-8">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-md font-semibold text-gray-800 flex items-center">
+                                    <Sparkles className="h-5 w-5 mr-2 text-purple-600" />
+                                    [Admin] Motor Analítico (Inteligência Comercial)
+                                </h3>
+                                <button
+                                    onClick={handleRecalcularInsight}
+                                    disabled={recalculandoInsight}
+                                    className="flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                                >
+                                    <RefreshCw className={`h-4 w-4 mr-1 ${recalculandoInsight ? 'animate-spin' : ''}`} />
+                                    {recalculandoInsight ? 'Recalculando...' : 'Forçar Recálculo'}
+                                </button>
+                            </div>
+
+                            {!insight ? (
+                                <p className="text-sm text-gray-500">Nenhum cálculo efetuado para este cliente ainda.</p>
+                            ) : (
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                                    <div className="p-3 bg-white border rounded">
+                                        <span className="block text-xs text-gray-500 mb-1">Status Recompra</span>
+                                        <span className={`font-semibold ${insight.statusRecompra === 'NO_PRAZO' ? 'text-green-600' :
+                                                insight.statusRecompra === 'ATENCAO' ? 'text-yellow-600' :
+                                                    insight.statusRecompra === 'ATRASADO' ? 'text-orange-600' :
+                                                        insight.statusRecompra === 'CRITICO' ? 'text-red-600' : 'text-gray-600'
+                                            }`}>{insight.statusRecompra}</span>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                            Ciclo: {insight.cicloReferenciaDias}d ({insight.origemCiclo})<br />
+                                            Dias s/ compra: {insight.diasSemComprar ?? '-'}
+                                        </div>
+                                    </div>
+
+                                    <div className="p-3 bg-white border rounded">
+                                        <span className="block text-xs text-gray-500 mb-1">Ticket Médio Histórico</span>
+                                        <span className="font-semibold text-gray-800">
+                                            R$ {Number(insight.ticketMedioBase || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </span>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                            Recente: R$ {Number(insight.ticketMedioRecente || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br />
+                                            Variação: <span className={Number(insight.variacaoTicketPct) < 0 ? 'text-red-600' : 'text-green-600'}>
+                                                {Number(insight.variacaoTicketPct || 0).toFixed(1)}%
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-3 bg-white border rounded">
+                                        <span className="block text-xs text-gray-500 mb-1">Oportunidade (Upsell)</span>
+                                        <span className="font-semibold text-gray-800">
+                                            Score: {insight.scoreOportunidade}/100
+                                        </span>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                            {insight.produtoAusenteId ? (
+                                                <span className="text-purple-600">Produto Parou de Sair (ID: {insight.produtoAusenteId.substring(0, 8)}...)</span>
+                                            ) : 'Sem oportunidade clara gerada nativamente'}
+                                        </div>
+                                    </div>
+
+                                    <div className="p-3 bg-white border rounded">
+                                        <span className="block text-xs text-gray-500 mb-1">Risco (Churn)</span>
+                                        <span className="font-semibold text-gray-800">
+                                            Score: {insight.scoreRisco}/100
+                                        </span>
+                                        <div className="text-xs text-gray-500 mt-1 flex flex-col gap-0.5">
+                                            {insight.teveDevolucaoRecente && <span className="text-red-600">• Teve devolução (30d)</span>}
+                                            {insight.qtdAtendimentosSemPedido30d > 1 && <span className="text-orange-600">• {insight.qtdAtendimentosSemPedido30d} visitas s/ pedido</span>}
+                                            {(!insight.teveDevolucaoRecente && insight.qtdAtendimentosSemPedido30d <= 1) && <span>Risco baixo aparente</span>}
+                                        </div>
+                                    </div>
+
+                                    <div className="col-span-2 lg:col-span-4 p-2 bg-gray-100 rounded text-xs text-gray-500 flex justify-between items-center">
+                                        <span>Este é um painel de debug. O vendedor não verá estes dados desta forma.</span>
+                                        <span>Último cálculo: {new Date(insight.recalculadoEm).toLocaleString('pt-BR')}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <h2 className="text-lg font-semibold text-primary mb-4 flex items-center">
                             <FileText className="h-5 w-5 mr-2" />
                             ✏️ Dados Operacionais (Editáveis)

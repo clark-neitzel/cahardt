@@ -29,6 +29,7 @@ const roteirizacaoRoutes = require('./routes/roteirizacao'); // Roteirizador de 
 const metaRoutes = require('./routes/metaRoutes'); // Gestão de Metas e Dashboard Vendas
 const categoriasProdutoRoutes = require('./routes/categoriasProduto'); // Inteligência Comercial
 const categoriasClienteRoutes = require('./routes/categoriasCliente'); // Inteligência Comercial
+const insightRoutes = require('./routes/insights'); // Inteligência Comercial - Insights Analíticos
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -75,6 +76,7 @@ app.use('/api/admin', adminResetRoutes); // Admin: Reset, Utilitários
 app.use('/api/roteirizar', roteirizacaoRoutes); // Roteirizador de Entregas (OSRM)
 app.use('/api/categorias-produto', authMiddleware, categoriasProdutoRoutes); // Inteligência Comercial
 app.use('/api/categorias-cliente', authMiddleware, categoriasClienteRoutes); // Inteligência Comercial
+app.use('/api/insights', authMiddleware, insightRoutes); // Inteligência Comercial - Motor
 
 app.use('/api/migrations', migrationRoutes); // Migration endpoint
 
@@ -167,6 +169,33 @@ const startServer = async () => {
             setInterval(async () => {
                 await syncPedidosService.processarFila();
             }, 30000); // 30 segundos
+
+            // === CRON JOB INTELLIGENCE COMERCIAL ===
+            // Recalcula todos os clientes 1 vez por dia, na madrugada (aprox 03:00)
+            // Como setInterval reseta no restart do server, vamos checar a hora ou usar um timer fixo.
+            // Para simplicidade atual sem lib externa (node-cron), usaremos setTimeout pra primeira 03:00 e setInterval depois.
+            console.log('⏰ Agendando Motor Analítico (Inteligência Comercial)...');
+            const clienteInsightService = require('./services/clienteInsightService');
+
+            const scheduleNextRecalculation = () => {
+                const now = new Date();
+                const night = new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    now.getDate() + 1, // Amanhã
+                    3, 0, 0 // 03:00 AM
+                );
+                const msToNight = night.getTime() - now.getTime();
+
+                setTimeout(async () => {
+                    try {
+                        await clienteInsightService.recalcularTodosClientes();
+                    } catch (e) { console.error(e); }
+                    scheduleNextRecalculation(); // re-agenda pro dia seguinte
+                }, msToNight);
+            };
+            scheduleNextRecalculation();
+
         });
     } catch (error) {
         console.error('Erro fatal ao iniciar servidor:', error);

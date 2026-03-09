@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const clienteInsightService = require('./clienteInsightService');
 
 const atendimentoService = {
 
@@ -37,6 +38,15 @@ const atendimentoService = {
                 idVendedor
             }
         });
+
+        // 🟢 Async Detached Trigger para Etapa 2 Comercial Intelligence
+        if (clienteId) {
+            setTimeout(() => {
+                clienteInsightService.recalcularCliente(clienteId).catch(console.error);
+            }, 0);
+        }
+
+        return novoAtendimento;
     },
 
     // Histórico de atendimentos de um Lead

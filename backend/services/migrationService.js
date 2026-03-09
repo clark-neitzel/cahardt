@@ -478,7 +478,58 @@ const migrationService = {
                 ) THEN
                     ALTER TABLE "clientes" ADD CONSTRAINT "clientes_categoria_cliente_id_fkey" FOREIGN KEY ("categoria_cliente_id") REFERENCES "categorias_cliente"("id") ON DELETE SET NULL ON UPDATE CASCADE;
                 END IF;
-            END $$;`
+            END $$;`,
+
+            // Update 30: Stage 2 - Tabela Cliente Insight
+            `CREATE TABLE IF NOT EXISTS "cliente_insights" (
+                "cliente_id" TEXT NOT NULL,
+                "data_ultimo_pedido" TIMESTAMP(3),
+                "dias_sem_comprar" INTEGER,
+                "ciclo_referencia_dias" INTEGER NOT NULL,
+                "origem_ciclo" VARCHAR(20) NOT NULL,
+                "status_recompra" VARCHAR(20) NOT NULL,
+                "qtd_pedidos_ultimos_30d" INTEGER NOT NULL DEFAULT 0,
+                "ticket_medio_base" DECIMAL(12,2),
+                "ticket_medio_recente" DECIMAL(12,2),
+                "variacao_ticket_pct" DECIMAL(8,2),
+                "itens_medios_base" DECIMAL(10,2),
+                "itens_medios_recentes" DECIMAL(10,2),
+                "variacao_itens_pct" DECIMAL(8,2),
+                "produto_ausente_id" TEXT,
+                "produto_ausente_frequencia" INTEGER NOT NULL DEFAULT 0,
+                "produto_ausente_desde_pedidos" INTEGER NOT NULL DEFAULT 0,
+                "categoria_em_queda_id" TEXT,
+                "categoria_queda_pct" DECIMAL(8,2),
+                "teve_devolucao_recente" BOOLEAN NOT NULL DEFAULT false,
+                "data_ultima_devolucao" TIMESTAMP(3),
+                "motivo_ultima_devolucao" TEXT,
+                "qtd_atendimentos_sem_pedido_30d" INTEGER NOT NULL DEFAULT 0,
+                "data_ultimo_atendimento" TIMESTAMP(3),
+                "canal_ultimo_atendimento" VARCHAR(30),
+                "score_risco" INTEGER NOT NULL DEFAULT 0,
+                "score_oportunidade" INTEGER NOT NULL DEFAULT 0,
+                "insight_principal_tipo" VARCHAR(30),
+                "insight_principal_resumo" TEXT,
+                "proxima_acao_sugerida" TEXT,
+                "recalculado_em" TIMESTAMP(3) NOT NULL,
+                CONSTRAINT "cliente_insights_pkey" PRIMARY KEY ("cliente_id")
+            );`,
+
+            // FK ClienteInsight -> Cliente
+            `DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'cliente_insights_cliente_id_fkey'
+                ) THEN
+                    ALTER TABLE "cliente_insights" ADD CONSTRAINT "cliente_insights_cliente_id_fkey" FOREIGN KEY ("cliente_id") REFERENCES "clientes"("UUID") ON DELETE CASCADE ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+
+            // Update 31: Stage 2 - Índices obrigatórios
+            `CREATE INDEX IF NOT EXISTS "pedidos_cliente_id_status_envio_created_at_idx" ON "pedidos"("cliente_id", "status_envio", "created_at" DESC);`,
+            `CREATE INDEX IF NOT EXISTS "atendimentos_cliente_id_criado_em_idx" ON "atendimentos"("cliente_id", "criado_em" DESC);`,
+            `CREATE INDEX IF NOT EXISTS "cliente_insights_recalculado_em_idx" ON "cliente_insights"("recalculado_em" DESC);`,
+            `CREATE INDEX IF NOT EXISTS "cliente_insights_status_recompra_idx" ON "cliente_insights"("status_recompra");`,
+            `CREATE INDEX IF NOT EXISTS "cliente_insights_score_risco_idx" ON "cliente_insights"("score_risco");`
         ];
 
         for (const [index, cmd] of commands.entries()) {
