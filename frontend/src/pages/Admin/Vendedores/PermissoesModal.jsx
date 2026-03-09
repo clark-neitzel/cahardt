@@ -22,6 +22,8 @@ const DEFAULT_PERMISSIONS = {
     Pode_Editar_Caixa: false,
     Pode_Definir_Adiantamento: false,
     Pode_Ver_Historico_Caixa: false,
+    // Utilitários Admin
+    Pode_Resetar_Dados: false,
     admin: false // Flag Global Mestre
 };
 
@@ -307,6 +309,25 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <div>
                                     <span className="text-amber-900 font-bold block">Pode Ver Caixas de Outros Dias</span>
                                     <span className="text-amber-700 text-xs">Permite navegar por datas passadas ou futuras no caixa diário. Sem esta permissão, o usuário vê apenas o caixa de hoje.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Utilitários Admin */}
+                    <div className="border-t pt-4">
+                        <h4 className="font-medium text-gray-900 mb-4">Utilitários de Administração</h4>
+                        <div className="bg-red-50 p-4 rounded-md border border-red-200">
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-red-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-red-300 text-red-600 focus:ring-red-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Resetar_Dados}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Resetar_Dados: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-red-900 font-bold block">Pode Resetar Dados</span>
+                                    <span className="text-red-700 text-xs">Permite acessar a ferramenta de limpeza de dados na tela de Configurações Gerais. Ação destrutiva e irreversível.</span>
                                 </div>
                             </label>
                         </div>

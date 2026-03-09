@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import configService from '../../../services/configService';
-import { Save, AlertCircle, CheckCircle, Truck, Plus, X, ClipboardList } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle, Truck, Plus, X, ClipboardList, Trash2, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import RotasAtivasPreview from './RotasAtivasPreview';
+import { useAuth } from '../../../contexts/AuthContext';
+import api from '../../../services/api';
 
 const TIPOS_PADRAO = [
     { value: 'VISITA', label: 'Visita Presencial' },
@@ -14,6 +16,7 @@ const TIPOS_PADRAO = [
 ];
 
 const Configuracoes = () => {
+    const { user } = useAuth();
     const [categorias, setCategorias] = useState([]);
     const [selectedCategorias, setSelectedCategorias] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -25,24 +28,72 @@ const Configuracoes = () => {
     const [novoTipo, setNovoTipo] = useState('');
     const [savingTipos, setSavingTipos] = useState(false);
 
+    // Reset de dados
+    const [resetGrupos, setResetGrupos] = useState([]);
+    const [resettingGroup, setResettingGroup] = useState(null);
+    const podeResetar = user?.permissoes?.admin || user?.permissoes?.Pode_Resetar_Dados;
+
     useEffect(() => { loadData(); }, []);
 
     const loadData = async () => {
         try {
             setLoading(true);
-            const [cats, currentConfig, tiposConfig] = await Promise.all([
+            const promises = [
                 configService.getCategorias(),
                 configService.get('categorias_vendas'),
                 configService.get('tipos_atendimento').catch(() => null)
-            ]);
+            ];
+            if (podeResetar) {
+                promises.push(api.get('/admin/reset-grupos').then(r => r.data).catch(() => []));
+            }
+            const [cats, currentConfig, tiposConfig, grupos] = await Promise.all(promises);
             setCategorias(cats);
             setSelectedCategorias(Array.isArray(currentConfig) ? currentConfig : []);
             setTipos(Array.isArray(tiposConfig) && tiposConfig.length > 0 ? tiposConfig : TIPOS_PADRAO);
+            if (grupos) setResetGrupos(grupos);
         } catch (error) {
             console.error('Erro ao carregar configurações:', error);
             setMessage({ type: 'error', text: 'Erro ao carregar dados.' });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleResetGrupo = async (grupoId, grupoLabel) => {
+        if (!window.confirm(`Tem certeza que deseja limpar "${grupoLabel}"?\n\nEsta ação é irreversível!`)) return;
+        const confirmacao = window.prompt('Digite CONFIRMO_RESET para confirmar:');
+        if (confirmacao !== 'CONFIRMO_RESET') {
+            toast.error('Confirmação inválida. Reset cancelado.');
+            return;
+        }
+        try {
+            setResettingGroup(grupoId);
+            const { data } = await api.delete(`/admin/reset/${grupoId}`, { data: { confirmacao: 'CONFIRMO_RESET' } });
+            toast.success(`${grupoLabel} limpo com sucesso!`);
+            console.log('Reset resultado:', data.detalhes);
+        } catch (error) {
+            toast.error('Erro ao executar reset: ' + (error.response?.data?.error || error.message));
+        } finally {
+            setResettingGroup(null);
+        }
+    };
+
+    const handleResetTotal = async () => {
+        if (!window.confirm('ATENÇÃO: Isso vai limpar TODOS os dados transacionais!\n\nEsta ação é irreversível!')) return;
+        const confirmacao = window.prompt('Digite CONFIRMO_RESET_TOTAL para confirmar:');
+        if (confirmacao !== 'CONFIRMO_RESET_TOTAL') {
+            toast.error('Confirmação inválida. Reset cancelado.');
+            return;
+        }
+        try {
+            setResettingGroup('__total__');
+            const { data } = await api.delete('/admin/reset-transacional', { data: { confirmacao: 'CONFIRMO_RESET_TOTAL' } });
+            toast.success('Todos os dados transacionais foram limpos!');
+            console.log('Reset total resultado:', data.detalhes);
+        } catch (error) {
+            toast.error('Erro ao executar reset: ' + (error.response?.data?.error || error.message));
+        } finally {
+            setResettingGroup(null);
         }
     };
 
@@ -238,6 +289,57 @@ const Configuracoes = () => {
 
             {/* ── Rotas Ativas (Roteirização) ── */}
             <RotasAtivasPreview />
+
+            {/* ── Reset de Dados ── */}
+            {podeResetar && (
+                <div className="bg-white rounded-lg shadow-sm border border-red-200 overflow-hidden">
+                    <div className="p-6 border-b border-red-100 bg-red-50">
+                        <h2 className="text-lg font-semibold text-red-700 flex items-center gap-2">
+                            <Trash2 className="h-5 w-5" />
+                            Reset de Dados
+                        </h2>
+                        <p className="text-sm text-red-500 mt-0.5">Limpe dados transacionais por categoria. Ações irreversíveis.</p>
+                    </div>
+                    <div className="p-6 space-y-3">
+                        {resetGrupos.length === 0 ? (
+                            <p className="text-sm text-gray-400 text-center py-4">Nenhum grupo de reset disponível.</p>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {resetGrupos.map(grupo => (
+                                    <button
+                                        key={grupo.id}
+                                        onClick={() => handleResetGrupo(grupo.id, grupo.label)}
+                                        disabled={resettingGroup !== null}
+                                        className="flex items-center gap-2 px-4 py-3 border border-red-200 rounded-lg text-left hover:bg-red-50 hover:border-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {resettingGroup === grupo.id ? (
+                                            <Loader2 className="h-4 w-4 text-red-500 animate-spin flex-shrink-0" />
+                                        ) : (
+                                            <Trash2 className="h-4 w-4 text-red-400 flex-shrink-0" />
+                                        )}
+                                        <span className="text-sm font-medium text-gray-700">{grupo.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="pt-4 border-t border-red-100">
+                            <button
+                                onClick={handleResetTotal}
+                                disabled={resettingGroup !== null}
+                                className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-lg font-semibold text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {resettingGroup === '__total__' ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                )}
+                                Limpar TODOS os Dados Transacionais
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
