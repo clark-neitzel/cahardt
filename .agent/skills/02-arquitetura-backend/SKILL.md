@@ -103,6 +103,39 @@ Este padrão está implementado em: `embarques.js`, `entregas.js`, `caixa.js`, `
 | `/api/despesas` | `despesas.js` | Despesas da Rota |
 | `/api/caixa` | `caixa.js` | Caixa Diário |
 | `/api/migrations` | `migrationRoutes.js` | Migration Automática |
+| `/api/metas` | `metaRoutes.js` | Metas Mensais de Vendas |
+| `/api/insights` | `insightRoutes.js` | Inteligência Comercial (Cliente Insights) |
+| `/api/roteirizar` | `roteirizarRoutes.js` | Roteirização OSRM |
+| `/api/categorias-produto` | `categoriaProdutoRoutes.js` | Categorias de Produto |
+| `/api/categorias-cliente` | `categoriaClienteRoutes.js` | Categorias de Cliente |
+| `/api/config` | `configRoutes.js` | Configurações do Sistema |
+| `/api/contas-financeiras` | `contaFinanceiraRoutes.js` | Contas Bancárias / Financeiras |
+| `/api/condicoes-pagamento` | `condicoesPagamentoRoutes.js` | Condições de Pagamento (legado CA) |
+| `/api/promocoes` | `promocaoRoutes.js` | Promoções de Produtos |
+
+---
+
+## 🏦 VALIDAÇÃO DE COMPATIBILIDADE: Conta Financeira × Tipo de Pagamento
+
+O Conta Azul rejeita combinações inválidas de `tipo_pagamento` e `id_conta_financeira` com erro 400:
+> "Forma de pagamento e conta de recebimento escolhidos não são compatíveis!"
+
+**Mapa de compatibilidade implementado em `syncPedidosService.js`:**
+
+```javascript
+const compatMap = {
+    'DINHEIRO':        ['DINHEIRO'],
+    'PIX':             ['PIX'],
+    'BOLETO_BANCARIO':  ['BOLETO_BANCARIO', 'A_PRAZO'],
+    'CARTAO':          ['CARTAO'],
+};
+// Se tipoUso da conta ≠ tipoPagamento do pedido → omitir id_conta_financeira do payload
+```
+
+**Regra:** Antes de enviar ao CA, validar se a `ContaFinanceira` é compatível com o `tipoPagamento`. Se não for, omitir o campo em vez de falhar.
+
+**Causa comum de erro:** condição da TabelaPreco com `bancoPadrao: Caixinha (DINHEIRO)` mas `tipoPagamento: BOLETO_BANCARIO` → configuração inconsistente na interface.
+
 
 -------------------------------------------------
 ## CONTEÚDO ORIGINAL DE: login

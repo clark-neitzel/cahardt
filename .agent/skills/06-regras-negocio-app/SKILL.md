@@ -133,3 +133,41 @@ ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "debita_caixa" BOOLEAN DEFA
 | À Vista - PIX | `true` |
 | 7/14/28 dias - Boleto | `false` |
 | 30/45/60 dias | `false` |
+
+---
+
+## Campo `nomeCondicaoPagamento` no Pedido (CRÍTICO — MAR/2026)
+
+O modelo `Pedido` agora persiste o **nome completo da condição de pagamento** (`nomeCondicaoPagamento`) no momento da criação do pedido. Isso foi necessário porque múltiplas condições podem ter o mesmo `opcaoCondicao` (ex: "À vista - Dinheiro" e "À vista - ZZ" ambas com `opcaoCondicao = "À vista"`), tornando o lookup reverso ambíguo.
+
+### Onde é salvo
+
+| Local | Campo Enviado | Campo Salvo |
+|---|---|---|
+| `NovoPedido.jsx` | `condicaoSelecionada.nomeCondicao` | `nomeCondicaoPagamento` |
+| `pedidoService.js` criar() | `nomeCondicaoPagamento` | `nome_condicao_pagamento` |
+| `pedidoService.js` editar() | `nomeCondicaoPagamento` | `nome_condicao_pagamento` |
+| Importação CA (órfão) | lookup na `TabelaPreco` | `nome_condicao_pagamento` |
+
+### Onde é exibido
+
+`caixa.js`, `embarques.js`, `entregas.js` usam a seguinte prioridade:
+```javascript
+// Ordem de prioridade decrescente:
+const nomeCondicao = e.nomeCondicaoPagamento           // 1º: nome salvo no pedido
+    || mapaCondicoes[`${e.tipoPagamento}|${e.opcaoCondicaoPagamento}`]  // 2º: chave composta
+    || e.opcaoCondicaoPagamento;                        // 3º: fallback bruto
+```
+
+### Consistência de TabelaPreco × ContaFinanceira
+
+**REGRA:** Cada condição na `TabelaPreco` deve ter `bancoPadrao` compatível com `tipoPagamento`:
+
+| tipoPagamento | tipoUso da ContaFinanceira aceito |
+|---|---|
+| `DINHEIRO` | `DINHEIRO` (ex: Caixinha) |
+| `PIX` | `PIX` |
+| `BOLETO_BANCARIO` | `BOLETO_BANCARIO` |
+| `CARTAO` | `CARTAO` |
+
+**Erro comum:** condição com `tipoPagamento: BOLETO_BANCARIO` + `bancoPadrao: Caixinha (DINHEIRO)` → CA rejeita com 400. O `syncPedidosService.js` detecta e omite o banco automaticamente, mas a causa raiz é configuração incorreta na interface da TabelaPreco.

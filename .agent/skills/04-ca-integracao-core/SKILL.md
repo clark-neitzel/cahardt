@@ -390,3 +390,35 @@ if (pedidoLocal.statusEnvio === 'EXCLUIDO' && !isCanceladoV2) {
 - **600 chamadas por minuto** por conta conectada
 - **10 por segundo** por conta conectada
 - Sem webhook disponível — usar polling com `data_alteracao_de` (estratégia oficial da CA)
+
+---
+
+## 📥 IMPORTAÇÃO DE PEDIDOS ÓRFÃOS (CA → App) — MAR/2026
+
+Quando um pedido existe no CA mas não tem correspondente local, o `syncPedidosModificados` cria o pedido localmente com **enriquecimento completo**:
+
+| Dado | Origem | Comportamento |
+|---|---|---|
+| Vendedor | `GET /v1/venda/{id}` → campo `id_vendedor` | Vinculado pelo UUID local se existir |
+| Condição de Pagamento | `condicao_pagamento.tipo_pagamento` + `opcao_condicao_pagamento` | Mapeado na `TabelaPreco` local → salva `nomeCondicaoPagamento` |
+| Itens | `GET /v1/venda/{id}/itens` | Produto vinculado por `contaAzulId`. `flexGerado` calculado vs `valorVenda` local |
+| Histórico do Cliente | `clienteInsightService.recalcularCliente()` | Disparado via `setImmediate` após criação |
+
+### Campo `nomeCondicaoPagamento` (CRÍTICO — MAR/2026)
+
+O modelo `Pedido` agora persiste o **nome completo da condição** (`nome_condicao_pagamento`) no momento da criação. Isso evita lookup reverso ambíguo quando múltiplas condições têm o mesmo `opcaoCondicao`.
+
+**Prioridade de exibição (caixa, embarques, entregas):**
+```javascript
+// 1º: nome salvo direto no pedido (novos pedidos pós-mar/2026)
+// 2º: lookup por chave composta tipoPagamento|opcaoCondicao (pedidos antigos)
+// 3º: opcaoCondicaoPagamento bruto como fallback
+const nomeCondicao = e.nomeCondicaoPagamento
+    || mapaCondicoes[`${e.tipoPagamento}|${e.opcaoCondicaoPagamento}`]
+    || e.opcaoCondicaoPagamento;
+```
+
+**Migration SQL (Update 33 do migrationService):**
+```sql
+ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "nome_condicao_pagamento" TEXT;
+```
