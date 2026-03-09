@@ -1,15 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { Pencil, Save, X, Search, DollarSign, Mail, Shield } from 'lucide-react';
+import { Pencil, Save, X, Search, DollarSign, Mail, Shield, Trash2 } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
+import api from '../../../services/api';
+import { useAuth } from '../../../contexts/AuthContext';
+import toast from 'react-hot-toast';
 import PermissoesModal from './PermissoesModal';
 
 const ListaVendedores = () => {
+    const { user } = useAuth();
     const [vendedores, setVendedores] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [editingId, setEditingId] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [permissionsModalVendedor, setPermissionsModalVendedor] = useState(null);
+    const [resetting, setResetting] = useState(false);
+
+    const isAdmin = !!user?.permissoes?.admin;
+
+    const handleResetTransacional = async () => {
+        if (!window.confirm('ATENÇÃO: Isso vai apagar TODOS os pedidos, entregas, embarques, visitas, despesas, metas, leads e histórico.\n\nCadastros (clientes, produtos, vendedores) serão mantidos.\n\nDeseja continuar?')) return;
+        if (!window.confirm('TEM CERTEZA? Esta ação é IRREVERSÍVEL.')) return;
+
+        setResetting(true);
+        const toastId = toast.loading('Limpando dados transacionais...');
+        try {
+            const res = await api.delete('/admin/reset-transacional', {
+                data: { confirmacao: 'CONFIRMO_RESET_TOTAL' }
+            });
+            toast.success('Dados limpos com sucesso!', { id: toastId });
+            console.log('Reset resultado:', res.data.detalhes);
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao executar reset', { id: toastId });
+        } finally {
+            setResetting(false);
+        }
+    };
 
     // Carregar vendedores
     const fetchVendedores = async () => {
@@ -65,15 +91,27 @@ const ListaVendedores = () => {
                     <h1 className="text-xl md:text-2xl font-bold text-gray-900">Usuários</h1>
                     <p className="mt-0.5 text-xs md:text-sm text-gray-500">Gerencie limites de Flex e logísticas da equipe</p>
                 </div>
-                <div className="relative w-full sm:w-auto">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Buscar vendedor..."
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        className="w-full sm:w-48 pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-blue-400 outline-none"
-                    />
+                <div className="flex items-center gap-2">
+                    <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Buscar vendedor..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="w-full sm:w-48 pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-blue-400 outline-none"
+                        />
+                    </div>
+                    {isAdmin && (
+                        <button
+                            onClick={handleResetTransacional}
+                            disabled={resetting}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="hidden sm:inline">Reset Dados</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
