@@ -58,10 +58,10 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
         }
     };
 
-    const pedidosFiltrados = pedidosLivres.filter(p =>
-        p.cliente?.NomeFantasia?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(p.numero || '').includes(searchTerm)
-    );
+    const pedidosFiltrados = pedidosLivres.filter(p => {
+        const nome = (p.cliente?.NomeFantasia || p.cliente?.Nome || '').toLowerCase();
+        return nome.includes(searchTerm.toLowerCase()) || String(p.numero || '').includes(searchTerm);
+    });
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-60 px-4 py-8">
@@ -122,7 +122,7 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
                                                 {pedido.numero || 'S/N'}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                                {pedido.cliente?.NomeFantasia || 'Cliente Removido'}
+                                                {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Cliente não encontrado'}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 {pedido.cliente?.End_Cidade || 'Sem endereço'}
