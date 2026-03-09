@@ -77,19 +77,28 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
         // O pedido salva opcaoCondicaoPagamento = opcaoCondicao da TabelaPreco (não idCondicao!)
         const condicoesCodigos = [...new Set(entregas.map(e => e.opcaoCondicaoPagamento).filter(Boolean))];
         let mapaCondicoes = {};
+        let mapaCondicoesPorOpcao = {};
         if (condicoesCodigos.length > 0) {
             const tabelas = await prisma.tabelaPreco.findMany({
                 where: { opcaoCondicao: { in: condicoesCodigos } },
-                select: { opcaoCondicao: true, nomeCondicao: true, idCondicao: true }
+                select: { opcaoCondicao: true, tipoPagamento: true, nomeCondicao: true, idCondicao: true }
             });
-            mapaCondicoes = Object.fromEntries(tabelas.map(t => [t.opcaoCondicao, { nome: t.nomeCondicao, idCondicao: t.idCondicao }]));
+            for (const t of tabelas) {
+                const chave = `${t.tipoPagamento || ''}|${t.opcaoCondicao || ''}`;
+                if (!mapaCondicoes[chave]) mapaCondicoes[chave] = { nome: t.nomeCondicao, idCondicao: t.idCondicao };
+                if (!mapaCondicoesPorOpcao[t.opcaoCondicao]) mapaCondicoesPorOpcao[t.opcaoCondicao] = { nome: t.nomeCondicao, idCondicao: t.idCondicao };
+            }
         }
 
-        res.json(entregas.map(e => ({
-            ...e,
-            nomeCondicaoPagamento: mapaCondicoes[e.opcaoCondicaoPagamento]?.nome || e.opcaoCondicaoPagamento || null,
-            idCondicaoResolvido: mapaCondicoes[e.opcaoCondicaoPagamento]?.idCondicao || null
-        })));
+        res.json(entregas.map(e => {
+            const chave = `${e.tipoPagamento || ''}|${e.opcaoCondicaoPagamento || ''}`;
+            const info = mapaCondicoes[chave] || mapaCondicoesPorOpcao[e.opcaoCondicaoPagamento];
+            return {
+                ...e,
+                nomeCondicaoPagamento: info?.nome || e.opcaoCondicaoPagamento || null,
+                idCondicaoResolvido: info?.idCondicao || null
+            };
+        }));
     } catch (error) {
         console.error('Erro ao listar entregas pendentes:', error);
         res.status(500).json({ error: 'Erro ao buscar roteiro logístico.' });
@@ -124,18 +133,26 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
         // Enriquece com o nome legível da condição de pagamento
         const condicoesCodigos = [...new Set(entregas.map(e => e.opcaoCondicaoPagamento).filter(Boolean))];
         let mapaCondicoes = {};
+        let mapaCondicoesPorOpcao2 = {};
         if (condicoesCodigos.length > 0) {
             const tabelas = await prisma.tabelaPreco.findMany({
                 where: { opcaoCondicao: { in: condicoesCodigos } },
-                select: { opcaoCondicao: true, nomeCondicao: true }
+                select: { opcaoCondicao: true, tipoPagamento: true, nomeCondicao: true }
             });
-            mapaCondicoes = Object.fromEntries(tabelas.map(t => [t.opcaoCondicao, t.nomeCondicao]));
+            for (const t of tabelas) {
+                const chave = `${t.tipoPagamento || ''}|${t.opcaoCondicao || ''}`;
+                if (!mapaCondicoes[chave]) mapaCondicoes[chave] = t.nomeCondicao;
+                if (!mapaCondicoesPorOpcao2[t.opcaoCondicao]) mapaCondicoesPorOpcao2[t.opcaoCondicao] = t.nomeCondicao;
+            }
         }
 
-        res.json(entregas.map(e => ({
-            ...e,
-            condicaoNome: mapaCondicoes[e.opcaoCondicaoPagamento] || e.opcaoCondicaoPagamento || null
-        })));
+        res.json(entregas.map(e => {
+            const chave = `${e.tipoPagamento || ''}|${e.opcaoCondicaoPagamento || ''}`;
+            return {
+                ...e,
+                condicaoNome: mapaCondicoes[chave] || mapaCondicoesPorOpcao2[e.opcaoCondicaoPagamento] || e.opcaoCondicaoPagamento || null
+            };
+        }));
     } catch (error) {
         console.error('Erro ao listar entregas finalizadas:', error);
         res.status(500).json({ error: 'Erro ao buscar histórico logístico.' });

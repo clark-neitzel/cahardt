@@ -109,20 +109,23 @@ router.get('/:id', verificarAuth, checkAcessoEmbarque, async (req, res) => {
         // O Pedido salva opcaoCondicaoPagamento = opcaoCondicao da TabelaPreco (não idCondicao!)
         const todasCondicoes = await prisma.tabelaPreco.findMany({
             where: { ativo: true },
-            select: { opcaoCondicao: true, nomeCondicao: true }
+            select: { opcaoCondicao: true, tipoPagamento: true, nomeCondicao: true }
         });
+        // Mapa por chave composta para distinguir condições com mesma opcaoCondicao (ex: À vista vs À vista - ZZ)
         const mapaCondicoes = {};
+        const mapaCondicoesPorOpcao = {};
         for (const t of todasCondicoes) {
-            if (!mapaCondicoes[t.opcaoCondicao]) {
-                mapaCondicoes[t.opcaoCondicao] = t.nomeCondicao;
-            }
+            const chave = `${t.tipoPagamento || ''}|${t.opcaoCondicao || ''}`;
+            if (!mapaCondicoes[chave]) mapaCondicoes[chave] = t.nomeCondicao;
+            if (!mapaCondicoesPorOpcao[t.opcaoCondicao]) mapaCondicoesPorOpcao[t.opcaoCondicao] = t.nomeCondicao;
         }
 
         // Injetar dado mastigado no array pra exibição
         embarque.pedidos = embarque.pedidos.map(p => {
+            const chave = `${p.tipoPagamento || ''}|${p.opcaoCondicaoPagamento || ''}`;
             return {
                 ...p,
-                nomeCondicaoPagamento: mapaCondicoes[p.opcaoCondicaoPagamento] || p.opcaoCondicaoPagamento || p.tipoPagamento || '-'
+                nomeCondicaoPagamento: mapaCondicoes[chave] || mapaCondicoesPorOpcao[p.opcaoCondicaoPagamento] || p.opcaoCondicaoPagamento || p.tipoPagamento || '-'
             };
         });
 

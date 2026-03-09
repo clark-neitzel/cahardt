@@ -157,18 +157,23 @@ router.get('/resumo', async (req, res) => {
         // 6. Buscar TODAS as condições da TabelaPreco (sem distinct, cada nomeCondicao pode ter debitaCaixa diferente)
         const todasCondicoes = await prisma.tabelaPreco.findMany({
             where: { ativo: true },
-            select: { opcaoCondicao: true, nomeCondicao: true, debitaCaixa: true }
+            select: { opcaoCondicao: true, tipoPagamento: true, nomeCondicao: true, debitaCaixa: true }
         });
         // Mapa por nomeCondicao (para classificar pagamento real pelo nome usado no checkout)
         const mapaCondicoesPorNome = Object.fromEntries(
             todasCondicoes.map(t => [t.nomeCondicao, t.debitaCaixa])
         );
-        // Mapa por opcaoCondicao (para enriquecer nome da condição original do pedido)
-        // Se várias entradas com mesmo opcaoCondicao, pega a primeira (para exibição)
+        // Mapa por chave composta tipoPagamento|opcaoCondicao → evita colisão quando duas condições têm a mesma opcaoCondicao
+        // Fallback: mapa simples por opcaoCondicao (caso tipoPagamento não esteja salvo no pedido)
         const mapaCondicoes = {};
+        const mapaCondicoesPorOpcao = {};
         for (const t of todasCondicoes) {
-            if (!mapaCondicoes[t.opcaoCondicao]) {
-                mapaCondicoes[t.opcaoCondicao] = { nome: t.nomeCondicao, debitaCaixa: t.debitaCaixa };
+            const chave = `${t.tipoPagamento || ''}|${t.opcaoCondicao || ''}`;
+            if (!mapaCondicoes[chave]) {
+                mapaCondicoes[chave] = { nome: t.nomeCondicao, debitaCaixa: t.debitaCaixa };
+            }
+            if (!mapaCondicoesPorOpcao[t.opcaoCondicao]) {
+                mapaCondicoesPorOpcao[t.opcaoCondicao] = { nome: t.nomeCondicao, debitaCaixa: t.debitaCaixa };
             }
         }
 
@@ -188,8 +193,9 @@ router.get('/resumo', async (req, res) => {
             const valorPedido = e.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0);
             const valorDevolvido = e.itensDevolvidos.reduce((s, i) => s + Number(i.valorBaseItem) * Number(i.quantidade), 0);
 
-            // Condição original do pedido (para exibição)
-            const condicaoInfo = mapaCondicoes[e.opcaoCondicaoPagamento];
+            // Condição original do pedido (para exibição) — usa chave composta para evitar colisão
+            const chaveCondicao = `${e.tipoPagamento || ''}|${e.opcaoCondicaoPagamento || ''}`;
+            const condicaoInfo = mapaCondicoes[chaveCondicao] || mapaCondicoesPorOpcao[e.opcaoCondicaoPagamento];
             const nomeCondicao = condicaoInfo?.nome || e.opcaoCondicaoPagamento || 'Outros';
 
             // Devolvido: não conta nos totais de pagamento
@@ -524,15 +530,20 @@ router.get('/relatorio', async (req, res) => {
         // Buscar TODAS as condições da TabelaPreco (sem distinct)
         const todasCondicoesRel = await prisma.tabelaPreco.findMany({
             where: { ativo: true },
-            select: { opcaoCondicao: true, nomeCondicao: true, debitaCaixa: true }
+            select: { opcaoCondicao: true, tipoPagamento: true, nomeCondicao: true, debitaCaixa: true }
         });
         const mapaDebitaPorNomeRel = Object.fromEntries(
             todasCondicoesRel.map(t => [t.nomeCondicao, t.debitaCaixa])
         );
         const mapaCondicoes = {};
+        const mapaCondicoesPorOpcaoRel = {};
         for (const t of todasCondicoesRel) {
-            if (!mapaCondicoes[t.opcaoCondicao]) {
-                mapaCondicoes[t.opcaoCondicao] = { nome: t.nomeCondicao, debitaCaixa: t.debitaCaixa };
+            const chave = `${t.tipoPagamento || ''}|${t.opcaoCondicao || ''}`;
+            if (!mapaCondicoes[chave]) {
+                mapaCondicoes[chave] = { nome: t.nomeCondicao, debitaCaixa: t.debitaCaixa };
+            }
+            if (!mapaCondicoesPorOpcaoRel[t.opcaoCondicao]) {
+                mapaCondicoesPorOpcaoRel[t.opcaoCondicao] = { nome: t.nomeCondicao, debitaCaixa: t.debitaCaixa };
             }
         }
 
@@ -586,7 +597,8 @@ router.get('/relatorio', async (req, res) => {
             entregas: entregas.map(e => {
                 const valorPedido = e.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0);
                 const conferencia = caixa?.entregasConferidas?.find(c => c.pedidoId === e.id);
-                const condicaoInfo = mapaCondicoes[e.opcaoCondicaoPagamento];
+                const chaveCondicaoRel = `${e.tipoPagamento || ''}|${e.opcaoCondicaoPagamento || ''}`;
+                const condicaoInfo = mapaCondicoes[chaveCondicaoRel] || mapaCondicoesPorOpcaoRel[e.opcaoCondicaoPagamento];
                 const condicaoDebitaCaixa = condicaoInfo?.debitaCaixa || false;
 
                 return {
