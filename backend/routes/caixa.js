@@ -551,16 +551,26 @@ router.get('/relatorio', async (req, res) => {
         const mediaCombustivel = diario?.veiculoId ? await calcularMediaCombustivel(diario.veiculoId) : null;
 
         // Buscar atendimentos do dia
+        // Busca por OR: feitos pelo responsável do embarque OU relacionados aos clientes entregues naquele dia
+        // Isso captura casos onde o pedido foi criado por um vendedor diferente do responsável pelo caixa.
+        const clienteIdsEntregas = [...new Set(
+            entregas.filter(e => e.clienteId).map(e => e.clienteId)
+        )];
+
         const atendimentos = await prisma.atendimento.findMany({
             where: {
-                idVendedor: targetVendedor,
-                criadoEm: { gte: inicioDia, lte: fimDia }
+                criadoEm: { gte: inicioDia, lte: fimDia },
+                OR: [
+                    { idVendedor: targetVendedor },
+                    ...(clienteIdsEntregas.length > 0 ? [{ clienteId: { in: clienteIdsEntregas } }] : [])
+                ]
             },
             include: {
                 lead: { select: { nomeEstabelecimento: true } }
             },
             orderBy: { criadoEm: 'asc' }
         });
+
 
         // Buscar nomes de clientes atendidos (pelo clienteId)
         const clienteIds = atendimentos.filter(a => a.clienteId).map(a => a.clienteId);
