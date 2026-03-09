@@ -133,6 +133,14 @@ const leadService = {
      * Vincula um lead a um cliente (conversão)
      */
     referenciarCliente: async (leadId, clienteId) => {
+        // Verificar se o cliente já tem um lead vinculado
+        const existente = await prisma.lead.findFirst({
+            where: { clienteId, id: { not: leadId } }
+        });
+        if (existente) {
+            throw { status: 400, message: `Este cliente já está vinculado ao lead #${existente.numero} (${existente.nomeEstabelecimento})` };
+        }
+
         return await prisma.lead.update({
             where: { id: leadId },
             data: {

@@ -98,6 +98,9 @@ const leadController = {
             const lead = await leadService.referenciarCliente(req.params.id, clienteId);
             res.json(lead);
         } catch (error) {
+            if (error.status === 400) {
+                return res.status(400).json({ error: error.message });
+            }
             console.error('[leadController.referenciarCliente]', error);
             res.status(500).json({ error: 'Erro ao referenciar cliente.' });
         }
