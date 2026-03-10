@@ -557,7 +557,7 @@ router.get('/relatorio', async (req, res) => {
                 criadoEm: { gte: inicioDia, lte: fimDia }
             },
             include: {
-                lead: { select: { nomeEstabelecimento: true, canalOrigem: true } }
+                lead: { select: { nomeEstabelecimento: true } }
             },
             orderBy: { criadoEm: 'asc' }
         });
