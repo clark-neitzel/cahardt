@@ -8,6 +8,7 @@ import { API_URL } from '../../services/api';
 import toast from 'react-hot-toast';
 import ModalNovoLead from '../Rota/ModalNovoLead';
 import ModalReferenciarCliente from './ModalReferenciarCliente';
+import ModalEditarLead from './ModalEditarLead';
 
 const ETAPA_COLORS = {
     NOVO: 'bg-blue-100 text-blue-700',
@@ -49,6 +50,7 @@ const ListaLeads = () => {
 
     const [modalNovoLead, setModalNovoLead] = useState(false);
     const [modalReferenciar, setModalReferenciar] = useState(null);
+    const [modalEditar, setModalEditar] = useState(null);
     const [fotoPreview, setFotoPreview] = useState(null);
 
     // Lead expandido para ver detalhes
@@ -328,16 +330,22 @@ const ListaLeads = () => {
                 )}
 
                 {/* Ações */}
-                {lead.etapa !== 'CONVERTIDO' && lead.etapa !== 'FINALIZADO' && (
-                    <div className="px-4 pb-4">
+                <div className="px-4 pb-4 flex flex-col gap-2">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setModalEditar(lead); }}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-orange-700 bg-orange-50 border border-orange-200 rounded-xl hover:bg-orange-100 transition-colors"
+                    >
+                        ✏️ Editar Lead
+                    </button>
+                    {lead.etapa !== 'CONVERTIDO' && lead.etapa !== 'FINALIZADO' && (
                         <button
                             onClick={(e) => { e.stopPropagation(); setModalReferenciar(lead); }}
                             className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-colors"
                         >
                             <UserCheck className="h-4 w-4" /> Vincular a Cliente
                         </button>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         );
     };
@@ -643,6 +651,23 @@ const ListaLeads = () => {
                     lead={modalReferenciar}
                     onClose={() => setModalReferenciar(null)}
                     onVinculado={() => { setModalReferenciar(null); fetchLeads(); }}
+                />
+            )}
+
+            {/* Modal Editar Lead */}
+            {modalEditar && (
+                <ModalEditarLead
+                    lead={modalEditar}
+                    onClose={() => setModalEditar(null)}
+                    onSalvo={() => {
+                        setModalEditar(null);
+                        fetchLeads();
+                        // Recarregar detalhes do lead expandido
+                        if (expandedLeadId === modalEditar.id) {
+                            toggleLeadDetail(modalEditar.id);
+                            setTimeout(() => toggleLeadDetail(modalEditar.id), 100);
+                        }
+                    }}
                 />
             )}
 
