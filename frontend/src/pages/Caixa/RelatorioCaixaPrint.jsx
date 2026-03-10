@@ -284,6 +284,7 @@ const RelatorioCaixaPrint = () => {
                                                 <tr key={i}>
                                                     <td style={{ textAlign: 'center', fontWeight: 700 }}>{pageIdx * ENTREGAS_POR_PAGINA + i + 1}</td>
                                                     <td style={{ fontWeight: 700, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {e.especial && <span style={{ fontSize: '8px', fontWeight: 900, color: '#6d28d9', background: '#ede9fe', padding: '1px 4px', borderRadius: '3px', marginRight: '4px' }}>ESP</span>}
                                                         {e.clienteNome}
                                                     </td>
                                                     <td style={{ fontSize: '10px', fontWeight: 600 }}>{e.condicaoPagamento || e.condicao}</td>

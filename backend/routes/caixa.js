@@ -249,6 +249,7 @@ router.get('/resumo', async (req, res) => {
             return {
                 pedidoId: e.id,
                 numero: e.numero,
+                especial: e.especial || false,
                 clienteNome: e.cliente?.NomeFantasia || e.cliente?.Nome || 'N/A',
                 vendedorNome: e.vendedor?.nome,
                 embarqueNumero: e.embarque?.numero,
@@ -629,6 +630,7 @@ router.get('/relatorio', async (req, res) => {
 
                 return {
                     numero: e.numero,
+                    especial: e.especial || false,
                     clienteNome: e.cliente?.NomeFantasia || e.cliente?.Nome || 'N/A',
                     condicao: e.nomeCondicaoPagamento || condicaoInfo?.nome || e.opcaoCondicaoPagamento || '-',
                     valorPedido: Math.round(valorPedido * 100) / 100,

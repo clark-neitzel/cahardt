@@ -369,7 +369,10 @@ const CaixaDiarioPage = () => {
                                                             />
                                                         </td>
                                                     )}
-                                                    <td className="py-2 px-2 font-medium text-gray-900">{e.clienteNome}</td>
+                                                    <td className="py-2 px-2 font-medium text-gray-900">
+                                                        {e.clienteNome}
+                                                        {e.especial && <span className="ml-1.5 text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>}
+                                                    </td>
                                                     <td className="py-2 px-2 text-gray-500">{e.condicaoPagamento}</td>
                                                     <td className="py-2 px-2 text-right font-medium">
                                                         R$ {Number(e.valorPedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -401,7 +404,10 @@ const CaixaDiarioPage = () => {
                                         <div key={e.pedidoId} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                                             <div className="flex items-start justify-between">
                                                 <div className="flex-1">
-                                                    <p className="font-medium text-gray-900 text-sm">{e.clienteNome}</p>
+                                                    <p className="font-medium text-gray-900 text-sm">
+                                                        {e.clienteNome}
+                                                        {e.especial && <span className="ml-1.5 text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>}
+                                                    </p>
                                                     <p className="text-xs text-gray-500">{e.condicaoPagamento}</p>
                                                     <div className="flex flex-wrap gap-1 mt-1">
                                                         {e.pagamentos?.map((p, i) => (

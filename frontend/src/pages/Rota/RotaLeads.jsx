@@ -320,6 +320,9 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente })
                                     <User className="h-3 w-3" /> {vendedorNome.split(' ')[0]}
                                 </span>
                             )}
+                            {pedido.especial && (
+                                <span className="text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>
+                            )}
                         </div>
                         <button
                             onClick={() => onVerCliente && onVerCliente(pedido.cliente)}
@@ -386,6 +389,9 @@ const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar, onEditar, onVer
                             <span className="text-[10px] text-purple-600 bg-purple-50 px-1 py-0.5 rounded font-semibold flex items-center gap-0.5">
                                 <User className="h-3 w-3" /> {vendedorNome.split(' ')[0]}
                             </span>
+                        )}
+                        {pedido.especial && (
+                            <span className="text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>
                         )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
