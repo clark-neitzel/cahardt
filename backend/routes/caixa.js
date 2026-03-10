@@ -550,25 +550,28 @@ router.get('/relatorio', async (req, res) => {
         // Média combustível
         const mediaCombustivel = diario?.veiculoId ? await calcularMediaCombustivel(diario.veiculoId) : null;
 
-        // Buscar atendimentos do dia
-        // Busca por OR: feitos pelo responsável do embarque OU relacionados aos clientes entregues naquele dia
-        // Isso captura casos onde o pedido foi criado por um vendedor diferente do responsável pelo caixa.
-        const clienteIdsEntregas = [...new Set(
-            entregas.filter(e => e.clienteId).map(e => e.clienteId)
-        )];
-
+        // Buscar atendimentos do dia — APENAS os feitos pelo vendedor deste caixa
         const atendimentos = await prisma.atendimento.findMany({
             where: {
-                criadoEm: { gte: inicioDia, lte: fimDia },
-                OR: [
-                    { idVendedor: targetVendedor },
-                    ...(clienteIdsEntregas.length > 0 ? [{ clienteId: { in: clienteIdsEntregas } }] : [])
-                ]
+                idVendedor: targetVendedor,
+                criadoEm: { gte: inicioDia, lte: fimDia }
             },
             include: {
-                lead: { select: { nomeEstabelecimento: true } }
+                lead: { select: { nomeEstabelecimento: true, canalOrigem: true } }
             },
             orderBy: { criadoEm: 'asc' }
+        });
+
+        // Buscar pedidos do dia feitos pelo vendedor (em nome dele)
+        const pedidosDoVendedor = await prisma.pedido.findMany({
+            where: {
+                vendedorId: targetVendedor,
+                dataVenda: { gte: inicioDia, lte: fimDia }
+            },
+            include: {
+                cliente: { select: { UUID: true, NomeFantasia: true, Nome: true } }
+            },
+            orderBy: { dataVenda: 'asc' }
         });
 
 
@@ -631,8 +634,17 @@ router.get('/relatorio', async (req, res) => {
             atendimentos: atendimentos.map(a => ({
                 tipo: a.tipo,
                 clienteNome: a.clienteId ? mapaClientes[a.clienteId] || 'Cliente' : a.lead?.nomeEstabelecimento || 'Lead',
+                leadNome: a.lead?.nomeEstabelecimento || null,
+                canal: a.lead?.canalOrigem || null,
                 pedidoId: a.pedidoId,
+                observacao: a.observacao || null,
                 hora: a.criadoEm
+            })),
+            pedidosVendedor: pedidosDoVendedor.map(p => ({
+                numero: p.numero,
+                clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome || 'N/A',
+                dataVenda: p.dataVenda,
+                observacao: p.observacoes || null
             }))
         });
     } catch (error) {

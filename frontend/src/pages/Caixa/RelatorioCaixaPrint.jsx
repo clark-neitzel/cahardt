@@ -58,7 +58,28 @@ const RelatorioCaixaPrint = () => {
     const entregas = relatorio.entregas || [];
     const despesas = relatorio.despesas || [];
     const atendimentos = relatorio.atendimentos || [];
+    const pedidosVendedor = relatorio.pedidosVendedor || [];
     const temDados = entregas.length > 0 || despesas.length > 0;
+
+    // Montar lista unificada para impressão:
+    // - Atendimentos do vendedor (tipo: VISITA, WHATSAPP, LIGACAO, etc.)
+    // - Pedidos feitos pelo vendedor no dia (tipo: PEDIDO)
+    const linhasAtendimento = [
+        ...atendimentos.map(a => ({
+            ...a,
+            _origem: 'atendimento'
+        })),
+        ...pedidosVendedor.map(p => ({
+            tipo: 'PEDIDO',
+            clienteNome: p.clienteNome,
+            observacao: p.observacao,
+            pedidoId: `#${p.numero || '—'}`,
+            canal: null,
+            leadNome: null,
+            hora: p.dataVenda,
+            _origem: 'pedido'
+        }))
+    ].sort((a, b) => new Date(a.hora) - new Date(b.hora));
 
     // Agrupar despesas por categoria
     const despesasPorCategoria = {};
@@ -78,9 +99,9 @@ const RelatorioCaixaPrint = () => {
 
     // Paginar atendimentos (30 por página)
     const paginasAtendimentos = [];
-    if (atendimentos.length > 0) {
-        for (let i = 0; i < atendimentos.length; i += ATENDIMENTOS_POR_PAGINA) {
-            paginasAtendimentos.push(atendimentos.slice(i, i + ATENDIMENTOS_POR_PAGINA));
+    if (linhasAtendimento.length > 0) {
+        for (let i = 0; i < linhasAtendimento.length; i += ATENDIMENTOS_POR_PAGINA) {
+            paginasAtendimentos.push(linhasAtendimento.slice(i, i + ATENDIMENTOS_POR_PAGINA));
         }
     }
 
@@ -335,7 +356,7 @@ const RelatorioCaixaPrint = () => {
                                 <div className="hdr-sub">Data: {dataFormatada} — {relatorio.vendedorNome || ''}</div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '13px', fontWeight: 700 }}>Total: {atendimentos.length} atendimentos</div>
+                                <div style={{ fontSize: '13px', fontWeight: 700 }}>Total: {linhasAtendimento.length} registro(s)</div>
                                 {paginasAtendimentos.length > 1 && (
                                     <div style={{ fontSize: '11px', fontWeight: 600 }}>Pág. {pageIdx + 1} de {paginasAtendimentos.length}</div>
                                 )}
@@ -346,31 +367,51 @@ const RelatorioCaixaPrint = () => {
                             <thead>
                                 <tr>
                                     <th style={{ width: '25px', textAlign: 'center' }}>#</th>
-                                    <th style={{ width: '80px', textAlign: 'left' }}>Tipo</th>
+                                    <th style={{ width: '75px', textAlign: 'center' }}>Tipo</th>
                                     <th style={{ textAlign: 'left' }}>Cliente / Lead</th>
-                                    <th style={{ width: '90px', textAlign: 'left' }}>Pedido</th>
-                                    <th style={{ width: '60px', textAlign: 'center' }}>Hora</th>
+                                    <th style={{ width: '120px', textAlign: 'left' }}>Detalhe</th>
+                                    <th style={{ textAlign: 'left' }}>Obs</th>
+                                    <th style={{ width: '55px', textAlign: 'center' }}>Hora</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {pagina.map((a, i) => (
-                                    <tr key={i}>
-                                        <td style={{ textAlign: 'center', fontWeight: 700 }}>{pageIdx * ATENDIMENTOS_POR_PAGINA + i + 1}</td>
-                                        <td style={{ fontWeight: 700 }}>{a.tipo}</td>
-                                        <td style={{ fontWeight: 600 }}>{a.clienteNome || a.nome || '—'}</td>
-                                        <td style={{ fontWeight: 600 }}>{a.pedidoId || a.pedido || '—'}</td>
-                                        <td style={{ textAlign: 'center', fontWeight: 600 }}>
-                                            {a.hora ? new Date(a.hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—'}
-                                        </td>
-                                    </tr>
-                                ))}
+                                {pagina.map((a, i) => {
+                                    // Detalhe dinâmico por tipo
+                                    let detalhe = '—';
+                                    if (a._origem === 'pedido') {
+                                        detalhe = a.pedidoId || '—'; // ex: "#27"
+                                    } else if (a.tipo === 'LEAD_NOVO' || a.leadNome) {
+                                        detalhe = a.canal ? `Canal: ${a.canal}` : 'Lead Novo';
+                                    } else if (a.pedidoId) {
+                                        detalhe = `Ped: ${a.pedidoId}`;
+                                    }
+
+                                    const bgAtendimento = a._origem === 'pedido'
+                                        ? '#f0f8ff'
+                                        : (a.tipo === 'LEAD_NOVO' || a.leadNome)
+                                            ? '#fffde7'
+                                            : '#ffffff';
+
+                                    return (
+                                        <tr key={i} style={{ background: bgAtendimento }}>
+                                            <td style={{ textAlign: 'center', fontWeight: 700 }}>{pageIdx * ATENDIMENTOS_POR_PAGINA + i + 1}</td>
+                                            <td style={{ textAlign: 'center', fontWeight: 700, fontSize: '10px' }}>{a.tipo}</td>
+                                            <td style={{ fontWeight: 600 }}>{a.clienteNome || a.leadNome || '—'}</td>
+                                            <td style={{ fontSize: '10px', fontWeight: 600 }}>{detalhe}</td>
+                                            <td style={{ fontSize: '10px', color: '#444' }}>{a.observacao || '—'}</td>
+                                            <td style={{ textAlign: 'center', fontWeight: 600 }}>
+                                                {a.hora ? new Date(a.hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
                 ))}
 
                 {/* Se não tem atendimentos, mostra página vazia */}
-                {atendimentos.length === 0 && (
+                {linhasAtendimento.length === 0 && (
                     <div className="page-break" style={{ padding: '2mm 0' }}>
                         <div className="hdr">
                             <div className="hdr-title">HARDT — ATENDIMENTOS DO DIA</div>
@@ -387,3 +428,4 @@ const RelatorioCaixaPrint = () => {
 };
 
 export default RelatorioCaixaPrint;
+
