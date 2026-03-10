@@ -126,14 +126,6 @@ const NovoPedido = () => {
             const clientesList = clientesData.data?.filter(c => c.Ativo) || clientesData?.filter(c => c.Ativo) || [];
             setClientes(clientesList);
 
-            // Pré-selecionar cliente vindo da URL (?clienteId=...)
-            if (clienteIdFromUrl && !editId) {
-                setClienteId(clienteIdFromUrl);
-                const pCliente = clientesList.find(c => c.UUID === clienteIdFromUrl);
-                if (pCliente && pCliente.Dia_de_entrega) {
-                    setDataEntrega(calcularProximaData(pCliente.Dia_de_entrega));
-                }
-            }
             const listaProdutos = produtosData.data || produtosData || [];
             setProdutos(listaProdutos);
             setTodasCondicoes(condicoesData);
@@ -185,15 +177,33 @@ const NovoPedido = () => {
                     const draft = localStorage.getItem('@CAHardt:NovoPedido_Draft');
                     if (draft) {
                         const pd = JSON.parse(draft);
-                        if (pd.clienteId) setTimeout(() => setClienteId(pd.clienteId), 100);
-                        if (pd.clienteSearchText) setClienteSearchText(pd.clienteSearchText);
+
+                        // Se veio um clienteId pela URL, só restaura os itens se for o mesmo cliente do draft
+                        // Caso contrário, começa limpo (apenas aplica o cliente da URL)
+                        const clienteAlvo = clienteIdFromUrl || pd.clienteId;
+                        const mesmoCLiente = !clienteIdFromUrl || (clienteIdFromUrl === pd.clienteId);
+
+                        if (clienteAlvo) setTimeout(() => setClienteId(clienteAlvo), 100);
+                        if (pd.clienteSearchText && mesmoCLiente) setClienteSearchText(pd.clienteSearchText);
                         if (pd.dataEntrega) setDataEntrega(pd.dataEntrega);
-                        if (pd.condicaoPagamentoId) setTimeout(() => setCondicaoPagamentoId(pd.condicaoPagamentoId), 600);
                         if (pd.isEncaixe !== undefined) setIsEncaixe(pd.isEncaixe);
-                        if (pd.observacoes) setObservacoes(pd.observacoes);
-                        if (pd.canalOrigem) setCanalOrigem(pd.canalOrigem);
-                        if (pd.itensMap && Array.isArray(pd.itensMap)) {
-                            setItensMap(new Map(pd.itensMap));
+                        if (pd.observacoes && mesmoCLiente) setObservacoes(pd.observacoes);
+                        if (pd.canalOrigem && mesmoCLiente) setCanalOrigem(pd.canalOrigem);
+
+                        if (mesmoCLiente) {
+                            // Mesmo cliente: restaura itens e condição de pagamento
+                            if (pd.condicaoPagamentoId) setTimeout(() => setCondicaoPagamentoId(pd.condicaoPagamentoId), 600);
+                            if (pd.itensMap && Array.isArray(pd.itensMap)) {
+                                setItensMap(new Map(pd.itensMap));
+                            }
+                        }
+                        // Cliente diferente: itens e condição ficam vazios (serão preenchidos pelo useEffect do cliente)
+                    } else if (clienteIdFromUrl) {
+                        // Sem draft nenhum mas tem clienteId na URL
+                        setTimeout(() => setClienteId(clienteIdFromUrl), 100);
+                        const pCliente = clientesList.find(c => c.UUID === clienteIdFromUrl);
+                        if (pCliente && pCliente.Dia_de_entrega) {
+                            setDataEntrega(calcularProximaData(pCliente.Dia_de_entrega));
                         }
                     }
                 } catch (e) { }
