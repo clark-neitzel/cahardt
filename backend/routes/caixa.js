@@ -574,16 +574,18 @@ router.get('/relatorio', async (req, res) => {
 
 
         // Buscar pedidos do dia feitos pelo vendedor (em nome dele)
+        // ATENÇÃO: usar createdAt (data de criação), não dataVenda (data de entrega futura)
         const pedidosDoVendedor = await prisma.pedido.findMany({
             where: {
                 vendedorId: targetVendedor,
-                dataVenda: { gte: inicioDia, lte: fimDia }
+                createdAt: { gte: inicioDia, lte: fimDia }
             },
             include: {
                 cliente: { select: { UUID: true, NomeFantasia: true, Nome: true } }
             },
-            orderBy: { dataVenda: 'asc' }
+            orderBy: { createdAt: 'asc' }
         });
+
 
 
         // Buscar nomes de clientes atendidos (pelo clienteId)
