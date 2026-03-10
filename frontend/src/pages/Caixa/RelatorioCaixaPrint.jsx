@@ -76,7 +76,7 @@ const RelatorioCaixaPrint = () => {
             pedidoId: `#${p.numero || '—'}`,
             canal: null,
             leadNome: null,
-            hora: p.dataVenda,
+            hora: p.createdAt,
             _origem: 'pedido'
         }))
     ].sort((a, b) => new Date(a.hora) - new Date(b.hora));
