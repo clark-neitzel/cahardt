@@ -702,8 +702,8 @@ const NovoPedido = () => {
                     className={`flex items-center gap-2 px-2 py-2 ${temExpand ? 'cursor-pointer active:bg-gray-50' : ''}`}
                     onClick={toggleExpand}
                 >
-                    {/* Foto do produto */}
-                    <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
+                    {/* Foto do produto — mobile: esquerda / desktop: direita */}
+                    <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 shrink-0 border border-gray-200 md:order-last">
                         {imgUrl ? (
                             <img src={imgUrl} alt={produto.nome} className="w-full h-full object-cover" />
                         ) : (
@@ -800,9 +800,9 @@ const NovoPedido = () => {
                         </div>
                     </div>
 
-                    {/* Controles de quantidade — stopPropagation para não acionar toggleExpand */}
+                    {/* Controles de quantidade — mobile: direita / desktop: esquerda */}
                     <div
-                        className="flex items-center gap-1 shrink-0"
+                        className="flex items-center gap-1 shrink-0 md:order-first"
                         onClick={e => e.stopPropagation()}
                     >
                         {qtd > 0 && (
@@ -1096,33 +1096,33 @@ const NovoPedido = () => {
                                         <p className="text-sm font-semibold text-purple-900 mt-0.5">Especial - À vista em Dinheiro</p>
                                     </div>
                                 ) : (
-                                <div className="relative">
-                                    <label className="text-xs text-gray-500 font-medium">Condição de Pagamento</label>
-                                    <div
-                                        className="mt-0.5 w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm font-semibold flex justify-between items-center cursor-pointer"
-                                        onClick={() => setMostrarCondicoesDropdown(!mostrarCondicoesDropdown)}
-                                    >
-                                        <span className={condicaoSelecionada ? 'text-gray-900' : 'text-gray-400 font-normal'}>
-                                            {condicaoSelecionada ? condicaoSelecionada.nomeCondicao : 'Selecione...'}
-                                        </span>
-                                        <ChevronDown className="h-4 w-4 text-gray-400" />
+                                    <div className="relative">
+                                        <label className="text-xs text-gray-500 font-medium">Condição de Pagamento</label>
+                                        <div
+                                            className="mt-0.5 w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm font-semibold flex justify-between items-center cursor-pointer"
+                                            onClick={() => setMostrarCondicoesDropdown(!mostrarCondicoesDropdown)}
+                                        >
+                                            <span className={condicaoSelecionada ? 'text-gray-900' : 'text-gray-400 font-normal'}>
+                                                {condicaoSelecionada ? condicaoSelecionada.nomeCondicao : 'Selecione...'}
+                                            </span>
+                                            <ChevronDown className="h-4 w-4 text-gray-400" />
+                                        </div>
+                                        {mostrarCondicoesDropdown && (
+                                            <ul className="absolute z-30 left-0 right-0 mt-1 bg-white border border-gray-200 shadow-xl max-h-52 rounded-md overflow-auto">
+                                                {condicoesPermitidas.map(c => (
+                                                    <li key={c.idCondicao}
+                                                        className={`py-2.5 px-3 text-sm font-semibold cursor-pointer hover:bg-gray-50 border-b border-gray-50 flex justify-between ${condicaoPagamentoId === c.idCondicao ? 'bg-blue-50 text-blue-800' : 'text-gray-900'}`}
+                                                        onClick={() => { setCondicaoPagamentoId(c.idCondicao); setMostrarCondicoesDropdown(false); setMostrarFormulario(false); }}>
+                                                        {c.nomeCondicao}
+                                                        {condicaoPagamentoId === c.idCondicao && <CheckCircle className="h-4 w-4 text-blue-600" />}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                        {condicoesPermitidas.length === 0 && (
+                                            <p className="text-red-500 text-xs mt-1">Nenhuma tabela de preço habilitada para este cliente.</p>
+                                        )}
                                     </div>
-                                    {mostrarCondicoesDropdown && (
-                                        <ul className="absolute z-30 left-0 right-0 mt-1 bg-white border border-gray-200 shadow-xl max-h-52 rounded-md overflow-auto">
-                                            {condicoesPermitidas.map(c => (
-                                                <li key={c.idCondicao}
-                                                    className={`py-2.5 px-3 text-sm font-semibold cursor-pointer hover:bg-gray-50 border-b border-gray-50 flex justify-between ${condicaoPagamentoId === c.idCondicao ? 'bg-blue-50 text-blue-800' : 'text-gray-900'}`}
-                                                    onClick={() => { setCondicaoPagamentoId(c.idCondicao); setMostrarCondicoesDropdown(false); setMostrarFormulario(false); }}>
-                                                    {c.nomeCondicao}
-                                                    {condicaoPagamentoId === c.idCondicao && <CheckCircle className="h-4 w-4 text-blue-600" />}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                    {condicoesPermitidas.length === 0 && (
-                                        <p className="text-red-500 text-xs mt-1">Nenhuma tabela de preço habilitada para este cliente.</p>
-                                    )}
-                                </div>
                                 )}
 
                                 {/* Observações */}
