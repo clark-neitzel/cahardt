@@ -49,6 +49,12 @@ const pedidoService = {
         return response.data;
     },
 
+    // Aprovar Pedido Especial (sem nota)
+    aprovarEspecial: async (id) => {
+        const response = await api.put(`/pedidos/${id}/aprovar-especial`);
+        return response.data;
+    },
+
     // Excluir Pedido Existente (Apenas Rascunho/Em Aberto)
     excluir: async (id) => {
         const response = await api.delete(`/pedidos/${id}`);

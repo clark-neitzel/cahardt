@@ -22,6 +22,9 @@ const DEFAULT_PERMISSIONS = {
     Pode_Editar_Caixa: false,
     Pode_Definir_Adiantamento: false,
     Pode_Ver_Historico_Caixa: false,
+    // Pedidos Especiais
+    Pode_Criar_Especial: false,
+    Pode_Aprovar_Especial: false,
     // Utilitários Admin
     Pode_Resetar_Dados: false,
     admin: false // Flag Global Mestre
@@ -309,6 +312,38 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <div>
                                     <span className="text-amber-900 font-bold block">Pode Ver Caixas de Outros Dias</span>
                                     <span className="text-amber-700 text-xs">Permite navegar por datas passadas ou futuras no caixa diário. Sem esta permissão, o usuário vê apenas o caixa de hoje.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Pedidos Especiais */}
+                    <div className="border-t pt-4">
+                        <h4 className="font-medium text-gray-900 mb-4">Pedidos Especiais (Sem Nota)</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-purple-50 p-4 rounded-md border border-purple-200">
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-purple-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-purple-300 text-purple-600 focus:ring-purple-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Criar_Especial}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Criar_Especial: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-purple-900 font-bold block">Pode Criar Pedido Especial</span>
+                                    <span className="text-purple-700 text-xs">Habilita o toggle "Especial" na tela de novo pedido. Pedidos especiais não geram nota fiscal.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-purple-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-purple-300 text-purple-600 focus:ring-purple-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Aprovar_Especial}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Aprovar_Especial: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-purple-900 font-bold block">Pode Aprovar Pedido Especial</span>
+                                    <span className="text-purple-700 text-xs">Permite aprovar/faturar pedidos especiais pendentes na aba Especiais da lista de pedidos.</span>
                                 </div>
                             </label>
                         </div>

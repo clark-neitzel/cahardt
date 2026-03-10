@@ -60,6 +60,7 @@ const pedidoService = {
             latLng,
             canalOrigem,
             usuarioLancamentoId,
+            especial, // Pedido especial (sem nota)
             itens, // array de objetos
             statusEnvio // ABERTO ou ENVIAR
         } = dadosPedido;
@@ -125,6 +126,17 @@ const pedidoService = {
                 };
             });
 
+            // Se pedido especial, atribuir número ZZ sequencial
+            let numeroEspecial = undefined;
+            if (especial && statusEnvio === 'ENVIAR') {
+                const ultimoEspecial = await tx.pedido.findFirst({
+                    where: { especial: true, numero: { not: null } },
+                    orderBy: { numero: 'desc' },
+                    select: { numero: true }
+                });
+                numeroEspecial = (ultimoEspecial?.numero || 0) + 1;
+            }
+
             // Criação base do pedido
             const novoPedido = await tx.pedido.create({
                 data: {
@@ -132,13 +144,15 @@ const pedidoService = {
                     vendedorId,
                     dataVenda: new Date(dataVenda),
                     observacoes,
-                    tipoPagamento,
-                    opcaoCondicaoPagamento,
-                    nomeCondicaoPagamento: nomeCondicaoPagamento || null,
-                    qtdParcelas: qtdParcelas ? parseInt(qtdParcelas) : 1,
+                    especial: !!especial,
+                    numero: numeroEspecial || undefined,
+                    tipoPagamento: especial ? 'DINHEIRO' : tipoPagamento,
+                    opcaoCondicaoPagamento: especial ? undefined : opcaoCondicaoPagamento,
+                    nomeCondicaoPagamento: especial ? 'Especial - À vista' : (nomeCondicaoPagamento || null),
+                    qtdParcelas: especial ? 1 : (qtdParcelas ? parseInt(qtdParcelas) : 1),
                     primeiroVencimento: primeiroVencimento ? new Date(primeiroVencimento) : undefined,
-                    intervaloDias: intervaloDias ? parseInt(intervaloDias) : 0,
-                    idContaFinanceira,
+                    intervaloDias: especial ? 0 : (intervaloDias ? parseInt(intervaloDias) : 0),
+                    idContaFinanceira: especial ? undefined : idContaFinanceira,
                     idCategoria,
                     latLng,
                     canalOrigem,

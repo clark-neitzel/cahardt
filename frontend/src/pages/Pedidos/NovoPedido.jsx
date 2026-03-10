@@ -14,6 +14,7 @@ import configService from '../../services/configService';
 import promocaoService from '../../services/promocaoService';
 import vendedorService from '../../services/vendedorService';
 import { API_URL } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
@@ -55,8 +56,10 @@ const NovoPedido = () => {
     const navigate = useNavigate();
     const { id: editId } = useParams();
     const [searchParams] = useSearchParams();
+    const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [especial, setEspecial] = useState(false);
 
     // Core Data
     const [clientes, setClientes] = useState([]);
@@ -524,7 +527,7 @@ const NovoPedido = () => {
 
     const handleSalvar = (statusEnvio) => {
         if (!clienteId || itensMap.size === 0) { toast.error("Preencha cliente e adicione itens.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
-        if (!condicaoPagamentoId) { toast.error("Selecione uma condição de pagamento.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
+        if (!especial && !condicaoPagamentoId) { toast.error("Selecione uma condição de pagamento.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (statusEnvio === 'ENVIAR' && !canalOrigem) { toast.error("Informe o Tipo de Atendimento que resultou nesta venda.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
 
         // Bloqueio de valor mínimo
@@ -575,6 +578,7 @@ const NovoPedido = () => {
             idContaFinanceira: condicaoSelecionada?.bancoPadrao || null,
             idCategoria: null, latLng, statusEnvio,
             canalOrigem: canalOrigem || null,
+            especial: !!especial,
             itens: itensLimpos
         };
 
@@ -1058,7 +1062,40 @@ const NovoPedido = () => {
                                     )}
                                 </div>
 
+                                {/* Toggle Pedido Especial */}
+                                {(user?.permissoes?.Pode_Criar_Especial || user?.permissoes?.admin) && (
+                                    <div className="flex items-center justify-between bg-purple-50 p-2.5 rounded-md border border-purple-200">
+                                        <div>
+                                            <span className="text-xs font-bold text-purple-900">Pedido Especial</span>
+                                            <p className="text-[10px] text-purple-700">Sem nota fiscal - pagamento à vista em dinheiro</p>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                className="sr-only peer"
+                                                checked={especial}
+                                                onChange={(e) => {
+                                                    setEspecial(e.target.checked);
+                                                    if (e.target.checked) {
+                                                        setCondicaoPagamentoId('__especial__');
+                                                        setMostrarFormulario(false);
+                                                    } else {
+                                                        setCondicaoPagamentoId('');
+                                                    }
+                                                }}
+                                            />
+                                            <div className="w-9 h-5 bg-gray-300 peer-checked:bg-purple-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                                        </label>
+                                    </div>
+                                )}
+
                                 {/* Condição de pagamento */}
+                                {especial ? (
+                                    <div className="bg-purple-50 border border-purple-200 rounded-md p-2.5">
+                                        <label className="text-xs text-gray-500 font-medium">Condição de Pagamento</label>
+                                        <p className="text-sm font-semibold text-purple-900 mt-0.5">Especial - À vista em Dinheiro</p>
+                                    </div>
+                                ) : (
                                 <div className="relative">
                                     <label className="text-xs text-gray-500 font-medium">Condição de Pagamento</label>
                                     <div
@@ -1086,6 +1123,7 @@ const NovoPedido = () => {
                                         <p className="text-red-500 text-xs mt-1">Nenhuma tabela de preço habilitada para este cliente.</p>
                                     )}
                                 </div>
+                                )}
 
                                 {/* Observações */}
                                 <div>

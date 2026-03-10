@@ -283,9 +283,9 @@ const DetalheCliente = () => {
                                             {/* Header do Pedido */}
                                             <div className="flex items-center justify-between mb-3 border-b border-blue-50 pb-2">
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                    <span className="text-xs font-bold bg-blue-600 text-white px-2 py-0.5 rounded flex items-center gap-1 shadow-sm">
+                                                    <span className={`text-xs font-bold text-white px-2 py-0.5 rounded flex items-center gap-1 shadow-sm ${pedido.especial ? 'bg-purple-600' : 'bg-blue-600'}`}>
                                                         <ShoppingCart className="h-3 w-3" />
-                                                        PEDIDO {pedido.numero ? `#${pedido.numero}` : ''}
+                                                        {pedido.especial ? 'ESPECIAL' : 'PEDIDO'} {pedido.numero ? (pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`) : ''}
                                                     </span>
                                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${pedido.statusEnvio === 'RECEBIDO' ? 'bg-green-100 text-green-700' :
                                                         pedido.statusEnvio === 'ERRO' ? 'bg-red-100 text-red-700' :

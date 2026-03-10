@@ -174,7 +174,9 @@ model Pedido {
   qtdParcelas            Int       @default(1) @map("qtd_parcelas")
   primeiroVencimento     DateTime? @map("primeiro_vencimento")
   intervaloDias          Int       @default(0) @map("intervalo_dias")
-  // Status de Integração 
+  especial               Boolean   @default(false) // Pedido especial (sem nota) - não envia ao CA
+
+  // Status de Integração
   statusEnvio            String    @default("ABERTO") @map("status_envio") // ABERTO, ENVIAR, SINCRONIZANDO, RECEBIDO, ERRO
   idVendaContaAzul       String?   @map("id_venda_contaazul") // ID gerado na API 
   situacaoCA             String?   @map("situacao_ca") // APROVADO, FATURADO, EM_ABERTO (Conta Azul Oficial)

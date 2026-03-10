@@ -29,6 +29,15 @@ const pedidoController = {
             if (req.user && req.user.id) {
                 dadosPedido.usuarioLancamentoId = req.user.id;
             }
+
+            // Validação de permissão para pedidos especiais
+            if (dadosPedido.especial) {
+                const permissoes = req.user?.permissoes || {};
+                if (!permissoes.Pode_Criar_Especial && !permissoes.admin) {
+                    return res.status(403).json({ error: 'Você não tem permissão para criar pedidos especiais.' });
+                }
+            }
+
             const novoPedido = await pedidoService.criar(dadosPedido);
             res.status(201).json(novoPedido);
         } catch (error) {
@@ -115,6 +124,36 @@ const pedidoController = {
         } catch (error) {
             console.error('Erro ao buscar histórico de compras:', error);
             res.status(500).json({ error: 'Erro ao buscar histórico de compras' });
+        }
+    },
+
+    aprovarEspecial: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const permissoes = req.user?.permissoes || {};
+
+            if (!permissoes.Pode_Aprovar_Especial && !permissoes.admin) {
+                return res.status(403).json({ error: 'Você não tem permissão para aprovar pedidos especiais.' });
+            }
+
+            const pedido = await prisma.pedido.findUnique({ where: { id }, select: { especial: true, statusEnvio: true } });
+            if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+            if (!pedido.especial) return res.status(400).json({ error: 'Este pedido não é especial.' });
+            if (pedido.statusEnvio === 'RECEBIDO') return res.status(400).json({ error: 'Este pedido já foi aprovado.' });
+
+            const pedidoAprovado = await prisma.pedido.update({
+                where: { id },
+                data: {
+                    statusEnvio: 'RECEBIDO',
+                    situacaoCA: 'FATURADO',
+                    enviadoEm: new Date()
+                }
+            });
+
+            res.json({ message: 'Pedido especial aprovado com sucesso.', pedido: pedidoAprovado });
+        } catch (error) {
+            console.error('Erro ao aprovar pedido especial:', error);
+            res.status(500).json({ error: 'Erro ao aprovar pedido especial.' });
         }
     },
 

@@ -655,6 +655,7 @@ router.get('/relatorio', async (req, res) => {
             })),
             pedidosVendedor: pedidosDoVendedor.map(p => ({
                 numero: p.numero,
+                especial: p.especial || false,
                 clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome || 'N/A',
                 createdAt: p.createdAt,
                 observacao: p.observacoes || null

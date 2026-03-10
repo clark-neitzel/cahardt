@@ -23,6 +23,9 @@ router.put('/:id', pedidoController.atualizar);
 // Marcar Pedido como Revisado
 router.put('/:id/revisado', pedidoController.marcarRevisado);
 
+// Aprovar Pedido Especial (sem nota)
+router.put('/:id/aprovar-especial', pedidoController.aprovarEspecial);
+
 // Excluir Pedido Existente (Apenas Rascunho/ABERTO/ERRO)
 router.delete('/:id', pedidoController.excluir);
 

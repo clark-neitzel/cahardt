@@ -1,14 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FileText, X, AlertCircle } from 'lucide-react';
+import { Search, X, AlertCircle } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
+import { useAuth } from '../../contexts/AuthContext';
+import toast from 'react-hot-toast';
+
+const fmtNumero = (pedido) => pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
 
 const ListaPedidos = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [pedidos, setPedidos] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [selectedPedido, setSelectedPedido] = useState(null); // Para o Modal
+    const [selectedPedido, setSelectedPedido] = useState(null);
     const [busca, setBusca] = useState('');
+    const [abaAtiva, setAbaAtiva] = useState('todos'); // 'todos' | 'especiais'
+    const [aprovando, setAprovando] = useState(null); // id do pedido sendo aprovado
+
+    const podeAprovar = user?.permissoes?.Pode_Aprovar_Especial || user?.permissoes?.admin;
 
     useEffect(() => {
         carregarPedidos();
@@ -17,13 +26,31 @@ const ListaPedidos = () => {
     const carregarPedidos = async () => {
         try {
             const data = await pedidoService.listar({});
-            // Ordenar por dataVenda (data de entrega) decrescente
             data.sort((a, b) => new Date(b.dataVenda || b.createdAt) - new Date(a.dataVenda || a.createdAt));
             setPedidos(data);
         } catch (error) {
             console.error("Erro ao carregar pedidos", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAprovarEspecial = async (pedidoId) => {
+        if (!podeAprovar) return;
+        try {
+            setAprovando(pedidoId);
+            await pedidoService.aprovarEspecial(pedidoId);
+            toast.success('Pedido especial aprovado!');
+            setPedidos(prev => prev.map(p =>
+                p.id === pedidoId ? { ...p, statusEnvio: 'RECEBIDO', situacaoCA: 'FATURADO' } : p
+            ));
+            if (selectedPedido?.id === pedidoId) {
+                setSelectedPedido(prev => ({ ...prev, statusEnvio: 'RECEBIDO', situacaoCA: 'FATURADO' }));
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao aprovar pedido.');
+        } finally {
+            setAprovando(null);
         }
     };
 
@@ -44,20 +71,28 @@ const ListaPedidos = () => {
         );
     };
 
-    // Filtrar pedidos pela busca
+    // Filtrar por aba e busca
+    const pedidosPorAba = abaAtiva === 'especiais'
+        ? pedidos.filter(p => p.especial)
+        : pedidos;
+
     const pedidosFiltrados = busca.trim()
-        ? pedidos.filter(p => {
+        ? pedidosPorAba.filter(p => {
             const termo = busca.toLowerCase();
             const nomeCliente = (p.cliente?.NomeFantasia || p.cliente?.Nome || '').toLowerCase();
             const nomeVendedor = (p.vendedor?.nome || '').toLowerCase();
             const numero = String(p.numero || '');
-            return nomeCliente.includes(termo) || nomeVendedor.includes(termo) || numero.includes(termo);
+            const prefixoZZ = p.especial ? `zz#${p.numero}` : `#${p.numero}`;
+            return nomeCliente.includes(termo) || nomeVendedor.includes(termo) || numero.includes(termo) || prefixoZZ.includes(termo);
         })
-        : pedidos;
+        : pedidosPorAba;
+
+    const qtdEspeciais = pedidos.filter(p => p.especial).length;
+    const qtdEspeciaisPendentes = pedidos.filter(p => p.especial && p.statusEnvio === 'ENVIAR').length;
 
     return (
         <div className="container mx-auto px-2 py-4">
-            {/* Header: só Busca (botão Novo removido — pedidos são criados pela Rota) */}
+            {/* Header: Busca */}
             <div className="flex flex-row items-center gap-2 mb-3">
                 <div className="relative flex-1">
                     <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
@@ -73,9 +108,30 @@ const ListaPedidos = () => {
                 </div>
             </div>
 
+            {/* Abas: Todos | Especiais */}
+            {qtdEspeciais > 0 && (
+                <div className="flex gap-1 mb-2">
+                    <button
+                        onClick={() => setAbaAtiva('todos')}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-t border border-b-0 transition-colors ${abaAtiva === 'todos' ? 'bg-white text-gray-900 border-gray-200' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                    >
+                        Todos
+                    </button>
+                    <button
+                        onClick={() => setAbaAtiva('especiais')}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-t border border-b-0 transition-colors flex items-center gap-1.5 ${abaAtiva === 'especiais' ? 'bg-white text-purple-700 border-gray-200' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                    >
+                        Especiais
+                        {qtdEspeciaisPendentes > 0 && (
+                            <span className="bg-purple-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                {qtdEspeciaisPendentes}
+                            </span>
+                        )}
+                    </button>
+                </div>
+            )}
+
             <div className="bg-white rounded overflow-hidden border-t sm:border border-gray-100 sm:border-gray-200">
-
-
                 <div className="divide-y divide-gray-200">
                     {loading ? (
                         <div className="p-8 text-center text-gray-500">
@@ -84,7 +140,7 @@ const ListaPedidos = () => {
                         </div>
                     ) : pedidosFiltrados.length === 0 ? (
                         <div className="p-8 text-center text-gray-500">
-                            {busca ? `Nenhum pedido encontrado para "${busca}".` : 'Nenhum pedido encontrado.'}
+                            {busca ? `Nenhum pedido encontrado para "${busca}".` : abaAtiva === 'especiais' ? 'Nenhum pedido especial encontrado.' : 'Nenhum pedido encontrado.'}
                         </div>
                     ) : (
                         pedidosFiltrados.map((pedido) => (
@@ -93,8 +149,13 @@ const ListaPedidos = () => {
                                     <div className="flex-1 min-w-0 pr-1">
                                         <div className="flex items-center gap-1.5 mb-0.5">
                                             {pedido.numero && (
-                                                <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-1 py-0.5 rounded border border-blue-100 shrink-0">
-                                                    #{pedido.numero}
+                                                <span className={`text-[11px] font-bold px-1 py-0.5 rounded border shrink-0 ${pedido.especial ? 'text-purple-700 bg-purple-50 border-purple-200' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
+                                                    {fmtNumero(pedido)}
+                                                </span>
+                                            )}
+                                            {pedido.especial && (
+                                                <span className="text-[9px] font-bold text-purple-700 bg-purple-50 px-1 py-0.5 rounded border border-purple-200 uppercase shrink-0">
+                                                    Especial
                                                 </span>
                                             )}
                                             <h3 className="text-[14px] font-semibold text-gray-800 leading-tight truncate">
@@ -128,31 +189,43 @@ const ListaPedidos = () => {
                                                 ? 'text-green-700 bg-green-50 border-green-200'
                                                 : 'text-blue-700 bg-blue-50 border-blue-100'
                                                 }`}>
-                                                CA: {pedido.situacaoCA}
+                                                {pedido.especial ? '' : 'CA: '}{pedido.situacaoCA}
                                             </span>
                                         )}
                                     </div>
-                                    {(() => {
-                                        const bloqueadoNoCA = pedido.statusEnvio === 'RECEBIDO' || ['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA);
-                                        const podeEditar = pedido.statusEnvio === 'ABERTO' && !bloqueadoNoCA;
-                                        return (
+                                    <div className="flex items-center gap-1.5">
+                                        {/* Botão Aprovar para pedidos especiais pendentes */}
+                                        {pedido.especial && pedido.statusEnvio === 'ENVIAR' && podeAprovar && (
                                             <button
-                                                className={`text-[11px] font-bold px-3 py-1 rounded transition-colors shadow-sm outline-none border ${podeEditar
-                                                        ? 'bg-blue-50 border-blue-200 text-blue-700 active:bg-blue-100'
-                                                        : bloqueadoNoCA
-                                                            ? 'bg-green-50 border-green-200 text-green-700 cursor-default'
-                                                            : 'bg-white border-gray-200 text-gray-600 active:bg-gray-50'
-                                                    }`}
-                                                onClick={() => {
-                                                    if (podeEditar) navigate(`/pedidos/editar/${pedido.id}`);
-                                                    else setSelectedPedido(pedido);
-                                                }}
-                                                title={bloqueadoNoCA ? 'Pedido recebido pelo Conta Azul. Edite direto no ERP.' : undefined}
+                                                onClick={() => handleAprovarEspecial(pedido.id)}
+                                                disabled={aprovando === pedido.id}
+                                                className="text-[11px] font-bold px-3 py-1 rounded transition-colors shadow-sm outline-none border bg-purple-600 border-purple-700 text-white hover:bg-purple-700 disabled:opacity-50"
                                             >
-                                                {podeEditar ? 'Editar' : bloqueadoNoCA ? 'Ver no CA' : 'Detalhes'}
+                                                {aprovando === pedido.id ? 'Aprovando...' : 'Aprovar'}
                                             </button>
-                                        );
-                                    })()}
+                                        )}
+                                        {(() => {
+                                            const bloqueadoNoCA = pedido.statusEnvio === 'RECEBIDO' || ['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA);
+                                            const podeEditar = pedido.statusEnvio === 'ABERTO' && !bloqueadoNoCA;
+                                            return (
+                                                <button
+                                                    className={`text-[11px] font-bold px-3 py-1 rounded transition-colors shadow-sm outline-none border ${podeEditar
+                                                            ? 'bg-blue-50 border-blue-200 text-blue-700 active:bg-blue-100'
+                                                            : bloqueadoNoCA
+                                                                ? 'bg-green-50 border-green-200 text-green-700 cursor-default'
+                                                                : 'bg-white border-gray-200 text-gray-600 active:bg-gray-50'
+                                                        }`}
+                                                    onClick={() => {
+                                                        if (podeEditar) navigate(`/pedidos/editar/${pedido.id}`);
+                                                        else setSelectedPedido(pedido);
+                                                    }}
+                                                    title={bloqueadoNoCA ? (pedido.especial ? 'Pedido especial aprovado.' : 'Pedido recebido pelo Conta Azul. Edite direto no ERP.') : undefined}
+                                                >
+                                                    {podeEditar ? 'Editar' : bloqueadoNoCA ? (pedido.especial ? 'Detalhes' : 'Ver no CA') : 'Detalhes'}
+                                                </button>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
                             </div>
                         ))
@@ -167,9 +240,16 @@ const ListaPedidos = () => {
                         <div className="flex justify-between items-center p-4 border-b">
                             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                 {selectedPedido.numero ? (
-                                    <span className="text-blue-600 font-extrabold">Pedido #{selectedPedido.numero}</span>
+                                    <span className={selectedPedido.especial ? 'text-purple-600 font-extrabold' : 'text-blue-600 font-extrabold'}>
+                                        Pedido {fmtNumero(selectedPedido)}
+                                    </span>
                                 ) : (
                                     'Detalhes do Pedido'
+                                )}
+                                {selectedPedido.especial && (
+                                    <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-1 rounded-full uppercase">
+                                        Especial
+                                    </span>
                                 )}
                                 {selectedPedido.revisaoPendente && (
                                     <span className="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded-full flex items-center">
@@ -183,6 +263,23 @@ const ListaPedidos = () => {
                         </div>
 
                         <div className="p-4 overflow-y-auto flex-1">
+                            {/* Botão aprovar no modal para especiais pendentes */}
+                            {selectedPedido.especial && selectedPedido.statusEnvio === 'ENVIAR' && podeAprovar && (
+                                <div className="mb-4 bg-purple-50 border border-purple-200 p-4 rounded-lg flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-bold text-purple-900">Pedido Especial Pendente de Aprovação</p>
+                                        <p className="text-xs text-purple-700 mt-1">Confira os dados e o estoque antes de aprovar.</p>
+                                    </div>
+                                    <button
+                                        onClick={() => handleAprovarEspecial(selectedPedido.id)}
+                                        disabled={aprovando === selectedPedido.id}
+                                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-bold text-sm transition-colors shadow-sm disabled:opacity-50"
+                                    >
+                                        {aprovando === selectedPedido.id ? 'Aprovando...' : 'Aprovar / Faturar'}
+                                    </button>
+                                </div>
+                            )}
+
                             {selectedPedido.revisaoPendente && (
                                 <div className="mb-6 bg-orange-50 border-l-4 border-orange-500 p-4 rounded text-sm text-orange-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                     <div className="flex items-start">
@@ -229,8 +326,8 @@ const ListaPedidos = () => {
                                             <span className={`text-[10px] font-bold px-2 py-1 rounded w-fit uppercase border ${selectedPedido.situacaoCA === 'FATURADO'
                                                 ? 'text-green-800 bg-green-50 border-green-300'
                                                 : 'text-blue-800 bg-blue-50 border-blue-200'
-                                                }`} title="Status Oficial no Conta Azul">
-                                                CA: {selectedPedido.situacaoCA}
+                                                }`} title={selectedPedido.especial ? 'Status interno' : 'Status Oficial no Conta Azul'}>
+                                                {selectedPedido.especial ? '' : 'CA: '}{selectedPedido.situacaoCA}
                                             </span>
                                         )}
                                     </div>
@@ -239,20 +336,20 @@ const ListaPedidos = () => {
                                     )}
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 bg-blue-50 p-3 rounded border border-blue-100">
+                            <div className={`grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 p-3 rounded border ${selectedPedido.especial ? 'bg-purple-50 border-purple-100' : 'bg-blue-50 border-blue-100'}`}>
                                 <div>
-                                    <p className="text-xs text-blue-700 uppercase font-semibold">Condição de Pagamento</p>
-                                    <p className="text-sm font-medium text-blue-900">
-                                        Termo: {selectedPedido.qtdParcelas}x de {selectedPedido.intervaloDias}d
+                                    <p className={`text-xs uppercase font-semibold ${selectedPedido.especial ? 'text-purple-700' : 'text-blue-700'}`}>Condição de Pagamento</p>
+                                    <p className={`text-sm font-medium ${selectedPedido.especial ? 'text-purple-900' : 'text-blue-900'}`}>
+                                        {selectedPedido.especial ? 'Especial - À vista' : `Termo: ${selectedPedido.qtdParcelas}x de ${selectedPedido.intervaloDias}d`}
                                     </p>
-                                    {selectedPedido.tipoPagamento && <p className="text-xs text-blue-800 font-bold mt-1">Meio de Pgto: {selectedPedido.tipoPagamento}</p>}
+                                    {selectedPedido.tipoPagamento && <p className={`text-xs font-bold mt-1 ${selectedPedido.especial ? 'text-purple-800' : 'text-blue-800'}`}>Meio de Pgto: {selectedPedido.tipoPagamento}</p>}
                                 </div>
                                 <div>
-                                    <p className="text-xs text-blue-700 uppercase font-semibold">Vendedor</p>
-                                    <p className="text-sm font-medium text-blue-900">{selectedPedido.vendedor?.nome || 'N/D'}</p>
+                                    <p className={`text-xs uppercase font-semibold ${selectedPedido.especial ? 'text-purple-700' : 'text-blue-700'}`}>Vendedor</p>
+                                    <p className={`text-sm font-medium ${selectedPedido.especial ? 'text-purple-900' : 'text-blue-900'}`}>{selectedPedido.vendedor?.nome || 'N/D'}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-blue-700 uppercase font-semibold">Flex Gerado</p>
+                                    <p className={`text-xs uppercase font-semibold ${selectedPedido.especial ? 'text-purple-700' : 'text-blue-700'}`}>Flex Gerado</p>
                                     <p className={`text-xl font-bold ${Number(selectedPedido.flexTotal) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                         {Number(selectedPedido.flexTotal) > 0 ? '+' : ''}{Number(selectedPedido.flexTotal || 0).toFixed(2).replace('.', ',')}
                                     </p>
