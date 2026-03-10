@@ -115,7 +115,12 @@ const clienteController = {
                 idVendedor,
                 Formas_Atendimento,
                 Condicao_de_pagamento,
-                condicoes_pagamento_permitidas
+                condicoes_pagamento_permitidas,
+                // Inteligência Comercial
+                categoriaClienteId,
+                cicloCompraPersonalizadoDias,
+                insightAtivo,
+                observacaoComercialFixa
             } = req.body;
 
             const cliente = await prisma.cliente.update({
@@ -128,7 +133,14 @@ const clienteController = {
                     idVendedor: idVendedor === "" ? null : idVendedor,
                     Formas_Atendimento,
                     Condicao_de_pagamento: Condicao_de_pagamento === "" ? null : Condicao_de_pagamento,
-                    condicoes_pagamento_permitidas
+                    condicoes_pagamento_permitidas,
+                    // Inteligência Comercial
+                    categoriaClienteId: categoriaClienteId === "" ? null : categoriaClienteId,
+                    cicloCompraPersonalizadoDias: cicloCompraPersonalizadoDias !== undefined && cicloCompraPersonalizadoDias !== ''
+                        ? parseInt(cicloCompraPersonalizadoDias)
+                        : null,
+                    insightAtivo: insightAtivo !== undefined ? insightAtivo : true,
+                    observacaoComercialFixa: observacaoComercialFixa || null
                 }
             });
 
