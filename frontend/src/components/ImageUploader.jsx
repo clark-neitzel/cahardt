@@ -42,7 +42,7 @@ const ImageUploader = ({ onUpload }) => {
 
         const formData = new FormData();
         files.forEach(file => {
-            formData.append('imagens', file);
+            formData.append('foto', file);
         });
 
         await onUpload(formData);

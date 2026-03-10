@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Plus, UserCheck, Phone, Image, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, MapPin, Clock, Calendar, MessageSquare, Loader2, X } from 'lucide-react';
+import { Search, Plus, UserCheck, Phone, Image, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, MapPin, Clock, Calendar, MessageSquare, Loader2, X, Camera } from 'lucide-react';
 import leadService from '../../services/leadService';
 import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -59,7 +59,7 @@ const ListaLeads = () => {
     // Carregar vendedores para o filtro
     useEffect(() => {
         if (podeEscolherVendedor) {
-            vendedorService.listar().then(setVendedores).catch(() => {});
+            vendedorService.listar().then(setVendedores).catch(() => { });
         }
     }, [podeEscolherVendedor]);
 
@@ -145,23 +145,73 @@ const ListaLeads = () => {
     };
 
     // Componente de detalhes expandido
-    const LeadDetail = ({ lead }) => {
+    const LeadDetail = ({ lead, onRefresh }) => {
+        const fotoInputRef = useRef(null);
+        const [uploadingFoto, setUploadingFoto] = useState(false);
+
+        const handleFotoChange = async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            try {
+                setUploadingFoto(true);
+                const fd = new FormData();
+                fd.append('foto', file);
+                await leadService.uploadFoto(lead.id, fd);
+                toast.success('Foto salva!');
+                onRefresh && onRefresh(lead.id);
+            } catch (err) {
+                console.error(err);
+                toast.error('Erro ao salvar foto');
+            } finally {
+                setUploadingFoto(false);
+                e.target.value = '';
+            }
+        };
+
         if (!lead) return null;
+
         return (
             <div className="bg-gray-50 border-t border-gray-100">
                 {/* Info do Lead */}
                 <div className="p-4 space-y-3">
-                    {/* Foto grande */}
-                    {lead.fotoFachada && (
-                        <div className="flex justify-center">
-                            <img
-                                src={`${API_URL}${lead.fotoFachada}`}
-                                alt="Fachada"
-                                className="h-40 md:h-52 rounded-xl object-cover cursor-pointer border border-gray-200 shadow-sm"
-                                onClick={(e) => { e.stopPropagation(); setFotoPreview(`${API_URL}${lead.fotoFachada}`); }}
-                            />
-                        </div>
-                    )}
+                    {/* Foto grande + botão upload */}
+                    <div className="flex flex-col items-center gap-2">
+                        <input
+                            ref={fotoInputRef}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={handleFotoChange}
+                        />
+                        {lead.fotoFachada ? (
+                            <div className="relative">
+                                <img
+                                    src={`${API_URL}${lead.fotoFachada}`}
+                                    alt="Fachada"
+                                    className="h-40 md:h-52 rounded-xl object-cover cursor-pointer border border-gray-200 shadow-sm"
+                                    onClick={(e) => { e.stopPropagation(); setFotoPreview(`${API_URL}${lead.fotoFachada}`); }}
+                                />
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); fotoInputRef.current?.click(); }}
+                                    disabled={uploadingFoto}
+                                    className="absolute bottom-2 right-2 p-1.5 bg-black/60 rounded-full text-white hover:bg-black/80"
+                                    title="Trocar foto"
+                                >
+                                    {uploadingFoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); fotoInputRef.current?.click(); }}
+                                disabled={uploadingFoto}
+                                className="flex flex-col items-center gap-1.5 px-6 py-4 border-2 border-dashed border-orange-300 rounded-xl text-orange-500 hover:bg-orange-50 transition-colors"
+                            >
+                                {uploadingFoto ? <Loader2 className="h-6 w-6 animate-spin" /> : <Camera className="h-6 w-6" />}
+                                <span className="text-xs font-medium">{uploadingFoto ? 'Salvando...' : 'Tirar Foto da Fachada'}</span>
+                            </button>
+                        )}
+                    </div>
 
                     {/* Dados do lead em grid */}
                     <div className="grid grid-cols-2 gap-2 text-sm">
@@ -441,7 +491,7 @@ const ListaLeads = () => {
                                                     <Loader2 className="h-5 w-5 animate-spin mr-2" /> Carregando detalhes...
                                                 </div>
                                             ) : (
-                                                <LeadDetail lead={expandedLeadData} />
+                                                <LeadDetail lead={expandedLeadData} onRefresh={toggleLeadDetail} />
                                             )}
                                         </td>
                                     </tr>
@@ -546,7 +596,7 @@ const ListaLeads = () => {
                                     <Loader2 className="h-5 w-5 animate-spin mr-2" /> Carregando...
                                 </div>
                             ) : (
-                                <LeadDetail lead={expandedLeadData} />
+                                <LeadDetail lead={expandedLeadData} onRefresh={toggleLeadDetail} />
                             )
                         )}
                     </div>
