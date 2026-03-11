@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import DashboardAdminSection from './DashboardAdminSection';
 
 const DashboardVendedor = () => {
     const { user } = useAuth();
@@ -22,7 +23,7 @@ const DashboardVendedor = () => {
         if (isAdmin) {
             api.get('/vendedores').then(res => {
                 setVendedores(Array.isArray(res.data) ? res.data : []);
-            }).catch(() => {});
+            }).catch(() => { });
         }
     }, [isAdmin]);
 
@@ -109,6 +110,9 @@ const DashboardVendedor = () => {
                     )}
                 </div>
             </div>
+
+            {/* Seção Administrador */}
+            {isAdmin && <DashboardAdminSection />}
 
             {/* Atalhos Rápidos */}
             <h2 className="text-sm uppercase font-bold text-gray-500 tracking-wider mb-3">Ações Rápidas</h2>
