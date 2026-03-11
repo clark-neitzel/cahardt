@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import configService from '../../../services/configService';
-import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2 } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2, ScrollText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import RotasAtivasPreview from './RotasAtivasPreview';
 import { useAuth } from '../../../contexts/AuthContext';
 import api from '../../../services/api';
+import caixaService from '../../../services/caixaService';
 
 const TIPOS_PADRAO = [
     { value: 'VISITA', label: 'Visita Presencial' },
@@ -32,6 +33,10 @@ const Configuracoes = () => {
     const [resettingGroup, setResettingGroup] = useState(null);
     const podeResetar = user?.permissoes?.admin || user?.permissoes?.Pode_Resetar_Dados;
 
+    // Log de auditoria
+    const [auditLogs, setAuditLogs] = useState([]);
+    const isAdmin = user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Caixa;
+
     useEffect(() => { loadData(); }, []);
 
     const loadData = async () => {
@@ -45,11 +50,15 @@ const Configuracoes = () => {
             if (podeResetar) {
                 promises.push(api.get('/admin/reset-grupos').then(r => r.data).catch(() => []));
             }
-            const [cats, currentConfig, tiposConfig, grupos] = await Promise.all(promises);
+            if (isAdmin) {
+                promises.push(caixaService.getAuditLogs().catch(() => []));
+            }
+            const [cats, currentConfig, tiposConfig, grupos, logs] = await Promise.all(promises);
             setCategorias(cats);
             setSelectedCategorias(Array.isArray(currentConfig) ? currentConfig : []);
             setTipos(Array.isArray(tiposConfig) && tiposConfig.length > 0 ? tiposConfig : TIPOS_PADRAO);
             if (grupos) setResetGrupos(grupos);
+            if (logs) setAuditLogs(logs);
         } catch (error) {
             console.error('Erro ao carregar configurações:', error);
             setMessage({ type: 'error', text: 'Erro ao carregar dados.' });
@@ -312,6 +321,64 @@ const Configuracoes = () => {
                                 Limpar TODOS os Dados Transacionais
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Log de Auditoria ── */}
+            {isAdmin && (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-6 border-b border-gray-100 bg-gray-50">
+                        <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
+                            <ScrollText className="h-5 w-5 text-indigo-600" />
+                            Log de Auditoria
+                        </h2>
+                        <p className="text-sm text-gray-500 mt-0.5">Registro de ações administrativas no sistema (reversões de caixa, etc).</p>
+                    </div>
+                    <div className="p-6">
+                        {auditLogs.length === 0 ? (
+                            <p className="text-sm text-gray-400 text-center py-4">Nenhuma ação registrada.</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-gray-200 text-left text-gray-500">
+                                            <th className="py-2 pr-4 font-medium">Data/Hora</th>
+                                            <th className="py-2 pr-4 font-medium">Ação</th>
+                                            <th className="py-2 pr-4 font-medium">Caixa</th>
+                                            <th className="py-2 font-medium">Executado por</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {auditLogs.map(log => {
+                                            const acaoLabel = {
+                                                REVERTER_CONFERENCIA: 'Reverter Conferência',
+                                                REABRIR_CAIXA: 'Reabrir Caixa'
+                                            }[log.acao] || log.acao;
+                                            const acaoColor = log.acao === 'REABRIR_CAIXA'
+                                                ? 'bg-amber-100 text-amber-800'
+                                                : 'bg-orange-100 text-orange-800';
+                                            return (
+                                                <tr key={log.id} className="border-b border-gray-100 hover:bg-gray-50">
+                                                    <td className="py-2.5 pr-4 text-gray-600 whitespace-nowrap">
+                                                        {new Date(log.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                                                    </td>
+                                                    <td className="py-2.5 pr-4">
+                                                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${acaoColor}`}>
+                                                            {acaoLabel}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-2.5 pr-4 text-gray-700">
+                                                        {log.detalhes?.vendedor || '—'} — {log.detalhes?.data || ''}
+                                                    </td>
+                                                    <td className="py-2.5 text-gray-600">{log.usuarioNome}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

@@ -443,6 +443,117 @@ router.post('/conferir', checkEditor, async (req, res) => {
     }
 });
 
+// ── POST /reverter-conferencia — Reverte CONFERIDO → FECHADO ──
+router.post('/reverter-conferencia', async (req, res) => {
+    try {
+        const perms = req._perms || await getPerms(req.user.id);
+        if (!perms.admin && !perms.Pode_Reverter_Caixa) {
+            return res.status(403).json({ error: 'Sem permissão para reverter caixa.' });
+        }
+
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'ID do caixa obrigatório.' });
+
+        const caixaAtual = await prisma.caixaDiario.findUnique({
+            where: { id },
+            include: { vendedor: { select: { nome: true } } }
+        });
+        if (!caixaAtual) return res.status(404).json({ error: 'Caixa não encontrado.' });
+        if (caixaAtual.status !== 'CONFERIDO') {
+            return res.status(400).json({ error: 'Caixa não está conferido.' });
+        }
+
+        const [caixa] = await prisma.$transaction([
+            prisma.caixaDiario.update({
+                where: { id },
+                data: {
+                    status: 'FECHADO',
+                    conferidoPor: null,
+                    conferidoEm: null,
+                    obsAdmin: null
+                }
+            }),
+            prisma.auditLog.create({
+                data: {
+                    acao: 'REVERTER_CONFERENCIA',
+                    entidade: 'CaixaDiario',
+                    entidadeId: id,
+                    detalhes: JSON.stringify({
+                        vendedor: caixaAtual.vendedor?.nome,
+                        vendedorId: caixaAtual.vendedorId,
+                        data: caixaAtual.dataReferencia,
+                        statusAnterior: 'CONFERIDO',
+                        statusNovo: 'FECHADO'
+                    }),
+                    usuarioId: req.user.id,
+                    usuarioNome: req.user.nome || 'Admin'
+                }
+            })
+        ]);
+
+        res.json(caixa);
+    } catch (error) {
+        console.error('Erro ao reverter conferência:', error);
+        res.status(500).json({ error: 'Erro ao reverter conferência.' });
+    }
+});
+
+// ── POST /reabrir — Reverte FECHADO → ABERTO ──
+router.post('/reabrir', async (req, res) => {
+    try {
+        const perms = req._perms || await getPerms(req.user.id);
+        if (!perms.admin && !perms.Pode_Reverter_Caixa) {
+            return res.status(403).json({ error: 'Sem permissão para reabrir caixa.' });
+        }
+
+        const { id } = req.body;
+        if (!id) return res.status(400).json({ error: 'ID do caixa obrigatório.' });
+
+        const caixaAtual = await prisma.caixaDiario.findUnique({
+            where: { id },
+            include: { vendedor: { select: { nome: true } } }
+        });
+        if (!caixaAtual) return res.status(404).json({ error: 'Caixa não encontrado.' });
+        if (caixaAtual.status !== 'FECHADO') {
+            return res.status(400).json({ error: 'Caixa não está fechado.' });
+        }
+
+        const [caixa] = await prisma.$transaction([
+            prisma.caixaDiario.update({
+                where: { id },
+                data: {
+                    status: 'ABERTO',
+                    totalDespesas: null,
+                    totalRecebidoCaixa: null,
+                    totalRecebidoOutros: null,
+                    valorAPrestar: null
+                }
+            }),
+            prisma.auditLog.create({
+                data: {
+                    acao: 'REABRIR_CAIXA',
+                    entidade: 'CaixaDiario',
+                    entidadeId: id,
+                    detalhes: JSON.stringify({
+                        vendedor: caixaAtual.vendedor?.nome,
+                        vendedorId: caixaAtual.vendedorId,
+                        data: caixaAtual.dataReferencia,
+                        statusAnterior: 'FECHADO',
+                        statusNovo: 'ABERTO'
+                    }),
+                    usuarioId: req.user.id,
+                    usuarioNome: req.user.nome || 'Admin'
+                }
+            })
+        ]);
+
+        res.json(caixa);
+    } catch (error) {
+        console.error('Erro ao reabrir caixa:', error);
+        res.status(500).json({ error: 'Erro ao reabrir caixa.' });
+    }
+});
+
 // ── PATCH /entrega-conferir — Marcar entrega como conferida ──
 router.patch('/entrega-conferir', checkEditor, async (req, res) => {
     try {
@@ -666,6 +777,29 @@ router.get('/relatorio', async (req, res) => {
     } catch (error) {
         console.error('Erro ao gerar relatório:', error);
         res.status(500).json({ error: 'Erro ao gerar relatório.' });
+    }
+});
+
+// ── GET /audit-logs — Log de auditoria de ações no caixa ──
+router.get('/audit-logs', async (req, res) => {
+    try {
+        const perms = req._perms || await getPerms(req.user.id);
+        if (!perms.admin && !perms.Pode_Editar_Caixa) {
+            return res.status(403).json({ error: 'Sem permissão.' });
+        }
+
+        const logs = await prisma.auditLog.findMany({
+            orderBy: { createdAt: 'desc' },
+            take: 50
+        });
+
+        res.json(logs.map(l => ({
+            ...l,
+            detalhes: l.detalhes ? JSON.parse(l.detalhes) : null
+        })));
+    } catch (error) {
+        console.error('Erro ao buscar audit logs:', error);
+        res.status(500).json({ error: 'Erro ao buscar logs.' });
     }
 });
 

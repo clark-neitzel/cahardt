@@ -28,6 +28,21 @@ const caixaService = {
         return response.data;
     },
 
+    reverterConferencia: async (id) => {
+        const response = await api.post('/caixa/reverter-conferencia', { id });
+        return response.data;
+    },
+
+    reabrirCaixa: async (id) => {
+        const response = await api.post('/caixa/reabrir', { id });
+        return response.data;
+    },
+
+    getAuditLogs: async () => {
+        const response = await api.get('/caixa/audit-logs');
+        return response.data;
+    },
+
     getRelatorio: async (data, vendedorId) => {
         const params = { data };
         if (vendedorId) params.vendedorId = vendedorId;

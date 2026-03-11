@@ -22,6 +22,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Editar_Caixa: false,
     Pode_Definir_Adiantamento: false,
     Pode_Ver_Historico_Caixa: false,
+    Pode_Reverter_Caixa: false,
     // Pedidos Especiais
     Pode_Criar_Especial: false,
     Pode_Aprovar_Especial: false,
@@ -312,6 +313,19 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <div>
                                     <span className="text-amber-900 font-bold block">Pode Ver Caixas de Outros Dias</span>
                                     <span className="text-amber-700 text-xs">Permite navegar por datas passadas ou futuras no caixa diário. Sem esta permissão, o usuário vê apenas o caixa de hoje.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-red-50 rounded transition-colors col-span-full">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-red-300 text-red-600 focus:ring-red-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Reverter_Caixa}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Reverter_Caixa: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-red-900 font-bold block">Pode Reverter Caixa</span>
+                                    <span className="text-red-700 text-xs">Nível crítico: Permite reverter a conferência e reabrir caixas já fechados. Todas as ações são registradas no log de auditoria.</span>
                                 </div>
                             </label>
                         </div>

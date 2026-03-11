@@ -732,6 +732,25 @@ model CaixaEntregaConferida {
 }
 
 // =============================================
+// LOG DE AUDITORIA (AÇÕES ADMINISTRATIVAS)
+// =============================================
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  acao        String   // REVERTER_CONFERENCIA | REABRIR_CAIXA
+  entidade    String   // "CaixaDiario"
+  entidadeId  String   @map("entidade_id")
+  detalhes    String?  @db.Text
+  usuarioId   String   @map("usuario_id")
+  usuarioNome String   @map("usuario_nome")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([entidade, entidadeId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// =============================================
 // MÓDULO MANUTENÇÃO DE VEÍCULOS
 // =============================================
 

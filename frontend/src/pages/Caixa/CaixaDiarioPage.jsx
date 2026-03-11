@@ -5,7 +5,7 @@ import vendedorService from '../../services/vendedorService';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     Wallet, Truck, Fuel, Package, CheckCircle, AlertTriangle,
-    Lock, Printer, ClipboardCheck, ChevronDown, ChevronUp, ReceiptText, Plus
+    Lock, Printer, ClipboardCheck, ChevronDown, ChevronUp, ReceiptText, Plus, Undo2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import NovaDespesaModal from './NovaDespesaModal';
@@ -30,6 +30,7 @@ const CaixaDiarioPage = () => {
     const podeVerHistorico = user?.permissoes?.admin
         || user?.permissoes?.Pode_Editar_Caixa
         || user?.permissoes?.Pode_Ver_Historico_Caixa;
+    const podeReverter = user?.permissoes?.admin || user?.permissoes?.Pode_Reverter_Caixa;
 
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
@@ -129,6 +130,28 @@ const CaixaDiarioPage = () => {
             fetchResumo();
         } catch (error) {
             toast.error('Erro ao marcar entrega.');
+        }
+    };
+
+    const handleReverterConferencia = async () => {
+        if (!confirm('Reverter a conferência deste caixa? O status voltará para FECHADO.')) return;
+        try {
+            await caixaService.reverterConferencia(resumo.caixa.id);
+            toast.success('Conferência revertida!');
+            fetchResumo();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao reverter conferência.');
+        }
+    };
+
+    const handleReabrirCaixa = async () => {
+        if (!confirm('Reabrir este caixa? O status voltará para ABERTO e os totais serão recalculados ao fechar novamente.')) return;
+        try {
+            await caixaService.reabrirCaixa(resumo.caixa.id);
+            toast.success('Caixa reaberto!');
+            fetchResumo();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao reabrir caixa.');
         }
     };
 
@@ -535,6 +558,24 @@ const CaixaDiarioPage = () => {
                                     <ClipboardCheck className="h-5 w-5 mr-2" /> Conferir Caixa
                                 </button>
                             </div>
+                        )}
+
+                        {podeReverter && caixa?.status === 'CONFERIDO' && (
+                            <button
+                                onClick={handleReverterConferencia}
+                                className="inline-flex items-center justify-center px-5 py-2.5 bg-amber-500 text-white rounded-md font-medium hover:bg-amber-600 text-sm"
+                            >
+                                <Undo2 className="h-4 w-4 mr-2" /> Reverter Conferência
+                            </button>
+                        )}
+
+                        {podeReverter && caixa?.status === 'FECHADO' && (
+                            <button
+                                onClick={handleReabrirCaixa}
+                                className="inline-flex items-center justify-center px-5 py-2.5 bg-amber-500 text-white rounded-md font-medium hover:bg-amber-600 text-sm"
+                            >
+                                <Undo2 className="h-4 w-4 mr-2" /> Reabrir Caixa
+                            </button>
                         )}
                     </div>
                 </div>
