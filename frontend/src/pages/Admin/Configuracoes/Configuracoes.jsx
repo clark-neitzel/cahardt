@@ -42,18 +42,13 @@ const Configuracoes = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const promises = [
+            const [cats, currentConfig, tiposConfig, grupos, logs] = await Promise.all([
                 configService.getCategorias(),
                 configService.get('categorias_vendas'),
-                configService.get('tipos_atendimento').catch(() => null)
-            ];
-            if (podeResetar) {
-                promises.push(api.get('/admin/reset-grupos').then(r => r.data).catch(() => []));
-            }
-            if (isAdmin) {
-                promises.push(caixaService.getAuditLogs().catch(() => []));
-            }
-            const [cats, currentConfig, tiposConfig, grupos, logs] = await Promise.all(promises);
+                configService.get('tipos_atendimento').catch(() => null),
+                podeResetar ? api.get('/admin/reset-grupos').then(r => r.data).catch(() => []) : Promise.resolve(null),
+                isAdmin ? caixaService.getAuditLogs().catch(() => []) : Promise.resolve(null)
+            ]);
             setCategorias(cats);
             setSelectedCategorias(Array.isArray(currentConfig) ? currentConfig : []);
             setTipos(Array.isArray(tiposConfig) && tiposConfig.length > 0 ? tiposConfig : TIPOS_PADRAO);
