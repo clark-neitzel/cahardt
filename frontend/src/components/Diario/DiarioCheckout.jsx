@@ -56,21 +56,26 @@ const DiarioCheckout = () => {
 
     return (
         <>
+            {/* Botão Sidebar Desktop — ícone sempre visível, texto aparece no hover da sidebar */}
             <button
                 onClick={() => setIsOpen(true)}
-                className="hidden sm:inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                className="hidden md:flex items-center gap-3 mx-2 px-3 py-2 rounded-lg text-[13px] text-red-600 bg-red-50 hover:bg-red-100 transition-colors w-[calc(100%-16px)]"
+                title={`Finalizar Expediente — ${diario.veiculo?.placa || ''}`}
+            >
+                <LogOut className="h-5 w-5 shrink-0" />
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap overflow-hidden font-semibold">
+                    Finalizar Expediente
+                </span>
+            </button>
+
+            {/* Botão Mobile — aparece no topbar */}
+            <button
+                onClick={() => setIsOpen(true)}
+                className="md:hidden inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200"
                 title="Finalizar o Dia e Informar KM Final"
             >
                 <LogOut className="h-4 w-4 mr-1.5" />
-                Finalizar Expediente
-            </button>
-
-            {/* Mobile Version inside Sidebar */}
-            <button
-                onClick={() => setIsOpen(true)}
-                className="sm:hidden w-full text-left bg-red-50 border-l-4 border-red-500 text-red-700 block pl-3 pr-4 py-2 text-base font-medium hover:bg-red-100"
-            >
-                Finalizar Expediente ({diario.veiculo?.placa})
+                Finalizar
             </button>
 
             {isOpen && (
