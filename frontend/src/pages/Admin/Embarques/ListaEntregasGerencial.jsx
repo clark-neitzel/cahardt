@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Search, Filter, RefreshCw, X, Truck, Calendar, User, UserCheck, AlertTriangle } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Search, Filter, RefreshCw, X, Truck, Calendar, User, AlertTriangle } from 'lucide-react';
 import entregasService from '../../../services/entregasService';
 import vendedorService from '../../../services/vendedorService';
+import ModalDetalheEntrega from './ModalDetalheEntrega';
 
 const ListaEntregasGerencial = () => {
     const [searchParams, setSearchParams] = useSearchParams();
-    const navigate = useNavigate();
+    const [entregaSelecionada, setEntregaSelecionada] = useState(null);
 
     // Helpers LocalStorage
     const getSaved = (key, defaultVal) => {
@@ -129,7 +130,7 @@ const ListaEntregasGerencial = () => {
     };
 
     return (
-        <div className="container mx-auto px-4 py-4 md:py-8">
+        <>
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -290,11 +291,10 @@ const ListaEntregasGerencial = () => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <button
-                                            // Ao clicar, podemos ir pros detalhes do pedido! Já que a viagem é por pedido.
-                                            onClick={() => navigate(`/pedidos/editar/${entrega.id}`)}
+                                            onClick={() => setEntregaSelecionada(entrega.id)}
                                             className="text-primary hover:text-blue-900 font-semibold"
                                         >
-                                            Ver Pedido
+                                            Ver Detalhes
                                         </button>
                                     </td>
                                 </tr>
@@ -338,10 +338,10 @@ const ListaEntregasGerencial = () => {
                         </div>
 
                         <button
-                            onClick={() => navigate(`/pedidos/editar/${entrega.id}`)}
+                            onClick={() => setEntregaSelecionada(entrega.id)}
                             className="mt-3 w-full bg-blue-50 text-blue-700 py-1.5 rounded-lg text-xs font-bold border border-blue-100"
                         >
-                            Ver Pedido
+                            Ver Detalhes
                         </button>
                     </div>
                 ))}
@@ -369,7 +369,14 @@ const ListaEntregasGerencial = () => {
                     </button>
                 </div>
             </div>
-        </div>
+
+            {entregaSelecionada && (
+                <ModalDetalheEntrega
+                    entregaId={entregaSelecionada}
+                    onClose={() => setEntregaSelecionada(null)}
+                />
+            )}
+        </>
     );
 };
 

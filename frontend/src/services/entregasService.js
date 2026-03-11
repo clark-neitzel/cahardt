@@ -9,6 +9,10 @@ const entregasService = {
         const response = await api.get('/entregas/concluidas');
         return response.data;
     },
+    getById: async (id) => {
+        const response = await api.get(`/entregas/${id}`);
+        return response.data;
+    },
     getGerencial: async (params) => {
         const response = await api.get('/entregas/gerencial', { params });
         return response.data;

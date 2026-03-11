@@ -160,8 +160,42 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
 });
 
 // ==========================================
-// 3. MOTORISTA: EXECUTAR A ENTREGA / RECEBER
+// 2b. DETALHE DE UMA ENTREGA ESPECÍFICA
 // ==========================================
+router.get('/:id', verificarAuth, checkAuditor, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const pedido = await prisma.pedido.findUnique({
+            where: { id },
+            include: {
+                cliente: { select: { NomeFantasia: true, Nome: true, Documento: true, End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, Telefone: true, Telefone_Celular: true } },
+                embarque: { select: { numero: true, responsavel: { select: { id: true, nome: true } } } },
+                vendedor: { select: { id: true, nome: true } },
+                itens: { include: { produto: { select: { id: true, nome: true, unidade: true } } } },
+                pagamentosReais: true,
+                itensDevolvidos: { include: { produto: { select: { id: true, nome: true, unidade: true } } } }
+            }
+        });
+
+        if (!pedido) return res.status(404).json({ error: 'Entrega não localizada.' });
+
+        // Resolve nome da condição de pagamento
+        let condicaoNome = pedido.nomeCondicaoPagamento || pedido.opcaoCondicaoPagamento;
+        if (!condicaoNome && pedido.opcaoCondicaoPagamento) {
+            const tabela = await prisma.tabelaPreco.findFirst({
+                where: { opcaoCondicao: pedido.opcaoCondicaoPagamento },
+                select: { nomeCondicao: true }
+            });
+            if (tabela) condicaoNome = tabela.nomeCondicao;
+        }
+
+        res.json({ ...pedido, condicaoNome });
+    } catch (error) {
+        console.error('Erro ao detalhar entrega:', error);
+        res.status(500).json({ error: 'Erro ao buscar detalhes da entrega.' });
+    }
+});
+
 router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, res) => {
     try {
         const { id } = req.params;
