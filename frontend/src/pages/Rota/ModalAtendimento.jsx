@@ -49,8 +49,6 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
         ]).then(([tiposData, acoesData]) => {
             const finalTipos = Array.isArray(tiposData) && tiposData.length > 0 ? tiposData : TIPOS_PADRAO;
             setTipos(finalTipos);
-            // Seleciona o primeiro tipo automaticamente
-            setForm(f => ({ ...f, tipoAtendimento: f.tipoAtendimento || finalTipos[0]?.value || '' }));
             if (Array.isArray(acoesData) && acoesData.length > 0) {
                 setAcoes(acoesData);
             }
