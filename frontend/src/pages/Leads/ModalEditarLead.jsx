@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, MapPin, Loader, Mic, MicOff } from 'lucide-react';
 import leadService from '../../services/leadService';
 import vendedorService from '../../services/vendedorService';
+import atendimentoService from '../../services/atendimentoService';
 import configService from '../../services/configService';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -38,18 +39,22 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, user }) => {
     });
 
     const [origens, setOrigens] = useState([]);
+    const [acoes, setAcoes] = useState([]);
     const [categoriasCliente, setCategoriasCliente] = useState([]);
     const [vendedores, setVendedores] = useState([]);
+    const [acaoAtendimento, setAcaoAtendimento] = useState('');
     const [capturandoGps, setCapturandoGps] = useState(false);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         Promise.all([
             configService.get('origens_lead').catch(() => []),
+            configService.get('acoes_atendimento').catch(() => []),
             api.get('/categorias-cliente').then(r => r.data).catch(() => []),
             podeEscolherVendedor ? vendedorService.listar().catch(() => []) : Promise.resolve([])
-        ]).then(([orig, cats, vends]) => {
+        ]).then(([orig, act, cats, vends]) => {
             setOrigens(Array.isArray(orig) && orig.length > 0 ? orig : []);
+            setAcoes(Array.isArray(act) && act.length > 0 ? act : []);
             setCategoriasCliente(Array.isArray(cats) ? cats.filter(c => c.ativo) : []);
             setVendedores(Array.isArray(vends) ? vends : []);
         });
@@ -160,6 +165,19 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, user }) => {
                 diasVisita: form.diasVisita.join(','),
                 categoriaClienteId: form.categoriaClienteId || null,
             });
+
+            // Registrar atendimento se uma ação foi selecionada
+            if (acaoAtendimento) {
+                await atendimentoService.registrar({
+                    tipo: acaoAtendimento,
+                    observacao: `Ação: ${acoes.find(a => a.value === acaoAtendimento)?.label || acaoAtendimento}`,
+                    leadId: lead.id,
+                    idVendedor: user?.id,
+                    etapaAnterior: lead.etapa,
+                    etapaNova: lead.etapa,
+                });
+            }
+
             toast.success('Lead atualizado!');
             onSalvo && onSalvo();
         } catch (e) {
@@ -233,6 +251,19 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, user }) => {
                             </select>
                         </div>
                     </div>
+
+                    {/* Ação do Atendimento */}
+                    {acoes.length > 0 && (
+                        <div>
+                            <label className="block text-[13px] font-semibold text-gray-700 mb-1">Ação do Atendimento</label>
+                            <select value={acaoAtendimento} onChange={e => setAcaoAtendimento(e.target.value)}
+                                className="block w-full border border-orange-300 rounded-lg p-3 bg-orange-50 text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500">
+                                <option value="">Nenhuma ação (apenas salvar)</option>
+                                {acoes.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                            </select>
+                            <p className="text-[11px] text-gray-400 mt-1">Selecione para registrar um atendimento ao salvar.</p>
+                        </div>
+                    )}
 
                     {/* Vendedor Responsável (redirecionar) */}
                     {podeEscolherVendedor && (
