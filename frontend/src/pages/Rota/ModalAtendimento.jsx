@@ -31,7 +31,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
     const [tipos, setTipos] = useState(TIPOS_PADRAO);
     const [acoes, setAcoes] = useState(ACOES_PADRAO);
     const [form, setForm] = useState({
-        tipoAtendimento: 'VISITA',
+        tipoAtendimento: '',
         acaoAtendimento: '',
         observacao: '',
         etapaNova: isLead ? item.etapa : '',
@@ -47,12 +47,10 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
             configService.get('tipos_atendimento').catch(() => null),
             configService.get('acoes_atendimento').catch(() => null)
         ]).then(([tiposData, acoesData]) => {
-            if (Array.isArray(tiposData) && tiposData.length > 0) {
-                setTipos(tiposData);
-                if (!tiposData.some(t => t.value === 'VISITA')) {
-                    setForm(f => ({ ...f, tipoAtendimento: tiposData[0]?.value || '' }));
-                }
-            }
+            const finalTipos = Array.isArray(tiposData) && tiposData.length > 0 ? tiposData : TIPOS_PADRAO;
+            setTipos(finalTipos);
+            // Seleciona o primeiro tipo automaticamente
+            setForm(f => ({ ...f, tipoAtendimento: f.tipoAtendimento || finalTipos[0]?.value || '' }));
             if (Array.isArray(acoesData) && acoesData.length > 0) {
                 setAcoes(acoesData);
             }
@@ -232,7 +230,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
                     </div>
 
                     {/* Ação do Atendimento */}
-                    {isLead && acoes.length > 0 && (
+                    {acoes.length > 0 && (
                         <div>
                             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Ação do Atendimento</label>
                             <select
