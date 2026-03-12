@@ -253,6 +253,24 @@ const ListaLeads = () => {
                                 <p className="text-gray-800 font-medium">{lead.vendedor.nome}</p>
                             </div>
                         )}
+                        {lead.cidade && (
+                            <div className="bg-white rounded-lg p-2.5 border border-gray-100">
+                                <p className="text-[10px] text-gray-400 uppercase font-medium">Cidade</p>
+                                <p className="text-gray-800 font-medium">{lead.cidade}</p>
+                            </div>
+                        )}
+                        {lead.origemLead && (
+                            <div className="bg-white rounded-lg p-2.5 border border-gray-100">
+                                <p className="text-[10px] text-gray-400 uppercase font-medium">Origem</p>
+                                <p className="text-gray-800 font-medium">{lead.origemLead}</p>
+                            </div>
+                        )}
+                        {lead.categoriaCliente && (
+                            <div className="bg-white rounded-lg p-2.5 border border-gray-100">
+                                <p className="text-[10px] text-gray-400 uppercase font-medium">Categoria</p>
+                                <p className="text-gray-800 font-medium">{lead.categoriaCliente.nome}</p>
+                            </div>
+                        )}
                     </div>
 
                     {lead.formasAtendimento?.length > 0 && (
@@ -331,12 +349,14 @@ const ListaLeads = () => {
 
                 {/* Ações */}
                 <div className="px-4 pb-4 flex flex-col gap-2">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setModalEditar(lead); }}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-orange-700 bg-orange-50 border border-orange-200 rounded-xl hover:bg-orange-100 transition-colors"
-                    >
-                        ✏️ Editar Lead
-                    </button>
+                    {(user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Lead) && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setModalEditar(lead); }}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-orange-700 bg-orange-50 border border-orange-200 rounded-xl hover:bg-orange-100 transition-colors"
+                        >
+                            ✏️ Editar Lead
+                        </button>
+                    )}
                     {lead.etapa !== 'CONVERTIDO' && lead.etapa !== 'FINALIZADO' && (
                         <button
                             onClick={(e) => { e.stopPropagation(); setModalReferenciar(lead); }}
@@ -423,6 +443,9 @@ const ListaLeads = () => {
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estabelecimento</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contato</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Etapa</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cidade</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Origem</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoria</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendedor</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Criado em</th>
                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
@@ -430,9 +453,9 @@ const ListaLeads = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {loading ? (
-                            <tr><td colSpan="8" className="px-4 py-8 text-center text-gray-500">Carregando...</td></tr>
+                            <tr><td colSpan="11" className="px-4 py-8 text-center text-gray-500">Carregando...</td></tr>
                         ) : leads.length === 0 ? (
-                            <tr><td colSpan="8" className="px-4 py-8 text-center text-gray-500">Nenhum lead encontrado.</td></tr>
+                            <tr><td colSpan="11" className="px-4 py-8 text-center text-gray-500">Nenhum lead encontrado.</td></tr>
                         ) : leads.map(lead => (
                             <React.Fragment key={lead.id}>
                                 <tr
@@ -470,6 +493,9 @@ const ListaLeads = () => {
                                             {lead.etapa}
                                         </span>
                                     </td>
+                                    <td className="px-4 py-3 text-sm text-gray-500">{lead.cidade || '-'}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-500">{lead.origemLead || '-'}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-500">{lead.categoriaCliente?.nome || '-'}</td>
                                     <td className="px-4 py-3 text-sm text-gray-500">{lead.vendedor?.nome || '-'}</td>
                                     <td className="px-4 py-3 text-sm text-gray-400">{formatDate(lead.createdAt)}</td>
                                     <td className="px-4 py-3 text-right">
@@ -493,7 +519,7 @@ const ListaLeads = () => {
                                 </tr>
                                 {expandedLeadId === lead.id && (
                                     <tr>
-                                        <td colSpan="8" className="p-0">
+                                        <td colSpan="11" className="p-0">
                                             {loadingDetail ? (
                                                 <div className="flex items-center justify-center py-6 text-gray-400">
                                                     <Loader2 className="h-5 w-5 animate-spin mr-2" /> Carregando detalhes...
@@ -572,6 +598,12 @@ const ListaLeads = () => {
                                                 <Phone className="h-3 w-3" /> {lead.whatsapp}
                                             </a>
                                         )}
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-x-2 mt-1 text-[11px] text-gray-400">
+                                        {lead.cidade && <span>{lead.cidade}</span>}
+                                        {lead.origemLead && <span>· {lead.origemLead}</span>}
+                                        {lead.categoriaCliente?.nome && <span>· {lead.categoriaCliente.nome}</span>}
                                     </div>
 
                                     {lead.vendedor && (
@@ -658,6 +690,7 @@ const ListaLeads = () => {
             {modalEditar && (
                 <ModalEditarLead
                     lead={modalEditar}
+                    user={user}
                     onClose={() => setModalEditar(null)}
                     onSalvo={() => {
                         setModalEditar(null);

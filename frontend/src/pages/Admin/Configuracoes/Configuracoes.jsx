@@ -1,11 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import configService from '../../../services/configService';
-import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2, ScrollText } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2, ScrollText, MapPin, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import RotasAtivasPreview from './RotasAtivasPreview';
 import { useAuth } from '../../../contexts/AuthContext';
 import api from '../../../services/api';
 import caixaService from '../../../services/caixaService';
+
+const ORIGENS_PADRAO = [
+    { value: 'VISITA_VENDEDOR', label: 'Visita do vendedor' },
+    { value: 'INDICACAO', label: 'Indicação' },
+    { value: 'WHATSAPP', label: 'WhatsApp' },
+    { value: 'CLIENTE_PEDIU_CONTATO', label: 'Cliente que pediu contato' },
+    { value: 'PESQUISA', label: 'Pesquisa' },
+    { value: 'REATIVACAO', label: 'Reativação cliente antigo' },
+];
+
+const ACOES_PADRAO = [
+    { value: 'NOVO', label: 'Novo' },
+    { value: 'VISITAR', label: 'Visitar' },
+    { value: 'MANDAR_WHATSAPP', label: 'Mandar WhatsApp' },
+    { value: 'LIGAR', label: 'Ligar' },
+    { value: 'LEVAR_AMOSTRA', label: 'Levar amostra' },
+    { value: 'AGUARDO_RETORNO', label: 'Aguardo retorno' },
+    { value: 'SEM_POTENCIAL', label: 'Sem potencial' },
+];
 
 const TIPOS_PADRAO = [
     { value: 'VISITA', label: 'Visita Presencial' },
@@ -28,6 +47,16 @@ const Configuracoes = () => {
     const [novoTipo, setNovoTipo] = useState('');
     const [savingTipos, setSavingTipos] = useState(false);
 
+    // Origens do Lead
+    const [origens, setOrigens] = useState([]);
+    const [novaOrigem, setNovaOrigem] = useState('');
+    const [savingOrigens, setSavingOrigens] = useState(false);
+
+    // Ações do Atendimento
+    const [acoes, setAcoes] = useState([]);
+    const [novaAcao, setNovaAcao] = useState('');
+    const [savingAcoes, setSavingAcoes] = useState(false);
+
     // Reset de dados
     const [resetGrupos, setResetGrupos] = useState([]);
     const [resettingGroup, setResettingGroup] = useState(null);
@@ -42,16 +71,20 @@ const Configuracoes = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [cats, currentConfig, tiposConfig, grupos, logs] = await Promise.all([
+            const [cats, currentConfig, tiposConfig, origensConfig, acoesConfig, grupos, logs] = await Promise.all([
                 configService.getCategorias(),
                 configService.get('categorias_vendas'),
                 configService.get('tipos_atendimento').catch(() => null),
+                configService.get('origens_lead').catch(() => null),
+                configService.get('acoes_atendimento').catch(() => null),
                 podeResetar ? api.get('/admin/reset-grupos').then(r => r.data).catch(() => []) : Promise.resolve(null),
                 isAdmin ? caixaService.getAuditLogs().catch(() => []) : Promise.resolve(null)
             ]);
             setCategorias(cats);
             setSelectedCategorias(Array.isArray(currentConfig) ? currentConfig : []);
             setTipos(Array.isArray(tiposConfig) && tiposConfig.length > 0 ? tiposConfig : TIPOS_PADRAO);
+            setOrigens(Array.isArray(origensConfig) && origensConfig.length > 0 ? origensConfig : ORIGENS_PADRAO);
+            setAcoes(Array.isArray(acoesConfig) && acoesConfig.length > 0 ? acoesConfig : ACOES_PADRAO);
             if (grupos) setResetGrupos(grupos);
             if (logs) setAuditLogs(logs);
         } catch (error) {
@@ -151,6 +184,60 @@ const Configuracoes = () => {
         } finally {
             setSavingTipos(false);
         }
+    };
+
+    // Origens do Lead handlers
+    const handleAdicionarOrigem = () => {
+        const label = novaOrigem.trim();
+        if (!label) return;
+        const value = label.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+        if (origens.some(o => o.value === value || o.label.toLowerCase() === label.toLowerCase())) {
+            toast.error('Já existe uma origem com este nome.');
+            return;
+        }
+        setOrigens(prev => [...prev, { value, label }]);
+        setNovaOrigem('');
+    };
+    const handleRemoverOrigem = (value) => {
+        if (ORIGENS_PADRAO.some(o => o.value === value)) {
+            if (!window.confirm('Esta é uma origem padrão. Tem certeza que deseja remover?')) return;
+        }
+        setOrigens(prev => prev.filter(o => o.value !== value));
+    };
+    const handleSalvarOrigens = async () => {
+        try {
+            setSavingOrigens(true);
+            await configService.save('origens_lead', origens);
+            toast.success('Origens do lead salvas!');
+        } catch { toast.error('Erro ao salvar origens.'); }
+        finally { setSavingOrigens(false); }
+    };
+
+    // Ações do Atendimento handlers
+    const handleAdicionarAcao = () => {
+        const label = novaAcao.trim();
+        if (!label) return;
+        const value = label.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+        if (acoes.some(a => a.value === value || a.label.toLowerCase() === label.toLowerCase())) {
+            toast.error('Já existe uma ação com este nome.');
+            return;
+        }
+        setAcoes(prev => [...prev, { value, label }]);
+        setNovaAcao('');
+    };
+    const handleRemoverAcao = (value) => {
+        if (ACOES_PADRAO.some(a => a.value === value)) {
+            if (!window.confirm('Esta é uma ação padrão. Tem certeza que deseja remover?')) return;
+        }
+        setAcoes(prev => prev.filter(a => a.value !== value));
+    };
+    const handleSalvarAcoes = async () => {
+        try {
+            setSavingAcoes(true);
+            await configService.save('acoes_atendimento', acoes);
+            toast.success('Ações do atendimento salvas!');
+        } catch { toast.error('Erro ao salvar ações.'); }
+        finally { setSavingAcoes(false); }
     };
 
     if (loading) return <div className="p-8 text-center text-gray-500">Carregando configurações...</div>;
@@ -261,6 +348,100 @@ const Configuracoes = () => {
                             className="flex items-center gap-1.5 px-5 py-2 bg-primary text-white rounded-md font-medium shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm">
                             <Save className="h-4 w-4" />
                             {savingTipos ? 'Salvando...' : 'Salvar Tipos'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Origens do Lead ── */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-6 border-b border-gray-100 bg-gray-50">
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
+                            <MapPin className="h-5 w-5 text-teal-600" />
+                            Origens do Lead
+                        </h2>
+                        <p className="text-sm text-gray-500 mt-0.5">De onde vieram os leads captados. Usado no cadastro de novos leads.</p>
+                    </div>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                        {origens.map(o => {
+                            const isPadrao = ORIGENS_PADRAO.some(p => p.value === o.value);
+                            return (
+                                <div key={o.value} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border ${isPadrao ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                                    {o.label}
+                                    {isPadrao && <span className="text-[9px] text-teal-400 font-normal">(padrão)</span>}
+                                    <button onClick={() => handleRemoverOrigem(o.value)} className="ml-0.5 text-gray-400 hover:text-red-500 transition-colors">
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            );
+                        })}
+                        {origens.length === 0 && <p className="text-sm text-gray-400 italic">Nenhuma origem cadastrada.</p>}
+                    </div>
+                    <div className="flex gap-2 pt-2 border-t border-gray-100">
+                        <input type="text" value={novaOrigem} onChange={e => setNovaOrigem(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleAdicionarOrigem(); }}
+                            placeholder="Ex: Rede social, Feira, Parceiro..."
+                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-400 focus:border-transparent outline-none" />
+                        <button onClick={handleAdicionarOrigem} disabled={!novaOrigem.trim()}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-semibold hover:bg-teal-700 disabled:opacity-50 transition-colors">
+                            <Plus className="h-4 w-4" /> Adicionar
+                        </button>
+                    </div>
+                    <div className="flex justify-end">
+                        <button onClick={handleSalvarOrigens} disabled={savingOrigens}
+                            className="flex items-center gap-1.5 px-5 py-2 bg-primary text-white rounded-md font-medium shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm">
+                            <Save className="h-4 w-4" />
+                            {savingOrigens ? 'Salvando...' : 'Salvar Origens'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Ações do Atendimento ── */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-6 border-b border-gray-100 bg-gray-50">
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
+                            <Zap className="h-5 w-5 text-orange-600" />
+                            Ações do Atendimento
+                        </h2>
+                        <p className="text-sm text-gray-500 mt-0.5">Próximos passos/status que podem ser atribuídos em leads, atendimentos e entregas.</p>
+                    </div>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                        {acoes.map(a => {
+                            const isPadrao = ACOES_PADRAO.some(p => p.value === a.value);
+                            return (
+                                <div key={a.value} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border ${isPadrao ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                                    {a.label}
+                                    {isPadrao && <span className="text-[9px] text-orange-400 font-normal">(padrão)</span>}
+                                    <button onClick={() => handleRemoverAcao(a.value)} className="ml-0.5 text-gray-400 hover:text-red-500 transition-colors">
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            );
+                        })}
+                        {acoes.length === 0 && <p className="text-sm text-gray-400 italic">Nenhuma ação cadastrada.</p>}
+                    </div>
+                    <div className="flex gap-2 pt-2 border-t border-gray-100">
+                        <input type="text" value={novaAcao} onChange={e => setNovaAcao(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleAdicionarAcao(); }}
+                            placeholder="Ex: Enviar proposta, Agendar reunião..."
+                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none" />
+                        <button onClick={handleAdicionarAcao} disabled={!novaAcao.trim()}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700 disabled:opacity-50 transition-colors">
+                            <Plus className="h-4 w-4" /> Adicionar
+                        </button>
+                    </div>
+                    <div className="flex justify-end">
+                        <button onClick={handleSalvarAcoes} disabled={savingAcoes}
+                            className="flex items-center gap-1.5 px-5 py-2 bg-primary text-white rounded-md font-medium shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm">
+                            <Save className="h-4 w-4" />
+                            {savingAcoes ? 'Salvando...' : 'Salvar Ações'}
                         </button>
                     </div>
                 </div>

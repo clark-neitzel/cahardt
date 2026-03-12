@@ -1,6 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, MapPin, Loader, Mic, MicOff } from 'lucide-react';
 import leadService from '../../services/leadService';
+import vendedorService from '../../services/vendedorService';
+import configService from '../../services/configService';
+import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 const DIAS_OPCOES = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
@@ -10,7 +13,10 @@ const CANAIS = [
     { value: 'TELEFONE', label: 'Telefone' },
 ];
 
-const ModalEditarLead = ({ lead, onClose, onSalvo }) => {
+const ModalEditarLead = ({ lead, onClose, onSalvo, user }) => {
+    const perms = user?.permissoes || {};
+    const podeEscolherVendedor = perms.admin || perms.pedidos?.clientes === 'todos';
+
     const diasIniciais = lead.diasVisita
         ? lead.diasVisita.split(',').map(d => d.trim()).filter(Boolean)
         : [];
@@ -25,10 +31,29 @@ const ModalEditarLead = ({ lead, onClose, onSalvo }) => {
         formasAtendimento: lead.formasAtendimento || [],
         pontoGps: lead.pontoGps || '',
         observacoes: lead.observacoes || '',
+        cidade: lead.cidade || '',
+        origemLead: lead.origemLead || '',
+        categoriaClienteId: lead.categoriaClienteId || '',
+        idVendedor: lead.idVendedor || '',
     });
 
+    const [origens, setOrigens] = useState([]);
+    const [categoriasCliente, setCategoriasCliente] = useState([]);
+    const [vendedores, setVendedores] = useState([]);
     const [capturandoGps, setCapturandoGps] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        Promise.all([
+            configService.get('origens_lead').catch(() => []),
+            api.get('/categorias-cliente').then(r => r.data).catch(() => []),
+            podeEscolherVendedor ? vendedorService.listar().catch(() => []) : Promise.resolve([])
+        ]).then(([orig, cats, vends]) => {
+            setOrigens(Array.isArray(orig) && orig.length > 0 ? orig : []);
+            setCategoriasCliente(Array.isArray(cats) ? cats.filter(c => c.ativo) : []);
+            setVendedores(Array.isArray(vends) ? vends : []);
+        });
+    }, [podeEscolherVendedor]);
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = useRef(null);
     const originalTextRef = useRef('');
@@ -133,6 +158,7 @@ const ModalEditarLead = ({ lead, onClose, onSalvo }) => {
             await leadService.atualizar(lead.id, {
                 ...form,
                 diasVisita: form.diasVisita.join(','),
+                categoriaClienteId: form.categoriaClienteId || null,
             });
             toast.success('Lead atualizado!');
             onSalvo && onSalvo();
@@ -181,6 +207,44 @@ const ModalEditarLead = ({ lead, onClose, onSalvo }) => {
                                 className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500" />
                         </div>
                     </div>
+
+                    {/* Cidade, Origem, Categoria */}
+                    <div>
+                        <label className="block text-[13px] font-semibold text-gray-700 mb-1">Cidade</label>
+                        <input type="text" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))}
+                            placeholder="Ex: Chapecó"
+                            className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-[13px] font-semibold text-gray-700 mb-1">Origem</label>
+                            <select value={form.origemLead} onChange={e => setForm(f => ({ ...f, origemLead: e.target.value }))}
+                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500">
+                                <option value="">Selecione...</option>
+                                {origens.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-[13px] font-semibold text-gray-700 mb-1">Categoria</label>
+                            <select value={form.categoriaClienteId} onChange={e => setForm(f => ({ ...f, categoriaClienteId: e.target.value }))}
+                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500">
+                                <option value="">Selecione...</option>
+                                {categoriasCliente.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Vendedor Responsável (redirecionar) */}
+                    {podeEscolherVendedor && (
+                        <div>
+                            <label className="block text-[13px] font-semibold text-gray-700 mb-1">Vendedor Responsável</label>
+                            <select value={form.idVendedor} onChange={e => setForm(f => ({ ...f, idVendedor: e.target.value }))}
+                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500">
+                                <option value="">Selecione...</option>
+                                {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
+                            </select>
+                        </div>
+                    )}
 
                     {/* Dias de Visita */}
                     <div>

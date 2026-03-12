@@ -56,6 +56,10 @@ const leadController = {
 
     atualizar: async (req, res) => {
         try {
+            const perms = req.user?.permissoes || {};
+            if (!perms.admin && !perms.Pode_Editar_Lead) {
+                return res.status(403).json({ error: 'Sem permissão para editar leads.' });
+            }
             const lead = await leadService.atualizar(req.params.id, req.body);
             res.json(lead);
         } catch (error) {

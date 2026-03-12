@@ -1,7 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, MapPin, Loader, Mic, MicOff, Camera } from 'lucide-react';
 import leadService from '../../services/leadService';
 import vendedorService from '../../services/vendedorService';
+import configService from '../../services/configService';
+import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 const DIAS_OPCOES = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
@@ -22,8 +24,13 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
         formasAtendimento: [],
         pontoGps: '',
         observacoes: '',
-        idVendedor: propVendedorId || user?.id || ''
+        idVendedor: propVendedorId || user?.id || '',
+        cidade: '',
+        origemLead: '',
+        categoriaClienteId: ''
     });
+    const [origens, setOrigens] = useState([]);
+    const [categoriasCliente, setCategoriasCliente] = useState([]);
     const [fotoFile, setFotoFile] = useState(null);
     const [fotoPreviewUrl, setFotoPreviewUrl] = useState(null);
     const [capturandoGps, setCapturandoGps] = useState(false);
@@ -60,6 +67,16 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
             vendedorService.listar().then(setVendedores).catch(console.error);
         }
     }, [podeEscolherVendedor, propVendedores]);
+
+    useEffect(() => {
+        Promise.all([
+            configService.get('origens_lead').catch(() => []),
+            api.get('/categorias-cliente').then(r => r.data).catch(() => [])
+        ]).then(([orig, cats]) => {
+            setOrigens(Array.isArray(orig) && orig.length > 0 ? orig : []);
+            setCategoriasCliente(Array.isArray(cats) ? cats.filter(c => c.ativo) : []);
+        });
+    }, []);
 
     const toggleMicrophone = () => {
         if (isListening) {
@@ -169,6 +186,26 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
             toast.error('Selecione pelo menos um dia de visita.');
             return;
         }
+        if (!form.origemLead) {
+            toast.error('Selecione a origem do lead.');
+            return;
+        }
+        if (!form.cidade.trim()) {
+            toast.error('Informe a cidade.');
+            return;
+        }
+        if (!form.categoriaClienteId) {
+            toast.error('Selecione a categoria do lead.');
+            return;
+        }
+        if (form.formasAtendimento.length === 0) {
+            toast.error('Selecione pelo menos um canal de atendimento.');
+            return;
+        }
+        if (!form.pontoGps) {
+            toast.error('Capture a localização GPS.');
+            return;
+        }
         if (!fotoFile) {
             toast.error('Tire uma foto da fachada do estabelecimento.');
             return;
@@ -251,6 +288,32 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                             <input type="tel" value={form.whatsapp} onChange={e => setForm(f => ({ ...f, whatsapp: e.target.value }))}
                                 placeholder="(49) 99999-9999"
                                 className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500" />
+                        </div>
+                    </div>
+
+                    {/* Cidade, Origem, Categoria */}
+                    <div>
+                        <label className="block text-[13px] font-semibold text-gray-700 mb-1">Cidade *</label>
+                        <input type="text" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))}
+                            placeholder="Ex: Chapecó"
+                            className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-[13px] font-semibold text-gray-700 mb-1">Origem *</label>
+                            <select value={form.origemLead} onChange={e => setForm(f => ({ ...f, origemLead: e.target.value }))}
+                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500">
+                                <option value="">Selecione...</option>
+                                {origens.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-[13px] font-semibold text-gray-700 mb-1">Categoria *</label>
+                            <select value={form.categoriaClienteId} onChange={e => setForm(f => ({ ...f, categoriaClienteId: e.target.value }))}
+                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500">
+                                <option value="">Selecione...</option>
+                                {categoriasCliente.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                            </select>
                         </div>
                     </div>
 

@@ -27,6 +27,7 @@ const leadService = {
                 include: {
                     vendedor: { select: { id: true, nome: true } },
                     cliente: { select: { UUID: true, Nome: true, NomeFantasia: true } },
+                    categoriaCliente: { select: { id: true, nome: true } },
                     atendimentos: {
                         orderBy: { criadoEm: 'desc' },
                         take: 1
@@ -80,7 +81,8 @@ const leadService = {
 
     criar: async (data) => {
         const { nomeEstabelecimento, contato, whatsapp, diasVisita, horarioAtendimento,
-            horarioEntrega, formasAtendimento, pontoGps, observacoes, idVendedor } = data;
+            horarioEntrega, formasAtendimento, pontoGps, observacoes, idVendedor,
+            cidade, origemLead, categoriaClienteId } = data;
 
         return await prisma.lead.create({
             data: {
@@ -94,6 +96,9 @@ const leadService = {
                 pontoGps,
                 observacoes,
                 idVendedor,
+                cidade,
+                origemLead,
+                categoriaClienteId: categoriaClienteId || null,
                 etapa: 'NOVO'
             }
         });
@@ -101,7 +106,8 @@ const leadService = {
 
     atualizar: async (id, data) => {
         const { nomeEstabelecimento, contato, whatsapp, diasVisita, horarioAtendimento,
-            horarioEntrega, formasAtendimento, pontoGps, observacoes, etapa, proximaVisita, fotoFachada } = data;
+            horarioEntrega, formasAtendimento, pontoGps, observacoes, etapa, proximaVisita, fotoFachada,
+            cidade, origemLead, categoriaClienteId, idVendedor } = data;
 
         return await prisma.lead.update({
             where: { id },
@@ -118,6 +124,10 @@ const leadService = {
                 ...(etapa !== undefined && { etapa }),
                 ...(proximaVisita !== undefined && { proximaVisita: proximaVisita ? new Date(proximaVisita) : null }),
                 ...(fotoFachada !== undefined && { fotoFachada }),
+                ...(cidade !== undefined && { cidade }),
+                ...(origemLead !== undefined && { origemLead }),
+                ...(categoriaClienteId !== undefined && { categoriaClienteId: categoriaClienteId || null }),
+                ...(idVendedor !== undefined && { idVendedor }),
             }
         });
     },

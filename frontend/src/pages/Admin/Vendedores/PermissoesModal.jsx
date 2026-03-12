@@ -23,6 +23,8 @@ const DEFAULT_PERMISSIONS = {
     Pode_Definir_Adiantamento: false,
     Pode_Ver_Historico_Caixa: false,
     Pode_Reverter_Caixa: false,
+    // CRM / Leads
+    Pode_Editar_Lead: false,
     // Pedidos Especiais
     Pode_Criar_Especial: false,
     Pode_Aprovar_Especial: false,
@@ -326,6 +328,25 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <div>
                                     <span className="text-red-900 font-bold block">Pode Reverter Caixa</span>
                                     <span className="text-red-700 text-xs">Nível crítico: Permite reverter a conferência e reabrir caixas já fechados. Todas as ações são registradas no log de auditoria.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* CRM / Leads */}
+                    <div className="border-t pt-4">
+                        <h4 className="font-medium text-gray-900 mb-4">CRM / Leads</h4>
+                        <div className="bg-teal-50 p-4 rounded-md border border-teal-200">
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-teal-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-teal-300 text-teal-600 focus:ring-teal-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Editar_Lead}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Editar_Lead: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-teal-900 font-bold block">Pode Editar Lead</span>
+                                    <span className="text-teal-700 text-xs">Permite editar leads após o cadastro inicial. Sem esta permissão, o usuário só cria novos leads mas não pode alterar os existentes.</span>
                                 </div>
                             </label>
                         </div>

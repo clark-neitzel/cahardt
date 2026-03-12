@@ -438,6 +438,11 @@ model Lead {
   observacoes         String?   @db.Text
   fotoFachada         String?   @map("foto_fachada")
 
+  cidade              String?
+  origemLead          String?   @map("origem_lead")
+  categoriaClienteId  String?   @map("categoria_cliente_id")
+  categoriaCliente    CategoriaCliente? @relation(fields: [categoriaClienteId], references: [id])
+
   idVendedor String?   @map("id_vendedor")
   vendedor   Vendedor? @relation(fields: [idVendedor], references: [id])
 
@@ -888,6 +893,7 @@ model CategoriaCliente {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   clientes Cliente[]
+  leads    Lead[]
 
   @@map("categorias_cliente")
 }
