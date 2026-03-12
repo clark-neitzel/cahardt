@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import configService from '../../../services/configService';
-import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2, ScrollText, MapPin, Zap } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2, ScrollText, MapPin, Zap, Target } from 'lucide-react';
 import toast from 'react-hot-toast';
 import RotasAtivasPreview from './RotasAtivasPreview';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -52,10 +52,15 @@ const Configuracoes = () => {
     const [novaOrigem, setNovaOrigem] = useState('');
     const [savingOrigens, setSavingOrigens] = useState(false);
 
-    // Ações do Atendimento
+    // Ações do Atendimento (clientes)
     const [acoes, setAcoes] = useState([]);
     const [novaAcao, setNovaAcao] = useState('');
     const [savingAcoes, setSavingAcoes] = useState(false);
+
+    // Ações do Lead
+    const [acoesLead, setAcoesLead] = useState([]);
+    const [novaAcaoLead, setNovaAcaoLead] = useState('');
+    const [savingAcoesLead, setSavingAcoesLead] = useState(false);
 
     // Reset de dados
     const [resetGrupos, setResetGrupos] = useState([]);
@@ -71,12 +76,13 @@ const Configuracoes = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [cats, currentConfig, tiposConfig, origensConfig, acoesConfig, grupos, logs] = await Promise.all([
+            const [cats, currentConfig, tiposConfig, origensConfig, acoesConfig, acoesLeadConfig, grupos, logs] = await Promise.all([
                 configService.getCategorias(),
                 configService.get('categorias_vendas'),
                 configService.get('tipos_atendimento').catch(() => null),
                 configService.get('origens_lead').catch(() => null),
                 configService.get('acoes_atendimento').catch(() => null),
+                configService.get('acoes_lead').catch(() => null),
                 podeResetar ? api.get('/admin/reset-grupos').then(r => r.data).catch(() => []) : Promise.resolve(null),
                 isAdmin ? caixaService.getAuditLogs().catch(() => []) : Promise.resolve(null)
             ]);
@@ -85,6 +91,7 @@ const Configuracoes = () => {
             setTipos(Array.isArray(tiposConfig) && tiposConfig.length > 0 ? tiposConfig : TIPOS_PADRAO);
             setOrigens(Array.isArray(origensConfig) && origensConfig.length > 0 ? origensConfig : ORIGENS_PADRAO);
             setAcoes(Array.isArray(acoesConfig) && acoesConfig.length > 0 ? acoesConfig : ACOES_PADRAO);
+            setAcoesLead(Array.isArray(acoesLeadConfig) && acoesLeadConfig.length > 0 ? acoesLeadConfig : ACOES_PADRAO);
             if (grupos) setResetGrupos(grupos);
             if (logs) setAuditLogs(logs);
         } catch (error) {
@@ -252,6 +259,40 @@ const Configuracoes = () => {
             toast.success('Ações do atendimento salvas!');
         } catch { toast.error('Erro ao salvar ações.'); }
         finally { setSavingAcoes(false); }
+    };
+
+    // Ações do Lead handlers
+    const handleAdicionarAcaoLead = () => {
+        const label = novaAcaoLead.trim();
+        if (!label) return;
+        const value = label.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+        if (acoesLead.some(a => a.value === value || a.label.toLowerCase() === label.toLowerCase())) {
+            toast.error('Já existe uma ação com este nome.');
+            return;
+        }
+        setAcoesLead(prev => [...prev, { value, label }]);
+        setNovaAcaoLead('');
+    };
+    const handleEditarAcaoLead = (value) => {
+        const acao = acoesLead.find(a => a.value === value);
+        if (!acao) return;
+        const novoLabel = prompt('Editar nome da ação:', acao.label);
+        if (!novoLabel || novoLabel.trim() === '' || novoLabel.trim() === acao.label) return;
+        setAcoesLead(prev => prev.map(a => a.value === value ? { ...a, label: novoLabel.trim() } : a));
+    };
+    const handleRemoverAcaoLead = (value) => {
+        if (ACOES_PADRAO.some(a => a.value === value)) {
+            if (!window.confirm('Esta é uma ação padrão. Tem certeza que deseja remover?')) return;
+        }
+        setAcoesLead(prev => prev.filter(a => a.value !== value));
+    };
+    const handleSalvarAcoesLead = async () => {
+        try {
+            setSavingAcoesLead(true);
+            await configService.save('acoes_lead', acoesLead);
+            toast.success('Ações do lead salvas!');
+        } catch { toast.error('Erro ao salvar ações do lead.'); }
+        finally { setSavingAcoesLead(false); }
     };
 
     if (loading) return <div className="p-8 text-center text-gray-500">Carregando configurações...</div>;
@@ -424,7 +465,7 @@ const Configuracoes = () => {
                             <Zap className="h-5 w-5 text-orange-600" />
                             Ações do Atendimento
                         </h2>
-                        <p className="text-sm text-gray-500 mt-0.5">Próximos passos/status que podem ser atribuídos em leads, atendimentos e entregas.</p>
+                        <p className="text-sm text-gray-500 mt-0.5">Próximos passos/status para atendimentos de clientes.</p>
                     </div>
                 </div>
                 <div className="p-6 space-y-4">
@@ -460,6 +501,55 @@ const Configuracoes = () => {
                             className="flex items-center gap-1.5 px-5 py-2 bg-primary text-white rounded-md font-medium shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm">
                             <Save className="h-4 w-4" />
                             {savingAcoes ? 'Salvando...' : 'Salvar Ações'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Ações do Lead ── */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-6 border-b border-gray-100 bg-gray-50">
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
+                            <Target className="h-5 w-5 text-purple-600" />
+                            Ações do Lead
+                        </h2>
+                        <p className="text-sm text-gray-500 mt-0.5">Próximos passos/status exclusivos para gestão de leads. Separados das ações de atendimento de clientes.</p>
+                    </div>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                        {acoesLead.map(a => {
+                            const isPadrao = ACOES_PADRAO.some(p => p.value === a.value);
+                            return (
+                                <div key={a.value} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border ${isPadrao ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                                    <button onClick={() => handleEditarAcaoLead(a.value)} className="hover:underline" title="Clique para editar">
+                                        {a.label}
+                                    </button>
+                                    {isPadrao && <span className="text-[9px] text-purple-400 font-normal">(padrão)</span>}
+                                    <button onClick={() => handleRemoverAcaoLead(a.value)} className="ml-0.5 text-gray-400 hover:text-red-500 transition-colors">
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            );
+                        })}
+                        {acoesLead.length === 0 && <p className="text-sm text-gray-400 italic">Nenhuma ação cadastrada.</p>}
+                    </div>
+                    <div className="flex gap-2 pt-2 border-t border-gray-100">
+                        <input type="text" value={novaAcaoLead} onChange={e => setNovaAcaoLead(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleAdicionarAcaoLead(); }}
+                            placeholder="Ex: Agendar visita, Enviar catálogo..."
+                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 focus:border-transparent outline-none" />
+                        <button onClick={handleAdicionarAcaoLead} disabled={!novaAcaoLead.trim()}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 disabled:opacity-50 transition-colors">
+                            <Plus className="h-4 w-4" /> Adicionar
+                        </button>
+                    </div>
+                    <div className="flex justify-end">
+                        <button onClick={handleSalvarAcoesLead} disabled={savingAcoesLead}
+                            className="flex items-center gap-1.5 px-5 py-2 bg-primary text-white rounded-md font-medium shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm">
+                            <Save className="h-4 w-4" />
+                            {savingAcoesLead ? 'Salvando...' : 'Salvar Ações do Lead'}
                         </button>
                     </div>
                 </div>

@@ -42,10 +42,12 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
     const [saving, setSaving] = useState(false);
 
     // Carrega tipos e ações de atendimento da configuração
+    // Para leads usa acoes_lead, para clientes usa acoes_atendimento
     useEffect(() => {
+        const chaveAcoes = isLead ? 'acoes_lead' : 'acoes_atendimento';
         Promise.all([
             configService.get('tipos_atendimento').catch(() => null),
-            configService.get('acoes_atendimento').catch(() => null)
+            configService.get(chaveAcoes).catch(() => null)
         ]).then(([tiposData, acoesData]) => {
             const finalTipos = Array.isArray(tiposData) && tiposData.length > 0 ? tiposData : TIPOS_PADRAO;
             setTipos(finalTipos);

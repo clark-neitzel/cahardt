@@ -66,7 +66,7 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, user }) => {
     useEffect(() => {
         Promise.all([
             configService.get('origens_lead').catch(() => []),
-            configService.get('acoes_atendimento').catch(() => []),
+            configService.get('acoes_lead').catch(() => []),
             api.get('/categorias-cliente').then(r => r.data).catch(() => []),
             podeEscolherVendedor ? vendedorService.listar().catch(() => []) : Promise.resolve([])
         ]).then(([orig, act, cats, vends]) => {
