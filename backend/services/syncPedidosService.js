@@ -5,6 +5,21 @@ const syncPedidosService = {
     // Flag to prevent overlapping executions if the sync takes longer than the interval
     isRunning: false,
 
+    _resolverNaturezaOperacao: (cliente) => {
+        const naturezaCnpj = process.env.CA_NATUREZA_OPERACAO_CNPJ || "915a96fe-d5ca-11f0-8ea0-e7ffa7159b62";
+        const naturezaCpf = process.env.CA_NATUREZA_OPERACAO_CPF || null;
+
+        const tipoPessoa = String(cliente?.Tipo_Pessoa || '').toUpperCase();
+        const documentoNumerico = String(cliente?.Documento || '').replace(/\D/g, '');
+
+        const ehCnpj = tipoPessoa.includes('JUR') || documentoNumerico.length === 14;
+        const ehCpf = tipoPessoa.includes('FIS') || documentoNumerico.length === 11;
+
+        if (ehCnpj) return naturezaCnpj;
+        if (ehCpf) return naturezaCpf;
+        return null;
+    },
+
     processarFila: async () => {
         if (syncPedidosService.isRunning) {
             console.log('⏳ Worker de Pedidos já está rodando. Ignorando este ciclo.');
@@ -178,7 +193,6 @@ const syncPedidosService = {
                 situacao: "APROVADO",
                 data_venda: dataVendaStr,
                 id_categoria: pedido.idCategoria || "b2771a7a-2120-4af5-affb-8e6fac7e48af",
-                id_natureza_operacao: "915a96fe-d5ca-11f0-8ea0-e7ffa7159b62",
                 observacoes: observacoesFinal,
                 itens: pedido.itens.map(item => ({
                     id: item.produto.contaAzulId, // id real do produto no CA
@@ -218,6 +232,21 @@ const syncPedidosService = {
 
             // 3. Submeter via ContaAzul Service
             const resultadoCA = await contaAzulService.enviarPedido(payload);
+            const naturezaOperacaoId = syncPedidosService._resolverNaturezaOperacao(pedido.cliente);
+
+            if (naturezaOperacaoId) {
+                try {
+                    await contaAzulService.atualizarPedido(resultadoCA.id, {
+                        ...payload,
+                        id_natureza_operacao: naturezaOperacaoId
+                    });
+                    console.log(`[Pedido ${pedido.id}] Natureza de operação aplicada no CA.`);
+                } catch (updateError) {
+                    console.warn(`[Pedido ${pedido.id}] Falha ao aplicar natureza de operação: ${updateError.message}`);
+                }
+            } else {
+                console.warn(`[Pedido ${pedido.id}] Natureza de operação não configurada para o tipo de cliente.`);
+            }
 
             console.log(`[Pedido ${pedido.id}] Sucesso ContaAzul ID: ${resultadoCA.id}`);
 

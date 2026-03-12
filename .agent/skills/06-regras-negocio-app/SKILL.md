@@ -79,8 +79,8 @@ Diferente do Conta Azul (que usa UUIDs opacos), esta tabela usa IDs semânticos 
 | `id` | String (PK) | ID Interno/Legado | `1002` |
 | `id_condicao` | String | Código legível | `BOL_7` |
 | `nome_condicao` | String | Nome exibido ao usuário | `7 dias - Boleto` |
-| `tipo_pagamento` | String | Tipo de Pagamento | `BOLETO` |
-| `opcao_condicao` | String | Agrupamento/Opção Visual | `7 dias` |
+| `tipo_pagamento` | String | Tipo de Pagamento | `BOLETO_BANCARIO` |
+| `opcao_condicao` | String | Agrupamento/Opção Visual | `7, 14` |
 | `qtd_parcelas` | Int | Número de parcelas | `1` |
 | `parcelas_dias` | Int | Dias para vencimento | `7` |
 | `acrescimo_preco` | Decimal | % de acréscimo | `2.5` |
@@ -94,7 +94,14 @@ Diferente do Conta Azul (que usa UUIDs opacos), esta tabela usa IDs semânticos 
 
 1.  **Exibição Separada**: No frontend, "Parcelas" e "Dias" devem ser mostrados em colunas distintas (ex: `1x` e `7 dias`), nunca concatenados como string ("1x (7 dias)"), para clareza técnica.
 2.  **Seleção no Cliente**: Ao selecionar uma condição no cadastro do cliente (`DetalheCliente.jsx`), o sistema deve mostrar imediatamente um resumo técnico (Parcelas, Dias, Acréscimo) para que o usuário valide a escolha.
-3.  **Imutabilidade dos IDs**: Os IDs (`1000` a `1008`) e códigos (`BOL_7`) são fixos e usados em Seeds. Não devem ser gerados aleatoriamente.
+3.  **Imutabilidade dos IDs de seed**: Os IDs de seed (`1000` a `1008`) e códigos base (`BOL_7`, etc.) são fixos e não devem ser gerados aleatoriamente.
+4.  **Condição parcelada por dias explícitos**: Para condições como `2x boleto 7/14`, usar `opcao_condicao = "7, 14"` e `qtd_parcelas = 2`.
+
+### Atualização Mar/2026 — Parcelas com vencimento real no CA
+
+- O worker de pedidos agora prioriza os dias extraídos de `opcaoCondicaoPagamento` quando a quantidade bate com `qtdParcelas`.
+- Exemplo: `opcaoCondicaoPagamento = "7, 14"` + `qtdParcelas = 2` gera parcelas em D+7 e D+14 no payload de venda.
+- Fallback legado: se não houver opção parseável, o sistema usa progressão por `intervaloDias` (`7, 14, 21...`).
 
 ## Integração
 

@@ -619,7 +619,7 @@ curl -X POST 'https://api-v2.contaazul.com/v1/venda' \
   "condicao_pagamento": {
     "tipo_pagamento": "BOLETO_BANCARIO",
     "id_conta_financeira": "UUID-CONTA",
-    "opcao_condicao_pagamento": "30 dias",
+    "opcao_condicao_pagamento": "7, 14",
     "nsu": "1234567890",
     "parcelas": [
       {
@@ -639,6 +639,10 @@ curl -X POST 'https://api-v2.contaazul.com/v1/venda' \
 `EM_ANDAMENTO`, `APROVADO`
 
 > ⚠️ **Limitações Fiscais:** A API `POST /v1/venda` foca apenas na criação do pedido de venda. **Não suporta** envio de Natureza de Operação (CFOP) nem dados de transportadora/frete logístico. O faturamento da NF-e ocorre dentro do painel CA.
+
+> ✅ **Padrão validado no App Hardt (Mar/2026):** para boleto parcelado, `opcao_condicao_pagamento` aceita lista de dias (`"7, 14"`) e as parcelas devem ser enviadas com `data_vencimento` individual por parcela.
+
+> ⚠️ **Natureza de Operação no Hardt:** enviar em 2 etapas — primeiro `POST /v1/venda`, depois `PUT /v1/venda/{id}` com `id_natureza_operacao` (CNPJ/CPF). Incluir `id_natureza_operacao` no POST não está surtindo efeito no cenário atual.
 
 #### Fluxo de Sincronização (App Hardt)
 | Status Local | Descrição |

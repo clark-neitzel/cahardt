@@ -404,6 +404,14 @@ Quando um pedido existe no CA mas não tem correspondente local, o `syncPedidosM
 | Itens | `GET /v1/venda/{id}/itens` | Produto vinculado por `contaAzulId`. `flexGerado` calculado vs `valorVenda` local |
 | Histórico do Cliente | `clienteInsightService.recalcularCliente()` | Disparado via `setImmediate` após criação |
 
+### Atualização Mar/2026 — Natureza de Operação e Parcelas no envio
+
+- O envio do pedido permanece com `POST /v1/venda` para criar a venda.
+- A natureza de operação é aplicada em seguida com `PUT /v1/venda/{id}` usando `id_natureza_operacao` conforme tipo de cliente:
+  - CNPJ → Natureza de Mercadorias/Produtos
+  - CPF → Natureza de Não Contribuinte
+- Para condição de pagamento com dias explícitos (`"7, 14"`), as parcelas são montadas com vencimentos individuais por offset.
+
 ### Campo `nomeCondicaoPagamento` (CRÍTICO — MAR/2026)
 
 O modelo `Pedido` agora persiste o **nome completo da condição** (`nome_condicao_pagamento`) no momento da criação. Isso evita lookup reverso ambíguo quando múltiplas condições têm o mesmo `opcaoCondicao`.

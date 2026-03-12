@@ -773,6 +773,68 @@ const contaAzulService = {
         }
     },
 
+    atualizarPedido: async (idVenda, payload) => {
+        const start = Date.now();
+        const url = `https://api-v2.contaazul.com/v1/venda/${idVenda}`;
+        let token = await contaAzulService.getAccessToken();
+        let attempts = 0;
+
+        const executeRequest = async (tokenToUse) => {
+            return await axios.put(url, payload, {
+                headers: {
+                    'Authorization': `Bearer ${tokenToUse}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+        };
+
+        try {
+            const response = await executeRequest(token);
+            await contaAzulService._logStep('PEDIDO_UPDATE', 'SUCESSO', `Venda ${idVenda} atualizada`, {
+                url,
+                method: 'PUT',
+                status: response.status,
+                body: { id_venda: idVenda },
+                duration: Date.now() - start
+            });
+            return response.data;
+        } catch (error) {
+            if (error.response?.status === 401 && attempts === 0) {
+                attempts++;
+                token = await contaAzulService.getAccessToken(true);
+                try {
+                    const retryResponse = await executeRequest(token);
+                    await contaAzulService._logStep('PEDIDO_UPDATE', 'SUCESSO', `Venda ${idVenda} atualizada (retry 401)`, {
+                        url,
+                        method: 'PUT',
+                        status: retryResponse.status,
+                        body: { id_venda: idVenda },
+                        duration: Date.now() - start
+                    });
+                    return retryResponse.data;
+                } catch (retryError) {
+                    await contaAzulService._logStep('PEDIDO_UPDATE', 'ERRO', `Falha ao atualizar venda ${idVenda}`, {
+                        url,
+                        method: 'PUT',
+                        status: retryError.response?.status,
+                        body: retryError.response?.data || retryError.message,
+                        duration: Date.now() - start
+                    });
+                    throw retryError;
+                }
+            }
+
+            await contaAzulService._logStep('PEDIDO_UPDATE', 'ERRO', `Falha ao atualizar venda ${idVenda}`, {
+                url,
+                method: 'PUT',
+                status: error.response?.status,
+                body: error.response?.data || error.message,
+                duration: Date.now() - start
+            });
+            throw error;
+        }
+    },
+
     // Rotina exclusiva para V2: A V2 simplesmente "esconde" pedidos deletados da busca geral.
     // Precisamos pingar ativamente os pedidos locais "RECEBIDO" para ver se retornam 404 (Excluídos).
     _verificarPedidosExcluidosContAzul: async () => {
