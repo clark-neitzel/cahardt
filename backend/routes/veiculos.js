@@ -64,6 +64,145 @@ router.put('/:id', authMiddleware, veiculoController.atualizar);
 router.delete('/:id', authMiddleware, veiculoController.excluir);
 
 
+// ── Autorização Manual de Uso (admin registra uso interno/avulso) ──
+
+// Validar intervalo de KM para um veículo (verifica overlaps)
+router.post('/:id/validar-km', authMiddleware, async (req, res) => {
+    try {
+        const { kmInicial, kmFinal } = req.body;
+        if (!kmInicial || !kmFinal) return res.status(400).json({ error: 'KM inicial e final obrigatórios.' });
+        if (kmFinal <= kmInicial) return res.status(400).json({ error: 'KM final deve ser maior que KM inicial.' });
+
+        // Busca todos os registros de uso deste veículo que tenham KM
+        const diarios = await prisma.diarioVendedor.findMany({
+            where: {
+                veiculoId: req.params.id,
+                kmInicial: { not: null },
+                kmFinal: { not: null }
+            },
+            select: { kmInicial: true, kmFinal: true, dataReferencia: true, vendedor: { select: { nome: true } } }
+        });
+
+        // Verifica se o intervalo [kmInicial, kmFinal] se sobrepõe a algum existente
+        const overlap = diarios.find(d =>
+            kmInicial < d.kmFinal && kmFinal > d.kmInicial
+        );
+
+        if (overlap) {
+            return res.json({
+                valido: false,
+                mensagem: `Conflito com uso registrado: ${overlap.kmInicial} → ${overlap.kmFinal} (${overlap.vendedor?.nome || 'desconhecido'}, ${overlap.dataReferencia})`
+            });
+        }
+
+        res.json({ valido: true });
+    } catch (error) {
+        console.error('Erro ao validar KM:', error);
+        res.status(500).json({ error: 'Erro ao validar intervalo de KM.' });
+    }
+});
+
+// Registrar uso manual de veículo (autorização interna)
+router.post('/:id/uso-manual', authMiddleware, async (req, res) => {
+    try {
+        const { motoristaNome, motoristaId, dataReferencia, kmInicial, kmFinal, obs } = req.body;
+
+        if (!dataReferencia || kmInicial === undefined || kmFinal === undefined) {
+            return res.status(400).json({ error: 'Data, KM inicial e KM final são obrigatórios.' });
+        }
+        if (kmFinal <= kmInicial) {
+            return res.status(400).json({ error: 'KM final deve ser maior que KM inicial.' });
+        }
+
+        // Validar overlap de KM
+        const diarios = await prisma.diarioVendedor.findMany({
+            where: {
+                veiculoId: req.params.id,
+                kmInicial: { not: null },
+                kmFinal: { not: null }
+            },
+            select: { kmInicial: true, kmFinal: true }
+        });
+
+        const overlap = diarios.find(d =>
+            kmInicial < d.kmFinal && kmFinal > d.kmInicial
+        );
+
+        if (overlap) {
+            return res.status(400).json({
+                error: `Intervalo de KM conflita com uso existente: ${overlap.kmInicial} → ${overlap.kmFinal}`
+            });
+        }
+
+        // Se tem motoristaId (vendedor do sistema), usa. Senão, cria diário usando quem está logado
+        const vendedorId = motoristaId || req.user.id;
+
+        // Verifica se já tem diário nesse dia para esse vendedor
+        const existente = await prisma.diarioVendedor.findFirst({
+            where: { vendedorId, dataReferencia }
+        });
+
+        if (existente) {
+            return res.status(400).json({
+                error: `Já existe um registro de uso para este motorista na data ${dataReferencia}.`
+            });
+        }
+
+        const diario = await prisma.diarioVendedor.create({
+            data: {
+                vendedorId,
+                dataReferencia,
+                modo: 'PRESENCIAL',
+                veiculoId: req.params.id,
+                kmInicial: parseInt(kmInicial),
+                kmFinal: parseInt(kmFinal),
+                obs: motoristaNome
+                    ? `[Uso Interno - ${motoristaNome}] ${obs || ''}`.trim()
+                    : `[Uso Interno] ${obs || ''}`.trim(),
+                inicioHora: new Date(),
+                fimHora: new Date()
+            },
+            include: { vendedor: { select: { nome: true } } }
+        });
+
+        res.status(201).json(diario);
+    } catch (error) {
+        console.error('Erro ao registrar uso manual:', error);
+        res.status(500).json({ error: 'Erro ao registrar uso do veículo.' });
+    }
+});
+
+// Registrar abastecimento manual (a partir da ficha do veículo)
+router.post('/:id/abastecimento', authMiddleware, async (req, res) => {
+    try {
+        const { dataReferencia, litros, valor, kmNoAbastecimento, descricao, vendedorId } = req.body;
+
+        if (!dataReferencia || !valor) {
+            return res.status(400).json({ error: 'Data e valor são obrigatórios.' });
+        }
+
+        const despesa = await prisma.despesa.create({
+            data: {
+                vendedorId: vendedorId || req.user.id,
+                dataReferencia,
+                categoria: 'COMBUSTIVEL',
+                descricao: descricao || null,
+                valor: parseFloat(valor),
+                veiculoId: req.params.id,
+                litros: litros ? parseFloat(litros) : null,
+                kmNoAbastecimento: kmNoAbastecimento ? parseInt(kmNoAbastecimento) : null,
+                criadoPor: req.user.id
+            },
+            include: { veiculo: { select: { placa: true, modelo: true } } }
+        });
+
+        res.status(201).json(despesa);
+    } catch (error) {
+        console.error('Erro ao registrar abastecimento:', error);
+        res.status(500).json({ error: 'Erro ao registrar abastecimento.' });
+    }
+});
+
 // ── Manutenção de Veículos ──
 
 // Listar alertas de um veículo

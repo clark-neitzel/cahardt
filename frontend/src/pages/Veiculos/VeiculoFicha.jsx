@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
     X, Car, FileText, Shield, Wrench, Fuel, Users, MessageSquare,
-    AlertTriangle, CheckCircle, BellRing, ChevronRight, Edit3, Save, TrendingUp
+    AlertTriangle, CheckCircle, BellRing, ChevronRight, Edit3, Save, TrendingUp, Plus, Loader
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
+import vendedorService from '../../services/vendedorService';
 
 const TABS = [
     { id: 'resumo', label: 'Resumo', icon: Car },
@@ -44,6 +45,18 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
     const [saving, setSaving] = useState(false);
     const [novoAlerta, setNovoAlerta] = useState({ tipo: '', descricao: '', kmAlerta: '', dataAlerta: '' });
     const [savingAlerta, setSavingAlerta] = useState(false);
+
+    // Uso manual de veículo
+    const [showUsoForm, setShowUsoForm] = useState(false);
+    const [vendedores, setVendedores] = useState([]);
+    const [usoForm, setUsoForm] = useState({ motoristaId: '', motoristaNome: '', dataReferencia: '', kmInicial: '', kmFinal: '', obs: '' });
+    const [savingUso, setSavingUso] = useState(false);
+    const [kmConflito, setKmConflito] = useState(null);
+
+    // Abastecimento manual
+    const [showAbastForm, setShowAbastForm] = useState(false);
+    const [abastForm, setAbastForm] = useState({ dataReferencia: '', litros: '', valor: '', kmNoAbastecimento: '', descricao: '' });
+    const [savingAbast, setSavingAbast] = useState(false);
 
     const carregarFicha = async () => {
         try {
@@ -111,6 +124,81 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
             toast.success('Alerta concluído!');
             carregarFicha();
         } catch { toast.error('Erro ao concluir alerta.'); }
+    };
+
+    // Carrega lista de vendedores para o select de motorista
+    useEffect(() => {
+        vendedorService.listar().then(setVendedores).catch(() => {});
+    }, []);
+
+    // Validação de KM overlap em tempo real
+    useEffect(() => {
+        const { kmInicial, kmFinal } = usoForm;
+        if (!kmInicial || !kmFinal || parseInt(kmFinal) <= parseInt(kmInicial)) {
+            setKmConflito(null);
+            return;
+        }
+        const timer = setTimeout(async () => {
+            try {
+                const res = await api.post(`/veiculos/${veiculoId}/validar-km`, {
+                    kmInicial: parseInt(kmInicial),
+                    kmFinal: parseInt(kmFinal)
+                });
+                setKmConflito(res.data.valido ? null : res.data.mensagem);
+            } catch {
+                setKmConflito(null);
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [usoForm.kmInicial, usoForm.kmFinal, veiculoId]);
+
+    const handleRegistrarUso = async (e) => {
+        e.preventDefault();
+        if (kmConflito) {
+            toast.error('Corrija o conflito de KM antes de salvar.');
+            return;
+        }
+        try {
+            setSavingUso(true);
+            await api.post(`/veiculos/${veiculoId}/uso-manual`, {
+                motoristaId: usoForm.motoristaId || null,
+                motoristaNome: usoForm.motoristaNome || null,
+                dataReferencia: usoForm.dataReferencia,
+                kmInicial: parseInt(usoForm.kmInicial),
+                kmFinal: parseInt(usoForm.kmFinal),
+                obs: usoForm.obs || null
+            });
+            toast.success('Uso registrado!');
+            setUsoForm({ motoristaId: '', motoristaNome: '', dataReferencia: '', kmInicial: '', kmFinal: '', obs: '' });
+            setShowUsoForm(false);
+            carregarFicha();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao registrar uso.');
+        } finally {
+            setSavingUso(false);
+        }
+    };
+
+    const handleRegistrarAbastecimento = async (e) => {
+        e.preventDefault();
+        try {
+            setSavingAbast(true);
+            await api.post(`/veiculos/${veiculoId}/abastecimento`, {
+                dataReferencia: abastForm.dataReferencia,
+                litros: abastForm.litros || null,
+                valor: abastForm.valor,
+                kmNoAbastecimento: abastForm.kmNoAbastecimento || null,
+                descricao: abastForm.descricao || null
+            });
+            toast.success('Abastecimento registrado!');
+            setAbastForm({ dataReferencia: '', litros: '', valor: '', kmNoAbastecimento: '', descricao: '' });
+            setShowAbastForm(false);
+            carregarFicha();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao registrar abastecimento.');
+        } finally {
+            setSavingAbast(false);
+        }
     };
 
     if (loading) {
@@ -424,6 +512,70 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                 )}
                             </div>
 
+                            {/* Registrar abastecimento */}
+                            {!showAbastForm ? (
+                                <button
+                                    onClick={() => setShowAbastForm(true)}
+                                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-lg text-sm font-medium hover:bg-orange-100 transition-colors"
+                                >
+                                    <Plus className="h-4 w-4" /> Registrar Abastecimento
+                                </button>
+                            ) : (
+                                <form onSubmit={handleRegistrarAbastecimento} className="bg-orange-50 border border-orange-200 rounded-lg p-4 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-bold text-orange-900">Novo Abastecimento</h3>
+                                        <button type="button" onClick={() => setShowAbastForm(false)} className="text-gray-400 hover:text-gray-600"><X className="h-4 w-4" /></button>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs text-gray-600 mb-1">Data *</label>
+                                        <input type="date" required value={abastForm.dataReferencia}
+                                            onChange={e => setAbastForm(p => ({ ...p, dataReferencia: e.target.value }))}
+                                            className="w-full border border-gray-300 rounded-md p-2 text-sm" />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-1">Litros</label>
+                                            <input type="number" step="0.01" value={abastForm.litros}
+                                                onChange={e => setAbastForm(p => ({ ...p, litros: e.target.value }))}
+                                                placeholder="Ex: 45.5"
+                                                className="w-full border border-gray-300 rounded-md p-2 text-sm" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-1">Valor (R$) *</label>
+                                            <input type="number" step="0.01" required value={abastForm.valor}
+                                                onChange={e => setAbastForm(p => ({ ...p, valor: e.target.value }))}
+                                                placeholder="Ex: 250.00"
+                                                className="w-full border border-gray-300 rounded-md p-2 text-sm" />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs text-gray-600 mb-1">KM no Hodômetro</label>
+                                        <input type="number" value={abastForm.kmNoAbastecimento}
+                                            onChange={e => setAbastForm(p => ({ ...p, kmNoAbastecimento: e.target.value }))}
+                                            placeholder="Ex: 145000"
+                                            className="w-full border border-gray-300 rounded-md p-2 text-sm" />
+                                        <p className="text-[10px] text-gray-400 mt-1">Informar o KM melhora o cálculo de consumo</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs text-gray-600 mb-1">Descrição</label>
+                                        <input type="text" value={abastForm.descricao}
+                                            onChange={e => setAbastForm(p => ({ ...p, descricao: e.target.value }))}
+                                            placeholder="Ex: Posto Shell BR-116"
+                                            className="w-full border border-gray-300 rounded-md p-2 text-sm" />
+                                    </div>
+
+                                    <button type="submit" disabled={savingAbast}
+                                        className="w-full py-2 bg-orange-600 text-white rounded-md text-sm font-medium hover:bg-orange-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                                        {savingAbast && <Loader className="h-4 w-4 animate-spin" />}
+                                        {savingAbast ? 'Registrando...' : 'Registrar Abastecimento'}
+                                    </button>
+                                </form>
+                            )}
+
                             {/* Últimos abastecimentos */}
                             {ficha?.despesas?.length > 0 && (
                                 <div>
@@ -489,7 +641,98 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
 
                     {/* ── HISTÓRICO MOTORISTAS ── */}
                     {activeTab === 'historico' && (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
+                            {/* Botão para abrir formulário de uso manual */}
+                            {!showUsoForm ? (
+                                <button
+                                    onClick={() => setShowUsoForm(true)}
+                                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors"
+                                >
+                                    <Plus className="h-4 w-4" /> Registrar Uso Manual
+                                </button>
+                            ) : (
+                                <form onSubmit={handleRegistrarUso} className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-bold text-indigo-900">Autorização de Uso</h3>
+                                        <button type="button" onClick={() => setShowUsoForm(false)} className="text-gray-400 hover:text-gray-600"><X className="h-4 w-4" /></button>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs text-gray-600 mb-1">Motorista (do sistema)</label>
+                                        <select
+                                            value={usoForm.motoristaId}
+                                            onChange={e => setUsoForm(p => ({ ...p, motoristaId: e.target.value }))}
+                                            className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                                        >
+                                            <option value="">Selecione (ou digite nome abaixo)</option>
+                                            {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
+                                        </select>
+                                    </div>
+
+                                    {!usoForm.motoristaId && (
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-1">Nome do motorista (externo)</label>
+                                            <input type="text" value={usoForm.motoristaNome}
+                                                onChange={e => setUsoForm(p => ({ ...p, motoristaNome: e.target.value }))}
+                                                placeholder="Ex: João da manutenção"
+                                                className="w-full border border-gray-300 rounded-md p-2 text-sm" />
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className="block text-xs text-gray-600 mb-1">Data *</label>
+                                        <input type="date" required value={usoForm.dataReferencia}
+                                            onChange={e => setUsoForm(p => ({ ...p, dataReferencia: e.target.value }))}
+                                            className="w-full border border-gray-300 rounded-md p-2 text-sm" />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-1">KM Inicial *</label>
+                                            <input type="number" required value={usoForm.kmInicial}
+                                                onChange={e => setUsoForm(p => ({ ...p, kmInicial: e.target.value }))}
+                                                placeholder="Ex: 140000"
+                                                className="w-full border border-gray-300 rounded-md p-2 text-sm" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-1">KM Final *</label>
+                                            <input type="number" required value={usoForm.kmFinal}
+                                                onChange={e => setUsoForm(p => ({ ...p, kmFinal: e.target.value }))}
+                                                placeholder="Ex: 140150"
+                                                className="w-full border border-gray-300 rounded-md p-2 text-sm" />
+                                        </div>
+                                    </div>
+
+                                    {/* Feedback de conflito de KM */}
+                                    {kmConflito && (
+                                        <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
+                                            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                                            <span>{kmConflito}</span>
+                                        </div>
+                                    )}
+                                    {usoForm.kmInicial && usoForm.kmFinal && parseInt(usoForm.kmFinal) > parseInt(usoForm.kmInicial) && !kmConflito && (
+                                        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-700">
+                                            <CheckCircle className="h-4 w-4 shrink-0" />
+                                            <span>Intervalo disponível — {parseInt(usoForm.kmFinal) - parseInt(usoForm.kmInicial)} km</span>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className="block text-xs text-gray-600 mb-1">Observação</label>
+                                        <input type="text" value={usoForm.obs}
+                                            onChange={e => setUsoForm(p => ({ ...p, obs: e.target.value }))}
+                                            placeholder="Motivo do uso"
+                                            className="w-full border border-gray-300 rounded-md p-2 text-sm" />
+                                    </div>
+
+                                    <button type="submit" disabled={savingUso || !!kmConflito}
+                                        className="w-full py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                                        {savingUso && <Loader className="h-4 w-4 animate-spin" />}
+                                        {savingUso ? 'Registrando...' : 'Registrar Uso'}
+                                    </button>
+                                </form>
+                            )}
+
                             {(ficha?.diarios || []).length === 0 ? (
                                 <p className="text-center text-gray-400 py-10 text-sm">Nenhum histórico de uso.</p>
                             ) : ficha.diarios.map((d, idx) => (
