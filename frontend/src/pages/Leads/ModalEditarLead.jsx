@@ -13,6 +13,23 @@ const CANAIS = [
     { value: 'WHATSAPP', label: 'WhatsApp' },
     { value: 'TELEFONE', label: 'Telefone' },
 ];
+const ORIGENS_PADRAO = [
+    { value: 'VISITA_VENDEDOR', label: 'Visita do vendedor' },
+    { value: 'INDICACAO', label: 'Indicação' },
+    { value: 'WHATSAPP', label: 'WhatsApp' },
+    { value: 'CLIENTE_PEDIU_CONTATO', label: 'Cliente que pediu contato' },
+    { value: 'PESQUISA', label: 'Pesquisa' },
+    { value: 'REATIVACAO', label: 'Reativação cliente antigo' },
+];
+const ACOES_PADRAO = [
+    { value: 'NOVO', label: 'Novo' },
+    { value: 'VISITAR', label: 'Visitar' },
+    { value: 'MANDAR_WHATSAPP', label: 'Mandar WhatsApp' },
+    { value: 'LIGAR', label: 'Ligar' },
+    { value: 'LEVAR_AMOSTRA', label: 'Levar amostra' },
+    { value: 'AGUARDO_RETORNO', label: 'Aguardo retorno' },
+    { value: 'SEM_POTENCIAL', label: 'Sem potencial' },
+];
 
 const ModalEditarLead = ({ lead, onClose, onSalvo, user }) => {
     const perms = user?.permissoes || {};
@@ -53,8 +70,8 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, user }) => {
             api.get('/categorias-cliente').then(r => r.data).catch(() => []),
             podeEscolherVendedor ? vendedorService.listar().catch(() => []) : Promise.resolve([])
         ]).then(([orig, act, cats, vends]) => {
-            setOrigens(Array.isArray(orig) && orig.length > 0 ? orig : []);
-            setAcoes(Array.isArray(act) && act.length > 0 ? act : []);
+            setOrigens(Array.isArray(orig) && orig.length > 0 ? orig : ORIGENS_PADRAO);
+            setAcoes(Array.isArray(act) && act.length > 0 ? act : ACOES_PADRAO);
             setCategoriasCliente(Array.isArray(cats) ? cats.filter(c => c.ativo) : []);
             setVendedores(Array.isArray(vends) ? vends : []);
         });

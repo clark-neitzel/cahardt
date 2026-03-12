@@ -12,6 +12,16 @@ const TIPOS_PADRAO = [
     { value: 'OUTROS', label: 'Outros' },
 ];
 
+const ACOES_PADRAO = [
+    { value: 'NOVO', label: 'Novo' },
+    { value: 'VISITAR', label: 'Visitar' },
+    { value: 'MANDAR_WHATSAPP', label: 'Mandar WhatsApp' },
+    { value: 'LIGAR', label: 'Ligar' },
+    { value: 'LEVAR_AMOSTRA', label: 'Levar amostra' },
+    { value: 'AGUARDO_RETORNO', label: 'Aguardo retorno' },
+    { value: 'SEM_POTENCIAL', label: 'Sem potencial' },
+];
+
 const ETAPAS = ['NOVO', 'AMOSTRA', 'VISITA', 'PEDIDO', 'FINALIZADO'];
 
 const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
@@ -19,8 +29,10 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
     const isLead = tipo === 'lead';
 
     const [tipos, setTipos] = useState(TIPOS_PADRAO);
+    const [acoes, setAcoes] = useState(ACOES_PADRAO);
     const [form, setForm] = useState({
         tipoAtendimento: 'VISITA',
+        acaoAtendimento: '',
         observacao: '',
         etapaNova: isLead ? item.etapa : '',
         proximaVisita: '',
@@ -29,17 +41,22 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
     const [loadingGps, setLoadingGps] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    // Carrega tipos de atendimento da configuração
+    // Carrega tipos e ações de atendimento da configuração
     useEffect(() => {
-        configService.get('tipos_atendimento').then(data => {
-            if (Array.isArray(data) && data.length > 0) {
-                setTipos(data);
-                // ajusta default se não existir mais
-                if (!data.some(t => t.value === 'VISITA')) {
-                    setForm(f => ({ ...f, tipoAtendimento: data[0]?.value || '' }));
+        Promise.all([
+            configService.get('tipos_atendimento').catch(() => null),
+            configService.get('acoes_atendimento').catch(() => null)
+        ]).then(([tiposData, acoesData]) => {
+            if (Array.isArray(tiposData) && tiposData.length > 0) {
+                setTipos(tiposData);
+                if (!tiposData.some(t => t.value === 'VISITA')) {
+                    setForm(f => ({ ...f, tipoAtendimento: tiposData[0]?.value || '' }));
                 }
             }
-        }).catch(() => { }); // silencia — usa padrão
+            if (Array.isArray(acoesData) && acoesData.length > 0) {
+                setAcoes(acoesData);
+            }
+        });
     }, []);
 
     const [isListening, setIsListening] = useState(false);
@@ -155,7 +172,9 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
             setSaving(true);
             await atendimentoService.registrar({
                 tipo: form.tipoAtendimento,
-                observacao: form.observacao || null,
+                observacao: form.acaoAtendimento
+                    ? `[Ação: ${acoes.find(a => a.value === form.acaoAtendimento)?.label || form.acaoAtendimento}] ${form.observacao || ''}`
+                    : (form.observacao || null),
                 etapaAnterior: isLead ? item.etapa : null,
                 etapaNova: isLead && form.etapaNova !== item.etapa ? form.etapaNova : null,
                 proximaVisita: form.proximaVisita || null,
@@ -211,6 +230,21 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
                             ))}
                         </div>
                     </div>
+
+                    {/* Ação do Atendimento */}
+                    {isLead && acoes.length > 0 && (
+                        <div>
+                            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Ação do Atendimento</label>
+                            <select
+                                value={form.acaoAtendimento}
+                                onChange={e => setForm(f => ({ ...f, acaoAtendimento: e.target.value }))}
+                                className="block w-full border border-orange-300 rounded-lg p-3 bg-orange-50 text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500"
+                            >
+                                <option value="">Nenhuma ação</option>
+                                {acoes.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                            </select>
+                        </div>
+                    )}
 
                     {/* Etapa (só para leads) */}
                     {isLead && (

@@ -198,6 +198,13 @@ const Configuracoes = () => {
         setOrigens(prev => [...prev, { value, label }]);
         setNovaOrigem('');
     };
+    const handleEditarOrigem = (value) => {
+        const origem = origens.find(o => o.value === value);
+        if (!origem) return;
+        const novoLabel = prompt('Editar nome da origem:', origem.label);
+        if (!novoLabel || novoLabel.trim() === '' || novoLabel.trim() === origem.label) return;
+        setOrigens(prev => prev.map(o => o.value === value ? { ...o, label: novoLabel.trim() } : o));
+    };
     const handleRemoverOrigem = (value) => {
         if (ORIGENS_PADRAO.some(o => o.value === value)) {
             if (!window.confirm('Esta é uma origem padrão. Tem certeza que deseja remover?')) return;
@@ -224,6 +231,13 @@ const Configuracoes = () => {
         }
         setAcoes(prev => [...prev, { value, label }]);
         setNovaAcao('');
+    };
+    const handleEditarAcao = (value) => {
+        const acao = acoes.find(a => a.value === value);
+        if (!acao) return;
+        const novoLabel = prompt('Editar nome da ação:', acao.label);
+        if (!novoLabel || novoLabel.trim() === '' || novoLabel.trim() === acao.label) return;
+        setAcoes(prev => prev.map(a => a.value === value ? { ...a, label: novoLabel.trim() } : a));
     };
     const handleRemoverAcao = (value) => {
         if (ACOES_PADRAO.some(a => a.value === value)) {
@@ -370,7 +384,9 @@ const Configuracoes = () => {
                             const isPadrao = ORIGENS_PADRAO.some(p => p.value === o.value);
                             return (
                                 <div key={o.value} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border ${isPadrao ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                                    {o.label}
+                                    <button onClick={() => handleEditarOrigem(o.value)} className="hover:underline" title="Clique para editar">
+                                        {o.label}
+                                    </button>
                                     {isPadrao && <span className="text-[9px] text-teal-400 font-normal">(padrão)</span>}
                                     <button onClick={() => handleRemoverOrigem(o.value)} className="ml-0.5 text-gray-400 hover:text-red-500 transition-colors">
                                         <X className="h-3.5 w-3.5" />
@@ -417,7 +433,9 @@ const Configuracoes = () => {
                             const isPadrao = ACOES_PADRAO.some(p => p.value === a.value);
                             return (
                                 <div key={a.value} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border ${isPadrao ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                                    {a.label}
+                                    <button onClick={() => handleEditarAcao(a.value)} className="hover:underline" title="Clique para editar">
+                                        {a.label}
+                                    </button>
                                     {isPadrao && <span className="text-[9px] text-orange-400 font-normal">(padrão)</span>}
                                     <button onClick={() => handleRemoverAcao(a.value)} className="ml-0.5 text-gray-400 hover:text-red-500 transition-colors">
                                         <X className="h-3.5 w-3.5" />

@@ -12,6 +12,14 @@ const CANAIS = [
     { value: 'WHATSAPP', label: 'WhatsApp' },
     { value: 'TELEFONE', label: 'Telefone' },
 ];
+const ORIGENS_PADRAO = [
+    { value: 'VISITA_VENDEDOR', label: 'Visita do vendedor' },
+    { value: 'INDICACAO', label: 'Indicação' },
+    { value: 'WHATSAPP', label: 'WhatsApp' },
+    { value: 'CLIENTE_PEDIU_CONTATO', label: 'Cliente que pediu contato' },
+    { value: 'PESQUISA', label: 'Pesquisa' },
+    { value: 'REATIVACAO', label: 'Reativação cliente antigo' },
+];
 
 const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVendedorId, podeEscolherVendedor: propPodeEscolher, vendedores: propVendedores }) => {
     const callback = onSalvo || onCriado;
@@ -73,7 +81,7 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
             configService.get('origens_lead').catch(() => []),
             api.get('/categorias-cliente').then(r => r.data).catch(() => [])
         ]).then(([orig, cats]) => {
-            setOrigens(Array.isArray(orig) && orig.length > 0 ? orig : []);
+            setOrigens(Array.isArray(orig) && orig.length > 0 ? orig : ORIGENS_PADRAO);
             setCategoriasCliente(Array.isArray(cats) ? cats.filter(c => c.ativo) : []);
         });
     }, []);
