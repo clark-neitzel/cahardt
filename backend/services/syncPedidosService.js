@@ -116,11 +116,27 @@ const syncPedidosService = {
             const d = new Date(pedido.dataVenda);
             const dataVendaStr = d.toISOString().split('T')[0];
 
-            // Data de vencimento baseada no intervalo
-            const installmentValue = Number((totalPedido / (Number(pedido.qtdParcelas) || 1)).toFixed(2));
-            const dataVenc = new Date(d);
-            dataVenc.setDate(dataVenc.getDate() + (pedido.intervaloDias || 0));
-            const dataVencStr = dataVenc.toISOString().split('T')[0];
+            const qtdParcelas = Math.max(1, Number(pedido.qtdParcelas) || 1);
+
+            // Interpreta opções como "7, 14" (ou com separadores comuns) para usar vencimentos reais por parcela.
+            const parseDayOffsets = (opcao) => {
+                if (!opcao || typeof opcao !== 'string') return [];
+                const offsets = (opcao.match(/\d+/g) || [])
+                    .map(Number)
+                    .filter((n) => Number.isFinite(n) && n >= 0);
+                return offsets;
+            };
+
+            const offsetsFromOption = parseDayOffsets(pedido.opcaoCondicaoPagamento);
+            const intervaloDias = Number(pedido.intervaloDias) || 0;
+            const dueDayOffsets = offsetsFromOption.length === qtdParcelas
+                ? offsetsFromOption
+                : Array.from({ length: qtdParcelas }, (_, index) => Math.max(0, intervaloDias) * (index + 1));
+
+            // Divide o total em centavos para evitar drift de ponto flutuante.
+            const totalCentavos = Math.round(Number(totalPedido.toFixed(2)) * 100);
+            const baseParcelaCentavos = Math.floor(totalCentavos / qtdParcelas);
+            const remainderCentavos = totalCentavos - (baseParcelaCentavos * qtdParcelas);
 
             let contaFinId = pedido.idContaFinanceira || undefined;
 
@@ -186,13 +202,15 @@ const syncPedidosService = {
                 payload.id_vendedor = vendedorIdCA;
             }
 
-            // Criações das parcelas. Como default vamos mandar 1 parcela pro total.
-            // Se o CA pedir multiplas poderemos iterar aqui no futuro:
-            for (let i = 1; i <= (Number(pedido.qtdParcelas) || 1); i++) {
+            for (let i = 1; i <= qtdParcelas; i++) {
+                const parcelaCentavos = baseParcelaCentavos + (i === qtdParcelas ? remainderCentavos : 0);
+                const dataVenc = new Date(d);
+                dataVenc.setDate(dataVenc.getDate() + dueDayOffsets[i - 1]);
+
                 payload.condicao_pagamento.parcelas.push({
-                    data_vencimento: dataVencStr, // Simplificação - Todos no mesmo dia da regra pra v1
-                    valor: installmentValue,
-                    descricao: `Parcela ${i}/${pedido.qtdParcelas || 1}`
+                    data_vencimento: dataVenc.toISOString().split('T')[0],
+                    valor: Number((parcelaCentavos / 100).toFixed(2)),
+                    descricao: `Parcela ${i}/${qtdParcelas}`
                 });
             }
 
