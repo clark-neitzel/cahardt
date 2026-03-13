@@ -820,7 +820,8 @@ const contaAzulService = {
                         body: retryError.response?.data || retryError.message,
                         duration: Date.now() - start
                     });
-                    throw retryError;
+                    const retryMsg = retryError.response?.data ? JSON.stringify(retryError.response.data) : retryError.message;
+                    throw new Error(`Erro na API Conta Azul (PUT venda ${idVenda}): ${retryMsg}`);
                 }
             }
 
@@ -831,7 +832,8 @@ const contaAzulService = {
                 body: error.response?.data || error.message,
                 duration: Date.now() - start
             });
-            throw error;
+            const errorMsg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+            throw new Error(`Erro na API Conta Azul (PUT venda ${idVenda}): ${errorMsg}`);
         }
     },
 

@@ -5,9 +5,47 @@ const syncPedidosService = {
     // Flag to prevent overlapping executions if the sync takes longer than the interval
     isRunning: false,
 
-    _resolverNaturezaOperacao: (cliente) => {
-        const naturezaCnpj = process.env.CA_NATUREZA_OPERACAO_CNPJ || "915a96fe-d5ca-11f0-8ea0-e7ffa7159b62";
-        const naturezaCpf = process.env.CA_NATUREZA_OPERACAO_CPF || null;
+    _resolverNaturezaOperacao: async (cliente) => {
+        const normalizeUuid = (value) => {
+            if (!value) return null;
+            if (typeof value === 'string') {
+                const trimmed = value.trim();
+                return trimmed || null;
+            }
+            if (typeof value === 'object') {
+                const candidate = value.id || value.uuid || value.value || value.naturezaOperacaoId;
+                if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+            }
+            return null;
+        };
+
+        const resolveConfigValue = async (keys) => {
+            const envHit = keys.map((key) => normalizeUuid(process.env[key])).find(Boolean);
+            if (envHit) return envHit;
+
+            const rows = await prisma.appConfig.findMany({
+                where: { key: { in: keys } },
+                select: { key: true, value: true }
+            });
+
+            for (const key of keys) {
+                const row = rows.find((item) => item.key === key);
+                const parsed = normalizeUuid(row?.value);
+                if (parsed) return parsed;
+            }
+            return null;
+        };
+
+        const naturezaCnpj = await resolveConfigValue([
+            'CA_NATUREZA_OPERACAO_CNPJ',
+            'ca_natureza_operacao_cnpj',
+            'natureza_operacao_cnpj'
+        ]) || '915a96fe-d5ca-11f0-8ea0-e7ffa7159b62';
+        const naturezaCpf = await resolveConfigValue([
+            'CA_NATUREZA_OPERACAO_CPF',
+            'ca_natureza_operacao_cpf',
+            'natureza_operacao_cpf'
+        ]) || '915b1e44-d5ca-11f0-8ea0-1fd3a2d60f8b';
 
         const tipoPessoa = String(cliente?.Tipo_Pessoa || '').toUpperCase();
         const documentoNumerico = String(cliente?.Documento || '').replace(/\D/g, '');
@@ -232,12 +270,11 @@ const syncPedidosService = {
 
             // 3. Submeter via ContaAzul Service
             const resultadoCA = await contaAzulService.enviarPedido(payload);
-            const naturezaOperacaoId = syncPedidosService._resolverNaturezaOperacao(pedido.cliente);
+            const naturezaOperacaoId = await syncPedidosService._resolverNaturezaOperacao(pedido.cliente);
 
             if (naturezaOperacaoId) {
                 try {
                     await contaAzulService.atualizarPedido(resultadoCA.id, {
-                        ...payload,
                         id_natureza_operacao: naturezaOperacaoId
                     });
                     console.log(`[Pedido ${pedido.id}] Natureza de operação aplicada no CA.`);
@@ -245,7 +282,9 @@ const syncPedidosService = {
                     console.warn(`[Pedido ${pedido.id}] Falha ao aplicar natureza de operação: ${updateError.message}`);
                 }
             } else {
-                console.warn(`[Pedido ${pedido.id}] Natureza de operação não configurada para o tipo de cliente.`);
+                const tipoPessoaDebug = pedido?.cliente?.Tipo_Pessoa || 'N/D';
+                const docDebug = pedido?.cliente?.Documento || 'N/D';
+                console.warn(`[Pedido ${pedido.id}] Natureza de operação não configurada para o tipo de cliente. Tipo: ${tipoPessoaDebug}, Documento: ${docDebug}`);
             }
 
             console.log(`[Pedido ${pedido.id}] Sucesso ContaAzul ID: ${resultadoCA.id}`);
