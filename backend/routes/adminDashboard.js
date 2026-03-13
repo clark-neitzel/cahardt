@@ -87,38 +87,13 @@ router.get('/', verificarAuth, async (req, res) => {
             return total + sumPags;
         }, 0);
 
-        // 6. Tarefas Vencidas (PENDENTE com data < hoje)
-        const tarefasVencidas = await prisma.tarefa.count({
-            where: {
-                status: 'PENDENTE',
-                dataVencimento: { lt: startOfDay }
-            }
-        });
-
-        // 7. Tarefas para Hoje
-        const tarefasHoje = await prisma.tarefa.count({
-            where: {
-                status: 'PENDENTE',
-                dataVencimento: { gte: startOfDay, lte: endOfDay }
-            }
-        });
-
-        // 8. Amostras Pendentes (não entregues nem canceladas)
-        const amostrasPendentes = await prisma.amostra.count({
-            where: {
-                status: { in: ['SOLICITADA', 'PREPARANDO', 'ENVIADA'] }
-            }
-        });
 
         res.json({
             caixasAConferir,
             pedidosComErro,
             pedidosEspeciais,
             vendasHojeNum,
-            valorEntregueHoje,
-            tarefasVencidas,
-            tarefasHoje,
-            amostrasPendentes
+            valorEntregueHoje
         });
 
     } catch (error) {

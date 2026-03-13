@@ -25,11 +25,6 @@ const DEFAULT_PERMISSIONS = {
     Pode_Reverter_Caixa: false,
     // CRM / Leads
     Pode_Editar_Lead: false,
-    // CRM / Tarefas
-    Pode_Ver_Todas_Tarefas: false,
-    Pode_Transferir_Tarefas: false,
-    // CRM / Amostras
-    Pode_Gerenciar_Amostras: false,
     // Pedidos Especiais
     Pode_Criar_Especial: false,
     Pode_Aprovar_Especial: false,
@@ -338,10 +333,10 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         </div>
                     </div>
 
-                    {/* CRM / Leads e Tarefas */}
+                    {/* CRM / Leads */}
                     <div className="border-t pt-4">
-                        <h4 className="font-medium text-gray-900 mb-4">CRM / Leads e Tarefas</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-teal-50 p-4 rounded-md border border-teal-200">
+                        <h4 className="font-medium text-gray-900 mb-4">CRM / Leads</h4>
+                        <div className="bg-teal-50 p-4 rounded-md border border-teal-200">
                             <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-teal-100 rounded transition-colors">
                                 <input
                                     type="checkbox"
@@ -351,43 +346,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 />
                                 <div>
                                     <span className="text-teal-900 font-bold block">Pode Editar Lead</span>
-                                    <span className="text-teal-700 text-xs">Permite editar leads após o cadastro inicial.</span>
-                                </div>
-                            </label>
-                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-teal-100 rounded transition-colors">
-                                <input
-                                    type="checkbox"
-                                    className="rounded border-teal-300 text-teal-600 focus:ring-teal-500 h-4 w-4"
-                                    checked={!!permissoes.Pode_Ver_Todas_Tarefas}
-                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Ver_Todas_Tarefas: e.target.checked }))}
-                                />
-                                <div>
-                                    <span className="text-teal-900 font-bold block">Ver Todas as Tarefas</span>
-                                    <span className="text-teal-700 text-xs">Visualiza tarefas de todos os vendedores na fila.</span>
-                                </div>
-                            </label>
-                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-teal-100 rounded transition-colors">
-                                <input
-                                    type="checkbox"
-                                    className="rounded border-teal-300 text-teal-600 focus:ring-teal-500 h-4 w-4"
-                                    checked={!!permissoes.Pode_Transferir_Tarefas}
-                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Transferir_Tarefas: e.target.checked }))}
-                                />
-                                <div>
-                                    <span className="text-teal-900 font-bold block">Transferir Tarefas</span>
-                                    <span className="text-teal-700 text-xs">Pode transferir tarefas entre vendedores.</span>
-                                </div>
-                            </label>
-                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-teal-100 rounded transition-colors">
-                                <input
-                                    type="checkbox"
-                                    className="rounded border-teal-300 text-teal-600 focus:ring-teal-500 h-4 w-4"
-                                    checked={!!permissoes.Pode_Gerenciar_Amostras}
-                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Gerenciar_Amostras: e.target.checked }))}
-                                />
-                                <div>
-                                    <span className="text-teal-900 font-bold block">Gerenciar Amostras</span>
-                                    <span className="text-teal-700 text-xs">Pode alterar o status de amostras (preparar, enviar, entregar).</span>
+                                    <span className="text-teal-700 text-xs">Permite editar leads após o cadastro inicial. Sem esta permissão, o usuário só cria novos leads mas não pode alterar os existentes.</span>
                                 </div>
                             </label>
                         </div>

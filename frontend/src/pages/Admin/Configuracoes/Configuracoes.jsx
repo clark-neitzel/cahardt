@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import configService from '../../../services/configService';
-import vendedorService from '../../../services/vendedorService';
-import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2, ScrollText, MapPin, Zap, Target, UserCheck } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2, ScrollText, MapPin, Zap, Target } from 'lucide-react';
 import toast from 'react-hot-toast';
 import RotasAtivasPreview from './RotasAtivasPreview';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -63,16 +62,6 @@ const Configuracoes = () => {
     const [novaAcaoLead, setNovaAcaoLead] = useState('');
     const [savingAcoesLead, setSavingAcoesLead] = useState(false);
 
-    // Vendedores (para responsável padrão por ação)
-    const [vendedores, setVendedores] = useState([]);
-
-    // Tarefas Automáticas
-    const [tarefasAuto, setTarefasAuto] = useState({
-        pos_venda: { ativo: false, acao_key: 'POS_VENDA', acao_label: 'Acompanhamento pós-venda', dias_apos: 7, responsavel_id: '' },
-        reativacao: { ativo: false, acao_key: 'REATIVAR', acao_label: 'Reativar cliente', dias_vencimento: 3, responsavel_id: '' }
-    });
-    const [savingTarefasAuto, setSavingTarefasAuto] = useState(false);
-
     // Reset de dados
     const [resetGrupos, setResetGrupos] = useState([]);
     const [resettingGroup, setResettingGroup] = useState(null);
@@ -87,17 +76,15 @@ const Configuracoes = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [cats, currentConfig, tiposConfig, origensConfig, acoesConfig, acoesLeadConfig, vendedoresData, grupos, logs, tarefasAutoConfig] = await Promise.all([
+            const [cats, currentConfig, tiposConfig, origensConfig, acoesConfig, acoesLeadConfig, grupos, logs] = await Promise.all([
                 configService.getCategorias(),
                 configService.get('categorias_vendas'),
                 configService.get('tipos_atendimento').catch(() => null),
                 configService.get('origens_lead').catch(() => null),
                 configService.get('acoes_atendimento').catch(() => null),
                 configService.get('acoes_lead').catch(() => null),
-                vendedorService.listar().catch(() => []),
                 podeResetar ? api.get('/admin/reset-grupos').then(r => r.data).catch(() => []) : Promise.resolve(null),
-                isAdmin ? caixaService.getAuditLogs().catch(() => []) : Promise.resolve(null),
-                configService.get('tarefas_automaticas').catch(() => null)
+                isAdmin ? caixaService.getAuditLogs().catch(() => []) : Promise.resolve(null)
             ]);
             setCategorias(cats);
             setSelectedCategorias(Array.isArray(currentConfig) ? currentConfig : []);
@@ -105,15 +92,8 @@ const Configuracoes = () => {
             setOrigens(Array.isArray(origensConfig) && origensConfig.length > 0 ? origensConfig : ORIGENS_PADRAO);
             setAcoes(Array.isArray(acoesConfig) && acoesConfig.length > 0 ? acoesConfig : ACOES_PADRAO);
             setAcoesLead(Array.isArray(acoesLeadConfig) && acoesLeadConfig.length > 0 ? acoesLeadConfig : ACOES_PADRAO);
-            if (Array.isArray(vendedoresData)) setVendedores(vendedoresData.filter(v => v.ativo));
             if (grupos) setResetGrupos(grupos);
             if (logs) setAuditLogs(logs);
-            if (tarefasAutoConfig && typeof tarefasAutoConfig === 'object') {
-                setTarefasAuto(prev => ({
-                    pos_venda: { ...prev.pos_venda, ...tarefasAutoConfig.pos_venda },
-                    reativacao: { ...prev.reativacao, ...tarefasAutoConfig.reativacao }
-                }));
-            }
         } catch (error) {
             console.error('Erro ao carregar configurações:', error);
             setMessage({ type: 'error', text: 'Erro ao carregar dados.' });
@@ -272,9 +252,6 @@ const Configuracoes = () => {
         }
         setAcoes(prev => prev.filter(a => a.value !== value));
     };
-    const handleResponsavelAcao = (value, responsavelId) => {
-        setAcoes(prev => prev.map(a => a.value === value ? { ...a, responsavelPadraoId: responsavelId || null } : a));
-    };
     const handleSalvarAcoes = async () => {
         try {
             setSavingAcoes(true);
@@ -309,9 +286,6 @@ const Configuracoes = () => {
         }
         setAcoesLead(prev => prev.filter(a => a.value !== value));
     };
-    const handleResponsavelAcaoLead = (value, responsavelId) => {
-        setAcoesLead(prev => prev.map(a => a.value === value ? { ...a, responsavelPadraoId: responsavelId || null } : a));
-    };
     const handleSalvarAcoesLead = async () => {
         try {
             setSavingAcoesLead(true);
@@ -319,22 +293,6 @@ const Configuracoes = () => {
             toast.success('Ações do lead salvas!');
         } catch { toast.error('Erro ao salvar ações do lead.'); }
         finally { setSavingAcoesLead(false); }
-    };
-
-    // Tarefas Automáticas handlers
-    const handleTarefaAutoChange = (tipo, campo, valor) => {
-        setTarefasAuto(prev => ({
-            ...prev,
-            [tipo]: { ...prev[tipo], [campo]: valor }
-        }));
-    };
-    const handleSalvarTarefasAuto = async () => {
-        try {
-            setSavingTarefasAuto(true);
-            await configService.save('tarefas_automaticas', tarefasAuto);
-            toast.success('Tarefas automáticas salvas!');
-        } catch { toast.error('Erro ao salvar tarefas automáticas.'); }
-        finally { setSavingTarefasAuto(false); }
     };
 
     if (loading) return <div className="p-8 text-center text-gray-500">Carregando configurações...</div>;
@@ -507,31 +465,20 @@ const Configuracoes = () => {
                             <Zap className="h-5 w-5 text-orange-600" />
                             Ações do Atendimento
                         </h2>
-                        <p className="text-sm text-gray-500 mt-0.5">Próximos passos/status para atendimentos de clientes. Defina o responsável padrão de cada ação.</p>
+                        <p className="text-sm text-gray-500 mt-0.5">Próximos passos/status para atendimentos de clientes.</p>
                     </div>
                 </div>
                 <div className="p-6 space-y-4">
-                    <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
                         {acoes.map(a => {
                             const isPadrao = ACOES_PADRAO.some(p => p.value === a.value);
                             return (
-                                <div key={a.value} className={`flex items-center gap-3 px-3 py-2 rounded-lg border ${isPadrao ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-gray-200'}`}>
-                                    <button onClick={() => handleEditarAcao(a.value)} className="font-semibold text-[13px] text-gray-800 hover:underline flex-shrink-0" title="Clique para editar">
+                                <div key={a.value} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border ${isPadrao ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                                    <button onClick={() => handleEditarAcao(a.value)} className="hover:underline" title="Clique para editar">
                                         {a.label}
                                     </button>
                                     {isPadrao && <span className="text-[9px] text-orange-400 font-normal">(padrão)</span>}
-                                    <div className="flex-1 flex items-center gap-1.5 ml-auto">
-                                        <UserCheck className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                                        <select
-                                            value={a.responsavelPadraoId || ''}
-                                            onChange={e => handleResponsavelAcao(a.value, e.target.value)}
-                                            className="text-[12px] border border-gray-200 rounded px-2 py-1 bg-white text-gray-700 max-w-[180px]"
-                                        >
-                                            <option value="">Vendedor do lead</option>
-                                            {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                                        </select>
-                                    </div>
-                                    <button onClick={() => handleRemoverAcao(a.value)} className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0">
+                                    <button onClick={() => handleRemoverAcao(a.value)} className="ml-0.5 text-gray-400 hover:text-red-500 transition-colors">
                                         <X className="h-3.5 w-3.5" />
                                     </button>
                                 </div>
@@ -567,31 +514,20 @@ const Configuracoes = () => {
                             <Target className="h-5 w-5 text-purple-600" />
                             Ações do Lead
                         </h2>
-                        <p className="text-sm text-gray-500 mt-0.5">Próximos passos/status exclusivos para gestão de leads. Defina o responsável padrão de cada ação.</p>
+                        <p className="text-sm text-gray-500 mt-0.5">Próximos passos/status exclusivos para gestão de leads. Separados das ações de atendimento de clientes.</p>
                     </div>
                 </div>
                 <div className="p-6 space-y-4">
-                    <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
                         {acoesLead.map(a => {
                             const isPadrao = ACOES_PADRAO.some(p => p.value === a.value);
                             return (
-                                <div key={a.value} className={`flex items-center gap-3 px-3 py-2 rounded-lg border ${isPadrao ? 'bg-purple-50 border-purple-200' : 'bg-gray-50 border-gray-200'}`}>
-                                    <button onClick={() => handleEditarAcaoLead(a.value)} className="font-semibold text-[13px] text-gray-800 hover:underline flex-shrink-0" title="Clique para editar">
+                                <div key={a.value} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border ${isPadrao ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                                    <button onClick={() => handleEditarAcaoLead(a.value)} className="hover:underline" title="Clique para editar">
                                         {a.label}
                                     </button>
                                     {isPadrao && <span className="text-[9px] text-purple-400 font-normal">(padrão)</span>}
-                                    <div className="flex-1 flex items-center gap-1.5 ml-auto">
-                                        <UserCheck className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                                        <select
-                                            value={a.responsavelPadraoId || ''}
-                                            onChange={e => handleResponsavelAcaoLead(a.value, e.target.value)}
-                                            className="text-[12px] border border-gray-200 rounded px-2 py-1 bg-white text-gray-700 max-w-[180px]"
-                                        >
-                                            <option value="">Vendedor do lead</option>
-                                            {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                                        </select>
-                                    </div>
-                                    <button onClick={() => handleRemoverAcaoLead(a.value)} className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0">
+                                    <button onClick={() => handleRemoverAcaoLead(a.value)} className="ml-0.5 text-gray-400 hover:text-red-500 transition-colors">
                                         <X className="h-3.5 w-3.5" />
                                     </button>
                                 </div>
@@ -614,108 +550,6 @@ const Configuracoes = () => {
                             className="flex items-center gap-1.5 px-5 py-2 bg-primary text-white rounded-md font-medium shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm">
                             <Save className="h-4 w-4" />
                             {savingAcoesLead ? 'Salvando...' : 'Salvar Ações do Lead'}
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── Tarefas Automáticas ── */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-6 border-b border-gray-100 bg-emerald-50">
-                    <h2 className="text-lg font-semibold text-emerald-700 flex items-center gap-2">
-                        <Zap className="h-5 w-5" />
-                        Tarefas Automáticas
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-0.5">Configure tarefas criadas automaticamente pelo sistema.</p>
-                </div>
-                <div className="p-6 space-y-6">
-                    {/* Pós-Venda */}
-                    <div className="border border-gray-100 rounded-xl p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="text-[14px] font-bold text-gray-800">Pós-Venda</h3>
-                                <p className="text-[12px] text-gray-500">Cria tarefa quando um lead é convertido em cliente.</p>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" checked={tarefasAuto.pos_venda.ativo}
-                                    onChange={e => handleTarefaAutoChange('pos_venda', 'ativo', e.target.checked)}
-                                    className="sr-only peer" />
-                                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-                            </label>
-                        </div>
-                        {tarefasAuto.pos_venda.ativo && (
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Ação</label>
-                                    <input type="text" value={tarefasAuto.pos_venda.acao_label}
-                                        onChange={e => handleTarefaAutoChange('pos_venda', 'acao_label', e.target.value)}
-                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13px]" />
-                                </div>
-                                <div>
-                                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Dias após conversão</label>
-                                    <input type="number" min={1} max={90} value={tarefasAuto.pos_venda.dias_apos}
-                                        onChange={e => handleTarefaAutoChange('pos_venda', 'dias_apos', parseInt(e.target.value) || 7)}
-                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13px]" />
-                                </div>
-                                <div className="col-span-2">
-                                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Responsável padrão</label>
-                                    <select value={tarefasAuto.pos_venda.responsavel_id || ''}
-                                        onChange={e => handleTarefaAutoChange('pos_venda', 'responsavel_id', e.target.value || '')}
-                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13px]">
-                                        <option value="">Vendedor do lead</option>
-                                        {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Reativação */}
-                    <div className="border border-gray-100 rounded-xl p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="text-[14px] font-bold text-gray-800">Reativação de Clientes</h3>
-                                <p className="text-[12px] text-gray-500">Cria tarefa quando cliente fica atrasado ou crítico (Inteligência Comercial).</p>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" checked={tarefasAuto.reativacao.ativo}
-                                    onChange={e => handleTarefaAutoChange('reativacao', 'ativo', e.target.checked)}
-                                    className="sr-only peer" />
-                                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-                            </label>
-                        </div>
-                        {tarefasAuto.reativacao.ativo && (
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Ação</label>
-                                    <input type="text" value={tarefasAuto.reativacao.acao_label}
-                                        onChange={e => handleTarefaAutoChange('reativacao', 'acao_label', e.target.value)}
-                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13px]" />
-                                </div>
-                                <div>
-                                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Dias para vencimento</label>
-                                    <input type="number" min={1} max={30} value={tarefasAuto.reativacao.dias_vencimento}
-                                        onChange={e => handleTarefaAutoChange('reativacao', 'dias_vencimento', parseInt(e.target.value) || 3)}
-                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13px]" />
-                                </div>
-                                <div className="col-span-2">
-                                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">Responsável padrão</label>
-                                    <select value={tarefasAuto.reativacao.responsavel_id || ''}
-                                        onChange={e => handleTarefaAutoChange('reativacao', 'responsavel_id', e.target.value || '')}
-                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13px]">
-                                        <option value="">Vendedor do cliente</option>
-                                        {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex justify-end">
-                        <button onClick={handleSalvarTarefasAuto} disabled={savingTarefasAuto}
-                            className="flex items-center gap-1.5 px-5 py-2 bg-primary text-white rounded-md font-medium shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm">
-                            <Save className="h-4 w-4" />
-                            {savingTarefasAuto ? 'Salvando...' : 'Salvar Tarefas Automáticas'}
                         </button>
                     </div>
                 </div>

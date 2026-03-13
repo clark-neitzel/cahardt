@@ -1,18 +1,12 @@
 const prisma = require('../config/database');
 const clienteInsightService = require('./clienteInsightService');
-const tarefaService = require('./tarefaService');
 
 const atendimentoService = {
 
     // Registra um atendimento (para Lead ou Cliente)
-    // Agora aceita: acaoKey, acaoLabel, proximaAcaoKey, proximaAcaoLabel,
-    //               proximoResponsavelId, dataVencimento, tarefaResolvidaId
     registrar: async (data) => {
         const { tipo, observacao, etapaAnterior, etapaNova, proximaVisita,
-            gpsVendedor, pedidoId, leadId, clienteId, idVendedor,
-            acaoKey, acaoLabel, amostraId,
-            proximaAcaoKey, proximaAcaoLabel, proximoResponsavelId, dataVencimento,
-            tarefaResolvidaId } = data;
+            gpsVendedor, pedidoId, leadId, clienteId, idVendedor } = data;
 
         // Se for lead, atualizar a etapa e próxima visita
         if (leadId && etapaNova) {
@@ -30,51 +24,22 @@ const atendimentoService = {
             });
         }
 
-        // Criar o atendimento
-        const novoAtendimento = await prisma.atendimento.create({
+        return await prisma.atendimento.create({
             data: {
                 tipo,
-                observacao: observacao || null,
+                observacao,
                 etapaAnterior: etapaAnterior || null,
                 etapaNova: etapaNova || null,
                 proximaVisita: proximaVisita ? new Date(proximaVisita) : null,
                 gpsVendedor: gpsVendedor || null,
                 pedidoId: pedidoId || null,
-                acaoKey: acaoKey || null,
-                acaoLabel: acaoLabel || null,
-                amostraId: amostraId || null,
                 leadId: leadId || null,
                 clienteId: clienteId || null,
                 idVendedor
             }
         });
 
-        // Resolver tarefa anterior (se veio de uma tarefa)
-        if (tarefaResolvidaId) {
-            await tarefaService.concluir(tarefaResolvidaId, novoAtendimento.id).catch(err => {
-                console.error('Erro ao concluir tarefa:', err);
-            });
-        }
-
-        // Criar próxima tarefa (se definida)
-        if (proximaAcaoKey && dataVencimento) {
-            const responsavel = proximoResponsavelId || idVendedor;
-            await tarefaService.criar({
-                acaoKey: proximaAcaoKey,
-                acaoLabel: proximaAcaoLabel || proximaAcaoKey,
-                contexto: leadId ? 'LEAD' : (clienteId ? 'CLIENTE' : 'LEAD'),
-                leadId: leadId || null,
-                clienteId: clienteId || null,
-                responsavelId: responsavel,
-                criadoPorId: idVendedor,
-                dataVencimento,
-                atendimentoOrigemId: novoAtendimento.id
-            }).catch(err => {
-                console.error('Erro ao criar próxima tarefa:', err);
-            });
-        }
-
-        // Async Detached Trigger para Inteligência Comercial
+        // 🟢 Async Detached Trigger para Etapa 2 Comercial Intelligence
         if (clienteId) {
             setTimeout(() => {
                 clienteInsightService.recalcularCliente(clienteId).catch(console.error);

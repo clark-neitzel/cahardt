@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertCircle, AlertTriangle, FileText, CheckSquare, DollarSign, TrendingUp, Lock, ListChecks, Clock, Package } from 'lucide-react';
+import { AlertCircle, AlertTriangle, FileText, CheckSquare, DollarSign, TrendingUp, Lock } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
@@ -100,49 +100,6 @@ const DashboardAdminSection = () => {
                         <h4 className="text-xl font-bold text-gray-900">{adminData.pedidosEspeciais}</h4>
                     </div>
                 </Link>
-
-                {/* Tarefas Vencidas */}
-                {adminData.tarefasVencidas > 0 && (
-                    <Link to="/tarefas" className="bg-white hover:border-red-500 border rounded-xl p-4 shadow-sm flex items-start gap-4 relative group cursor-pointer transition-all">
-                        <div className="bg-red-50 text-red-600 p-3 rounded-lg group-hover:bg-red-100 transition-colors">
-                            <ListChecks size={24} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-500">Tarefas Vencidas</p>
-                            <h4 className="text-xl font-bold text-red-600">{adminData.tarefasVencidas}</h4>
-                            <span className="absolute -top-2 -right-2 flex h-5 w-5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-white text-[10px] items-center justify-center font-bold">{adminData.tarefasVencidas}</span>
-                            </span>
-                        </div>
-                    </Link>
-                )}
-
-                {/* Tarefas Hoje */}
-                {adminData.tarefasHoje > 0 && (
-                    <Link to="/tarefas" className="bg-white hover:border-blue-500 border rounded-xl p-4 shadow-sm flex items-start gap-4 relative group cursor-pointer transition-all">
-                        <div className="bg-blue-50 text-blue-600 p-3 rounded-lg group-hover:bg-blue-100 transition-colors">
-                            <Clock size={24} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-500">Tarefas (Hoje)</p>
-                            <h4 className="text-xl font-bold text-gray-900">{adminData.tarefasHoje}</h4>
-                        </div>
-                    </Link>
-                )}
-
-                {/* Amostras Pendentes */}
-                {adminData.amostrasPendentes > 0 && (
-                    <Link to="/amostras" className="bg-white hover:border-orange-500 border rounded-xl p-4 shadow-sm flex items-start gap-4 relative group cursor-pointer transition-all">
-                        <div className="bg-orange-50 text-orange-600 p-3 rounded-lg group-hover:bg-orange-100 transition-colors">
-                            <Package size={24} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-500">Amostras Pendentes</p>
-                            <h4 className="text-xl font-bold text-gray-900">{adminData.amostrasPendentes}</h4>
-                        </div>
-                    </Link>
-                )}
 
             </div>
         </div>

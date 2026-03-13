@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Navigation, Loader, Mic, MicOff, ArrowRight, UserCheck, CalendarClock } from 'lucide-react';
+import { X, MapPin, Navigation, Loader, Mic, MicOff } from 'lucide-react';
 import atendimentoService from '../../services/atendimentoService';
 import configService from '../../services/configService';
-import vendedorService from '../../services/vendedorService';
 import toast from 'react-hot-toast';
 
 const TIPOS_PADRAO = [
@@ -25,56 +24,38 @@ const ACOES_PADRAO = [
 
 const ETAPAS = ['NOVO', 'AMOSTRA', 'VISITA', 'PEDIDO', 'FINALIZADO'];
 
-const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, tarefaId }) => {
+const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
     const { tipo, item } = dados; // tipo: 'lead' | 'cliente'
     const isLead = tipo === 'lead';
 
     const [tipos, setTipos] = useState(TIPOS_PADRAO);
     const [acoes, setAcoes] = useState(ACOES_PADRAO);
-    const [vendedores, setVendedores] = useState([]);
     const [form, setForm] = useState({
         tipoAtendimento: '',
         acaoAtendimento: '',
         observacao: '',
         etapaNova: isLead ? item.etapa : '',
-        proximaAcaoKey: '',
-        proximoResponsavelId: '',
-        dataVencimento: '',
+        proximaVisita: '',
     });
     const [gps, setGps] = useState(null);
     const [loadingGps, setLoadingGps] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    // Carrega tipos, ações e vendedores
+    // Carrega tipos e ações de atendimento da configuração
+    // Para leads usa acoes_lead, para clientes usa acoes_atendimento
     useEffect(() => {
         const chaveAcoes = isLead ? 'acoes_lead' : 'acoes_atendimento';
         Promise.all([
             configService.get('tipos_atendimento').catch(() => null),
-            configService.get(chaveAcoes).catch(() => null),
-            vendedorService.listar().catch(() => [])
-        ]).then(([tiposData, acoesData, vendedoresData]) => {
+            configService.get(chaveAcoes).catch(() => null)
+        ]).then(([tiposData, acoesData]) => {
             const finalTipos = Array.isArray(tiposData) && tiposData.length > 0 ? tiposData : TIPOS_PADRAO;
             setTipos(finalTipos);
             if (Array.isArray(acoesData) && acoesData.length > 0) {
                 setAcoes(acoesData);
             }
-            if (Array.isArray(vendedoresData)) {
-                setVendedores(vendedoresData.filter(v => v.ativo));
-            }
         });
     }, []);
-
-    // Quando muda a próxima ação, auto-preenche responsável padrão
-    useEffect(() => {
-        if (form.proximaAcaoKey) {
-            const acao = acoes.find(a => a.value === form.proximaAcaoKey);
-            if (acao?.responsavelPadraoId) {
-                setForm(f => ({ ...f, proximoResponsavelId: acao.responsavelPadraoId }));
-            } else {
-                setForm(f => ({ ...f, proximoResponsavelId: vendedorId }));
-            }
-        }
-    }, [form.proximaAcaoKey, acoes, vendedorId]);
 
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = React.useRef(null);
@@ -102,12 +83,12 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, tarefaId }) => 
         recognition.interimResults = true;
 
         stoppedRef.current = false;
-        originalTextRef.current = form.observacao;
+        originalTextRef.current = form.observacao; // Salva o texto base
 
         recognition.onstart = () => setIsListening(true);
 
         recognition.onresult = (event) => {
-            if (stoppedRef.current) return;
+            if (stoppedRef.current) return; // Ignora resultados após parar
 
             let finalTranscript = '';
             let interimTranscript = '';
@@ -121,11 +102,13 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, tarefaId }) => 
                 }
             }
 
+            // Concatena o texto base + os blocos já finalizados desta sessão + o trecho sendo falado agora
             setForm(f => {
                 const updatedBase = (originalTextRef.current + ' ' + finalTranscript).replace(/\s+/g, ' ').trim();
                 return { ...f, observacao: (updatedBase + ' ' + interimTranscript).trim() };
             });
 
+            // Se confirmou bloco final, atualiza a base para a próxima rodada
             if (finalTranscript !== '') {
                 originalTextRef.current = (originalTextRef.current + ' ' + finalTranscript).replace(/\s+/g, ' ').trim();
             }
@@ -175,49 +158,28 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, tarefaId }) => 
             toast.error('Selecione o tipo de atendimento.');
             return;
         }
-        if (!form.proximaAcaoKey) {
-            toast.error('Selecione a próxima ação.');
-            return;
+        if (form.proximaVisita) {
+            const pv = new Date(form.proximaVisita);
+            const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+            if (pv < hoje) {
+                toast.error('A próxima visita não pode ser uma data passada.');
+                return;
+            }
         }
-        if (!form.dataVencimento) {
-            toast.error('Informe a data da próxima ação.');
-            return;
-        }
-        if (!form.proximoResponsavelId) {
-            toast.error('Selecione o responsável pela próxima ação.');
-            return;
-        }
-        // Validar data não passada
-        const dv = new Date(form.dataVencimento);
-        const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-        if (dv < hoje) {
-            toast.error('A data da próxima ação não pode ser passada.');
-            return;
-        }
-
         try {
             setSaving(true);
-            const acaoRealizada = acoes.find(a => a.value === form.acaoAtendimento);
-            const proximaAcao = acoes.find(a => a.value === form.proximaAcaoKey);
-
             await atendimentoService.registrar({
                 tipo: form.tipoAtendimento,
-                acaoKey: form.acaoAtendimento || null,
-                acaoLabel: acaoRealizada?.label || null,
-                observacao: form.observacao || null,
+                observacao: form.acaoAtendimento
+                    ? `[Ação: ${acoes.find(a => a.value === form.acaoAtendimento)?.label || form.acaoAtendimento}] ${form.observacao || ''}`
+                    : (form.observacao || null),
                 etapaAnterior: isLead ? item.etapa : null,
                 etapaNova: isLead && form.etapaNova !== item.etapa ? form.etapaNova : null,
-                proximaVisita: form.dataVencimento || null,
+                proximaVisita: form.proximaVisita || null,
                 gpsVendedor: gps,
                 leadId: isLead ? item.id : null,
                 clienteId: !isLead ? item.UUID : null,
-                idVendedor: vendedorId,
-                // Campos da tarefa
-                proximaAcaoKey: form.proximaAcaoKey,
-                proximaAcaoLabel: proximaAcao?.label || form.proximaAcaoKey,
-                proximoResponsavelId: form.proximoResponsavelId,
-                dataVencimento: form.dataVencimento,
-                tarefaResolvidaId: tarefaId || null
+                idVendedor: vendedorId
             });
             onSalvo();
         } catch (e) {
@@ -232,7 +194,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, tarefaId }) => 
         <div className="fixed inset-0 z-50 bg-black/50 flex items-end">
             <div className="bg-white w-full rounded-t-2xl max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+                <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 sticky top-0 bg-white">
                     <div>
                         <h2 className="font-bold text-[16px] text-gray-900">Registrar Atendimento</h2>
                         <p className="text-[12px] text-gray-500 mt-0.5 truncate max-w-xs">
@@ -267,10 +229,10 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, tarefaId }) => 
                         </div>
                     </div>
 
-                    {/* Ação Realizada */}
+                    {/* Ação do Atendimento */}
                     {acoes.length > 0 && (
                         <div>
-                            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Ação Realizada</label>
+                            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Ação do Atendimento</label>
                             <select
                                 value={form.acaoAtendimento}
                                 onChange={e => setForm(f => ({ ...f, acaoAtendimento: e.target.value }))}
@@ -295,6 +257,18 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, tarefaId }) => 
                             </select>
                         </div>
                     )}
+
+                    {/* Próxima Visita */}
+                    <div>
+                        <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Próxima Visita (opcional)</label>
+                        <input
+                            type="date"
+                            min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })}
+                            value={form.proximaVisita}
+                            onChange={e => setForm(f => ({ ...f, proximaVisita: e.target.value }))}
+                            className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
 
                     {/* Observação */}
                     <div>
@@ -325,62 +299,6 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, tarefaId }) => 
                                 : 'border-gray-300 bg-white focus:ring-blue-500 focus:border-blue-500'
                                 }`}
                         />
-                    </div>
-
-                    {/* Separador — Próxima Ação */}
-                    <div className="border-t border-emerald-200 pt-4 mt-2">
-                        <div className="flex items-center gap-2 mb-3">
-                            <ArrowRight className="h-4 w-4 text-emerald-600" />
-                            <span className="text-[13px] font-bold text-emerald-700 uppercase tracking-wide">Próxima Ação *</span>
-                        </div>
-
-                        {/* Próxima Ação */}
-                        <div className="mb-3">
-                            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">O que fazer a seguir? *</label>
-                            <select
-                                value={form.proximaAcaoKey}
-                                onChange={e => setForm(f => ({ ...f, proximaAcaoKey: e.target.value }))}
-                                className="block w-full border border-emerald-300 rounded-lg p-3 bg-emerald-50 text-gray-900 text-[14px] focus:ring-emerald-500 focus:border-emerald-500"
-                            >
-                                <option value="">Selecione a próxima ação...</option>
-                                {acoes.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
-                            </select>
-                        </div>
-
-                        {/* Responsável Próximo */}
-                        <div className="mb-3">
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                                <UserCheck className="h-3.5 w-3.5 text-emerald-600" />
-                                <label className="text-[13px] font-semibold text-gray-700">Responsável *</label>
-                            </div>
-                            <select
-                                value={form.proximoResponsavelId}
-                                onChange={e => setForm(f => ({ ...f, proximoResponsavelId: e.target.value }))}
-                                className="block w-full border border-emerald-300 rounded-lg p-3 bg-emerald-50 text-gray-900 text-[14px] focus:ring-emerald-500 focus:border-emerald-500"
-                            >
-                                <option value="">Selecione o responsável...</option>
-                                {vendedores.map(v => (
-                                    <option key={v.id} value={v.id}>
-                                        {v.nome} {v.id === vendedorId ? '(eu)' : ''}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Data Vencimento */}
-                        <div>
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                                <CalendarClock className="h-3.5 w-3.5 text-emerald-600" />
-                                <label className="text-[13px] font-semibold text-gray-700">Quando? *</label>
-                            </div>
-                            <input
-                                type="date"
-                                min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })}
-                                value={form.dataVencimento}
-                                onChange={e => setForm(f => ({ ...f, dataVencimento: e.target.value }))}
-                                className="block w-full border border-emerald-300 rounded-lg p-3 bg-emerald-50 text-gray-900 text-[14px] focus:ring-emerald-500 focus:border-emerald-500"
-                            />
-                        </div>
                     </div>
 
                     {/* Botão */}
