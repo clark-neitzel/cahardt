@@ -5,57 +5,11 @@ const syncPedidosService = {
     // Flag to prevent overlapping executions if the sync takes longer than the interval
     isRunning: false,
 
-    _resolverNaturezaOperacao: async (cliente) => {
-        const normalizeUuid = (value) => {
-            if (!value) return null;
-            if (typeof value === 'string') {
-                const trimmed = value.trim();
-                return trimmed || null;
-            }
-            if (typeof value === 'object') {
-                const candidate = value.id || value.uuid || value.value || value.naturezaOperacaoId;
-                if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
-            }
-            return null;
-        };
-
-        const resolveConfigValue = async (keys) => {
-            const envHit = keys.map((key) => normalizeUuid(process.env[key])).find(Boolean);
-            if (envHit) return envHit;
-
-            const rows = await prisma.appConfig.findMany({
-                where: { key: { in: keys } },
-                select: { key: true, value: true }
-            });
-
-            for (const key of keys) {
-                const row = rows.find((item) => item.key === key);
-                const parsed = normalizeUuid(row?.value);
-                if (parsed) return parsed;
-            }
-            return null;
-        };
-
-        const naturezaCnpj = await resolveConfigValue([
-            'CA_NATUREZA_OPERACAO_CNPJ',
-            'ca_natureza_operacao_cnpj',
-            'natureza_operacao_cnpj'
-        ]) || '915a96fe-d5ca-11f0-8ea0-e7ffa7159b62';
-        const naturezaCpf = await resolveConfigValue([
-            'CA_NATUREZA_OPERACAO_CPF',
-            'ca_natureza_operacao_cpf',
-            'natureza_operacao_cpf'
-        ]) || '915b1e44-d5ca-11f0-8ea0-1fd3a2d60f8b';
-
+    _resolverIndicadorIE: (cliente) => {
         const tipoPessoa = String(cliente?.Tipo_Pessoa || '').toUpperCase();
         const documentoNumerico = String(cliente?.Documento || '').replace(/\D/g, '');
-
         const ehCnpj = tipoPessoa.includes('JUR') || documentoNumerico.length === 14;
-        const ehCpf = tipoPessoa.includes('FIS') || documentoNumerico.length === 11;
-
-        if (ehCnpj) return naturezaCnpj;
-        if (ehCpf) return naturezaCpf;
-        return null;
+        return ehCnpj ? 'CONTRIBUINTE' : 'NAO_CONTRIBUINTE';
     },
 
     processarFila: async () => {
@@ -157,6 +111,24 @@ const syncPedidosService = {
             const totalPedido = pedido.itens.reduce((acc, current) => {
                 return acc + (Number(current.quantidade) * Number(current.valor));
             }, 0);
+
+            // Antes da venda, tenta manter o indicador de IE coerente no cliente CA
+            try {
+                const indicadorIE = syncPedidosService._resolverIndicadorIE(pedido.cliente);
+                await contaAzulService.atualizarIndicadorIECliente(
+                    pedido.cliente.contaAzulId || pedido.cliente.UUID,
+                    {
+                        inscricoes: [
+                            {
+                                indicador_inscricao_estadual: indicadorIE
+                            }
+                        ]
+                    }
+                );
+                console.log(`[Pedido ${pedido.id}] Indicador de IE do cliente atualizado no CA: ${indicadorIE}.`);
+            } catch (ieError) {
+                console.warn(`[Pedido ${pedido.id}] Falha ao ajustar IE do cliente no CA: ${ieError.message}`);
+            }
 
             // Fetch seller for linking, checking if it exists in CA first
             let vendedorIdCA = null;
@@ -270,37 +242,6 @@ const syncPedidosService = {
 
             // 3. Submeter via ContaAzul Service
             const resultadoCA = await contaAzulService.enviarPedido(payload);
-            const naturezaOperacaoId = await syncPedidosService._resolverNaturezaOperacao(pedido.cliente);
-
-            if (naturezaOperacaoId) {
-                try {
-                    const payloadNaturezaMinimo = {
-                        id_cliente: payload.id_cliente,
-                        numero: payload.numero,
-                        data_venda: payload.data_venda,
-                        situacao: payload.situacao,
-                        id_natureza_operacao: naturezaOperacaoId
-                    };
-
-                    try {
-                        await contaAzulService.atualizarPedido(resultadoCA.id, payloadNaturezaMinimo);
-                    } catch (minError) {
-                        console.warn(`[Pedido ${pedido.id}] PUT mínimo rejeitado. Tentando PUT completo...`);
-                        await contaAzulService.atualizarPedido(resultadoCA.id, {
-                            ...payload,
-                            id_natureza_operacao: naturezaOperacaoId
-                        });
-                    }
-                    console.log(`[Pedido ${pedido.id}] Natureza de operação aplicada no CA.`);
-                } catch (updateError) {
-                    console.warn(`[Pedido ${pedido.id}] Falha ao aplicar natureza de operação: ${updateError.message}`);
-                }
-            } else {
-                const tipoPessoaDebug = pedido?.cliente?.Tipo_Pessoa || 'N/D';
-                const docDebug = pedido?.cliente?.Documento || 'N/D';
-                console.warn(`[Pedido ${pedido.id}] Natureza de operação não configurada para o tipo de cliente. Tipo: ${tipoPessoaDebug}, Documento: ${docDebug}`);
-            }
-
             console.log(`[Pedido ${pedido.id}] Sucesso ContaAzul ID: ${resultadoCA.id}`);
 
             // 4. Salvar Sucesso

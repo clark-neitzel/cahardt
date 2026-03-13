@@ -837,6 +837,70 @@ const contaAzulService = {
         }
     },
 
+    atualizarIndicadorIECliente: async (idCliente, payload) => {
+        const start = Date.now();
+        const url = `https://api-v2.contaazul.com/v1/pessoas/${idCliente}`;
+        let token = await contaAzulService.getAccessToken();
+        let attempts = 0;
+
+        const executeRequest = async (tokenToUse) => {
+            return await axios.patch(url, payload, {
+                headers: {
+                    'Authorization': `Bearer ${tokenToUse}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+        };
+
+        try {
+            const response = await executeRequest(token);
+            await contaAzulService._logStep('CLIENTE_PATCH', 'SUCESSO', `Cliente ${idCliente} atualizado`, {
+                url,
+                method: 'PATCH',
+                status: response.status,
+                body: payload,
+                duration: Date.now() - start
+            });
+            return response.data;
+        } catch (error) {
+            if (error.response?.status === 401 && attempts === 0) {
+                attempts++;
+                token = await contaAzulService.getAccessToken(true);
+                try {
+                    const retryResponse = await executeRequest(token);
+                    await contaAzulService._logStep('CLIENTE_PATCH', 'SUCESSO', `Cliente ${idCliente} atualizado (retry 401)`, {
+                        url,
+                        method: 'PATCH',
+                        status: retryResponse.status,
+                        body: payload,
+                        duration: Date.now() - start
+                    });
+                    return retryResponse.data;
+                } catch (retryError) {
+                    await contaAzulService._logStep('CLIENTE_PATCH', 'ERRO', `Falha PATCH cliente ${idCliente}`, {
+                        url,
+                        method: 'PATCH',
+                        status: retryError.response?.status,
+                        body: retryError.response?.data || retryError.message,
+                        duration: Date.now() - start
+                    });
+                    const retryMsg = retryError.response?.data ? JSON.stringify(retryError.response.data) : retryError.message;
+                    throw new Error(`Erro na API Conta Azul (PATCH cliente ${idCliente}): ${retryMsg}`);
+                }
+            }
+
+            await contaAzulService._logStep('CLIENTE_PATCH', 'ERRO', `Falha PATCH cliente ${idCliente}`, {
+                url,
+                method: 'PATCH',
+                status: error.response?.status,
+                body: error.response?.data || error.message,
+                duration: Date.now() - start
+            });
+            const errorMsg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+            throw new Error(`Erro na API Conta Azul (PATCH cliente ${idCliente}): ${errorMsg}`);
+        }
+    },
+
     // Rotina exclusiva para V2: A V2 simplesmente "esconde" pedidos deletados da busca geral.
     // Precisamos pingar ativamente os pedidos locais "RECEBIDO" para ver se retornam 404 (Excluídos).
     _verificarPedidosExcluidosContAzul: async () => {
