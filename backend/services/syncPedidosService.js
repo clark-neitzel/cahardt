@@ -274,9 +274,23 @@ const syncPedidosService = {
 
             if (naturezaOperacaoId) {
                 try {
-                    await contaAzulService.atualizarPedido(resultadoCA.id, {
+                    const payloadNaturezaMinimo = {
+                        id_cliente: payload.id_cliente,
+                        numero: payload.numero,
+                        data_venda: payload.data_venda,
+                        situacao: payload.situacao,
                         id_natureza_operacao: naturezaOperacaoId
-                    });
+                    };
+
+                    try {
+                        await contaAzulService.atualizarPedido(resultadoCA.id, payloadNaturezaMinimo);
+                    } catch (minError) {
+                        console.warn(`[Pedido ${pedido.id}] PUT mínimo rejeitado. Tentando PUT completo...`);
+                        await contaAzulService.atualizarPedido(resultadoCA.id, {
+                            ...payload,
+                            id_natureza_operacao: naturezaOperacaoId
+                        });
+                    }
                     console.log(`[Pedido ${pedido.id}] Natureza de operação aplicada no CA.`);
                 } catch (updateError) {
                     console.warn(`[Pedido ${pedido.id}] Falha ao aplicar natureza de operação: ${updateError.message}`);
