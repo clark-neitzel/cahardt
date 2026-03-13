@@ -141,6 +141,7 @@ const leadService = {
 
     /**
      * Vincula um lead a um cliente (conversão)
+     * Auto-cria tarefa pós-venda se configurado em tarefas_automaticas
      */
     referenciarCliente: async (leadId, clienteId) => {
         // Verificar se o cliente já tem um lead vinculado
@@ -151,7 +152,7 @@ const leadService = {
             throw { status: 400, message: `Este cliente já está vinculado ao lead #${existente.numero} (${existente.nomeEstabelecimento})` };
         }
 
-        return await prisma.lead.update({
+        const lead = await prisma.lead.update({
             where: { id: leadId },
             data: {
                 clienteId,
@@ -161,6 +162,37 @@ const leadService = {
                 cliente: { select: { UUID: true, Nome: true, NomeFantasia: true } }
             }
         });
+
+        // Auto-criar tarefa pós-venda
+        try {
+            const config = await prisma.appConfig.findUnique({ where: { key: 'tarefas_automaticas' } });
+            const tarefasAuto = config?.value || {};
+            const posVenda = tarefasAuto.pos_venda;
+
+            if (posVenda?.ativo && lead.idVendedor) {
+                const dataVencimento = new Date();
+                dataVencimento.setDate(dataVencimento.getDate() + (posVenda.dias_apos || 7));
+
+                await prisma.tarefa.create({
+                    data: {
+                        acaoKey: posVenda.acao_key || 'POS_VENDA',
+                        acaoLabel: posVenda.acao_label || 'Acompanhamento pós-venda',
+                        contexto: 'POS_VENDA',
+                        leadId: lead.id,
+                        clienteId: clienteId,
+                        responsavelId: posVenda.responsavel_id || lead.idVendedor,
+                        criadoPorId: lead.idVendedor,
+                        dataVencimento,
+                        descricao: `Lead #${lead.numero || ''} convertido. Realizar acompanhamento pós-venda.`
+                    }
+                });
+                console.log(`✅ [Tarefa Auto] Pós-venda criada para lead ${leadId}`);
+            }
+        } catch (err) {
+            console.error('⚠️ Erro ao criar tarefa pós-venda automática:', err.message);
+        }
+
+        return lead;
     },
 
     /**

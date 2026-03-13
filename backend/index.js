@@ -31,6 +31,8 @@ const metaRoutes = require('./routes/metaRoutes'); // Gestão de Metas e Dashboa
 const categoriasProdutoRoutes = require('./routes/categoriasProduto'); // Inteligência Comercial
 const categoriasClienteRoutes = require('./routes/categoriasCliente'); // Inteligência Comercial
 const insightRoutes = require('./routes/insights'); // Inteligência Comercial - Insights Analíticos
+const tarefaRoutes = require('./routes/tarefaRoutes'); // CRM: Fila de Tarefas
+const amostraRoutes = require('./routes/amostraRoutes'); // CRM: Amostras
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -79,6 +81,8 @@ app.use('/api/roteirizar', roteirizacaoRoutes); // Roteirizador de Entregas (OSR
 app.use('/api/categorias-produto', authMiddleware, categoriasProdutoRoutes); // Inteligência Comercial
 app.use('/api/categorias-cliente', authMiddleware, categoriasClienteRoutes); // Inteligência Comercial
 app.use('/api/insights', authMiddleware, insightRoutes); // Inteligência Comercial - Motor
+app.use('/api/tarefas', authMiddleware, tarefaRoutes); // CRM: Fila de Tarefas
+app.use('/api/amostras', authMiddleware, amostraRoutes); // CRM: Amostras
 
 app.use('/api/migrations', migrationRoutes); // Migration endpoint
 

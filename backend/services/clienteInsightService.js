@@ -276,6 +276,47 @@ const clienteInsightService = {
                 create: { clienteId, ...insight }
             });
 
+            // Auto-criar tarefa de reativação se ATRASADO ou CRITICO
+            if (['ATRASADO', 'CRITICO'].includes(insight.statusRecompra) && cliente.idVendedor) {
+                try {
+                    const config = await prisma.appConfig.findUnique({ where: { key: 'tarefas_automaticas' } });
+                    const tarefasAuto = config?.value || {};
+                    const reativacao = tarefasAuto.reativacao;
+
+                    if (reativacao?.ativo) {
+                        // Só cria se não existe tarefa PENDENTE de reativação para este cliente
+                        const tarefaExistente = await prisma.tarefa.findFirst({
+                            where: {
+                                clienteId,
+                                contexto: 'REATIVACAO',
+                                status: 'PENDENTE'
+                            }
+                        });
+
+                        if (!tarefaExistente) {
+                            const dataVencimento = new Date();
+                            dataVencimento.setDate(dataVencimento.getDate() + (reativacao.dias_vencimento || 3));
+
+                            await prisma.tarefa.create({
+                                data: {
+                                    acaoKey: reativacao.acao_key || 'REATIVAR',
+                                    acaoLabel: reativacao.acao_label || 'Reativar cliente',
+                                    contexto: 'REATIVACAO',
+                                    clienteId,
+                                    responsavelId: reativacao.responsavel_id || cliente.idVendedor,
+                                    criadoPorId: cliente.idVendedor,
+                                    dataVencimento,
+                                    descricao: `Cliente ${cliente.Nome || ''} está ${insight.statusRecompra.toLowerCase()} (${insight.diasSemComprar || '?'} dias sem comprar). Score risco: ${insight.scoreRisco}.`
+                                }
+                            });
+                            // console.log(`✅ [Tarefa Auto] Reativação criada para cliente ${clienteId}`);
+                        }
+                    }
+                } catch (err) {
+                    console.error('⚠️ Erro ao criar tarefa de reativação automática:', err.message);
+                }
+            }
+
             return insight;
 
         } catch (error) {

@@ -46,6 +46,7 @@ model Produto {
   promocoes       Promocao[]
   itensDevolvidos EntregaItemDevolvido[]
   metasProdutos   MetaProduto[]
+  itensAmostra    AmostraItem[]
 
   // Inteligência Comercial
   categoriaProdutoId      String?           @map("categoria_produto_id")
@@ -314,6 +315,11 @@ model Vendedor {
   metasMensais     MetaMensalVendedor[]
   roteirizacao     Roteirizacao?
 
+  // CRM: Tarefas e Amostras
+  tarefasResponsavel   Tarefa[]  @relation("TarefasResponsavel")
+  tarefasCriadas       Tarefa[]  @relation("TarefasCriador")
+  amostrasSolicitadas  Amostra[] @relation("AmostrasSolicitadas")
+
   @@map("vendedores")
 }
 
@@ -450,6 +456,8 @@ model Lead {
   cliente   Cliente? @relation(fields: [clienteId], references: [UUID])
 
   atendimentos Atendimento[]
+  tarefas      Tarefa[]
+  amostras     Amostra[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -469,6 +477,11 @@ model Atendimento {
   proximaVisita DateTime? @map("proxima_visita")
   gpsVendedor   String?   @map("gps_vendedor")
   pedidoId      String?   @map("pedido_id")
+
+  // Ação estruturada (substitui prefixo texto)
+  acaoKey       String?   @map("acao_key")
+  acaoLabel     String?   @map("acao_label")
+  amostraId     String?   @map("amostra_id")
 
   leadId    String? @map("lead_id")
   lead      Lead?   @relation(fields: [leadId], references: [id])
@@ -896,4 +909,69 @@ model CategoriaCliente {
   leads    Lead[]
 
   @@map("categorias_cliente")
+}
+
+// =============================================
+// MÓDULO CRM: TAREFAS (FILA DE TRABALHO)
+// =============================================
+
+model Tarefa {
+  id                     String    @id @default(uuid())
+  acaoKey                String    @map("acao_key")
+  acaoLabel              String    @map("acao_label")
+  descricao              String?   @db.Text
+  contexto               String    @default("LEAD") // LEAD | CLIENTE | POS_VENDA | REATIVACAO
+  leadId                 String?   @map("lead_id")
+  lead                   Lead?     @relation(fields: [leadId], references: [id])
+  clienteId              String?   @map("cliente_id")
+  responsavelId          String    @map("responsavel_id")
+  responsavel            Vendedor  @relation("TarefasResponsavel", fields: [responsavelId], references: [id])
+  criadoPorId            String    @map("criado_por_id")
+  criadoPor              Vendedor  @relation("TarefasCriador", fields: [criadoPorId], references: [id])
+  dataVencimento         DateTime  @map("data_vencimento")
+  status                 String    @default("PENDENTE") // PENDENTE | CONCLUIDA | CANCELADA
+  atendimentoOrigemId    String?   @map("atendimento_origem_id")
+  atendimentoConclusaoId String?   @map("atendimento_conclusao_id")
+  concluidaEm            DateTime? @map("concluida_em")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  @@index([responsavelId, status])
+  @@index([dataVencimento])
+  @@index([leadId])
+  @@map("tarefas")
+}
+
+// =============================================
+// MÓDULO CRM: AMOSTRAS (MINI-PEDIDO)
+// =============================================
+
+model Amostra {
+  id              String        @id @default(uuid())
+  numero          Int           @default(autoincrement())
+  leadId          String?       @map("lead_id")
+  lead            Lead?         @relation(fields: [leadId], references: [id])
+  clienteId       String?       @map("cliente_id")
+  status          String        @default("SOLICITADA") // SOLICITADA | PREPARANDO | ENVIADA | ENTREGUE | CANCELADA
+  solicitadoPorId String        @map("solicitado_por_id")
+  solicitadoPor   Vendedor      @relation("AmostrasSolicitadas", fields: [solicitadoPorId], references: [id])
+  observacao      String?       @db.Text
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  itens           AmostraItem[]
+
+  @@index([status])
+  @@index([leadId])
+  @@map("amostras")
+}
+
+model AmostraItem {
+  id         String  @id @default(uuid())
+  amostraId  String  @map("amostra_id")
+  amostra    Amostra @relation(fields: [amostraId], references: [id], onDelete: Cascade)
+  produtoId  String  @map("produto_id")
+  produto    Produto @relation(fields: [produtoId], references: [id])
+  quantidade Decimal @db.Decimal(12, 3)
+
+  @@map("amostra_itens")
 }

@@ -20,6 +20,8 @@ import Veiculos from './pages/Veiculos/Veiculos';
 import NovoPedido from './pages/Pedidos/NovoPedido';
 import RotaLeads from './pages/Rota/RotaLeads';
 import ListaLeads from './pages/Leads/ListaLeads';
+import FilaTarefas from './pages/Tarefas/FilaTarefas';
+import ListaAmostras from './pages/Amostras/ListaAmostras';
 import Login from './pages/Login/Login';
 import PainelEmbarque from './pages/Admin/Embarques/PainelEmbarque';
 import AuditoriaEntregas from './pages/Admin/Embarques/AuditoriaEntregas';
@@ -35,7 +37,7 @@ import {
   LayoutDashboard, BookOpen, ClipboardList, Map, Target, Users,
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw,
-  Settings, DollarSign, Building2, TrendingUp, FolderOpen
+  Settings, DollarSign, Building2, TrendingUp, FolderOpen, ListChecks, Package
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -121,6 +123,8 @@ const Layout = ({ children }) => {
           {hasPermission('pedidos') && <SidebarItem to="/pedidos" icon={ClipboardList} label="Pedidos" />}
           {hasPermission('pedidos') && <SidebarItem to="/rota" icon={Map} label="Rota" />}
           {hasPermission('rota') && <SidebarItem to="/leads" icon={Target} label="Leads" />}
+          {hasPermission('rota') && <SidebarItem to="/tarefas" icon={ListChecks} label="Tarefas" />}
+          {hasPermission('rota') && <SidebarItem to="/amostras" icon={Package} label="Amostras" />}
           {hasPermission('clientes') && <SidebarItem to="/clientes" icon={Users} label="Clientes" />}
 
           {/* Logística */}
@@ -293,6 +297,8 @@ function App() {
               {/* Rota / Leads (CRM) */}
               <Route path="/rota" element={<PrivateRoute tab="pedidos"><RotaLeads /></PrivateRoute>} />
               <Route path="/leads" element={<PrivateRoute tab="rota"><ListaLeads /></PrivateRoute>} />
+              <Route path="/tarefas" element={<PrivateRoute tab="rota"><FilaTarefas /></PrivateRoute>} />
+              <Route path="/amostras" element={<PrivateRoute tab="rota"><ListaAmostras /></PrivateRoute>} />
 
               {/* Clientes */}
               <Route path="/clientes" element={<PrivateRoute tab="clientes"><ListaClientes /></PrivateRoute>} />
