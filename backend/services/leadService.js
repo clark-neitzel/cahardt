@@ -173,7 +173,11 @@ const leadService = {
                 vendedor: { select: { id: true, nome: true } },
                 atendimentos: {
                     orderBy: { criadoEm: 'desc' },
-                    include: { vendedor: { select: { nome: true } } }
+                    include: {
+                        vendedor: { select: { nome: true } },
+                        transferidoPara: { select: { nome: true } },
+                        amostra: { select: { id: true, numero: true, status: true } },
+                    }
                 }
             },
             orderBy: [{ createdAt: 'desc' }]

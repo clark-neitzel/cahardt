@@ -4,7 +4,7 @@ import {
     MapPin, Phone, MessageCircle, User, Plus, ChevronRight,
     Clock, Calendar, Tag, CheckCircle, ClipboardList, Star,
     Package, X, Navigation, Loader, Search, Truck, Edit3,
-    DollarSign, Trash2, Save, ChevronDown, ChevronUp, Route
+    DollarSign, Trash2, Save, ChevronDown, ChevronUp, Route, Bell
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import leadService from '../../services/leadService';
@@ -16,6 +16,7 @@ import tabelaPrecoService from '../../services/tabelaPrecoService';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import ModalAtendimento from './ModalAtendimento';
+import ModalAmostra from '../Pedidos/ModalAmostra';
 import ModalNovoLead from './ModalNovoLead';
 import CheckoutEntregaModal from '../Motorista/Entregas/CheckoutEntregaModal';
 import ClientePopup from './ClientePopup';
@@ -75,13 +76,16 @@ const abrirMapa = (gps) => {
 // ================================================
 // Card de Cliente
 // ================================================
-const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false }) => {
+const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, alerta, onAlertaVisto }) => {
     const atendHoje = getAtendimentoHoje(cliente._atendimentos);
     const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
     const vendedorNome = cliente.vendedor?.nome || cliente.Vendedor?.nome;
 
     return (
-        <div className={`bg-white rounded-xl border shadow-sm overflow-hidden mb-3 ${doDia ? 'border-green-500/50 ring-1 ring-green-500/20' : 'border-gray-200'}`}>
+        <div
+            className={`bg-white rounded-xl border shadow-sm overflow-hidden mb-3 ${alerta?.isHoje ? 'ring-2 animate-pulse-border' : doDia ? 'border-green-500/50 ring-1 ring-green-500/20' : 'border-gray-200'}`}
+            style={alerta?.isHoje ? { borderColor: alerta.cor, '--alerta-cor': alerta.cor } : undefined}
+        >
             <div className="p-4">
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -146,6 +150,23 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                     </div>
                 )}
 
+                {/* Alerta visual */}
+                {alerta && (
+                    <button
+                        onClick={() => onAlertaVisto && onAlertaVisto(alerta.atendimentoId)}
+                        className="mt-2 w-full text-left rounded-lg px-3 py-2 border text-[12px] flex items-center gap-2"
+                        style={{ backgroundColor: alerta.cor + '15', borderColor: alerta.cor, color: alerta.cor }}
+                    >
+                        <Bell className="h-3.5 w-3.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                            {alerta.acaoLabel && <span className="font-bold">{alerta.acaoLabel}</span>}
+                            {alerta.assuntoRetorno && <span className="ml-1">· {alerta.assuntoRetorno}</span>}
+                            {alerta.dataRetorno && <span className="ml-1 text-[11px] opacity-75">({new Date(alerta.dataRetorno).toLocaleDateString('pt-BR')})</span>}
+                        </div>
+                        <span className="text-[10px] font-bold opacity-60 shrink-0">Marcar visto</span>
+                    </button>
+                )}
+
                 {/* Exibir observação se já atendido */}
                 {atendHoje?.observacao && (
                     <div className="mt-2 bg-gray-50 border border-gray-100 rounded p-2">
@@ -182,14 +203,17 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
 // ================================================
 // Card de Lead
 // ================================================
-const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false }) => {
+const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, alerta, onAlertaVisto }) => {
     const atendHoje = getAtendimentoHoje(lead.atendimentos);
     const proxHoje = isProximaVisitaHoje(lead.proximaVisita);
     const vendedorNome = lead.vendedor?.nome;
 
     // Prospectos/Leads ficam com destaque laranja
     return (
-        <div className="bg-white rounded-xl border border-orange-400/50 ring-1 ring-orange-500/20 shadow-sm overflow-hidden mb-3">
+        <div
+            className={`bg-white rounded-xl border shadow-sm overflow-hidden mb-3 ${alerta?.isHoje ? 'ring-2 animate-pulse-border' : 'border-orange-400/50 ring-1 ring-orange-500/20'}`}
+            style={alerta?.isHoje ? { borderColor: alerta.cor, '--alerta-cor': alerta.cor } : undefined}
+        >
             <div className="p-4">
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -251,6 +275,23 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
                         {lead.formasAtendimento.includes('WHATSAPP') && <span className="text-[11px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><MessageCircle className="h-3 w-3" />WhatsApp</span>}
                         {lead.formasAtendimento.includes('TELEFONE') && <span className="text-[11px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><Phone className="h-3 w-3" />Telefone</span>}
                     </div>
+                )}
+
+                {/* Alerta visual */}
+                {alerta && (
+                    <button
+                        onClick={() => onAlertaVisto && onAlertaVisto(alerta.atendimentoId)}
+                        className="mt-2 w-full text-left rounded-lg px-3 py-2 border text-[12px] flex items-center gap-2"
+                        style={{ backgroundColor: alerta.cor + '15', borderColor: alerta.cor, color: alerta.cor }}
+                    >
+                        <Bell className="h-3.5 w-3.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                            {alerta.acaoLabel && <span className="font-bold">{alerta.acaoLabel}</span>}
+                            {alerta.assuntoRetorno && <span className="ml-1">· {alerta.assuntoRetorno}</span>}
+                            {alerta.dataRetorno && <span className="ml-1 text-[11px] opacity-75">({new Date(alerta.dataRetorno).toLocaleDateString('pt-BR')})</span>}
+                        </div>
+                        <span className="text-[10px] font-bold opacity-60 shrink-0">Marcar visto</span>
+                    </button>
                 )}
 
                 {/* Exibir observação se já atendido */}
@@ -751,6 +792,7 @@ const RotaLeads = () => {
 
     // Modais
     const [modalAtendimento, setModalAtendimento] = useState(null); // { tipo: 'lead'|'cliente', item }
+    const [modalAmostra, setModalAmostra] = useState(null); // { leadId?, clienteId?, nomeDestinatario, vendedorId, finalizarAtendimento }
     const [modalNovoLead, setModalNovoLead] = useState(false);
     const [editarEntregaPedido, setEditarEntregaPedido] = useState(null); // pedido para edição admin
 
@@ -759,6 +801,9 @@ const RotaLeads = () => {
     const [entregasConcluidas, setEntregasConcluidas] = useState([]);
     const [loadingEntregas, setLoadingEntregas] = useState(false);
     const [checkoutPedido, setCheckoutPedido] = useState(null);
+
+    // Alertas visuais
+    const [alertasAtivos, setAlertasAtivos] = useState([]); // atendimentos com alertaVisualAtivo
 
     // Roteirizador
     const [rotaOrganizada, setRotaOrganizada] = useState(null); // { sequencia: [...], semGPS: [...], resumo: {...} }
@@ -938,6 +983,14 @@ const RotaLeads = () => {
                 setRotaOrganizada(null);
             }
 
+            // 4. Buscar Alertas Visuais Ativos
+            try {
+                const alertas = await atendimentoService.listarAlertasAtivos();
+                setAlertasAtivos(Array.isArray(alertas) ? alertas : []);
+            } catch (e) {
+                console.warn('Alertas visuais não carregados:', e.message);
+            }
+
         } catch (e) {
             console.error(e);
             toast.error('Erro ao carregar dados da rota.', { duration: 5000 });
@@ -962,6 +1015,39 @@ const RotaLeads = () => {
     const clientesComAtendimento = useMemo(() => {
         return clientes.filter(c => c.Dia_de_venda || c.Dia_de_entrega);
     }, [clientes]);
+
+    // Mapa de alertas visuais por leadId/clienteId
+    const alertasPorItem = useMemo(() => {
+        const mapa = {}; // key: leadId ou clienteId → { cor, assuntoRetorno, dataRetorno, atendimentoId }
+        const hoje = new Date().toDateString();
+        alertasAtivos.forEach(a => {
+            const isHoje = a.dataRetorno && new Date(a.dataRetorno).toDateString() === hoje;
+            const key = a.leadId || a.clienteId;
+            if (key) {
+                // Se já tem alerta para esse item, prioriza o que é de hoje
+                if (!mapa[key] || isHoje) {
+                    mapa[key] = {
+                        cor: a.alertaVisualCor || '#ef4444',
+                        assuntoRetorno: a.assuntoRetorno,
+                        dataRetorno: a.dataRetorno,
+                        isHoje,
+                        atendimentoId: a.id,
+                        acaoLabel: a.acaoLabel,
+                    };
+                }
+            }
+        });
+        return mapa;
+    }, [alertasAtivos]);
+
+    const handleMarcarAlertaVisto = async (atendimentoId) => {
+        try {
+            await atendimentoService.marcarAlertaVisto(atendimentoId);
+            setAlertasAtivos(prev => prev.filter(a => a.id !== atendimentoId));
+        } catch (e) {
+            console.error('Erro ao marcar alerta como visto:', e);
+        }
+    };
 
     // Helper: filtro de busca por nome
     const matchBusca = useCallback((nome) => {
@@ -1086,9 +1172,9 @@ const RotaLeads = () => {
         const mostrarAcoes = aba === 'atendimento';
 
         if (item._tipo === 'cliente') {
-            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} />;
+            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} alerta={alertasPorItem[item.UUID]} onAlertaVisto={handleMarcarAlertaVisto} />;
         }
-        return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} />;
+        return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} alerta={alertasPorItem[item.id]} onAlertaVisto={handleMarcarAlertaVisto} />;
     };
 
     const diaBase = getDiaSigla(getDiaBase());
@@ -1386,6 +1472,29 @@ const RotaLeads = () => {
                     onClose={() => setModalAtendimento(null)}
                     onSalvo={handleAtendimentoSalvo}
                     vendedorId={vendedorId}
+                    onAbrirAmostra={({ form, acaoSelecionada, gps, isLead, item, vendedorId: vId, finalizarAtendimento }) => {
+                        setModalAmostra({
+                            leadId: isLead ? item.id : null,
+                            clienteId: !isLead ? item.UUID : null,
+                            nomeDestinatario: isLead ? `Lead #${item.numero} · ${item.nomeEstabelecimento}` : (item.NomeFantasia || item.Nome),
+                            vendedorId: vId,
+                            finalizarAtendimento,
+                        });
+                    }}
+                />
+            )}
+
+            {/* Modal de Amostra */}
+            {modalAmostra && (
+                <ModalAmostra
+                    dados={modalAmostra}
+                    onClose={() => setModalAmostra(null)}
+                    onCriada={(amostraId) => {
+                        setModalAmostra(null);
+                        if (modalAmostra.finalizarAtendimento) {
+                            modalAmostra.finalizarAtendimento(amostraId);
+                        }
+                    }}
                 />
             )}
 

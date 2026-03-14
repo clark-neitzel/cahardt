@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import configService from '../../../services/configService';
-import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2, ScrollText, MapPin, Zap, Target } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2, ScrollText, MapPin, Zap, Target, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import RotasAtivasPreview from './RotasAtivasPreview';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -34,6 +34,155 @@ const TIPOS_PADRAO = [
     { value: 'OUTROS', label: 'Outros' },
 ];
 
+// ── Componente reutilizável: Card de ação expandível ──
+const AcaoCard = ({ acao, onAtualizar, onRemover, vendedores, isPadrao }) => {
+    const [expandido, setExpandido] = useState(false);
+
+    const Toggle = ({ label, campo, valor }) => (
+        <label className="flex items-center justify-between py-1.5">
+            <span className="text-[13px] text-gray-700">{label}</span>
+            <button
+                type="button"
+                onClick={() => onAtualizar(acao.value, campo, !valor)}
+                className={`relative w-9 h-5 rounded-full transition-colors ${valor ? 'bg-blue-600' : 'bg-gray-300'}`}
+            >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${valor ? 'translate-x-4' : ''}`} />
+            </button>
+        </label>
+    );
+
+    return (
+        <div className={`border rounded-lg overflow-hidden transition-colors ${acao.ativo === false ? 'opacity-60 border-gray-200 bg-gray-50' : 'border-gray-200 bg-white'}`}>
+            {/* Header do card */}
+            <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-gray-50" onClick={() => setExpandido(!expandido)}>
+                <span
+                    className="w-4 h-4 rounded-full border-2 flex-shrink-0"
+                    style={{ backgroundColor: acao.cor || '#6b7280', borderColor: acao.cor || '#6b7280' }}
+                />
+                <span className="text-[14px] font-semibold text-gray-800 flex-1">{acao.label}</span>
+                {isPadrao && <span className="text-[9px] text-gray-400">(padrão)</span>}
+                {acao.ativo === false && <EyeOff className="h-3.5 w-3.5 text-gray-400" />}
+                {expandido ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+            </div>
+
+            {/* Painel expandido */}
+            {expandido && (
+                <div className="px-3 pb-3 border-t border-gray-100 space-y-2 pt-2">
+                    {/* Nome editável */}
+                    <div>
+                        <label className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Nome</label>
+                        <input
+                            type="text"
+                            value={acao.label}
+                            onChange={e => onAtualizar(acao.value, 'label', e.target.value)}
+                            className="block w-full border border-gray-300 rounded px-2.5 py-1.5 text-[13px] mt-0.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                    </div>
+
+                    {/* Cor */}
+                    <div className="flex items-center gap-2">
+                        <label className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Cor</label>
+                        <input
+                            type="color"
+                            value={acao.cor || '#6b7280'}
+                            onChange={e => onAtualizar(acao.value, 'cor', e.target.value)}
+                            className="w-7 h-7 rounded border border-gray-300 cursor-pointer p-0"
+                        />
+                    </div>
+
+                    {/* Toggles */}
+                    <div className="space-y-0.5 border-t border-gray-100 pt-2">
+                        <Toggle label="Ativo" campo="ativo" valor={acao.ativo !== false} />
+                        <Toggle label="Obriga observação" campo="obrigaObservacao" valor={!!acao.obrigaObservacao} />
+                        <Toggle label="Permite data de retorno" campo="permiteDataRetorno" valor={!!acao.permiteDataRetorno} />
+                        {acao.permiteDataRetorno && (
+                            <Toggle label="Obriga data de retorno" campo="obrigaDataRetorno" valor={!!acao.obrigaDataRetorno} />
+                        )}
+                        <Toggle label="Permite assunto do retorno" campo="permiteAssuntoRetorno" valor={!!acao.permiteAssuntoRetorno} />
+                        <Toggle label="Transfere atendimento" campo="transfereAtendimento" valor={!!acao.transfereAtendimento} />
+                        {acao.transfereAtendimento && (
+                            <div className="pl-2 pb-1">
+                                <label className="text-[11px] font-medium text-gray-500">Responsável fixo</label>
+                                <select
+                                    value={acao.responsavelTransferenciaId || ''}
+                                    onChange={e => onAtualizar(acao.value, 'responsavelTransferenciaId', e.target.value || null)}
+                                    className="block w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] mt-0.5 focus:ring-1 focus:ring-blue-500"
+                                >
+                                    <option value="">Selecione...</option>
+                                    {vendedores.map(v => (
+                                        <option key={v.id} value={v.id}>{v.nome}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        <Toggle label="Abre pedido de amostra" campo="abrePedidoAmostra" valor={!!acao.abrePedidoAmostra} />
+                        <Toggle label="Cria alerta visual" campo="criaAlertaVisual" valor={!!acao.criaAlertaVisual} />
+                    </div>
+
+                    {/* Remover */}
+                    <div className="flex justify-end pt-2 border-t border-gray-100">
+                        <button
+                            onClick={() => onRemover(acao.value)}
+                            className="text-[12px] text-red-500 hover:text-red-700 font-medium flex items-center gap-1"
+                        >
+                            <X className="h-3.5 w-3.5" /> Remover ação
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ── Seção completa de ações (reutilizada para atendimento e lead) ──
+const AcoesConfigSection = ({ titulo, subtitulo, icon, cor, acoes, novaAcao, setNovaAcao, onAdicionar, onRemover, onAtualizar, onSalvar, saving, vendedores, acoesPadrao }) => (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-6 border-b border-gray-100 bg-gray-50">
+            <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
+                {icon}
+                {titulo}
+            </h2>
+            <p className="text-sm text-gray-500 mt-0.5">{subtitulo}</p>
+        </div>
+        <div className="p-4 space-y-3">
+            {acoes.length === 0 && <p className="text-sm text-gray-400 italic text-center py-4">Nenhuma ação cadastrada.</p>}
+            {acoes.map(a => (
+                <AcaoCard
+                    key={a.value}
+                    acao={a}
+                    onAtualizar={onAtualizar}
+                    onRemover={onRemover}
+                    vendedores={vendedores}
+                    isPadrao={acoesPadrao.some(p => p.value === a.value)}
+                />
+            ))}
+
+            <div className={`flex gap-2 pt-2 border-t border-gray-100`}>
+                <input
+                    type="text"
+                    value={novaAcao}
+                    onChange={e => setNovaAcao(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') onAdicionar(); }}
+                    placeholder="Nome da nova ação..."
+                    className={`flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-${cor}-400 focus:border-transparent outline-none`}
+                />
+                <button onClick={onAdicionar} disabled={!novaAcao?.trim()}
+                    className={`flex items-center gap-1.5 px-4 py-2 bg-${cor}-600 text-white rounded-lg text-sm font-semibold hover:bg-${cor}-700 disabled:opacity-50 transition-colors`}>
+                    <Plus className="h-4 w-4" /> Adicionar
+                </button>
+            </div>
+
+            <div className="flex justify-end">
+                <button onClick={onSalvar} disabled={saving}
+                    className="flex items-center gap-1.5 px-5 py-2 bg-primary text-white rounded-md font-medium shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm">
+                    <Save className="h-4 w-4" />
+                    {saving ? 'Salvando...' : `Salvar ${titulo}`}
+                </button>
+            </div>
+        </div>
+    </div>
+);
+
 const Configuracoes = () => {
     const { user } = useAuth();
     const [categorias, setCategorias] = useState([]);
@@ -62,6 +211,9 @@ const Configuracoes = () => {
     const [novaAcaoLead, setNovaAcaoLead] = useState('');
     const [savingAcoesLead, setSavingAcoesLead] = useState(false);
 
+    // Vendedores (para dropdown de transferência)
+    const [vendedores, setVendedores] = useState([]);
+
     // Reset de dados
     const [resetGrupos, setResetGrupos] = useState([]);
     const [resettingGroup, setResettingGroup] = useState(null);
@@ -76,7 +228,7 @@ const Configuracoes = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [cats, currentConfig, tiposConfig, origensConfig, acoesConfig, acoesLeadConfig, grupos, logs] = await Promise.all([
+            const [cats, currentConfig, tiposConfig, origensConfig, acoesConfig, acoesLeadConfig, grupos, logs, vendedoresData] = await Promise.all([
                 configService.getCategorias(),
                 configService.get('categorias_vendas'),
                 configService.get('tipos_atendimento').catch(() => null),
@@ -84,7 +236,8 @@ const Configuracoes = () => {
                 configService.get('acoes_atendimento').catch(() => null),
                 configService.get('acoes_lead').catch(() => null),
                 podeResetar ? api.get('/admin/reset-grupos').then(r => r.data).catch(() => []) : Promise.resolve(null),
-                isAdmin ? caixaService.getAuditLogs().catch(() => []) : Promise.resolve(null)
+                isAdmin ? caixaService.getAuditLogs().catch(() => []) : Promise.resolve(null),
+                api.get('/vendedores').then(r => r.data).catch(() => [])
             ]);
             setCategorias(cats);
             setSelectedCategorias(Array.isArray(currentConfig) ? currentConfig : []);
@@ -94,6 +247,8 @@ const Configuracoes = () => {
             setAcoesLead(Array.isArray(acoesLeadConfig) && acoesLeadConfig.length > 0 ? acoesLeadConfig : ACOES_PADRAO);
             if (grupos) setResetGrupos(grupos);
             if (logs) setAuditLogs(logs);
+            const vList = Array.isArray(vendedoresData) ? vendedoresData : vendedoresData?.vendedores || [];
+            setVendedores(vList.filter(v => v.ativo !== false));
         } catch (error) {
             console.error('Erro ao carregar configurações:', error);
             setMessage({ type: 'error', text: 'Erro ao carregar dados.' });
@@ -227,7 +382,7 @@ const Configuracoes = () => {
         finally { setSavingOrigens(false); }
     };
 
-    // Ações do Atendimento handlers
+    // ── Handlers genéricos para ações (atendimento e lead) ──
     const handleAdicionarAcao = () => {
         const label = novaAcao.trim();
         if (!label) return;
@@ -236,21 +391,17 @@ const Configuracoes = () => {
             toast.error('Já existe uma ação com este nome.');
             return;
         }
-        setAcoes(prev => [...prev, { value, label }]);
+        setAcoes(prev => [...prev, { value, label, ativo: true, cor: '#6b7280', obrigaObservacao: false, permiteDataRetorno: false, obrigaDataRetorno: false, permiteAssuntoRetorno: false, transfereAtendimento: false, responsavelTransferenciaId: null, abrePedidoAmostra: false, criaAlertaVisual: false }]);
         setNovaAcao('');
-    };
-    const handleEditarAcao = (value) => {
-        const acao = acoes.find(a => a.value === value);
-        if (!acao) return;
-        const novoLabel = prompt('Editar nome da ação:', acao.label);
-        if (!novoLabel || novoLabel.trim() === '' || novoLabel.trim() === acao.label) return;
-        setAcoes(prev => prev.map(a => a.value === value ? { ...a, label: novoLabel.trim() } : a));
     };
     const handleRemoverAcao = (value) => {
         if (ACOES_PADRAO.some(a => a.value === value)) {
             if (!window.confirm('Esta é uma ação padrão. Tem certeza que deseja remover?')) return;
         }
         setAcoes(prev => prev.filter(a => a.value !== value));
+    };
+    const handleAtualizarAcao = (value, campo, novoValor) => {
+        setAcoes(prev => prev.map(a => a.value === value ? { ...a, [campo]: novoValor } : a));
     };
     const handleSalvarAcoes = async () => {
         try {
@@ -261,7 +412,6 @@ const Configuracoes = () => {
         finally { setSavingAcoes(false); }
     };
 
-    // Ações do Lead handlers
     const handleAdicionarAcaoLead = () => {
         const label = novaAcaoLead.trim();
         if (!label) return;
@@ -270,21 +420,17 @@ const Configuracoes = () => {
             toast.error('Já existe uma ação com este nome.');
             return;
         }
-        setAcoesLead(prev => [...prev, { value, label }]);
+        setAcoesLead(prev => [...prev, { value, label, ativo: true, cor: '#6b7280', obrigaObservacao: false, permiteDataRetorno: false, obrigaDataRetorno: false, permiteAssuntoRetorno: false, transfereAtendimento: false, responsavelTransferenciaId: null, abrePedidoAmostra: false, criaAlertaVisual: false }]);
         setNovaAcaoLead('');
-    };
-    const handleEditarAcaoLead = (value) => {
-        const acao = acoesLead.find(a => a.value === value);
-        if (!acao) return;
-        const novoLabel = prompt('Editar nome da ação:', acao.label);
-        if (!novoLabel || novoLabel.trim() === '' || novoLabel.trim() === acao.label) return;
-        setAcoesLead(prev => prev.map(a => a.value === value ? { ...a, label: novoLabel.trim() } : a));
     };
     const handleRemoverAcaoLead = (value) => {
         if (ACOES_PADRAO.some(a => a.value === value)) {
             if (!window.confirm('Esta é uma ação padrão. Tem certeza que deseja remover?')) return;
         }
         setAcoesLead(prev => prev.filter(a => a.value !== value));
+    };
+    const handleAtualizarAcaoLead = (value, campo, novoValor) => {
+        setAcoesLead(prev => prev.map(a => a.value === value ? { ...a, [campo]: novoValor } : a));
     };
     const handleSalvarAcoesLead = async () => {
         try {
@@ -458,102 +604,40 @@ const Configuracoes = () => {
             </div>
 
             {/* ── Ações do Atendimento ── */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-6 border-b border-gray-100 bg-gray-50">
-                    <div>
-                        <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-                            <Zap className="h-5 w-5 text-orange-600" />
-                            Ações do Atendimento
-                        </h2>
-                        <p className="text-sm text-gray-500 mt-0.5">Próximos passos/status para atendimentos de clientes.</p>
-                    </div>
-                </div>
-                <div className="p-6 space-y-4">
-                    <div className="flex flex-wrap gap-2">
-                        {acoes.map(a => {
-                            const isPadrao = ACOES_PADRAO.some(p => p.value === a.value);
-                            return (
-                                <div key={a.value} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border ${isPadrao ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                                    <button onClick={() => handleEditarAcao(a.value)} className="hover:underline" title="Clique para editar">
-                                        {a.label}
-                                    </button>
-                                    {isPadrao && <span className="text-[9px] text-orange-400 font-normal">(padrão)</span>}
-                                    <button onClick={() => handleRemoverAcao(a.value)} className="ml-0.5 text-gray-400 hover:text-red-500 transition-colors">
-                                        <X className="h-3.5 w-3.5" />
-                                    </button>
-                                </div>
-                            );
-                        })}
-                        {acoes.length === 0 && <p className="text-sm text-gray-400 italic">Nenhuma ação cadastrada.</p>}
-                    </div>
-                    <div className="flex gap-2 pt-2 border-t border-gray-100">
-                        <input type="text" value={novaAcao} onChange={e => setNovaAcao(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') handleAdicionarAcao(); }}
-                            placeholder="Ex: Enviar proposta, Agendar reunião..."
-                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none" />
-                        <button onClick={handleAdicionarAcao} disabled={!novaAcao.trim()}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700 disabled:opacity-50 transition-colors">
-                            <Plus className="h-4 w-4" /> Adicionar
-                        </button>
-                    </div>
-                    <div className="flex justify-end">
-                        <button onClick={handleSalvarAcoes} disabled={savingAcoes}
-                            className="flex items-center gap-1.5 px-5 py-2 bg-primary text-white rounded-md font-medium shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm">
-                            <Save className="h-4 w-4" />
-                            {savingAcoes ? 'Salvando...' : 'Salvar Ações'}
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <AcoesConfigSection
+                titulo="Ações do Atendimento"
+                subtitulo="Próximos passos/status para atendimentos de clientes."
+                icon={<Zap className="h-5 w-5 text-orange-600" />}
+                cor="orange"
+                acoes={acoes}
+                novaAcao={novaAcao}
+                setNovaAcao={setNovaAcao}
+                onAdicionar={handleAdicionarAcao}
+                onRemover={handleRemoverAcao}
+                onAtualizar={handleAtualizarAcao}
+                onSalvar={handleSalvarAcoes}
+                saving={savingAcoes}
+                vendedores={vendedores}
+                acoesPadrao={ACOES_PADRAO}
+            />
 
             {/* ── Ações do Lead ── */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-6 border-b border-gray-100 bg-gray-50">
-                    <div>
-                        <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-                            <Target className="h-5 w-5 text-purple-600" />
-                            Ações do Lead
-                        </h2>
-                        <p className="text-sm text-gray-500 mt-0.5">Próximos passos/status exclusivos para gestão de leads. Separados das ações de atendimento de clientes.</p>
-                    </div>
-                </div>
-                <div className="p-6 space-y-4">
-                    <div className="flex flex-wrap gap-2">
-                        {acoesLead.map(a => {
-                            const isPadrao = ACOES_PADRAO.some(p => p.value === a.value);
-                            return (
-                                <div key={a.value} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border ${isPadrao ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                                    <button onClick={() => handleEditarAcaoLead(a.value)} className="hover:underline" title="Clique para editar">
-                                        {a.label}
-                                    </button>
-                                    {isPadrao && <span className="text-[9px] text-purple-400 font-normal">(padrão)</span>}
-                                    <button onClick={() => handleRemoverAcaoLead(a.value)} className="ml-0.5 text-gray-400 hover:text-red-500 transition-colors">
-                                        <X className="h-3.5 w-3.5" />
-                                    </button>
-                                </div>
-                            );
-                        })}
-                        {acoesLead.length === 0 && <p className="text-sm text-gray-400 italic">Nenhuma ação cadastrada.</p>}
-                    </div>
-                    <div className="flex gap-2 pt-2 border-t border-gray-100">
-                        <input type="text" value={novaAcaoLead} onChange={e => setNovaAcaoLead(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') handleAdicionarAcaoLead(); }}
-                            placeholder="Ex: Agendar visita, Enviar catálogo..."
-                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 focus:border-transparent outline-none" />
-                        <button onClick={handleAdicionarAcaoLead} disabled={!novaAcaoLead.trim()}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 disabled:opacity-50 transition-colors">
-                            <Plus className="h-4 w-4" /> Adicionar
-                        </button>
-                    </div>
-                    <div className="flex justify-end">
-                        <button onClick={handleSalvarAcoesLead} disabled={savingAcoesLead}
-                            className="flex items-center gap-1.5 px-5 py-2 bg-primary text-white rounded-md font-medium shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm">
-                            <Save className="h-4 w-4" />
-                            {savingAcoesLead ? 'Salvando...' : 'Salvar Ações do Lead'}
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <AcoesConfigSection
+                titulo="Ações do Lead"
+                subtitulo="Próximos passos/status exclusivos para gestão de leads."
+                icon={<Target className="h-5 w-5 text-purple-600" />}
+                cor="purple"
+                acoes={acoesLead}
+                novaAcao={novaAcaoLead}
+                setNovaAcao={setNovaAcaoLead}
+                onAdicionar={handleAdicionarAcaoLead}
+                onRemover={handleRemoverAcaoLead}
+                onAtualizar={handleAtualizarAcaoLead}
+                onSalvar={handleSalvarAcoesLead}
+                saving={savingAcoesLead}
+                vendedores={vendedores}
+                acoesPadrao={ACOES_PADRAO}
+            />
 
             {/* ── Rotas Ativas (Roteirização) ── */}
             <RotasAtivasPreview />

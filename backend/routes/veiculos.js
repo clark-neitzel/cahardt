@@ -203,6 +203,116 @@ router.post('/:id/abastecimento', authMiddleware, async (req, res) => {
     }
 });
 
+// Editar uso manual de veículo
+router.put('/:id/uso-manual/:diarioId', authMiddleware, async (req, res) => {
+    try {
+        const { motoristaNome, motoristaId, dataReferencia, kmInicial, kmFinal, obs } = req.body;
+
+        if (!dataReferencia || kmInicial === undefined || kmFinal === undefined) {
+            return res.status(400).json({ error: 'Data, KM inicial e KM final são obrigatórios.' });
+        }
+        if (kmFinal <= kmInicial) {
+            return res.status(400).json({ error: 'KM final deve ser maior que KM inicial.' });
+        }
+
+        // Validar overlap de KM (excluindo o registro atual)
+        const diarios = await prisma.diarioVendedor.findMany({
+            where: {
+                veiculoId: req.params.id,
+                id: { not: req.params.diarioId },
+                kmInicial: { not: null },
+                kmFinal: { not: null }
+            },
+            select: { kmInicial: true, kmFinal: true }
+        });
+
+        const overlap = diarios.find(d =>
+            kmInicial < d.kmFinal && kmFinal > d.kmInicial
+        );
+
+        if (overlap) {
+            return res.status(400).json({
+                error: `Intervalo de KM conflita com uso existente: ${overlap.kmInicial} → ${overlap.kmFinal}`
+            });
+        }
+
+        const vendedorId = motoristaId || req.user.id;
+
+        const diario = await prisma.diarioVendedor.update({
+            where: { id: req.params.diarioId },
+            data: {
+                vendedorId,
+                dataReferencia,
+                kmInicial: parseInt(kmInicial),
+                kmFinal: parseInt(kmFinal),
+                obs: motoristaNome
+                    ? `[Uso Interno - ${motoristaNome}] ${obs || ''}`.trim()
+                    : `[Uso Interno] ${obs || ''}`.trim(),
+            },
+            include: { vendedor: { select: { nome: true } } }
+        });
+
+        res.json(diario);
+    } catch (error) {
+        console.error('Erro ao editar uso manual:', error);
+        res.status(500).json({ error: 'Erro ao editar uso do veículo.' });
+    }
+});
+
+// Excluir uso manual de veículo
+router.delete('/:id/uso-manual/:diarioId', authMiddleware, async (req, res) => {
+    try {
+        await prisma.diarioVendedor.delete({
+            where: { id: req.params.diarioId }
+        });
+        res.json({ ok: true });
+    } catch (error) {
+        console.error('Erro ao excluir uso manual:', error);
+        res.status(500).json({ error: 'Erro ao excluir uso do veículo.' });
+    }
+});
+
+// Editar abastecimento manual
+router.put('/:id/abastecimento/:despesaId', authMiddleware, async (req, res) => {
+    try {
+        const { dataReferencia, litros, valor, kmNoAbastecimento, descricao } = req.body;
+
+        if (!dataReferencia || !valor) {
+            return res.status(400).json({ error: 'Data e valor são obrigatórios.' });
+        }
+
+        const despesa = await prisma.despesa.update({
+            where: { id: req.params.despesaId },
+            data: {
+                dataReferencia,
+                descricao: descricao || null,
+                valor: parseFloat(valor),
+                litros: litros ? parseFloat(litros) : null,
+                kmNoAbastecimento: kmNoAbastecimento ? parseInt(kmNoAbastecimento) : null,
+            },
+            include: { veiculo: { select: { placa: true, modelo: true } } }
+        });
+
+        res.json(despesa);
+    } catch (error) {
+        console.error('Erro ao editar abastecimento:', error);
+        res.status(500).json({ error: 'Erro ao editar abastecimento.' });
+    }
+});
+
+// Excluir abastecimento manual
+router.delete('/:id/abastecimento/:despesaId', authMiddleware, async (req, res) => {
+    try {
+        await prisma.despesa.delete({
+            where: { id: req.params.despesaId }
+        });
+        res.json({ ok: true });
+    } catch (error) {
+        console.error('Erro ao excluir abastecimento:', error);
+        res.status(500).json({ error: 'Erro ao excluir abastecimento.' });
+    }
+});
+
 // ── Manutenção de Veículos ──
 
 // Listar alertas de um veículo

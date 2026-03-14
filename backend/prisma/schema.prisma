@@ -46,6 +46,7 @@ model Produto {
   promocoes       Promocao[]
   itensDevolvidos EntregaItemDevolvido[]
   metasProdutos   MetaProduto[]
+  itensAmostra    AmostraItem[]
 
   // Inteligência Comercial
   categoriaProdutoId      String?           @map("categoria_produto_id")
@@ -300,12 +301,14 @@ model Vendedor {
   senha      String?
   permissoes Json?
 
-  clientes        Cliente[]
-  pedidos         Pedido[]
-  pedidosLancados Pedido[]         @relation("UsuarioLancamento")
-  leads           Lead[]
-  atendimentos    Atendimento[]
-  diarios         DiarioVendedor[]
+  clientes             Cliente[]
+  pedidos              Pedido[]
+  pedidosLancados      Pedido[]         @relation("UsuarioLancamento")
+  leads                Lead[]
+  atendimentos             Atendimento[]
+  atendimentosTransferidos Atendimento[] @relation("AtendimentoTransferido")
+  diarios              DiarioVendedor[]
+  amostrasSolicitadas  Amostra[]        @relation("AmostrasSolicitadas")
 
   embarques        Embarque[]
   pagamentosFiados PedidoPagamentoReal[] @relation("PagamentosFiados")
@@ -450,6 +453,7 @@ model Lead {
   cliente   Cliente? @relation(fields: [clienteId], references: [UUID])
 
   atendimentos Atendimento[]
+  amostras     Amostra[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -470,6 +474,27 @@ model Atendimento {
   gpsVendedor   String?   @map("gps_vendedor")
   pedidoId      String?   @map("pedido_id")
 
+  // Ação estruturada
+  acaoKey           String?   @map("acao_key")
+  acaoLabel         String?   @map("acao_label")
+
+  // Transferência
+  transferidoParaId String?   @map("transferido_para_id")
+  transferidoPara   Vendedor? @relation("AtendimentoTransferido", fields: [transferidoParaId], references: [id])
+
+  // Retorno
+  assuntoRetorno    String?   @map("assunto_retorno") @db.Text
+  dataRetorno       DateTime? @map("data_retorno")
+
+  // Alerta visual
+  alertaVisualAtivo Boolean   @default(false) @map("alerta_visual_ativo")
+  alertaVisualCor   String?   @map("alerta_visual_cor")
+  alertaVisualVisto Boolean   @default(false) @map("alerta_visual_visto")
+
+  // Amostra vinculada
+  amostraId         String?   @map("amostra_id")
+  amostra           Amostra?  @relation(fields: [amostraId], references: [id])
+
   leadId    String? @map("lead_id")
   lead      Lead?   @relation(fields: [leadId], references: [id])
   clienteId String? @map("cliente_id")
@@ -482,6 +507,9 @@ model Atendimento {
   @@index([leadId])
   @@index([clienteId])
   @@index([idVendedor])
+  @@index([transferidoParaId])
+  @@index([dataRetorno])
+  @@index([alertaVisualAtivo])
   @@map("atendimentos")
 }
 
@@ -862,6 +890,43 @@ model MetaPromocao {
 
   @@unique([metaMensalVendedorId, promocaoId])
   @@map("meta_promocoes")
+}
+
+// =============================================
+// MÓDULO AMOSTRAS (MINI-PEDIDO SEM PREÇO)
+// =============================================
+
+model Amostra {
+  id              String    @id @default(uuid())
+  numero          Int       @default(autoincrement())
+  leadId          String?   @map("lead_id")
+  lead            Lead?     @relation(fields: [leadId], references: [id])
+  clienteId       String?   @map("cliente_id")
+  dataEntrega     DateTime? @map("data_entrega")
+  observacao      String?   @db.Text
+  status          String    @default("SOLICITADA") // SOLICITADA | PREPARANDO | ENVIADA | ENTREGUE | CANCELADA
+  solicitadoPorId String    @map("solicitado_por_id")
+  solicitadoPor   Vendedor  @relation("AmostrasSolicitadas", fields: [solicitadoPorId], references: [id])
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  itens           AmostraItem[]
+  atendimentos    Atendimento[]
+
+  @@index([status])
+  @@index([leadId])
+  @@map("amostras")
+}
+
+model AmostraItem {
+  id          String  @id @default(uuid())
+  amostraId   String  @map("amostra_id")
+  amostra     Amostra @relation(fields: [amostraId], references: [id], onDelete: Cascade)
+  produtoId   String  @map("produto_id")
+  produto     Produto @relation(fields: [produtoId], references: [id])
+  quantidade  Decimal @db.Decimal(12, 3)
+  nomeProduto String  @map("nome_produto") // "Amostra - {nome original}"
+
+  @@map("amostra_itens")
 }
 
 // =============================================

@@ -38,3 +38,12 @@ body {
     font-size: 16px !important;
   }
 }
+
+/* Alerta visual pulsante nos cards */
+@keyframes pulse-border {
+  0%, 100% { box-shadow: 0 0 0 0 var(--alerta-cor, #ef4444); }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--alerta-cor, #ef4444) 30%, transparent); }
+}
+.animate-pulse-border {
+  animation: pulse-border 2s ease-in-out infinite;
+}

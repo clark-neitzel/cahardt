@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     X, Car, FileText, Shield, Wrench, Fuel, Users, MessageSquare,
-    AlertTriangle, CheckCircle, BellRing, ChevronRight, Edit3, Save, TrendingUp, Plus, Loader
+    AlertTriangle, CheckCircle, BellRing, ChevronRight, Edit3, Save, TrendingUp, Plus, Loader, Trash2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
@@ -57,6 +57,12 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
     const [showAbastForm, setShowAbastForm] = useState(false);
     const [abastForm, setAbastForm] = useState({ dataReferencia: '', litros: '', valor: '', kmNoAbastecimento: '', descricao: '' });
     const [savingAbast, setSavingAbast] = useState(false);
+
+    // Edição inline
+    const [editingAbastId, setEditingAbastId] = useState(null);
+    const [editAbastForm, setEditAbastForm] = useState({});
+    const [editingUsoId, setEditingUsoId] = useState(null);
+    const [editUsoForm, setEditUsoForm] = useState({});
 
     const carregarFicha = async () => {
         try {
@@ -198,6 +204,97 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
             toast.error(e.response?.data?.error || 'Erro ao registrar abastecimento.');
         } finally {
             setSavingAbast(false);
+        }
+    };
+
+    // ── Editar / Excluir abastecimento ──
+    const handleEditAbast = (d) => {
+        setEditingAbastId(d.id);
+        setEditAbastForm({
+            dataReferencia: d.dataReferencia || '',
+            litros: d.litros ? String(Number(d.litros)) : '',
+            valor: d.valor ? String(Number(d.valor)) : '',
+            kmNoAbastecimento: d.kmNoAbastecimento ? String(d.kmNoAbastecimento) : '',
+            descricao: d.descricao || ''
+        });
+    };
+
+    const handleSalvarEditAbast = async (despesaId) => {
+        try {
+            setSavingAbast(true);
+            await api.put(`/veiculos/${veiculoId}/abastecimento/${despesaId}`, {
+                dataReferencia: editAbastForm.dataReferencia,
+                litros: editAbastForm.litros || null,
+                valor: editAbastForm.valor,
+                kmNoAbastecimento: editAbastForm.kmNoAbastecimento || null,
+                descricao: editAbastForm.descricao || null
+            });
+            toast.success('Abastecimento atualizado!');
+            setEditingAbastId(null);
+            carregarFicha();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao atualizar abastecimento.');
+        } finally {
+            setSavingAbast(false);
+        }
+    };
+
+    const handleExcluirAbast = async (despesaId) => {
+        if (!confirm('Excluir este abastecimento?')) return;
+        try {
+            await api.delete(`/veiculos/${veiculoId}/abastecimento/${despesaId}`);
+            toast.success('Abastecimento excluído!');
+            carregarFicha();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao excluir abastecimento.');
+        }
+    };
+
+    // ── Editar / Excluir uso manual ──
+    const handleEditUso = (d) => {
+        const obsClean = (d.obs || '').replace(/^\[Uso Interno[^\]]*\]\s*/, '');
+        const isExterno = (d.obs || '').includes('[Uso Interno -');
+        const nomeMatch = (d.obs || '').match(/\[Uso Interno - ([^\]]+)\]/);
+        setEditingUsoId(d.id);
+        setEditUsoForm({
+            motoristaId: d.vendedorId || '',
+            motoristaNome: nomeMatch ? nomeMatch[1] : '',
+            dataReferencia: d.dataReferencia || '',
+            kmInicial: d.kmInicial ? String(d.kmInicial) : '',
+            kmFinal: d.kmFinal ? String(d.kmFinal) : '',
+            obs: obsClean
+        });
+    };
+
+    const handleSalvarEditUso = async (diarioId) => {
+        try {
+            setSavingUso(true);
+            await api.put(`/veiculos/${veiculoId}/uso-manual/${diarioId}`, {
+                motoristaId: editUsoForm.motoristaId || null,
+                motoristaNome: editUsoForm.motoristaNome || null,
+                dataReferencia: editUsoForm.dataReferencia,
+                kmInicial: parseInt(editUsoForm.kmInicial),
+                kmFinal: parseInt(editUsoForm.kmFinal),
+                obs: editUsoForm.obs || null
+            });
+            toast.success('Uso atualizado!');
+            setEditingUsoId(null);
+            carregarFicha();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao atualizar uso.');
+        } finally {
+            setSavingUso(false);
+        }
+    };
+
+    const handleExcluirUso = async (diarioId) => {
+        if (!confirm('Excluir este registro de uso?')) return;
+        try {
+            await api.delete(`/veiculos/${veiculoId}/uso-manual/${diarioId}`);
+            toast.success('Registro de uso excluído!');
+            carregarFicha();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao excluir uso.');
         }
     };
 
@@ -587,12 +684,66 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                             .slice(0, 10)
                                             .map((d, idx, arr) => {
                                                 const kmAtual = d.kmNoAbastecimento ? Number(d.kmNoAbastecimento) : null;
-                                                // Próximo item na lista ordenada desc = abastecimento anterior (km menor)
                                                 const proxItem = arr[idx + 1];
                                                 const kmAnterior = proxItem?.kmNoAbastecimento ? Number(proxItem.kmNoAbastecimento) : null;
                                                 const kmRodados = kmAtual && kmAnterior ? kmAtual - kmAnterior : null;
                                                 const litros = d.litros ? Number(d.litros) : 0;
                                                 const eficiencia = kmRodados && litros >= 5 ? (kmRodados / litros).toFixed(1) : null;
+
+                                                // Modo edição inline
+                                                if (editingAbastId === d.id) {
+                                                    return (
+                                                        <div key={d.id} className="bg-orange-50 border-2 border-orange-300 rounded-lg p-3 space-y-2">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-xs font-bold text-orange-800">Editando Abastecimento</span>
+                                                                <button onClick={() => setEditingAbastId(null)} className="text-gray-400 hover:text-gray-600"><X className="h-4 w-4" /></button>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[10px] text-gray-500 mb-0.5">Data</label>
+                                                                <input type="date" value={editAbastForm.dataReferencia}
+                                                                    onChange={e => setEditAbastForm(p => ({ ...p, dataReferencia: e.target.value }))}
+                                                                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                <div>
+                                                                    <label className="block text-[10px] text-gray-500 mb-0.5">Litros</label>
+                                                                    <input type="number" step="0.01" value={editAbastForm.litros}
+                                                                        onChange={e => setEditAbastForm(p => ({ ...p, litros: e.target.value }))}
+                                                                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-[10px] text-gray-500 mb-0.5">Valor (R$)</label>
+                                                                    <input type="number" step="0.01" value={editAbastForm.valor}
+                                                                        onChange={e => setEditAbastForm(p => ({ ...p, valor: e.target.value }))}
+                                                                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[10px] text-gray-500 mb-0.5">KM Hodômetro</label>
+                                                                <input type="number" value={editAbastForm.kmNoAbastecimento}
+                                                                    onChange={e => setEditAbastForm(p => ({ ...p, kmNoAbastecimento: e.target.value }))}
+                                                                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[10px] text-gray-500 mb-0.5">Descrição</label>
+                                                                <input type="text" value={editAbastForm.descricao}
+                                                                    onChange={e => setEditAbastForm(p => ({ ...p, descricao: e.target.value }))}
+                                                                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <button onClick={() => handleSalvarEditAbast(d.id)} disabled={savingAbast}
+                                                                    className="flex-1 py-1.5 bg-orange-600 text-white rounded text-xs font-medium hover:bg-orange-700 disabled:opacity-50 flex items-center justify-center gap-1">
+                                                                    {savingAbast ? <Loader className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Salvar
+                                                                </button>
+                                                                <button onClick={() => setEditingAbastId(null)}
+                                                                    className="px-3 py-1.5 bg-gray-200 text-gray-600 rounded text-xs font-medium hover:bg-gray-300">
+                                                                    Cancelar
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
                                                 return (
                                                     <div key={d.id} className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2.5">
                                                         <div className="flex items-start justify-between gap-2">
@@ -600,10 +751,10 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                                                 <p className="text-[11px] text-gray-400">{formatDate(d.dataReferencia)}</p>
                                                                 {kmAtual ? (
                                                                     <p className="text-[13px] font-bold font-mono text-gray-800 mt-0.5">
-                                                                        📍 {kmAtual.toLocaleString('pt-BR')} km
+                                                                        {kmAtual.toLocaleString('pt-BR')} km
                                                                     </p>
                                                                 ) : (
-                                                                    <p className="text-[11px] text-amber-600 mt-0.5">⚠️ KM não informado</p>
+                                                                    <p className="text-[11px] text-amber-600 mt-0.5">KM não informado</p>
                                                                 )}
                                                                 {kmRodados !== null && kmRodados > 0 && (
                                                                     <p className="text-[11px] text-gray-500 mt-0.5">
@@ -615,14 +766,23 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                                                         )}
                                                                     </p>
                                                                 )}
+                                                                {d.descricao && <p className="text-[10px] text-gray-400 mt-0.5">{d.descricao}</p>}
                                                             </div>
-                                                            <div className="text-right shrink-0">
+                                                            <div className="text-right shrink-0 flex flex-col items-end gap-1">
                                                                 {litros > 0 && (
                                                                     <p className="text-[12px] text-gray-600 font-mono">{litros}L</p>
                                                                 )}
                                                                 <p className="text-[13px] font-bold text-gray-900 font-mono">
                                                                     R$ {Number(d.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                                 </p>
+                                                                <div className="flex gap-1 mt-1">
+                                                                    <button onClick={() => handleEditAbast(d)} className="p-1 text-gray-400 hover:text-orange-600 hover:bg-orange-100 rounded transition-colors" title="Editar">
+                                                                        <Edit3 className="h-3.5 w-3.5" />
+                                                                    </button>
+                                                                    <button onClick={() => handleExcluirAbast(d.id)} className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Excluir">
+                                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -735,41 +895,116 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
 
                             {(ficha?.diarios || []).length === 0 ? (
                                 <p className="text-center text-gray-400 py-10 text-sm">Nenhum histórico de uso.</p>
-                            ) : ficha.diarios.map((d, idx) => (
-                                <div key={d.id} className="bg-white border border-gray-200 rounded-lg p-3 hover:bg-gray-50">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex items-start gap-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${d.kmFinal ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                                                {idx + 1}
+                            ) : ficha.diarios.map((d, idx) => {
+                                // Modo edição inline
+                                if (editingUsoId === d.id) {
+                                    return (
+                                        <div key={d.id} className="bg-indigo-50 border-2 border-indigo-300 rounded-lg p-3 space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-bold text-indigo-800">Editando Uso</span>
+                                                <button onClick={() => setEditingUsoId(null)} className="text-gray-400 hover:text-gray-600"><X className="h-4 w-4" /></button>
                                             </div>
                                             <div>
-                                                <p className="text-sm font-semibold text-gray-900">{d.vendedor?.nome || '—'}</p>
-                                                <p className="text-xs text-gray-500">{formatDate(d.dataReferencia)} · {d.modo === 'PRESENCIAL' ? '🚗 Presencial' : '🏠 Home Office'}</p>
-                                                {d.kmInicial && (
-                                                    <p className="text-xs text-gray-600 mt-1 font-mono">
-                                                        KM {d.kmInicial.toLocaleString('pt-BR')} → {d.kmFinal ? d.kmFinal.toLocaleString('pt-BR') : '⏳ pendente'}
-                                                        {d.kmFinal && <span className="ml-2 font-bold text-blue-700">+{(d.kmFinal - d.kmInicial).toLocaleString('pt-BR')} km</span>}
-                                                    </p>
-                                                )}
-                                                {d.obs && <p className="text-xs text-amber-700 mt-1 bg-amber-50 px-2 py-0.5 rounded">📝 {d.obs}</p>}
+                                                <label className="block text-[10px] text-gray-500 mb-0.5">Motorista (do sistema)</label>
+                                                <select value={editUsoForm.motoristaId}
+                                                    onChange={e => setEditUsoForm(p => ({ ...p, motoristaId: e.target.value }))}
+                                                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+                                                    <option value="">Selecione (ou digite nome abaixo)</option>
+                                                    {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
+                                                </select>
+                                            </div>
+                                            {!editUsoForm.motoristaId && (
+                                                <div>
+                                                    <label className="block text-[10px] text-gray-500 mb-0.5">Nome motorista (externo)</label>
+                                                    <input type="text" value={editUsoForm.motoristaNome}
+                                                        onChange={e => setEditUsoForm(p => ({ ...p, motoristaNome: e.target.value }))}
+                                                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                                                </div>
+                                            )}
+                                            <div>
+                                                <label className="block text-[10px] text-gray-500 mb-0.5">Data</label>
+                                                <input type="date" value={editUsoForm.dataReferencia}
+                                                    onChange={e => setEditUsoForm(p => ({ ...p, dataReferencia: e.target.value }))}
+                                                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label className="block text-[10px] text-gray-500 mb-0.5">KM Inicial</label>
+                                                    <input type="number" value={editUsoForm.kmInicial}
+                                                        onChange={e => setEditUsoForm(p => ({ ...p, kmInicial: e.target.value }))}
+                                                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] text-gray-500 mb-0.5">KM Final</label>
+                                                    <input type="number" value={editUsoForm.kmFinal}
+                                                        onChange={e => setEditUsoForm(p => ({ ...p, kmFinal: e.target.value }))}
+                                                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] text-gray-500 mb-0.5">Observação</label>
+                                                <input type="text" value={editUsoForm.obs}
+                                                    onChange={e => setEditUsoForm(p => ({ ...p, obs: e.target.value }))}
+                                                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => handleSalvarEditUso(d.id)} disabled={savingUso}
+                                                    className="flex-1 py-1.5 bg-indigo-600 text-white rounded text-xs font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-1">
+                                                    {savingUso ? <Loader className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Salvar
+                                                </button>
+                                                <button onClick={() => setEditingUsoId(null)}
+                                                    className="px-3 py-1.5 bg-gray-200 text-gray-600 rounded text-xs font-medium hover:bg-gray-300">
+                                                    Cancelar
+                                                </button>
                                             </div>
                                         </div>
-                                        {!d.kmFinal && d.modo === 'PRESENCIAL' && (
-                                            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Pendente</span>
+                                    );
+                                }
+
+                                return (
+                                    <div key={d.id} className="bg-white border border-gray-200 rounded-lg p-3 hover:bg-gray-50">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex items-start gap-3">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${d.kmFinal ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {idx + 1}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-gray-900">{d.vendedor?.nome || '—'}</p>
+                                                    <p className="text-xs text-gray-500">{formatDate(d.dataReferencia)} · {d.modo === 'PRESENCIAL' ? 'Presencial' : 'Home Office'}</p>
+                                                    {d.kmInicial && (
+                                                        <p className="text-xs text-gray-600 mt-1 font-mono">
+                                                            KM {d.kmInicial.toLocaleString('pt-BR')} → {d.kmFinal ? d.kmFinal.toLocaleString('pt-BR') : 'pendente'}
+                                                            {d.kmFinal && <span className="ml-2 font-bold text-blue-700">+{(d.kmFinal - d.kmInicial).toLocaleString('pt-BR')} km</span>}
+                                                        </p>
+                                                    )}
+                                                    {d.obs && <p className="text-xs text-amber-700 mt-1 bg-amber-50 px-2 py-0.5 rounded">{d.obs}</p>}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                {!d.kmFinal && d.modo === 'PRESENCIAL' && (
+                                                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Pendente</span>
+                                                )}
+                                                <button onClick={() => handleEditUso(d)} className="p-1 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Editar">
+                                                    <Edit3 className="h-3.5 w-3.5" />
+                                                </button>
+                                                <button onClick={() => handleExcluirUso(d.id)} className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Excluir">
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {/* Checklist resumo */}
+                                        {d.checklist && (
+                                            <div className="mt-2 flex gap-1 flex-wrap ml-11">
+                                                {Object.entries(d.checklist).map(([key, val]) => (
+                                                    <span key={key} className={`text-[10px] px-1.5 py-0.5 rounded ${val ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                                                        {val ? '✓' : '✗'} {key.replace(/Ok$/, '')}
+                                                    </span>
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
-                                    {/* Checklist resumo */}
-                                    {d.checklist && (
-                                        <div className="mt-2 flex gap-1 flex-wrap ml-11">
-                                            {Object.entries(d.checklist).map(([key, val]) => (
-                                                <span key={key} className={`text-[10px] px-1.5 py-0.5 rounded ${val ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-                                                    {val ? '✓' : '✗'} {key.replace(/Ok$/, '')}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
 

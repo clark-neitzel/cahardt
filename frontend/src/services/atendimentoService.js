@@ -21,6 +21,21 @@ const atendimentoService = {
         const params = vendedorId ? { vendedorId } : {};
         const response = await api.get('/atendimentos/hoje', { params });
         return response.data;
+    },
+
+    listarTransferidos: async () => {
+        const response = await api.get('/atendimentos/transferidos');
+        return response.data;
+    },
+
+    listarAlertasAtivos: async () => {
+        const response = await api.get('/atendimentos/alertas-ativos');
+        return response.data;
+    },
+
+    marcarAlertaVisto: async (atendimentoId) => {
+        const response = await api.patch(`/atendimentos/${atendimentoId}/alerta-visto`);
+        return response.data;
     }
 };
 

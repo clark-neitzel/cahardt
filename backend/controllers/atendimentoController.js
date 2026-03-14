@@ -40,6 +40,36 @@ const atendimentoController = {
             console.error('[atendimentoController.listarHojeVendedor]', error);
             res.status(500).json({ error: 'Erro ao listar atendimentos de hoje.' });
         }
+    },
+
+    listarTransferidos: async (req, res) => {
+        try {
+            const atendimentos = await atendimentoService.listarTransferidos(req.user.id);
+            res.json(atendimentos);
+        } catch (error) {
+            console.error('[atendimentoController.listarTransferidos]', error);
+            res.status(500).json({ error: 'Erro ao listar atendimentos transferidos.' });
+        }
+    },
+
+    marcarAlertaVisto: async (req, res) => {
+        try {
+            const atendimento = await atendimentoService.marcarAlertaVisto(req.params.id);
+            res.json(atendimento);
+        } catch (error) {
+            console.error('[atendimentoController.marcarAlertaVisto]', error);
+            res.status(500).json({ error: 'Erro ao marcar alerta como visto.' });
+        }
+    },
+
+    listarAlertasAtivos: async (req, res) => {
+        try {
+            const alertas = await atendimentoService.listarAlertasAtivos(req.user.id);
+            res.json(alertas);
+        } catch (error) {
+            console.error('[atendimentoController.listarAlertasAtivos]', error);
+            res.status(500).json({ error: 'Erro ao listar alertas ativos.' });
+        }
     }
 };
 

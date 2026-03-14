@@ -235,7 +235,7 @@ const DetalheCliente = () => {
                     onClick={() => setAbaAtiva('historico')}
                     className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'historico' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
                 >
-                    Histórico ({atendimentos.length + pedidosCliente.length})
+                    Histórico ({atendimentos.length + pedidosCliente.length + leadsCliente.reduce((acc, l) => acc + (l.atendimentos?.length || 0), 0)})
                 </button>
                 {leadsCliente.length > 0 && (
                     <button
@@ -248,9 +248,13 @@ const DetalheCliente = () => {
             </div>
 
             {abaAtiva === 'historico' && (() => {
-                // Unificar atendimentos e pedidos em um único histórico ordenado por data
+                // Unificar atendimentos (cliente + leads) e pedidos em um único histórico ordenado por data
+                const leadAtendimentos = leadsCliente.flatMap(lead =>
+                    (lead.atendimentos || []).map(a => ({ ...a, _leadNome: lead.nomeEstabelecimento || `Lead #${lead.numero}`, _leadId: lead.id }))
+                );
                 const itensHistorico = [
                     ...atendimentos.map(a => ({ ...a, _tipo: 'ATENDIMENTO', _data: new Date(a.criadoEm) })),
+                    ...leadAtendimentos.map(a => ({ ...a, _tipo: 'ATENDIMENTO_LEAD', _data: new Date(a.criadoEm) })),
                     ...pedidosCliente.map(p => ({ ...p, _tipo: 'PEDIDO', _data: new Date(p.dataVenda || p.createdAt) }))
                 ].sort((a, b) => b._data - a._data);
 
@@ -406,13 +410,33 @@ const DetalheCliente = () => {
                                     );
                                 }
 
-                                // ATENDIMENTO
+                                // ATENDIMENTO (cliente direto ou via lead)
                                 const a = item;
+                                const isFromLead = item._tipo === 'ATENDIMENTO_LEAD';
                                 return (
-                                    <div key={`atend-${a.id}`} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                                    <div key={`atend-${a.id}`} className={`bg-white border rounded-xl p-4 shadow-sm ${isFromLead ? 'border-orange-200' : 'border-gray-200'}`}>
+                                        {/* Header: tipo + ação + vendedor + data */}
                                         <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded uppercase">{a.tipo}</span>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase ${isFromLead ? 'bg-orange-50 text-orange-700' : 'bg-blue-50 text-blue-700'}`}>
+                                                    {a.tipo || 'ATENDIMENTO'}
+                                                </span>
+                                                {isFromLead && (
+                                                    <span className="text-[10px] font-medium text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200">
+                                                        Lead: {a._leadNome}
+                                                    </span>
+                                                )}
+                                                {a.acaoLabel && (
+                                                    <span
+                                                        className="text-xs font-bold px-2 py-0.5 rounded"
+                                                        style={a.alertaVisualCor
+                                                            ? { backgroundColor: a.alertaVisualCor + '20', color: a.alertaVisualCor, border: `1px solid ${a.alertaVisualCor}40` }
+                                                            : { backgroundColor: '#f3f4f6', color: '#374151' }
+                                                        }
+                                                    >
+                                                        {a.acaoLabel}
+                                                    </span>
+                                                )}
                                                 {a.vendedor?.nome && (
                                                     <span className="text-xs text-gray-500 flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
                                                         <User className="h-3 w-3" />
@@ -420,16 +444,60 @@ const DetalheCliente = () => {
                                                     </span>
                                                 )}
                                             </div>
-                                            <span className="text-xs text-gray-400 flex items-center gap-1">
+                                            <span className="text-xs text-gray-400 flex items-center gap-1 shrink-0">
                                                 <Clock className="h-3 w-3" />
                                                 {new Date(a.criadoEm).toLocaleDateString('pt-BR')} {new Date(a.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         </div>
-                                        {a.observacao && <p className="text-sm text-gray-700 mt-1">{a.observacao}</p>}
-                                        {a.proximaVisita && (
-                                            <p className="text-xs text-blue-600 mt-1 font-semibold">
-                                                📅 Próxima visita: {new Date(a.proximaVisita).toLocaleDateString('pt-BR')}
-                                            </p>
+
+                                        {/* Etapa (para atendimentos de lead) */}
+                                        {a.etapaNova && (
+                                            <div className="flex items-center gap-1 mb-1">
+                                                <span className="text-[10px] text-gray-400">{a.etapaAnterior || '—'}</span>
+                                                <span className="text-[10px] text-gray-400">→</span>
+                                                <span className="text-[10px] font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded">{a.etapaNova}</span>
+                                            </div>
+                                        )}
+
+                                        {/* Observação */}
+                                        {a.observacao
+                                            ? <p className="text-sm text-gray-700 mt-1">{a.observacao}</p>
+                                            : <p className="text-xs text-gray-300 italic mt-1">Sem observação registrada</p>
+                                        }
+
+                                        {/* Meta: data retorno, assunto, transferência, amostra */}
+                                        {(a.dataRetorno || a.assuntoRetorno || a.transferidoPara?.nome || a.amostra || a.proximaVisita) && (
+                                            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                                                {a.dataRetorno && (
+                                                    <span className="text-[11px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 flex items-center gap-1">
+                                                        <Calendar className="h-3 w-3" />
+                                                        Retorno: {new Date(a.dataRetorno).toLocaleDateString('pt-BR')}
+                                                    </span>
+                                                )}
+                                                {a.assuntoRetorno && (
+                                                    <span className="text-[11px] text-gray-600 bg-gray-50 px-2 py-0.5 rounded border border-gray-200 italic">
+                                                        {a.assuntoRetorno}
+                                                    </span>
+                                                )}
+                                                {a.transferidoPara?.nome && (
+                                                    <span className="text-[11px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 flex items-center gap-1">
+                                                        <User className="h-3 w-3" />
+                                                        Transferido para: {a.transferidoPara.nome}
+                                                    </span>
+                                                )}
+                                                {a.amostra && (
+                                                    <span className="text-[11px] text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-200 flex items-center gap-1">
+                                                        <Package className="h-3 w-3" />
+                                                        Amostra AM#{a.amostra.numero} · {a.amostra.status}
+                                                    </span>
+                                                )}
+                                                {a.proximaVisita && (
+                                                    <span className="text-[11px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 flex items-center gap-1">
+                                                        <Calendar className="h-3 w-3" />
+                                                        Próx. visita: {new Date(a.proximaVisita).toLocaleDateString('pt-BR')}
+                                                    </span>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 );
@@ -486,20 +554,61 @@ const DetalheCliente = () => {
                                     <p className="text-xs text-gray-400 text-center py-4">Nenhum atendimento registrado para este lead.</p>
                                 ) : (
                                     <div className="space-y-2">
-                                        {lead.atendimentos.map(atend => (
+                                        {lead.atendimentos
+                                            .slice()
+                                            .sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm))
+                                            .map(atend => (
                                             <div key={atend.id} className="border border-gray-100 rounded-lg p-3 bg-gray-50">
                                                 <div className="flex items-center justify-between mb-1">
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-2 flex-wrap">
                                                         <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold">{atend.tipo}</span>
+                                                        {atend.acaoLabel && (
+                                                            <span
+                                                                className="px-2 py-0.5 rounded text-[10px] font-bold"
+                                                                style={atend.alertaVisualCor
+                                                                    ? { backgroundColor: atend.alertaVisualCor + '20', color: atend.alertaVisualCor }
+                                                                    : { backgroundColor: '#f3f4f6', color: '#374151' }
+                                                                }
+                                                            >
+                                                                {atend.acaoLabel}
+                                                            </span>
+                                                        )}
                                                         {atend.etapaNova && (
                                                             <span className="text-[10px] text-gray-500">
                                                                 {atend.etapaAnterior} → {atend.etapaNova}
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <span className="text-[10px] text-gray-400">{new Date(atend.criadoEm).toLocaleDateString('pt-BR')}</span>
+                                                    <span className="text-[10px] text-gray-400 shrink-0">{new Date(atend.criadoEm).toLocaleDateString('pt-BR')} {new Date(atend.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                                                 </div>
                                                 {atend.observacao && <p className="text-xs text-gray-600">{atend.observacao}</p>}
+                                                {(atend.dataRetorno || atend.assuntoRetorno || atend.transferidoPara || atend.amostra || atend.proximaVisita) && (
+                                                    <div className="mt-1.5 flex flex-wrap gap-1">
+                                                        {atend.dataRetorno && (
+                                                            <span className="text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">
+                                                                Retorno: {new Date(atend.dataRetorno).toLocaleDateString('pt-BR')}
+                                                            </span>
+                                                        )}
+                                                        {atend.assuntoRetorno && (
+                                                            <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded italic">{atend.assuntoRetorno}</span>
+                                                        )}
+                                                        {atend.transferidoPara?.nome && (
+                                                            <span className="text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                                                                Transferido: {atend.transferidoPara.nome}
+                                                            </span>
+                                                        )}
+                                                        {atend.amostra && (
+                                                            <span className="text-[10px] text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200">
+                                                                AM#{atend.amostra.numero} · {atend.amostra.status}
+                                                            </span>
+                                                        )}
+                                                        {atend.proximaVisita && (
+                                                            <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                                                                Próx. visita: {new Date(atend.proximaVisita).toLocaleDateString('pt-BR')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
                                                 {atend.vendedor && <p className="text-[10px] text-gray-400 mt-1">Por: {atend.vendedor.nome}</p>}
                                             </div>
                                         ))}

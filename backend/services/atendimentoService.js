@@ -6,7 +6,11 @@ const atendimentoService = {
     // Registra um atendimento (para Lead ou Cliente)
     registrar: async (data) => {
         const { tipo, observacao, etapaAnterior, etapaNova, proximaVisita,
-            gpsVendedor, pedidoId, leadId, clienteId, idVendedor } = data;
+            gpsVendedor, pedidoId, leadId, clienteId, idVendedor,
+            acaoKey, acaoLabel, transferidoParaId,
+            assuntoRetorno, dataRetorno,
+            alertaVisualAtivo, alertaVisualCor,
+            amostraId } = data;
 
         // Se for lead, atualizar a etapa e próxima visita
         if (leadId && etapaNova) {
@@ -24,7 +28,7 @@ const atendimentoService = {
             });
         }
 
-        return await prisma.atendimento.create({
+        const novoAtendimento = await prisma.atendimento.create({
             data: {
                 tipo,
                 observacao,
@@ -35,11 +39,20 @@ const atendimentoService = {
                 pedidoId: pedidoId || null,
                 leadId: leadId || null,
                 clienteId: clienteId || null,
-                idVendedor
+                idVendedor,
+                acaoKey: acaoKey || null,
+                acaoLabel: acaoLabel || null,
+                transferidoParaId: transferidoParaId || null,
+                assuntoRetorno: assuntoRetorno || null,
+                dataRetorno: dataRetorno ? new Date(dataRetorno) : null,
+                alertaVisualAtivo: alertaVisualAtivo || false,
+                alertaVisualCor: alertaVisualCor || null,
+                alertaVisualVisto: false,
+                amostraId: amostraId || null,
             }
         });
 
-        // 🟢 Async Detached Trigger para Etapa 2 Comercial Intelligence
+        // Async: recalcular insights do cliente
         if (clienteId) {
             setTimeout(() => {
                 clienteInsightService.recalcularCliente(clienteId).catch(console.error);
@@ -53,7 +66,11 @@ const atendimentoService = {
     listarPorLead: async (leadId) => {
         return await prisma.atendimento.findMany({
             where: { leadId },
-            include: { vendedor: { select: { nome: true } } },
+            include: {
+                vendedor: { select: { nome: true } },
+                transferidoPara: { select: { nome: true } },
+                amostra: { select: { id: true, numero: true, status: true } },
+            },
             orderBy: { criadoEm: 'desc' }
         });
     },
@@ -62,8 +79,64 @@ const atendimentoService = {
     listarPorCliente: async (clienteId) => {
         return await prisma.atendimento.findMany({
             where: { clienteId },
-            include: { vendedor: { select: { nome: true } } },
+            include: {
+                vendedor: { select: { nome: true } },
+                transferidoPara: { select: { nome: true } },
+                amostra: { select: { id: true, numero: true, status: true } },
+            },
             orderBy: { criadoEm: 'desc' }
+        });
+    },
+
+    // Atendimentos transferidos para um vendedor
+    listarTransferidos: async (vendedorId) => {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        const amanha = new Date(hoje);
+        amanha.setDate(amanha.getDate() + 1);
+
+        return await prisma.atendimento.findMany({
+            where: { transferidoParaId: vendedorId },
+            include: {
+                vendedor: { select: { nome: true } },
+                lead: { select: { nomeEstabelecimento: true, numero: true } },
+            },
+            orderBy: [
+                // Retornos de hoje no topo
+                { dataRetorno: 'asc' },
+                { criadoEm: 'desc' }
+            ]
+        });
+    },
+
+    // Marcar alerta visual como visto
+    marcarAlertaVisto: async (atendimentoId) => {
+        return await prisma.atendimento.update({
+            where: { id: atendimentoId },
+            data: { alertaVisualVisto: true }
+        });
+    },
+
+    // Alertas visuais ativos (não vistos) para leads/clientes de um vendedor
+    listarAlertasAtivos: async (vendedorId) => {
+        return await prisma.atendimento.findMany({
+            where: {
+                alertaVisualAtivo: true,
+                alertaVisualVisto: false,
+                OR: [
+                    { idVendedor: vendedorId },
+                    { transferidoParaId: vendedorId },
+                ]
+            },
+            select: {
+                id: true,
+                leadId: true,
+                clienteId: true,
+                alertaVisualCor: true,
+                dataRetorno: true,
+                assuntoRetorno: true,
+                acaoLabel: true,
+            }
         });
     },
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, Navigation, Loader, Mic, MicOff } from 'lucide-react';
+import { X, Navigation, Loader, Mic, MicOff, ArrowRight, Calendar, Bell } from 'lucide-react';
 import atendimentoService from '../../services/atendimentoService';
 import configService from '../../services/configService';
 import toast from 'react-hot-toast';
@@ -24,45 +24,53 @@ const ACOES_PADRAO = [
 
 const ETAPAS = ['NOVO', 'AMOSTRA', 'VISITA', 'PEDIDO', 'FINALIZADO'];
 
-const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
+const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra }) => {
     const { tipo, item } = dados; // tipo: 'lead' | 'cliente'
     const isLead = tipo === 'lead';
 
     const [tipos, setTipos] = useState(TIPOS_PADRAO);
     const [acoes, setAcoes] = useState(ACOES_PADRAO);
+    const [vendedores, setVendedores] = useState([]);
     const [form, setForm] = useState({
         tipoAtendimento: '',
         acaoAtendimento: '',
         observacao: '',
         etapaNova: isLead ? item.etapa : '',
         proximaVisita: '',
+        dataRetorno: '',
+        assuntoRetorno: '',
     });
     const [gps, setGps] = useState(null);
     const [loadingGps, setLoadingGps] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    // Carrega tipos e ações de atendimento da configuração
-    // Para leads usa acoes_lead, para clientes usa acoes_atendimento
+    // Ação selecionada (objeto completo com configurações)
+    const acaoSelecionada = acoes.find(a => a.value === form.acaoAtendimento) || null;
+
+    // Carrega tipos, ações e vendedores
     useEffect(() => {
         const chaveAcoes = isLead ? 'acoes_lead' : 'acoes_atendimento';
         Promise.all([
             configService.get('tipos_atendimento').catch(() => null),
-            configService.get(chaveAcoes).catch(() => null)
+            configService.get(chaveAcoes).catch(() => null),
         ]).then(([tiposData, acoesData]) => {
             const finalTipos = Array.isArray(tiposData) && tiposData.length > 0 ? tiposData : TIPOS_PADRAO;
             setTipos(finalTipos);
             if (Array.isArray(acoesData) && acoesData.length > 0) {
-                setAcoes(acoesData);
+                // Filtrar apenas ações ativas
+                setAcoes(acoesData.filter(a => a.ativo !== false));
             }
         });
     }, []);
 
+    // Speech recognition
     const [isListening, setIsListening] = useState(false);
+    const [listeningField, setListeningField] = useState('observacao'); // 'observacao' | 'assuntoRetorno'
     const recognitionRef = React.useRef(null);
     const originalTextRef = React.useRef('');
     const stoppedRef = React.useRef(false);
 
-    const toggleMicrophone = () => {
+    const toggleMicrophone = (field = 'observacao') => {
         if (isListening) {
             stoppedRef.current = true;
             if (recognitionRef.current) recognitionRef.current.stop();
@@ -77,22 +85,21 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
             return;
         }
 
+        setListeningField(field);
         const recognition = new SpeechRecognition();
         recognition.lang = 'pt-BR';
         recognition.continuous = true;
         recognition.interimResults = true;
 
         stoppedRef.current = false;
-        originalTextRef.current = form.observacao; // Salva o texto base
+        originalTextRef.current = form[field];
 
         recognition.onstart = () => setIsListening(true);
 
         recognition.onresult = (event) => {
-            if (stoppedRef.current) return; // Ignora resultados após parar
-
+            if (stoppedRef.current) return;
             let finalTranscript = '';
             let interimTranscript = '';
-
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const transcript = event.results[i][0].transcript;
                 if (event.results[i].isFinal) {
@@ -101,14 +108,10 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
                     interimTranscript += transcript;
                 }
             }
-
-            // Concatena o texto base + os blocos já finalizados desta sessão + o trecho sendo falado agora
             setForm(f => {
                 const updatedBase = (originalTextRef.current + ' ' + finalTranscript).replace(/\s+/g, ' ').trim();
-                return { ...f, observacao: (updatedBase + ' ' + interimTranscript).trim() };
+                return { ...f, [field]: (updatedBase + ' ' + interimTranscript).trim() };
             });
-
-            // Se confirmou bloco final, atualiza a base para a próxima rodada
             if (finalTranscript !== '') {
                 originalTextRef.current = (originalTextRef.current + ' ' + finalTranscript).replace(/\s+/g, ' ').trim();
             }
@@ -128,14 +131,28 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
         };
 
         recognitionRef.current = recognition;
-        try {
-            recognition.start();
-        } catch (e) {
-            console.error(e);
-        }
+        try { recognition.start(); } catch (e) { console.error(e); }
     };
 
-    // Captura GPS automaticamente ao abrir
+    // MicButton reutilizável
+    const MicButton = ({ field }) => (
+        <button
+            type="button"
+            onClick={() => toggleMicrophone(field)}
+            className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition-colors ${isListening && listeningField === field
+                ? 'bg-red-50 text-red-600 border-red-200 animate-pulse'
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+        >
+            {isListening && listeningField === field ? (
+                <><MicOff className="h-3 w-3" /> Ouvindo...</>
+            ) : (
+                <><Mic className="h-3 w-3" /> Ditar</>
+            )}
+        </button>
+    );
+
+    // GPS
     useEffect(() => {
         if (navigator.geolocation) {
             setLoadingGps(true);
@@ -153,10 +170,47 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
         }
     }, []);
 
+    // Nome do responsável de transferência
+    const nomeTransferencia = (() => {
+        if (!acaoSelecionada?.transfereAtendimento || !acaoSelecionada?.responsavelTransferenciaId) return null;
+        const v = vendedores.find(v => v.id === acaoSelecionada.responsavelTransferenciaId);
+        return v?.nome || 'Vendedor não encontrado';
+    })();
+
+    // Carregar vendedores se alguma ação usa transferência
+    useEffect(() => {
+        const temTransferencia = acoes.some(a => a.transfereAtendimento);
+        if (temTransferencia && vendedores.length === 0) {
+            import('../../services/api').then(({ default: api }) => {
+                api.get('/vendedores').then(r => {
+                    const list = Array.isArray(r.data) ? r.data : r.data?.vendedores || [];
+                    setVendedores(list.filter(v => v.ativo !== false));
+                }).catch(() => {});
+            });
+        }
+    }, [acoes]);
+
     const handleSalvar = async () => {
         if (!form.tipoAtendimento) {
             toast.error('Selecione o tipo de atendimento.');
             return;
+        }
+        // Validações dinâmicas por ação
+        if (acaoSelecionada?.obrigaObservacao && !form.observacao?.trim()) {
+            toast.error('A observação é obrigatória para esta ação.');
+            return;
+        }
+        if (acaoSelecionada?.obrigaDataRetorno && !form.dataRetorno) {
+            toast.error('A data de retorno é obrigatória para esta ação.');
+            return;
+        }
+        if (form.dataRetorno) {
+            const dr = new Date(form.dataRetorno);
+            const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+            if (dr < hoje) {
+                toast.error('A data de retorno não pode ser uma data passada.');
+                return;
+            }
         }
         if (form.proximaVisita) {
             const pv = new Date(form.proximaVisita);
@@ -166,20 +220,46 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
                 return;
             }
         }
+
+        // Se ação abre pedido de amostra, chama callback antes de salvar
+        if (acaoSelecionada?.abrePedidoAmostra && onAbrirAmostra) {
+            onAbrirAmostra({
+                form,
+                acaoSelecionada,
+                gps,
+                isLead,
+                item,
+                vendedorId,
+                finalizarAtendimento: (amostraId) => salvarAtendimento(amostraId),
+            });
+            return;
+        }
+
+        await salvarAtendimento(null);
+    };
+
+    const salvarAtendimento = async (amostraId) => {
         try {
             setSaving(true);
             await atendimentoService.registrar({
                 tipo: form.tipoAtendimento,
-                observacao: form.acaoAtendimento
-                    ? `[Ação: ${acoes.find(a => a.value === form.acaoAtendimento)?.label || form.acaoAtendimento}] ${form.observacao || ''}`
-                    : (form.observacao || null),
+                observacao: form.observacao || null,
                 etapaAnterior: isLead ? item.etapa : null,
                 etapaNova: isLead && form.etapaNova !== item.etapa ? form.etapaNova : null,
                 proximaVisita: form.proximaVisita || null,
                 gpsVendedor: gps,
                 leadId: isLead ? item.id : null,
                 clienteId: !isLead ? item.UUID : null,
-                idVendedor: vendedorId
+                idVendedor: vendedorId,
+                // Campos novos
+                acaoKey: acaoSelecionada?.value || null,
+                acaoLabel: acaoSelecionada?.label || null,
+                transferidoParaId: acaoSelecionada?.transfereAtendimento ? acaoSelecionada?.responsavelTransferenciaId : null,
+                dataRetorno: form.dataRetorno || null,
+                assuntoRetorno: form.assuntoRetorno || null,
+                alertaVisualAtivo: !!acaoSelecionada?.criaAlertaVisual,
+                alertaVisualCor: acaoSelecionada?.criaAlertaVisual ? acaoSelecionada?.cor : null,
+                amostraId: amostraId || null,
             });
             onSalvo();
         } catch (e) {
@@ -194,7 +274,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
         <div className="fixed inset-0 z-50 bg-black/50 flex items-end">
             <div className="bg-white w-full rounded-t-2xl max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 sticky top-0 bg-white">
+                <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
                     <div>
                         <h2 className="font-bold text-[16px] text-gray-900">Registrar Atendimento</h2>
                         <p className="text-[12px] text-gray-500 mt-0.5 truncate max-w-xs">
@@ -233,14 +313,83 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
                     {acoes.length > 0 && (
                         <div>
                             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Ação do Atendimento</label>
-                            <select
-                                value={form.acaoAtendimento}
-                                onChange={e => setForm(f => ({ ...f, acaoAtendimento: e.target.value }))}
-                                className="block w-full border border-orange-300 rounded-lg p-3 bg-orange-50 text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500"
-                            >
-                                <option value="">Nenhuma ação</option>
-                                {acoes.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
-                            </select>
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    onClick={() => setForm(f => ({ ...f, acaoAtendimento: '' }))}
+                                    className={`px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-colors ${!form.acaoAtendimento ? 'bg-gray-600 text-white border-gray-600' : 'bg-white text-gray-500 border-gray-300'}`}
+                                >
+                                    Nenhuma
+                                </button>
+                                {acoes.map(a => (
+                                    <button
+                                        key={a.value}
+                                        onClick={() => setForm(f => ({ ...f, acaoAtendimento: a.value }))}
+                                        className={`px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-colors`}
+                                        style={form.acaoAtendimento === a.value
+                                            ? { backgroundColor: a.cor || '#2563eb', color: '#fff', borderColor: a.cor || '#2563eb' }
+                                            : { borderColor: a.cor || '#d1d5db', color: a.cor || '#374151' }
+                                        }
+                                    >
+                                        {a.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Campos dinâmicos baseados na ação selecionada ── */}
+
+                    {/* Badge de transferência */}
+                    {acaoSelecionada?.transfereAtendimento && nomeTransferencia && (
+                        <div className="flex items-center gap-2 text-[12px] rounded-lg px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200">
+                            <ArrowRight className="h-3.5 w-3.5" />
+                            <span className="font-semibold">Transferido para:</span> {nomeTransferencia}
+                        </div>
+                    )}
+
+                    {/* Alerta visual info */}
+                    {acaoSelecionada?.criaAlertaVisual && (
+                        <div className="flex items-center gap-2 text-[12px] rounded-lg px-3 py-2 border"
+                            style={{ backgroundColor: (acaoSelecionada.cor || '#ef4444') + '15', borderColor: acaoSelecionada.cor || '#ef4444', color: acaoSelecionada.cor || '#ef4444' }}>
+                            <Bell className="h-3.5 w-3.5" />
+                            Alerta visual será criado para este atendimento
+                        </div>
+                    )}
+
+                    {/* Data de Retorno */}
+                    {acaoSelecionada?.permiteDataRetorno && (
+                        <div>
+                            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+                                <Calendar className="h-3.5 w-3.5 inline mr-1" />
+                                Data de Retorno {acaoSelecionada.obrigaDataRetorno ? '*' : '(opcional)'}
+                            </label>
+                            <input
+                                type="date"
+                                min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })}
+                                value={form.dataRetorno}
+                                onChange={e => setForm(f => ({ ...f, dataRetorno: e.target.value }))}
+                                className={`block w-full border rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-blue-500 focus:border-blue-500 ${acaoSelecionada.obrigaDataRetorno && !form.dataRetorno ? 'border-red-300' : 'border-gray-300'}`}
+                            />
+                        </div>
+                    )}
+
+                    {/* Assunto do Retorno */}
+                    {acaoSelecionada?.permiteAssuntoRetorno && (
+                        <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-[13px] font-semibold text-gray-700">Assunto do Retorno</label>
+                                <MicButton field="assuntoRetorno" />
+                            </div>
+                            <input
+                                type="text"
+                                value={form.assuntoRetorno}
+                                onChange={e => setForm(f => ({ ...f, assuntoRetorno: e.target.value }))}
+                                placeholder="Sobre o que tratar no retorno..."
+                                className={`block w-full border rounded-lg p-3 text-[14px] transition-colors ${isListening && listeningField === 'assuntoRetorno'
+                                    ? 'border-red-400 bg-red-50/30 ring-1 ring-red-400'
+                                    : 'border-gray-300 bg-white focus:ring-blue-500 focus:border-blue-500'
+                                    }`}
+                            />
                         </div>
                     )}
 
@@ -273,30 +422,21 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
                     {/* Observação */}
                     <div>
                         <div className="flex items-center justify-between mb-1.5">
-                            <label className="block text-[13px] font-semibold text-gray-700">Observação</label>
-                            <button
-                                type="button"
-                                onClick={toggleMicrophone}
-                                className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition-colors ${isListening
-                                    ? 'bg-red-50 text-red-600 border-red-200 animate-pulse'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                    }`}
-                            >
-                                {isListening ? (
-                                    <><MicOff className="h-3 w-3" /> Ouvindo...</>
-                                ) : (
-                                    <><Mic className="h-3 w-3" /> Ditar por Voz</>
-                                )}
-                            </button>
+                            <label className="block text-[13px] font-semibold text-gray-700">
+                                Observação {acaoSelecionada?.obrigaObservacao ? '*' : ''}
+                            </label>
+                            <MicButton field="observacao" />
                         </div>
                         <textarea
                             value={form.observacao}
                             onChange={e => setForm(f => ({ ...f, observacao: e.target.value }))}
                             rows={3}
-                            placeholder={isListening ? 'Fale agora...' : 'O que aconteceu neste atendimento?'}
-                            className={`block w-full border rounded-lg p-3 text-[14px] resize-none transition-colors ${isListening
+                            placeholder={isListening && listeningField === 'observacao' ? 'Fale agora...' : 'O que aconteceu neste atendimento?'}
+                            className={`block w-full border rounded-lg p-3 text-[14px] resize-none transition-colors ${isListening && listeningField === 'observacao'
                                 ? 'border-red-400 bg-red-50/30 ring-1 ring-red-400'
-                                : 'border-gray-300 bg-white focus:ring-blue-500 focus:border-blue-500'
+                                : acaoSelecionada?.obrigaObservacao && !form.observacao?.trim()
+                                    ? 'border-red-300 bg-white focus:ring-red-500 focus:border-red-500'
+                                    : 'border-gray-300 bg-white focus:ring-blue-500 focus:border-blue-500'
                                 }`}
                         />
                     </div>
@@ -308,7 +448,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId }) => {
                         className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl text-[15px] flex items-center justify-center gap-2 mt-2 disabled:opacity-70"
                     >
                         {saving ? <Loader className="h-5 w-5 animate-spin" /> : null}
-                        {saving ? 'Salvando...' : 'Confirmar Atendimento'}
+                        {saving ? 'Salvando...' : acaoSelecionada?.abrePedidoAmostra ? 'Prosseguir para Amostra' : 'Confirmar Atendimento'}
                     </button>
 
                     <div className="h-4" />
