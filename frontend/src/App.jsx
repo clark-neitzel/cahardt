@@ -138,7 +138,7 @@ const Layout = ({ children }) => {
           {showAdmin && <SidebarSection label="Admin" />}
           {hasPermission('produtos') && <SidebarItem to="/admin/produtos" icon={Box} label="Produtos" />}
           {hasPermission('vendedores') && <SidebarItem to="/admin/vendedores" icon={UserCog} label="Vendedores" />}
-          {(user?.permissoes?.admin || hasPermission('clientes')) && <SidebarItem to="/admin/veiculos" icon={Car} label="Veículos" />}
+          {(user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && <SidebarItem to="/admin/veiculos" icon={Car} label="Veículos" />}
           {hasPermission('sync') && <SidebarItem to="/admin/sync" icon={RefreshCw} label="Sincronizar" />}
 
           {/* Configurações */}
@@ -228,7 +228,7 @@ const Layout = ({ children }) => {
               {hasPermission('vendedores') && (
                 <NavLink to="/admin/vendedores" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Vendedores</NavLink>
               )}
-              {(user?.permissoes?.admin || hasPermission('clientes', 'clientes') === 'todos') && (
+              {(user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && (
                 <NavLink to="/admin/veiculos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Veículos</NavLink>
               )}
               {hasPermission('Pode_Ver_Todas_Entregas') && (
@@ -319,7 +319,7 @@ function App() {
               <Route path="/admin/auditoria-entregas" element={<PrivateRoute tab="Pode_Ver_Todas_Entregas"><AuditoriaEntregas /></PrivateRoute>} />
               <Route path="/admin/sync" element={<PrivateRoute tab="sync"><PainelSync /></PrivateRoute>} />
               <Route path="/admin/vendedores" element={<PrivateRoute tab="vendedores"><ListaVendedores /></PrivateRoute>} />
-              <Route path="/admin/veiculos" element={<PrivateRoute tab="clientes"><Veiculos /></PrivateRoute>} />
+              <Route path="/admin/veiculos" element={<PrivateRoute tab="Pode_Acessar_Veiculos"><Veiculos /></PrivateRoute>} />
               <Route path="/admin/config" element={<PrivateRoute tab="configuracoes"><Configuracoes /></PrivateRoute>} />
               <Route path="/config/tabela-precos" element={<PrivateRoute tab="configuracoes"><TabelaPrecos /></PrivateRoute>} />
               <Route path="/config/contas-financeiras" element={<PrivateRoute tab="configuracoes"><ContasFinanceiras /></PrivateRoute>} />

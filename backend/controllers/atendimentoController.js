@@ -70,6 +70,36 @@ const atendimentoController = {
             console.error('[atendimentoController.listarAlertasAtivos]', error);
             res.status(500).json({ error: 'Erro ao listar alertas ativos.' });
         }
+    },
+
+    finalizarTransferencia: async (req, res) => {
+        try {
+            const atendimento = await atendimentoService.finalizarTransferencia(req.params.id);
+            res.json(atendimento);
+        } catch (error) {
+            console.error('[atendimentoController.finalizarTransferencia]', error);
+            res.status(500).json({ error: 'Erro ao finalizar transferência.' });
+        }
+    },
+
+    marcarTransferenciaVista: async (req, res) => {
+        try {
+            const atendimento = await atendimentoService.marcarTransferenciaVista(req.params.id);
+            res.json(atendimento);
+        } catch (error) {
+            console.error('[atendimentoController.marcarTransferenciaVista]', error);
+            res.status(500).json({ error: 'Erro ao marcar transferência como vista.' });
+        }
+    },
+
+    listarTransferenciasResolvidas: async (req, res) => {
+        try {
+            const atendimentos = await atendimentoService.listarTransferenciasResolvidas(req.user.id);
+            res.json(atendimentos);
+        } catch (error) {
+            console.error('[atendimentoController.listarTransferenciasResolvidas]', error);
+            res.status(500).json({ error: 'Erro ao listar transferências resolvidas.' });
+        }
     }
 };
 

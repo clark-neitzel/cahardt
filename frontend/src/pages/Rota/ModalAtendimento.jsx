@@ -39,6 +39,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
         proximaVisita: '',
         dataRetorno: '',
         assuntoRetorno: '',
+        transferirParaId: '',
     });
     const [gps, setGps] = useState(null);
     const [loadingGps, setLoadingGps] = useState(false);
@@ -170,11 +171,29 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
         }
     }, []);
 
+    // Modo da transferência: fixo (tem responsável pré-definido) ou escolhe (vendedor decide)
+    const modoTransferencia = acaoSelecionada?.transfereAtendimento
+        ? (acaoSelecionada.modoTransferencia || (acaoSelecionada.responsavelTransferenciaId ? 'fixo' : 'escolhe'))
+        : null;
+
+    // ID efetivo do destinatário
+    const transferidoParaIdEfetivo = modoTransferencia === 'fixo'
+        ? acaoSelecionada?.responsavelTransferenciaId
+        : form.transferirParaId || null;
+
     // Nome do responsável de transferência
     const nomeTransferencia = (() => {
-        if (!acaoSelecionada?.transfereAtendimento || !acaoSelecionada?.responsavelTransferenciaId) return null;
-        const v = vendedores.find(v => v.id === acaoSelecionada.responsavelTransferenciaId);
-        return v?.nome || 'Vendedor não encontrado';
+        if (!acaoSelecionada?.transfereAtendimento) return null;
+        if (modoTransferencia === 'fixo') {
+            if (!acaoSelecionada?.responsavelTransferenciaId) return null;
+            const v = vendedores.find(v => v.id === acaoSelecionada.responsavelTransferenciaId);
+            return v?.nome || 'Vendedor não encontrado';
+        }
+        if (form.transferirParaId) {
+            const v = vendedores.find(v => v.id === form.transferirParaId);
+            return v?.nome || null;
+        }
+        return null;
     })();
 
     // Carregar vendedores se alguma ação usa transferência
@@ -199,6 +218,17 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
         if (acaoSelecionada?.obrigaObservacao && !form.observacao?.trim()) {
             toast.error('A observação é obrigatória para esta ação.');
             return;
+        }
+        // Transferência: obs obrigatória + destinatário obrigatório se modo 'escolhe'
+        if (acaoSelecionada?.transfereAtendimento) {
+            if (!form.observacao?.trim()) {
+                toast.error('A observação é obrigatória ao transferir atendimento.');
+                return;
+            }
+            if (modoTransferencia === 'escolhe' && !form.transferirParaId) {
+                toast.error('Selecione para quem transferir o atendimento.');
+                return;
+            }
         }
         if (acaoSelecionada?.obrigaDataRetorno && !form.dataRetorno) {
             toast.error('A data de retorno é obrigatória para esta ação.');
@@ -254,7 +284,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
                 // Campos novos
                 acaoKey: acaoSelecionada?.value || null,
                 acaoLabel: acaoSelecionada?.label || null,
-                transferidoParaId: acaoSelecionada?.transfereAtendimento ? acaoSelecionada?.responsavelTransferenciaId : null,
+                transferidoParaId: acaoSelecionada?.transfereAtendimento ? transferidoParaIdEfetivo : null,
                 dataRetorno: form.dataRetorno || null,
                 assuntoRetorno: form.assuntoRetorno || null,
                 alertaVisualAtivo: !!acaoSelecionada?.criaAlertaVisual,
@@ -339,11 +369,29 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
 
                     {/* ── Campos dinâmicos baseados na ação selecionada ── */}
 
-                    {/* Badge de transferência */}
-                    {acaoSelecionada?.transfereAtendimento && nomeTransferencia && (
+                    {/* Transferência */}
+                    {acaoSelecionada?.transfereAtendimento && modoTransferencia === 'fixo' && nomeTransferencia && (
                         <div className="flex items-center gap-2 text-[12px] rounded-lg px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200">
                             <ArrowRight className="h-3.5 w-3.5" />
                             <span className="font-semibold">Transferido para:</span> {nomeTransferencia}
+                        </div>
+                    )}
+                    {acaoSelecionada?.transfereAtendimento && modoTransferencia === 'escolhe' && (
+                        <div>
+                            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+                                <ArrowRight className="h-3.5 w-3.5 inline mr-1" />
+                                Transferir para *
+                            </label>
+                            <select
+                                value={form.transferirParaId}
+                                onChange={e => setForm(f => ({ ...f, transferirParaId: e.target.value }))}
+                                className={`block w-full border rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-blue-500 focus:border-blue-500 ${!form.transferirParaId ? 'border-red-300' : 'border-gray-300'}`}
+                            >
+                                <option value="">Selecione o vendedor...</option>
+                                {vendedores.filter(v => v.id !== vendedorId).map(v => (
+                                    <option key={v.id} value={v.id}>{v.nome}</option>
+                                ))}
+                            </select>
                         </div>
                     )}
 

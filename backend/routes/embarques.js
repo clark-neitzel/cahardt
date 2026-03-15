@@ -45,7 +45,7 @@ router.get('/', verificarAuth, checkAcessoEmbarque, async (req, res) => {
             orderBy: { createdAt: 'desc' },
             include: {
                 responsavel: { select: { id: true, nome: true } },
-                _count: { select: { pedidos: true } }
+                _count: { select: { pedidos: true, amostras: true } }
             }
         });
 
@@ -57,7 +57,32 @@ router.get('/', verificarAuth, checkAcessoEmbarque, async (req, res) => {
 });
 
 // ==========================================
-// 2. LISTA DE PEDIDOS "FATURADOS" LIVRES
+// 2a. LISTA DE AMOSTRAS LIBERADAS LIVRES
+// ==========================================
+router.get('/amostras-disponiveis', verificarAuth, checkAcessoEmbarque, async (req, res) => {
+    try {
+        const amostrasLivres = await prisma.amostra.findMany({
+            where: {
+                status: 'LIBERADO',
+                embarqueId: null
+            },
+            include: {
+                itens: { include: { produto: { select: { nome: true, codigo: true } } } },
+                solicitadoPor: { select: { nome: true } },
+                lead: { select: { nomeEstabelecimento: true, numero: true } },
+                cliente: { select: { UUID: true, NomeFantasia: true, Nome: true, End_Cidade: true } },
+            },
+            orderBy: { createdAt: 'asc' }
+        });
+        res.json(amostrasLivres);
+    } catch (error) {
+        console.error('Erro ao listar amostras disponíveis:', error);
+        res.status(500).json({ error: 'Erro ao buscar amostras livres.' });
+    }
+});
+
+// ==========================================
+// 2b. LISTA DE PEDIDOS "FATURADOS" LIVRES
 // ==========================================
 router.get('/pedidos-disponiveis', verificarAuth, checkAcessoEmbarque, async (req, res) => {
     try {
@@ -99,6 +124,14 @@ router.get('/:id', verificarAuth, checkAcessoEmbarque, async (req, res) => {
                         }
                     },
                     orderBy: { cliente: { NomeFantasia: 'asc' } }
+                },
+                amostras: {
+                    include: {
+                        itens: { include: { produto: { select: { nome: true, codigo: true } } } },
+                        solicitadoPor: { select: { nome: true } },
+                        lead: { select: { nomeEstabelecimento: true, numero: true } },
+                        cliente: { select: { NomeFantasia: true, Nome: true, End_Cidade: true } },
+                    }
                 }
             }
         });
@@ -256,6 +289,75 @@ router.delete('/:id/pedidos/:pedidoId', verificarAuth, checkAcessoEmbarque, asyn
     } catch (error) {
         console.error('Erro ao remover pedido:', error);
         res.status(500).json({ error: 'Erro ao desvincular pedido.' });
+    }
+});
+
+// ==========================================
+// 7. INSERIR AMOSTRAS NUM EMBARQUE
+// ==========================================
+router.post('/:id/amostras', verificarAuth, checkAcessoEmbarque, async (req, res) => {
+    try {
+        const { amostrasIds } = req.body;
+        const embarqueId = req.params.id;
+
+        if (!amostrasIds || !amostrasIds.length) {
+            return res.status(400).json({ error: 'Forneça a lista de amostras a incluir.' });
+        }
+
+        // Validar: só LIBERADO e sem embarque
+        const bloqueadas = await prisma.amostra.findMany({
+            where: {
+                id: { in: amostrasIds },
+                OR: [
+                    { embarqueId: { not: null } },
+                    { status: { not: 'LIBERADO' } }
+                ]
+            }
+        });
+
+        if (bloqueadas.length > 0) {
+            return res.status(400).json({
+                error: 'Uma ou mais amostras não estão LIBERADAS ou já pertencem a outro embarque.',
+                bloqueadas: bloqueadas.map(a => a.numero || a.id)
+            });
+        }
+
+        await prisma.amostra.updateMany({
+            where: { id: { in: amostrasIds } },
+            data: { embarqueId }
+        });
+
+        res.json({ message: `${amostrasIds.length} amostras atreladas ao embarque.` });
+    } catch (error) {
+        console.error('Erro ao adicionar amostras na carga:', error);
+        res.status(500).json({ error: 'Erro ao atrelar amostras.' });
+    }
+});
+
+// ==========================================
+// 8. REMOVER AMOSTRA DA CARGA
+// ==========================================
+router.delete('/:id/amostras/:amostraId', verificarAuth, checkAcessoEmbarque, async (req, res) => {
+    try {
+        const { id, amostraId } = req.params;
+
+        const amostra = await prisma.amostra.findUnique({
+            where: { id: amostraId },
+            select: { embarqueId: true, numero: true }
+        });
+
+        if (!amostra) return res.status(404).json({ error: 'Amostra não encontrada.' });
+        if (amostra.embarqueId !== id) return res.status(400).json({ error: 'Amostra não pertence a este embarque.' });
+
+        await prisma.amostra.update({
+            where: { id: amostraId },
+            data: { embarqueId: null }
+        });
+
+        res.status(204).send();
+    } catch (error) {
+        console.error('Erro ao remover amostra:', error);
+        res.status(500).json({ error: 'Erro ao desvincular amostra.' });
     }
 });
 

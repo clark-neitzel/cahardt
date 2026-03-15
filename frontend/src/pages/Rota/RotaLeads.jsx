@@ -4,7 +4,8 @@ import {
     MapPin, Phone, MessageCircle, User, Plus, ChevronRight,
     Clock, Calendar, Tag, CheckCircle, ClipboardList, Star,
     Package, X, Navigation, Loader, Search, Truck, Edit3,
-    DollarSign, Trash2, Save, ChevronDown, ChevronUp, Route, Bell
+    DollarSign, Trash2, Save, ChevronDown, ChevronUp, Route, Bell,
+    ArrowLeftRight, Check
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import leadService from '../../services/leadService';
@@ -76,7 +77,7 @@ const abrirMapa = (gps) => {
 // ================================================
 // Card de Cliente
 // ================================================
-const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, alerta, onAlertaVisto }) => {
+const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista }) => {
     const atendHoje = getAtendimentoHoje(cliente._atendimentos);
     const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
     const vendedorNome = cliente.vendedor?.nome || cliente.Vendedor?.nome;
@@ -151,7 +152,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                 )}
 
                 {/* Alerta visual */}
-                {alerta && (
+                {alerta?.cor && !alerta.isTransferenciaAtiva && !alerta.isTransferenciaResolvida && (
                     <button
                         onClick={() => onAlertaVisto && onAlertaVisto(alerta.atendimentoId)}
                         className="mt-2 w-full text-left rounded-lg px-3 py-2 border text-[12px] flex items-center gap-2"
@@ -164,6 +165,42 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                             {alerta.dataRetorno && <span className="ml-1 text-[11px] opacity-75">({new Date(alerta.dataRetorno).toLocaleDateString('pt-BR')})</span>}
                         </div>
                         <span className="text-[10px] font-bold opacity-60 shrink-0">Marcar visto</span>
+                    </button>
+                )}
+
+                {/* Transferência ativa (eu sou o receptor) */}
+                {alerta?.isTransferenciaAtiva && (
+                    <div className="mt-2 rounded-lg border-2 border-indigo-300 bg-indigo-50 p-3 space-y-2">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-700">
+                            <ArrowLeftRight className="h-3.5 w-3.5" />
+                            Transferido por {alerta.transferenciaDeNome?.split(' ')[0] || '?'}
+                            {alerta.transferenciaAcaoLabel && <span className="font-normal ml-1">· {alerta.transferenciaAcaoLabel}</span>}
+                        </div>
+                        {alerta.transferenciaObs && (
+                            <p className="text-[12px] text-indigo-900 bg-white/60 rounded px-2 py-1.5 border border-indigo-200">{alerta.transferenciaObs}</p>
+                        )}
+                        <button
+                            onClick={() => onFinalizarTransferencia && onFinalizarTransferencia(alerta.transferenciaAtendimentoId)}
+                            className="w-full text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded py-1.5 flex items-center justify-center gap-1 transition-colors"
+                        >
+                            <Check className="h-3.5 w-3.5" /> Finalizar Transferência
+                        </button>
+                    </div>
+                )}
+
+                {/* Transferência resolvida (eu sou o remetente) */}
+                {alerta?.isTransferenciaResolvida && (
+                    <button
+                        onClick={() => onTransferenciaVista && onTransferenciaVista(alerta.transferenciaResolvidaId)}
+                        className="mt-2 w-full text-left rounded-lg px-3 py-2 border-2 border-green-300 bg-green-50 text-[12px] text-green-700 flex items-center gap-2"
+                    >
+                        <CheckCircle className="h-3.5 w-3.5 shrink-0 text-green-600" />
+                        <div className="flex-1 min-w-0">
+                            <span className="font-bold">Transferência resolvida</span>
+                            {alerta.transferenciaResolvidaPorNome && <span className="ml-1">por {alerta.transferenciaResolvidaPorNome.split(' ')[0]}</span>}
+                            {alerta.transferenciaResolvidaEm && <span className="ml-1 text-[11px] opacity-75">({new Date(alerta.transferenciaResolvidaEm).toLocaleDateString('pt-BR')})</span>}
+                        </div>
+                        <span className="text-[10px] font-bold opacity-60 shrink-0">Dispensar</span>
                     </button>
                 )}
 
@@ -203,7 +240,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
 // ================================================
 // Card de Lead
 // ================================================
-const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, alerta, onAlertaVisto }) => {
+const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista }) => {
     const atendHoje = getAtendimentoHoje(lead.atendimentos);
     const proxHoje = isProximaVisitaHoje(lead.proximaVisita);
     const vendedorNome = lead.vendedor?.nome;
@@ -278,7 +315,7 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
                 )}
 
                 {/* Alerta visual */}
-                {alerta && (
+                {alerta?.cor && !alerta.isTransferenciaAtiva && !alerta.isTransferenciaResolvida && (
                     <button
                         onClick={() => onAlertaVisto && onAlertaVisto(alerta.atendimentoId)}
                         className="mt-2 w-full text-left rounded-lg px-3 py-2 border text-[12px] flex items-center gap-2"
@@ -291,6 +328,42 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
                             {alerta.dataRetorno && <span className="ml-1 text-[11px] opacity-75">({new Date(alerta.dataRetorno).toLocaleDateString('pt-BR')})</span>}
                         </div>
                         <span className="text-[10px] font-bold opacity-60 shrink-0">Marcar visto</span>
+                    </button>
+                )}
+
+                {/* Transferência ativa (eu sou o receptor) */}
+                {alerta?.isTransferenciaAtiva && (
+                    <div className="mt-2 rounded-lg border-2 border-indigo-300 bg-indigo-50 p-3 space-y-2">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-700">
+                            <ArrowLeftRight className="h-3.5 w-3.5" />
+                            Transferido por {alerta.transferenciaDeNome?.split(' ')[0] || '?'}
+                            {alerta.transferenciaAcaoLabel && <span className="font-normal ml-1">· {alerta.transferenciaAcaoLabel}</span>}
+                        </div>
+                        {alerta.transferenciaObs && (
+                            <p className="text-[12px] text-indigo-900 bg-white/60 rounded px-2 py-1.5 border border-indigo-200">{alerta.transferenciaObs}</p>
+                        )}
+                        <button
+                            onClick={() => onFinalizarTransferencia && onFinalizarTransferencia(alerta.transferenciaAtendimentoId)}
+                            className="w-full text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded py-1.5 flex items-center justify-center gap-1 transition-colors"
+                        >
+                            <Check className="h-3.5 w-3.5" /> Finalizar Transferência
+                        </button>
+                    </div>
+                )}
+
+                {/* Transferência resolvida (eu sou o remetente) */}
+                {alerta?.isTransferenciaResolvida && (
+                    <button
+                        onClick={() => onTransferenciaVista && onTransferenciaVista(alerta.transferenciaResolvidaId)}
+                        className="mt-2 w-full text-left rounded-lg px-3 py-2 border-2 border-green-300 bg-green-50 text-[12px] text-green-700 flex items-center gap-2"
+                    >
+                        <CheckCircle className="h-3.5 w-3.5 shrink-0 text-green-600" />
+                        <div className="flex-1 min-w-0">
+                            <span className="font-bold">Transferência resolvida</span>
+                            {alerta.transferenciaResolvidaPorNome && <span className="ml-1">por {alerta.transferenciaResolvidaPorNome.split(' ')[0]}</span>}
+                            {alerta.transferenciaResolvidaEm && <span className="ml-1 text-[11px] opacity-75">({new Date(alerta.transferenciaResolvidaEm).toLocaleDateString('pt-BR')})</span>}
+                        </div>
+                        <span className="text-[10px] font-bold opacity-60 shrink-0">Dispensar</span>
                     </button>
                 )}
 
@@ -986,7 +1059,48 @@ const RotaLeads = () => {
             // 4. Buscar Alertas Visuais Ativos
             try {
                 const alertas = await atendimentoService.listarAlertasAtivos();
-                setAlertasAtivos(Array.isArray(alertas) ? alertas : []);
+                const listaAlertas = Array.isArray(alertas) ? alertas : [];
+                setAlertasAtivos(listaAlertas);
+
+                // 5. Injetar clientes/leads transferidos que não estão na rota do vendedor
+                const clienteIdsAtuais = new Set(clientesComAtend.map(c => c.UUID));
+                const leadIdsAtuais = new Set(leadsComAtend.map(l => l.id));
+                const clientesFaltantes = [];
+                const leadsFaltantes = [];
+
+                for (const a of listaAlertas) {
+                    // Transferências ativas para mim
+                    if (a.transferidoParaId && !a.transferenciaFinalizada) {
+                        if (a.clienteId && !clienteIdsAtuais.has(a.clienteId)) {
+                            clientesFaltantes.push(a.clienteId);
+                            clienteIdsAtuais.add(a.clienteId);
+                        }
+                        if (a.leadId && !leadIdsAtuais.has(a.leadId)) {
+                            leadsFaltantes.push(a.leadId);
+                            leadIdsAtuais.add(a.leadId);
+                        }
+                    }
+                }
+
+                if (clientesFaltantes.length > 0 || leadsFaltantes.length > 0) {
+                    const fetchPromises = [];
+                    clientesFaltantes.forEach(cid => fetchPromises.push(
+                        clienteService.detalhar(cid).then(c => ({ _tipo: 'cliente', ...c, _atendimentos: [], _pedidos: [] })).catch(() => null)
+                    ));
+                    leadsFaltantes.forEach(lid => fetchPromises.push(
+                        leadService.buscarPorId(lid).then(l => l ? ({ _tipo: 'lead', ...l, atendimentos: [] }) : null).catch(() => null)
+                    ));
+                    const extras = (await Promise.all(fetchPromises)).filter(Boolean);
+                    const clientesExtras = extras.filter(e => e._tipo === 'cliente');
+                    const leadsExtras = extras.filter(e => e._tipo === 'lead');
+
+                    if (clientesExtras.length > 0) {
+                        setClientes(prev => [...prev, ...clientesExtras]);
+                    }
+                    if (leadsExtras.length > 0) {
+                        setLeads(prev => [...prev, ...leadsExtras]);
+                    }
+                }
             } catch (e) {
                 console.warn('Alertas visuais não carregados:', e.message);
             }
@@ -1011,22 +1125,50 @@ const RotaLeads = () => {
         }
     };
 
-    // Filtra clientes com rota definida (atendimentos já injetados no carregar)
-    const clientesComAtendimento = useMemo(() => {
-        return clientes.filter(c => c.Dia_de_venda || c.Dia_de_entrega);
-    }, [clientes]);
-
     // Mapa de alertas visuais por leadId/clienteId
     const alertasPorItem = useMemo(() => {
-        const mapa = {}; // key: leadId ou clienteId → { cor, assuntoRetorno, dataRetorno, atendimentoId }
+        const mapa = {}; // key: leadId ou clienteId → { cor, assuntoRetorno, dataRetorno, atendimentoId, ... }
         const hoje = new Date().toDateString();
         alertasAtivos.forEach(a => {
             const isHoje = a.dataRetorno && new Date(a.dataRetorno).toDateString() === hoje;
             const key = a.leadId || a.clienteId;
-            if (key) {
-                // Se já tem alerta para esse item, prioriza o que é de hoje
-                if (!mapa[key] || isHoje) {
+            if (!key) return;
+
+            // Transferência ativa (eu sou o receptor)
+            if (a.transferidoParaId === vendedorId && !a.transferenciaFinalizada) {
+                if (!mapa[key] || !mapa[key].isTransferenciaAtiva) {
                     mapa[key] = {
+                        ...(mapa[key] || {}),
+                        isTransferenciaAtiva: true,
+                        transferenciaAtendimentoId: a.id,
+                        transferenciaObs: a.observacao,
+                        transferenciaDeNome: a.vendedor?.nome,
+                        transferenciaAcaoLabel: a.acaoLabel,
+                        transferenciaCriadoEm: a.criadoEm,
+                    };
+                }
+                return;
+            }
+
+            // Transferência resolvida (eu sou o remetente, não vi ainda)
+            if (a.idVendedor === vendedorId && a.transferenciaFinalizada && !a.transferenciaVistaOrigem) {
+                if (!mapa[key] || !mapa[key].isTransferenciaResolvida) {
+                    mapa[key] = {
+                        ...(mapa[key] || {}),
+                        isTransferenciaResolvida: true,
+                        transferenciaResolvidaId: a.id,
+                        transferenciaResolvidaPorNome: a.transferidoPara?.nome,
+                        transferenciaResolvidaEm: a.transferenciaFinalizadaEm,
+                    };
+                }
+                return;
+            }
+
+            // Alerta visual normal
+            if (a.alertaVisualAtivo && !a.alertaVisualVisto) {
+                if (!mapa[key]?.cor || isHoje) {
+                    mapa[key] = {
+                        ...(mapa[key] || {}),
                         cor: a.alertaVisualCor || '#ef4444',
                         assuntoRetorno: a.assuntoRetorno,
                         dataRetorno: a.dataRetorno,
@@ -1038,7 +1180,12 @@ const RotaLeads = () => {
             }
         });
         return mapa;
-    }, [alertasAtivos]);
+    }, [alertasAtivos, vendedorId]);
+
+    // Filtra clientes com rota definida ou com alerta/transferência ativa
+    const clientesComAtendimento = useMemo(() => {
+        return clientes.filter(c => c.Dia_de_venda || c.Dia_de_entrega || alertasPorItem[c.UUID]);
+    }, [clientes, alertasPorItem]);
 
     const handleMarcarAlertaVisto = async (atendimentoId) => {
         try {
@@ -1049,41 +1196,91 @@ const RotaLeads = () => {
         }
     };
 
+    const handleFinalizarTransferencia = async (atendimentoId) => {
+        if (!window.confirm('Finalizar transferência? Este cliente não aparecerá mais como prioridade na sua lista.')) return;
+        try {
+            await atendimentoService.finalizarTransferencia(atendimentoId);
+            setAlertasAtivos(prev => prev.filter(a => a.id !== atendimentoId));
+            toast.success('Transferência finalizada!');
+        } catch (e) {
+            toast.error('Erro ao finalizar transferência.');
+        }
+    };
+
+    const handleMarcarTransferenciaVista = async (atendimentoId) => {
+        try {
+            await atendimentoService.marcarTransferenciaVista(atendimentoId);
+            setAlertasAtivos(prev => prev.filter(a => a.id !== atendimentoId));
+        } catch (e) {
+            console.error('Erro ao marcar transferência como vista:', e);
+        }
+    };
+
     // Helper: filtro de busca por nome
     const matchBusca = useCallback((nome) => {
         if (!busca.trim()) return true;
         return (nome || '').toLowerCase().includes(busca.toLowerCase());
     }, [busca]);
 
-    // Ordenar itens da aba "Atendimento" (não atendidos hoje)
+    // Verifica se o receptor (vendedor logado) já atendeu hoje este item
+    const receptorAtendeuHoje = useCallback((item) => {
+        const atendimentos = item._atendimentos || item.atendimentos || [];
+        const hoje = new Date().toDateString();
+        return atendimentos.some(a =>
+            new Date(a.criadoEm).toDateString() === hoje && a.idVendedor === vendedorId
+        );
+    }, [vendedorId]);
+
+    // Ordenar itens da aba "Atendimento" (não atendidos hoje OU com transferência ativa não atendida pelo receptor)
     const itensParaAtender = useMemo(() => {
         const todos = [
             ...clientesComAtendimento.map(c => ({ _tipo: 'cliente', ...c })),
             ...leads.map(l => ({ _tipo: 'lead', ...l }))
-        ].filter(i => !isAtendidoHoje(i)).filter(i =>
+        ].filter(i => {
+            const key = i._tipo === 'cliente' ? i.UUID : i.id;
+            // Transferência ativa: aparece se o receptor ainda não atendeu hoje
+            if (alertasPorItem[key]?.isTransferenciaAtiva) {
+                return !receptorAtendeuHoje(i);
+            }
+            return !isAtendidoHoje(i);
+        }).filter(i =>
             matchBusca(i._tipo === 'cliente' ? (i.NomeFantasia || i.Nome) : i.nomeEstabelecimento)
         );
 
-        const prioridade1 = todos.filter(i => i._tipo === 'cliente' && itemTemDiaBase(i.Dia_de_venda));
-        const prioridade2 = todos.filter(i => i._tipo === 'lead' && itemTemDiaBase(i.diasVisita) && !isProximaVisitaHoje(i.proximaVisita));
-        const prioridade3 = todos.filter(i => i._tipo === 'lead' && isProximaVisitaHoje(i.proximaVisita));
-        const demais = todos.filter(i =>
+        // Transferências ativas para mim ficam no topo absoluto
+        const transferidos = todos.filter(i => {
+            const key = i._tipo === 'cliente' ? i.UUID : i.id;
+            return alertasPorItem[key]?.isTransferenciaAtiva;
+        });
+        const resto = todos.filter(i => !transferidos.includes(i));
+
+        const prioridade1 = resto.filter(i => i._tipo === 'cliente' && itemTemDiaBase(i.Dia_de_venda));
+        const prioridade2 = resto.filter(i => i._tipo === 'lead' && itemTemDiaBase(i.diasVisita) && !isProximaVisitaHoje(i.proximaVisita));
+        const prioridade3 = resto.filter(i => i._tipo === 'lead' && isProximaVisitaHoje(i.proximaVisita));
+        const demais = resto.filter(i =>
             !prioridade1.includes(i) && !prioridade2.includes(i) && !prioridade3.includes(i)
         );
 
-        return [...prioridade1, ...prioridade2, ...prioridade3, ...demais];
-    }, [clientesComAtendimento, leads, matchBusca]);
+        return [...transferidos, ...prioridade1, ...prioridade2, ...prioridade3, ...demais];
+    }, [clientesComAtendimento, leads, matchBusca, alertasPorItem]);
 
-    // Itens atendidos hoje
+    // Itens atendidos hoje (transferências ativas só aparecem aqui se o receptor já atendeu)
     const itensAtendidos = useMemo(() => {
         const todos = [
             ...clientesComAtendimento.map(c => ({ _tipo: 'cliente', ...c })),
             ...leads.map(l => ({ _tipo: 'lead', ...l }))
         ];
-        return todos.filter(i => isAtendidoHoje(i)).filter(i =>
+        return todos.filter(i => {
+            const key = i._tipo === 'cliente' ? i.UUID : i.id;
+            // Transferência ativa: só aparece em Atendidos se o receptor atendeu hoje
+            if (alertasPorItem[key]?.isTransferenciaAtiva) {
+                return receptorAtendeuHoje(i);
+            }
+            return isAtendidoHoje(i);
+        }).filter(i =>
             matchBusca(i._tipo === 'cliente' ? (i.NomeFantasia || i.Nome) : i.nomeEstabelecimento)
         );
-    }, [clientesComAtendimento, leads, matchBusca]);
+    }, [clientesComAtendimento, leads, matchBusca, alertasPorItem, receptorAtendeuHoje]);
 
     // Entregas filtradas por busca
     const entregasPendentesFiltradas = useMemo(() =>
@@ -1172,9 +1369,9 @@ const RotaLeads = () => {
         const mostrarAcoes = aba === 'atendimento';
 
         if (item._tipo === 'cliente') {
-            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} alerta={alertasPorItem[item.UUID]} onAlertaVisto={handleMarcarAlertaVisto} />;
+            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} alerta={alertasPorItem[item.UUID]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} />;
         }
-        return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} alerta={alertasPorItem[item.id]} onAlertaVisto={handleMarcarAlertaVisto} />;
+        return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} alerta={alertasPorItem[item.id]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} />;
     };
 
     const diaBase = getDiaSigla(getDiaBase());

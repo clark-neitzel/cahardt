@@ -101,18 +101,39 @@ const AcaoCard = ({ acao, onAtualizar, onRemover, vendedores, isPadrao }) => {
                         <Toggle label="Permite assunto do retorno" campo="permiteAssuntoRetorno" valor={!!acao.permiteAssuntoRetorno} />
                         <Toggle label="Transfere atendimento" campo="transfereAtendimento" valor={!!acao.transfereAtendimento} />
                         {acao.transfereAtendimento && (
-                            <div className="pl-2 pb-1">
-                                <label className="text-[11px] font-medium text-gray-500">Responsável fixo</label>
-                                <select
-                                    value={acao.responsavelTransferenciaId || ''}
-                                    onChange={e => onAtualizar(acao.value, 'responsavelTransferenciaId', e.target.value || null)}
-                                    className="block w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] mt-0.5 focus:ring-1 focus:ring-blue-500"
-                                >
-                                    <option value="">Selecione...</option>
-                                    {vendedores.map(v => (
-                                        <option key={v.id} value={v.id}>{v.nome}</option>
-                                    ))}
-                                </select>
+                            <div className="pl-2 pb-1 space-y-1.5">
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => { onAtualizar(acao.value, 'modoTransferencia', 'fixo'); }}
+                                        className={`text-[11px] px-2 py-1 rounded border font-semibold ${(acao.modoTransferencia || 'fixo') === 'fixo' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'}`}
+                                    >
+                                        Definir fixo
+                                    </button>
+                                    <button
+                                        onClick={() => { onAtualizar(acao.value, 'modoTransferencia', 'escolhe'); onAtualizar(acao.value, 'responsavelTransferenciaId', null); }}
+                                        className={`text-[11px] px-2 py-1 rounded border font-semibold ${acao.modoTransferencia === 'escolhe' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300'}`}
+                                    >
+                                        Usuário escolhe
+                                    </button>
+                                </div>
+                                {(acao.modoTransferencia || 'fixo') === 'fixo' && (
+                                    <div>
+                                        <label className="text-[11px] font-medium text-gray-500">Responsável fixo</label>
+                                        <select
+                                            value={acao.responsavelTransferenciaId || ''}
+                                            onChange={e => onAtualizar(acao.value, 'responsavelTransferenciaId', e.target.value || null)}
+                                            className="block w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] mt-0.5 focus:ring-1 focus:ring-blue-500"
+                                        >
+                                            <option value="">Selecione...</option>
+                                            {vendedores.map(v => (
+                                                <option key={v.id} value={v.id}>{v.nome}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                {acao.modoTransferencia === 'escolhe' && (
+                                    <p className="text-[11px] text-gray-400 italic">O vendedor vai escolher para quem transferir na hora do atendimento.</p>
+                                )}
                             </div>
                         )}
                         <Toggle label="Abre pedido de amostra" campo="abrePedidoAmostra" valor={!!acao.abrePedidoAmostra} />

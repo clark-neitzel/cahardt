@@ -144,6 +144,7 @@ model Cliente {
   arquivos ClienteArquivo[]
   pedidos  Pedido[]
   leads    Lead[]
+  amostras Amostra[]
 
   // Inteligência Comercial
   categoriaClienteId           String?           @map("categoria_cliente_id")
@@ -479,8 +480,11 @@ model Atendimento {
   acaoLabel         String?   @map("acao_label")
 
   // Transferência
-  transferidoParaId String?   @map("transferido_para_id")
-  transferidoPara   Vendedor? @relation("AtendimentoTransferido", fields: [transferidoParaId], references: [id])
+  transferidoParaId         String?   @map("transferido_para_id")
+  transferidoPara           Vendedor? @relation("AtendimentoTransferido", fields: [transferidoParaId], references: [id])
+  transferenciaFinalizada   Boolean   @default(false) @map("transferencia_finalizada")
+  transferenciaFinalizadaEm DateTime? @map("transferencia_finalizada_em")
+  transferenciaVistaOrigem  Boolean   @default(false) @map("transferencia_vista_origem")
 
   // Retorno
   assuntoRetorno    String?   @map("assunto_retorno") @db.Text
@@ -582,7 +586,8 @@ model Embarque {
   responsavelId String   @map("responsavel_id") // Vendedor/Usuário responsável
   responsavel   Vendedor @relation(fields: [responsavelId], references: [id])
 
-  pedidos Pedido[]
+  pedidos  Pedido[]
+  amostras Amostra[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -902,11 +907,14 @@ model Amostra {
   leadId          String?   @map("lead_id")
   lead            Lead?     @relation(fields: [leadId], references: [id])
   clienteId       String?   @map("cliente_id")
+  cliente         Cliente?  @relation(fields: [clienteId], references: [UUID])
   dataEntrega     DateTime? @map("data_entrega")
   observacao      String?   @db.Text
-  status          String    @default("SOLICITADA") // SOLICITADA | PREPARANDO | ENVIADA | ENTREGUE | CANCELADA
+  status          String    @default("SOLICITADA") // SOLICITADA | PREPARACAO | LIBERADO | ENTREGUE | CANCELADA
   solicitadoPorId String    @map("solicitado_por_id")
   solicitadoPor   Vendedor  @relation("AmostrasSolicitadas", fields: [solicitadoPorId], references: [id])
+  embarqueId      String?   @map("embarque_id")
+  embarque        Embarque? @relation(fields: [embarqueId], references: [id])
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
   itens           AmostraItem[]
@@ -914,6 +922,7 @@ model Amostra {
 
   @@index([status])
   @@index([leadId])
+  @@index([embarqueId])
   @@map("amostras")
 }
 

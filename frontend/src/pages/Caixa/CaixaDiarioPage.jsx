@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import NovaDespesaModal from './NovaDespesaModal';
+import VeiculoFicha from '../Veiculos/VeiculoFicha';
 
 const SESSION_KEY = '@CAHardt:CaixaFiltros';
 
@@ -59,6 +60,7 @@ const CaixaDiarioPage = () => {
     const [expandedEntregas, setExpandedEntregas] = useState(false);
     const [obsAdmin, setObsAdmin] = useState('');
     const [showDespesaModal, setShowDespesaModal] = useState(false);
+    const [veiculoFichaId, setVeiculoFichaId] = useState(null);
 
     // Persistir filtros na sessão sempre que mudarem
     useEffect(() => {
@@ -219,7 +221,11 @@ const CaixaDiarioPage = () => {
                     {/* Card Header: Veículo + Adiantamento + Média */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {/* Veículo */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                        <div
+                            className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 ${resumo.diario?.veiculoId ? 'cursor-pointer hover:border-sky-300 hover:bg-sky-50/40' : ''}`}
+                            onClick={() => resumo.diario?.veiculoId && setVeiculoFichaId(resumo.diario.veiculoId)}
+                            title={resumo.diario?.veiculoId ? 'Abrir resumo do veículo' : ''}
+                        >
                             <div className="flex items-center space-x-2 mb-2">
                                 <Truck className="h-5 w-5 text-sky-600" />
                                 <h3 className="text-sm font-semibold text-gray-700">Veículo do Dia</h3>
@@ -231,6 +237,7 @@ const CaixaDiarioPage = () => {
                                         KM: {resumo.diario.kmInicial || '—'} → {resumo.diario.kmFinal || '—'}
                                         {resumo.diario.totalKm > 0 && <span className="ml-1 font-medium">({resumo.diario.totalKm} km)</span>}
                                     </p>
+                                    <p className="text-[11px] text-sky-700 mt-2">Clique para ver Resumo, Documentos e Manutenção</p>
                                 </div>
                             ) : (
                                 <p className="text-sm text-gray-400">Sem diário/veículo no dia</p>
@@ -586,6 +593,14 @@ const CaixaDiarioPage = () => {
                     onSaved={() => { setShowDespesaModal(false); toast.success('Despesa criada!'); fetchResumo(); }}
                     vendedorId={vendedorId}
                     dataReferencia={data}
+                />
+            )}
+            {veiculoFichaId && (
+                <VeiculoFicha
+                    veiculoId={veiculoFichaId}
+                    onClose={() => setVeiculoFichaId(null)}
+                    readOnly={true}
+                    allowedTabs={['resumo', 'documentos', 'manutencao']}
                 />
             )}
         </div>

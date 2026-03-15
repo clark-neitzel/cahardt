@@ -24,6 +24,18 @@ const embarqueService = {
     removerPedido: async (id, pedidoId) => {
         const response = await api.delete(`/embarques/${id}/pedidos/${pedidoId}`);
         return response.data;
+    },
+    listarAmostrasDisponiveis: async () => {
+        const response = await api.get('/embarques/amostras-disponiveis');
+        return response.data;
+    },
+    inserirAmostras: async (id, amostrasIds) => {
+        const response = await api.post(`/embarques/${id}/amostras`, { amostrasIds });
+        return response.data;
+    },
+    removerAmostra: async (id, amostraId) => {
+        const response = await api.delete(`/embarques/${id}/amostras/${amostraId}`);
+        return response.data;
     }
 };
 

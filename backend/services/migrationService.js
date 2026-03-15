@@ -617,7 +617,48 @@ const migrationService = {
                 {"cor":"#248f36","label":"Amostra pedido","value":"AGUARDO_RETORNO","criaAlertaVisual":true,"obrigaObservacao":false,"abrePedidoAmostra":true,"transfereAtendimento":true},
                 {"cor":"#2c57d8","label":"Enviar vendedor","value":"SEM_POTENCIAL","obrigaObservacao":true,"transfereAtendimento":true}
             ]).replace(/'/g, "''")}')
-            ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value";`
+            ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value";`,
+
+            // Update 39: Coluna embarque_id na tabela amostras + FK
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='amostras' AND column_name='embarque_id') THEN
+                    ALTER TABLE "amostras" ADD COLUMN "embarque_id" TEXT;
+                END IF;
+            END $$;`,
+
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'amostras_embarque_id_fkey') THEN
+                    ALTER TABLE "amostras" ADD CONSTRAINT "amostras_embarque_id_fkey" FOREIGN KEY ("embarque_id") REFERENCES "embarques"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+
+            `CREATE INDEX IF NOT EXISTS "amostras_embarque_id_idx" ON "amostras"("embarque_id");`,
+
+            // Update 40: FK amostras → clientes (cliente_id)
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'amostras_cliente_id_fkey') THEN
+                    ALTER TABLE "amostras" ADD CONSTRAINT "amostras_cliente_id_fkey" FOREIGN KEY ("cliente_id") REFERENCES "clientes"("UUID") ON DELETE SET NULL ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+
+            // Update 41: Campos de finalização de transferência em atendimentos
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='atendimentos' AND column_name='transferencia_finalizada') THEN
+                    ALTER TABLE "atendimentos" ADD COLUMN "transferencia_finalizada" BOOLEAN NOT NULL DEFAULT FALSE;
+                END IF;
+            END $$;`,
+
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='atendimentos' AND column_name='transferencia_finalizada_em') THEN
+                    ALTER TABLE "atendimentos" ADD COLUMN "transferencia_finalizada_em" TIMESTAMPTZ;
+                END IF;
+            END $$;`,
+
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='atendimentos' AND column_name='transferencia_vista_origem') THEN
+                    ALTER TABLE "atendimentos" ADD COLUMN "transferencia_vista_origem" BOOLEAN NOT NULL DEFAULT FALSE;
+                END IF;
+            END $$;`
         ];
 
         for (const [index, cmd] of commands.entries()) {

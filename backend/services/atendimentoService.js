@@ -88,24 +88,57 @@ const atendimentoService = {
         });
     },
 
-    // Atendimentos transferidos para um vendedor
+    // Transferências ativas (não finalizadas) para o vendedor
     listarTransferidos: async (vendedorId) => {
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const amanha = new Date(hoje);
-        amanha.setDate(amanha.getDate() + 1);
-
         return await prisma.atendimento.findMany({
-            where: { transferidoParaId: vendedorId },
+            where: {
+                transferidoParaId: vendedorId,
+                transferenciaFinalizada: false,
+            },
             include: {
-                vendedor: { select: { nome: true } },
+                vendedor: { select: { id: true, nome: true } },
                 lead: { select: { nomeEstabelecimento: true, numero: true } },
             },
             orderBy: [
-                // Retornos de hoje no topo
                 { dataRetorno: 'asc' },
                 { criadoEm: 'desc' }
             ]
+        });
+    },
+
+    // Finalizar transferência (receptor marca como resolvida)
+    finalizarTransferencia: async (atendimentoId) => {
+        return await prisma.atendimento.update({
+            where: { id: atendimentoId },
+            data: {
+                transferenciaFinalizada: true,
+                transferenciaFinalizadaEm: new Date(),
+            }
+        });
+    },
+
+    // Marcar transferência finalizada como vista pelo vendedor original
+    marcarTransferenciaVista: async (atendimentoId) => {
+        return await prisma.atendimento.update({
+            where: { id: atendimentoId },
+            data: { transferenciaVistaOrigem: true }
+        });
+    },
+
+    // Transferências finalizadas não vistas pelo vendedor original
+    listarTransferenciasResolvidas: async (vendedorId) => {
+        return await prisma.atendimento.findMany({
+            where: {
+                idVendedor: vendedorId,
+                transferidoParaId: { not: null },
+                transferenciaFinalizada: true,
+                transferenciaVistaOrigem: false,
+            },
+            include: {
+                transferidoPara: { select: { nome: true } },
+                lead: { select: { nomeEstabelecimento: true, numero: true } },
+            },
+            orderBy: { transferenciaFinalizadaEm: 'desc' }
         });
     },
 
@@ -117,25 +150,53 @@ const atendimentoService = {
         });
     },
 
-    // Alertas visuais ativos (não vistos) para leads/clientes de um vendedor
+    // Alertas visuais ativos (não vistos) + transferências ativas para um vendedor
     listarAlertasAtivos: async (vendedorId) => {
         return await prisma.atendimento.findMany({
             where: {
-                alertaVisualAtivo: true,
-                alertaVisualVisto: false,
                 OR: [
-                    { idVendedor: vendedorId },
-                    { transferidoParaId: vendedorId },
+                    // Alertas visuais não vistos
+                    {
+                        alertaVisualAtivo: true,
+                        alertaVisualVisto: false,
+                        OR: [
+                            { idVendedor: vendedorId },
+                            { transferidoParaId: vendedorId },
+                        ]
+                    },
+                    // Transferências ativas (não finalizadas) para este vendedor
+                    {
+                        transferidoParaId: vendedorId,
+                        transferenciaFinalizada: false,
+                    },
+                    // Transferências finalizadas pendentes de vista pelo remetente
+                    {
+                        idVendedor: vendedorId,
+                        transferidoParaId: { not: null },
+                        transferenciaFinalizada: true,
+                        transferenciaVistaOrigem: false,
+                    },
                 ]
             },
             select: {
                 id: true,
                 leadId: true,
                 clienteId: true,
+                alertaVisualAtivo: true,
                 alertaVisualCor: true,
+                alertaVisualVisto: true,
                 dataRetorno: true,
                 assuntoRetorno: true,
                 acaoLabel: true,
+                observacao: true,
+                transferidoParaId: true,
+                transferenciaFinalizada: true,
+                transferenciaFinalizadaEm: true,
+                transferenciaVistaOrigem: true,
+                idVendedor: true,
+                criadoEm: true,
+                vendedor: { select: { nome: true } },
+                transferidoPara: { select: { nome: true } },
             }
         });
     },

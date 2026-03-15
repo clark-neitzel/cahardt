@@ -47,6 +47,22 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
         }
     };
 
+    const handleRemoverAmostra = async (amostraId) => {
+        if (!window.confirm('Tem certeza que deseja retirar essa amostra do caminhão?')) return;
+
+        try {
+            setRemoverLoader(amostraId);
+            await embarqueService.removerAmostra(embarqueId, amostraId);
+            toast.success('Amostra removida da carga.');
+            fetchDetalhes();
+            if (onUpdated) onUpdated();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao remover amostra.');
+        } finally {
+            setRemoverLoader(null);
+        }
+    };
+
     const handlePrint = () => {
         const content = printRef.current;
         const printWindow = window.open('', '', 'height=800,width=800');
@@ -69,15 +85,17 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                         @media print {
                             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 20mm; font-family: sans-serif; }
                             .page-break { page-break-before: always; }
-                            /* Hide unecessary stuff if any leaked */
+                            * { color: #000 !important; }
                         }
+                        body { color: #000; }
                         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
-                        th { background-color: #f3f4f6; }
-                        h1 { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
-                        h2 { font-size: 16px; font-weight: bold; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
-                        .text-sm { font-size: 12px; }
-                        .text-xs { font-size: 10px; color: #666; }
+                        th, td { border: 1px solid #000; padding: 8px; text-align: left; font-size: 12px; color: #000; }
+                        th { background-color: #f3f4f6; color: #000; }
+                        h1 { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #000; }
+                        h2 { font-size: 16px; font-weight: bold; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #000; padding-bottom: 5px; color: #000; }
+                        .text-sm { font-size: 12px; color: #000; }
+                        .text-xs { font-size: 10px; color: #000; }
+                        div, span, p, strong { color: #000; }
                     </style>
                 </head>
                 <body>
@@ -118,7 +136,9 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
         const produtosPaginados = chunkArray(arrConsolidado, CHUNK_SIZE);
         if (produtosPaginados.length === 0) produtosPaginados.push([]);
 
-        const totalPages = pedidosPaginados.length + produtosPaginados.length;
+        const amostrasEmbarque = embarque?.amostras || [];
+        const hasAmostras = amostrasEmbarque.length > 0;
+        const totalPages = pedidosPaginados.length + produtosPaginados.length + (hasAmostras ? 1 : 0);
         let globalPageCount = 1;
 
         return (
@@ -222,6 +242,57 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                             );
                         })}
 
+                        {/* Página de Amostras (se houver) */}
+                        {hasAmostras && (() => {
+                            const thisPage = globalPageCount++;
+                            return (
+                                <React.Fragment key="amostras">
+                                    <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '0mm 6mm' }}>
+                                        <div className="absolute top-0 right-2 text-[8px] font-bold uppercase tracking-wider print:hidden text-black">
+                                            Página {thisPage} de {totalPages}
+                                        </div>
+
+                                        <h1 className="pt-4">Amostras - Carga #{embarque?.numero || '000'}</h1>
+                                        <div className="text-[9px] flex justify-between border-b border-black pb-2 mb-2 text-black font-semibold">
+                                            <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
+                                            <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
+                                            <div><strong>Qtd Amostras:</strong> {amostrasEmbarque.length}</div>
+                                        </div>
+
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th style={{ width: '8%' }}>Nº</th>
+                                                    <th style={{ width: '30%' }}>Destinatário</th>
+                                                    <th style={{ width: '37%' }}>Itens</th>
+                                                    <th style={{ width: '15%' }}>Vendedor</th>
+                                                    <th style={{ width: '10%' }}>Entrega</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {amostrasEmbarque.map(a => (
+                                                    <tr key={a.id}>
+                                                        <td className="font-bold text-center">AM#{a.numero}</td>
+                                                        <td className="wrap-text leading-tight font-bold">
+                                                            {a.cliente?.NomeFantasia || a.cliente?.Nome || a.lead?.nomeEstabelecimento || '-'}
+                                                        </td>
+                                                        <td className="text-[7px] wrap-text">
+                                                            {a.itens?.map(i => `${i.nomeProduto} (${Number(i.quantidade)}x)`).join(', ') || '-'}
+                                                        </td>
+                                                        <td className="text-[7px]">{a.solicitadoPor?.nome || '-'}</td>
+                                                        <td className="text-[8px] whitespace-nowrap font-bold">
+                                                            [  ] OK
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="w-full border-b-2 border-dashed border-gray-600 print:hidden relative h-4"></div>
+                                </React.Fragment>
+                            );
+                        })()}
+
                         {/* Paginação da Separação */}
                         {produtosPaginados.map((chunkProdutos, idx) => {
                             const thisPage = globalPageCount++;
@@ -233,7 +304,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                                         </div>
 
                                         <h1>Separação Produtos - Carga #{embarque?.numero || '000'} {produtosPaginados.length > 1 ? `(Pt. ${idx + 1})` : ''}</h1>
-                                        <div className="text-[9px] flex justify-between border-b border-gray-400 pb-2 mb-2">
+                                        <div className="text-[9px] flex justify-between border-b border-black pb-2 mb-2 text-black font-semibold">
                                             <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
                                             <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
                                         </div>
@@ -357,6 +428,53 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                                     </tbody>
                                 </table>
                             </div>
+
+                            {/* Amostras na Carga */}
+                            {embarque.amostras && embarque.amostras.length > 0 && (
+                                <div className="mt-6">
+                                    <h4 className="text-sm font-bold text-orange-700 uppercase mb-2 flex items-center gap-2">
+                                        <Package className="h-4 w-4" />
+                                        Amostras na Carga ({embarque.amostras.length})
+                                    </h4>
+                                    <div className="border border-orange-200 rounded-md overflow-hidden">
+                                        <table className="min-w-full divide-y divide-orange-100">
+                                            <thead className="bg-orange-50">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">Nº</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">Destinatário</th>
+                                                    <th className="px-6 py-3 text-center text-xs font-medium text-orange-700 uppercase tracking-wider">Itens</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">Vendedor</th>
+                                                    <th className="px-6 py-3 text-right text-xs font-medium text-orange-700 uppercase tracking-wider">Retirar</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-orange-100">
+                                                {embarque.amostras.map(a => (
+                                                    <tr key={a.id}>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-orange-700 font-bold">AM#{a.numero}</td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                                            {a.cliente?.NomeFantasia || a.cliente?.Nome || a.lead?.nomeEstabelecimento || '-'}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-gray-700 bg-orange-50">
+                                                            {a.itens?.length || 0} {(a.itens?.length || 0) === 1 ? 'item' : 'itens'}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{a.solicitadoPor?.nome || '-'}</td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                                                            <button
+                                                                onClick={() => handleRemoverAmostra(a.id)}
+                                                                disabled={removerLoader === a.id}
+                                                                className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                                                                title="Remover amostra do embarque"
+                                                            >
+                                                                {removerLoader === a.id ? '...' : <Trash2 className="h-5 w-5" />}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

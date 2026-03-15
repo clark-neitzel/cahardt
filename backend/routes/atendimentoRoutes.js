@@ -8,6 +8,9 @@ router.get('/transferidos', atendimentoController.listarTransferidos);
 router.get('/alertas-ativos', atendimentoController.listarAlertasAtivos);
 router.post('/', atendimentoController.registrar);
 router.patch('/:id/alerta-visto', atendimentoController.marcarAlertaVisto);
+router.patch('/:id/finalizar-transferencia', atendimentoController.finalizarTransferencia);
+router.patch('/:id/transferencia-vista', atendimentoController.marcarTransferenciaVista);
+router.get('/transferencias-resolvidas', atendimentoController.listarTransferenciasResolvidas);
 router.get('/lead/:leadId', atendimentoController.listarPorLead);
 router.get('/cliente/:clienteId', atendimentoController.listarPorCliente);
 

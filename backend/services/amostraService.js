@@ -20,7 +20,9 @@ const amostraService = {
             },
             include: {
                 itens: { include: { produto: { select: { nome: true, codigo: true } } } },
-                solicitadoPor: { select: { nome: true } }
+                solicitadoPor: { select: { nome: true } },
+                cliente: { select: { UUID: true, NomeFantasia: true, Nome: true } },
+                lead: { select: { nomeEstabelecimento: true, numero: true } },
             }
         });
     },
@@ -38,6 +40,7 @@ const amostraService = {
                 itens: { include: { produto: { select: { nome: true, codigo: true } } } },
                 solicitadoPor: { select: { nome: true } },
                 lead: { select: { nomeEstabelecimento: true, numero: true } },
+                cliente: { select: { UUID: true, NomeFantasia: true, Nome: true } },
             },
             orderBy: { createdAt: 'desc' }
         });
@@ -50,18 +53,36 @@ const amostraService = {
                 itens: { include: { produto: { select: { nome: true, codigo: true, unidade: true } } } },
                 solicitadoPor: { select: { nome: true } },
                 lead: { select: { nomeEstabelecimento: true, numero: true } },
+                cliente: { select: { UUID: true, NomeFantasia: true, Nome: true } },
             }
         });
     },
 
     atualizarStatus: async (id, novoStatus) => {
-        const statusValidos = ['SOLICITADA', 'PREPARANDO', 'ENVIADA', 'ENTREGUE', 'CANCELADA'];
+        const statusValidos = ['SOLICITADA', 'PREPARACAO', 'LIBERADO', 'ENTREGUE', 'CANCELADA'];
         if (!statusValidos.includes(novoStatus)) {
             throw new Error(`Status inválido: ${novoStatus}`);
         }
         return await prisma.amostra.update({
             where: { id },
             data: { status: novoStatus }
+        });
+    },
+
+    // Amostras com status LIBERADO e sem embarque (para embarcar)
+    listarDisponiveis: async () => {
+        return await prisma.amostra.findMany({
+            where: {
+                status: 'LIBERADO',
+                embarqueId: null
+            },
+            include: {
+                itens: { include: { produto: { select: { nome: true, codigo: true } } } },
+                solicitadoPor: { select: { nome: true } },
+                lead: { select: { nomeEstabelecimento: true, numero: true } },
+                cliente: { select: { UUID: true, NomeFantasia: true, Nome: true } },
+            },
+            orderBy: { createdAt: 'asc' }
         });
     },
 };

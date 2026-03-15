@@ -36,7 +36,7 @@ const diasParaVencer = (dateStr) => {
     return Math.ceil((new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24));
 };
 
-const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
+const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedTabs = null }) => {
     const [activeTab, setActiveTab] = useState('resumo');
     const [ficha, setFicha] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -134,8 +134,14 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
 
     // Carrega lista de vendedores para o select de motorista
     useEffect(() => {
-        vendedorService.listar().then(setVendedores).catch(() => {});
-    }, []);
+        if (!readOnly) {
+            vendedorService.listar().then(setVendedores).catch(() => {});
+        }
+    }, [readOnly]);
+
+    useEffect(() => {
+        if (readOnly && editando) setEditando(false);
+    }, [readOnly, editando]);
 
     // Validação de KM overlap em tempo real
     useEffect(() => {
@@ -309,8 +315,15 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
     }
 
     const stats = ficha?.stats || {};
+    const visibleTabs = TABS.filter(tab => !allowedTabs || allowedTabs.includes(tab.id));
     const diasSeguro = diasParaVencer(ficha?.seguroVencimento);
     const pendentes = ficha?.alertasManutencao?.filter(a => !a.concluido) || [];
+
+    useEffect(() => {
+        if (!visibleTabs.some(tab => tab.id === activeTab)) {
+            setActiveTab(visibleTabs[0]?.id || 'resumo');
+        }
+    }, [activeTab, visibleTabs]);
 
     return (
         <div className="fixed inset-0 z-[70] flex">
@@ -332,7 +345,9 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                         <p className="text-sm text-gray-400 mt-0.5">{ficha?.modelo}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        {editando ? (
+                        {readOnly ? (
+                            <span className="text-xs px-2 py-1 rounded bg-gray-700 text-gray-200">Somente leitura</span>
+                        ) : editando ? (
                             <>
                                 <button onClick={() => setEditando(false)} className="text-gray-400 hover:text-gray-200 text-sm px-3 py-1.5 border border-gray-600 rounded-md">Cancelar</button>
                                 <button onClick={salvarFicha} disabled={saving} className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-md font-medium">
@@ -351,7 +366,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                 {/* Abas */}
                 <div className="border-b border-gray-200 bg-white shrink-0 overflow-x-auto">
                     <div className="flex">
-                        {TABS.map(tab => {
+                        {visibleTabs.map(tab => {
                             const Icon = tab.icon;
                             const hasBadge = (tab.id === 'manutencao' && pendentes.length > 0) ||
                                 (tab.id === 'documentos' && diasSeguro !== null && diasSeguro <= 30);
@@ -484,6 +499,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                     {activeTab === 'manutencao' && (
                         <div className="space-y-5">
                             {/* Form novo alerta */}
+                            {!readOnly && (
                             <form onSubmit={handleCriarAlerta} className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
                                 <h3 className="text-sm font-bold text-amber-900">Novo Alerta de Manutenção</h3>
                                 <select required value={novoAlerta.tipo} onChange={e => setNovoAlerta(p => ({ ...p, tipo: e.target.value }))}
@@ -512,6 +528,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                     {savingAlerta ? 'Criando...' : 'Criar Alerta'}
                                 </button>
                             </form>
+                            )}
 
                             {/* Lista de alertas */}
                             <div className="space-y-2">
@@ -529,7 +546,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                                     {a.dataAlerta && <span>Data: {new Date(a.dataAlerta).toLocaleDateString('pt-BR')}</span>}
                                                 </div>
                                             </div>
-                                            {!a.concluido && (
+                                            {!readOnly && !a.concluido && (
                                                 <button onClick={() => handleConcluirAlerta(a.id)}
                                                     className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded font-medium hover:bg-green-200">
                                                     Concluir
@@ -610,7 +627,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                             </div>
 
                             {/* Registrar abastecimento */}
-                            {!showAbastForm ? (
+                            {!readOnly && (!showAbastForm ? (
                                 <button
                                     onClick={() => setShowAbastForm(true)}
                                     className="w-full flex items-center justify-center gap-2 py-2.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-lg text-sm font-medium hover:bg-orange-100 transition-colors"
@@ -671,7 +688,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                         {savingAbast ? 'Registrando...' : 'Registrar Abastecimento'}
                                     </button>
                                 </form>
-                            )}
+                            ))}
 
                             {/* Últimos abastecimentos */}
                             {ficha?.despesas?.length > 0 && (
@@ -691,7 +708,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                                 const eficiencia = kmRodados && litros >= 5 ? (kmRodados / litros).toFixed(1) : null;
 
                                                 // Modo edição inline
-                                                if (editingAbastId === d.id) {
+                                                if (!readOnly && editingAbastId === d.id) {
                                                     return (
                                                         <div key={d.id} className="bg-orange-50 border-2 border-orange-300 rounded-lg p-3 space-y-2">
                                                             <div className="flex items-center justify-between">
@@ -775,14 +792,14 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                                                 <p className="text-[13px] font-bold text-gray-900 font-mono">
                                                                     R$ {Number(d.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                                 </p>
-                                                                <div className="flex gap-1 mt-1">
+                                                                {!readOnly && <div className="flex gap-1 mt-1">
                                                                     <button onClick={() => handleEditAbast(d)} className="p-1 text-gray-400 hover:text-orange-600 hover:bg-orange-100 rounded transition-colors" title="Editar">
                                                                         <Edit3 className="h-3.5 w-3.5" />
                                                                     </button>
                                                                     <button onClick={() => handleExcluirAbast(d.id)} className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Excluir">
                                                                         <Trash2 className="h-3.5 w-3.5" />
                                                                     </button>
-                                                                </div>
+                                                                </div>}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -803,7 +820,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                     {activeTab === 'historico' && (
                         <div className="space-y-3">
                             {/* Botão para abrir formulário de uso manual */}
-                            {!showUsoForm ? (
+                            {!readOnly && (!showUsoForm ? (
                                 <button
                                     onClick={() => setShowUsoForm(true)}
                                     className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors"
@@ -891,13 +908,13 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                         {savingUso ? 'Registrando...' : 'Registrar Uso'}
                                     </button>
                                 </form>
-                            )}
+                            ))}
 
                             {(ficha?.diarios || []).length === 0 ? (
                                 <p className="text-center text-gray-400 py-10 text-sm">Nenhum histórico de uso.</p>
                             ) : ficha.diarios.map((d, idx) => {
                                 // Modo edição inline
-                                if (editingUsoId === d.id) {
+                                if (!readOnly && editingUsoId === d.id) {
                                     return (
                                         <div key={d.id} className="bg-indigo-50 border-2 border-indigo-300 rounded-lg p-3 space-y-2">
                                             <div className="flex items-center justify-between">
@@ -980,7 +997,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                                     {d.obs && <p className="text-xs text-amber-700 mt-1 bg-amber-50 px-2 py-0.5 rounded">{d.obs}</p>}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-1 shrink-0">
+                                            {!readOnly && <div className="flex items-center gap-1 shrink-0">
                                                 {!d.kmFinal && d.modo === 'PRESENCIAL' && (
                                                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Pendente</span>
                                                 )}
@@ -990,7 +1007,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                                 <button onClick={() => handleExcluirUso(d.id)} className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Excluir">
                                                     <Trash2 className="h-3.5 w-3.5" />
                                                 </button>
-                                            </div>
+                                            </div>}
                                         </div>
                                         {/* Checklist resumo */}
                                         {d.checklist && (
@@ -1027,7 +1044,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate }) => {
                                 <div className="text-center text-gray-400 py-10">
                                     <MessageSquare className="h-10 w-10 mx-auto mb-2 opacity-30" />
                                     <p className="text-sm">Nenhuma observação registrada.</p>
-                                    <button onClick={() => setEditando(true)} className="mt-3 text-xs text-blue-600 hover:underline">Adicionar observação</button>
+                                    {!readOnly && <button onClick={() => setEditando(true)} className="mt-3 text-xs text-blue-600 hover:underline">Adicionar observação</button>}
                                 </div>
                             )}
                         </div>

@@ -47,10 +47,36 @@ const ListaPedidos = () => {
 
     const statusAmostraCores = {
         'SOLICITADA': 'bg-blue-100 text-blue-800',
-        'PREPARANDO': 'bg-yellow-100 text-yellow-800',
-        'ENVIADA': 'bg-purple-100 text-purple-800',
+        'PREPARACAO': 'bg-yellow-100 text-yellow-800',
+        'LIBERADO': 'bg-emerald-100 text-emerald-800',
         'ENTREGUE': 'bg-green-100 text-green-800',
         'CANCELADA': 'bg-red-100 text-red-700',
+    };
+
+    const statusAmostraLabels = {
+        'SOLICITADA': 'Solicitada',
+        'PREPARACAO': 'Preparação',
+        'LIBERADO': 'Liberado',
+        'ENTREGUE': 'Entregue',
+        'CANCELADA': 'Cancelada',
+    };
+
+    const proximoStatusAmostra = {
+        'SOLICITADA': 'PREPARACAO',
+        'PREPARACAO': 'LIBERADO',
+        'LIBERADO': 'ENTREGUE',
+    };
+
+    const handleAvancarAmostra = async (amostraId, statusAtual) => {
+        const proximo = proximoStatusAmostra[statusAtual];
+        if (!proximo) return;
+        try {
+            await amostraService.atualizarStatus(amostraId, proximo);
+            setAmostras(prev => prev.map(a => a.id === amostraId ? { ...a, status: proximo } : a));
+            toast.success(`Amostra movida para ${statusAmostraLabels[proximo]}`);
+        } catch (error) {
+            toast.error('Erro ao atualizar status da amostra.');
+        }
     };
 
     const carregarPedidos = async () => {
@@ -182,6 +208,8 @@ const ListaPedidos = () => {
                         ) : (
                             amostras.map(amostra => {
                                 const isExpanded = expandedAmostra === amostra.id;
+                                const nomeDestinatario = amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || 'Sem destinatário';
+                                const proximo = proximoStatusAmostra[amostra.status];
                                 return (
                                     <div key={amostra.id} className="border-b border-gray-100">
                                         <div
@@ -195,37 +223,36 @@ const ListaPedidos = () => {
                                                             AM#{amostra.numero}
                                                         </span>
                                                         <h3 className="text-[14px] font-semibold text-gray-800 leading-tight truncate">
-                                                            {amostra.lead?.nomeEstabelecimento || 'Sem destinatário'}
+                                                            {nomeDestinatario}
                                                         </h3>
                                                     </div>
-                                                    <div className="flex items-center gap-1 text-[11px] text-gray-500 font-light">
-                                                        <span>Solicitada: {new Date(amostra.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
-                                                        {amostra.dataEntrega && (
-                                                            <>
-                                                                <span className="text-gray-300">|</span>
-                                                                <span className="font-semibold text-gray-700">Entrega: {new Date(amostra.dataEntrega).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
-                                                            </>
-                                                        )}
-                                                        <span className="text-gray-300">|</span>
-                                                        <span className="text-[10px] text-gray-400">{amostra.solicitadoPor?.nome || '-'}</span>
+                                                    <div className="flex flex-col gap-0.5 text-[11px] text-gray-500 font-light mb-1">
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="font-semibold text-gray-700">Entrega: {amostra.dataEntrega ? new Date(amostra.dataEntrega).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '-'}</span>
+                                                            <span className="text-gray-300">•</span>
+                                                            <span>Criação: {new Date(amostra.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                                                        </div>
+                                                        <div className="truncate text-[10px] text-gray-400">
+                                                            Vendedor: {amostra.solicitadoPor?.nome || '-'}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-[11px] text-gray-500">
+                                                        {amostra.itens?.length || 0} {(amostra.itens?.length || 0) === 1 ? 'item' : 'itens'}
+                                                        {amostra.observacao && <span className="text-gray-300 mx-1">|</span>}
+                                                        {amostra.observacao && <span className="italic truncate">{amostra.observacao}</span>}
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2 shrink-0">
+                                                <div className="flex flex-col items-end gap-1.5 shrink-0">
                                                     <span className={`px-2 py-1 text-xs leading-5 font-semibold rounded-full ${statusAmostraCores[amostra.status] || 'bg-gray-100 text-gray-800'}`}>
-                                                        {amostra.status}
+                                                        {statusAmostraLabels[amostra.status] || amostra.status}
                                                     </span>
                                                     {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
                                                 </div>
                                             </div>
-                                            <div className="text-[11px] text-gray-500 mt-1">
-                                                {amostra.itens?.length || 0} {(amostra.itens?.length || 0) === 1 ? 'item' : 'itens'}
-                                                {amostra.observacao && <span className="text-gray-300 mx-1">|</span>}
-                                                {amostra.observacao && <span className="italic truncate">{amostra.observacao}</span>}
-                                            </div>
                                         </div>
-                                        {isExpanded && amostra.itens && (
-                                            <div className="px-3 pb-3 space-y-1.5">
-                                                {amostra.itens.map(item => (
+                                        {isExpanded && (
+                                            <div className="px-3 pb-3 space-y-2">
+                                                {amostra.itens && amostra.itens.map(item => (
                                                     <div key={item.id} className="flex items-center justify-between bg-orange-50 px-3 py-2 rounded border border-orange-100">
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-[13px] font-medium text-gray-900 truncate">{item.nomeProduto}</p>
@@ -234,6 +261,33 @@ const ListaPedidos = () => {
                                                         <span className="text-[13px] font-bold text-gray-700 shrink-0">{Number(item.quantidade)}x</span>
                                                     </div>
                                                 ))}
+                                                {/* Botões de ação */}
+                                                <div className="flex items-center gap-2 pt-1">
+                                                    {proximo && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleAvancarAmostra(amostra.id, amostra.status); }}
+                                                            className="text-[11px] font-bold px-3 py-1.5 rounded transition-colors shadow-sm border bg-orange-500 border-orange-600 text-white hover:bg-orange-600"
+                                                        >
+                                                            Avançar → {statusAmostraLabels[proximo]}
+                                                        </button>
+                                                    )}
+                                                    {amostra.status !== 'CANCELADA' && amostra.status !== 'ENTREGUE' && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (window.confirm('Cancelar esta amostra?')) {
+                                                                    amostraService.atualizarStatus(amostra.id, 'CANCELADA').then(() => {
+                                                                        setAmostras(prev => prev.map(a => a.id === amostra.id ? { ...a, status: 'CANCELADA' } : a));
+                                                                        toast.success('Amostra cancelada.');
+                                                                    }).catch(() => toast.error('Erro ao cancelar.'));
+                                                                }
+                                                            }}
+                                                            className="text-[11px] font-bold px-3 py-1.5 rounded transition-colors shadow-sm border bg-white border-red-200 text-red-600 hover:bg-red-50"
+                                                        >
+                                                            Cancelar
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         )}
                                     </div>

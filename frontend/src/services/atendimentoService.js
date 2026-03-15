@@ -36,6 +36,21 @@ const atendimentoService = {
     marcarAlertaVisto: async (atendimentoId) => {
         const response = await api.patch(`/atendimentos/${atendimentoId}/alerta-visto`);
         return response.data;
+    },
+
+    finalizarTransferencia: async (atendimentoId) => {
+        const response = await api.patch(`/atendimentos/${atendimentoId}/finalizar-transferencia`);
+        return response.data;
+    },
+
+    marcarTransferenciaVista: async (atendimentoId) => {
+        const response = await api.patch(`/atendimentos/${atendimentoId}/transferencia-vista`);
+        return response.data;
+    },
+
+    listarTransferenciasResolvidas: async () => {
+        const response = await api.get('/atendimentos/transferencias-resolvidas');
+        return response.data;
     }
 };
 

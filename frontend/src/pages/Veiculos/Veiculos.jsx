@@ -3,8 +3,11 @@ import { Plus, Edit2, Trash2, Check, X, FileText, Wrench, BellRing, ChevronRight
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import VeiculoFicha from './VeiculoFicha';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Veiculos = () => {
+    const { user } = useAuth();
+    const podeEditarVeiculos = !!(user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Veiculos);
     const [veiculos, setVeiculos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -169,6 +172,7 @@ const Veiculos = () => {
                 </div>
                 <button
                     onClick={() => { setFormData({ id: null, placa: '', modelo: '', documentoUrl: '', ativo: true }); setIsModalOpen(true); }}
+                    disabled={!podeEditarVeiculos}
                     className="flex items-center justify-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark w-full sm:w-auto"
                 >
                     <Plus className="h-4 w-4 mr-2" /> Novo Veículo
@@ -216,16 +220,16 @@ const Veiculos = () => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right">
                                     <div className="flex justify-end space-x-2" onClick={e => e.stopPropagation()}>
-                                        <button onClick={() => openEdit(veiculo)} className="text-primary bg-blue-50 p-1.5 rounded-full" title="Editar"><Edit2 className="h-4 w-4" /></button>
-                                        <button onClick={() => openManutencao(veiculo)} className="relative text-amber-600 bg-amber-50 p-1.5 rounded-full" title="Manutenção">
+                                        {podeEditarVeiculos && <button onClick={() => openEdit(veiculo)} className="text-primary bg-blue-50 p-1.5 rounded-full" title="Editar"><Edit2 className="h-4 w-4" /></button>}
+                                        {podeEditarVeiculos && <button onClick={() => openManutencao(veiculo)} className="relative text-amber-600 bg-amber-50 p-1.5 rounded-full" title="Manutenção">
                                             <Wrench className="h-4 w-4" />
                                             {alertasPendentes[veiculo.id] > 0 && (
                                                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
                                                     {alertasPendentes[veiculo.id]}
                                                 </span>
                                             )}
-                                        </button>
-                                        <button onClick={() => handleDelete(veiculo.id)} className="text-red-600 bg-red-50 p-1.5 rounded-full" title="Excluir"><Trash2 className="h-4 w-4" /></button>
+                                        </button>}
+                                        {podeEditarVeiculos && <button onClick={() => handleDelete(veiculo.id)} className="text-red-600 bg-red-50 p-1.5 rounded-full" title="Excluir"><Trash2 className="h-4 w-4" /></button>}
                                     </div>
                                 </td>
                             </tr>
@@ -252,16 +256,16 @@ const Veiculos = () => {
                                 )}
                             </div>
                             <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                                <button onClick={() => openEdit(veiculo)} className="p-1.5 bg-blue-50 text-primary rounded-lg"><Edit2 className="h-4 w-4" /></button>
-                                <button onClick={() => openManutencao(veiculo)} className="relative p-1.5 bg-amber-50 text-amber-600 rounded-lg">
+                                {podeEditarVeiculos && <button onClick={() => openEdit(veiculo)} className="p-1.5 bg-blue-50 text-primary rounded-lg"><Edit2 className="h-4 w-4" /></button>}
+                                {podeEditarVeiculos && <button onClick={() => openManutencao(veiculo)} className="relative p-1.5 bg-amber-50 text-amber-600 rounded-lg">
                                     <Wrench className="h-4 w-4" />
                                     {alertasPendentes[veiculo.id] > 0 && (
                                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
                                             {alertasPendentes[veiculo.id]}
                                         </span>
                                     )}
-                                </button>
-                                <button onClick={() => handleDelete(veiculo.id)} className="p-1.5 bg-red-50 text-red-600 rounded-lg"><Trash2 className="h-4 w-4" /></button>
+                                </button>}
+                                {podeEditarVeiculos && <button onClick={() => handleDelete(veiculo.id)} className="p-1.5 bg-red-50 text-red-600 rounded-lg"><Trash2 className="h-4 w-4" /></button>}
                             </div>
                         </div>
                         <p className="text-[12px] text-gray-500">{veiculo.modelo}</p>
@@ -319,6 +323,7 @@ const Veiculos = () => {
                     veiculoId={veiculoFichaId}
                     onClose={() => setVeiculoFichaId(null)}
                     onUpdate={carregarVeiculos}
+                    readOnly={!podeEditarVeiculos}
                 />
             )}
             {/* Modal de Manutenção */}

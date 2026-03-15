@@ -23,6 +23,9 @@ const DEFAULT_PERMISSIONS = {
     Pode_Definir_Adiantamento: false,
     Pode_Ver_Historico_Caixa: false,
     Pode_Reverter_Caixa: false,
+    // Módulo de Veículos
+    Pode_Acessar_Veiculos: false,
+    Pode_Editar_Veiculos: false,
     // CRM / Leads
     Pode_Editar_Lead: false,
     // Pedidos Especiais
@@ -328,6 +331,38 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <div>
                                     <span className="text-red-900 font-bold block">Pode Reverter Caixa</span>
                                     <span className="text-red-700 text-xs">Nível crítico: Permite reverter a conferência e reabrir caixas já fechados. Todas as ações são registradas no log de auditoria.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Módulo Veículos */}
+                    <div className="border-t pt-4">
+                        <h4 className="font-medium text-gray-900 mb-4">Módulo de Veículos</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-md border border-slate-200">
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-slate-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-slate-300 text-slate-600 focus:ring-slate-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Acessar_Veiculos}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Acessar_Veiculos: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-slate-900 font-bold block">Pode Acessar Veículos</span>
+                                    <span className="text-slate-700 text-xs">Exibe a aba Veículos e permite consultar ficha em modo leitura.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-red-50 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-red-300 text-red-600 focus:ring-red-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Editar_Veiculos}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Editar_Veiculos: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-red-900 font-bold block">Pode Editar Veículos</span>
+                                    <span className="text-red-700 text-xs">Permite cadastrar/editar/excluir veículo e lançar manutenção/uso/abastecimento.</span>
                                 </div>
                             </label>
                         </div>
