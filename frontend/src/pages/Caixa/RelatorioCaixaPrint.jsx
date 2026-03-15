@@ -59,6 +59,7 @@ const RelatorioCaixaPrint = () => {
     const despesas = relatorio.despesas || [];
     const atendimentos = relatorio.atendimentos || [];
     const pedidosVendedor = relatorio.pedidosVendedor || [];
+    const amostras = relatorio.amostras || [];
     const temDados = entregas.length > 0 || despesas.length > 0;
 
     // Montar lista unificada para impressão:
@@ -330,6 +331,35 @@ const RelatorioCaixaPrint = () => {
                                 ))}
                             </tbody>
                         </table>
+                    )}
+
+                    {/* Amostras entregues */}
+                    {amostras.length > 0 && (
+                        <div className="box" style={{ marginTop: '10px' }}>
+                            <div className="box-title">Amostras Entregues ({amostras.length}) — sem valor financeiro</div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '40px', textAlign: 'center' }}>AM#</th>
+                                        <th style={{ textAlign: 'left' }}>Destinatário</th>
+                                        <th style={{ textAlign: 'left' }}>Solicitado por</th>
+                                        <th style={{ textAlign: 'left' }}>Itens</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {amostras.map((am, i) => (
+                                        <tr key={i}>
+                                            <td style={{ textAlign: 'center', fontWeight: 700 }}>{am.numero}</td>
+                                            <td style={{ fontWeight: 600 }}>{am.destinatario}</td>
+                                            <td style={{ fontSize: '10px' }}>{am.solicitadoPor}</td>
+                                            <td style={{ fontSize: '10px' }}>
+                                                {am.itens?.map(it => `${it.nome} ×${it.quantidade}`).join(', ')}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
 
                     {/* Rodapé - Recebidos + Assinaturas */}

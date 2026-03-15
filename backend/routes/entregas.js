@@ -90,15 +90,52 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
             }
         }
 
-        res.json(entregas.map(e => {
+        const pedidosEnriquecidos = entregas.map(e => {
             const chave = `${e.tipoPagamento || ''}|${e.opcaoCondicaoPagamento || ''}`;
             const info = mapaCondicoes[chave] || mapaCondicoesPorOpcao[e.opcaoCondicaoPagamento];
             return {
                 ...e,
+                _tipoEntrega: 'pedido',
                 nomeCondicaoPagamento: e.nomeCondicaoPagamento || info?.nome || e.opcaoCondicaoPagamento || null,
                 idCondicaoResolvido: info?.idCondicao || null
             };
+        });
+
+        // Amostras pendentes no embarque
+        const whereAmostra = { status: 'LIBERADO', embarqueId: { not: null } };
+        if (!verTodas) whereAmostra.embarque = { responsavelId: req.user.id };
+
+        const amostrasPendentes = await prisma.amostra.findMany({
+            where: whereAmostra,
+            include: {
+                cliente: { select: { NomeFantasia: true, Nome: true, End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, Ponto_GPS: true } },
+                lead: { select: { nomeEstabelecimento: true, pontoGps: true } },
+                embarque: { select: { numero: true, responsavel: { select: { id: true, nome: true } } } },
+                solicitadoPor: { select: { id: true, nome: true } },
+                itens: { include: { produto: { select: { id: true, nome: true, unidade: true } } } }
+            },
+            orderBy: { createdAt: 'asc' }
+        });
+
+        const amostrasFormatadas = amostrasPendentes.map(a => ({
+            id: a.id,
+            _tipoEntrega: 'amostra',
+            numero: a.numero,
+            status: a.status,
+            observacao: a.observacao,
+            dataEntrega: a.dataEntrega,
+            embarque: a.embarque,
+            embarqueId: a.embarqueId,
+            solicitadoPor: a.solicitadoPor,
+            itens: a.itens,
+            cliente: a.cliente || (a.lead ? {
+                NomeFantasia: a.lead.nomeEstabelecimento,
+                Nome: a.lead.nomeEstabelecimento,
+                Ponto_GPS: a.lead.pontoGps
+            } : null),
         }));
+
+        res.json([...pedidosEnriquecidos, ...amostrasFormatadas]);
     } catch (error) {
         console.error('Erro ao listar entregas pendentes:', error);
         res.status(500).json({ error: 'Erro ao buscar roteiro logístico.' });
@@ -146,16 +183,82 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
             }
         }
 
-        res.json(entregas.map(e => {
+        const pedidosEnriquecidos = entregas.map(e => {
             const chave = `${e.tipoPagamento || ''}|${e.opcaoCondicaoPagamento || ''}`;
             return {
                 ...e,
+                _tipoEntrega: 'pedido',
                 condicaoNome: e.nomeCondicaoPagamento || mapaCondicoes[chave] || mapaCondicoesPorOpcao2[e.opcaoCondicaoPagamento] || e.opcaoCondicaoPagamento || null
             };
+        });
+
+        // Amostras entregues
+        const whereAmostraConcluida = { status: 'ENTREGUE', embarqueId: { not: null } };
+        if (!verTodas) whereAmostraConcluida.embarque = { responsavelId: req.user.id };
+
+        const amostrasEntregues = await prisma.amostra.findMany({
+            where: whereAmostraConcluida,
+            include: {
+                cliente: { select: { NomeFantasia: true, Nome: true } },
+                lead: { select: { nomeEstabelecimento: true } },
+                embarque: { select: { numero: true, responsavel: { select: { id: true, nome: true } } } },
+                solicitadoPor: { select: { id: true, nome: true } },
+                itens: { include: { produto: { select: { id: true, nome: true, unidade: true } } } }
+            },
+            orderBy: { updatedAt: 'desc' },
+            take: 50
+        });
+
+        const amostrasFormatadas = amostrasEntregues.map(a => ({
+            id: a.id,
+            _tipoEntrega: 'amostra',
+            numero: a.numero,
+            status: a.status,
+            observacao: a.observacao,
+            dataEntrega: a.updatedAt,
+            embarque: a.embarque,
+            solicitadoPor: a.solicitadoPor,
+            itens: a.itens,
+            cliente: a.cliente || (a.lead ? { NomeFantasia: a.lead.nomeEstabelecimento, Nome: a.lead.nomeEstabelecimento } : null),
         }));
+
+        res.json([...pedidosEnriquecidos, ...amostrasFormatadas]);
     } catch (error) {
         console.error('Erro ao listar entregas finalizadas:', error);
         res.status(500).json({ error: 'Erro ao buscar histórico logístico.' });
+    }
+});
+
+// ==========================================
+// 2b. MOTORISTA: CONCLUIR ENTREGA DE AMOSTRA
+// ==========================================
+router.post('/amostra/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { gpsEntrega } = req.body;
+
+        const amostra = await prisma.amostra.findUnique({
+            where: { id },
+            include: { embarque: true }
+        });
+
+        if (!amostra) return res.status(404).json({ error: 'Amostra não localizada.' });
+        if (amostra.status !== 'LIBERADO') return res.status(400).json({ error: `Amostra já está como ${amostra.status}.` });
+
+        const permsUser = await getPerms(req.user.id);
+        if (amostra.embarque?.responsavelId !== req.user.id && !permsUser.admin) {
+            return res.status(403).json({ error: 'Esta amostra pertence à carga de outro motorista.' });
+        }
+
+        await prisma.amostra.update({
+            where: { id },
+            data: { status: 'ENTREGUE' }
+        });
+
+        res.json({ message: 'Amostra entregue com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao concluir entrega de amostra:', error);
+        res.status(500).json({ error: 'Erro ao processar entrega da amostra.' });
     }
 });
 

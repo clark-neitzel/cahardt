@@ -304,16 +304,6 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
         }
     };
 
-    if (loading) {
-        return (
-            <div className="fixed inset-0 z-[70] flex">
-                <div className="ml-auto w-full max-w-2xl h-full bg-white shadow-2xl flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
-                </div>
-            </div>
-        );
-    }
-
     const stats = ficha?.stats || {};
     const visibleTabs = TABS.filter(tab => !allowedTabs || allowedTabs.includes(tab.id));
     const diasSeguro = diasParaVencer(ficha?.seguroVencimento);
@@ -324,6 +314,16 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
             setActiveTab(visibleTabs[0]?.id || 'resumo');
         }
     }, [activeTab, visibleTabs]);
+
+    if (loading) {
+        return (
+            <div className="fixed inset-0 z-[70] flex">
+                <div className="ml-auto w-full max-w-2xl h-full bg-white shadow-2xl flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 z-[70] flex">

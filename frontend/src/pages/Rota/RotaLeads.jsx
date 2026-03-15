@@ -470,6 +470,73 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente })
 };
 
 // ================================================
+// Card de Amostra Pendente (Motorista)
+// ================================================
+const CardAmostraEntrega = ({ amostra, onEntregarAmostra, podeCheckout }) => {
+    const motoristaNome = amostra.embarque?.responsavel?.nome;
+    const vendedorNome = amostra.solicitadoPor?.nome;
+    const abrirMaps = () => {
+        if (!amostra.cliente?.Ponto_GPS) return;
+        const [lat, lng] = amostra.cliente.Ponto_GPS.split(',');
+        window.open(`https://maps.google.com/?q=${lat},${lng}`);
+    };
+    return (
+        <div className="bg-white rounded-xl border border-orange-400/50 ring-1 ring-orange-500/20 shadow-sm overflow-hidden mb-2">
+            <div className="p-3 md:p-4">
+                <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] md:text-[11px] font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded uppercase">
+                                AM#{amostra.numero}
+                            </span>
+                            <Link to="/admin/embarques" className="text-[10px] md:text-[11px] font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded uppercase hover:bg-sky-100 transition-colors">
+                                Carga #{amostra.embarque?.numero}
+                            </Link>
+                            {motoristaNome && (
+                                <span className="text-[10px] md:text-[11px] text-gray-500 font-semibold flex items-center gap-0.5">
+                                    <Truck className="h-3 w-3" /> {motoristaNome.split(' ')[0]}
+                                </span>
+                            )}
+                            {vendedorNome && (
+                                <span className="text-[10px] text-purple-600 bg-purple-50 px-1 py-0.5 rounded font-semibold flex items-center gap-0.5">
+                                    <User className="h-3 w-3" /> {vendedorNome.split(' ')[0]}
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-left font-bold text-[13px] md:text-[15px] text-gray-900 leading-tight truncate mt-0.5">
+                            {amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || '-'}
+                        </p>
+                        {amostra.cliente?.End_Cidade && (
+                            <p className="text-[11px] md:text-[12px] text-gray-500 truncate">{amostra.cliente.End_Logradouro} {amostra.cliente.End_Numero} · {amostra.cliente.End_Cidade}</p>
+                        )}
+                    </div>
+                    {amostra.cliente?.Ponto_GPS && (
+                        <button onClick={abrirMaps} className="p-1.5 text-orange-500 hover:bg-orange-50 rounded-lg shrink-0">
+                            <Navigation className="h-4 w-4" />
+                        </button>
+                    )}
+                </div>
+                <div className="flex items-center gap-3 mt-1.5 text-[11px] md:text-[12px] text-gray-600">
+                    <span className="flex items-center gap-1"><Package className="h-3 w-3" />{amostra.itens?.length || 0} itens</span>
+                    <span className="font-semibold text-orange-700">Amostra (sem valor)</span>
+                </div>
+                {amostra.observacao && (
+                    <p className="mt-1.5 text-[11px] text-gray-500 italic truncate">{amostra.observacao}</p>
+                )}
+                {podeCheckout && (
+                    <button
+                        onClick={() => onEntregarAmostra(amostra.id)}
+                        className="w-full mt-2 bg-orange-500 text-white text-[12px] md:text-[13px] font-semibold py-1.5 md:py-2 rounded-lg flex items-center justify-center gap-1.5 active:opacity-80"
+                    >
+                        <CheckCircle className="h-4 w-4" /> Entregar Amostra
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// ================================================
 // Card de Entrega Concluída
 // ================================================
 const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar, onEditar, onVerCliente }) => {
@@ -1348,6 +1415,18 @@ const RotaLeads = () => {
         }
     }, []);
 
+    const handleEntregarAmostra = async (amostraId) => {
+        if (!window.confirm('Confirmar entrega desta amostra?')) return;
+        try {
+            await entregasService.concluirAmostra(amostraId);
+            toast.success('Amostra entregue!');
+            carregarEntregas('pendentes');
+            carregarEntregas('concluidas');
+        } catch (e) {
+            toast.error(e?.response?.data?.error || 'Erro ao entregar amostra.');
+        }
+    };
+
     const handleEstornar = async (pedido) => {
         if (!window.confirm(`Estornar a entrega de "${pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}"? O pedido voltará ao status PENDENTE.`)) return;
         try {
@@ -1615,12 +1694,20 @@ const RotaLeads = () => {
                                                             </span>
                                                         </div>
                                                     )}
-                                                    <CardEntregaPendente
-                                                        pedido={p}
-                                                        onCheckout={setCheckoutPedido}
-                                                        podeCheckout={podeEntregas}
-                                                        onVerCliente={setClientePopupItem}
-                                                    />
+                                                    {p._tipoEntrega === 'amostra' ? (
+                                                        <CardAmostraEntrega
+                                                            amostra={p}
+                                                            onEntregarAmostra={handleEntregarAmostra}
+                                                            podeCheckout={podeEntregas}
+                                                        />
+                                                    ) : (
+                                                        <CardEntregaPendente
+                                                            pedido={p}
+                                                            onCheckout={setCheckoutPedido}
+                                                            podeCheckout={podeEntregas}
+                                                            onVerCliente={setClientePopupItem}
+                                                        />
+                                                    )}
                                                 </div>
                                             );
                                         })}
@@ -1638,14 +1725,31 @@ const RotaLeads = () => {
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                                     {entregasConcluidasFiltradas.map(p => (
-                                        <CardEntregaConcluida
-                                            key={p.id}
-                                            pedido={p}
-                                            podeAjustar={podeAjustar}
-                                            onEstornar={handleEstornar}
-                                            onEditar={setEditarEntregaPedido}
-                                            onVerCliente={setClientePopupItem}
-                                        />
+                                        p._tipoEntrega === 'amostra' ? (
+                                            <div key={p.id} className="bg-white rounded-xl border border-orange-200 shadow-sm overflow-hidden mb-2">
+                                                <div className="p-3 md:p-4">
+                                                    <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                                                        <span className="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded">Entregue</span>
+                                                        <span className="text-[10px] font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded">AM#{p.numero}</span>
+                                                        {p.embarque?.numero && <span className="text-[10px] text-gray-400">Carga #{p.embarque.numero}</span>}
+                                                    </div>
+                                                    <p className="font-bold text-[13px] text-gray-900">{p.cliente?.NomeFantasia || p.cliente?.Nome || '-'}</p>
+                                                    <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500">
+                                                        <span>{p.itens?.length || 0} itens</span>
+                                                        <span className="font-semibold text-orange-600">Amostra</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <CardEntregaConcluida
+                                                key={p.id}
+                                                pedido={p}
+                                                podeAjustar={podeAjustar}
+                                                onEstornar={handleEstornar}
+                                                onEditar={setEditarEntregaPedido}
+                                                onVerCliente={setClientePopupItem}
+                                            />
+                                        )
                                     ))}
                                 </div>
                             )

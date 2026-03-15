@@ -5,7 +5,7 @@ import vendedorService from '../../services/vendedorService';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     Wallet, Truck, Fuel, Package, CheckCircle, AlertTriangle,
-    Lock, Printer, ClipboardCheck, ChevronDown, ChevronUp, ReceiptText, Plus, Undo2
+    Lock, Printer, ClipboardCheck, ChevronDown, ChevronUp, ReceiptText, Plus, Undo2, FlaskConical
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import NovaDespesaModal from './NovaDespesaModal';
@@ -58,6 +58,7 @@ const CaixaDiarioPage = () => {
     const [adiantamento, setAdiantamento] = useState('');
     const [savingAdiantamento, setSavingAdiantamento] = useState(false);
     const [expandedEntregas, setExpandedEntregas] = useState(false);
+    const [expandedAmostras, setExpandedAmostras] = useState(false);
     const [obsAdmin, setObsAdmin] = useState('');
     const [showDespesaModal, setShowDespesaModal] = useState(false);
     const [veiculoFichaId, setVeiculoFichaId] = useState(null);
@@ -475,6 +476,60 @@ const CaixaDiarioPage = () => {
                             </div>
                         )}
                     </div>
+
+                    {/* Card Amostras */}
+                    {(resumo.amostrasCount > 0) && (
+                        <div className="bg-white rounded-lg shadow-sm border border-orange-200 p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center space-x-2">
+                                    <FlaskConical className="h-5 w-5 text-orange-500" />
+                                    <h3 className="text-sm font-semibold text-gray-700">Amostras Entregues</h3>
+                                    <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                                        {resumo.amostrasCount}
+                                    </span>
+                                    <span className="text-xs text-gray-400">(sem valor financeiro)</span>
+                                </div>
+                                <button
+                                    onClick={() => setExpandedAmostras(!expandedAmostras)}
+                                    className="text-xs text-gray-500 flex items-center hover:text-gray-700"
+                                >
+                                    {expandedAmostras ? 'Recolher' : 'Expandir'}
+                                    {expandedAmostras ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
+                                </button>
+                            </div>
+
+                            {expandedAmostras && resumo.amostras && (
+                                <div className="border-t border-orange-100 pt-3 space-y-2">
+                                    {resumo.amostras.map((am) => (
+                                        <div key={am.id} className="bg-orange-50 rounded-lg p-3 border border-orange-100">
+                                            <div className="flex items-start justify-between">
+                                                <div>
+                                                    <p className="font-medium text-gray-900 text-sm">
+                                                        AM#{am.numero} — {am.destinatario}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500 mt-0.5">
+                                                        Solicitado por: {am.vendedorNome}
+                                                    </p>
+                                                    {am.itens && am.itens.length > 0 && (
+                                                        <div className="mt-1 flex flex-wrap gap-1">
+                                                            {am.itens.map((item, i) => (
+                                                                <span key={i} className="text-xs bg-white text-orange-700 px-1.5 py-0.5 rounded border border-orange-200">
+                                                                    {item.nome} × {item.quantidade}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                                                    ENTREGUE
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* VALOR A PRESTAR */}
                     <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-6">

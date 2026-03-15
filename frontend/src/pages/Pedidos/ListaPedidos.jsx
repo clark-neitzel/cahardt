@@ -64,7 +64,7 @@ const ListaPedidos = () => {
     const proximoStatusAmostra = {
         'SOLICITADA': 'PREPARACAO',
         'PREPARACAO': 'LIBERADO',
-        'LIBERADO': 'ENTREGUE',
+        // LIBERADO → ENTREGUE acontece via embarque/motorista, não manual
     };
 
     const handleAvancarAmostra = async (amostraId, statusAtual) => {

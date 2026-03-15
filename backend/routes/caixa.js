@@ -272,6 +272,34 @@ router.get('/resumo', async (req, res) => {
         totalRecebidoCaixa = Math.round(totalRecebidoCaixa * 100) / 100;
         totalRecebidoOutros = Math.round(totalRecebidoOutros * 100) / 100;
 
+        // 8. Amostras entregues no dia (informativo, sem valor financeiro)
+        const amostrasEntregues = await prisma.amostra.findMany({
+            where: {
+                status: 'ENTREGUE',
+                embarqueId: { not: null },
+                embarque: { responsavelId: targetVendedor },
+                updatedAt: { gte: inicioDia, lte: fimDia }
+            },
+            include: {
+                cliente: { select: { NomeFantasia: true, Nome: true } },
+                lead: { select: { nomeEstabelecimento: true } },
+                solicitadoPor: { select: { nome: true } },
+                embarque: { select: { numero: true } },
+                itens: { select: { nomeProduto: true, quantidade: true } }
+            },
+            orderBy: { updatedAt: 'asc' }
+        });
+
+        const amostrasFormatadas = amostrasEntregues.map(a => ({
+            id: a.id,
+            numero: a.numero,
+            destinatario: a.cliente?.NomeFantasia || a.cliente?.Nome || a.lead?.nomeEstabelecimento || '-',
+            vendedorNome: a.solicitadoPor?.nome,
+            embarqueNumero: a.embarque?.numero,
+            itensCount: a.itens?.length || 0,
+            itens: a.itens?.map(i => ({ nome: i.nomeProduto, quantidade: Number(i.quantidade) })) || []
+        }));
+
         // Breakdown por condição (arredondar valores)
         const detalhamentoCaixa = Object.entries(recebidoPorCondicao).map(([nome, info]) => ({
             condicao: nome,
@@ -306,7 +334,9 @@ router.get('/resumo', async (req, res) => {
             totalRecebidoOutros,
             totalRecebido: Math.round((totalRecebidoCaixa + totalRecebidoOutros) * 100) / 100,
             detalhamentoCaixa,
-            valorAPrestar
+            valorAPrestar,
+            amostras: amostrasFormatadas,
+            amostrasCount: amostrasFormatadas.length
         });
     } catch (error) {
         console.error('Erro ao buscar resumo do caixa:', error);
@@ -700,6 +730,23 @@ router.get('/relatorio', async (req, res) => {
 
 
 
+        // Buscar amostras entregues no dia
+        const amostrasEntreguesRel = await prisma.amostra.findMany({
+            where: {
+                status: 'ENTREGUE',
+                embarqueId: { not: null },
+                embarque: { responsavelId: targetVendedor },
+                updatedAt: { gte: inicioDia, lte: fimDia }
+            },
+            include: {
+                cliente: { select: { NomeFantasia: true, Nome: true } },
+                lead: { select: { nomeEstabelecimento: true } },
+                solicitadoPor: { select: { nome: true } },
+                itens: { select: { nomeProduto: true, quantidade: true } }
+            },
+            orderBy: { updatedAt: 'asc' }
+        });
+
         // Buscar nomes de clientes atendidos (pelo clienteId)
         const clienteIds = atendimentos.filter(a => a.clienteId).map(a => a.clienteId);
         let mapaClientes = {};
@@ -772,7 +819,15 @@ router.get('/relatorio', async (req, res) => {
                 clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome || 'N/A',
                 createdAt: p.createdAt,
                 observacao: p.observacoes || null
-            }))
+            })),
+            amostras: amostrasEntreguesRel.map(a => ({
+                id: a.id,
+                numero: a.numero,
+                destinatario: a.cliente?.NomeFantasia || a.cliente?.Nome || a.lead?.nomeEstabelecimento || '-',
+                solicitadoPor: a.solicitadoPor?.nome,
+                itens: a.itens?.map(i => ({ nome: i.nomeProduto, quantidade: Number(i.quantidade) })) || []
+            })),
+            amostrasCount: amostrasEntreguesRel.length
         });
     } catch (error) {
         console.error('Erro ao gerar relatório:', error);

@@ -27,6 +27,10 @@ const entregasService = {
     editarEntrega: async (id, dados) => {
         const response = await api.patch(`/entregas/${id}/editar`, dados);
         return response.data;
+    },
+    concluirAmostra: async (id) => {
+        const response = await api.post(`/entregas/amostra/${id}/concluir`);
+        return response.data;
     }
 };
 
