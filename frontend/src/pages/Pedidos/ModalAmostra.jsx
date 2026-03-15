@@ -30,7 +30,7 @@ const ModalAmostra = ({ dados, onClose, onCriada }) => {
             if (Array.isArray(cats) && cats.length > 0) params.categorias = cats.join(',');
 
             const data = await produtoService.listar(params);
-            const lista = data.data || data || [];
+            const lista = (data.data || data || []).filter(p => p.ativo !== false);
             setProdutos(lista);
         } catch (error) {
             console.error('Erro ao carregar produtos:', error);

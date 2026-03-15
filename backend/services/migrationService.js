@@ -544,7 +544,80 @@ const migrationService = {
 
             // Update 33: Persistir nome completo da condição de pagamento no pedido
             // Evita lookup reverso frágil quando múltiplas condições têm o mesmo opcaoCondicao
-            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "nome_condicao_pagamento" TEXT;`
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "nome_condicao_pagamento" TEXT;`,
+
+            // Update 34: Ações de Atendimento Configuráveis — novos campos em atendimentos
+            `ALTER TABLE "atendimentos" ADD COLUMN IF NOT EXISTS "acao_key" TEXT;`,
+            `ALTER TABLE "atendimentos" ADD COLUMN IF NOT EXISTS "acao_label" TEXT;`,
+            `ALTER TABLE "atendimentos" ADD COLUMN IF NOT EXISTS "transferido_para_id" TEXT;`,
+            `ALTER TABLE "atendimentos" ADD COLUMN IF NOT EXISTS "assunto_retorno" TEXT;`,
+            `ALTER TABLE "atendimentos" ADD COLUMN IF NOT EXISTS "data_retorno" TIMESTAMP(3);`,
+            `ALTER TABLE "atendimentos" ADD COLUMN IF NOT EXISTS "alerta_visual_ativo" BOOLEAN NOT NULL DEFAULT false;`,
+            `ALTER TABLE "atendimentos" ADD COLUMN IF NOT EXISTS "alerta_visual_cor" TEXT;`,
+            `ALTER TABLE "atendimentos" ADD COLUMN IF NOT EXISTS "alerta_visual_visto" BOOLEAN NOT NULL DEFAULT false;`,
+            `ALTER TABLE "atendimentos" ADD COLUMN IF NOT EXISTS "amostra_id" TEXT;`,
+            `CREATE INDEX IF NOT EXISTS "atendimentos_transferido_para_id_idx" ON "atendimentos"("transferido_para_id");`,
+            `CREATE INDEX IF NOT EXISTS "atendimentos_data_retorno_idx" ON "atendimentos"("data_retorno");`,
+            `CREATE INDEX IF NOT EXISTS "atendimentos_alerta_visual_ativo_idx" ON "atendimentos"("alerta_visual_ativo");`,
+
+            // Update 35: Tabela de Amostras (Pedido sem preço)
+            `CREATE TABLE IF NOT EXISTS "amostras" (
+                "id" TEXT NOT NULL,
+                "numero" SERIAL,
+                "lead_id" TEXT,
+                "cliente_id" TEXT,
+                "data_entrega" TIMESTAMP(3),
+                "observacao" TEXT,
+                "status" TEXT NOT NULL DEFAULT 'SOLICITADA',
+                "solicitado_por_id" TEXT NOT NULL,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "amostras_pkey" PRIMARY KEY ("id")
+            );`,
+            `CREATE INDEX IF NOT EXISTS "amostras_status_idx" ON "amostras"("status");`,
+            `CREATE INDEX IF NOT EXISTS "amostras_lead_id_idx" ON "amostras"("lead_id");`,
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'amostras_lead_id_fkey') THEN
+                    ALTER TABLE "amostras" ADD CONSTRAINT "amostras_lead_id_fkey" FOREIGN KEY ("lead_id") REFERENCES "leads"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'amostras_solicitado_por_id_fkey') THEN
+                    ALTER TABLE "amostras" ADD CONSTRAINT "amostras_solicitado_por_id_fkey" FOREIGN KEY ("solicitado_por_id") REFERENCES "vendedores"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+
+            // Update 36: Tabela de Itens de Amostras
+            `CREATE TABLE IF NOT EXISTS "amostra_itens" (
+                "id" TEXT NOT NULL,
+                "amostra_id" TEXT NOT NULL,
+                "produto_id" TEXT NOT NULL,
+                "quantidade" DECIMAL(12,3) NOT NULL,
+                "nome_produto" TEXT NOT NULL,
+                CONSTRAINT "amostra_itens_pkey" PRIMARY KEY ("id"),
+                CONSTRAINT "amostra_itens_amostra_id_fkey" FOREIGN KEY ("amostra_id") REFERENCES "amostras"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+                CONSTRAINT "amostra_itens_produto_id_fkey" FOREIGN KEY ("produto_id") REFERENCES "produtos"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+            );`,
+
+            // Update 37: FK atendimentos → amostras
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'atendimentos_amostra_id_fkey') THEN
+                    ALTER TABLE "atendimentos" ADD CONSTRAINT "atendimentos_amostra_id_fkey" FOREIGN KEY ("amostra_id") REFERENCES "amostras"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+
+            // Update 38: Seed ações de atendimento (idempotent — ON CONFLICT DO UPDATE)
+            `INSERT INTO "app_configs" ("key", "value") VALUES
+            ('acoes_atendimento', '${JSON.stringify([
+                {"label":"Atendido sem pedido","value":"NOVO","obrigaObservacao":true},
+                {"label":"Sem resposta / Ausente","value":"VISITAR"},
+                {"cor":"#f9e824","ativo":true,"label":"Reagendado","value":"MANDAR_WHATSAPP","criaAlertaVisual":true,"obrigaObservacao":false,"obrigaDataRetorno":true,"permiteDataRetorno":true,"transfereAtendimento":false,"permiteAssuntoRetorno":true},
+                {"cor":"#e51f1f","label":"Pendencia / Problema","value":"LIGAR","criaAlertaVisual":true,"obrigaObservacao":true,"permiteDataRetorno":false,"transfereAtendimento":true},
+                {"cor":"#e9169c","label":"Manda para WhatsApp","value":"LEVAR_AMOSTRA","criaAlertaVisual":true,"abrePedidoAmostra":false,"transfereAtendimento":true},
+                {"cor":"#248f36","label":"Amostra pedido","value":"AGUARDO_RETORNO","criaAlertaVisual":true,"obrigaObservacao":false,"abrePedidoAmostra":true,"transfereAtendimento":true},
+                {"cor":"#2c57d8","label":"Enviar vendedor","value":"SEM_POTENCIAL","obrigaObservacao":true,"transfereAtendimento":true}
+            ]).replace(/'/g, "''")}')
+            ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value";`
         ];
 
         for (const [index, cmd] of commands.entries()) {
