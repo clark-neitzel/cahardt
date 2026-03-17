@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     X, Car, FileText, Shield, Wrench, Fuel, Users, MessageSquare,
-    AlertTriangle, CheckCircle, BellRing, ChevronRight, Edit3, Save, TrendingUp, Plus, Loader, Trash2
+    AlertTriangle, CheckCircle, BellRing, ChevronRight, Edit3, Save, TrendingUp, Plus, Loader, Trash2, Upload
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import api from '../../services/api';
+import api, { API_URL } from '../../services/api';
 import vendedorService from '../../services/vendedorService';
 
 const TABS = [
@@ -63,6 +63,12 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
     const [editAbastForm, setEditAbastForm] = useState({});
     const [editingUsoId, setEditingUsoId] = useState(null);
     const [editUsoForm, setEditUsoForm] = useState({});
+
+    // Upload de arquivos
+    const [uploadingDoc, setUploadingDoc] = useState(false);
+    const [uploadingApolice, setUploadingApolice] = useState(false);
+    const docInputRef = useRef(null);
+    const apoliceInputRef = useRef(null);
 
     const carregarFicha = async () => {
         try {
@@ -304,6 +310,46 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
         }
     };
 
+    const handleUploadDocumento = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+            setUploadingDoc(true);
+            const fd = new FormData();
+            fd.append('documento', file);
+            await api.post(`/veiculos/${veiculoId}/upload-documento`, fd, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            toast.success('Documento salvo!');
+            carregarFicha();
+        } catch (err) {
+            toast.error('Erro ao salvar documento.');
+        } finally {
+            setUploadingDoc(false);
+            if (docInputRef.current) docInputRef.current.value = '';
+        }
+    };
+
+    const handleUploadApolice = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+            setUploadingApolice(true);
+            const fd = new FormData();
+            fd.append('apolice', file);
+            await api.post(`/veiculos/${veiculoId}/upload-apolice`, fd, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            toast.success('Apólice salva!');
+            carregarFicha();
+        } catch (err) {
+            toast.error('Erro ao salvar apólice.');
+        } finally {
+            setUploadingApolice(false);
+            if (apoliceInputRef.current) apoliceInputRef.current.value = '';
+        }
+    };
+
     const stats = ficha?.stats || {};
     const visibleTabs = TABS.filter(tab => !allowedTabs || allowedTabs.includes(tab.id));
     const diasSeguro = diasParaVencer(ficha?.seguroVencimento);
@@ -430,14 +476,28 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                         <div className="space-y-5">
                             <div>
                                 <h3 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2"><FileText className="h-4 w-4" /> CRLV / Documento</h3>
-                                {editando ? (
-                                    <input type="url" value={form.documentoUrl} onChange={e => setForm(p => ({ ...p, documentoUrl: e.target.value }))}
-                                        placeholder="https://link-do-documento.com"
-                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
-                                ) : ficha?.documentoUrl ? (
-                                    <a href={ficha.documentoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100">
-                                        <FileText className="h-4 w-4" /> Ver Documento
-                                    </a>
+                                <input type="file" ref={docInputRef} accept="image/*,application/pdf" className="hidden" onChange={handleUploadDocumento} />
+                                {ficha?.documentoUrl ? (
+                                    <div className="flex items-center gap-3">
+                                        {ficha.documentoUrl.match(/\.(jpg|jpeg|png|webp)$/i) ? (
+                                            <img src={`${API_URL}${ficha.documentoUrl}`} alt="Documento" className="h-32 rounded-lg border border-gray-200 object-cover" />
+                                        ) : (
+                                            <a href={`${API_URL}${ficha.documentoUrl}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100">
+                                                <FileText className="h-4 w-4" /> Ver Documento
+                                            </a>
+                                        )}
+                                        {!readOnly && (
+                                            <button onClick={() => docInputRef.current?.click()} disabled={uploadingDoc}
+                                                className="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-1.5">
+                                                <Upload className="h-3.5 w-3.5" /> {uploadingDoc ? 'Enviando...' : 'Trocar'}
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : !readOnly ? (
+                                    <button onClick={() => docInputRef.current?.click()} disabled={uploadingDoc}
+                                        className="px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 w-full flex items-center justify-center gap-2">
+                                        <Upload className="h-4 w-4" /> {uploadingDoc ? 'Enviando...' : 'Enviar Documento (imagem ou PDF)'}
+                                    </button>
                                 ) : <p className="text-sm text-gray-400">Nenhum documento anexado.</p>}
                             </div>
 
@@ -448,7 +508,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                     <Shield className="h-4 w-4" /> Seguro
                                     {diasSeguro !== null && diasSeguro <= 30 && (
                                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${diasSeguro <= 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                                            {diasSeguro <= 0 ? '🚨 Vencido!' : `⚠️ Vence em ${diasSeguro} dias`}
+                                            {diasSeguro <= 0 ? 'Vencido!' : `Vence em ${diasSeguro} dias`}
                                         </span>
                                     )}
                                 </h3>
@@ -462,9 +522,9 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                                     placeholder="Ex: Porto Seguro" className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
                                             </div>
                                             <div>
-                                                <label className="block text-xs text-gray-500 mb-1">Apólice Nº</label>
+                                                <label className="block text-xs text-gray-500 mb-1">Apolice Nr</label>
                                                 <input type="text" value={form.seguroApolice} onChange={e => setForm(p => ({ ...p, seguroApolice: e.target.value }))}
-                                                    placeholder="Número da apólice" className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                                                    placeholder="Numero da apolice" className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
                                             </div>
                                         </div>
                                         <div>
@@ -480,7 +540,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                             <span className="font-medium text-gray-900">{ficha?.seguroSeguradora || '—'}</span>
                                         </div>
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-gray-500">Apólice</span>
+                                            <span className="text-gray-500">Apolice</span>
                                             <span className="font-medium text-gray-900">{ficha?.seguroApolice || '—'}</span>
                                         </div>
                                         <div className="flex justify-between text-sm">
@@ -491,6 +551,34 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Upload de Apolice */}
+                                <div className="mt-4 pt-3 border-t border-gray-100">
+                                    <label className="block text-xs text-gray-500 font-medium mb-2">Arquivo da Apolice</label>
+                                    <input type="file" ref={apoliceInputRef} accept="image/*,application/pdf" className="hidden" onChange={handleUploadApolice} />
+                                    {ficha?.seguroApoliceUrl ? (
+                                        <div className="flex items-center gap-3">
+                                            {ficha.seguroApoliceUrl.match(/\.(jpg|jpeg|png|webp)$/i) ? (
+                                                <img src={`${API_URL}${ficha.seguroApoliceUrl}`} alt="Apolice" className="h-32 rounded-lg border border-gray-200 object-cover" />
+                                            ) : (
+                                                <a href={`${API_URL}${ficha.seguroApoliceUrl}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100">
+                                                    <FileText className="h-4 w-4" /> Ver Apolice
+                                                </a>
+                                            )}
+                                            {!readOnly && (
+                                                <button onClick={() => apoliceInputRef.current?.click()} disabled={uploadingApolice}
+                                                    className="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-1.5">
+                                                    <Upload className="h-3.5 w-3.5" /> {uploadingApolice ? 'Enviando...' : 'Trocar'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : !readOnly ? (
+                                        <button onClick={() => apoliceInputRef.current?.click()} disabled={uploadingApolice}
+                                            className="px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-green-400 hover:text-green-600 w-full flex items-center justify-center gap-2">
+                                            <Upload className="h-4 w-4" /> {uploadingApolice ? 'Enviando...' : 'Enviar Apolice (imagem ou PDF)'}
+                                        </button>
+                                    ) : <p className="text-sm text-gray-400 mt-1">Nenhuma apolice anexada.</p>}
+                                </div>
                             </div>
                         </div>
                     )}

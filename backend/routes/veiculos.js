@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const veiculoController = require('../controllers/veiculoController');
 const authMiddleware = require('../middlewares/authMiddleware');
+const uploadVeiculo = require('../middlewares/uploadVeiculoMiddleware');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -369,6 +370,38 @@ router.patch('/manutencao/:alertaId/concluir', authMiddleware, async (req, res) 
     } catch (error) {
         console.error('Erro ao concluir alerta:', error);
         res.status(500).json({ error: 'Erro ao concluir alerta.' });
+    }
+});
+
+// ── Upload de Documento do Veículo ──
+router.post('/:id/upload-documento', authMiddleware, uploadVeiculo.single('documento'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
+        const filePath = `/uploads/veiculos/${req.params.id}/${req.file.filename}`;
+        const veiculo = await prisma.veiculo.update({
+            where: { id: req.params.id },
+            data: { documentoUrl: filePath }
+        });
+        res.json(veiculo);
+    } catch (error) {
+        console.error('Erro ao fazer upload do documento:', error);
+        res.status(500).json({ error: 'Erro ao salvar documento.' });
+    }
+});
+
+// ── Upload de Apólice de Seguro ──
+router.post('/:id/upload-apolice', authMiddleware, uploadVeiculo.single('apolice'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
+        const filePath = `/uploads/veiculos/${req.params.id}/${req.file.filename}`;
+        const veiculo = await prisma.veiculo.update({
+            where: { id: req.params.id },
+            data: { seguroApoliceUrl: filePath }
+        });
+        res.json(veiculo);
+    } catch (error) {
+        console.error('Erro ao fazer upload da apólice:', error);
+        res.status(500).json({ error: 'Erro ao salvar apólice.' });
     }
 });
 

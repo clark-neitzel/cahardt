@@ -534,9 +534,10 @@ model Veiculo {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Seguro
-  seguroVencimento DateTime? @map("seguro_vencimento")
-  seguroApolice    String?   @map("seguro_apolice")
-  seguroSeguradora String?   @map("seguro_seguradora")
+  seguroVencimento  DateTime? @map("seguro_vencimento")
+  seguroApolice     String?   @map("seguro_apolice")
+  seguroSeguradora  String?   @map("seguro_seguradora")
+  seguroApoliceUrl  String?   @map("seguro_apolice_url")
 
   // Métricas e Configurações
   capacidadeTanque Decimal? @map("capacidade_tanque") @db.Decimal(8, 2)

@@ -209,8 +209,8 @@ const pedidoService = {
                 }, 0);
             }
 
-            // Gerar Conta a Receber para pedidos especiais
-            if (especial && statusEnvio === 'ENVIAR') {
+            // Gerar Conta a Receber para todos os pedidos enviados
+            if (statusEnvio === 'ENVIAR') {
                 const valorTotal = itensData.reduce((s, i) => s + (i.valor * i.quantidade), 0);
                 const numParcelas = parseInt(qtdParcelas) || 1;
                 const intervalo = parseInt(intervaloDias) || 0;
@@ -221,7 +221,6 @@ const pedidoService = {
                 for (let i = 0; i < numParcelas; i++) {
                     const vencimento = new Date(baseDate);
                     vencimento.setDate(vencimento.getDate() + (i * intervalo));
-                    // Ajustar última parcela para fechar centavos
                     const val = i === numParcelas - 1
                         ? Math.round((valorTotal - valorParcela * (numParcelas - 1)) * 100) / 100
                         : valorParcela;
@@ -236,7 +235,7 @@ const pedidoService = {
                     data: {
                         pedidoId: novoPedido.id,
                         clienteId,
-                        origem: 'ESPECIAL',
+                        origem: especial ? 'ESPECIAL' : 'FATURADO_CA',
                         valorTotal: Math.round(valorTotal * 100) / 100,
                         status: 'ABERTO',
                         parcelas: { create: parcelasData }

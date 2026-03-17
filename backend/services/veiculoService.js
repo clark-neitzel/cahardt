@@ -152,6 +152,7 @@ const veiculoService = {
                 seguroVencimento: dados.seguroVencimento ? new Date(dados.seguroVencimento) : null,
                 seguroApolice: dados.seguroApolice || null,
                 seguroSeguradora: dados.seguroSeguradora || null,
+                seguroApoliceUrl: dados.seguroApoliceUrl || null,
                 capacidadeTanque: dados.capacidadeTanque || null,
                 kmMedioSugerido: dados.kmMedioSugerido ? parseInt(dados.kmMedioSugerido) : null,
                 observacoes: dados.observacoes || null
@@ -179,6 +180,7 @@ const veiculoService = {
                     : undefined,
                 seguroApolice: dados.seguroApolice !== undefined ? dados.seguroApolice : undefined,
                 seguroSeguradora: dados.seguroSeguradora !== undefined ? dados.seguroSeguradora : undefined,
+                seguroApoliceUrl: dados.seguroApoliceUrl !== undefined ? dados.seguroApoliceUrl : undefined,
                 capacidadeTanque: dados.capacidadeTanque !== undefined ? dados.capacidadeTanque : undefined,
                 kmMedioSugerido: dados.kmMedioSugerido !== undefined
                     ? (dados.kmMedioSugerido ? parseInt(dados.kmMedioSugerido) : null)

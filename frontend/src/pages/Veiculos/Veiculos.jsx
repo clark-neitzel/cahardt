@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Check, X, FileText, Wrench, BellRing, ChevronRight } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import api from '../../services/api';
+import api, { API_URL } from '../../services/api';
 import VeiculoFicha from './VeiculoFicha';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -204,7 +204,7 @@ const Veiculos = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-gray-500">{veiculo.modelo}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     {veiculo.documentoUrl ? (
-                                        <a href={veiculo.documentoUrl} target="_blank" rel="noopener noreferrer"
+                                        <a href={veiculo.documentoUrl.startsWith('/uploads') ? `${API_URL}${veiculo.documentoUrl}` : veiculo.documentoUrl} target="_blank" rel="noopener noreferrer"
                                             onClick={e => e.stopPropagation()}
                                             className="text-blue-600 hover:underline flex items-center">
                                             <FileText className="h-4 w-4 mr-1" /> Ver Documento
@@ -296,11 +296,7 @@ const Veiculos = () => {
                                 <input type="text" name="modelo" required value={formData.modelo} onChange={handleChange}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50" placeholder="Ex: Fiat Fiorino / Baú" />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Link do Documento (opcional)</label>
-                                <input type="url" name="documentoUrl" value={formData.documentoUrl} onChange={handleChange}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50" placeholder="https://" />
-                            </div>
+                            <p className="text-xs text-gray-400">Documentos e apolice podem ser enviados pela ficha do veiculo apos o cadastro.</p>
                             <div className="flex items-center">
                                 <input type="checkbox" name="ativo" id="ativo" checked={formData.ativo} onChange={handleChange}
                                     className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded" />

@@ -230,6 +230,20 @@ router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => 
             data: { status: novoStatus }
         });
 
+        // Registrar no histórico do cliente (Atendimento)
+        const conta = parcela.contaReceber;
+        const valorPagoFinal = valorPago || Number(parcela.valor);
+        const formaPg = formaPagamento || 'N/I';
+        await prisma.atendimento.create({
+            data: {
+                tipo: 'FINANCEIRO',
+                observacao: `Baixa parcela ${parcela.numeroParcela}/${total} - R$ ${Number(valorPagoFinal).toFixed(2)} (${formaPg})${observacao ? ` | ${observacao}` : ''}`,
+                clienteId: conta.clienteId,
+                idVendedor: req.user.id,
+                pedidoId: conta.pedidoId || null
+            }
+        });
+
         res.json({ message: 'Baixa realizada com sucesso!', novoStatus });
     } catch (error) {
         console.error('Erro ao dar baixa:', error);
