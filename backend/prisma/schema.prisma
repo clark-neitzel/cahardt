@@ -141,10 +141,11 @@ model Cliente {
   idVendedor String?   @map("id_vendedor")
   vendedor   Vendedor? @relation(fields: [idVendedor], references: [id])
 
-  arquivos ClienteArquivo[]
-  pedidos  Pedido[]
-  leads    Lead[]
-  amostras Amostra[]
+  arquivos       ClienteArquivo[]
+  pedidos        Pedido[]
+  leads          Lead[]
+  amostras       Amostra[]
+  contasReceber  ContaReceber[]
 
   // Inteligência Comercial
   categoriaClienteId           String?           @map("categoria_cliente_id")
@@ -217,6 +218,7 @@ model Pedido {
   pagamentosReais   PedidoPagamentoReal[]
   itensDevolvidos   EntregaItemDevolvido[]
   caixaConferencias CaixaEntregaConferida[]
+  contaReceber      ContaReceber?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -312,11 +314,12 @@ model Vendedor {
   amostrasSolicitadas  Amostra[]        @relation("AmostrasSolicitadas")
 
   embarques        Embarque[]
-  pagamentosFiados PedidoPagamentoReal[] @relation("PagamentosFiados")
-  despesas         Despesa[]             @relation("DespesasDoVendedor")
-  caixasDiarios    CaixaDiario[]
-  metasMensais     MetaMensalVendedor[]
-  roteirizacao     Roteirizacao?
+  pagamentosFiados  PedidoPagamentoReal[] @relation("PagamentosFiados")
+  despesas          Despesa[]             @relation("DespesasDoVendedor")
+  caixasDiarios     CaixaDiario[]
+  metasMensais      MetaMensalVendedor[]
+  roteirizacao      Roteirizacao?
+  baixasRealizadas  Parcela[]             @relation("BaixasRealizadas")
 
   @@map("vendedores")
 }
@@ -970,4 +973,53 @@ model CategoriaCliente {
   leads    Lead[]
 
   @@map("categorias_cliente")
+}
+
+// ── Contas a Receber ──
+
+model ContaReceber {
+  id         String  @id @default(uuid())
+  pedidoId   String? @unique @map("pedido_id")
+  pedido     Pedido? @relation(fields: [pedidoId], references: [id])
+  clienteId  String  @map("cliente_id")
+  cliente    Cliente @relation(fields: [clienteId], references: [UUID])
+  origem     String  @default("ESPECIAL") // ESPECIAL | FATURADO_CA
+  valorTotal Decimal @db.Decimal(12, 2) @map("valor_total")
+  status     String  @default("ABERTO") // ABERTO | PARCIAL | QUITADO | CANCELADO
+  observacao String? @db.Text
+
+  parcelas Parcela[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([clienteId])
+  @@index([status])
+  @@map("contas_receber")
+}
+
+model Parcela {
+  id             String       @id @default(uuid())
+  contaReceberId String       @map("conta_receber_id")
+  contaReceber   ContaReceber @relation(fields: [contaReceberId], references: [id], onDelete: Cascade)
+  numeroParcela  Int          @map("numero_parcela")
+  valor          Decimal      @db.Decimal(12, 2)
+  dataVencimento DateTime     @map("data_vencimento")
+
+  // Baixa
+  dataPagamento  DateTime? @map("data_pagamento")
+  valorPago      Decimal?  @db.Decimal(12, 2) @map("valor_pago")
+  formaPagamento String?   @map("forma_pagamento")
+  baixadoPorId   String?   @map("baixado_por_id")
+  baixadoPor     Vendedor? @relation("BaixasRealizadas", fields: [baixadoPorId], references: [id])
+  status         String    @default("PENDENTE") // PENDENTE | PAGO | VENCIDO | CANCELADO
+  observacao     String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([contaReceberId])
+  @@index([dataVencimento])
+  @@index([status])
+  @@map("parcelas")
 }

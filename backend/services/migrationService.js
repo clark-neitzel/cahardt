@@ -658,7 +658,45 @@ const migrationService = {
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='atendimentos' AND column_name='transferencia_vista_origem') THEN
                     ALTER TABLE "atendimentos" ADD COLUMN "transferencia_vista_origem" BOOLEAN NOT NULL DEFAULT FALSE;
                 END IF;
-            END $$;`
+            END $$;`,
+
+            // ── Contas a Receber ──
+            `CREATE TABLE IF NOT EXISTS "contas_receber" (
+                "id" TEXT NOT NULL,
+                "pedido_id" TEXT,
+                "cliente_id" TEXT NOT NULL,
+                "origem" TEXT NOT NULL DEFAULT 'ESPECIAL',
+                "valor_total" DECIMAL(12,2) NOT NULL DEFAULT 0,
+                "status" TEXT NOT NULL DEFAULT 'ABERTO',
+                "observacao" TEXT,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "contas_receber_pkey" PRIMARY KEY ("id"),
+                CONSTRAINT "contas_receber_pedido_id_key" UNIQUE ("pedido_id")
+            )`,
+            `CREATE INDEX IF NOT EXISTS "contas_receber_cliente_id_idx" ON "contas_receber"("cliente_id")`,
+            `CREATE INDEX IF NOT EXISTS "contas_receber_status_idx" ON "contas_receber"("status")`,
+
+            `CREATE TABLE IF NOT EXISTS "parcelas" (
+                "id" TEXT NOT NULL,
+                "conta_receber_id" TEXT NOT NULL,
+                "numero_parcela" INTEGER NOT NULL,
+                "valor" DECIMAL(12,2) NOT NULL DEFAULT 0,
+                "data_vencimento" TIMESTAMP(3) NOT NULL,
+                "data_pagamento" TIMESTAMP(3),
+                "valor_pago" DECIMAL(12,2),
+                "forma_pagamento" TEXT,
+                "baixado_por_id" TEXT,
+                "status" TEXT NOT NULL DEFAULT 'PENDENTE',
+                "observacao" TEXT,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "parcelas_pkey" PRIMARY KEY ("id"),
+                CONSTRAINT "parcelas_conta_receber_id_fkey" FOREIGN KEY ("conta_receber_id") REFERENCES "contas_receber"("id") ON DELETE CASCADE
+            )`,
+            `CREATE INDEX IF NOT EXISTS "parcelas_conta_receber_id_idx" ON "parcelas"("conta_receber_id")`,
+            `CREATE INDEX IF NOT EXISTS "parcelas_data_vencimento_idx" ON "parcelas"("data_vencimento")`,
+            `CREATE INDEX IF NOT EXISTS "parcelas_status_idx" ON "parcelas"("status")`
         ];
 
         for (const [index, cmd] of commands.entries()) {

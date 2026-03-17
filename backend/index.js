@@ -32,6 +32,7 @@ const categoriasProdutoRoutes = require('./routes/categoriasProduto'); // Inteli
 const categoriasClienteRoutes = require('./routes/categoriasCliente'); // Inteligência Comercial
 const insightRoutes = require('./routes/insights'); // Inteligência Comercial - Insights Analíticos
 const amostraRoutes = require('./routes/amostraRoutes'); // Amostras (mini-pedidos)
+const contasReceberRoutes = require('./routes/contasReceber'); // Contas a Receber
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -81,6 +82,7 @@ app.use('/api/categorias-produto', authMiddleware, categoriasProdutoRoutes); // 
 app.use('/api/categorias-cliente', authMiddleware, categoriasClienteRoutes); // Inteligência Comercial
 app.use('/api/insights', authMiddleware, insightRoutes); // Inteligência Comercial - Motor
 app.use('/api/amostras', authMiddleware, amostraRoutes); // Amostras (mini-pedidos)
+app.use('/api/contas-receber', contasReceberRoutes); // Contas a Receber (auth inside)
 
 app.use('/api/migrations', migrationRoutes); // Migration endpoint
 

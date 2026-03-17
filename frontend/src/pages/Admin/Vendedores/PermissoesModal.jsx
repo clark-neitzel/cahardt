@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Shield } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
+import configService from '../../../services/configService';
+import tabelaPrecoService from '../../../services/tabelaPrecoService';
 import toast from 'react-hot-toast';
 
 const DEFAULT_PERMISSIONS = {
@@ -31,6 +33,11 @@ const DEFAULT_PERMISSIONS = {
     // Pedidos Especiais
     Pode_Criar_Especial: false,
     Pode_Aprovar_Especial: false,
+    categoriasEspeciais: [], // Categorias extras visíveis em pedidos especiais
+    condicoesEspeciais: [], // Condições de pagamento permitidas para pedidos especiais
+    // Financeiro
+    Pode_Acessar_Contas_Receber: false,
+    Pode_Baixar_Contas_Receber: false,
     // Utilitários Admin
     Pode_Resetar_Dados: false,
     admin: false // Flag Global Mestre
@@ -52,6 +59,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     const [senha, setSenha] = useState('');
     const [permissoes, setPermissoes] = useState(DEFAULT_PERMISSIONS);
     const [saving, setSaving] = useState(false);
+    const [todasCategorias, setTodasCategorias] = useState([]);
+    const [todasCondicoes, setTodasCondicoes] = useState([]);
 
     useEffect(() => {
         if (vendedor) {
@@ -70,6 +79,10 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
             }
             setPermissoes(parsedPermissoes);
         }
+        // Carregar categorias de produto disponíveis
+        configService.getCategorias().then(cats => setTodasCategorias(cats || [])).catch(() => {});
+        // Carregar condições de pagamento ativas
+        tabelaPrecoService.listar(true).then(conds => setTodasCondicoes(conds || [])).catch(() => {});
     }, [vendedor]);
 
     const toggleView = (tab) => {
@@ -414,6 +427,104 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <div>
                                     <span className="text-purple-900 font-bold block">Pode Aprovar Pedido Especial</span>
                                     <span className="text-purple-700 text-xs">Permite aprovar/faturar pedidos especiais pendentes na aba Especiais da lista de pedidos.</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        {/* Categorias Extras para Especiais */}
+                        {!!permissoes.Pode_Criar_Especial && todasCategorias.length > 0 && (
+                            <div className="mt-4 bg-purple-50 p-4 rounded-md border border-purple-200">
+                                <h5 className="text-sm font-bold text-purple-900 mb-2">Categorias Extras (Pedido Especial)</h5>
+                                <p className="text-xs text-purple-700 mb-3">
+                                    Selecione categorias adicionais que este vendedor poderá ver ao criar pedidos especiais, além das configuradas globalmente.
+                                </p>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                                    {todasCategorias.map(cat => (
+                                        <label key={cat} className="flex items-center space-x-2 text-xs cursor-pointer p-1.5 hover:bg-purple-100 rounded transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-purple-300 text-purple-600 focus:ring-purple-500 h-3.5 w-3.5"
+                                                checked={(permissoes.categoriasEspeciais || []).includes(cat)}
+                                                onChange={(e) => {
+                                                    const current = permissoes.categoriasEspeciais || [];
+                                                    const updated = e.target.checked
+                                                        ? [...current, cat]
+                                                        : current.filter(c => c !== cat);
+                                                    setPermissoes(prev => ({ ...prev, categoriasEspeciais: updated }));
+                                                }}
+                                            />
+                                            <span className="text-purple-800">{cat}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                                <p className="text-[10px] text-purple-500 mt-2">
+                                    {(permissoes.categoriasEspeciais || []).length} categoria(s) extra(s) selecionada(s)
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Condições de Pagamento para Especiais */}
+                        {!!permissoes.Pode_Criar_Especial && todasCondicoes.length > 0 && (
+                            <div className="mt-4 bg-purple-50 p-4 rounded-md border border-purple-200">
+                                <h5 className="text-sm font-bold text-purple-900 mb-2">Condições de Pagamento (Pedido Especial)</h5>
+                                <p className="text-xs text-purple-700 mb-3">
+                                    Selecione quais condições de pagamento este vendedor pode usar em pedidos especiais. Se nenhuma for selecionada, todas estarão disponíveis.
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                                    {todasCondicoes.map(cond => (
+                                        <label key={cond.idCondicao || cond.id} className="flex items-center space-x-2 text-xs cursor-pointer p-1.5 hover:bg-purple-100 rounded transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-purple-300 text-purple-600 focus:ring-purple-500 h-3.5 w-3.5"
+                                                checked={(permissoes.condicoesEspeciais || []).includes(cond.idCondicao || cond.id)}
+                                                onChange={(e) => {
+                                                    const condId = cond.idCondicao || cond.id;
+                                                    const current = permissoes.condicoesEspeciais || [];
+                                                    const updated = e.target.checked
+                                                        ? [...current, condId]
+                                                        : current.filter(c => c !== condId);
+                                                    setPermissoes(prev => ({ ...prev, condicoesEspeciais: updated }));
+                                                }}
+                                            />
+                                            <span className="text-purple-800">{cond.nome || cond.descricao || cond.idCondicao}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                                <p className="text-[10px] text-purple-500 mt-2">
+                                    {(permissoes.condicoesEspeciais || []).length} condição(ões) selecionada(s)
+                                    {(permissoes.condicoesEspeciais || []).length === 0 && ' — todas disponíveis'}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Financeiro */}
+                    <div className="border-t pt-4">
+                        <h4 className="font-medium text-gray-900 mb-4">Financeiro</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-emerald-50 p-4 rounded-md border border-emerald-200">
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-emerald-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Acessar_Contas_Receber}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Acessar_Contas_Receber: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-emerald-900 font-bold block">Pode Acessar Contas a Receber</span>
+                                    <span className="text-emerald-700 text-xs">Visualiza a tela de contas a receber com parcelas e status dos pagamentos.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-emerald-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Baixar_Contas_Receber}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Baixar_Contas_Receber: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-emerald-900 font-bold block">Pode Dar Baixa em Parcelas</span>
+                                    <span className="text-emerald-700 text-xs">Permite registrar pagamentos e estornar baixas nas contas a receber.</span>
                                 </div>
                             </label>
                         </div>

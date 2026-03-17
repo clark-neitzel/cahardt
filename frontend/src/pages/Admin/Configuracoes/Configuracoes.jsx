@@ -208,6 +208,7 @@ const Configuracoes = () => {
     const { user } = useAuth();
     const [categorias, setCategorias] = useState([]);
     const [selectedCategorias, setSelectedCategorias] = useState([]);
+    const [selectedCategoriasEspecial, setSelectedCategoriasEspecial] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState(null);
@@ -249,9 +250,10 @@ const Configuracoes = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [cats, currentConfig, tiposConfig, origensConfig, acoesConfig, acoesLeadConfig, grupos, logs, vendedoresData] = await Promise.all([
+            const [cats, currentConfig, currentConfigEspecial, tiposConfig, origensConfig, acoesConfig, acoesLeadConfig, grupos, logs, vendedoresData] = await Promise.all([
                 configService.getCategorias(),
                 configService.get('categorias_vendas'),
+                configService.get('categorias_especial').catch(() => null),
                 configService.get('tipos_atendimento').catch(() => null),
                 configService.get('origens_lead').catch(() => null),
                 configService.get('acoes_atendimento').catch(() => null),
@@ -262,6 +264,7 @@ const Configuracoes = () => {
             ]);
             setCategorias(cats);
             setSelectedCategorias(Array.isArray(currentConfig) ? currentConfig : []);
+            setSelectedCategoriasEspecial(Array.isArray(currentConfigEspecial) ? currentConfigEspecial : []);
             setTipos(Array.isArray(tiposConfig) && tiposConfig.length > 0 ? tiposConfig : TIPOS_PADRAO);
             setOrigens(Array.isArray(origensConfig) && origensConfig.length > 0 ? origensConfig : ORIGENS_PADRAO);
             setAcoes(Array.isArray(acoesConfig) && acoesConfig.length > 0 ? acoesConfig : ACOES_PADRAO);
@@ -322,11 +325,20 @@ const Configuracoes = () => {
         );
     };
 
+    const handleToggleCategoriaEspecial = (cat) => {
+        setSelectedCategoriasEspecial(prev =>
+            prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+        );
+    };
+
     const handleSave = async () => {
         try {
             setSaving(true);
             setMessage(null);
-            await configService.save('categorias_vendas', selectedCategorias);
+            await Promise.all([
+                configService.save('categorias_vendas', selectedCategorias),
+                configService.save('categorias_especial', selectedCategoriasEspecial)
+            ]);
             setMessage({ type: 'success', text: 'Configurações salvas com sucesso!' });
             setTimeout(() => setMessage(null), 3000);
         } catch (error) {
@@ -476,28 +488,51 @@ const Configuracoes = () => {
                 </div>
                 <div className="p-6">
                     <div className="mb-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Categorias Visíveis</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Categorias Visíveis por Tipo de Pedido</label>
                         <p className="text-xs text-gray-500 mb-4">
-                            Selecione as categorias que devem aparecer no catálogo. Se nenhuma for selecionada, todas aparecerão (ou nenhuma, dependendo da regra).
-                            Recomendamos selecionar explicitamente as desejadas.
+                            Marque em quais contextos cada categoria deve aparecer. <strong>Catálogo/Normal</strong>: pedidos regulares. <strong>Especial</strong>: pedidos especiais (sem nota).
                         </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto p-4 border rounded-md bg-gray-50">
+                        <div className="max-h-96 overflow-y-auto border rounded-md bg-gray-50">
                             {categorias.length === 0 ? (
-                                <p className="text-sm text-gray-400 col-span-3 text-center">Nenhuma categoria encontrada nos produtos.</p>
-                            ) : categorias.map(cat => (
-                                <label key={cat} className="flex items-center space-x-3 p-2 bg-white rounded border border-gray-200 hover:bg-blue-50 cursor-pointer transition-colors">
-                                    <input
-                                        type="checkbox"
-                                        className="h-5 w-5 text-primary focus:ring-primary border-gray-300 rounded"
-                                        checked={selectedCategorias.includes(cat)}
-                                        onChange={() => handleToggleCategoria(cat)}
-                                    />
-                                    <span className="text-sm text-gray-700 font-medium">{cat}</span>
-                                </label>
-                            ))}
+                                <p className="text-sm text-gray-400 text-center p-4">Nenhuma categoria encontrada nos produtos.</p>
+                            ) : (
+                                <table className="w-full text-sm">
+                                    <thead className="sticky top-0 bg-gray-100 border-b">
+                                        <tr>
+                                            <th className="text-left py-2 px-4 font-semibold text-gray-600">Categoria</th>
+                                            <th className="text-center py-2 px-4 font-semibold text-blue-600 w-32">Catálogo / Normal</th>
+                                            <th className="text-center py-2 px-4 font-semibold text-purple-600 w-32">Especial</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {categorias.map(cat => (
+                                            <tr key={cat} className="hover:bg-white transition-colors">
+                                                <td className="py-2 px-4 font-medium text-gray-700">{cat}</td>
+                                                <td className="py-2 px-4 text-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-5 w-5 text-primary focus:ring-primary border-gray-300 rounded cursor-pointer"
+                                                        checked={selectedCategorias.includes(cat)}
+                                                        onChange={() => handleToggleCategoria(cat)}
+                                                    />
+                                                </td>
+                                                <td className="py-2 px-4 text-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-5 w-5 text-purple-600 focus:ring-purple-500 border-gray-300 rounded cursor-pointer"
+                                                        checked={selectedCategoriasEspecial.includes(cat)}
+                                                        onChange={() => handleToggleCategoriaEspecial(cat)}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
-                        <div className="mt-2 text-right text-xs text-gray-500">
-                            {selectedCategorias.length} categorias selecionadas de {categorias.length}.
+                        <div className="mt-2 flex justify-between text-xs text-gray-500">
+                            <span>{selectedCategorias.length} normal | {selectedCategoriasEspecial.length} especial</span>
+                            <span>{categorias.length} categorias no total</span>
                         </div>
                     </div>
 

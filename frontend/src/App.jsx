@@ -29,6 +29,7 @@ import PainelMotorista from './pages/Motorista/Entregas/PainelMotorista';
 import DespesasPage from './pages/Caixa/DespesasPage';
 import CaixaDiarioPage from './pages/Caixa/CaixaDiarioPage';
 import RelatorioCaixaPrint from './pages/Caixa/RelatorioCaixaPrint';
+import ContasReceberPage from './pages/Financeiro/ContasReceberPage';
 
 import {
   Menu, X, LogOut,
@@ -92,7 +93,7 @@ const Layout = ({ children }) => {
       : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium";
 
   const showLogistica = hasPermission('Pode_Acessar_Embarque') || hasPermission('Pode_Ver_Todas_Entregas');
-  const showFinanceiro = hasPermission('Pode_Acessar_Caixa') || hasPermission('Pode_Ver_Todas_Entregas');
+  const showFinanceiro = hasPermission('Pode_Acessar_Caixa') || hasPermission('Pode_Ver_Todas_Entregas') || hasPermission('Pode_Acessar_Contas_Receber');
   const showAdmin = hasPermission('produtos') || hasPermission('vendedores') || hasPermission('sync') || user?.permissoes?.admin;
   const showConfig = hasPermission('configuracoes');
 
@@ -133,6 +134,7 @@ const Layout = ({ children }) => {
           {hasPermission('Pode_Acessar_Caixa') && <SidebarItem to="/caixa" icon={Wallet} label="Caixa" />}
           {hasPermission('Pode_Acessar_Caixa') && <SidebarItem to="/despesas" icon={Receipt} label="Despesas" />}
           {hasPermission('Pode_Ver_Todas_Entregas') && <SidebarItem to="/admin/auditoria-entregas" icon={Search} label="Auditoria" />}
+          {hasPermission('Pode_Acessar_Contas_Receber') && <SidebarItem to="/financeiro/contas-receber" icon={DollarSign} label="Contas a Receber" />}
 
           {/* Admin */}
           {showAdmin && <SidebarSection label="Admin" />}
@@ -234,6 +236,9 @@ const Layout = ({ children }) => {
               {hasPermission('Pode_Ver_Todas_Entregas') && (
                 <NavLink to="/admin/auditoria-entregas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Auditoria Financeira</NavLink>
               )}
+              {hasPermission('Pode_Acessar_Contas_Receber') && (
+                <NavLink to="/financeiro/contas-receber" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Contas a Receber</NavLink>
+              )}
               {hasPermission('sync') && (
                 <NavLink to="/admin/sync" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Sincronizar</NavLink>
               )}
@@ -303,6 +308,9 @@ function App() {
 
               {/* ROTAS DO MOTORISTA (APP MOBILE) */}
               <Route path="/minhas-entregas" element={<PrivateRoute tab="Pode_Executar_Entregas"><PainelMotorista /></PrivateRoute>} />
+
+              {/* Financeiro */}
+              <Route path="/financeiro/contas-receber" element={<PrivateRoute tab="Pode_Acessar_Contas_Receber"><ContasReceberPage /></PrivateRoute>} />
 
               {/* Caixa Diário e Despesas */}
               <Route path="/despesas" element={<PrivateRoute tab="Pode_Acessar_Caixa"><DespesasPage /></PrivateRoute>} />

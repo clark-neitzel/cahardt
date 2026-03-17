@@ -146,13 +146,13 @@ const pedidoService = {
                     observacoes,
                     especial: !!especial,
                     numero: numeroEspecial || undefined,
-                    tipoPagamento: especial ? 'DINHEIRO' : tipoPagamento,
-                    opcaoCondicaoPagamento: especial ? undefined : opcaoCondicaoPagamento,
-                    nomeCondicaoPagamento: especial ? 'Especial - À vista' : (nomeCondicaoPagamento || null),
-                    qtdParcelas: especial ? 1 : (qtdParcelas ? parseInt(qtdParcelas) : 1),
+                    tipoPagamento: tipoPagamento || (especial ? 'DINHEIRO' : undefined),
+                    opcaoCondicaoPagamento: opcaoCondicaoPagamento || undefined,
+                    nomeCondicaoPagamento: nomeCondicaoPagamento || (especial ? 'Especial' : null),
+                    qtdParcelas: qtdParcelas ? parseInt(qtdParcelas) : 1,
                     primeiroVencimento: primeiroVencimento ? new Date(primeiroVencimento) : undefined,
-                    intervaloDias: especial ? 0 : (intervaloDias ? parseInt(intervaloDias) : 0),
-                    idContaFinanceira: especial ? undefined : idContaFinanceira,
+                    intervaloDias: intervaloDias ? parseInt(intervaloDias) : 0,
+                    idContaFinanceira: idContaFinanceira || undefined,
                     idCategoria,
                     latLng,
                     canalOrigem,
@@ -207,6 +207,41 @@ const pedidoService = {
                 setTimeout(() => {
                     clienteInsightService.recalcularCliente(clienteId).catch(console.error);
                 }, 0);
+            }
+
+            // Gerar Conta a Receber para pedidos especiais
+            if (especial && statusEnvio === 'ENVIAR') {
+                const valorTotal = itensData.reduce((s, i) => s + (i.valor * i.quantidade), 0);
+                const numParcelas = parseInt(qtdParcelas) || 1;
+                const intervalo = parseInt(intervaloDias) || 0;
+                const baseDate = primeiroVencimento ? new Date(primeiroVencimento) : new Date(dataVenda);
+                const valorParcela = Math.round((valorTotal / numParcelas) * 100) / 100;
+
+                const parcelasData = [];
+                for (let i = 0; i < numParcelas; i++) {
+                    const vencimento = new Date(baseDate);
+                    vencimento.setDate(vencimento.getDate() + (i * intervalo));
+                    // Ajustar última parcela para fechar centavos
+                    const val = i === numParcelas - 1
+                        ? Math.round((valorTotal - valorParcela * (numParcelas - 1)) * 100) / 100
+                        : valorParcela;
+                    parcelasData.push({
+                        numeroParcela: i + 1,
+                        valor: val,
+                        dataVencimento: vencimento
+                    });
+                }
+
+                await tx.contaReceber.create({
+                    data: {
+                        pedidoId: novoPedido.id,
+                        clienteId,
+                        origem: 'ESPECIAL',
+                        valorTotal: Math.round(valorTotal * 100) / 100,
+                        status: 'ABERTO',
+                        parcelas: { create: parcelasData }
+                    }
+                });
             }
 
             return novoPedido;

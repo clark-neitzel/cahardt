@@ -103,16 +103,31 @@ const NovoPedido = () => {
 
     const carregouDraftRef = useRef(false);
     const searchInputRef = useRef(null);
+    const categoriasNormalRef = useRef([]);
+    const categoriasEspecialRef = useRef([]);
 
     // Pré-selecionar cliente quando vindo da tela Rota (?clienteId=...)
     const clienteIdFromUrl = searchParams.get('clienteId');
 
     useEffect(() => { carregarDadosBase(); }, []);
 
+    const recarregarProdutos = async (cats) => {
+        const paramsProd = { limit: 1000, ativo: true };
+        if (Array.isArray(cats) && cats.length > 0) paramsProd.categorias = cats.join(',');
+        const produtosData = await produtoService.listar(paramsProd);
+        const listaProdutos = produtosData.data || produtosData || [];
+        setProdutos(listaProdutos);
+    };
+
     const carregarDadosBase = async () => {
         try {
             let cats = [];
+            let catsEspecial = [];
             try { cats = await configService.get('categorias_vendas'); } catch (e) { }
+            try { catsEspecial = await configService.get('categorias_especial'); } catch (e) { }
+            categoriasNormalRef.current = Array.isArray(cats) ? cats : [];
+            categoriasEspecialRef.current = Array.isArray(catsEspecial) ? catsEspecial : [];
+
             const paramsProd = { limit: 1000, ativo: true };
             if (Array.isArray(cats) && cats.length > 0) paramsProd.categorias = cats.join(',');
 
@@ -270,9 +285,21 @@ const NovoPedido = () => {
             else if (typeof cliente.condicoes_pagamento_permitidas === 'string' && cliente.condicoes_pagamento_permitidas.trim().length > 0)
                 idsArray = cliente.condicoes_pagamento_permitidas.split(',').map(s => s.trim());
 
-            let permitidas = idsArray.length > 0
-                ? todasCondicoes.filter(c => idsArray.includes(c.idCondicao) || idsArray.includes(c.id))
-                : (cliente.Condicao_de_pagamento ? [todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento)].filter(Boolean) : []);
+            let permitidas;
+            if (especial) {
+                // Para especial: filtra pelas condições permitidas do vendedor (se configurado)
+                const vendedor = vendedores.find(v => v.id === cliente.idVendedor);
+                const condicoesVendedor = vendedor?.permissoes?.condicoesEspeciais || [];
+                if (condicoesVendedor.length > 0) {
+                    permitidas = todasCondicoes.filter(c => c.ativo !== false && condicoesVendedor.includes(c.idCondicao || c.id));
+                } else {
+                    permitidas = todasCondicoes.filter(c => c.ativo !== false);
+                }
+            } else {
+                permitidas = idsArray.length > 0
+                    ? todasCondicoes.filter(c => idsArray.includes(c.idCondicao) || idsArray.includes(c.id))
+                    : (cliente.Condicao_de_pagamento ? [todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento)].filter(Boolean) : []);
+            }
 
             setCondicoesPermitidas(permitidas);
 
@@ -295,7 +322,7 @@ const NovoPedido = () => {
             // Abrir o formulário (Data/Condição) para o vendedor configurar
             setMostrarFormulario(true);
         }
-    }, [clienteId, clientes, todasCondicoes]);
+    }, [clienteId, clientes, todasCondicoes, especial]);
 
     useEffect(() => {
         if (clienteSelecionado) verificarDataEntrega(dataEntrega, clienteSelecionado);
@@ -537,7 +564,7 @@ const NovoPedido = () => {
 
     const handleSalvar = (statusEnvio) => {
         if (!clienteId || itensMap.size === 0) { toast.error("Preencha cliente e adicione itens.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
-        if (!especial && !condicaoPagamentoId) { toast.error("Selecione uma condição de pagamento.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
+        if (!condicaoPagamentoId) { toast.error("Selecione uma condição de pagamento.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (statusEnvio === 'ENVIAR' && !canalOrigem) { toast.error("Informe o Tipo de Atendimento que resultou nesta venda.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
 
         // Bloqueio de valor mínimo
@@ -1077,21 +1104,23 @@ const NovoPedido = () => {
                                     <div className="flex items-center justify-between bg-purple-50 p-2.5 rounded-md border border-purple-200">
                                         <div>
                                             <span className="text-xs font-bold text-purple-900">Pedido Especial</span>
-                                            <p className="text-[10px] text-purple-700">Sem nota fiscal - pagamento à vista em dinheiro</p>
+                                            <p className="text-[10px] text-purple-700">Sem nota fiscal — categorias e condições especiais</p>
                                         </div>
                                         <label className="relative inline-flex items-center cursor-pointer">
                                             <input
                                                 type="checkbox"
                                                 className="sr-only peer"
                                                 checked={especial}
-                                                onChange={(e) => {
-                                                    setEspecial(e.target.checked);
-                                                    if (e.target.checked) {
-                                                        setCondicaoPagamentoId('__especial__');
-                                                        setMostrarFormulario(false);
-                                                    } else {
-                                                        setCondicaoPagamentoId('');
-                                                    }
+                                                onChange={async (e) => {
+                                                    const isEspecial = e.target.checked;
+                                                    setEspecial(isEspecial);
+                                                    setCondicaoPagamentoId('');
+                                                    // Recarregar produtos com categorias do tipo selecionado
+                                                    const extrasCats = (user?.permissoes?.categoriasEspeciais || []);
+                                                    const cats = isEspecial
+                                                        ? [...new Set([...categoriasEspecialRef.current, ...extrasCats])]
+                                                        : categoriasNormalRef.current;
+                                                    await recarregarProdutos(cats);
                                                 }}
                                             />
                                             <div className="w-9 h-5 bg-gray-300 peer-checked:bg-purple-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
@@ -1100,14 +1129,8 @@ const NovoPedido = () => {
                                 )}
 
                                 {/* Condição de pagamento */}
-                                {especial ? (
-                                    <div className="bg-purple-50 border border-purple-200 rounded-md p-2.5">
-                                        <label className="text-xs text-gray-500 font-medium">Condição de Pagamento</label>
-                                        <p className="text-sm font-semibold text-purple-900 mt-0.5">Especial - À vista em Dinheiro</p>
-                                    </div>
-                                ) : (
-                                    <div className="relative">
-                                        <label className="text-xs text-gray-500 font-medium">Condição de Pagamento</label>
+                                <div className="relative">
+                                    <label className="text-xs text-gray-500 font-medium">Condição de Pagamento {especial && <span className="text-purple-600">(Especial)</span>}</label>
                                         <div
                                             className="mt-0.5 w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm font-semibold flex justify-between items-center cursor-pointer"
                                             onClick={() => setMostrarCondicoesDropdown(!mostrarCondicoesDropdown)}
@@ -1132,8 +1155,7 @@ const NovoPedido = () => {
                                         {condicoesPermitidas.length === 0 && (
                                             <p className="text-red-500 text-xs mt-1">Nenhuma tabela de preço habilitada para este cliente.</p>
                                         )}
-                                    </div>
-                                )}
+                                </div>
 
                                 {/* Observações */}
                                 <div>
