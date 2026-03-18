@@ -22,6 +22,8 @@ const ListaPedidos = () => {
     const [expandedAmostra, setExpandedAmostra] = useState(null);
 
     const podeAprovar = user?.permissoes?.Pode_Aprovar_Especial || user?.permissoes?.admin;
+    const podeReverter = user?.permissoes?.Pode_Reverter_Especial || user?.permissoes?.admin;
+    const [revertendo, setRevertendo] = useState(null);
 
     useEffect(() => {
         carregarPedidos();
@@ -107,6 +109,26 @@ const ListaPedidos = () => {
             toast.error(error.response?.data?.error || 'Erro ao aprovar pedido.');
         } finally {
             setAprovando(null);
+        }
+    };
+
+    const handleReverterEspecial = async (pedidoId) => {
+        if (!podeReverter) return;
+        if (!window.confirm('Tem certeza que deseja reverter este pedido para ABERTO? A conta a receber será cancelada.')) return;
+        try {
+            setRevertendo(pedidoId);
+            await pedidoService.reverterEspecial(pedidoId);
+            toast.success('Pedido revertido para ABERTO!');
+            setPedidos(prev => prev.map(p =>
+                p.id === pedidoId ? { ...p, statusEnvio: 'ABERTO', situacaoCA: null } : p
+            ));
+            if (selectedPedido?.id === pedidoId) {
+                setSelectedPedido(prev => ({ ...prev, statusEnvio: 'ABERTO', situacaoCA: null }));
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao reverter pedido.');
+        } finally {
+            setRevertendo(null);
         }
     };
 
@@ -389,6 +411,16 @@ const ListaPedidos = () => {
                                                 {aprovando === pedido.id ? 'Aprovando...' : 'Aprovar'}
                                             </button>
                                         )}
+                                        {/* Botão Reverter para pedidos especiais aprovados */}
+                                        {pedido.especial && pedido.statusEnvio === 'RECEBIDO' && podeReverter && (
+                                            <button
+                                                onClick={() => handleReverterEspecial(pedido.id)}
+                                                disabled={revertendo === pedido.id}
+                                                className="text-[11px] font-bold px-3 py-1 rounded transition-colors shadow-sm outline-none border bg-red-50 border-red-200 text-red-600 hover:bg-red-100 disabled:opacity-50"
+                                            >
+                                                {revertendo === pedido.id ? 'Revertendo...' : 'Reverter'}
+                                            </button>
+                                        )}
                                         {(() => {
                                             const bloqueadoNoCA = pedido.statusEnvio === 'RECEBIDO' || ['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA);
                                             const podeEditar = pedido.statusEnvio === 'ABERTO' && !bloqueadoNoCA;
@@ -471,6 +503,23 @@ const ListaPedidos = () => {
                                         className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-bold text-sm transition-colors shadow-sm disabled:opacity-50"
                                     >
                                         {aprovando === selectedPedido.id ? 'Aprovando...' : 'Aprovar / Faturar'}
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Bloco reverter no modal para especiais aprovados */}
+                            {selectedPedido.especial && selectedPedido.statusEnvio === 'RECEBIDO' && podeReverter && (
+                                <div className="mb-4 bg-red-50 border border-red-200 p-4 rounded-lg flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-bold text-red-900">Pedido Especial Aprovado</p>
+                                        <p className="text-xs text-red-700 mt-1">Reverter fará o pedido voltar para ABERTO (editável). A conta a receber será cancelada.</p>
+                                    </div>
+                                    <button
+                                        onClick={() => handleReverterEspecial(selectedPedido.id)}
+                                        disabled={revertendo === selectedPedido.id}
+                                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-bold text-sm transition-colors shadow-sm disabled:opacity-50"
+                                    >
+                                        {revertendo === selectedPedido.id ? 'Revertendo...' : 'Reverter para ABERTO'}
                                     </button>
                                 </div>
                             )}

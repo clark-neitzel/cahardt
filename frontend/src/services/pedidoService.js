@@ -55,6 +55,12 @@ const pedidoService = {
         return response.data;
     },
 
+    // Reverter Pedido Especial (desfaz aprovação → volta ABERTO)
+    reverterEspecial: async (id) => {
+        const response = await api.put(`/pedidos/${id}/reverter-especial`);
+        return response.data;
+    },
+
     // Excluir Pedido Existente (Apenas Rascunho/Em Aberto)
     excluir: async (id) => {
         const response = await api.delete(`/pedidos/${id}`);

@@ -8,6 +8,9 @@ router.get('/ultimo-preco', pedidoController.obterUltimoPreco);
 // Buscar histórico de compras por cliente (para novo pedido mobile)
 router.get('/historico-cliente', pedidoController.historicoComprasCliente);
 
+// Relatório de Pedidos (com filtros avançados)
+router.get('/relatorio', pedidoController.relatorio);
+
 // Listagem de Pedidos
 router.get('/', pedidoController.listar);
 
@@ -25,6 +28,9 @@ router.put('/:id/revisado', pedidoController.marcarRevisado);
 
 // Aprovar Pedido Especial (sem nota)
 router.put('/:id/aprovar-especial', pedidoController.aprovarEspecial);
+
+// Reverter Pedido Especial (desfazer aprovação → volta para ABERTO)
+router.put('/:id/reverter-especial', pedidoController.reverterEspecial);
 
 // Excluir Pedido Existente (Apenas Rascunho/ABERTO/ERRO)
 router.delete('/:id', pedidoController.excluir);

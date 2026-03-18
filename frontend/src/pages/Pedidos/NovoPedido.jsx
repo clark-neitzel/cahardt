@@ -428,6 +428,7 @@ const NovoPedido = () => {
     const reavaliarMapaItens = useCallback((mapAtual, condicaoSel, todasPromos, listaProdutos) => {
         const novoMapa = new Map();
         const limitePerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
+        const regras = (especial && condicaoSel?.regrasCategoria) || [];
 
         mapAtual.forEach((item, pid) => {
             const produto = listaProdutos.find(p => p.id === pid);
@@ -435,9 +436,25 @@ const NovoPedido = () => {
             const promoAtiva = todasPromos.get(pid);
             const liberada = checkPromoLiberada(promoAtiva, mapAtual);
 
-            const acrescimo = condicaoSel ? Number(condicaoSel.acrescimoPreco) : 0;
-            const precoTabela = Number(produto.valorVenda) || 0;
-            const precoBaseInicial = liberada ? Number(promoAtiva.precoPromocional) : precoTabela;
+            // Verificar se há regra específica para a categoria CA do produto (somente em especiais)
+            const regraCategoria = especial && produto.categoria
+                ? regras.find(r => r.categoria === produto.categoria)
+                : null;
+
+            let acrescimo, precoBaseInicial;
+            if (regraCategoria) {
+                acrescimo = Number(regraCategoria.acrescimo) || 0;
+                if (regraCategoria.precoBase === 'custoMedio') {
+                    precoBaseInicial = Number(produto.custoMedio) || Number(produto.valorVenda) || 0;
+                } else {
+                    precoBaseInicial = Number(produto.valorVenda) || 0;
+                }
+                if (liberada) precoBaseInicial = Number(promoAtiva.precoPromocional);
+            } else {
+                acrescimo = condicaoSel ? Number(condicaoSel.acrescimoPreco) : 0;
+                const precoTabela = Number(produto.valorVenda) || 0;
+                precoBaseInicial = liberada ? Number(promoAtiva.precoPromocional) : precoTabela;
+            }
             const novoValorBase = precoBaseInicial * (1 + acrescimo / 100);
 
             let novoValorUnitario = item.valorUnitario;
@@ -463,16 +480,22 @@ const NovoPedido = () => {
                 novoValorUnitario = valorMinimoPermitido;
             }
 
+            // Flag: preço abaixo do custo médio (para detecção de fraude em especiais)
+            const custoMedio = Number(produto.custoMedio) || 0;
+            const abaixoCustoMedio = especial && custoMedio > 0 && novoValorUnitario < custoMedio;
+
             novoMapa.set(pid, {
                 ...item,
                 emPromocao: liberada,
                 valorUnitario: Number(novoValorUnitario.toFixed(2)),
                 valorBase: Number(novoValorBase.toFixed(2)),
-                flexUnitario: Number((novoValorUnitario - novoValorBase).toFixed(2))
+                flexUnitario: Number((novoValorUnitario - novoValorBase).toFixed(2)),
+                abaixoCustoMedio,
+                regraCategoria: regraCategoria?.categoria || null
             });
         });
         return novoMapa;
-    }, [checkPromoLiberada, vendedorSelecionado]);
+    }, [checkPromoLiberada, vendedorSelecionado, especial]);
 
     const recalcularItens = useCallback((condicao) => {
         if (!condicao) return;
@@ -873,6 +896,12 @@ const NovoPedido = () => {
                             {qtd > 0 && item && (
                                 <span className={`text-[10px] sm:text-xs font-semibold px-1 py-0 rounded-full ${item.flexUnitario >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                     {item.flexUnitario >= 0 ? '+' : ''}{item.flexUnitario.toFixed(2)}
+                                </span>
+                            )}
+                            {/* Abaixo do custo médio */}
+                            {qtd > 0 && item?.abaixoCustoMedio && (
+                                <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-600 text-white animate-pulse">
+                                    ABAIXO CM
                                 </span>
                             )}
                             {/* Peso */}

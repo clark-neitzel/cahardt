@@ -3,6 +3,7 @@ const router = express.Router();
 const produtoController = require('../controllers/produtoController');
 const upload = require('../middlewares/uploadMiddleware');
 
+router.get('/categorias-ca', produtoController.categoriasCA);
 router.get('/', produtoController.listar);
 router.get('/:id', produtoController.detalhar);
 router.put('/:id', produtoController.atualizar); // Atualizar Produto

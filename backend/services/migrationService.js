@@ -699,7 +699,10 @@ const migrationService = {
             `CREATE INDEX IF NOT EXISTS "parcelas_status_idx" ON "parcelas"("status")`,
 
             // Update 42: Campo permite_fracao em categorias_produto
-            `ALTER TABLE "categorias_produto" ADD COLUMN IF NOT EXISTS "permite_fracao" BOOLEAN NOT NULL DEFAULT FALSE`
+            `ALTER TABLE "categorias_produto" ADD COLUMN IF NOT EXISTS "permite_fracao" BOOLEAN NOT NULL DEFAULT FALSE`,
+
+            // Update 43: Campo regras_categoria em tabela_precos (regras de preço por categoria CA para especiais)
+            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "regras_categoria" JSONB`
         ];
 
         for (const [index, cmd] of commands.entries()) {

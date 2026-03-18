@@ -324,6 +324,62 @@ router.patch('/:id/cancelar', verificarAuth, checkBaixa, async (req, res) => {
     }
 });
 
+// ── PUT /:id/reverter-quitacao — Estornar todas as parcelas pagas (reverter quitação) ──
+router.put('/:id/reverter-quitacao', verificarAuth, async (req, res) => {
+    try {
+        const perms = req._perms || await getPerms(req.user.id);
+        req._perms = perms;
+        if (!perms.admin && !perms.Pode_Reverter_Especial) {
+            return res.status(403).json({ error: 'Sem permissão para estornar quitação.' });
+        }
+
+        const conta = await prisma.contaReceber.findUnique({
+            where: { id: req.params.id },
+            include: { parcelas: true }
+        });
+
+        if (!conta) return res.status(404).json({ error: 'Conta não encontrada.' });
+        if (conta.status !== 'QUITADO' && conta.status !== 'PARCIAL') {
+            return res.status(400).json({ error: 'Conta não está quitada nem parcialmente paga.' });
+        }
+
+        // Estornar todas as parcelas pagas
+        await prisma.parcela.updateMany({
+            where: { contaReceberId: conta.id, status: 'PAGO' },
+            data: {
+                status: 'PENDENTE',
+                valorPago: null,
+                formaPagamento: null,
+                dataPagamento: null,
+                baixadoPorId: null,
+                observacao: null
+            }
+        });
+
+        await prisma.contaReceber.update({
+            where: { id: conta.id },
+            data: { status: 'ABERTO' }
+        });
+
+        // Auditoria
+        await prisma.auditLog.create({
+            data: {
+                acao: 'REVERTER_QUITACAO',
+                entidade: 'ContaReceber',
+                entidadeId: conta.id,
+                detalhes: `Quitação revertida por ${req.user.nome || req.user.login}. ${conta.parcelas.filter(p => p.status === 'PAGO').length} parcela(s) estornada(s).`,
+                usuarioId: req.user.id,
+                usuarioNome: req.user.nome || req.user.login || '-'
+            }
+        });
+
+        res.json({ message: 'Quitação revertida com sucesso! Todas as parcelas voltaram para PENDENTE.' });
+    } catch (error) {
+        console.error('Erro ao reverter quitação:', error);
+        res.status(500).json({ error: 'Erro ao reverter quitação.' });
+    }
+});
+
 // ── ADMIN: Sincronizar contas a receber com pedidos (criar contas faltantes) ──
 router.post('/admin/sincronizar', verificarAuth, async (req, res) => {
     try {

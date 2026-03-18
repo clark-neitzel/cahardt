@@ -33,6 +33,7 @@ const DEFAULT_PERMISSIONS = {
     // Pedidos Especiais
     Pode_Criar_Especial: false,
     Pode_Aprovar_Especial: false,
+    Pode_Reverter_Especial: false,
     categoriasEspeciais: [], // Categorias extras visíveis em pedidos especiais
     condicoesEspeciais: [], // Condições de pagamento permitidas para pedidos especiais
     // Financeiro
@@ -427,6 +428,19 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <div>
                                     <span className="text-purple-900 font-bold block">Pode Aprovar Pedido Especial</span>
                                     <span className="text-purple-700 text-xs">Permite aprovar/faturar pedidos especiais pendentes na aba Especiais da lista de pedidos.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-red-50 rounded transition-colors col-span-full">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-red-300 text-red-600 focus:ring-red-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Reverter_Especial}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Reverter_Especial: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-red-900 font-bold block">Pode Reverter Faturamento Especial</span>
+                                    <span className="text-red-700 text-xs">Nível crítico: Permite reverter pedidos especiais aprovados para ABERTO (editável), desde que não estejam quitados. Também pode estornar quitação.</span>
                                 </div>
                             </label>
                         </div>

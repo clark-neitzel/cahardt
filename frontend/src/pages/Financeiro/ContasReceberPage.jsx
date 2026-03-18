@@ -34,6 +34,7 @@ const loadSavedFilters = () => {
 const ContasReceberPage = () => {
     const { user } = useAuth();
     const podeBaixar = user?.permissoes?.admin || user?.permissoes?.Pode_Baixar_Contas_Receber;
+    const podeReverter = user?.permissoes?.admin || user?.permissoes?.Pode_Reverter_Especial;
 
     const saved = loadSavedFilters();
 
@@ -185,6 +186,17 @@ const ContasReceberPage = () => {
             fetchData();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao cancelar.');
+        }
+    };
+
+    const handleReverterQuitacao = async (contaId) => {
+        if (!confirm('Reverter quitação? Todos os pagamentos desta conta serão estornados e as parcelas voltarão para PENDENTE.')) return;
+        try {
+            await contasReceberService.reverterQuitacao(contaId);
+            toast.success('Quitação revertida!');
+            fetchData();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao reverter quitação.');
         }
     };
 
@@ -541,14 +553,24 @@ const ContasReceberPage = () => {
                                         </div>
 
                                         {/* Ações da conta */}
-                                        {podeBaixar && conta.status !== 'QUITADO' && conta.status !== 'CANCELADO' && (
-                                            <div className="mt-3 pt-3 border-t border-gray-200 flex justify-end">
-                                                <button
-                                                    onClick={() => handleCancelar(conta.id)}
-                                                    className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 bg-red-50 rounded-md hover:bg-red-100 active:bg-red-200 font-medium"
-                                                >
-                                                    <Ban className="h-3.5 w-3.5" /> Cancelar Conta
-                                                </button>
+                                        {(podeBaixar || podeReverter) && conta.status !== 'CANCELADO' && (
+                                            <div className="mt-3 pt-3 border-t border-gray-200 flex justify-end gap-2 flex-wrap">
+                                                {podeReverter && (conta.status === 'QUITADO' || conta.status === 'PARCIAL') && (
+                                                    <button
+                                                        onClick={() => handleReverterQuitacao(conta.id)}
+                                                        className="flex items-center gap-1 px-3 py-1.5 text-xs text-amber-700 bg-amber-50 rounded-md hover:bg-amber-100 active:bg-amber-200 font-medium"
+                                                    >
+                                                        <Undo2 className="h-3.5 w-3.5" /> Reverter Quitação
+                                                    </button>
+                                                )}
+                                                {podeBaixar && conta.status !== 'QUITADO' && (
+                                                    <button
+                                                        onClick={() => handleCancelar(conta.id)}
+                                                        className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 bg-red-50 rounded-md hover:bg-red-100 active:bg-red-200 font-medium"
+                                                    >
+                                                        <Ban className="h-3.5 w-3.5" /> Cancelar Conta
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                     </div>

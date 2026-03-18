@@ -347,6 +347,7 @@ model TabelaPreco {
   debitaCaixa         Boolean  @default(false) @map("debita_caixa")
   ativo               Boolean  @default(true)
   obs                 String?
+  regrasCategoria     Json?    @map("regras_categoria") // Regras de preço por categoria CA para especiais: [{ categoria, precoBase, acrescimo }]
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 

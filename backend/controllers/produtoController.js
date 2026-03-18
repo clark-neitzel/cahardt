@@ -208,6 +208,22 @@ const produtoController = {
             console.error(error);
             res.status(500).json({ error: 'Erro ao atualizar status' });
         }
+    },
+
+    // Listar categorias CA distintas (campo categoria do Produto)
+    categoriasCA: async (req, res) => {
+        try {
+            const result = await prisma.produto.findMany({
+                where: { categoria: { not: null }, ativo: true },
+                select: { categoria: true },
+                distinct: ['categoria'],
+                orderBy: { categoria: 'asc' }
+            });
+            res.json(result.map(r => r.categoria).filter(Boolean));
+        } catch (error) {
+            console.error('Erro ao listar categorias CA:', error);
+            res.status(500).json({ error: 'Erro ao listar categorias.' });
+        }
     }
 };
 

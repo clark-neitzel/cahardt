@@ -157,6 +157,171 @@ const pedidoController = {
         }
     },
 
+    reverterEspecial: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const permissoes = req.user?.permissoes || {};
+
+            if (!permissoes.Pode_Reverter_Especial && !permissoes.admin) {
+                return res.status(403).json({ error: 'Você não tem permissão para reverter pedidos especiais.' });
+            }
+
+            const pedido = await prisma.pedido.findUnique({
+                where: { id },
+                select: { especial: true, statusEnvio: true, situacaoCA: true },
+            });
+            if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+            if (!pedido.especial) return res.status(400).json({ error: 'Este pedido não é especial.' });
+            if (pedido.statusEnvio !== 'RECEBIDO') return res.status(400).json({ error: 'Pedido não está aprovado/faturado.' });
+
+            // Verificar se tem conta a receber QUITADA
+            const conta = await prisma.contaReceber.findFirst({
+                where: { pedidoId: id }
+            });
+            if (conta && conta.status === 'QUITADO') {
+                return res.status(400).json({ error: 'Não é possível reverter: conta já está quitada. Estorne a quitação primeiro.' });
+            }
+
+            // Reverter pedido para ABERTO
+            const pedidoRevertido = await prisma.pedido.update({
+                where: { id },
+                data: {
+                    statusEnvio: 'ABERTO',
+                    situacaoCA: null,
+                    enviadoEm: null
+                }
+            });
+
+            // Se tinha conta a receber, cancelar parcelas pendentes e atualizar status
+            if (conta) {
+                await prisma.$transaction([
+                    prisma.parcela.updateMany({
+                        where: { contaReceberId: conta.id, status: { not: 'PAGO' } },
+                        data: { status: 'CANCELADO' }
+                    }),
+                    prisma.contaReceber.update({
+                        where: { id: conta.id },
+                        data: { status: 'CANCELADO' }
+                    })
+                ]);
+            }
+
+            // Registrar auditoria
+            await prisma.auditLog.create({
+                data: {
+                    acao: 'REVERTER_ESPECIAL',
+                    entidade: 'Pedido',
+                    entidadeId: id,
+                    detalhes: `Pedido especial revertido para ABERTO por ${req.user.nome || req.user.login}`,
+                    usuarioId: req.user.id,
+                    usuarioNome: req.user.nome || req.user.login || '-'
+                }
+            });
+
+            res.json({ message: 'Pedido revertido para ABERTO com sucesso.', pedido: pedidoRevertido });
+        } catch (error) {
+            console.error('Erro ao reverter pedido especial:', error);
+            res.status(500).json({ error: 'Erro ao reverter pedido especial.' });
+        }
+    },
+
+    relatorio: async (req, res) => {
+        try {
+            const { dataVendaDe, dataVendaAte, vendedorId, clienteId, statusEnvio, especial, situacaoCA, statusEntrega } = req.query;
+
+            // Permissão: só admin ou quem pode ver todos os pedidos
+            const permissoes = req.user?.permissoes || {};
+            const podeVerTodos = permissoes.admin || permissoes.pedidos?.clientes === 'todos';
+
+            const where = {};
+
+            // Se não pode ver todos, restringe ao próprio vendedor
+            if (!podeVerTodos) {
+                where.vendedorId = req.user.id;
+            } else if (vendedorId) {
+                where.vendedorId = vendedorId;
+            }
+
+            if (clienteId) where.clienteId = clienteId;
+            if (statusEnvio) where.statusEnvio = statusEnvio;
+            if (situacaoCA) where.situacaoCA = situacaoCA;
+            if (statusEntrega) where.statusEntrega = statusEntrega;
+
+            if (especial === 'true') where.especial = true;
+            else if (especial === 'false') where.especial = false;
+
+            // Filtro de data
+            if (dataVendaDe || dataVendaAte) {
+                where.dataVenda = {};
+                if (dataVendaDe) where.dataVenda.gte = new Date(dataVendaDe + 'T00:00:00.000Z');
+                if (dataVendaAte) where.dataVenda.lte = new Date(dataVendaAte + 'T23:59:59.999Z');
+            }
+
+            // Excluir excluídos por padrão
+            if (!statusEnvio) {
+                where.statusEnvio = { not: 'EXCLUIDO' };
+            }
+
+            const pedidos = await prisma.pedido.findMany({
+                where,
+                include: {
+                    cliente: { select: { Nome: true, NomeFantasia: true, Documento: true } },
+                    vendedor: { select: { nome: true } },
+                    itens: {
+                        include: { produto: { select: { nome: true, codigo: true, categoria: true } } }
+                    },
+                    contaReceber: { select: { status: true, valorTotal: true } }
+                },
+                orderBy: { dataVenda: 'desc' }
+            });
+
+            // Calcular totais
+            const totalPedidos = pedidos.length;
+            let valorTotalGeral = 0;
+            let totalItens = 0;
+
+            const pedidosFormatados = pedidos.map(p => {
+                const valorTotal = p.itens.reduce((sum, item) => sum + Number(item.valorTotal || 0), 0);
+                const qtdItens = p.itens.reduce((sum, item) => sum + Number(item.quantidade || 0), 0);
+                valorTotalGeral += valorTotal;
+                totalItens += qtdItens;
+
+                return {
+                    id: p.id,
+                    numero: p.numero,
+                    dataVenda: p.dataVenda,
+                    clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome || '-',
+                    clienteDocumento: p.cliente?.Documento || '-',
+                    vendedorNome: p.vendedor?.nome || '-',
+                    especial: p.especial,
+                    statusEnvio: p.statusEnvio,
+                    situacaoCA: p.situacaoCA,
+                    statusEntrega: p.statusEntrega,
+                    condicaoPagamento: p.nomeCondicaoPagamento || '-',
+                    valorTotal,
+                    qtdItens,
+                    flexTotal: Number(p.flexTotal || 0),
+                    contaReceberStatus: p.contaReceber?.status || null,
+                    canalOrigem: p.canalOrigem || '-',
+                    observacoes: p.observacoes || ''
+                };
+            });
+
+            res.json({
+                pedidos: pedidosFormatados,
+                resumo: {
+                    totalPedidos,
+                    valorTotalGeral,
+                    totalItens,
+                    ticketMedio: totalPedidos > 0 ? valorTotalGeral / totalPedidos : 0
+                }
+            });
+        } catch (error) {
+            console.error('Erro ao gerar relatório:', error);
+            res.status(500).json({ error: 'Erro ao gerar relatório' });
+        }
+    },
+
     excluir: async (req, res) => {
         try {
             const id = req.params.id;

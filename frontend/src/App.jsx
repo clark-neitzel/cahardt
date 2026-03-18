@@ -31,12 +31,13 @@ import DespesasPage from './pages/Caixa/DespesasPage';
 import CaixaDiarioPage from './pages/Caixa/CaixaDiarioPage';
 import RelatorioCaixaPrint from './pages/Caixa/RelatorioCaixaPrint';
 import ContasReceberPage from './pages/Financeiro/ContasReceberPage';
+import RelatorioPedidos from './pages/Relatorios/RelatorioPedidos';
 
 import {
   Menu, X, LogOut,
   LayoutDashboard, BookOpen, ClipboardList, Map, Target, Users,
   PackageCheck, Truck, Wallet, Receipt, Search,
-  Box, UserCog, Car, RefreshCw,
+  Box, UserCog, Car, RefreshCw, FileText,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
@@ -121,6 +122,7 @@ const Layout = ({ children }) => {
           <SidebarSection label="Vendas" />
           {hasPermission('catalogo') && <SidebarItem to="/catalogo" icon={BookOpen} label="Catálogo" />}
           {hasPermission('pedidos') && <SidebarItem to="/pedidos" icon={ClipboardList} label="Pedidos" />}
+          {hasPermission('pedidos') && <SidebarItem to="/relatorios/pedidos" icon={FileText} label="Relatórios" />}
           {hasPermission('pedidos') && <SidebarItem to="/rota" icon={Map} label="Rota" />}
           {hasPermission('rota') && <SidebarItem to="/leads" icon={Target} label="Leads" />}
           {hasPermission('clientes') && <SidebarItem to="/clientes" icon={Users} label="Clientes" />}
@@ -203,6 +205,9 @@ const Layout = ({ children }) => {
               )}
               {hasPermission('pedidos') && (
                 <NavLink to="/pedidos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Pedidos</NavLink>
+              )}
+              {hasPermission('pedidos') && (
+                <NavLink to="/relatorios/pedidos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Relatórios</NavLink>
               )}
               {hasPermission('pedidos') && (
                 <NavLink to="/rota" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Rota / Leads</NavLink>
@@ -296,6 +301,9 @@ function App() {
               <Route path="/pedidos/novo" element={<PrivateRoute tab="pedidos"><NovoPedido /></PrivateRoute>} />
               <Route path="/pedidos/editar/:id" element={<PrivateRoute tab="pedidos"><NovoPedido /></PrivateRoute>} />
               <Route path="/pedidos/imprimir/:id" element={<PrivateRoute tab="pedidos"><ImpressaoPedido /></PrivateRoute>} />
+
+              {/* Relatórios */}
+              <Route path="/relatorios/pedidos" element={<PrivateRoute tab="pedidos"><RelatorioPedidos /></PrivateRoute>} />
 
               {/* Rota / Leads (CRM) */}
               <Route path="/rota" element={<PrivateRoute tab="pedidos"><RotaLeads /></PrivateRoute>} />

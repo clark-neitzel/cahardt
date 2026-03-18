@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
 import contaFinanceiraService from '../../services/contaFinanceiraService';
-import { BadgeDollarSign, Landmark, X, Save, Plus, Wallet } from 'lucide-react';
+import api from '../../services/api';
+import { BadgeDollarSign, Landmark, X, Save, Plus, Wallet, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const TabelaPrecos = () => {
@@ -14,6 +15,7 @@ const TabelaPrecos = () => {
     const [isCreating, setIsCreating] = useState(false);
     const [saving, setSaving] = useState(false);
     const [editForm, setEditForm] = useState({ acrescimoPreco: 0, valorMinimo: 0, ativo: true, debitaCaixa: false });
+    const [categoriasCA, setCategoriasCA] = useState([]);
 
     useEffect(() => {
         carregarDados();
@@ -22,12 +24,14 @@ const TabelaPrecos = () => {
     const carregarDados = async () => {
         try {
             setLoading(true);
-            const [dados, bancosData] = await Promise.all([
+            const [dados, bancosData, catsRes] = await Promise.all([
                 tabelaPrecoService.listar(),
-                contaFinanceiraService.listar()
+                contaFinanceiraService.listar(),
+                api.get('/produtos/categorias-ca').then(r => r.data).catch(() => [])
             ]);
             setCondicoes(dados);
             setBancos(bancosData.filter(b => b.ativo));
+            setCategoriasCA(catsRes);
         } catch (error) {
             toast.error('Erro ao carregar dados');
             console.error(error);
@@ -50,7 +54,8 @@ const TabelaPrecos = () => {
             acrescimoPreco: item.acrescimoPreco || 0,
             valorMinimo: item.valorMinimo || 0,
             debitaCaixa: item.debitaCaixa || false,
-            ativo: item.ativo
+            ativo: item.ativo,
+            regrasCategoria: item.regrasCategoria || []
         });
     };
 
@@ -70,7 +75,8 @@ const TabelaPrecos = () => {
             acrescimoPreco: 0,
             valorMinimo: 0,
             debitaCaixa: false,
-            ativo: true
+            ativo: true,
+            regrasCategoria: []
         });
     };
 
@@ -199,6 +205,11 @@ const TabelaPrecos = () => {
                                                         <Landmark className="h-3 w-3" /> Exige Banco
                                                     </div>
                                                 )}
+                                                {item.regrasCategoria?.length > 0 && (
+                                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-purple-50 text-purple-700 border-purple-200">
+                                                        {item.regrasCategoria.length} regra(s) categoria
+                                                    </span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-5 py-4 whitespace-nowrap text-right">
@@ -273,7 +284,7 @@ const TabelaPrecos = () => {
             {/* MODAL DE EDIÇÃO / CRIAÇÃO */}
             {editingItem && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden transform transition-all">
                         {/* Header */}
                         <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50/50">
                             <div>
@@ -465,6 +476,90 @@ const TabelaPrecos = () => {
                                                 </option>
                                             ))}
                                         </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Regras por Categoria CA (para Pedidos Especiais) */}
+                            <div className="pt-2 border-t border-gray-100">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700">Regras por Categoria (Especiais)</label>
+                                        <p className="text-[11px] text-gray-500">Define preço base e acréscimo diferenciados por categoria do CA para pedidos especiais.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const regras = [...(editForm.regrasCategoria || [])];
+                                            regras.push({ categoria: '', precoBase: 'valorVenda', acrescimo: 0 });
+                                            setEditForm({ ...editForm, regrasCategoria: regras });
+                                        }}
+                                        className="text-xs font-bold text-purple-600 bg-purple-50 hover:bg-purple-100 px-2 py-1 rounded border border-purple-200 transition-colors flex items-center gap-1"
+                                    >
+                                        <Plus className="h-3 w-3" /> Regra
+                                    </button>
+                                </div>
+                                {(editForm.regrasCategoria || []).length > 0 && (
+                                    <div className="space-y-2 bg-purple-50 p-3 rounded-lg border border-purple-200">
+                                        {(editForm.regrasCategoria || []).map((regra, idx) => (
+                                            <div key={idx} className="flex items-center gap-2 bg-white p-2 rounded border border-purple-100">
+                                                <select
+                                                    className="flex-1 text-xs border-gray-300 rounded py-1.5 px-2 bg-white text-gray-900"
+                                                    value={regra.categoria}
+                                                    onChange={(e) => {
+                                                        const regras = [...editForm.regrasCategoria];
+                                                        regras[idx] = { ...regras[idx], categoria: e.target.value };
+                                                        setEditForm({ ...editForm, regrasCategoria: regras });
+                                                    }}
+                                                >
+                                                    <option value="">Categoria...</option>
+                                                    {categoriasCA.map(cat => (
+                                                        <option key={cat} value={cat}>{cat}</option>
+                                                    ))}
+                                                </select>
+                                                <select
+                                                    className="w-28 text-xs border-gray-300 rounded py-1.5 px-2 bg-white text-gray-900"
+                                                    value={regra.precoBase}
+                                                    onChange={(e) => {
+                                                        const regras = [...editForm.regrasCategoria];
+                                                        regras[idx] = { ...regras[idx], precoBase: e.target.value };
+                                                        setEditForm({ ...editForm, regrasCategoria: regras });
+                                                    }}
+                                                >
+                                                    <option value="valorVenda">Preço Venda</option>
+                                                    <option value="custoMedio">Custo Médio</option>
+                                                </select>
+                                                <div className="relative w-20">
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        className="w-full text-xs border-gray-300 rounded py-1.5 pl-2 pr-5 bg-white text-gray-900"
+                                                        value={regra.acrescimo}
+                                                        onChange={(e) => {
+                                                            const regras = [...editForm.regrasCategoria];
+                                                            regras[idx] = { ...regras[idx], acrescimo: Number(e.target.value) };
+                                                            setEditForm({ ...editForm, regrasCategoria: regras });
+                                                        }}
+                                                        placeholder="0"
+                                                    />
+                                                    <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold">%</span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const regras = editForm.regrasCategoria.filter((_, i) => i !== idx);
+                                                        setEditForm({ ...editForm, regrasCategoria: regras });
+                                                    }}
+                                                    className="text-red-400 hover:text-red-600 p-1"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <p className="text-[10px] text-purple-600 mt-1">
+                                            Categorias sem regra usam o acréscimo geral ({editForm.acrescimoPreco || 0}%) sobre preço de venda.
+                                            Se preço ficar abaixo do custo médio, o item é marcado no pedido.
+                                        </p>
                                     </div>
                                 )}
                             </div>

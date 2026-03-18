@@ -20,6 +20,10 @@ const contasReceberService = {
     cancelar: async (id) => {
         const response = await api.patch(`/contas-receber/${id}/cancelar`);
         return response.data;
+    },
+    reverterQuitacao: async (id) => {
+        const response = await api.put(`/contas-receber/${id}/reverter-quitacao`);
+        return response.data;
     }
 };
 
