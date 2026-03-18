@@ -324,4 +324,75 @@ router.patch('/:id/cancelar', verificarAuth, checkBaixa, async (req, res) => {
     }
 });
 
+// ── ADMIN: Sincronizar contas a receber com pedidos (criar contas faltantes) ──
+router.post('/admin/sincronizar', verificarAuth, async (req, res) => {
+    try {
+        const perms = req._perms || await getPerms(req.user.id);
+        if (!perms.admin) {
+            return res.status(403).json({ error: 'Apenas admin pode sincronizar contas.' });
+        }
+
+        // Buscar todos os pedidos enviados que NÃO têm conta a receber
+        const pedidosSemConta = await prisma.pedido.findMany({
+            where: {
+                statusEnvio: 'ENVIAR',
+                contaReceber: null
+            },
+            include: {
+                itens: true
+            }
+        });
+
+        let criadas = 0;
+        for (const pedido of pedidosSemConta) {
+            // Calcular valor total do pedido
+            const valorTotal = pedido.itens.reduce((sum, item) => {
+                return sum + (Number(item.valor) * Number(item.quantidade));
+            }, 0);
+
+            // Calcular parcelas
+            const numParcelas = pedido.qtdParcelas || 1;
+            const intervalo = pedido.intervaloDias || 0;
+            const baseDate = pedido.primeiroVencimento || pedido.dataVenda;
+            const valorParcela = Math.round((valorTotal / numParcelas) * 100) / 100;
+
+            const parcelasData = [];
+            for (let i = 0; i < numParcelas; i++) {
+                const vencimento = new Date(baseDate);
+                vencimento.setDate(vencimento.getDate() + (i * intervalo));
+                const val = i === numParcelas - 1
+                    ? Math.round((valorTotal - valorParcela * (numParcelas - 1)) * 100) / 100
+                    : valorParcela;
+                parcelasData.push({
+                    numeroParcela: i + 1,
+                    valor: val,
+                    dataVencimento: vencimento
+                });
+            }
+
+            // Criar conta a receber
+            await prisma.contaReceber.create({
+                data: {
+                    pedidoId: pedido.id,
+                    clienteId: pedido.clienteId,
+                    origem: pedido.especial ? 'ESPECIAL' : 'FATURADO_CA',
+                    valorTotal: Math.round(valorTotal * 100) / 100,
+                    status: 'ABERTO',
+                    parcelas: { create: parcelasData }
+                }
+            });
+            criadas++;
+        }
+
+        res.json({
+            message: `${criadas} contas a receber criadas com sucesso!`,
+            criadasCount: criadas,
+            totalPedidos: pedidosSemConta.length
+        });
+    } catch (error) {
+        console.error('Erro ao sincronizar contas a receber:', error);
+        res.status(500).json({ error: 'Erro ao sincronizar contas a receber.' });
+    }
+});
+
 module.exports = router;
