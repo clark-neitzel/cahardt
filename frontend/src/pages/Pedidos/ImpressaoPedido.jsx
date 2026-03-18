@@ -162,7 +162,7 @@ const PedidoCupom = ({ pedido, isLast }) => {
 
             {/* Separador de corte entre pedidos no lote */}
             {!isLast && (
-                <div style={{ margin: '5mm 0 3mm 0', textAlign: 'center', borderTop: '2px dashed #000', paddingTop: '2mm' }}>
+                <div data-corte style={{ margin: '5mm 0 3mm 0', textAlign: 'center', borderTop: '2px dashed #000', paddingTop: '2mm' }}>
                     <span style={{ fontSize: '11px', letterSpacing: '2px' }}>- - - CORTE AQUI - - -</span>
                 </div>
             )}
@@ -305,73 +305,126 @@ const ImpressaoPedido = () => {
         load();
     }, [id, tipo, batchIds]);
 
-    const handlePrint = () => {
+    // Medir altura em mm de um elemento para cupom
+    const measureHeightMm = (el) => {
+        const clone = el.cloneNode(true);
+        clone.style.position = 'absolute';
+        clone.style.visibility = 'hidden';
+        clone.style.width = '80mm';
+        document.body.appendChild(clone);
+        const h = clone.scrollHeight;
+        document.body.removeChild(clone);
+        return Math.ceil(h / 3.7795) + 15;
+    };
+
+    // Gerar HTML completo para impressão
+    const buildHtml = (bodyHtml, isCupom, heightMm, extraCss = '') => `<html>
+        <head><style>
+            @media print {
+                @page { ${isCupom ? `size: 80mm ${heightMm}mm;` : 'size: A4 portrait;'} ${isCupom ? 'margin: 0;' : 'margin: 8mm;'} }
+                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; ${isCupom ? 'width: 80mm; max-width: 80mm; overflow: hidden;' : ''} }
+                * { color: #000 !important; }
+                ${extraCss}
+            }
+            body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; color: #000; ${isCupom ? 'width: 80mm;' : ''} }
+            ${extraCss}
+            table { width: 100%; border-collapse: collapse; }
+            th, td { color: #000; }
+        </style></head>
+        <body>${bodyHtml}</body></html>`;
+
+    // Imprimir via iframe oculto (não é bloqueado como popup)
+    const printViaIframe = (html) => {
+        return new Promise((resolve) => {
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'fixed';
+            iframe.style.left = '-9999px';
+            iframe.style.top = '-9999px';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            document.body.appendChild(iframe);
+
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            doc.open();
+            doc.write(html);
+            doc.close();
+
+            iframe.onload = () => {
+                setTimeout(() => {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                    // Aguardar o diálogo de impressão fechar
+                    setTimeout(() => {
+                        document.body.removeChild(iframe);
+                        resolve();
+                    }, 500);
+                }, 300);
+            };
+
+            // Fallback se onload não disparar
+            setTimeout(() => {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch (e) { /* ignore */ }
+                setTimeout(() => {
+                    try { document.body.removeChild(iframe); } catch (e) { /* ignore */ }
+                    resolve();
+                }, 500);
+            }, 1000);
+        });
+    };
+
+    const [imprimindoLote, setImprimindoLote] = useState(false);
+    const [loteProgresso, setLoteProgresso] = useState(0);
+
+    const handlePrint = async () => {
         const content = printRef.current;
-        const printWindow = window.open('', '', 'height=800,width=800');
         const isCupom = formato === 'cupom';
+        const pages = content.querySelectorAll('.print-page');
 
-        // Para cupom: medir a altura total do conteúdo
-        let cupomHeight = 'auto';
-        if (isCupom) {
-            const clone = content.cloneNode(true);
-            clone.style.position = 'absolute';
-            clone.style.visibility = 'hidden';
-            clone.style.width = '80mm';
-            document.body.appendChild(clone);
-            const heightPx = clone.scrollHeight;
-            cupomHeight = Math.ceil(heightPx / 3.7795) + 15 + 'mm';
-            document.body.removeChild(clone);
+        if (isBatch && isCupom && pages.length > 1) {
+            // LOTE CUPOM: cada pedido como job separado via iframe → auto-cutter corta
+            setImprimindoLote(true);
+            setLoteProgresso(0);
+
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                // Remover o separador "CORTE AQUI" para impressão individual
+                const pageClone = page.cloneNode(true);
+                const corteDiv = pageClone.querySelector('[data-corte]');
+                if (corteDiv) corteDiv.remove();
+
+                const heightMm = measureHeightMm(page);
+                const html = buildHtml(pageClone.outerHTML, true, heightMm);
+                await printViaIframe(html);
+                setLoteProgresso(i + 1);
+
+                // Pausa entre jobs para a impressora processar e cortar
+                if (i < pages.length - 1) {
+                    await new Promise(r => setTimeout(r, 1500));
+                }
+            }
+
+            setImprimindoLote(false);
+            toast.success(`${pages.length} cupons impressos!`);
+        } else {
+            // SINGLE ou LOTE A4: um único job
+            let heightMm = 'auto';
+            if (isCupom) {
+                heightMm = measureHeightMm(content);
+            }
+            const pageBreak = !isCupom && isBatch
+                ? '.print-page { page-break-after: always; } .print-page:last-child { page-break-after: auto; }'
+                : '';
+            const html = buildHtml(content.innerHTML, isCupom, heightMm, pageBreak);
+
+            const w = window.open('', '', 'height=800,width=800');
+            w.document.write(html);
+            w.document.close();
+            w.focus();
+            setTimeout(() => { w.print(); w.close(); }, 400);
         }
-
-        const pageSize = isCupom ? `size: 80mm ${cupomHeight};` : 'size: A4 portrait;';
-        const margins = isCupom ? 'margin: 0;' : 'margin: 8mm;';
-        const pageBreakCss = !isCupom && isBatch
-            ? '.print-page { page-break-after: always; } .print-page:last-child { page-break-after: auto; }'
-            : '';
-
-        const title = isBatch
-            ? `Lote - ${batchData.length} pedidos`
-            : (tipo === 'amostra' ? `Amostra AM#${data?.numero}` : `Pedido ${data?.especial ? 'ZZ' : ''}#${data?.numero}`);
-
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>${title}</title>
-                    <style>
-                        @media print {
-                            @page { ${pageSize} ${margins} }
-                            body {
-                                -webkit-print-color-adjust: exact;
-                                print-color-adjust: exact;
-                                margin: 0; padding: 0;
-                                ${isCupom ? 'width: 80mm; max-width: 80mm; overflow: hidden;' : ''}
-                            }
-                            * { color: #000 !important; }
-                            ${pageBreakCss}
-                        }
-                        body {
-                            margin: 0; padding: 0;
-                            font-family: Arial, Helvetica, sans-serif;
-                            color: #000;
-                            ${isCupom ? 'width: 80mm;' : ''}
-                        }
-                        ${pageBreakCss}
-                        table { width: 100%; border-collapse: collapse; }
-                        th, td { color: #000; }
-                    </style>
-                </head>
-                <body>
-                    ${content.innerHTML}
-                </body>
-            </html>
-        `);
-
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-        }, 400);
     };
 
     if (loading) {
@@ -438,7 +491,8 @@ const ImpressaoPedido = () => {
                     </div>
                     <button
                         onClick={handlePrint}
-                        className="px-3 sm:px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-md flex items-center shadow-lg text-xs sm:text-sm font-bold transition-all"
+                        disabled={imprimindoLote}
+                        className={`px-3 sm:px-5 py-2 rounded-md flex items-center shadow-lg text-xs sm:text-sm font-bold transition-all ${imprimindoLote ? 'bg-gray-600 text-gray-400 cursor-not-allowed' : 'bg-sky-600 hover:bg-sky-500 text-white'}`}
                     >
                         <Printer className="w-4 h-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Imprimir / PDF</span>
@@ -446,6 +500,14 @@ const ImpressaoPedido = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Progresso de impressão em lote */}
+            {imprimindoLote && (
+                <div className="w-full bg-yellow-900/80 text-yellow-200 px-4 py-2 flex items-center gap-3 text-sm font-medium">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-yellow-200 border-t-transparent"></div>
+                    <span>Imprimindo cupom {loteProgresso + 1} de {isBatch ? batchData.length : 1}...</span>
+                </div>
+            )}
 
             {/* Preview area */}
             <div className="flex-1 w-full flex flex-col items-center py-6 sm:py-8 gap-6">
