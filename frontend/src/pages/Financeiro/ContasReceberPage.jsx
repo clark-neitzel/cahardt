@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import contasReceberService from '../../services/contasReceberService';
 import {
     DollarSign, ChevronDown, ChevronUp, Search, Filter, X,
-    CheckCircle, AlertTriangle, Clock, Ban, Undo2
+    CheckCircle, AlertTriangle, Clock, Ban, Undo2, ArrowUpDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const LS_KEY = 'contasReceber_filters';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
@@ -23,53 +25,97 @@ const PARCELA_BADGES = {
     CANCELADO: { label: 'Cancelado', class: 'bg-gray-100 text-gray-400' }
 };
 
+const loadSavedFilters = () => {
+    try {
+        return JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+    } catch { return {}; }
+};
+
 const ContasReceberPage = () => {
     const { user } = useAuth();
     const podeBaixar = user?.permissoes?.admin || user?.permissoes?.Pode_Baixar_Contas_Receber;
+
+    const saved = loadSavedFilters();
 
     const [contas, setContas] = useState([]);
     const [indicadores, setIndicadores] = useState({});
     const [loading, setLoading] = useState(false);
     const [expandido, setExpandido] = useState(null);
 
-    // Filtros
-    const [filtroStatus, setFiltroStatus] = useState('');
-    const [filtroBusca, setFiltroBusca] = useState('');
-    const [filtroOrigem, setFiltroOrigem] = useState('');
-    const [filtroVencDe, setFiltroVencDe] = useState('');
-    const [filtroVencAte, setFiltroVencAte] = useState('');
+    // Filtros (inicializa com valores salvos)
+    const [filtroStatus, setFiltroStatus] = useState(saved.status || '');
+    const [filtroBusca, setFiltroBusca] = useState(saved.busca || '');
+    const [filtroOrigem, setFiltroOrigem] = useState(saved.origem || '');
+    const [filtroVencDe, setFiltroVencDe] = useState(saved.vencDe || '');
+    const [filtroVencAte, setFiltroVencAte] = useState(saved.vencAte || '');
+    const [ordenarPor, setOrdenarPor] = useState(saved.ordenarPor || 'vencimento');
     const [showFiltros, setShowFiltros] = useState(false);
 
     // Modal baixa
-    const [baixaModal, setBaixaModal] = useState(null); // parcela object
+    const [baixaModal, setBaixaModal] = useState(null);
     const [baixaForm, setBaixaForm] = useState({
         valorPago: '', formaPagamento: '', dataPagamento: '', observacao: ''
     });
     const [salvandoBaixa, setSalvandoBaixa] = useState(false);
 
-    useEffect(() => { fetchData(); }, []);
+    const saveFilters = useCallback((overrides = {}) => {
+        const filters = {
+            status: filtroStatus,
+            busca: filtroBusca,
+            origem: filtroOrigem,
+            vencDe: filtroVencDe,
+            vencAte: filtroVencAte,
+            ordenarPor,
+            ...overrides
+        };
+        localStorage.setItem(LS_KEY, JSON.stringify(filters));
+    }, [filtroStatus, filtroBusca, filtroOrigem, filtroVencDe, filtroVencAte, ordenarPor]);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async (overrides = {}) => {
         try {
             setLoading(true);
             const filtros = {};
-            if (filtroStatus) filtros.status = filtroStatus;
-            if (filtroBusca) filtros.busca = filtroBusca;
-            if (filtroOrigem) filtros.origem = filtroOrigem;
-            if (filtroVencDe) filtros.vencimentoDe = filtroVencDe;
-            if (filtroVencAte) filtros.vencimentoAte = filtroVencAte;
+            const s = overrides.status ?? filtroStatus;
+            const b = overrides.busca ?? filtroBusca;
+            const o = overrides.origem ?? filtroOrigem;
+            const vd = overrides.vencDe ?? filtroVencDe;
+            const va = overrides.vencAte ?? filtroVencAte;
+            const ord = overrides.ordenarPor ?? ordenarPor;
+
+            if (s) filtros.status = s;
+            if (b) filtros.busca = b;
+            if (o) filtros.origem = o;
+            if (vd) filtros.vencimentoDe = vd;
+            if (va) filtros.vencimentoAte = va;
+            if (ord) filtros.ordenarPor = ord;
 
             const data = await contasReceberService.listar(filtros);
-            setContas(data.contas || []);
+            let contasResult = data.contas || [];
+
+            // Ordenar por próximo vencimento no frontend
+            if (ord === 'vencimento') {
+                contasResult.sort((a, b) => {
+                    const va = a.proximoVencimento ? new Date(a.proximoVencimento) : new Date('2099-12-31');
+                    const vb = b.proximoVencimento ? new Date(b.proximoVencimento) : new Date('2099-12-31');
+                    return va - vb;
+                });
+            }
+
+            setContas(contasResult);
             setIndicadores(data.indicadores || {});
         } catch (error) {
             toast.error('Erro ao carregar contas a receber.');
         } finally {
             setLoading(false);
         }
-    };
+    }, [filtroStatus, filtroBusca, filtroOrigem, filtroVencDe, filtroVencAte, ordenarPor]);
 
-    const handleFiltrar = () => { fetchData(); };
+    useEffect(() => { fetchData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleFiltrar = () => {
+        saveFilters();
+        fetchData();
+    };
 
     const handleLimparFiltros = () => {
         setFiltroStatus('');
@@ -77,7 +123,16 @@ const ContasReceberPage = () => {
         setFiltroOrigem('');
         setFiltroVencDe('');
         setFiltroVencAte('');
-        setTimeout(() => fetchData(), 0);
+        setOrdenarPor('vencimento');
+        const cleared = { status: '', busca: '', origem: '', vencDe: '', vencAte: '', ordenarPor: 'vencimento' };
+        localStorage.setItem(LS_KEY, JSON.stringify(cleared));
+        fetchData(cleared);
+    };
+
+    const handleOrdenarChange = (val) => {
+        setOrdenarPor(val);
+        saveFilters({ ordenarPor: val });
+        fetchData({ ordenarPor: val });
     };
 
     const abrirBaixa = (parcela) => {
@@ -145,57 +200,61 @@ const ContasReceberPage = () => {
         return 'border-gray-200 bg-white';
     };
 
+    const hasActiveFilters = filtroStatus || filtroBusca || filtroOrigem || filtroVencDe || filtroVencAte;
+
     return (
-        <div className="container mx-auto px-4 py-6">
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-4xl">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-3">
-                    <DollarSign className="h-7 w-7 text-emerald-600" />
-                    <h1 className="text-2xl font-bold text-gray-800">Contas a Receber</h1>
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <DollarSign className="h-6 w-6 sm:h-7 sm:w-7 text-emerald-600 flex-shrink-0" />
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">Contas a Receber</h1>
                 </div>
                 <button
                     onClick={() => setShowFiltros(!showFiltros)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm bg-white border rounded-md hover:bg-gray-50"
+                    className="relative flex items-center gap-1.5 px-2.5 py-2 text-sm bg-white border rounded-md hover:bg-gray-50 flex-shrink-0"
                 >
                     <Filter className="h-4 w-4" />
-                    Filtros
-                    {showFiltros ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    <span className="hidden sm:inline">Filtros</span>
+                    {hasActiveFilters && (
+                        <span className="absolute -top-1.5 -right-1.5 h-3 w-3 bg-primary rounded-full" />
+                    )}
                 </button>
             </div>
 
             {/* Indicadores */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white rounded-lg shadow-sm border p-4">
-                    <p className="text-xs text-gray-500 font-medium">Total em Aberto</p>
-                    <p className="text-xl font-bold text-gray-900">R$ {fmt(indicadores.totalEmAberto)}</p>
+            <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4 sm:mb-6">
+                <div className="bg-white rounded-lg shadow-sm border p-3 sm:p-4">
+                    <p className="text-[10px] sm:text-xs text-gray-500 font-medium">Total em Aberto</p>
+                    <p className="text-base sm:text-xl font-bold text-gray-900">R$ {fmt(indicadores.totalEmAberto)}</p>
                 </div>
-                <div className="bg-white rounded-lg shadow-sm border border-red-200 p-4">
-                    <div className="flex items-center gap-1.5">
-                        <AlertTriangle className="h-4 w-4 text-red-500" />
-                        <p className="text-xs text-red-600 font-medium">Vencidas</p>
+                <div className="bg-white rounded-lg shadow-sm border border-red-200 p-3 sm:p-4">
+                    <div className="flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
+                        <p className="text-[10px] sm:text-xs text-red-600 font-medium">Vencidas</p>
                     </div>
-                    <p className="text-xl font-bold text-red-700">R$ {fmt(indicadores.totalVencidas)}</p>
+                    <p className="text-base sm:text-xl font-bold text-red-700">R$ {fmt(indicadores.totalVencidas)}</p>
                 </div>
-                <div className="bg-white rounded-lg shadow-sm border border-yellow-200 p-4">
-                    <div className="flex items-center gap-1.5">
-                        <Clock className="h-4 w-4 text-yellow-500" />
-                        <p className="text-xs text-yellow-600 font-medium">A vencer (7 dias)</p>
+                <div className="bg-white rounded-lg shadow-sm border border-yellow-200 p-3 sm:p-4">
+                    <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-500" />
+                        <p className="text-[10px] sm:text-xs text-yellow-600 font-medium">A vencer (7 dias)</p>
                     </div>
-                    <p className="text-xl font-bold text-yellow-700">R$ {fmt(indicadores.totalAVencer7d)}</p>
+                    <p className="text-base sm:text-xl font-bold text-yellow-700">R$ {fmt(indicadores.totalAVencer7d)}</p>
                 </div>
-                <div className="bg-white rounded-lg shadow-sm border border-green-200 p-4">
-                    <div className="flex items-center gap-1.5">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <p className="text-xs text-green-600 font-medium">Quitadas no mês</p>
+                <div className="bg-white rounded-lg shadow-sm border border-green-200 p-3 sm:p-4">
+                    <div className="flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
+                        <p className="text-[10px] sm:text-xs text-green-600 font-medium">Quitadas no mês</p>
                     </div>
-                    <p className="text-xl font-bold text-green-700">R$ {fmt(indicadores.totalQuitadasMes)}</p>
+                    <p className="text-base sm:text-xl font-bold text-green-700">R$ {fmt(indicadores.totalQuitadasMes)}</p>
                 </div>
             </div>
 
             {/* Filtros */}
             {showFiltros && (
-                <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="bg-white rounded-lg shadow-sm border p-3 sm:p-4 mb-4 sm:mb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className="text-xs text-gray-500 font-medium">Cliente</label>
                             <div className="relative mt-1">
@@ -236,6 +295,17 @@ const ContasReceberPage = () => {
                             </select>
                         </div>
                         <div>
+                            <label className="text-xs text-gray-500 font-medium">Ordenar por</label>
+                            <select
+                                value={ordenarPor}
+                                onChange={(e) => handleOrdenarChange(e.target.value)}
+                                className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900"
+                            >
+                                <option value="vencimento">Vencimento (mais próximo)</option>
+                                <option value="recente">Mais recente</option>
+                            </select>
+                        </div>
+                        <div>
                             <label className="text-xs text-gray-500 font-medium">Vencimento de</label>
                             <input type="date" value={filtroVencDe} onChange={(e) => setFiltroVencDe(e.target.value)}
                                 className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
@@ -257,6 +327,20 @@ const ContasReceberPage = () => {
                 </div>
             )}
 
+            {/* Ordenação rápida (fora do painel de filtros) */}
+            {!showFiltros && (
+                <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs text-gray-400">{contas.length} conta{contas.length !== 1 ? 's' : ''}</span>
+                    <button
+                        onClick={() => handleOrdenarChange(ordenarPor === 'vencimento' ? 'recente' : 'vencimento')}
+                        className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+                    >
+                        <ArrowUpDown className="h-3 w-3" />
+                        {ordenarPor === 'vencimento' ? 'Por vencimento' : 'Mais recente'}
+                    </button>
+                </div>
+            )}
+
             {/* Lista */}
             {loading ? (
                 <div className="flex justify-center items-center py-20">
@@ -266,7 +350,7 @@ const ContasReceberPage = () => {
             ) : contas.length === 0 ? (
                 <div className="text-center text-gray-400 py-20">Nenhuma conta a receber encontrada.</div>
             ) : (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                     {contas.map(conta => {
                         const isExpanded = expandido === conta.id;
                         const badge = STATUS_BADGES[conta.status] || STATUS_BADGES.ABERTO;
@@ -275,10 +359,45 @@ const ContasReceberPage = () => {
                             <div key={conta.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
                                 {/* Header da conta */}
                                 <div
-                                    className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                                    className="p-3 sm:p-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors"
                                     onClick={() => setExpandido(isExpanded ? null : conta.id)}
                                 >
-                                    <div className="flex items-center justify-between">
+                                    {/* Mobile layout */}
+                                    <div className="sm:hidden">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-semibold text-gray-900 text-sm truncate">{conta.clienteNome}</p>
+                                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                    {conta.pedidoNumero && (
+                                                        <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                                                            {conta.pedidoEspecial ? 'ZZ' : ''}#{conta.pedidoNumero}
+                                                        </span>
+                                                    )}
+                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${badge.class}`}>
+                                                        {badge.label}
+                                                    </span>
+                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${conta.origem === 'ESPECIAL' ? 'bg-purple-100 text-purple-700' : 'bg-sky-100 text-sky-700'}`}>
+                                                        {conta.origem === 'ESPECIAL' ? 'ESP' : 'FAT'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                <span className="text-sm font-bold text-gray-900">R$ {fmt(conta.valorTotal)}</span>
+                                                {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-500">
+                                            <span>{conta.parcelasPagas}/{conta.parcelasTotal} parc.</span>
+                                            {conta.proximoVencimento && (
+                                                <span>
+                                                    Venc.: {new Date(conta.proximoVencimento).toLocaleDateString('pt-BR')}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Desktop layout */}
+                                    <div className="hidden sm:flex items-center justify-between">
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <span className="font-semibold text-gray-900 truncate">{conta.clienteNome}</span>
@@ -305,9 +424,7 @@ const ContasReceberPage = () => {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3 ml-4">
-                                            <div className="text-right">
-                                                <p className="text-lg font-bold text-gray-900">R$ {fmt(conta.valorTotal)}</p>
-                                            </div>
+                                            <p className="text-lg font-bold text-gray-900">R$ {fmt(conta.valorTotal)}</p>
                                             {isExpanded ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
                                         </div>
                                     </div>
@@ -315,15 +432,64 @@ const ContasReceberPage = () => {
 
                                 {/* Parcelas expandidas */}
                                 {isExpanded && (
-                                    <div className="border-t border-gray-100 p-4 bg-gray-50">
+                                    <div className="border-t border-gray-100 p-3 sm:p-4 bg-gray-50">
                                         <div className="space-y-2">
                                             {conta.parcelas.map(p => {
                                                 const pBadge = PARCELA_BADGES[p.status] || PARCELA_BADGES.PENDENTE;
                                                 const statusClass = getParcelaStatusClass(p);
 
                                                 return (
-                                                    <div key={p.id} className={`rounded-lg border p-3 ${statusClass}`}>
-                                                        <div className="flex items-center justify-between">
+                                                    <div key={p.id} className={`rounded-lg border p-2.5 sm:p-3 ${statusClass}`}>
+                                                        {/* Mobile parcela */}
+                                                        <div className="sm:hidden">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs font-bold text-gray-700">
+                                                                        {p.numeroParcela}/{conta.parcelasTotal}
+                                                                    </span>
+                                                                    <span className="text-sm font-medium text-gray-900">R$ {fmt(p.valor)}</span>
+                                                                </div>
+                                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${pBadge.class}`}>
+                                                                    {pBadge.label}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between mt-1.5">
+                                                                <div className="text-[11px] text-gray-500">
+                                                                    <span>Venc.: {new Date(p.dataVencimento).toLocaleDateString('pt-BR')}</span>
+                                                                    {p.dataPagamento && (
+                                                                        <span className="ml-2 text-green-600">
+                                                                            Pago: {new Date(p.dataPagamento).toLocaleDateString('pt-BR')}
+                                                                        </span>
+                                                                    )}
+                                                                    {p.valorPago && p.valorPago !== p.valor && (
+                                                                        <span className="ml-1 text-green-600">(R$ {fmt(p.valorPago)})</span>
+                                                                    )}
+                                                                    {p.formaPagamento && <span className="ml-1">({p.formaPagamento})</span>}
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    {podeBaixar && (p.status === 'PENDENTE' || p.status === 'VENCIDO') && (
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); abrirBaixa(p); }}
+                                                                            className="px-2.5 py-1 text-[11px] bg-green-600 text-white rounded-md font-medium hover:bg-green-700 active:bg-green-800"
+                                                                        >
+                                                                            Baixa
+                                                                        </button>
+                                                                    )}
+                                                                    {podeBaixar && p.status === 'PAGO' && (
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); handleEstornar(p.id); }}
+                                                                            className="p-1 text-amber-700 bg-amber-100 rounded-md hover:bg-amber-200 active:bg-amber-300"
+                                                                            title="Estornar"
+                                                                        >
+                                                                            <Undo2 className="h-3.5 w-3.5" />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Desktop parcela */}
+                                                        <div className="hidden sm:flex items-center justify-between">
                                                             <div className="flex items-center gap-3">
                                                                 <span className="text-sm font-bold text-gray-700 w-8">
                                                                     {p.numeroParcela}/{conta.parcelasTotal}
@@ -379,7 +545,7 @@ const ContasReceberPage = () => {
                                             <div className="mt-3 pt-3 border-t border-gray-200 flex justify-end">
                                                 <button
                                                     onClick={() => handleCancelar(conta.id)}
-                                                    className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 bg-red-50 rounded-md hover:bg-red-100 font-medium"
+                                                    className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 bg-red-50 rounded-md hover:bg-red-100 active:bg-red-200 font-medium"
                                                 >
                                                     <Ban className="h-3.5 w-3.5" /> Cancelar Conta
                                                 </button>
@@ -395,11 +561,11 @@ const ContasReceberPage = () => {
 
             {/* Modal de Baixa */}
             {baixaModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40">
+                    <div className="bg-white rounded-t-xl sm:rounded-lg shadow-xl w-full sm:max-w-md sm:mx-4 p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-bold text-gray-900">Dar Baixa na Parcela</h3>
-                            <button onClick={() => setBaixaModal(null)} className="text-gray-400 hover:text-gray-600">
+                            <h3 className="text-lg font-bold text-gray-900">Dar Baixa</h3>
+                            <button onClick={() => setBaixaModal(null)} className="text-gray-400 hover:text-gray-600 p-1">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
@@ -416,9 +582,10 @@ const ContasReceberPage = () => {
                                 <input
                                     type="number"
                                     step="0.01"
+                                    inputMode="decimal"
                                     value={baixaForm.valorPago}
                                     onChange={(e) => setBaixaForm(prev => ({ ...prev, valorPago: e.target.value }))}
-                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900"
+                                    className="w-full mt-1 px-3 py-2.5 text-sm border rounded-md bg-white text-gray-900"
                                 />
                             </div>
                             <div>
@@ -428,7 +595,7 @@ const ContasReceberPage = () => {
                                     value={baixaForm.formaPagamento}
                                     onChange={(e) => setBaixaForm(prev => ({ ...prev, formaPagamento: e.target.value }))}
                                     placeholder="Dinheiro, PIX, Transferência..."
-                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900"
+                                    className="w-full mt-1 px-3 py-2.5 text-sm border rounded-md bg-white text-gray-900"
                                 />
                             </div>
                             <div>
@@ -437,7 +604,7 @@ const ContasReceberPage = () => {
                                     type="date"
                                     value={baixaForm.dataPagamento}
                                     onChange={(e) => setBaixaForm(prev => ({ ...prev, dataPagamento: e.target.value }))}
-                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900"
+                                    className="w-full mt-1 px-3 py-2.5 text-sm border rounded-md bg-white text-gray-900"
                                 />
                             </div>
                             <div>
@@ -447,22 +614,22 @@ const ContasReceberPage = () => {
                                     onChange={(e) => setBaixaForm(prev => ({ ...prev, observacao: e.target.value }))}
                                     rows={2}
                                     placeholder="Opcional..."
-                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900"
+                                    className="w-full mt-1 px-3 py-2.5 text-sm border rounded-md bg-white text-gray-900"
                                 />
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-2 mt-4">
+                        <div className="flex gap-2 mt-5">
                             <button
                                 onClick={() => setBaixaModal(null)}
-                                className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+                                className="flex-1 sm:flex-none px-4 py-2.5 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={handleDarBaixa}
                                 disabled={salvandoBaixa}
-                                className="px-4 py-2 text-sm bg-green-600 text-white rounded-md font-medium hover:bg-green-700 disabled:opacity-50"
+                                className="flex-1 sm:flex-none px-4 py-2.5 text-sm bg-green-600 text-white rounded-md font-medium hover:bg-green-700 disabled:opacity-50"
                             >
                                 {salvandoBaixa ? 'Salvando...' : 'Confirmar Baixa'}
                             </button>

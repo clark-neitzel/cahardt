@@ -35,7 +35,7 @@ const checkBaixa = async (req, res, next) => {
 // ── GET / — Listar contas a receber com filtros ──
 router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     try {
-        const { status, clienteId, vencimentoDe, vencimentoAte, origem, busca } = req.query;
+        const { status, clienteId, vencimentoDe, vencimentoAte, origem, busca, ordenarPor } = req.query;
 
         const where = {};
         if (status) where.status = status;
@@ -73,7 +73,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                     orderBy: { numeroParcela: 'asc' }
                 }
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: ordenarPor === 'vencimento' ? { createdAt: 'asc' } : { createdAt: 'desc' }
         });
 
         // Calcular indicadores
