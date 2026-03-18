@@ -952,6 +952,7 @@ model CategoriaProduto {
   descricao     String?  @db.Text
   ordemExibicao Int      @default(0) @map("ordem_exibicao")
   corTag        String?  @map("cor_tag")
+  permiteFracao Boolean  @default(false) @map("permite_fracao")
   ativo         Boolean  @default(true)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")

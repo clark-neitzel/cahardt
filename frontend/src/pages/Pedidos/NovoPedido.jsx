@@ -18,6 +18,62 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
+// Componente de input de quantidade que suporta frações (0,200 / 0.5 etc)
+const QuantidadeInput = ({ value, permiteFracao, onChange }) => {
+    const [text, setText] = useState(String(value));
+    const [editing, setEditing] = useState(false);
+
+    // Sync externo → interno quando NÃO está editando
+    useEffect(() => {
+        if (!editing) setText(String(value));
+    }, [value, editing]);
+
+    const commit = (raw) => {
+        // aceita tanto vírgula quanto ponto
+        const normalized = raw.replace(',', '.');
+        const num = parseFloat(normalized);
+        if (!isNaN(num) && num > 0) {
+            onChange(permiteFracao ? Math.round(num * 1000) / 1000 : Math.round(num));
+        } else if (raw === '' || num === 0) {
+            onChange(0);
+        }
+        setEditing(false);
+    };
+
+    if (permiteFracao) {
+        return (
+            <input
+                type="text"
+                inputMode="decimal"
+                className="w-14 text-center border border-gray-300 rounded bg-white text-gray-900 text-sm font-bold py-0.5"
+                value={editing ? text : String(value)}
+                onFocus={e => { setEditing(true); setText(String(value)); e.target.select(); }}
+                onChange={e => {
+                    // permite dígitos, vírgula e ponto durante digitação
+                    const v = e.target.value.replace(/[^0-9.,]/g, '');
+                    setText(v);
+                }}
+                onBlur={e => commit(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.target.blur(); } }}
+            />
+        );
+    }
+
+    // Inteiro: input numérico simples
+    return (
+        <input
+            type="number" min="1"
+            className="w-12 text-center border border-gray-300 rounded bg-white text-gray-900 text-sm font-bold py-0.5"
+            value={value}
+            onFocus={e => e.target.select()}
+            onChange={e => {
+                const v = Number(e.target.value);
+                if (v >= 0) onChange(v);
+            }}
+        />
+    );
+};
+
 const calcularProximaData = (diasAbertosStr) => {
     if (!diasAbertosStr) return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
@@ -837,30 +893,29 @@ const NovoPedido = () => {
                         </div>
                     </div>
 
-                    {/* Controles de quantidade — mobile: direita / desktop: esquerda */}
+                    {/* Controles de quantidade — sempre à direita */}
                     <div
-                        className="flex items-center gap-1 shrink-0 md:order-first"
+                        className="flex items-center gap-1 shrink-0"
                         onClick={e => e.stopPropagation()}
                     >
                         {qtd > 0 && (
                             <button
                                 onMouseDown={e => e.preventDefault()}
-                                onClick={() => setQuantidade(produto.id, qtd - 1)}
+                                onClick={() => {
+                                    const step = produto.categoriaProduto?.permiteFracao ? 0.1 : 1;
+                                    const next = Math.round((qtd - step) * 1000) / 1000;
+                                    setQuantidade(produto.id, next > 0 ? next : 0);
+                                }}
                                 className="w-8 h-8 flex items-center justify-center rounded-full bg-red-100 text-red-600 active:bg-red-200"
                             >
                                 <Minus className="h-4 w-4" />
                             </button>
                         )}
                         {qtd > 0 && (
-                            <input
-                                type="number" min="1"
-                                className="w-9 text-center border border-gray-300 rounded bg-white text-gray-900 text-sm font-bold py-0.5"
+                            <QuantidadeInput
                                 value={qtd}
-                                onFocus={e => e.target.select()}
-                                onChange={e => {
-                                    const v = Number(e.target.value);
-                                    if (v >= 0) setQuantidade(produto.id, v);
-                                }}
+                                permiteFracao={!!produto.categoriaProduto?.permiteFracao}
+                                onChange={v => setQuantidade(produto.id, v)}
                             />
                         )}
                         <button

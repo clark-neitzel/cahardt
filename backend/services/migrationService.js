@@ -696,7 +696,10 @@ const migrationService = {
             )`,
             `CREATE INDEX IF NOT EXISTS "parcelas_conta_receber_id_idx" ON "parcelas"("conta_receber_id")`,
             `CREATE INDEX IF NOT EXISTS "parcelas_data_vencimento_idx" ON "parcelas"("data_vencimento")`,
-            `CREATE INDEX IF NOT EXISTS "parcelas_status_idx" ON "parcelas"("status")`
+            `CREATE INDEX IF NOT EXISTS "parcelas_status_idx" ON "parcelas"("status")`,
+
+            // Update 42: Campo permite_fracao em categorias_produto
+            `ALTER TABLE "categorias_produto" ADD COLUMN IF NOT EXISTS "permite_fracao" BOOLEAN NOT NULL DEFAULT FALSE`
         ];
 
         for (const [index, cmd] of commands.entries()) {

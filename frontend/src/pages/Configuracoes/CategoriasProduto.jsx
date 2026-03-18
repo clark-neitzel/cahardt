@@ -39,6 +39,7 @@ const CategoriasProduto = () => {
             descricao: '',
             ordemExibicao: 0,
             corTag: '',
+            permiteFracao: false,
             ativo: true
         });
     };
@@ -140,7 +141,7 @@ const CategoriasProduto = () => {
                                 rows="2"
                             />
                         </div>
-                        <div className="flex items-center space-x-6">
+                        <div className="flex items-center flex-wrap gap-x-6 gap-y-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Cor Tag (Hex)</label>
                                 <input
@@ -151,6 +152,15 @@ const CategoriasProduto = () => {
                                     placeholder="#FF5733"
                                 />
                             </div>
+                            <label className="flex items-center space-x-2 mt-6">
+                                <input
+                                    type="checkbox"
+                                    checked={form.permiteFracao || false}
+                                    onChange={(e) => setForm({ ...form, permiteFracao: e.target.checked })}
+                                    className="h-4 w-4 text-primary bg-white focus:ring-primary border-gray-300 rounded"
+                                />
+                                <span className="text-gray-900 text-sm font-medium">Permite Fração (kg, litro...)</span>
+                            </label>
                             <label className="flex items-center space-x-2 mt-6">
                                 <input
                                     type="checkbox"
@@ -192,9 +202,10 @@ const CategoriasProduto = () => {
                         categorias.map((cat) => (
                             <li key={cat.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
                                 <div>
-                                    <h3 className="text-sm font-bold text-gray-900 flex items-center">
+                                    <h3 className="text-sm font-bold text-gray-900 flex items-center flex-wrap gap-1">
                                         {cat.nome}
-                                        {!cat.ativo && <span className="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded">Inativo</span>}
+                                        {cat.permiteFracao && <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">Fração</span>}
+                                        {!cat.ativo && <span className="px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded">Inativo</span>}
                                     </h3>
                                     <p className="text-xs text-gray-500">{cat.descricao || 'Sem descrição'}</p>
                                 </div>

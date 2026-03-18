@@ -39,6 +39,9 @@ const produtoController = {
                         imagens: {
                             where: { principal: true },
                             take: 1
+                        },
+                        categoriaProduto: {
+                            select: { id: true, nome: true, permiteFracao: true }
                         }
                     },
                     orderBy: { nome: 'asc' }
