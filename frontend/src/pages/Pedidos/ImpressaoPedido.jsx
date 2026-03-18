@@ -333,88 +333,45 @@ const ImpressaoPedido = () => {
         </style></head>
         <body>${bodyHtml}</body></html>`;
 
-    // Imprimir via iframe oculto (não é bloqueado como popup)
-    const printViaIframe = (html) => {
-        return new Promise((resolve) => {
-            const iframe = document.createElement('iframe');
-            iframe.style.position = 'fixed';
-            iframe.style.left = '-9999px';
-            iframe.style.top = '-9999px';
-            iframe.style.width = '0';
-            iframe.style.height = '0';
-            document.body.appendChild(iframe);
-
-            const doc = iframe.contentDocument || iframe.contentWindow.document;
-            doc.open();
-            doc.write(html);
-            doc.close();
-
-            iframe.onload = () => {
-                setTimeout(() => {
-                    iframe.contentWindow.focus();
-                    iframe.contentWindow.print();
-                    // Aguardar o diálogo de impressão fechar
-                    setTimeout(() => {
-                        document.body.removeChild(iframe);
-                        resolve();
-                    }, 500);
-                }, 300);
-            };
-
-            // Fallback se onload não disparar
-            setTimeout(() => {
-                try {
-                    iframe.contentWindow.focus();
-                    iframe.contentWindow.print();
-                } catch (e) { /* ignore */ }
-                setTimeout(() => {
-                    try { document.body.removeChild(iframe); } catch (e) { /* ignore */ }
-                    resolve();
-                }, 500);
-            }, 1000);
-        });
-    };
-
-    const [imprimindoLote, setImprimindoLote] = useState(false);
-    const [loteProgresso, setLoteProgresso] = useState(0);
-
-    const handlePrint = async () => {
+    const handlePrint = () => {
         const content = printRef.current;
         const isCupom = formato === 'cupom';
         const pages = content.querySelectorAll('.print-page');
 
         if (isBatch && isCupom && pages.length > 1) {
-            // LOTE CUPOM: cada pedido como job separado via iframe → auto-cutter corta
-            setImprimindoLote(true);
-            setLoteProgresso(0);
-
-            for (let i = 0; i < pages.length; i++) {
-                const page = pages[i];
-                // Remover o separador "CORTE AQUI" para impressão individual
+            // LOTE CUPOM: cada pedido em página separada → auto-cutter corta entre páginas
+            // Monta HTML com cada pedido como página separada
+            let pagesHtml = '';
+            pages.forEach((page, i) => {
                 const pageClone = page.cloneNode(true);
+                // Remover separador visual "CORTE AQUI"
                 const corteDiv = pageClone.querySelector('[data-corte]');
                 if (corteDiv) corteDiv.remove();
+                // Envolver em div com page-break
+                const isLast = i === pages.length - 1;
+                pagesHtml += `<div style="page-break-after: ${isLast ? 'auto' : 'always'};">${pageClone.outerHTML}</div>`;
+            });
 
-                const heightMm = measureHeightMm(page);
-                const html = buildHtml(pageClone.outerHTML, true, heightMm);
-                await printViaIframe(html);
-                setLoteProgresso(i + 1);
+            // Medir a maior altura para @page size
+            let maxHeight = 0;
+            pages.forEach(page => {
+                const h = measureHeightMm(page);
+                if (h > maxHeight) maxHeight = h;
+            });
 
-                // Pausa entre jobs para a impressora processar e cortar
-                if (i < pages.length - 1) {
-                    await new Promise(r => setTimeout(r, 1500));
-                }
-            }
-
-            setImprimindoLote(false);
-            toast.success(`${pages.length} cupons impressos!`);
+            const html = buildHtml(pagesHtml, true, maxHeight);
+            const w = window.open('', '', 'height=800,width=800');
+            w.document.write(html);
+            w.document.close();
+            w.focus();
+            setTimeout(() => { w.print(); w.close(); }, 400);
         } else {
             // SINGLE ou LOTE A4: um único job
             let heightMm = 'auto';
             if (isCupom) {
                 heightMm = measureHeightMm(content);
             }
-            const pageBreak = !isCupom && isBatch
+            const pageBreak = isBatch
                 ? '.print-page { page-break-after: always; } .print-page:last-child { page-break-after: auto; }'
                 : '';
             const html = buildHtml(content.innerHTML, isCupom, heightMm, pageBreak);
@@ -491,8 +448,7 @@ const ImpressaoPedido = () => {
                     </div>
                     <button
                         onClick={handlePrint}
-                        disabled={imprimindoLote}
-                        className={`px-3 sm:px-5 py-2 rounded-md flex items-center shadow-lg text-xs sm:text-sm font-bold transition-all ${imprimindoLote ? 'bg-gray-600 text-gray-400 cursor-not-allowed' : 'bg-sky-600 hover:bg-sky-500 text-white'}`}
+                        className="px-3 sm:px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-md flex items-center shadow-lg text-xs sm:text-sm font-bold transition-all"
                     >
                         <Printer className="w-4 h-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Imprimir / PDF</span>
@@ -500,14 +456,6 @@ const ImpressaoPedido = () => {
                     </button>
                 </div>
             </div>
-
-            {/* Progresso de impressão em lote */}
-            {imprimindoLote && (
-                <div className="w-full bg-yellow-900/80 text-yellow-200 px-4 py-2 flex items-center gap-3 text-sm font-medium">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-yellow-200 border-t-transparent"></div>
-                    <span>Imprimindo cupom {loteProgresso + 1} de {isBatch ? batchData.length : 1}...</span>
-                </div>
-            )}
 
             {/* Preview area */}
             <div className="flex-1 w-full flex flex-col items-center py-6 sm:py-8 gap-6">
