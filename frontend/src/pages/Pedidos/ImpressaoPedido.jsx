@@ -336,45 +336,33 @@ const ImpressaoPedido = () => {
     const handlePrint = () => {
         const content = printRef.current;
         const isCupom = formato === 'cupom';
-        const pages = content.querySelectorAll('.print-page');
 
-        if (isBatch && isCupom && pages.length > 1) {
-            // LOTE CUPOM: cada pedido em página separada → auto-cutter corta entre páginas
-            // Monta HTML com cada pedido como página separada
-            let pagesHtml = '';
-            pages.forEach((page, i) => {
+        if (isCupom) {
+            const pages = content.querySelectorAll('.print-page');
+            // Cupom: concatenar todos os pedidos em rolo contínuo
+            let allHtml = '';
+            let totalHeight = 0;
+            pages.forEach(page => {
                 const pageClone = page.cloneNode(true);
                 // Remover separador visual "CORTE AQUI"
                 const corteDiv = pageClone.querySelector('[data-corte]');
                 if (corteDiv) corteDiv.remove();
-                // Envolver em div com page-break
-                const isLast = i === pages.length - 1;
-                pagesHtml += `<div style="page-break-after: ${isLast ? 'auto' : 'always'};">${pageClone.outerHTML}</div>`;
+                allHtml += pageClone.outerHTML;
+                totalHeight += measureHeightMm(page);
             });
 
-            // Medir a maior altura para @page size
-            let maxHeight = 0;
-            pages.forEach(page => {
-                const h = measureHeightMm(page);
-                if (h > maxHeight) maxHeight = h;
-            });
-
-            const html = buildHtml(pagesHtml, true, maxHeight);
+            const html = buildHtml(allHtml, true, totalHeight);
             const w = window.open('', '', 'height=800,width=800');
             w.document.write(html);
             w.document.close();
             w.focus();
             setTimeout(() => { w.print(); w.close(); }, 400);
         } else {
-            // SINGLE ou LOTE A4: um único job
-            let heightMm = 'auto';
-            if (isCupom) {
-                heightMm = measureHeightMm(content);
-            }
+            // A4: page-break entre pedidos
             const pageBreak = isBatch
                 ? '.print-page { page-break-after: always; } .print-page:last-child { page-break-after: auto; }'
                 : '';
-            const html = buildHtml(content.innerHTML, isCupom, heightMm, pageBreak);
+            const html = buildHtml(content.innerHTML, false, 'auto', pageBreak);
 
             const w = window.open('', '', 'height=800,width=800');
             w.document.write(html);
