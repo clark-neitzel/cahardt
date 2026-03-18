@@ -110,8 +110,7 @@ const PedidoCupom = ({ pedido }) => {
     return (
         <div className="print-page bg-white text-black" style={{ width: '80mm', padding: '3mm 4mm', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '13px', lineHeight: '1.4' }}>
             <div style={{ textAlign: 'center', marginBottom: '2mm' }}>
-                <p style={{ fontSize: '17px', fontWeight: 'bold', margin: 0, letterSpacing: '0.5px' }}>HARDT SALGADOS</p>
-                <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '2px 0 0 0' }}>Pedido {numStr}</p>
+                <p style={{ fontSize: '15px', fontWeight: 'bold', margin: 0 }}>Pedido {numStr}</p>
                 {pedido.especial && <p style={{ fontSize: '11px', fontWeight: 'bold', margin: '1px 0' }}>PEDIDO ESPECIAL</p>}
             </div>
 
@@ -225,8 +224,7 @@ const AmostraCupom = ({ amostra }) => {
     return (
         <div className="print-page bg-white text-black" style={{ width: '80mm', padding: '3mm 4mm', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '13px', lineHeight: '1.4' }}>
             <div style={{ textAlign: 'center', marginBottom: '2mm' }}>
-                <p style={{ fontSize: '17px', fontWeight: 'bold', margin: 0, letterSpacing: '0.5px' }}>HARDT SALGADOS</p>
-                <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '2px 0' }}>Amostra AM#{amostra.numero}</p>
+                <p style={{ fontSize: '15px', fontWeight: 'bold', margin: 0 }}>Amostra AM#{amostra.numero}</p>
             </div>
 
             <p style={{ margin: '1mm 0', textAlign: 'center', fontSize: '10px', color: '#666' }}>{sep}</p>
@@ -300,87 +298,103 @@ const ImpressaoPedido = () => {
         load();
     }, [id, tipo, batchIds]);
 
-    const handlePrint = () => {
-        const content = printRef.current;
-        const printWindow = window.open('', '', 'height=800,width=800');
-
-        const isCupom = formato === 'cupom';
-
-        // Para cupom: medir a altura de cada .print-page individualmente
-        // Para lote: cada pedido vira uma "página" separada na impressora
-        let cupomPageStyle = '';
-        if (isCupom) {
-            const pages = content.querySelectorAll('.print-page');
-            if (pages.length > 0) {
-                // Medir a maior página para definir o tamanho
-                let maxHeight = 0;
-                pages.forEach(page => {
-                    const clone = page.cloneNode(true);
-                    clone.style.position = 'absolute';
-                    clone.style.visibility = 'hidden';
-                    clone.style.width = '80mm';
-                    document.body.appendChild(clone);
-                    const h = clone.scrollHeight;
-                    if (h > maxHeight) maxHeight = h;
-                    document.body.removeChild(clone);
-                });
-                const heightMm = Math.ceil(maxHeight / 3.7795) + 10;
-                cupomPageStyle = `size: 80mm ${heightMm}mm;`;
-            } else {
-                cupomPageStyle = 'size: 80mm auto;';
-            }
-        }
-
-        const pageSize = isCupom ? cupomPageStyle : 'size: A4 portrait;';
+    // Gerar HTML de impressão para uma única página
+    const buildPrintHtml = (pageHtml, title, isCupom, heightMm) => {
+        const pageSize = isCupom ? `size: 80mm ${heightMm}mm;` : 'size: A4 portrait;';
         const margins = isCupom ? 'margin: 0;' : 'margin: 8mm;';
-
-        const title = isBatch
-            ? `Lote - ${batchData.length} pedidos`
-            : (tipo === 'amostra' ? `Amostra AM#${data?.numero}` : `Pedido ${data?.especial ? 'ZZ' : ''}#${data?.numero}`);
-
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>${title}</title>
-                    <style>
-                        @media print {
-                            @page { ${pageSize} ${margins} }
-                            body {
-                                -webkit-print-color-adjust: exact;
-                                print-color-adjust: exact;
-                                margin: 0;
-                                padding: 0;
-                                ${isCupom ? 'width: 80mm; max-width: 80mm; overflow: hidden;' : ''}
-                            }
-                            * { color: #000 !important; }
-                            .print-page { page-break-after: always; }
-                            .print-page:last-child { page-break-after: auto; }
-                        }
+        return `<html>
+            <head>
+                <title>${title}</title>
+                <style>
+                    @media print {
+                        @page { ${pageSize} ${margins} }
                         body {
-                            margin: 0;
-                            padding: 0;
-                            font-family: Arial, Helvetica, sans-serif;
-                            color: #000;
-                            ${isCupom ? 'width: 80mm;' : ''}
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                            margin: 0; padding: 0;
+                            ${isCupom ? 'width: 80mm; max-width: 80mm; overflow: hidden;' : ''}
                         }
-                        .print-page { page-break-after: always; }
-                        .print-page:last-child { page-break-after: auto; }
-                        table { width: 100%; border-collapse: collapse; }
-                        th, td { color: #000; }
-                    </style>
-                </head>
-                <body>
-                    ${content.innerHTML}
-                </body>
-            </html>
-        `);
+                        * { color: #000 !important; }
+                    }
+                    body {
+                        margin: 0; padding: 0;
+                        font-family: Arial, Helvetica, sans-serif;
+                        color: #000;
+                        ${isCupom ? 'width: 80mm;' : ''}
+                    }
+                    table { width: 100%; border-collapse: collapse; }
+                    th, td { color: #000; }
+                </style>
+            </head>
+            <body>${pageHtml}</body>
+        </html>`;
+    };
 
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-        }, 400);
+    // Medir altura de um elemento para cupom térmico
+    const measurePageHeight = (el) => {
+        const clone = el.cloneNode(true);
+        clone.style.position = 'absolute';
+        clone.style.visibility = 'hidden';
+        clone.style.width = '80mm';
+        document.body.appendChild(clone);
+        const h = clone.scrollHeight;
+        document.body.removeChild(clone);
+        return Math.ceil(h / 3.7795) + 10;
+    };
+
+    // Imprimir uma única janela
+    const printSingleWindow = (html) => {
+        return new Promise((resolve) => {
+            const w = window.open('', '', 'height=800,width=800');
+            w.document.write(html);
+            w.document.close();
+            w.focus();
+            setTimeout(() => {
+                w.print();
+                w.close();
+                resolve();
+            }, 400);
+        });
+    };
+
+    const handlePrint = async () => {
+        const content = printRef.current;
+        const isCupom = formato === 'cupom';
+        const pages = content.querySelectorAll('.print-page');
+
+        if (isBatch && isCupom && pages.length > 1) {
+            // Lote cupom: imprimir cada pedido como job separado para a térmica cortar
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                const heightMm = measurePageHeight(page);
+                const html = buildPrintHtml(page.outerHTML, `Pedido ${i + 1}/${pages.length}`, true, heightMm);
+                await printSingleWindow(html);
+                // Aguardar um pouco entre impressões para a térmica processar
+                if (i < pages.length - 1) {
+                    await new Promise(r => setTimeout(r, 800));
+                }
+            }
+        } else {
+            // Impressão única (ou lote A4 com page-break)
+            let heightMm = 'auto';
+            if (isCupom && pages.length > 0) {
+                heightMm = measurePageHeight(pages[0]);
+            }
+
+            const title = isBatch
+                ? `Lote - ${batchData.length} pedidos`
+                : (tipo === 'amostra' ? `Amostra AM#${data?.numero}` : `Pedido ${data?.especial ? 'ZZ' : ''}#${data?.numero}`);
+
+            let bodyHtml = content.innerHTML;
+            const html = buildPrintHtml(bodyHtml, title, isCupom, heightMm);
+
+            // Para A4 em lote, manter page-break-after
+            const finalHtml = isBatch && !isCupom
+                ? html.replace('</style>', `.print-page { page-break-after: always; } .print-page:last-child { page-break-after: auto; }</style>`)
+                : html;
+
+            await printSingleWindow(finalHtml);
+        }
     };
 
     if (loading) {
