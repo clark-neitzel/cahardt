@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Printer, Scissors } from 'lucide-react';
+import { ArrowLeft, Printer, Scissors, Download, ExternalLink, X } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import amostraService from '../../services/amostraService';
 import toast from 'react-hot-toast';
@@ -337,6 +337,7 @@ const ImpressaoPedido = () => {
     const [qzDisponivel, setQzDisponivel] = useState(false);
     const [qzImpressora, setQzImpressora] = useState(null);
     const [imprimindo, setImprimindo] = useState(false);
+    const [mostrarAjudaQz, setMostrarAjudaQz] = useState(false);
 
     // Tentar conectar ao QZ Tray na montagem
     useEffect(() => {
@@ -578,10 +579,13 @@ const ImpressaoPedido = () => {
                     </div>
                     {/* Indicador QZ Tray */}
                     {formato === 'cupom' && (
-                        <div className={`hidden sm:flex items-center gap-1 text-[10px] px-2 py-1 rounded ${qzDisponivel ? 'bg-green-900/50 text-green-300' : 'bg-gray-700 text-gray-400'}`}>
+                        <button
+                            onClick={() => !qzDisponivel && setMostrarAjudaQz(true)}
+                            className={`hidden sm:flex items-center gap-1 text-[10px] px-2 py-1 rounded transition-colors ${qzDisponivel ? 'bg-green-900/50 text-green-300' : 'bg-yellow-900/50 text-yellow-300 hover:bg-yellow-800/60 cursor-pointer'}`}
+                        >
                             <Scissors className="w-3 h-3" />
-                            <span>{qzDisponivel ? 'Auto-corte' : 'Sem corte'}</span>
-                        </div>
+                            <span>{qzDisponivel ? 'Auto-corte ativo' : 'Ativar corte'}</span>
+                        </button>
                     )}
                     <button
                         onClick={handlePrint}
@@ -598,6 +602,78 @@ const ImpressaoPedido = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Banner quando cupom em lote sem QZ Tray */}
+            {formato === 'cupom' && isBatch && !qzDisponivel && (
+                <div className="w-full bg-yellow-900/60 border-b border-yellow-700/50 px-4 py-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-yellow-200 text-xs">
+                        <Scissors className="w-4 h-4 flex-shrink-0" />
+                        <span>Para corte automatico entre pedidos, instale o <strong>QZ Tray</strong> neste computador.</span>
+                    </div>
+                    <button
+                        onClick={() => setMostrarAjudaQz(true)}
+                        className="text-yellow-300 hover:text-yellow-100 text-xs font-bold underline whitespace-nowrap ml-2"
+                    >
+                        Como instalar
+                    </button>
+                </div>
+            )}
+
+            {/* Modal de instruções QZ Tray */}
+            {mostrarAjudaQz && (
+                <div className="fixed inset-0 z-[10000] bg-black/60 flex items-center justify-center p-4" onClick={() => setMostrarAjudaQz(false)}>
+                    <div className="bg-gray-800 rounded-xl border border-gray-600 max-w-md w-full p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                                <Scissors className="w-5 h-5 text-green-400" />
+                                Ativar Corte Automatico
+                            </h3>
+                            <button onClick={() => setMostrarAjudaQz(false)} className="text-gray-400 hover:text-white">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4 text-sm text-gray-300">
+                            <p>O <strong className="text-white">QZ Tray</strong> e um programa gratuito que permite o sistema enviar comandos direto para a impressora termica, incluindo o comando de corte entre cada pedido.</p>
+
+                            <div className="bg-gray-900 rounded-lg p-4 space-y-3">
+                                <div className="flex items-start gap-3">
+                                    <span className="bg-sky-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
+                                    <div>
+                                        <p className="font-medium text-white">Baixe o QZ Tray</p>
+                                        <p className="text-xs text-gray-400 mt-1">Acesse <strong>qz.io/download</strong> e baixe o instalador para Windows</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <span className="bg-sky-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+                                    <div>
+                                        <p className="font-medium text-white">Instale e execute</p>
+                                        <p className="text-xs text-gray-400 mt-1">Execute o instalador. O QZ Tray vai aparecer na bandeja do sistema (perto do relogio)</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <span className="bg-sky-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
+                                    <div>
+                                        <p className="font-medium text-white">Recarregue esta pagina</p>
+                                        <p className="text-xs text-gray-400 mt-1">Atualize a pagina (F5) e o indicador vai mudar para <span className="text-green-400 font-medium">Auto-corte ativo</span></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p className="text-xs text-gray-500">O QZ Tray e open source e gratuito. Precisa do Java instalado. Funciona com Epson, Bematech, Elgin e outras impressoras termicas.</p>
+                        </div>
+
+                        <div className="mt-5 flex gap-2">
+                            <button
+                                onClick={() => setMostrarAjudaQz(false)}
+                                className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
+                            >
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Preview area */}
             <div className="flex-1 w-full flex flex-col items-center py-6 sm:py-8 gap-6">
