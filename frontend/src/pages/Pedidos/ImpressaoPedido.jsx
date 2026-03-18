@@ -297,7 +297,23 @@ const ImpressaoPedido = () => {
         const printWindow = window.open('', '', 'height=800,width=800');
 
         const isCupom = formato === 'cupom';
-        const pageSize = isCupom ? 'size: 80mm auto;' : 'size: A4 portrait;';
+
+        // Para cupom: medir a altura real do conteúdo e usar como tamanho da página
+        // Isso evita que a impressora use o tamanho padrão do rolo (297mm) e imprima uma folha enorme
+        let cupomHeight = 'auto';
+        if (isCupom) {
+            const clone = content.cloneNode(true);
+            clone.style.position = 'absolute';
+            clone.style.visibility = 'hidden';
+            clone.style.width = '80mm';
+            document.body.appendChild(clone);
+            const heightPx = clone.scrollHeight;
+            // Converter px para mm (96 DPI: 1mm ≈ 3.7795px) + margem de segurança
+            cupomHeight = Math.ceil(heightPx / 3.7795) + 10 + 'mm';
+            document.body.removeChild(clone);
+        }
+
+        const pageSize = isCupom ? `size: 80mm ${cupomHeight};` : 'size: A4 portrait;';
         const margins = isCupom ? 'margin: 0;' : 'margin: 8mm;';
 
         printWindow.document.write(`
@@ -307,10 +323,22 @@ const ImpressaoPedido = () => {
                     <style>
                         @media print {
                             @page { ${pageSize} ${margins} }
-                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
+                            body {
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                                margin: 0;
+                                padding: 0;
+                                ${isCupom ? 'width: 80mm; max-width: 80mm; overflow: hidden;' : ''}
+                            }
                             * { color: #000 !important; }
                         }
-                        body { margin: 0; padding: 0; font-family: ${isCupom ? "'Courier New', monospace" : 'Arial, sans-serif'}; color: #000; }
+                        body {
+                            margin: 0;
+                            padding: 0;
+                            font-family: ${isCupom ? "'Courier New', monospace" : 'Arial, sans-serif'};
+                            color: #000;
+                            ${isCupom ? 'width: 80mm;' : ''}
+                        }
                         table { width: 100%; border-collapse: collapse; }
                         th, td { color: #000; }
                     </style>
