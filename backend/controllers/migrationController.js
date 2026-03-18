@@ -108,6 +108,92 @@ const migrationController = {
             console.error('❌ Erro ao aplicar migration:', error);
             res.status(500).json({ error: error.message });
         }
+    },
+
+    // Sincronizar ContsReceber com pedidos existentes
+    syncContasReceber: async (req, res) => {
+        try {
+            console.log('🔄 Iniciando sincronização de Contas a Receber...');
+
+            // Buscar todos os pedidos enviados que NÃO têm conta a receber
+            const pedidosSemConta = await prisma.pedido.findMany({
+                where: {
+                    statusEnvio: 'ENVIAR',
+                    contaReceber: null
+                },
+                include: {
+                    itens: true,
+                    cliente: { select: { Nome: true, NomeFantasia: true } }
+                }
+            });
+
+            console.log(`📊 Encontrados ${pedidosSemConta.length} pedidos sem contas a receber`);
+
+            let criadas = 0;
+            const resultados = [];
+            for (const pedido of pedidosSemConta) {
+                try {
+                    // Calcular valor total do pedido
+                    const valorTotal = pedido.itens.reduce((sum, item) => {
+                        return sum + (Number(item.valor) * Number(item.quantidade));
+                    }, 0);
+
+                    // Calcular parcelas
+                    const numParcelas = pedido.qtdParcelas || 1;
+                    const intervalo = pedido.intervaloDias || 0;
+                    const baseDate = pedido.primeiroVencimento || pedido.dataVenda;
+                    const valorParcela = Math.round((valorTotal / numParcelas) * 100) / 100;
+
+                    const parcelasData = [];
+                    for (let i = 0; i < numParcelas; i++) {
+                        const vencimento = new Date(baseDate);
+                        vencimento.setDate(vencimento.getDate() + (i * intervalo));
+                        const val = i === numParcelas - 1
+                            ? Math.round((valorTotal - valorParcela * (numParcelas - 1)) * 100) / 100
+                            : valorParcela;
+                        parcelasData.push({
+                            numeroParcela: i + 1,
+                            valor: val,
+                            dataVencimento: vencimento
+                        });
+                    }
+
+                    // Criar conta a receber
+                    await prisma.contaReceber.create({
+                        data: {
+                            pedidoId: pedido.id,
+                            clienteId: pedido.clienteId,
+                            origem: pedido.especial ? 'ESPECIAL' : 'FATURADO_CA',
+                            valorTotal: Math.round(valorTotal * 100) / 100,
+                            status: 'ABERTO',
+                            parcelas: { create: parcelasData }
+                        }
+                    });
+
+                    criadas++;
+                    const msg = `✅ Pedido ${pedido.numero} (${pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}) - R$ ${(valorTotal).toFixed(2)} - ${numParcelas} parcela(s)`;
+                    console.log(msg);
+                    resultados.push({ success: true, numero: pedido.numero, valor: valorTotal, parcelas: numParcelas });
+                } catch (err) {
+                    const msg = `❌ Erro ao processar pedido ${pedido.numero}: ${err.message}`;
+                    console.error(msg);
+                    resultados.push({ success: false, numero: pedido.numero, erro: err.message });
+                }
+            }
+
+            console.log(`\n✨ Sincronização concluída: ${criadas}/${pedidosSemConta.length} contas criadas`);
+
+            res.json({
+                success: true,
+                message: `Sincronização concluída: ${criadas} contas criadas de ${pedidosSemConta.length} pedidos`,
+                criadas,
+                total: pedidosSemConta.length,
+                resultados
+            });
+        } catch (error) {
+            console.error('❌ Erro ao sincronizar contas a receber:', error);
+            res.status(500).json({ error: error.message });
+        }
     }
 };
 
