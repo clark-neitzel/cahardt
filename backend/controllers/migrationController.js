@@ -115,10 +115,11 @@ const migrationController = {
         try {
             console.log('🔄 Iniciando sincronização de Contas a Receber...');
 
-            // Buscar todos os pedidos enviados que NÃO têm conta a receber
+            // Buscar todos os pedidos que NÃO têm conta a receber
+            // Inclui: RECEBIDO, FATURADO, SINCRONIZANDO, etc - qualquer que tenha sido "processado"
             const pedidosSemConta = await prisma.pedido.findMany({
                 where: {
-                    statusEnvio: 'ENVIAR',
+                    statusEnvio: { not: 'ABERTO' }, // Exclude apenas pedidos ainda em ABERTO (não finalizados)
                     contaReceber: null
                 },
                 include: {
