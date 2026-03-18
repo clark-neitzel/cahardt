@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Printer, Scissors } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import amostraService from '../../services/amostraService';
 import toast from 'react-hot-toast';
+import qz from 'qz-tray';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
@@ -333,18 +334,151 @@ const ImpressaoPedido = () => {
         </style></head>
         <body>${bodyHtml}</body></html>`;
 
-    const handlePrint = () => {
+    const [qzDisponivel, setQzDisponivel] = useState(false);
+    const [qzImpressora, setQzImpressora] = useState(null);
+    const [imprimindo, setImprimindo] = useState(false);
+
+    // Tentar conectar ao QZ Tray na montagem
+    useEffect(() => {
+        const conectarQz = async () => {
+            try {
+                if (!qz.websocket.isActive()) {
+                    // Desabilitar verificação de certificado para uso local
+                    qz.security.setCertificatePromise(() => Promise.resolve(''));
+                    qz.security.setSignaturePromise(() => () => Promise.resolve(''));
+                    await qz.websocket.connect();
+                }
+                // Buscar impressora padrão
+                const impressora = await qz.printers.getDefault();
+                setQzImpressora(impressora);
+                setQzDisponivel(true);
+            } catch {
+                setQzDisponivel(false);
+            }
+        };
+        conectarQz();
+        return () => {
+            // Não desconectar — reutilizar conexão entre navegações
+        };
+    }, []);
+
+    // Gerar dados ESC/POS para um pedido
+    const gerarEscPos = (pedido) => {
+        const total = pedido.itens?.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0) || 0;
+        const numStr = pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
+        const sep = ''.padStart(42, '-');
+        const ESC = '\x1B';
+        const GS = '\x1D';
+
+        let dados = [];
+
+        // Inicializar impressora
+        dados.push(ESC + '@');
+        // Centralizar
+        dados.push(ESC + 'a' + '\x01');
+        // Negrito + tamanho duplo
+        dados.push(ESC + 'E' + '\x01');
+        dados.push(GS + '!' + '\x11'); // Largura e altura dupla
+        dados.push(`Pedido ${numStr}\n`);
+        // Voltar ao normal
+        dados.push(GS + '!' + '\x00');
+
+        if (pedido.especial) {
+            dados.push(ESC + 'E' + '\x01');
+            dados.push('PEDIDO ESPECIAL\n');
+            dados.push(ESC + 'E' + '\x00');
+        }
+
+        // Alinhar à esquerda
+        dados.push(ESC + 'a' + '\x00');
+        dados.push(sep + '\n');
+
+        // Dados do cliente
+        dados.push(`Cliente: ${pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || '-'}\n`);
+        dados.push(`Emissao: ${fmtData(pedido.createdAt)}\n`);
+        dados.push(`Entrega: ${fmtData(pedido.dataVenda)}\n`);
+        dados.push(`Vendedor: ${pedido.vendedor?.nome || '-'}\n`);
+        dados.push(sep + '\n');
+
+        // Itens
+        pedido.itens?.forEach(item => {
+            const subtotal = Number(item.valor) * Number(item.quantidade);
+            const nome = (item.produto?.nome || item.nomeProduto || '-').substring(0, 30);
+            dados.push(ESC + 'E' + '\x01');
+            dados.push(`${nome}\n`);
+            dados.push(ESC + 'E' + '\x00');
+            const qtdPreco = `${Number(item.quantidade)} x R$ ${fmt(item.valor)}`;
+            const subStr = `R$ ${fmt(subtotal)}`;
+            const pad = Math.max(0, 42 - qtdPreco.length - subStr.length);
+            dados.push(qtdPreco + ' '.repeat(pad) + subStr + '\n');
+        });
+
+        dados.push(sep + '\n');
+
+        // Total — tamanho duplo centralizado
+        dados.push(ESC + 'a' + '\x01');
+        dados.push(ESC + 'E' + '\x01');
+        dados.push(GS + '!' + '\x11');
+        dados.push(`TOTAL R$ ${fmt(total)}\n`);
+        dados.push(GS + '!' + '\x00');
+        dados.push(ESC + 'E' + '\x00');
+
+        // Voltar esquerda
+        dados.push(ESC + 'a' + '\x00');
+        dados.push(sep + '\n');
+
+        // Condição de pagamento
+        dados.push(`Cond.: ${pedido.nomeCondicaoPagamento || '-'}\n`);
+        dados.push(`Parcelas: ${pedido.qtdParcelas || 1}x\n`);
+        if (pedido.observacoes) {
+            dados.push(`Obs: ${pedido.observacoes}\n`);
+        }
+
+        // Rodapé
+        dados.push(ESC + 'a' + '\x01');
+        const qtdItens = pedido.itens?.length || 0;
+        dados.push(`${qtdItens} ite${qtdItens === 1 ? 'm' : 'ns'} | ${new Date().toLocaleString('pt-BR')}\n`);
+        dados.push(ESC + 'a' + '\x00');
+
+        // Avançar papel e CORTAR
+        dados.push('\n\n\n');
+        dados.push(GS + 'V' + '\x00'); // Corte total
+
+        return dados;
+    };
+
+    // Impressão via QZ Tray (ESC/POS com corte)
+    const handlePrintQz = async () => {
+        setImprimindo(true);
+        try {
+            const pedidos = isBatch ? batchData : [data];
+            const config = qz.configs.create(qzImpressora, { encoding: 'Cp860' });
+
+            for (let i = 0; i < pedidos.length; i++) {
+                const dados = gerarEscPos(pedidos[i]);
+                await qz.print(config, dados);
+            }
+
+            toast.success(`${pedidos.length} cupom${pedidos.length > 1 ? 'ns' : ''} impresso${pedidos.length > 1 ? 's' : ''} com corte!`);
+        } catch (err) {
+            console.error('Erro QZ Tray:', err);
+            toast.error('Erro ao imprimir via QZ Tray. Tente o modo normal.');
+        } finally {
+            setImprimindo(false);
+        }
+    };
+
+    // Impressão via browser (fallback sem corte)
+    const handlePrintBrowser = () => {
         const content = printRef.current;
         const isCupom = formato === 'cupom';
 
         if (isCupom) {
             const pages = content.querySelectorAll('.print-page');
-            // Cupom: concatenar todos os pedidos em rolo contínuo
             let allHtml = '';
             let totalHeight = 0;
             pages.forEach(page => {
                 const pageClone = page.cloneNode(true);
-                // Remover separador visual "CORTE AQUI"
                 const corteDiv = pageClone.querySelector('[data-corte]');
                 if (corteDiv) corteDiv.remove();
                 allHtml += pageClone.outerHTML;
@@ -358,7 +492,6 @@ const ImpressaoPedido = () => {
             w.focus();
             setTimeout(() => { w.print(); w.close(); }, 400);
         } else {
-            // A4: page-break entre pedidos
             const pageBreak = isBatch
                 ? '.print-page { page-break-after: always; } .print-page:last-child { page-break-after: auto; }'
                 : '';
@@ -369,6 +502,15 @@ const ImpressaoPedido = () => {
             w.document.close();
             w.focus();
             setTimeout(() => { w.print(); w.close(); }, 400);
+        }
+    };
+
+    const handlePrint = () => {
+        // Cupom com QZ Tray disponível → impressão direta com corte
+        if (formato === 'cupom' && qzDisponivel && qzImpressora) {
+            handlePrintQz();
+        } else {
+            handlePrintBrowser();
         }
     };
 
@@ -434,13 +576,25 @@ const ImpressaoPedido = () => {
                             Cupom
                         </button>
                     </div>
+                    {/* Indicador QZ Tray */}
+                    {formato === 'cupom' && (
+                        <div className={`hidden sm:flex items-center gap-1 text-[10px] px-2 py-1 rounded ${qzDisponivel ? 'bg-green-900/50 text-green-300' : 'bg-gray-700 text-gray-400'}`}>
+                            <Scissors className="w-3 h-3" />
+                            <span>{qzDisponivel ? 'Auto-corte' : 'Sem corte'}</span>
+                        </div>
+                    )}
                     <button
                         onClick={handlePrint}
-                        className="px-3 sm:px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-md flex items-center shadow-lg text-xs sm:text-sm font-bold transition-all"
+                        disabled={imprimindo}
+                        className={`px-3 sm:px-5 py-2 rounded-md flex items-center shadow-lg text-xs sm:text-sm font-bold transition-all ${imprimindo ? 'bg-gray-600 text-gray-400 cursor-not-allowed' : 'bg-sky-600 hover:bg-sky-500 text-white'}`}
                     >
                         <Printer className="w-4 h-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">Imprimir / PDF</span>
-                        <span className="sm:hidden">Imprimir</span>
+                        {imprimindo ? 'Imprimindo...' : (
+                            <>
+                                <span className="hidden sm:inline">Imprimir{formato === 'cupom' && qzDisponivel ? ' c/ corte' : ''}</span>
+                                <span className="sm:hidden">Imprimir</span>
+                            </>
+                        )}
                     </button>
                 </div>
             </div>
