@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer } from 'lucide-react';
+import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import amostraService from '../../services/amostraService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -24,6 +24,7 @@ const ListaPedidos = () => {
     const podeAprovar = user?.permissoes?.Pode_Aprovar_Especial || user?.permissoes?.admin;
     const podeReverter = user?.permissoes?.Pode_Reverter_Especial || user?.permissoes?.admin;
     const [revertendo, setRevertendo] = useState(null);
+    const [selecionados, setSelecionados] = useState(new Set());
 
     useEffect(() => {
         carregarPedidos();
@@ -168,6 +169,31 @@ const ListaPedidos = () => {
     const qtdEspeciais = pedidos.filter(p => p.especial).length;
     const qtdEspeciaisPendentes = pedidos.filter(p => p.especial && p.statusEnvio === 'ENVIAR').length;
 
+    const toggleSelecao = (id) => {
+        setSelecionados(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleTodosFiltrados = () => {
+        const ids = pedidosFiltrados.map(p => p.id);
+        const todosJaSelecionados = ids.every(id => selecionados.has(id));
+        if (todosJaSelecionados) {
+            setSelecionados(new Set());
+        } else {
+            setSelecionados(new Set(ids));
+        }
+    };
+
+    const imprimirSelecionados = () => {
+        if (selecionados.size === 0) return;
+        const ids = Array.from(selecionados).join(',');
+        navigate(`/pedidos/imprimir/lote?ids=${ids}`);
+    };
+
     return (
         <div className="container mx-auto px-2 py-4">
             {/* Header: Busca */}
@@ -187,7 +213,7 @@ const ListaPedidos = () => {
             </div>
 
             {/* Abas: Todos | Especiais | Amostras */}
-            <div className="flex gap-1 mb-2">
+            <div className="flex gap-1 mb-2 items-center">
                 <button
                     onClick={() => setAbaAtiva('todos')}
                     className={`px-3 py-1.5 text-xs font-bold rounded-t border border-b-0 transition-colors ${abaAtiva === 'todos' ? 'bg-white text-gray-900 border-gray-200' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
@@ -214,7 +240,37 @@ const ListaPedidos = () => {
                     <Package className="h-3.5 w-3.5" />
                     Amostras
                 </button>
+                {/* Selecionar todos (só quando não é aba amostras) */}
+                {abaAtiva !== 'amostras' && pedidosFiltrados.length > 0 && (
+                    <button
+                        onClick={toggleTodosFiltrados}
+                        className="ml-auto px-2 py-1 text-[10px] font-medium text-gray-500 hover:text-purple-600 transition-colors"
+                        title="Selecionar/desmarcar todos"
+                    >
+                        {pedidosFiltrados.every(p => selecionados.has(p.id)) ? 'Desmarcar todos' : 'Selecionar todos'}
+                    </button>
+                )}
             </div>
+
+            {/* Barra de seleção em lote */}
+            {abaAtiva !== 'amostras' && selecionados.size > 0 && (
+                <div className="flex items-center justify-between bg-purple-50 border border-purple-200 rounded px-3 py-2 mb-2">
+                    <div className="flex items-center gap-2 text-sm text-purple-700">
+                        <CheckSquare className="h-4 w-4" />
+                        <span className="font-bold">{selecionados.size} selecionado{selecionados.size > 1 ? 's' : ''}</span>
+                        <button onClick={() => setSelecionados(new Set())} className="text-purple-500 hover:text-purple-700 ml-1">
+                            <X className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+                    <button
+                        onClick={imprimirSelecionados}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-purple-600 text-white rounded hover:bg-purple-700"
+                    >
+                        <Printer className="h-3.5 w-3.5" />
+                        Imprimir {selecionados.size}
+                    </button>
+                </div>
+            )}
 
             {/* Conteúdo: Amostras */}
             {abaAtiva === 'amostras' ? (
@@ -343,6 +399,16 @@ const ListaPedidos = () => {
                         pedidosFiltrados.map((pedido) => (
                             <div key={pedido.id} className="p-3 hover:bg-gray-50 flex flex-col justify-between gap-1 border-b border-gray-100 transition-colors">
                                 <div className="flex justify-between items-start gap-2">
+                                    {/* Checkbox de seleção */}
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); toggleSelecao(pedido.id); }}
+                                        className="mt-0.5 flex-shrink-0 text-gray-300 hover:text-purple-600 transition-colors"
+                                    >
+                                        {selecionados.has(pedido.id)
+                                            ? <CheckSquare className="h-5 w-5 text-purple-600" />
+                                            : <Square className="h-5 w-5" />
+                                        }
+                                    </button>
                                     <div className="flex-1 min-w-0 pr-1">
                                         <div className="flex items-center gap-1.5 mb-0.5">
                                             {pedido.numero && (

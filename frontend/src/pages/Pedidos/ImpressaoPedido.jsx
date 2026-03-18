@@ -105,34 +105,34 @@ const PedidoA4 = ({ pedido }) => {
 const PedidoCupom = ({ pedido }) => {
     const total = pedido.itens?.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0) || 0;
     const numStr = pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
-    const sep = '─'.repeat(40);
+    const sep = '─'.repeat(32);
 
     return (
-        <div className="print-page bg-white text-black font-mono" style={{ width: '80mm', padding: '3mm', fontSize: '11px', lineHeight: '1.3' }}>
+        <div className="print-page bg-white text-black" style={{ width: '80mm', padding: '3mm 4mm', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '13px', lineHeight: '1.4' }}>
             <div style={{ textAlign: 'center', marginBottom: '2mm' }}>
-                <p style={{ fontSize: '14px', fontWeight: 'bold', margin: 0 }}>HARDT SALGADOS</p>
-                <p style={{ fontSize: '10px', margin: '1px 0' }}>Pedido {numStr}</p>
-                <p style={{ fontSize: '9px', margin: 0 }}>{pedido.especial ? 'PEDIDO ESPECIAL' : ''}</p>
+                <p style={{ fontSize: '17px', fontWeight: 'bold', margin: 0, letterSpacing: '0.5px' }}>HARDT SALGADOS</p>
+                <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '2px 0 0 0' }}>Pedido {numStr}</p>
+                {pedido.especial && <p style={{ fontSize: '11px', fontWeight: 'bold', margin: '1px 0' }}>PEDIDO ESPECIAL</p>}
             </div>
 
-            <p style={{ margin: '0', textAlign: 'center', fontSize: '9px' }}>{sep}</p>
+            <p style={{ margin: '1mm 0', textAlign: 'center', fontSize: '10px', color: '#666' }}>{sep}</p>
 
-            <div style={{ fontSize: '10px', marginBottom: '1mm' }}>
-                <p style={{ margin: '1px 0' }}><strong>Cliente:</strong> {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || '-'}</p>
-                <p style={{ margin: '1px 0' }}><strong>Emissão:</strong> {fmtData(pedido.createdAt)}</p>
-                <p style={{ margin: '1px 0' }}><strong>Entrega:</strong> {fmtData(pedido.dataVenda)}</p>
-                <p style={{ margin: '1px 0' }}><strong>Vendedor:</strong> {pedido.vendedor?.nome || '-'}</p>
+            <div style={{ fontSize: '12px', marginBottom: '2mm' }}>
+                <p style={{ margin: '2px 0' }}><strong>Cliente:</strong> {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || '-'}</p>
+                <p style={{ margin: '2px 0' }}><strong>Emissão:</strong> {fmtData(pedido.createdAt)}</p>
+                <p style={{ margin: '2px 0' }}><strong>Entrega:</strong> {fmtData(pedido.dataVenda)}</p>
+                <p style={{ margin: '2px 0' }}><strong>Vendedor:</strong> {pedido.vendedor?.nome || '-'}</p>
             </div>
 
-            <p style={{ margin: '0', textAlign: 'center', fontSize: '9px' }}>{sep}</p>
+            <p style={{ margin: '1mm 0', textAlign: 'center', fontSize: '10px', color: '#666' }}>{sep}</p>
 
             {/* Itens */}
-            <div style={{ fontSize: '10px' }}>
+            <div style={{ fontSize: '12px' }}>
                 {pedido.itens?.map((item, idx) => {
                     const subtotal = Number(item.valor) * Number(item.quantidade);
                     return (
-                        <div key={idx} style={{ marginBottom: '1mm' }}>
-                            <p style={{ margin: 0, fontWeight: 'bold' }}>{item.produto?.nome || item.nomeProduto || '-'}</p>
+                        <div key={idx} style={{ marginBottom: '2mm' }}>
+                            <p style={{ margin: 0, fontWeight: 'bold', fontSize: '13px' }}>{item.produto?.nome || item.nomeProduto || '-'}</p>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <span>{Number(item.quantidade)} x R$ {fmt(item.valor)}</span>
                                 <span style={{ fontWeight: 'bold' }}>R$ {fmt(subtotal)}</span>
@@ -142,22 +142,22 @@ const PedidoCupom = ({ pedido }) => {
                 })}
             </div>
 
-            <p style={{ margin: '1mm 0', textAlign: 'center', fontSize: '9px' }}>{sep}</p>
+            <p style={{ margin: '1mm 0', textAlign: 'center', fontSize: '10px', color: '#666' }}>{sep}</p>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '16px', margin: '1mm 0' }}>
                 <span>TOTAL</span>
                 <span>R$ {fmt(total)}</span>
             </div>
 
-            <p style={{ margin: '1mm 0', textAlign: 'center', fontSize: '9px' }}>{sep}</p>
+            <p style={{ margin: '1mm 0', textAlign: 'center', fontSize: '10px', color: '#666' }}>{sep}</p>
 
-            <div style={{ fontSize: '9px' }}>
-                <p style={{ margin: '1px 0' }}><strong>Cond.:</strong> {pedido.nomeCondicaoPagamento || '-'}</p>
-                <p style={{ margin: '1px 0' }}><strong>Parcelas:</strong> {pedido.qtdParcelas || 1}x</p>
-                {pedido.observacoes && <p style={{ margin: '2px 0', fontStyle: 'italic' }}>Obs: {pedido.observacoes}</p>}
+            <div style={{ fontSize: '11px' }}>
+                <p style={{ margin: '2px 0' }}><strong>Cond.:</strong> {pedido.nomeCondicaoPagamento || '-'}</p>
+                <p style={{ margin: '2px 0' }}><strong>Parcelas:</strong> {pedido.qtdParcelas || 1}x</p>
+                {pedido.observacoes && <p style={{ margin: '3px 0', fontStyle: 'italic' }}>Obs: {pedido.observacoes}</p>}
             </div>
 
-            <p style={{ margin: '2mm 0 0 0', textAlign: 'center', fontSize: '8px', color: '#888' }}>
+            <p style={{ margin: '3mm 0 0 0', textAlign: 'center', fontSize: '9px', color: '#888' }}>
                 {pedido.itens?.length} ite{pedido.itens?.length === 1 ? 'm' : 'ns'} | Impresso em {new Date().toLocaleString('pt-BR')}
             </p>
         </div>
@@ -220,37 +220,37 @@ const AmostraA4 = ({ amostra }) => {
 //  Componente de Impressão Amostra Cupom (80mm)
 // ═══════════════════════════════════════════════════════════
 const AmostraCupom = ({ amostra }) => {
-    const sep = '─'.repeat(40);
+    const sep = '─'.repeat(32);
 
     return (
-        <div className="print-page bg-white text-black font-mono" style={{ width: '80mm', padding: '3mm', fontSize: '11px', lineHeight: '1.3' }}>
+        <div className="print-page bg-white text-black" style={{ width: '80mm', padding: '3mm 4mm', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '13px', lineHeight: '1.4' }}>
             <div style={{ textAlign: 'center', marginBottom: '2mm' }}>
-                <p style={{ fontSize: '14px', fontWeight: 'bold', margin: 0 }}>HARDT SALGADOS</p>
-                <p style={{ fontSize: '10px', margin: '1px 0' }}>Amostra AM#{amostra.numero}</p>
+                <p style={{ fontSize: '17px', fontWeight: 'bold', margin: 0, letterSpacing: '0.5px' }}>HARDT SALGADOS</p>
+                <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '2px 0' }}>Amostra AM#{amostra.numero}</p>
             </div>
 
-            <p style={{ margin: '0', textAlign: 'center', fontSize: '9px' }}>{sep}</p>
+            <p style={{ margin: '1mm 0', textAlign: 'center', fontSize: '10px', color: '#666' }}>{sep}</p>
 
-            <div style={{ fontSize: '10px', marginBottom: '1mm' }}>
-                <p style={{ margin: '1px 0' }}><strong>Dest.:</strong> {amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || '-'}</p>
-                <p style={{ margin: '1px 0' }}><strong>Data:</strong> {fmtData(amostra.createdAt)}</p>
-                <p style={{ margin: '1px 0' }}><strong>Vendedor:</strong> {amostra.solicitadoPor?.nome || '-'}</p>
-                {amostra.observacao && <p style={{ margin: '1px 0', fontStyle: 'italic' }}>Obs: {amostra.observacao}</p>}
+            <div style={{ fontSize: '12px', marginBottom: '2mm' }}>
+                <p style={{ margin: '2px 0' }}><strong>Dest.:</strong> {amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || '-'}</p>
+                <p style={{ margin: '2px 0' }}><strong>Data:</strong> {fmtData(amostra.createdAt)}</p>
+                <p style={{ margin: '2px 0' }}><strong>Vendedor:</strong> {amostra.solicitadoPor?.nome || '-'}</p>
+                {amostra.observacao && <p style={{ margin: '2px 0', fontStyle: 'italic' }}>Obs: {amostra.observacao}</p>}
             </div>
 
-            <p style={{ margin: '0', textAlign: 'center', fontSize: '9px' }}>{sep}</p>
+            <p style={{ margin: '1mm 0', textAlign: 'center', fontSize: '10px', color: '#666' }}>{sep}</p>
 
-            <div style={{ fontSize: '10px' }}>
+            <div style={{ fontSize: '13px' }}>
                 {amostra.itens?.map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1px' }}>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
                         <span>{item.nomeProduto || '-'}</span>
                         <span style={{ fontWeight: 'bold' }}>{Number(item.quantidade)}x</span>
                     </div>
                 ))}
             </div>
 
-            <p style={{ margin: '1mm 0', textAlign: 'center', fontSize: '9px' }}>{sep}</p>
-            <p style={{ margin: 0, textAlign: 'center', fontSize: '8px', color: '#888' }}>
+            <p style={{ margin: '1mm 0', textAlign: 'center', fontSize: '10px', color: '#666' }}>{sep}</p>
+            <p style={{ margin: 0, textAlign: 'center', fontSize: '9px', color: '#888' }}>
                 {amostra.itens?.length} ite{amostra.itens?.length === 1 ? 'm' : 'ns'} | {new Date().toLocaleString('pt-BR')}
             </p>
         </div>
@@ -267,15 +267,23 @@ const ImpressaoPedido = () => {
     const printRef = useRef();
 
     const tipo = searchParams.get('tipo') || 'pedido'; // 'pedido' | 'amostra'
-    const [formato, setFormato] = useState('a4'); // 'a4' | 'cupom'
+    const batchIds = searchParams.get('ids'); // Para impressão em lote: ids=id1,id2,id3
+    const [formato, setFormato] = useState(batchIds ? 'cupom' : 'a4'); // lote default cupom
     const [data, setData] = useState(null);
+    const [batchData, setBatchData] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    const isBatch = !!batchIds;
 
     useEffect(() => {
         const load = async () => {
             try {
                 setLoading(true);
-                if (tipo === 'amostra') {
+                if (isBatch) {
+                    const ids = batchIds.split(',').filter(Boolean);
+                    const results = await Promise.all(ids.map(pid => pedidoService.detalhar(pid)));
+                    setBatchData(results.filter(Boolean));
+                } else if (tipo === 'amostra') {
                     const res = await amostraService.buscarPorId(id);
                     setData(res);
                 } else {
@@ -290,7 +298,7 @@ const ImpressaoPedido = () => {
             }
         };
         load();
-    }, [id, tipo]);
+    }, [id, tipo, batchIds]);
 
     const handlePrint = () => {
         const content = printRef.current;
@@ -298,28 +306,42 @@ const ImpressaoPedido = () => {
 
         const isCupom = formato === 'cupom';
 
-        // Para cupom: medir a altura real do conteúdo e usar como tamanho da página
-        // Isso evita que a impressora use o tamanho padrão do rolo (297mm) e imprima uma folha enorme
-        let cupomHeight = 'auto';
+        // Para cupom: medir a altura de cada .print-page individualmente
+        // Para lote: cada pedido vira uma "página" separada na impressora
+        let cupomPageStyle = '';
         if (isCupom) {
-            const clone = content.cloneNode(true);
-            clone.style.position = 'absolute';
-            clone.style.visibility = 'hidden';
-            clone.style.width = '80mm';
-            document.body.appendChild(clone);
-            const heightPx = clone.scrollHeight;
-            // Converter px para mm (96 DPI: 1mm ≈ 3.7795px) + margem de segurança
-            cupomHeight = Math.ceil(heightPx / 3.7795) + 10 + 'mm';
-            document.body.removeChild(clone);
+            const pages = content.querySelectorAll('.print-page');
+            if (pages.length > 0) {
+                // Medir a maior página para definir o tamanho
+                let maxHeight = 0;
+                pages.forEach(page => {
+                    const clone = page.cloneNode(true);
+                    clone.style.position = 'absolute';
+                    clone.style.visibility = 'hidden';
+                    clone.style.width = '80mm';
+                    document.body.appendChild(clone);
+                    const h = clone.scrollHeight;
+                    if (h > maxHeight) maxHeight = h;
+                    document.body.removeChild(clone);
+                });
+                const heightMm = Math.ceil(maxHeight / 3.7795) + 10;
+                cupomPageStyle = `size: 80mm ${heightMm}mm;`;
+            } else {
+                cupomPageStyle = 'size: 80mm auto;';
+            }
         }
 
-        const pageSize = isCupom ? `size: 80mm ${cupomHeight};` : 'size: A4 portrait;';
+        const pageSize = isCupom ? cupomPageStyle : 'size: A4 portrait;';
         const margins = isCupom ? 'margin: 0;' : 'margin: 8mm;';
+
+        const title = isBatch
+            ? `Lote - ${batchData.length} pedidos`
+            : (tipo === 'amostra' ? `Amostra AM#${data?.numero}` : `Pedido ${data?.especial ? 'ZZ' : ''}#${data?.numero}`);
 
         printWindow.document.write(`
             <html>
                 <head>
-                    <title>${tipo === 'amostra' ? `Amostra AM#${data?.numero}` : `Pedido ${data?.especial ? 'ZZ' : ''}#${data?.numero}`}</title>
+                    <title>${title}</title>
                     <style>
                         @media print {
                             @page { ${pageSize} ${margins} }
@@ -331,14 +353,18 @@ const ImpressaoPedido = () => {
                                 ${isCupom ? 'width: 80mm; max-width: 80mm; overflow: hidden;' : ''}
                             }
                             * { color: #000 !important; }
+                            .print-page { page-break-after: always; }
+                            .print-page:last-child { page-break-after: auto; }
                         }
                         body {
                             margin: 0;
                             padding: 0;
-                            font-family: ${isCupom ? "'Courier New', monospace" : 'Arial, sans-serif'};
+                            font-family: Arial, Helvetica, sans-serif;
                             color: #000;
                             ${isCupom ? 'width: 80mm;' : ''}
                         }
+                        .print-page { page-break-after: always; }
+                        .print-page:last-child { page-break-after: auto; }
                         table { width: 100%; border-collapse: collapse; }
                         th, td { color: #000; }
                     </style>
@@ -365,18 +391,28 @@ const ImpressaoPedido = () => {
         );
     }
 
-    if (!data) return null;
+    if (!isBatch && !data) return null;
+    if (isBatch && batchData.length === 0) return null;
 
     const renderContent = () => {
+        if (isBatch) {
+            return batchData.map((pedido, idx) => (
+                <React.Fragment key={pedido.id}>
+                    {formato === 'cupom' ? <PedidoCupom pedido={pedido} /> : <PedidoA4 pedido={pedido} />}
+                </React.Fragment>
+            ));
+        }
         if (tipo === 'amostra') {
             return formato === 'cupom' ? <AmostraCupom amostra={data} /> : <AmostraA4 amostra={data} />;
         }
         return formato === 'cupom' ? <PedidoCupom pedido={data} /> : <PedidoA4 pedido={data} />;
     };
 
-    const titulo = tipo === 'amostra'
-        ? `Amostra AM#${data.numero}`
-        : `Pedido ${data.especial ? 'ZZ' : ''}#${data.numero}`;
+    const titulo = isBatch
+        ? `Lote: ${batchData.length} pedidos`
+        : tipo === 'amostra'
+            ? `Amostra AM#${data.numero}`
+            : `Pedido ${data.especial ? 'ZZ' : ''}#${data.numero}`;
 
     return (
         <div className="fixed inset-0 z-[9999] bg-gray-800 overflow-y-auto flex flex-col">
@@ -418,15 +454,14 @@ const ImpressaoPedido = () => {
             </div>
 
             {/* Preview area */}
-            <div className="flex-1 w-full flex flex-col items-center py-6 sm:py-8">
+            <div className="flex-1 w-full flex flex-col items-center py-6 sm:py-8 gap-6">
                 <div
                     ref={printRef}
                     className={`transform origin-top transition-transform ${
                         formato === 'cupom'
                             ? 'scale-[0.85] sm:scale-100'
                             : 'scale-[0.45] sm:scale-75 md:scale-100'
-                    }`}
-                    style={formato === 'cupom' ? {} : {}}
+                    } ${isBatch ? 'flex flex-col gap-6' : ''}`}
                 >
                     <style>{`
                         .print-page table { width: 100%; border-collapse: collapse; }
