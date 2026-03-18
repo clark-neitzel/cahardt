@@ -18,6 +18,7 @@ import DashboardVendedor from './pages/Dashboard/DashboardVendedor';
 import ListaPedidos from './pages/Pedidos/ListaPedidos';
 import Veiculos from './pages/Veiculos/Veiculos';
 import NovoPedido from './pages/Pedidos/NovoPedido';
+import ImpressaoPedido from './pages/Pedidos/ImpressaoPedido';
 import RotaLeads from './pages/Rota/RotaLeads';
 import ListaLeads from './pages/Leads/ListaLeads';
 import Login from './pages/Login/Login';
@@ -294,6 +295,7 @@ function App() {
               <Route path="/pedidos" element={<PrivateRoute tab="pedidos"><ListaPedidos /></PrivateRoute>} />
               <Route path="/pedidos/novo" element={<PrivateRoute tab="pedidos"><NovoPedido /></PrivateRoute>} />
               <Route path="/pedidos/editar/:id" element={<PrivateRoute tab="pedidos"><NovoPedido /></PrivateRoute>} />
+              <Route path="/pedidos/imprimir/:id" element={<PrivateRoute tab="pedidos"><ImpressaoPedido /></PrivateRoute>} />
 
               {/* Rota / Leads (CRM) */}
               <Route path="/rota" element={<PrivateRoute tab="pedidos"><RotaLeads /></PrivateRoute>} />

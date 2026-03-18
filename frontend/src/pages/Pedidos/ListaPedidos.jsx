@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import amostraService from '../../services/amostraService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -263,6 +263,14 @@ const ListaPedidos = () => {
                                                 ))}
                                                 {/* Botões de ação */}
                                                 <div className="flex items-center gap-2 pt-1">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); navigate(`/pedidos/imprimir/${amostra.id}?tipo=amostra`); }}
+                                                        className="text-[11px] font-bold px-3 py-1.5 rounded transition-colors shadow-sm border bg-white border-gray-200 text-gray-600 hover:bg-gray-100"
+                                                        title="Imprimir"
+                                                    >
+                                                        <Printer className="h-3.5 w-3.5 inline mr-1" />
+                                                        Imprimir
+                                                    </button>
                                                     {proximo && (
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleAvancarAmostra(amostra.id, amostra.status); }}
@@ -361,6 +369,16 @@ const ListaPedidos = () => {
                                         )}
                                     </div>
                                     <div className="flex items-center gap-1.5">
+                                        {/* Botão Imprimir */}
+                                        {pedido.numero && (
+                                            <button
+                                                onClick={() => navigate(`/pedidos/imprimir/${pedido.id}`)}
+                                                className="text-gray-400 hover:text-gray-700 p-1"
+                                                title="Imprimir pedido"
+                                            >
+                                                <Printer className="h-4 w-4" />
+                                            </button>
+                                        )}
                                         {/* Botão Aprovar para pedidos especiais pendentes */}
                                         {pedido.especial && pedido.statusEnvio === 'ENVIAR' && podeAprovar && (
                                             <button
@@ -425,9 +443,18 @@ const ListaPedidos = () => {
                                     </span>
                                 )}
                             </h2>
-                            <button onClick={() => setSelectedPedido(null)} className="text-gray-500 hover:text-gray-700">
-                                <X className="h-6 w-6" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => navigate(`/pedidos/imprimir/${selectedPedido.id}`)}
+                                    className="text-gray-400 hover:text-sky-600 p-1"
+                                    title="Imprimir pedido"
+                                >
+                                    <Printer className="h-5 w-5" />
+                                </button>
+                                <button onClick={() => setSelectedPedido(null)} className="text-gray-500 hover:text-gray-700">
+                                    <X className="h-6 w-6" />
+                                </button>
+                            </div>
                         </div>
 
                         <div className="p-4 overflow-y-auto flex-1">
