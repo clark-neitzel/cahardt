@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter } from 'lucide-react';
+import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import amostraService from '../../services/amostraService';
 import vendedorService from '../../services/vendedorService';
@@ -460,7 +460,18 @@ const ListaPedidos = () => {
                                                     <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${statusAmostraCores[amostra.status] || 'bg-gray-100 text-gray-800'}`}>
                                                         {statusAmostraLabels[amostra.status]}
                                                     </span>
-                                                    {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                                                    <div className="flex items-center gap-1 mt-1">
+                                                        {podeExcluirAmostra && amostra.status !== 'ENTREGUE' && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleExcluirAmostra(amostra.id); }}
+                                                                className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100"
+                                                                title="Excluir Amostra"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                        )}
+                                                        {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -487,14 +498,7 @@ const ListaPedidos = () => {
                                                             Avançar status
                                                         </button>
                                                     )}
-                                                    {podeExcluirAmostra && amostra.status !== 'ENTREGUE' && (
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleExcluirAmostra(amostra.id); }}
-                                                            className="text-[11px] font-bold px-3 py-1.5 rounded border bg-red-600 border-red-700 text-white hover:bg-red-700 ml-auto"
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </button>
-                                                    )}
+                                                
                                                 </div>
                                             </div>
                                         )}
@@ -604,6 +608,21 @@ const ListaPedidos = () => {
                                 <div className="bg-purple-50 p-3 rounded border border-purple-200 flex justify-between items-center">
                                     <span className="text-sm font-bold text-purple-900">Pendente de aprovação</span>
                                     <button onClick={() => handleAprovarEspecial(selectedPedido.id)} className="px-4 py-2 bg-purple-600 text-white rounded font-bold text-sm shadow-sm">Aprovar agora</button>
+                                </div>
+                            )}
+                            {selectedPedido.especial && selectedPedido.statusEnvio === 'ABERTO' && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(selectedPedido.situacaoCA)) && (
+                                <div className="bg-blue-50 p-3 rounded border border-blue-200 flex justify-between items-center">
+                                    <span className="text-sm font-bold text-blue-900">Pedido em aberto</span>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => { setSelectedPedido(null); navigate(`/pedidos/editar/${selectedPedido.id}`); }} className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1">
+                                            <Pencil className="h-4 w-4" /> Editar
+                                        </button>
+                                        {podeAprovar && (
+                                            <button onClick={() => handleAprovarEspecial(selectedPedido.id)} className="px-4 py-2 bg-green-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1">
+                                                <CheckCircle className="h-4 w-4" /> Faturar
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                             
