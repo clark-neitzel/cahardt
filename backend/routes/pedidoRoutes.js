@@ -35,4 +35,7 @@ router.put('/:id/reverter-especial', pedidoController.reverterEspecial);
 // Excluir Pedido Existente (Apenas Rascunho/ABERTO/ERRO)
 router.delete('/:id', pedidoController.excluir);
 
+// Registrar Impressão de Pedido ou Especial
+router.put('/:id/impresso', pedidoController.registrarImpressao);
+
 module.exports = router;

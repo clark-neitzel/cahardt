@@ -706,7 +706,10 @@ const migrationService = {
 
             // Update 44: Flags de flex e desconto por categoria de cliente
             `ALTER TABLE "categorias_cliente" ADD COLUMN IF NOT EXISTS "isento_flex" BOOLEAN NOT NULL DEFAULT FALSE`,
-            `ALTER TABLE "categorias_cliente" ADD COLUMN IF NOT EXISTS "sem_limite_desconto" BOOLEAN NOT NULL DEFAULT FALSE`
+            `ALTER TABLE "categorias_cliente" ADD COLUMN IF NOT EXISTS "sem_limite_desconto" BOOLEAN NOT NULL DEFAULT FALSE`,
+
+            // Update 45: Tracker de impressão de pedidos
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "impresso_em" TIMESTAMP(3);`
         ];
 
         for (const [index, cmd] of commands.entries()) {

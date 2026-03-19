@@ -348,6 +348,20 @@ const pedidoController = {
             console.error('Erro ao excluir pedido:', error);
             res.status(400).json({ error: error.message });
         }
+    },
+
+    registrarImpressao: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const pedido = await prisma.pedido.update({
+                where: { id },
+                data: { impressoEm: new Date() }
+            });
+            res.json({ message: 'Impressão registrada com sucesso', impressoEm: pedido.impressoEm });
+        } catch (error) {
+            console.error('Erro ao registrar impressão:', error);
+            res.status(500).json({ error: 'Erro ao registrar impressão' });
+        }
     }
 };
 

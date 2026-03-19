@@ -65,6 +65,12 @@ const pedidoService = {
     excluir: async (id) => {
         const response = await api.delete(`/pedidos/${id}`);
         return response.data;
+    },
+
+    // Registrar data e hora de impressão
+    registrarImpressao: async (id) => {
+        const response = await api.put(`/pedidos/${id}/impresso`);
+        return response.data;
     }
 };
 
