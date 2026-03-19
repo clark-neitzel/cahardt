@@ -217,8 +217,11 @@ const NovoPedido = () => {
                 try {
                     const pd = await pedidoService.detalhar(editId);
                     if (pd) {
-                        // Restaurar flag especial ANTES de setar o cliente (afeta filtro de categorias/produtos)
-                        if (pd.especial) setEspecial(true);
+                        // Restaurar flag especial e CARREGAR produtos da categoria especial se for o caso!
+                        if (pd.especial) {
+                            setEspecial(true);
+                            await recarregarProdutos(categoriasEspecialRef.current);
+                        }
 
                         setClienteId(pd.clienteId);
                         setObservacoes(pd.observacoes || '');
@@ -232,6 +235,7 @@ const NovoPedido = () => {
                             pd.itens.forEach(i => {
                                 map.set(i.produtoId, {
                                     quantidade: i.quantidade,
+                                    veioDeHistorico: true,
                                     valorUnitario: Number(i.valor),
                                     valorBase: Number(i.valorBase),
                                     flexUnitario: Number((Number(i.valor) - Number(i.valorBase)).toFixed(2))

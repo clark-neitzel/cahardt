@@ -605,13 +605,12 @@ const ListaPedidos = () => {
                                                 <button 
                                                     onClick={() => {
                                                         const bloq = pedido.statusEnvio === 'RECEBIDO' || ['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA);
-                                                        const especialPendente = pedido.especial && pedido.statusEnvio === 'ENVIAR';
-                                                        if ((pedido.statusEnvio === 'ABERTO' || especialPendente) && !bloq) navigate(`/pedidos/editar/${pedido.id}`);
+                                                        if (pedido.statusEnvio === 'ABERTO' && !bloq) navigate(`/pedidos/editar/${pedido.id}`);
                                                         else setSelectedPedido(pedido);
                                                     }}
                                                     className="px-3 py-1 text-[11px] font-bold bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 shadow-sm"
                                                 >
-                                                    {((pedido.statusEnvio === 'ABERTO' || (pedido.especial && pedido.statusEnvio === 'ENVIAR')) && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA))) ? 'Editar' : 'Detalhes'}
+                                                    {(pedido.statusEnvio === 'ABERTO' && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA))) ? 'Editar' : 'Detalhes'}
                                                 </button>
                                             </div>
                                         </div>
