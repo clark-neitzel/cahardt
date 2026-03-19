@@ -964,13 +964,15 @@ model CategoriaProduto {
 }
 
 model CategoriaCliente {
-  id              String   @id @default(uuid())
-  nome            String   @unique
-  descricao       String?  @db.Text
-  cicloPadraoDias Int      @default(7) @map("ciclo_padrao_dias")
-  ativo           Boolean  @default(true)
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid())
+  nome             String   @unique
+  descricao        String?  @db.Text
+  cicloPadraoDias  Int      @default(7) @map("ciclo_padrao_dias")
+  isentoFlex       Boolean  @default(false) @map("isento_flex")
+  semLimiteDesconto Boolean @default(false) @map("sem_limite_desconto")
+  ativo            Boolean  @default(true)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   clientes Cliente[]
   leads    Lead[]

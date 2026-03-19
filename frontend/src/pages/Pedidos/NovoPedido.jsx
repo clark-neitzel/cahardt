@@ -432,7 +432,8 @@ const NovoPedido = () => {
 
     const reavaliarMapaItens = useCallback((mapAtual, condicaoSel, todasPromos, listaProdutos) => {
         const novoMapa = new Map();
-        const limitePerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
+        const catSemLimite = clienteSelecionado?.categoriaCliente?.semLimiteDesconto || false;
+        const limitePerc = catSemLimite ? 100 : (vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100);
         const regras = (especial && condicaoSel?.regrasCategoria) || [];
 
         mapAtual.forEach((item, pid) => {
@@ -554,7 +555,8 @@ const NovoPedido = () => {
                 // Prevemos temporariamente se a promo estaria ativa pra essa 1 unidade adicionada
                 const temporarioLiberado = (promoNova?.tipo === 'SIMPLES'); // CONDICIONAL nao bate meta de cara, só dps.
 
-                const limiteBasePerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
+                const catSemLimite = clienteSelecionado?.categoriaCliente?.semLimiteDesconto || false;
+                const limiteBasePerc = catSemLimite ? 100 : (vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100);
                 // Mínimo Tolerável no Adicionar
                 const limitePerc = temporarioLiberado ? 0 : limiteBasePerc;
                 const minDePromo = temporarioLiberado ? Number(promoNova.precoPromocional) : valorBase;
@@ -586,7 +588,8 @@ const NovoPedido = () => {
                                 if (it) {
                                     let vp = Number(res.valor);
 
-                                    const limiteBasePerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
+                                    const catSemLimite2 = clienteSelecionado?.categoriaCliente?.semLimiteDesconto || false;
+                                    const limiteBasePerc = catSemLimite2 ? 100 : (vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100);
                                     const lPerc = it.emPromocao ? 0 : limiteBasePerc;
                                     const vMin = Number((it.valorBase * (1 - lPerc / 100)).toFixed(2));
 
@@ -632,7 +635,8 @@ const NovoPedido = () => {
 
             // Trava de Desconto Máximo Flex por Vendedor
             // SE O PRODUTO ESTOU EM PROMO, DESCONTO MAX = 0
-            const limiteBasePerc = vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100;
+            const catSemLimite = clienteSelecionado?.categoriaCliente?.semLimiteDesconto || false;
+            const limiteBasePerc = catSemLimite ? 100 : (vendedorSelecionado?.maxDescontoFlex !== undefined ? Number(vendedorSelecionado.maxDescontoFlex) : 100);
             const limitePerc = it.emPromocao ? 0 : limiteBasePerc;
             const valorMinimoPermitido = Number((it.valorBase * (1 - limitePerc / 100)).toFixed(2));
 
@@ -644,7 +648,7 @@ const NovoPedido = () => {
             m.set(produtoId, { ...it, valorUnitario: vp, flexUnitario: Number((vp - it.valorBase).toFixed(2)) });
             return m;
         });
-    }, [vendedorSelecionado]);
+    }, [vendedorSelecionado, clienteSelecionado]);
 
     const handleSalvar = (statusEnvio) => {
         if (!clienteId || itensMap.size === 0) { toast.error("Preencha cliente e adicione itens.", { duration: 6000, style: { maxWidth: "600px" } }); return; }

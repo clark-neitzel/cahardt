@@ -702,7 +702,11 @@ const migrationService = {
             `ALTER TABLE "categorias_produto" ADD COLUMN IF NOT EXISTS "permite_fracao" BOOLEAN NOT NULL DEFAULT FALSE`,
 
             // Update 43: Campo regras_categoria em tabela_precos (regras de preço por categoria CA para especiais)
-            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "regras_categoria" JSONB`
+            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "regras_categoria" JSONB`,
+
+            // Update 44: Flags de flex e desconto por categoria de cliente
+            `ALTER TABLE "categorias_cliente" ADD COLUMN IF NOT EXISTS "isento_flex" BOOLEAN NOT NULL DEFAULT FALSE`,
+            `ALTER TABLE "categorias_cliente" ADD COLUMN IF NOT EXISTS "sem_limite_desconto" BOOLEAN NOT NULL DEFAULT FALSE`
         ];
 
         for (const [index, cmd] of commands.entries()) {

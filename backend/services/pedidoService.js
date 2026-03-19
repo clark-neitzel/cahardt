@@ -77,6 +77,13 @@ const pedidoService = {
             }
         }
 
+        // Buscar categoria do cliente para regras de flex/desconto
+        const clienteComCategoria = await prisma.cliente.findUnique({
+            where: { UUID: clienteId },
+            select: { categoriaCliente: { select: { isentoFlex: true, semLimiteDesconto: true } } }
+        });
+        const isentoFlex = clienteComCategoria?.categoriaCliente?.isentoFlex || false;
+
         // Buscar promoções ativas de todos os produtos antes de entrar na transação
         const produtoIds = [...new Set(itens.map(item => item.produtoId))];
         const promocoesAtivas = {};
@@ -182,7 +189,8 @@ const pedidoService = {
             });
 
             // Se passou o vendedor, atualiza o saldo Flex dele (se o pedido for pra enviar/aberto consome saldo)
-            if (vendedorId) {
+            // Pula toda lógica de flex se a categoria do cliente é isenta
+            if (vendedorId && !isentoFlex) {
                 const vendedor = await tx.vendedor.findUnique({ where: { id: vendedorId } });
 
                 if (vendedor) {

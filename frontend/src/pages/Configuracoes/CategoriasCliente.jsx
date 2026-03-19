@@ -11,6 +11,8 @@ const CategoriasCliente = () => {
         nome: '',
         descricao: '',
         cicloPadraoDias: 7,
+        isentoFlex: false,
+        semLimiteDesconto: false,
         ativo: true
     });
     const [saving, setSaving] = useState(false);
@@ -37,6 +39,8 @@ const CategoriasCliente = () => {
             nome: '',
             descricao: '',
             cicloPadraoDias: 7,
+            isentoFlex: false,
+            semLimiteDesconto: false,
             ativo: true
         });
     };
@@ -139,7 +143,7 @@ const CategoriasCliente = () => {
                                 rows="2"
                             />
                         </div>
-                        <div className="flex items-center space-x-6">
+                        <div className="flex flex-col gap-3">
                             <label className="flex items-center space-x-2">
                                 <input
                                     type="checkbox"
@@ -149,6 +153,34 @@ const CategoriasCliente = () => {
                                 />
                                 <span className="text-gray-900 text-sm font-medium">Categoria Ativa</span>
                             </label>
+
+                            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 space-y-2">
+                                <p className="text-xs font-bold text-amber-900">Regras Comerciais</p>
+                                <label className="flex items-center space-x-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={form.isentoFlex || false}
+                                        onChange={(e) => setForm({ ...form, isentoFlex: e.target.checked })}
+                                        className="h-4 w-4 text-amber-600 bg-white focus:ring-amber-500 border-amber-300 rounded"
+                                    />
+                                    <div>
+                                        <span className="text-gray-900 text-sm font-medium">Isento de Flex</span>
+                                        <p className="text-xs text-amber-700">Pedidos para clientes desta categoria não geram flex (nem positivo nem negativo) para o vendedor.</p>
+                                    </div>
+                                </label>
+                                <label className="flex items-center space-x-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={form.semLimiteDesconto || false}
+                                        onChange={(e) => setForm({ ...form, semLimiteDesconto: e.target.checked })}
+                                        className="h-4 w-4 text-amber-600 bg-white focus:ring-amber-500 border-amber-300 rounded"
+                                    />
+                                    <div>
+                                        <span className="text-gray-900 text-sm font-medium">Sem Limite de Desconto</span>
+                                        <p className="text-xs text-amber-700">Vendedores podem aplicar qualquer desconto sem trava do % máximo. Ideal para funcionários ou clientes especiais.</p>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
                         <div className="flex justify-end space-x-3 pt-4 border-t">
                             <button
@@ -181,9 +213,11 @@ const CategoriasCliente = () => {
                         categorias.map((cat) => (
                             <li key={cat.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
                                 <div>
-                                    <h3 className="text-sm font-bold text-gray-900 flex items-center">
+                                    <h3 className="text-sm font-bold text-gray-900 flex items-center flex-wrap gap-1.5">
                                         {cat.nome}
-                                        {!cat.ativo && <span className="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded">Inativo</span>}
+                                        {!cat.ativo && <span className="px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded">Inativo</span>}
+                                        {cat.isentoFlex && <span className="px-2 py-0.5 text-xs bg-amber-100 text-amber-800 rounded">Isento Flex</span>}
+                                        {cat.semLimiteDesconto && <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded">Sem Limite Desc.</span>}
                                     </h3>
                                     <p className="text-xs text-gray-500">{cat.descricao || 'Sem descrição'}</p>
                                 </div>

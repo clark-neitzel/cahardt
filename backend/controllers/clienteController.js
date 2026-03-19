@@ -60,7 +60,16 @@ const clienteController = {
                     vendedor: {
                         select: {
                             id: true,
-                            nome: true
+                            nome: true,
+                            ativo: true
+                        }
+                    },
+                    categoriaCliente: {
+                        select: {
+                            id: true,
+                            nome: true,
+                            isentoFlex: true,
+                            semLimiteDesconto: true
                         }
                     }
                 }
