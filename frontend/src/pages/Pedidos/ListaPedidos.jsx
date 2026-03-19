@@ -29,9 +29,10 @@ const ListaPedidos = () => {
         const trintaDiasAtras = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         
         return {
-            dataDe: trintaDiasAtras,
-            dataAte: hoje,
-            tipoData: 'entrega', // 'entrega' ou 'criacao'
+            dataEntregaDe: trintaDiasAtras,
+            dataEntregaAte: hoje,
+            dataCriacaoDe: '',
+            dataCriacaoAte: '',
             vendedorId: '',
             busca: ''
         };
@@ -74,12 +75,14 @@ const ListaPedidos = () => {
                 vendedorId: filtros.vendedorId,
             };
 
-            if (filtros.tipoData === 'entrega') {
-                params.dataVendaDe = filtros.dataDe;
-                params.dataVendaAte = filtros.dataAte;
-            } else {
-                params.createdAtDe = filtros.dataDe;
-                params.createdAtAte = filtros.dataAte;
+            if (filtros.dataEntregaDe && filtros.dataEntregaAte) {
+                params.dataVendaDe = filtros.dataEntregaDe;
+                params.dataVendaAte = filtros.dataEntregaAte;
+            }
+
+            if (filtros.dataCriacaoDe && filtros.dataCriacaoAte) {
+                params.createdAtDe = filtros.dataCriacaoDe;
+                params.createdAtAte = filtros.dataCriacaoAte;
             }
 
             // Se for aba de pedidos ou especiais, busca da tabela de pedidos
@@ -92,9 +95,9 @@ const ListaPedidos = () => {
             else if (abaAtiva === 'amostras') {
                 // Adaptando params para amostras
                 const amostraParams = { ...params };
-                if (filtros.tipoData === 'entrega') {
-                    amostraParams.dataEntregaDe = filtros.dataDe;
-                    amostraParams.dataEntregaAte = filtros.dataAte;
+                if (filtros.dataEntregaDe && filtros.dataEntregaAte) {
+                    amostraParams.dataEntregaDe = filtros.dataEntregaDe;
+                    amostraParams.dataEntregaAte = filtros.dataEntregaAte;
                     delete amostraParams.dataVendaDe;
                     delete amostraParams.dataVendaAte;
                 }
@@ -283,52 +286,67 @@ const ListaPedidos = () => {
             {/* Painel de Filtros Avançados */}
             {showFilters && (
                 <div className="mb-4 bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm animate-in fade-in slide-in-from-top-2">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {/* Tipo de Data e Período */}
-                        <div className="space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        {/* Data de Entrega */}
+                        <div className="space-y-2 lg:col-span-2">
                             <label className="text-[11px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
-                                <Calendar className="h-3 w-3" /> Tipo de Data
+                                <Calendar className="h-3 w-3" /> Data de Entrega
                             </label>
-                            <div className="flex bg-white border border-gray-200 rounded p-0.5">
-                                <button
-                                    onClick={() => setFiltros(prev => ({ ...prev, tipoData: 'entrega' }))}
-                                    className={`flex-1 py-1 text-[11px] font-medium rounded ${filtros.tipoData === 'entrega' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-                                >
-                                    Entrega
-                                </button>
-                                <button
-                                    onClick={() => setFiltros(prev => ({ ...prev, tipoData: 'criacao' }))}
-                                    className={`flex-1 py-1 text-[11px] font-medium rounded ${filtros.tipoData === 'criacao' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-                                >
-                                    Criação
-                                </button>
+                            <div className="flex gap-2">
+                                <input
+                                    type="date"
+                                    value={filtros.dataEntregaDe}
+                                    onChange={e => setFiltros(prev => ({ ...prev, dataEntregaDe: e.target.value }))}
+                                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
+                                    title="Entrega A Partir de"
+                                />
+                                <span className="text-gray-400 self-center">-</span>
+                                <input
+                                    type="date"
+                                    value={filtros.dataEntregaAte}
+                                    onChange={e => setFiltros(prev => ({ ...prev, dataEntregaAte: e.target.value }))}
+                                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
+                                    title="Entrega Até"
+                                />
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-bold text-gray-500 uppercase">A partir de</label>
-                            <input
-                                type="date"
-                                value={filtros.dataDe}
-                                onChange={e => setFiltros(prev => ({ ...prev, dataDe: e.target.value }))}
-                                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-bold text-gray-500 uppercase">Até</label>
-                            <input
-                                type="date"
-                                value={filtros.dataAte}
-                                onChange={e => setFiltros(prev => ({ ...prev, dataAte: e.target.value }))}
-                                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
-                            />
+                        {/* Data de Criação */}
+                        <div className="space-y-2 lg:col-span-2">
+                            <label className="text-[11px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
+                                <Calendar className="h-3 w-3" /> Emissão/Criação
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="date"
+                                    value={filtros.dataCriacaoDe}
+                                    onChange={e => setFiltros(prev => ({ ...prev, dataCriacaoDe: e.target.value }))}
+                                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
+                                    title="Criação A Partir de"
+                                />
+                                <span className="text-gray-400 self-center">-</span>
+                                <input
+                                    type="date"
+                                    value={filtros.dataCriacaoAte}
+                                    onChange={e => setFiltros(prev => ({ ...prev, dataCriacaoAte: e.target.value }))}
+                                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
+                                    title="Criação Até"
+                                />
+                            </div>
                         </div>
 
                         {/* Vendedor */}
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
+                        <div className="space-y-2 lg:col-span-1">
+                            <label className="text-[11px] font-bold text-gray-500 uppercase flex items-center gap-1.5 flex-1 w-full relative">
                                 <User className="h-3 w-3" /> Vendedor
+                                {(filtros.dataEntregaDe || filtros.dataEntregaAte || filtros.dataCriacaoDe || filtros.dataCriacaoAte || filtros.vendedorId) && (
+                                    <button
+                                        onClick={() => setFiltros(prev => ({ ...prev, dataEntregaDe: '', dataEntregaAte: '', dataCriacaoDe: '', dataCriacaoAte: '', vendedorId: '' }))}
+                                        className="text-[10px] font-medium text-gray-400 hover:text-red-500 absolute right-0 bottom-0 underline"
+                                    >
+                                        Limpar
+                                    </button>
+                                )}
                             </label>
                             <select
                                 value={filtros.vendedorId}
@@ -336,7 +354,7 @@ const ListaPedidos = () => {
                                 onChange={e => setFiltros(prev => ({ ...prev, vendedorId: e.target.value }))}
                                 className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0 bg-white"
                             >
-                                <option value="">Todos os vendedores</option>
+                                <option value="">Todos</option>
                                 {todosVendedores.map(v => (
                                     <option key={v.id} value={v.id}>{v.nome}</option>
                                 ))}

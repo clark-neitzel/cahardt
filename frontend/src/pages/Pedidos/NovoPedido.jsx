@@ -217,6 +217,9 @@ const NovoPedido = () => {
                 try {
                     const pd = await pedidoService.detalhar(editId);
                     if (pd) {
+                        // Restaurar flag especial ANTES de setar o cliente (afeta filtro de categorias/produtos)
+                        if (pd.especial) setEspecial(true);
+
                         setClienteId(pd.clienteId);
                         setObservacoes(pd.observacoes || '');
                         if (pd.dataVenda) setDataEntrega(pd.dataVenda.split('T')[0]);
