@@ -746,18 +746,28 @@ const NovoPedido = () => {
                 || (p.codigo && p.codigo.toLowerCase().includes(termoBusca));
         });
 
+        const itensAdicionadosIds = Array.from(itensMap.keys());
+        
         const historicoPorData = Array.from(historicoMap.entries())
             .sort((a, b) => new Date(b[1].ultimaCompra) - new Date(a[1].ultimaCompra));
-        const jaCompradosIds = new Set(historicoPorData.map(([pid]) => pid));
+        
+        // Unir produtos já comprados com os produtos que estão no carrinho (itensMap), 
+        // para garantir que apareçam na mesma tabela principal de edição.
+        const jaCompradosIds = new Set([...historicoPorData.map(([pid]) => pid), ...itensAdicionadosIds]);
 
         const jaC = [];
-        historicoPorData.forEach(([pid, hist]) => {
-            const prod = filtrados.find(p => p.id === pid);
-            if (prod) jaC.push({ ...prod, hist });
-        });
-
         const promoC = [];
         const outC = [];
+
+        // Adiciona itens que estão no histórico ou no carrinho ativo (itensMap)
+        jaCompradosIds.forEach(pid => {
+            const prod = filtrados.find(p => p.id === pid);
+            if (prod) {
+                const hist = historicoMap.get(pid) || null;
+                jaC.push({ ...prod, hist });
+            }
+        });
+
         filtrados
             .filter(p => !jaCompradosIds.has(p.id))
             .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
@@ -774,7 +784,7 @@ const NovoPedido = () => {
             produtosComPromoNaoComprados: promoC,
             produtosOutros: outC
         };
-    }, [produtos, produtoSearch, historicoMap, promocoesMap]);
+    }, [produtos, produtoSearch, historicoMap, promocoesMap, itensMap]);
 
     const handleExcluir = async () => {
         if (!editId) return;
