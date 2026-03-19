@@ -605,12 +605,13 @@ const ListaPedidos = () => {
                                                 <button 
                                                     onClick={() => {
                                                         const bloq = pedido.statusEnvio === 'RECEBIDO' || ['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA);
-                                                        if (pedido.statusEnvio === 'ABERTO' && !bloq) navigate(`/pedidos/editar/${pedido.id}`);
+                                                        const especialPendente = pedido.especial && pedido.statusEnvio === 'ENVIAR';
+                                                        if ((pedido.statusEnvio === 'ABERTO' || especialPendente) && !bloq) navigate(`/pedidos/editar/${pedido.id}`);
                                                         else setSelectedPedido(pedido);
                                                     }}
                                                     className="px-3 py-1 text-[11px] font-bold bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 shadow-sm"
                                                 >
-                                                    {(pedido.statusEnvio === 'ABERTO' && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA))) ? 'Editar' : 'Detalhes'}
+                                                    {((pedido.statusEnvio === 'ABERTO' || (pedido.especial && pedido.statusEnvio === 'ENVIAR')) && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA))) ? 'Editar' : 'Detalhes'}
                                                 </button>
                                             </div>
                                         </div>
@@ -637,10 +638,17 @@ const ListaPedidos = () => {
                         </div>
                         <div className="p-4 overflow-y-auto flex-1 space-y-4">
                             {/* Actions area inside modal */}
-                            {selectedPedido.especial && selectedPedido.statusEnvio === 'ENVIAR' && podeAprovar && (
+                            {selectedPedido.especial && selectedPedido.statusEnvio === 'ENVIAR' && (
                                 <div className="bg-purple-50 p-3 rounded border border-purple-200 flex justify-between items-center">
                                     <span className="text-sm font-bold text-purple-900">Pendente de aprovação</span>
-                                    <button onClick={() => handleAprovarEspecial(selectedPedido.id)} className="px-4 py-2 bg-purple-600 text-white rounded font-bold text-sm shadow-sm">Aprovar agora</button>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => { setSelectedPedido(null); navigate(`/pedidos/editar/${selectedPedido.id}`); }} className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1">
+                                            <Pencil className="h-4 w-4" /> Editar
+                                        </button>
+                                        {podeAprovar && (
+                                            <button onClick={() => handleAprovarEspecial(selectedPedido.id)} className="px-4 py-2 bg-purple-600 text-white rounded font-bold text-sm shadow-sm">Aprovar agora</button>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                             {selectedPedido.especial && selectedPedido.statusEnvio === 'RECEBIDO' && podeReverter && (

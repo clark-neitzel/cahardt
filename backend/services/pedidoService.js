@@ -316,8 +316,10 @@ const pedidoService = {
             // Permite edição de 'revisaoPendente' mesmo se o pedido não estiver ABERTO
             const isSomenteRevisao = Object.keys(dadosPedido).length === 1 && typeof dadosPedido.revisaoPendente === 'boolean';
 
-            if (pedidoAntigo.statusEnvio !== 'ABERTO' && !isSomenteRevisao) {
-                throw new Error('Só é permitido editar dados de vendas em Rascunho (Em Aberto).');
+            const podeEditarEspecial = pedidoAntigo.especial && pedidoAntigo.statusEnvio === 'ENVIAR';
+
+            if (pedidoAntigo.statusEnvio !== 'ABERTO' && !isSomenteRevisao && !podeEditarEspecial) {
+                throw new Error('Só é permitido editar dados de vendas em Rascunho (Em Aberto) ou Especiais Pendentes.');
             }
 
             if (isSomenteRevisao) {
@@ -381,7 +383,15 @@ const pedidoService = {
             if (statusEnvio === 'ENVIAR') {
                 const vendedor = await tx.vendedor.findUnique({ where: { id: vendedorId } });
                 if (vendedor) {
-                    const novoFlexDisponivel = parseFloat(vendedor.flexDisponivel) + flexTotalPedido;
+                    let diferencaFlex = flexTotalPedido;
+                    let diferencaModulo = Math.abs(flexTotalPedido);
+                    
+                    if (pedidoAntigo.statusEnvio === 'ENVIAR') {
+                        diferencaFlex = flexTotalPedido - Number(pedidoAntigo.flexTotal || 0);
+                        diferencaModulo = Math.abs(flexTotalPedido) - Math.abs(Number(pedidoAntigo.flexTotal || 0));
+                    }
+
+                    const novoFlexDisponivel = parseFloat(vendedor.flexDisponivel) + diferencaFlex;
                     const limiteFlexAprovado = parseFloat(vendedor.flexMensal);
 
                     if (novoFlexDisponivel < 0 && Math.abs(novoFlexDisponivel) > limiteFlexAprovado) {
@@ -396,7 +406,38 @@ const pedidoService = {
                     await tx.cliente.update({
                         where: { UUID: clienteId },
                         data: {
-                            Flex_utilizado: { increment: Math.abs(flexTotalPedido) }
+                            Flex_utilizado: { increment: diferencaModulo }
+                        }
+                    });
+                }
+
+                if (pedidoAntigo.statusEnvio === 'ENVIAR') {
+                    await tx.contaReceber.deleteMany({ where: { pedidoId: id } });
+
+                    const valorTotalCalc = novosItens.reduce((s, i) => s + (i.valor * i.quantidade), 0);
+                    const numParcelas = parseInt(dadosPedido.qtdParcelas) || 1;
+                    const intervalo = parseInt(dadosPedido.intervaloDias) || 0;
+                    const baseDate = dadosPedido.primeiroVencimento ? new Date(dadosPedido.primeiroVencimento) : (dataVenda ? new Date(dataVenda) : new Date());
+                    const valorParcela = Math.round((valorTotalCalc / numParcelas) * 100) / 100;
+
+                    const parcelasData = [];
+                    for (let i = 0; i < numParcelas; i++) {
+                        const vencimento = new Date(baseDate);
+                        vencimento.setDate(vencimento.getDate() + (i * intervalo));
+                        const val = i === numParcelas - 1
+                            ? Math.round((valorTotalCalc - valorParcela * (numParcelas - 1)) * 100) / 100
+                            : valorParcela;
+                        parcelasData.push({ numeroParcela: i + 1, valor: val, dataVencimento: vencimento });
+                    }
+
+                    await tx.contaReceber.create({
+                        data: {
+                            pedidoId: id,
+                            clienteId,
+                            origem: pedidoAntigo.especial ? 'ESPECIAL' : 'FATURADO_CA',
+                            valorTotal: Math.round(valorTotalCalc * 100) / 100,
+                            status: 'ABERTO',
+                            parcelas: { create: parcelasData }
                         }
                     });
                 }
