@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle } from 'lucide-react';
+import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import amostraService from '../../services/amostraService';
 import vendedorService from '../../services/vendedorService';
@@ -246,15 +246,37 @@ const ListaPedidos = () => {
     };
 
     const toggleTodosFiltrados = () => {
-        const ids = pedidos.map(p => p.id);
-        const todosJaSelecionados = ids.every(id => selecionados.has(id));
+        const pFaturados = pedidos.filter(p => p.situacaoCA === 'FATURADO');
+        const ids = pFaturados.map(p => p.id);
+        const todosJaSelecionados = ids.length > 0 && ids.every(id => selecionados.has(id));
         if (todosJaSelecionados) setSelecionados(new Set());
         else setSelecionados(new Set(ids));
     };
 
-    const imprimirSelecionados = () => {
+    const handlePrintPedido = async (pedido) => {
+        try {
+            await pedidoService.registrarImpressao(pedido.id);
+            setPedidos(prev => prev.map(p => p.id === pedido.id ? { ...p, impressoEm: new Date().toISOString() } : p));
+            if (selectedPedido?.id === pedido.id) {
+                setSelectedPedido(prev => ({ ...prev, impressoEm: new Date().toISOString() }));
+            }
+        } catch (error) {
+            console.error('Erro ao registrar impressão', error);
+        }
+        navigate(`/pedidos/imprimir/${pedido.id}`);
+    };
+
+    const imprimirSelecionados = async () => {
         if (selecionados.size === 0) return;
-        const ids = Array.from(selecionados).join(',');
+        const idsArray = Array.from(selecionados);
+        try {
+            await Promise.all(idsArray.map(id => pedidoService.registrarImpressao(id)));
+            const now = new Date().toISOString();
+            setPedidos(prev => prev.map(p => idsArray.includes(p.id) ? { ...p, impressoEm: now } : p));
+        } catch (error) {
+            console.error('Erro ao registrar impressões em lote', error);
+        }
+        const ids = idsArray.join(',');
         navigate(`/pedidos/imprimir/lote?ids=${ids}`);
     };
 
@@ -386,12 +408,12 @@ const ListaPedidos = () => {
                     Amostras
                 </button>
                 
-                {abaAtiva !== 'amostras' && pedidos.length > 0 && (
+                {abaAtiva !== 'amostras' && pedidos.filter(p => p.situacaoCA === 'FATURADO').length > 0 && (
                     <button
                         onClick={toggleTodosFiltrados}
                         className="ml-auto px-2 py-1 text-[10px] font-medium text-gray-500 hover:text-purple-600 transition-colors"
                     >
-                        {pedidos.length > 0 && pedidos.every(p => selecionados.has(p.id)) ? 'Desmarcar todos' : 'Selecionar todos'}
+                        {pedidos.filter(p => p.situacaoCA === 'FATURADO').length > 0 && pedidos.filter(p => p.situacaoCA === 'FATURADO').every(p => selecionados.has(p.id)) ? 'Desmarcar todos' : 'Selecionar todos faturados'}
                     </button>
                 )}
             </div>
@@ -520,12 +542,16 @@ const ListaPedidos = () => {
                             pedidos.map((pedido) => (
                                 <div key={pedido.id} className="p-3 hover:bg-gray-50 transition-colors border-b border-gray-100">
                                     <div className="flex justify-between items-start gap-2">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); toggleSelecao(pedido.id); }}
-                                            className="mt-1 flex-shrink-0 text-gray-300 hover:text-primary transition-colors"
-                                        >
-                                            {selecionados.has(pedido.id) ? <CheckSquare className="h-5 w-5 text-primary" /> : <Square className="h-5 w-5" />}
-                                        </button>
+                                        {pedido.situacaoCA === 'FATURADO' ? (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); toggleSelecao(pedido.id); }}
+                                                className="mt-1 flex-shrink-0 text-gray-400 hover:text-primary transition-colors"
+                                            >
+                                                {selecionados.has(pedido.id) ? <CheckSquare className="h-5 w-5 text-primary" /> : <Square className="h-5 w-5" />}
+                                            </button>
+                                        ) : (
+                                            <div className="mt-1 w-5 h-5 opacity-0"></div>
+                                        )}
                                         
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-1.5 mb-1">
@@ -557,6 +583,11 @@ const ListaPedidos = () => {
                                                     </span>
                                                 )}
                                                 {pedido.revisaoPendente && <span className="text-[9px] font-bold text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded flex items-center gap-0.5"><AlertCircle className="h-2.5 w-2.5" /> ALT ERP</span>}
+                                                {pedido.impressoEm && (
+                                                    <span className="text-[9px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 shadow-sm flex items-center gap-0.5" title={`Impresso em: ${new Date(pedido.impressoEm).toLocaleString('pt-BR')}`}>
+                                                        <Printer className="h-2.5 w-2.5" /> Impresso
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
 
@@ -565,9 +596,11 @@ const ListaPedidos = () => {
                                                 R$ {Number(pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </div>
                                             <div className="flex items-center gap-1">
-                                                <button onClick={() => navigate(`/pedidos/imprimir/${pedido.id}`)} className="p-1.5 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-100"><Printer className="h-4 w-4" /></button>
+                                                {pedido.situacaoCA === 'FATURADO' && (
+                                                    <button onClick={(e) => { e.stopPropagation(); handlePrintPedido(pedido); }} className="p-1.5 text-gray-400 hover:text-purple-600 rounded hover:bg-gray-100" title="Imprimir Pedido"><Printer className="h-4 w-4" /></button>
+                                                )}
                                                 {((pedido.statusEnvio === 'ABERTO' || pedido.statusEnvio === 'ERRO') && (pedido.especial ? podeExcluirEspecial : podeExcluirPedido)) && (
-                                                    <button onClick={() => handleExcluirPedido(pedido)} className="p-1.5 text-gray-300 hover:text-red-600 rounded hover:bg-gray-100"><Trash2 className="h-4 w-4" /></button>
+                                                    <button onClick={(e) => { e.stopPropagation(); handleExcluirPedido(pedido); }} className="p-1.5 text-gray-300 hover:text-red-600 rounded hover:bg-gray-100"><Trash2 className="h-4 w-4" /></button>
                                                 )}
                                                 <button 
                                                     onClick={() => {
@@ -608,6 +641,18 @@ const ListaPedidos = () => {
                                 <div className="bg-purple-50 p-3 rounded border border-purple-200 flex justify-between items-center">
                                     <span className="text-sm font-bold text-purple-900">Pendente de aprovação</span>
                                     <button onClick={() => handleAprovarEspecial(selectedPedido.id)} className="px-4 py-2 bg-purple-600 text-white rounded font-bold text-sm shadow-sm">Aprovar agora</button>
+                                </div>
+                            )}
+                            {selectedPedido.especial && selectedPedido.statusEnvio === 'RECEBIDO' && podeReverter && (
+                                <div className="bg-orange-50 p-3 rounded border border-orange-200 flex justify-between items-center">
+                                    <span className="text-sm font-bold text-orange-900">Pedido faturado</span>
+                                    <button
+                                        onClick={() => handleReverterEspecial(selectedPedido.id)}
+                                        disabled={revertendo === selectedPedido.id}
+                                        className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1 hover:bg-orange-700 disabled:opacity-50"
+                                    >
+                                        <RotateCcw className="h-4 w-4" /> {revertendo === selectedPedido.id ? 'Revertendo...' : 'Reverter para Aberto'}
+                                    </button>
                                 </div>
                             )}
                             {selectedPedido.especial && selectedPedido.statusEnvio === 'ABERTO' && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(selectedPedido.situacaoCA)) && (
@@ -658,7 +703,9 @@ const ListaPedidos = () => {
                                 <p className="text-2xl font-black text-primary">R$ {Number(selectedPedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                             </div>
                             <div className="flex gap-2">
-                                <button onClick={() => navigate(`/pedidos/imprimir/${selectedPedido.id}`)} className="p-2 border border-gray-300 rounded text-gray-600 hover:bg-white"><Printer className="h-5 w-5" /></button>
+                                {selectedPedido.situacaoCA === 'FATURADO' && (
+                                    <button onClick={() => handlePrintPedido(selectedPedido)} className="p-2 border border-purple-300 bg-purple-50 text-purple-700 rounded hover:bg-purple-100 flex items-center gap-1.5"><Printer className="h-5 w-5" /></button>
+                                )}
                                 <button onClick={() => setSelectedPedido(null)} className="px-6 py-2 bg-gray-900 text-white rounded font-bold text-sm">Fechar</button>
                             </div>
                         </div>
