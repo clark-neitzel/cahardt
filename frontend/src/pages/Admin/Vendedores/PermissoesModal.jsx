@@ -66,6 +66,9 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     const [senha, setSenha] = useState('');
     const [permissoes, setPermissoes] = useState(DEFAULT_PERMISSIONS);
     const [saving, setSaving] = useState(false);
+    const [todosVendedores, setTodosVendedores] = useState([]);
+    const [vendedorOrigemId, setVendedorOrigemId] = useState('');
+    const [clonando, setClonando] = useState(false);
     const [todasCategorias, setTodasCategorias] = useState([]);
     const [todasCondicoes, setTodasCondicoes] = useState([]);
 
@@ -90,7 +93,40 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
         configService.getCategorias().then(cats => setTodasCategorias(cats || [])).catch(() => {});
         // Carregar condições de pagamento ativas
         tabelaPrecoService.listar(true).then(conds => setTodasCondicoes(conds || [])).catch(() => {});
+        // Carregar lista de vendedores para clonagem
+        vendedorService.listar().then(data => {
+            const list = Array.isArray(data) ? data : (data?.vendedores || []);
+            setTodosVendedores(list.filter(v => v.id !== vendedor?.id && v.ativo !== false));
+        }).catch(() => {});
     }, [vendedor]);
+
+    const handleClonar = async () => {
+        if (!vendedorOrigemId) {
+            toast.error('Selecione um usuário para clonar as permissões.');
+            return;
+        }
+
+        try {
+            setClonando(true);
+            const source = await vendedorService.obter(vendedorOrigemId);
+            if (source && source.id) {
+                let sourcePerms = source.permissoes || {};
+                if (typeof sourcePerms === 'string') {
+                    try { sourcePerms = JSON.parse(sourcePerms); } catch (e) { sourcePerms = {}; }
+                }
+
+                // Aplicar permissões do usuário de origem, mantendo defaults para campos novos
+                setPermissoes({ ...DEFAULT_PERMISSIONS, ...sourcePerms });
+                toast.success(`Permissões clonadas de ${source.nome}!`);
+                setVendedorOrigemId('');
+            }
+        } catch (error) {
+            console.error('Erro ao clonar permissões:', error);
+            toast.error('Erro ao buscar dados do usuário de origem.');
+        } finally {
+            setClonando(false);
+        }
+    };
 
     const toggleView = (tab) => {
         setPermissoes(prev => ({
@@ -153,6 +189,31 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
 
                 {/* Body */}
                 <div className="px-6 py-4 overflow-y-auto flex-1 space-y-6">
+
+                    {/* Clonagem de Permissões */}
+                    <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200 mb-2">
+                        <label className="block text-sm font-bold text-indigo-900 mb-2">Copiar Permissões de Outro Usuário</label>
+                        <div className="flex gap-2">
+                            <select
+                                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2 bg-white text-gray-900"
+                                value={vendedorOrigemId}
+                                onChange={e => setVendedorOrigemId(e.target.value)}
+                            >
+                                <option value="">Selecione um usuário para copiar...</option>
+                                {todosVendedores.map(v => (
+                                    <option key={v.id} value={v.id}>{v.nome}</option>
+                                ))}
+                            </select>
+                            <button
+                                onClick={handleClonar}
+                                disabled={!vendedorOrigemId || clonando}
+                                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                            >
+                                {clonando ? 'Copiando...' : 'Copiar Acessos'}
+                            </button>
+                        </div>
+                        <p className="text-[11px] text-indigo-700 mt-2">Isso copiará todas as flags e regras de negócio do usuário selecionado para este. Lembre-se de salvar ao final para consolidar as alterações.</p>
+                    </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
