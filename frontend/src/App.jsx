@@ -34,7 +34,7 @@ import ContasReceberPage from './pages/Financeiro/ContasReceberPage';
 import RelatorioPedidos from './pages/Relatorios/RelatorioPedidos';
 
 import {
-  Menu, X, LogOut,
+  Menu, X, LogOut, ChevronDown,
   LayoutDashboard, BookOpen, ClipboardList, Map, Target, Users,
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText,
@@ -83,16 +83,39 @@ const SidebarSection = ({ label }) => (
   </div>
 );
 
+// Componente de seção colapsável do menu mobile
+const MobileMenuSection = ({ label, icon: Icon, children, defaultOpen = false }) => {
+  const [open, setOpen] = useState(defaultOpen);
+  const hasActiveChild = React.Children.toArray(children).some(child => child?.props?.className?.includes?.('text-primary'));
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold transition-colors ${hasActiveChild || open ? 'text-gray-900 bg-gray-50' : 'text-gray-600 hover:bg-gray-50'}`}
+      >
+        <div className="flex items-center gap-2.5">
+          {Icon && <Icon className="h-4 w-4 text-gray-400" />}
+          <span>{label}</span>
+        </div>
+        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="pb-1">{children}</div>}
+    </div>
+  );
+};
+
 const Layout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout, hasPermission, loading } = useAuth();
 
   if (!user || loading) return <>{children}</>;
 
-  const getMobileNavLinkClass = (isActive) =>
+  const mobileLink = (isActive) =>
     isActive
-      ? "bg-primary-50 border-l-4 border-primary text-primary block pl-3 pr-4 py-2 text-base font-medium"
-      : "border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 text-base font-medium";
+      ? "flex items-center gap-2.5 pl-11 pr-4 py-2 text-sm font-medium text-primary bg-primary-50/50"
+      : "flex items-center gap-2.5 pl-11 pr-4 py-2 text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-700";
+
+  const closeMobile = () => setIsMobileMenuOpen(false);
 
   const showLogistica = hasPermission('Pode_Acessar_Embarque') || hasPermission('Pode_Ver_Todas_Entregas');
   const showFinanceiro = hasPermission('Pode_Acessar_Caixa') || hasPermission('Pode_Ver_Todas_Entregas') || hasPermission('Pode_Acessar_Contas_Receber');
@@ -195,79 +218,104 @@ const Layout = ({ children }) => {
               </button>
             </div>
           </div>
-
-          {/* Mobile dropdown menu */}
-          {isMobileMenuOpen && (
-            <div className="border-t border-gray-100 pt-2 pb-3 space-y-1">
-              <NavLink to="/" end onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Dashboard</NavLink>
-              {hasPermission('catalogo') && (
-                <NavLink to="/catalogo" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Catálogo</NavLink>
-              )}
-              {hasPermission('pedidos') && (
-                <NavLink to="/pedidos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Pedidos</NavLink>
-              )}
-              {hasPermission('pedidos') && (
-                <NavLink to="/relatorios/pedidos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Relatórios</NavLink>
-              )}
-              {hasPermission('pedidos') && (
-                <NavLink to="/rota" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Rota / Leads</NavLink>
-              )}
-              {hasPermission('rota') && (
-                <NavLink to="/leads" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Leads</NavLink>
-              )}
-              {hasPermission('clientes') && (
-                <NavLink to="/clientes" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Clientes</NavLink>
-              )}
-              {hasPermission('Pode_Acessar_Embarque') && (
-                <NavLink to="/admin/embarques" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Embarque</NavLink>
-              )}
-              {hasPermission('Pode_Ver_Todas_Entregas') && (
-                <NavLink to="/entregas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Entregas</NavLink>
-              )}
-              {hasPermission('Pode_Acessar_Caixa') && (
-                <NavLink to="/caixa" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Caixa</NavLink>
-              )}
-              {hasPermission('Pode_Acessar_Caixa') && (
-                <NavLink to="/despesas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Despesas</NavLink>
-              )}
-              {hasPermission('produtos') && (
-                <NavLink to="/admin/produtos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Produtos</NavLink>
-              )}
-              {hasPermission('vendedores') && (
-                <NavLink to="/admin/vendedores" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Vendedores</NavLink>
-              )}
-              {(user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && (
-                <NavLink to="/admin/veiculos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Veículos</NavLink>
-              )}
-              {hasPermission('Pode_Ver_Todas_Entregas') && (
-                <NavLink to="/admin/auditoria-entregas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Auditoria Financeira</NavLink>
-              )}
-              {hasPermission('Pode_Acessar_Contas_Receber') && (
-                <NavLink to="/financeiro/contas-receber" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Contas a Receber</NavLink>
-              )}
-              {hasPermission('sync') && (
-                <NavLink to="/admin/sync" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Sincronizar</NavLink>
-              )}
-              {hasPermission('configuracoes') && (
-                <>
-                  <NavLink to="/admin/config" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Configurações Gerais</NavLink>
-                  <NavLink to="/config/tabela-precos" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Preços</NavLink>
-                  <NavLink to="/config/contas-financeiras" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Bancos</NavLink>
-                  <NavLink to="/config/metas" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Metas de Vendas</NavLink>
-                  <NavLink to="/config/categorias-produto" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Cat. de Produtos</NavLink>
-                  <NavLink to="/config/categorias-cliente" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => getMobileNavLinkClass(isActive)}>Cat. de Clientes</NavLink>
-                </>
-              )}
-
-              <button
-                onClick={() => { logout(); setIsMobileMenuOpen(false); }}
-                className="w-full text-left border-l-4 border-transparent text-red-500 hover:bg-gray-50 block pl-3 pr-4 py-2 text-base font-medium"
-              >
-                Sair
-              </button>
-            </div>
-          )}
         </nav>
+
+        {/* ── Mobile drawer overlay ── */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 z-[60]" onClick={closeMobile}>
+            <div className="absolute inset-0 bg-black/40" />
+          </div>
+        )}
+
+        {/* ── Mobile drawer ── */}
+        <div className={`md:hidden fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+          {/* Drawer header */}
+          <div className="flex items-center justify-between px-4 h-14 border-b border-gray-100 shrink-0">
+            <span className="text-primary font-bold text-lg">Menu</span>
+            <button onClick={closeMobile} className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Drawer body — scrollable */}
+          <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+            {/* Dashboard — sempre visível */}
+            <NavLink to="/" end onClick={closeMobile} className={({ isActive }) => `flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors ${isActive ? 'text-primary bg-primary-50/50' : 'text-gray-700 hover:bg-gray-50'}`}>
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </NavLink>
+
+            {/* Vendas */}
+            <MobileMenuSection label="Vendas" icon={ClipboardList} defaultOpen>
+              {hasPermission('catalogo') && <NavLink to="/catalogo" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Catálogo</NavLink>}
+              {hasPermission('pedidos') && <NavLink to="/pedidos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Pedidos</NavLink>}
+              {hasPermission('pedidos') && <NavLink to="/relatorios/pedidos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Relatórios</NavLink>}
+              {hasPermission('pedidos') && <NavLink to="/rota" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rota</NavLink>}
+              {hasPermission('rota') && <NavLink to="/leads" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Leads</NavLink>}
+              {hasPermission('clientes') && <NavLink to="/clientes" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Clientes</NavLink>}
+            </MobileMenuSection>
+
+            {/* Logística */}
+            {showLogistica && (
+              <MobileMenuSection label="Logística" icon={Truck}>
+                {hasPermission('Pode_Acessar_Embarque') && <NavLink to="/admin/embarques" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Embarque</NavLink>}
+                {hasPermission('Pode_Ver_Todas_Entregas') && <NavLink to="/entregas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Entregas</NavLink>}
+              </MobileMenuSection>
+            )}
+
+            {/* Financeiro */}
+            {showFinanceiro && (
+              <MobileMenuSection label="Financeiro" icon={Wallet}>
+                {hasPermission('Pode_Acessar_Caixa') && <NavLink to="/caixa" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Caixa</NavLink>}
+                {hasPermission('Pode_Acessar_Caixa') && <NavLink to="/despesas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Despesas</NavLink>}
+                {hasPermission('Pode_Ver_Todas_Entregas') && <NavLink to="/admin/auditoria-entregas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Auditoria</NavLink>}
+                {hasPermission('Pode_Acessar_Contas_Receber') && <NavLink to="/financeiro/contas-receber" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Contas a Receber</NavLink>}
+              </MobileMenuSection>
+            )}
+
+            {/* Admin */}
+            {showAdmin && (
+              <MobileMenuSection label="Administração" icon={UserCog}>
+                {hasPermission('produtos') && <NavLink to="/admin/produtos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Produtos</NavLink>}
+                {hasPermission('vendedores') && <NavLink to="/admin/vendedores" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Vendedores</NavLink>}
+                {(user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && <NavLink to="/admin/veiculos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Veículos</NavLink>}
+                {hasPermission('sync') && <NavLink to="/admin/sync" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Sincronizar</NavLink>}
+              </MobileMenuSection>
+            )}
+
+            {/* Configurações */}
+            {showConfig && (
+              <MobileMenuSection label="Configurações" icon={Settings}>
+                <NavLink to="/admin/config" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Gerais</NavLink>
+                <NavLink to="/config/tabela-precos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Preços</NavLink>
+                <NavLink to="/config/contas-financeiras" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Bancos</NavLink>
+                <NavLink to="/config/metas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Metas de Vendas</NavLink>
+                <NavLink to="/config/categorias-produto" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Cat. Produtos</NavLink>
+                <NavLink to="/config/categorias-cliente" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Cat. Clientes</NavLink>
+              </MobileMenuSection>
+            )}
+          </div>
+
+          {/* Drawer footer — fixo embaixo */}
+          <div className="border-t border-gray-200 px-4 py-3 shrink-0 bg-gray-50">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-primary">{(user.nome || user.login || '?')[0].toUpperCase()}</span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{user.nome || user.login}</p>
+                <p className="text-[11px] text-gray-400">Logado</p>
+              </div>
+            </div>
+            <button
+              onClick={() => { logout(); closeMobile(); }}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-semibold transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              Sair
+            </button>
+          </div>
+        </div>
 
         {/* GATEKEEPER DO DIÁRIO / PONTO */}
         <DiarioGateway />
