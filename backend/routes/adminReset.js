@@ -103,6 +103,27 @@ const RESET_GROUPS = {
             return { alertas: r.count };
         }
     },
+    entregas: {
+        label: 'Entregas Realizadas',
+        run: async (tx) => {
+            // Apaga itens devolvidos e pagamentos reais de entrega
+            const r1 = await tx.entregaItemDevolvido.deleteMany({});
+            const r2 = await tx.pedidoPagamentoReal.deleteMany({});
+            // Reseta campos de entrega nos pedidos que já foram entregues
+            const r3 = await tx.pedido.updateMany({
+                where: { statusEntrega: { not: 'PENDENTE' } },
+                data: {
+                    statusEntrega: 'PENDENTE',
+                    dataEntrega: null,
+                    gpsEntrega: null,
+                    divergenciaPagamento: false,
+                    motivoDevolucao: null,
+                    observacaoEntrega: null
+                }
+            });
+            return { itensDevolvidos: r1.count, pagamentosReais: r2.count, entregasResetadas: r3.count };
+        }
+    },
     sync: {
         label: 'Logs de Sincronização',
         run: async (tx) => {
@@ -168,7 +189,7 @@ router.delete('/reset-transacional', async (req, res) => {
         const resultado = await prisma.$transaction(async (tx) => {
             const detalhes = {};
             // Ordem respeitando FKs: pedidos requerem embarques vazios depois
-            const ordem = ['metas', 'insights', 'caixa', 'pedidos', 'embarques', 'atendimentos', 'leads', 'despesas', 'roteirizacoes', 'diario', 'manutencao', 'sync'];
+            const ordem = ['metas', 'insights', 'caixa', 'entregas', 'pedidos', 'embarques', 'atendimentos', 'leads', 'despesas', 'roteirizacoes', 'diario', 'manutencao', 'sync'];
             for (const grupo of ordem) {
                 detalhes[grupo] = await RESET_GROUPS[grupo].run(tx);
             }
