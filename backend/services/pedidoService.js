@@ -5,21 +5,60 @@ const clienteInsightService = require('./clienteInsightService');
 const pedidoService = {
     // 1. Listagem de pedidos com filtros (para a tela de histórico)
     listar: async (filtros) => {
-        const { statusEnvio, vendedorId, clienteId } = filtros;
+        const { statusEnvio, vendedorId, clienteId, especial, dataVendaDe, dataVendaAte, createdAtDe, createdAtAte, busca } = filtros;
 
         const where = {};
         if (statusEnvio) where.statusEnvio = statusEnvio;
         if (vendedorId) where.vendedorId = vendedorId;
         if (clienteId) where.clienteId = clienteId;
 
+        if (especial !== undefined && especial !== '') {
+            where.especial = (especial === 'true' || especial === true);
+        }
+
+        // Filtro por Data de Entrega (dataVenda)
+        if (dataVendaDe || dataVendaAte) {
+            where.dataVenda = {};
+            if (dataVendaDe) where.dataVenda.gte = new Date(dataVendaDe + 'T00:00:00.000Z');
+            if (dataVendaAte) where.dataVenda.lte = new Date(dataVendaAte + 'T23:59:59.999Z');
+        }
+
+        // Filtro por Data de Criação (createdAt)
+        if (createdAtDe || createdAtAte) {
+            where.createdAt = {};
+            if (createdAtDe) where.createdAt.gte = new Date(createdAtDe + 'T00:00:00.000Z');
+            if (createdAtAte) where.createdAt.lte = new Date(createdAtAte + 'T23:59:59.999Z');
+        }
+
+        // Busca Genérica
+        if (busca && busca.trim() !== '') {
+            const termo = busca.trim();
+            const numBusca = parseInt(termo);
+            
+            where.OR = [
+                { cliente: { Nome: { contains: termo, mode: 'insensitive' } } },
+                { cliente: { NomeFantasia: { contains: termo, mode: 'insensitive' } } },
+                { cliente: { Documento: { contains: termo, mode: 'insensitive' } } },
+                { cliente: { End_Cidade: { contains: termo, mode: 'insensitive' } } },
+                { cliente: { End_Bairro: { contains: termo, mode: 'insensitive' } } },
+                { vendedor: { nome: { contains: termo, mode: 'insensitive' } } },
+                !isNaN(numBusca) ? { numero: numBusca } : null,
+                // Suporte para busca por prefixo ZZ# e #
+                termo.toLowerCase().startsWith('zz#') && !isNaN(parseInt(termo.substring(3))) 
+                    ? { numero: parseInt(termo.substring(3)), especial: true } : null,
+                termo.startsWith('#') && !isNaN(parseInt(termo.substring(1))) 
+                    ? { numero: parseInt(termo.substring(1)), especial: false } : null,
+            ].filter(Boolean);
+        }
+
         return await prisma.pedido.findMany({
             where,
             include: {
                 cliente: {
-                    select: { Nome: true, NomeFantasia: true, Documento: true }
+                    select: { Nome: true, NomeFantasia: true, Documento: true, End_Cidade: true, End_Bairro: true }
                 },
                 vendedor: {
-                    select: { nome: true }
+                    select: { id: true, nome: true }
                 },
                 usuarioLancamento: {
                     select: { nome: true }
