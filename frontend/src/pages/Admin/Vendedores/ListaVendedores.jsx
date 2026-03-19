@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Pencil, Save, X, Search, DollarSign, Mail, Shield } from 'lucide-react';
+import { Pencil, Save, X, Search, DollarSign, Mail, Shield, UserX, UserCheck } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import PermissoesModal from './PermissoesModal';
+import toast from 'react-hot-toast';
 
 const ListaVendedores = () => {
     const [vendedores, setVendedores] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [mostrarInativos, setMostrarInativos] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [permissionsModalVendedor, setPermissionsModalVendedor] = useState(null);
@@ -54,9 +56,24 @@ const ListaVendedores = () => {
         }
     };
 
-    const filtered = vendedores.filter(v =>
-        v.nome.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleToggleAtivo = async (vendedor) => {
+        const novoStatus = !vendedor.ativo;
+        const acao = novoStatus ? 'reativar' : 'inativar';
+        if (!window.confirm(`Deseja ${acao} o usuário ${vendedor.nome}?${!novoStatus ? '\n\nEle não poderá mais acessar a plataforma e não será possível emitir pedidos para clientes vinculados a ele.' : ''}`)) return;
+        try {
+            const updated = await vendedorService.atualizar(vendedor.id, { ativo: novoStatus });
+            setVendedores(vendedores.map(v => v.id === vendedor.id ? updated : v));
+            toast.success(`${vendedor.nome} ${novoStatus ? 'reativado' : 'inativado'} com sucesso`);
+        } catch (error) {
+            toast.error('Erro ao alterar status do vendedor');
+        }
+    };
+
+    const filtered = vendedores.filter(v => {
+        const matchSearch = v.nome.toLowerCase().includes(searchTerm.toLowerCase());
+        if (mostrarInativos) return matchSearch;
+        return matchSearch && v.ativo !== false;
+    });
 
     return (
         <div className="max-w-7xl mx-auto px-3 md:px-6 lg:px-8 py-4 md:py-8">
@@ -65,15 +82,26 @@ const ListaVendedores = () => {
                     <h1 className="text-xl md:text-2xl font-bold text-gray-900">Usuários</h1>
                     <p className="mt-0.5 text-xs md:text-sm text-gray-500">Gerencie limites de Flex e logísticas da equipe</p>
                 </div>
-                <div className="relative w-full sm:w-auto">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Buscar vendedor..."
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        className="w-full sm:w-48 pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-blue-400 outline-none"
-                    />
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer whitespace-nowrap">
+                        <input
+                            type="checkbox"
+                            checked={mostrarInativos}
+                            onChange={e => setMostrarInativos(e.target.checked)}
+                            className="rounded border-gray-300 text-gray-600 focus:ring-gray-500 h-3.5 w-3.5"
+                        />
+                        Mostrar inativos
+                    </label>
+                    <div className="relative flex-1 sm:flex-none">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Buscar vendedor..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="w-full sm:w-48 pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-blue-400 outline-none"
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -96,9 +124,12 @@ const ListaVendedores = () => {
                         ) : filtered.length === 0 ? (
                             <tr><td colSpan="6" className="px-6 py-4 text-center text-gray-500">Nenhum usuário encontrado.</td></tr>
                         ) : filtered.map(vendedor => (
-                            <tr key={vendedor.id}>
+                            <tr key={vendedor.id} className={vendedor.ativo === false ? 'bg-gray-50 opacity-60' : ''}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    {vendedor.nome}
+                                    <div className="flex items-center gap-2">
+                                        {vendedor.nome}
+                                        {vendedor.ativo === false && <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">INATIVO</span>}
+                                    </div>
                                     <div className="text-xs text-gray-400 font-mono mt-1">{vendedor.idLegado || '-'}</div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -138,7 +169,10 @@ const ListaVendedores = () => {
                                     ) : (
                                         <div className="flex justify-end space-x-2">
                                             <button onClick={() => setPermissionsModalVendedor(vendedor)} className="text-indigo-600 hover:text-indigo-900" title="Acessos e Permissões"><Shield className="h-4 w-4" /></button>
-                                            <button onClick={() => handleEdit(vendedor)} className="text-primary hover:text-indigo-900"><Pencil className="h-4 w-4" /></button>
+                                            <button onClick={() => handleEdit(vendedor)} className="text-primary hover:text-indigo-900" title="Editar"><Pencil className="h-4 w-4" /></button>
+                                            <button onClick={() => handleToggleAtivo(vendedor)} className={vendedor.ativo === false ? 'text-green-600 hover:text-green-800' : 'text-red-500 hover:text-red-700'} title={vendedor.ativo === false ? 'Reativar' : 'Inativar'}>
+                                                {vendedor.ativo === false ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
+                                            </button>
                                         </div>
                                     )}
                                 </td>
@@ -155,15 +189,21 @@ const ListaVendedores = () => {
                 ) : filtered.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">Nenhum usuário encontrado.</div>
                 ) : filtered.map(vendedor => (
-                    <div key={vendedor.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                    <div key={vendedor.id} className={`bg-white rounded-xl border shadow-sm p-3 ${vendedor.ativo === false ? 'border-red-200 opacity-60' : 'border-gray-200'}`}>
                         <div className="flex items-center justify-between mb-2">
                             <div>
-                                <p className="font-bold text-[14px] text-gray-900">{vendedor.nome}</p>
+                                <div className="flex items-center gap-1.5">
+                                    <p className="font-bold text-[14px] text-gray-900">{vendedor.nome}</p>
+                                    {vendedor.ativo === false && <span className="text-[9px] bg-red-100 text-red-700 px-1 py-0.5 rounded font-semibold">INATIVO</span>}
+                                </div>
                                 <p className="text-[11px] text-gray-400 font-mono">{vendedor.idLegado || '-'}</p>
                             </div>
                             <div className="flex gap-1.5">
                                 <button onClick={() => setPermissionsModalVendedor(vendedor)} className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg"><Shield className="h-4 w-4" /></button>
                                 <button onClick={() => handleEdit(vendedor)} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg"><Pencil className="h-4 w-4" /></button>
+                                <button onClick={() => handleToggleAtivo(vendedor)} className={`p-1.5 rounded-lg ${vendedor.ativo === false ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
+                                    {vendedor.ativo === false ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
+                                </button>
                             </div>
                         </div>
 

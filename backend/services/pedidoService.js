@@ -69,6 +69,14 @@ const pedidoService = {
             throw new Error('Cliente e itens são obrigatórios');
         }
 
+        // Verificar se o vendedor está ativo
+        if (vendedorId) {
+            const vendedor = await prisma.vendedor.findUnique({ where: { id: vendedorId }, select: { ativo: true } });
+            if (vendedor && !vendedor.ativo) {
+                throw new Error('O vendedor deste cliente está inativo. Atualize o vendedor no cadastro do cliente antes de emitir o pedido.');
+            }
+        }
+
         // Buscar promoções ativas de todos os produtos antes de entrar na transação
         const produtoIds = [...new Set(itens.map(item => item.produtoId))];
         const promocoesAtivas = {};

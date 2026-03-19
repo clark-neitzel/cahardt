@@ -821,8 +821,8 @@ const DetalheCliente = () => {
                                     onChange={(e) => setFormData({ ...formData, idVendedor: e.target.value })}
                                 >
                                     <option value="">Selecione um vendedor...</option>
-                                    {vendedores.map(v => (
-                                        <option key={v.id} value={v.id}>{v.nome}</option>
+                                    {vendedores.filter(v => v.ativo !== false || v.id === formData.idVendedor).map(v => (
+                                        <option key={v.id} value={v.id}>{v.nome}{v.ativo === false ? ' (INATIVO)' : ''}</option>
                                     ))}
                                 </select>
                             </div>

@@ -330,9 +330,14 @@ const NovoPedido = () => {
                 toast.error("Este cliente não tem um vendedor associado! Não é possível criar pedido.", { duration: 6000, style: { maxWidth: "600px" } });
                 setClienteId(''); setClienteSearchText(''); return;
             }
+            const vendedorDoCliente = vendedores.find(v => v.id === cliente.idVendedor);
+            if (vendedorDoCliente && vendedorDoCliente.ativo === false) {
+                toast.error(`O vendedor ${vendedorDoCliente.nome} está INATIVO. Atualize o vendedor no cadastro do cliente antes de emitir o pedido.`, { duration: 8000, style: { maxWidth: "600px" } });
+                setClienteId(''); setClienteSearchText(''); return;
+            }
             setClienteSelecionado(cliente);
             setVendedorId(cliente.idVendedor);
-            setVendedorSelecionado(vendedores.find(v => v.id === cliente.idVendedor) || null);
+            setVendedorSelecionado(vendedorDoCliente || null);
             setClienteSearchText(cliente.NomeFantasia || cliente.Nome);
             verificarDataEntrega(dataEntrega, cliente);
 
