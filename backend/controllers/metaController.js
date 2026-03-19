@@ -45,6 +45,20 @@ const metaController = {
     /**
      * API App Vendedor: Rota principal do Dashboard Inicial
      */
+    excluir: async (req, res) => {
+        try {
+            const permissoes = req.user?.permissoes || {};
+            if (!permissoes.Pode_Gerenciar_Metas && !permissoes.admin) {
+                return res.status(403).json({ error: 'Você não tem permissão para excluir metas.' });
+            }
+            const deletada = await metaService.excluir(req.params.id);
+            res.json({ message: 'Meta excluída com sucesso', id: deletada.id });
+        } catch (error) {
+            console.error('[MetaController - excluir]', error);
+            res.status(400).json({ error: error.message || 'Erro ao excluir meta.' });
+        }
+    },
+
     obterDashboardVendedor: async (req, res) => {
         try {
             const userId = req.user?.id;

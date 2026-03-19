@@ -40,6 +40,8 @@ const DEFAULT_PERMISSIONS = {
     Pode_Reverter_Especial: false,
     categoriasEspeciais: [], // Categorias extras visíveis em pedidos especiais
     condicoesEspeciais: [], // Condições de pagamento permitidas para pedidos especiais
+    // Metas de Vendas
+    Pode_Gerenciar_Metas: false,
     // Financeiro
     Pode_Acessar_Contas_Receber: false,
     Pode_Baixar_Contas_Receber: false,
@@ -559,6 +561,25 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 </p>
                             </div>
                         )}
+                    </div>
+
+                    {/* Metas de Vendas */}
+                    <div className="border-t pt-4">
+                        <h4 className="font-medium text-gray-900 mb-4">Metas de Vendas</h4>
+                        <div className="bg-orange-50 p-4 rounded-md border border-orange-200">
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-orange-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-orange-300 text-orange-600 focus:ring-orange-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Gerenciar_Metas}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Gerenciar_Metas: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-orange-900 font-bold block">Pode Gerenciar Metas</span>
+                                    <span className="text-orange-700 text-xs">Permite criar, editar e excluir metas de vendas mensais para os vendedores.</span>
+                                </div>
+                            </label>
+                        </div>
                     </div>
 
                     {/* Financeiro */}

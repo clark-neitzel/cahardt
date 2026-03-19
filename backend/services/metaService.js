@@ -67,6 +67,17 @@ const metaService = {
         return metaSalva;
     },
 
+    excluir: async (id) => {
+        const meta = await prisma.metaMensalVendedor.findUnique({ where: { id } });
+        if (!meta) throw new Error('Meta não encontrada.');
+
+        return await prisma.$transaction(async (tx) => {
+            await tx.metaProduto.deleteMany({ where: { metaMensalVendedorId: id } });
+            await tx.metaPromocao.deleteMany({ where: { metaMensalVendedorId: id } });
+            return await tx.metaMensalVendedor.delete({ where: { id } });
+        });
+    },
+
     /**
      * Busca as metas de um mês específico com filtros
      */

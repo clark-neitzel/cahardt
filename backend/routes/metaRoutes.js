@@ -22,6 +22,9 @@ router.get('/', metaController.listarMetasPorMes);
 // POST /api/metas
 router.post('/', metaController.salvarMetaMensal);
 
+// DELETE /api/metas/:id
+router.delete('/:id', metaController.excluir);
+
 
 // ==========================================
 // Rotas APP VENDEDOR (Dashboard)

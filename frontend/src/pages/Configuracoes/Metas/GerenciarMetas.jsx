@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
-import { Pencil, Plus } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../services/api';
+import { useAuth } from '../../../contexts/AuthContext';
 import MetaFormModal from './MetaFormModal';
 
 const GerenciarMetas = () => {
+    const { user } = useAuth();
+    const permissoes = user?.permissoes || {};
+    const podeGerenciar = !!permissoes.Pode_Gerenciar_Metas || !!permissoes.admin;
+
     const [mesAtual, setMesAtual] = useState(dayjs().format('YYYY-MM'));
     const [metas, setMetas] = useState([]);
     const [vendedores, setVendedores] = useState([]);
@@ -61,6 +66,18 @@ const GerenciarMetas = () => {
         if (saved) fetchMetas();
     };
 
+    const handleExcluir = async (meta) => {
+        const vendedorNome = meta.vendedor?.nome || 'vendedor';
+        if (!window.confirm(`Excluir a meta de ${vendedorNome} para ${dayjs(mesAtual).format('MM/YYYY')}?`)) return;
+        try {
+            await api.delete(`/metas/${meta.id}`);
+            toast.success('Meta excluída com sucesso');
+            fetchMetas();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao excluir meta');
+        }
+    };
+
     const formatCurrency = (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
     const parseDias = (v) => {
@@ -84,12 +101,14 @@ const GerenciarMetas = () => {
                         />
                     </div>
 
-                    <button
-                        onClick={handleNewClick}
-                        className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition-colors flex items-center gap-2"
-                    >
-                        <Plus size={18} /> Nova Meta
-                    </button>
+                    {podeGerenciar && (
+                        <button
+                            onClick={handleNewClick}
+                            className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition-colors flex items-center gap-2"
+                        >
+                            <Plus size={18} /> Nova Meta
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -136,13 +155,26 @@ const GerenciarMetas = () => {
                                             ) : <span className="text-gray-400">-</span>}
                                         </td>
                                         <td className="px-4 py-3 text-center">
-                                            <button
-                                                onClick={() => handleEditClick(meta)}
-                                                className="text-blue-600 hover:text-blue-800 p-1"
-                                                title="Editar"
-                                            >
-                                                <Pencil size={18} />
-                                            </button>
+                                            <div className="flex items-center justify-center gap-2">
+                                                {podeGerenciar && (
+                                                    <button
+                                                        onClick={() => handleEditClick(meta)}
+                                                        className="text-blue-600 hover:text-blue-800 p-1"
+                                                        title="Editar"
+                                                    >
+                                                        <Pencil size={18} />
+                                                    </button>
+                                                )}
+                                                {podeGerenciar && (
+                                                    <button
+                                                        onClick={() => handleExcluir(meta)}
+                                                        className="text-red-500 hover:text-red-700 p-1"
+                                                        title="Excluir"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
