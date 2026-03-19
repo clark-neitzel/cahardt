@@ -46,6 +46,20 @@ const amostraController = {
         }
     },
 
+    excluir: async (req, res) => {
+        try {
+            const permissoes = req.user?.permissoes || {};
+            if (!permissoes.Pode_Excluir_Amostra && !permissoes.admin) {
+                return res.status(403).json({ error: 'Você não tem permissão para excluir amostras.' });
+            }
+            const deletada = await amostraService.excluir(req.params.id);
+            res.json({ message: 'Amostra excluída com sucesso', id: deletada.id });
+        } catch (error) {
+            console.error('Erro ao excluir amostra:', error);
+            res.status(400).json({ error: error.message || 'Erro ao excluir amostra.' });
+        }
+    },
+
     atualizarStatus: async (req, res) => {
         try {
             const { status } = req.body;

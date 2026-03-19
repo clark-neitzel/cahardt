@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square } from 'lucide-react';
+import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2 } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import amostraService from '../../services/amostraService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -23,6 +23,9 @@ const ListaPedidos = () => {
 
     const podeAprovar = user?.permissoes?.Pode_Aprovar_Especial || user?.permissoes?.admin;
     const podeReverter = user?.permissoes?.Pode_Reverter_Especial || user?.permissoes?.admin;
+    const podeExcluirPedido = user?.permissoes?.Pode_Excluir_Pedido || user?.permissoes?.admin;
+    const podeExcluirEspecial = user?.permissoes?.Pode_Excluir_Especial || user?.permissoes?.admin;
+    const podeExcluirAmostra = user?.permissoes?.Pode_Excluir_Amostra || user?.permissoes?.admin;
     const [revertendo, setRevertendo] = useState(null);
     const [selecionados, setSelecionados] = useState(new Set());
 
@@ -130,6 +133,30 @@ const ListaPedidos = () => {
             toast.error(error.response?.data?.error || 'Erro ao reverter pedido.');
         } finally {
             setRevertendo(null);
+        }
+    };
+
+    const handleExcluirPedido = async (pedido) => {
+        const tipo = pedido.especial ? 'pedido especial' : 'pedido';
+        if (!window.confirm(`Tem certeza que deseja excluir este ${tipo}? Esta ação não pode ser desfeita.`)) return;
+        try {
+            await pedidoService.excluir(pedido.id);
+            toast.success('Pedido excluído com sucesso!');
+            setPedidos(prev => prev.filter(p => p.id !== pedido.id));
+            if (selectedPedido?.id === pedido.id) setSelectedPedido(null);
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao excluir pedido.');
+        }
+    };
+
+    const handleExcluirAmostra = async (amostraId) => {
+        if (!window.confirm('Tem certeza que deseja excluir esta amostra? Esta ação não pode ser desfeita.')) return;
+        try {
+            await amostraService.excluir(amostraId);
+            toast.success('Amostra excluída com sucesso!');
+            setAmostras(prev => prev.filter(a => a.id !== amostraId));
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao excluir amostra.');
         }
     };
 
@@ -373,6 +400,15 @@ const ListaPedidos = () => {
                                                             Cancelar
                                                         </button>
                                                     )}
+                                                    {amostra.status !== 'ENTREGUE' && podeExcluirAmostra && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleExcluirAmostra(amostra.id); }}
+                                                            className="text-[11px] font-bold px-3 py-1.5 rounded transition-colors shadow-sm border bg-red-600 border-red-700 text-white hover:bg-red-700 flex items-center gap-1"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                            Excluir
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -457,6 +493,17 @@ const ListaPedidos = () => {
                                         )}
                                     </div>
                                     <div className="flex items-center gap-1.5">
+                                        {/* Botão Excluir */}
+                                        {(pedido.statusEnvio === 'ABERTO' || pedido.statusEnvio === 'ERRO') &&
+                                            (pedido.especial ? podeExcluirEspecial : podeExcluirPedido) && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleExcluirPedido(pedido); }}
+                                                className="text-gray-300 hover:text-red-500 p-1 transition-colors"
+                                                title="Excluir pedido"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        )}
                                         {/* Botão Imprimir */}
                                         {pedido.numero && (
                                             <button
@@ -710,10 +757,22 @@ const ListaPedidos = () => {
                         </div>
 
                         <div className="p-4 border-t bg-gray-50 flex justify-between items-center rounded-b-lg">
-                            <span className="text-gray-600 text-sm font-semibold">Total do Pedido:</span>
-                            <span className="text-xl font-extrabold text-primary">
-                                R$ {Number(selectedPedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toFixed(2).replace('.', ',')}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-gray-600 text-sm font-semibold">Total:</span>
+                                <span className="text-xl font-extrabold text-primary">
+                                    R$ {Number(selectedPedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toFixed(2).replace('.', ',')}
+                                </span>
+                            </div>
+                            {(selectedPedido.statusEnvio === 'ABERTO' || selectedPedido.statusEnvio === 'ERRO') &&
+                                (selectedPedido.especial ? podeExcluirEspecial : podeExcluirPedido) && (
+                                <button
+                                    onClick={() => handleExcluirPedido(selectedPedido)}
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm"
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    Excluir Pedido
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

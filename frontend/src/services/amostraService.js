@@ -20,6 +20,11 @@ const amostraService = {
         const response = await api.patch(`/amostras/${id}/status`, { status });
         return response.data;
     },
+
+    excluir: async (id) => {
+        const response = await api.delete(`/amostras/${id}`);
+        return response.data;
+    },
 };
 
 export default amostraService;

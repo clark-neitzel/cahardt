@@ -325,6 +325,23 @@ const pedidoController = {
     excluir: async (req, res) => {
         try {
             const id = req.params.id;
+            const permissoes = req.user?.permissoes || {};
+
+            // Buscar pedido para verificar se é especial
+            const pedido = await pedidoService.detalhar(id);
+            if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+
+            // Verificar permissão específica
+            if (pedido.especial) {
+                if (!permissoes.Pode_Excluir_Especial && !permissoes.admin) {
+                    return res.status(403).json({ error: 'Você não tem permissão para excluir pedidos especiais.' });
+                }
+            } else {
+                if (!permissoes.Pode_Excluir_Pedido && !permissoes.admin) {
+                    return res.status(403).json({ error: 'Você não tem permissão para excluir pedidos.' });
+                }
+            }
+
             const deletado = await pedidoService.excluir(id);
             res.json({ message: 'Pedido excluído com sucesso', id: deletado.id });
         } catch (error) {

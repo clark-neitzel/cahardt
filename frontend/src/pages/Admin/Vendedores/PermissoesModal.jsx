@@ -30,6 +30,10 @@ const DEFAULT_PERMISSIONS = {
     Pode_Editar_Veiculos: false,
     // CRM / Leads
     Pode_Editar_Lead: false,
+    // Exclusão de Registros
+    Pode_Excluir_Pedido: false,
+    Pode_Excluir_Especial: false,
+    Pode_Excluir_Amostra: false,
     // Pedidos Especiais
     Pode_Criar_Especial: false,
     Pode_Aprovar_Especial: false,
@@ -396,6 +400,51 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <div>
                                     <span className="text-teal-900 font-bold block">Pode Editar Lead</span>
                                     <span className="text-teal-700 text-xs">Permite editar leads após o cadastro inicial. Sem esta permissão, o usuário só cria novos leads mas não pode alterar os existentes.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Exclusão de Registros */}
+                    <div className="border-t pt-4">
+                        <h4 className="font-medium text-gray-900 mb-4">Exclusão de Registros</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-red-50 p-4 rounded-md border border-red-200">
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-red-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-red-300 text-red-600 focus:ring-red-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Excluir_Pedido}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Excluir_Pedido: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-red-900 font-bold block">Excluir Pedidos Normais</span>
+                                    <span className="text-red-700 text-xs">Permite excluir pedidos em status ABERTO ou ERRO.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-red-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-red-300 text-red-600 focus:ring-red-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Excluir_Especial}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Excluir_Especial: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-red-900 font-bold block">Excluir Pedidos Especiais</span>
+                                    <span className="text-red-700 text-xs">Permite excluir pedidos especiais em status ABERTO.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-red-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-red-300 text-red-600 focus:ring-red-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Excluir_Amostra}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Excluir_Amostra: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-red-900 font-bold block">Excluir Amostras</span>
+                                    <span className="text-red-700 text-xs">Permite excluir amostras que não foram entregues.</span>
                                 </div>
                             </label>
                         </div>

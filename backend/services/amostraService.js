@@ -69,6 +69,18 @@ const amostraService = {
         });
     },
 
+    excluir: async (id) => {
+        const amostra = await prisma.amostra.findUnique({ where: { id } });
+        if (!amostra) throw new Error('Amostra não encontrada.');
+        if (amostra.status === 'ENTREGUE') {
+            throw new Error('Não é possível excluir uma amostra já entregue.');
+        }
+        return await prisma.$transaction(async (tx) => {
+            await tx.amostraItem.deleteMany({ where: { amostraId: id } });
+            return await tx.amostra.delete({ where: { id } });
+        });
+    },
+
     // Amostras com status LIBERADO e sem embarque (para embarcar)
     listarDisponiveis: async () => {
         return await prisma.amostra.findMany({
