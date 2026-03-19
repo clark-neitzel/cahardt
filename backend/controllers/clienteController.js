@@ -97,7 +97,10 @@ const clienteController = {
             const cliente = await prisma.cliente.findUnique({
                 where: { UUID: uuid },
                 include: {
-                    arquivos: true
+                    arquivos: true,
+                    indicacao: {
+                        select: { UUID: true, Nome: true, NomeFantasia: true }
+                    }
                 }
             });
 
@@ -125,6 +128,8 @@ const clienteController = {
                 Formas_Atendimento,
                 Condicao_de_pagamento,
                 condicoes_pagamento_permitidas,
+                // Indicação
+                indicacaoId,
                 // Inteligência Comercial
                 categoriaClienteId,
                 cicloCompraPersonalizadoDias,
@@ -143,6 +148,8 @@ const clienteController = {
                     Formas_Atendimento,
                     Condicao_de_pagamento: Condicao_de_pagamento === "" ? null : Condicao_de_pagamento,
                     condicoes_pagamento_permitidas,
+                    // Indicação
+                    indicacaoId: indicacaoId === "" ? null : indicacaoId,
                     // Inteligência Comercial
                     categoriaClienteId: categoriaClienteId === "" ? null : categoriaClienteId,
                     cicloCompraPersonalizadoDias: cicloCompraPersonalizadoDias !== undefined && cicloCompraPersonalizadoDias !== ''

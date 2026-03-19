@@ -709,7 +709,15 @@ const migrationService = {
             `ALTER TABLE "categorias_cliente" ADD COLUMN IF NOT EXISTS "sem_limite_desconto" BOOLEAN NOT NULL DEFAULT FALSE`,
 
             // Update 45: Tracker de impressão de pedidos
-            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "impresso_em" TIMESTAMP(3);`
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "impresso_em" TIMESTAMP(3);`,
+
+            // Update 46: Campo indicação (quem indicou o cliente)
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "indicacao_id" TEXT`,
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'clientes_indicacao_id_fkey') THEN
+                    ALTER TABLE "clientes" ADD CONSTRAINT "clientes_indicacao_id_fkey" FOREIGN KEY ("indicacao_id") REFERENCES "clientes"("UUID") ON DELETE SET NULL ON UPDATE CASCADE;
+                END IF;
+            END $$;`
         ];
 
         for (const [index, cmd] of commands.entries()) {

@@ -147,6 +147,11 @@ model Cliente {
   amostras       Amostra[]
   contasReceber  ContaReceber[]
 
+  // Indicação (auto-referência: quem indicou este cliente)
+  indicacaoId    String?   @map("indicacao_id")
+  indicacao      Cliente?  @relation("ClienteIndicacao", fields: [indicacaoId], references: [UUID])
+  indicados      Cliente[] @relation("ClienteIndicacao")
+
   // Inteligência Comercial
   categoriaClienteId           String?           @map("categoria_cliente_id")
   categoriaCliente             CategoriaCliente? @relation(fields: [categoriaClienteId], references: [id])
