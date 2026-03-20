@@ -230,7 +230,7 @@ const pedidoController = {
 
     relatorio: async (req, res) => {
         try {
-            const { dataVendaDe, dataVendaAte, vendedorId, clienteId, statusEnvio, especial, situacaoCA, statusEntrega } = req.query;
+            const { dataVendaDe, dataVendaAte, dataCriacaoDe, dataCriacaoAte, vendedorId, clienteId, statusEnvio, especial, situacaoCA, statusEntrega } = req.query;
 
             // Permissão: só admin ou quem pode ver todos os pedidos
             const permissoes = req.user?.permissoes || {};
@@ -253,7 +253,14 @@ const pedidoController = {
             if (especial === 'true') where.especial = true;
             else if (especial === 'false') where.especial = false;
 
-            // Filtro de data
+            // Filtro de data de criação
+            if (dataCriacaoDe || dataCriacaoAte) {
+                where.createdAt = {};
+                if (dataCriacaoDe) where.createdAt.gte = new Date(dataCriacaoDe + 'T00:00:00.000Z');
+                if (dataCriacaoAte) where.createdAt.lte = new Date(dataCriacaoAte + 'T23:59:59.999Z');
+            }
+
+            // Filtro de data de venda/entrega
             if (dataVendaDe || dataVendaAte) {
                 where.dataVenda = {};
                 if (dataVendaDe) where.dataVenda.gte = new Date(dataVendaDe + 'T00:00:00.000Z');
@@ -292,6 +299,7 @@ const pedidoController = {
                 return {
                     id: p.id,
                     numero: p.numero,
+                    createdAt: p.createdAt,
                     dataVenda: p.dataVenda,
                     clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome || '-',
                     clienteDocumento: p.cliente?.Documento || '-',

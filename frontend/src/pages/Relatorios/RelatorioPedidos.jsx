@@ -39,8 +39,10 @@ const RelatorioPedidos = () => {
     // Filtros
     const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
     const inicioMes = hoje.slice(0, 8) + '01';
-    const [dataVendaDe, setDataVendaDe] = useState(inicioMes);
-    const [dataVendaAte, setDataVendaAte] = useState(hoje);
+    const [dataCriacaoDe, setDataCriacaoDe] = useState(inicioMes);
+    const [dataCriacaoAte, setDataCriacaoAte] = useState(hoje);
+    const [dataVendaDe, setDataVendaDe] = useState('');
+    const [dataVendaAte, setDataVendaAte] = useState('');
     const [vendedorId, setVendedorId] = useState('');
     const [statusEnvio, setStatusEnvio] = useState('');
     const [especial, setEspecial] = useState('');
@@ -60,6 +62,8 @@ const RelatorioPedidos = () => {
         try {
             setLoading(true);
             const params = {};
+            if (dataCriacaoDe) params.dataCriacaoDe = dataCriacaoDe;
+            if (dataCriacaoAte) params.dataCriacaoAte = dataCriacaoAte;
             if (dataVendaDe) params.dataVendaDe = dataVendaDe;
             if (dataVendaAte) params.dataVendaAte = dataVendaAte;
             if (vendedorId) params.vendedorId = vendedorId;
@@ -89,7 +93,7 @@ const RelatorioPedidos = () => {
         } finally {
             setLoading(false);
         }
-    }, [dataVendaDe, dataVendaAte, vendedorId, statusEnvio, especial, situacaoCA, statusEntrega, buscaCliente]);
+    }, [dataCriacaoDe, dataCriacaoAte, dataVendaDe, dataVendaAte, vendedorId, statusEnvio, especial, situacaoCA, statusEntrega, buscaCliente]);
 
     const exportarCSV = () => {
         if (pedidos.length === 0) {
@@ -98,13 +102,14 @@ const RelatorioPedidos = () => {
         }
 
         const headers = [
-            'Nº', 'Data Venda', 'Cliente', 'CNPJ/CPF', 'Vendedor',
+            'Nº', 'Data Criação', 'Data Venda', 'Cliente', 'CNPJ/CPF', 'Vendedor',
             'Tipo', 'Status', 'Situação CA', 'Entrega', 'Condição Pgto',
             'Qtd Itens', 'Valor Total (R$)', 'Flex Total', 'Canal', 'Observações'
         ];
 
         const rows = pedidos.map(p => [
             p.especial ? `ZZ${p.numero || ''}` : (p.numero || '-'),
+            new Date(p.createdAt).toLocaleDateString('pt-BR'),
             new Date(p.dataVenda).toLocaleDateString('pt-BR'),
             `"${p.clienteNome}"`,
             p.clienteDocumento,
@@ -127,7 +132,7 @@ const RelatorioPedidos = () => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `relatorio-pedidos-${dataVendaDe || 'inicio'}-${dataVendaAte || 'fim'}.csv`;
+        link.download = `relatorio-pedidos-${dataCriacaoDe || 'inicio'}-${dataCriacaoAte || 'fim'}.csv`;
         link.click();
         URL.revokeObjectURL(url);
         toast.success('CSV exportado!');
@@ -166,13 +171,13 @@ const RelatorioPedidos = () => {
                 <div className="bg-white rounded-lg shadow-sm border p-3 sm:p-4 mb-4 sm:mb-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         <div>
-                            <label className="text-xs text-gray-500 font-medium">Data Venda - De</label>
-                            <input type="date" value={dataVendaDe} onChange={(e) => setDataVendaDe(e.target.value)}
+                            <label className="text-xs text-gray-500 font-medium">Data Criação - De</label>
+                            <input type="date" value={dataCriacaoDe} onChange={(e) => setDataCriacaoDe(e.target.value)}
                                 className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500 font-medium">Data Venda - Até</label>
-                            <input type="date" value={dataVendaAte} onChange={(e) => setDataVendaAte(e.target.value)}
+                            <label className="text-xs text-gray-500 font-medium">Data Criação - Até</label>
+                            <input type="date" value={dataCriacaoAte} onChange={(e) => setDataCriacaoAte(e.target.value)}
                                 className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
                         </div>
                         {podeVerTodos && (
@@ -187,6 +192,16 @@ const RelatorioPedidos = () => {
                                 </select>
                             </div>
                         )}
+                        <div>
+                            <label className="text-xs text-gray-500 font-medium">Data Venda - De</label>
+                            <input type="date" value={dataVendaDe} onChange={(e) => setDataVendaDe(e.target.value)}
+                                className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-500 font-medium">Data Venda - Até</label>
+                            <input type="date" value={dataVendaAte} onChange={(e) => setDataVendaAte(e.target.value)}
+                                className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
+                        </div>
                         <div>
                             <label className="text-xs text-gray-500 font-medium">Cliente</label>
                             <div className="relative mt-1">
@@ -242,7 +257,8 @@ const RelatorioPedidos = () => {
                     <div className="flex justify-end gap-2 mt-4">
                         <button
                             onClick={() => {
-                                setDataVendaDe(inicioMes); setDataVendaAte(hoje);
+                                setDataCriacaoDe(inicioMes); setDataCriacaoAte(hoje);
+                                setDataVendaDe(''); setDataVendaAte('');
                                 setVendedorId(''); setStatusEnvio(''); setEspecial('');
                                 setSituacaoCA(''); setStatusEntrega(''); setBuscaCliente('');
                             }}
@@ -310,7 +326,7 @@ const RelatorioPedidos = () => {
                     {/* Cabeçalho desktop */}
                     <div className="hidden sm:grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                         <div className="col-span-1">Nº</div>
-                        <div className="col-span-1">Data</div>
+                        <div className="col-span-1">Criação</div>
                         <div className="col-span-3">Cliente</div>
                         <div className="col-span-2">Vendedor</div>
                         <div className="col-span-1">Status</div>
@@ -352,7 +368,7 @@ const RelatorioPedidos = () => {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3 mt-1 text-[11px] text-gray-500">
-                                            <span>{new Date(p.dataVenda).toLocaleDateString('pt-BR')}</span>
+                                            <span>{new Date(p.createdAt).toLocaleDateString('pt-BR')}</span>
                                             <span>{p.vendedorNome}</span>
                                             <span>{p.qtdItens} itens</span>
                                         </div>
@@ -364,7 +380,7 @@ const RelatorioPedidos = () => {
                                             {p.especial ? 'ZZ' : ''}{p.numero || '-'}
                                         </div>
                                         <div className="col-span-1 text-xs text-gray-500">
-                                            {new Date(p.dataVenda).toLocaleDateString('pt-BR')}
+                                            {new Date(p.createdAt).toLocaleDateString('pt-BR')}
                                         </div>
                                         <div className="col-span-3 text-sm text-gray-900 truncate font-medium">
                                             {p.clienteNome}
