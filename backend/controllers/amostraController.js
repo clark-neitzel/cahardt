@@ -24,9 +24,22 @@ const amostraController = {
         try {
             const filtros = {};
             if (req.query.status) filtros.status = req.query.status;
-            if (req.query.vendedorId) filtros.solicitadoPorId = req.query.vendedorId;
             if (req.query.leadId) filtros.leadId = req.query.leadId;
             if (req.query.clienteId) filtros.clienteId = req.query.clienteId;
+
+            if (req.user) {
+                const permissoes = req.user.permissoes || {};
+                const permissaoPedidos = permissoes.pedidos || {};
+                const podeVerTodos = permissoes.admin || permissaoPedidos.clientes === 'todos';
+
+                if (!podeVerTodos) {
+                    filtros.solicitadoPorId = req.user.id;
+                } else if (req.query.vendedorId) {
+                    filtros.solicitadoPorId = req.query.vendedorId;
+                }
+            } else if (req.query.vendedorId) {
+                filtros.solicitadoPorId = req.query.vendedorId;
+            }
             const amostras = await amostraService.listar(filtros);
             res.json(amostras);
         } catch (error) {

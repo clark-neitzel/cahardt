@@ -8,9 +8,12 @@ const pedidoController = {
             const filtros = req.query;
 
             if (req.user) {
-                const permissaoPedidos = req.user.permissoes?.pedidos || {};
-                // Se a regra for mostrar apenas para clientes vinculados, filtra os pedidos apenas do vendedor logado
-                if (permissaoPedidos.clientes !== 'todos') {
+                const permissoes = req.user.permissoes || {};
+                const permissaoPedidos = permissoes.pedidos || {};
+                const podeVerTodos = permissoes.admin || permissaoPedidos.clientes === 'todos';
+                
+                // Se não puder ver todos, filtra os pedidos apenas do vendedor logado
+                if (!podeVerTodos) {
                     filtros.vendedorId = req.user.id;
                 }
             }
