@@ -322,14 +322,6 @@ const ListaPedidos = () => {
                     Gerenciador de Pedidos
                 </h1>
                 
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => navigate('/pedidos/novo')}
-                        className="bg-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-primary-dark transition-colors shadow-sm"
-                    >
-                        Criar Pedido Especial
-                    </button>
-                </div>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
