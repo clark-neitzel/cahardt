@@ -545,7 +545,7 @@ const ListaPedidos = () => {
                                                         {statusAmostraLabels[amostra.status]}
                                                     </span>
                                                     <div className="flex items-center gap-1 mt-1">
-                                                        {podeExcluirAmostra && amostra.status !== 'ENTREGUE' && (
+                                                        {podeExcluirAmostra && (amostra.status !== 'ENTREGUE' || user?.permissoes?.admin) && (
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); handleExcluirAmostra(amostra.id); }}
                                                                 className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100"

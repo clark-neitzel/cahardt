@@ -65,7 +65,8 @@ const amostraController = {
             if (!permissoes.Pode_Excluir_Amostra && !permissoes.admin) {
                 return res.status(403).json({ error: 'Você não tem permissão para excluir amostras.' });
             }
-            const deletada = await amostraService.excluir(req.params.id);
+            const isAdmin = !!permissoes.admin;
+            const deletada = await amostraService.excluir(req.params.id, { forceAdmin: isAdmin });
             res.json({ message: 'Amostra excluída com sucesso', id: deletada.id });
         } catch (error) {
             console.error('Erro ao excluir amostra:', error);

@@ -105,14 +105,15 @@ const amostraService = {
         });
     },
 
-    excluir: async (id) => {
+    excluir: async (id, { forceAdmin = false } = {}) => {
         const amostra = await prisma.amostra.findUnique({ where: { id } });
         if (!amostra) throw new Error('Amostra não encontrada.');
-        if (amostra.status === 'ENTREGUE') {
+        if (amostra.status === 'ENTREGUE' && !forceAdmin) {
             throw new Error('Não é possível excluir uma amostra já entregue.');
         }
         return await prisma.$transaction(async (tx) => {
             await tx.amostraItem.deleteMany({ where: { amostraId: id } });
+            await tx.atendimento.updateMany({ where: { amostraId: id }, data: { amostraId: null } });
             return await tx.amostra.delete({ where: { id } });
         });
     },
