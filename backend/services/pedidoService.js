@@ -558,8 +558,8 @@ const pedidoService = {
         if (pedido.statusEntrega && pedido.statusEntrega !== 'PENDENTE') {
             throw new Error("Não é possível excluir: pedido já foi entregue ou devolvido.");
         }
-        if (['FATURADO', 'EM_ABERTO', 'APROVADO'].includes(pedido.situacaoCA)) {
-            throw new Error("Não é possível excluir: pedido já foi faturado/aprovado no Conta Azul.");
+        if (['FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA)) {
+            throw new Error("Não é possível excluir: pedido já foi faturado no Conta Azul.");
         }
         if (pedido.contaReceber && pedido.contaReceber.status === 'QUITADO') {
             throw new Error("Não é possível excluir: conta a receber já foi quitada.");
