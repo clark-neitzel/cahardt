@@ -287,29 +287,8 @@ const ListaPedidos = () => {
     };
 
     const isFiltroAtivo = React.useMemo(() => {
-        // Vendedor selecionado
         if (filtros.vendedorId) return true;
-        // Data de criação selecionada
         if (filtros.dataCriacaoDe || filtros.dataCriacaoAte) return true;
-        
-        // Se o usuário limpou a data de entrega (quer ver todo o histórico)
-        if (!filtros.dataEntregaDe || !filtros.dataEntregaAte) return true;
-
-        try {
-            const de = new Date(filtros.dataEntregaDe);
-            const ate = new Date(filtros.dataEntregaAte);
-            
-            // Qual o tamanho da janela de busca? Padrão é 30 dias.
-            const diffDias = Math.abs(ate - de) / (1000 * 60 * 60 * 24);
-            if (diffDias < 28 || diffDias > 32) return true; // Janela customizada!
-
-            // Qual a distância da data final para hoje?
-            const hoje = new Date();
-            const diffHoje = (hoje - ate) / (1000 * 60 * 60 * 24);
-            if (diffHoje > 7 || diffHoje < -7) return true; // Buscando um mês específico no passado/futuro!
-            
-        } catch(e) {}
-
         return false;
     }, [filtros]);
 
