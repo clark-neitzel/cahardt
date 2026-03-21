@@ -545,24 +545,41 @@ const pedidoService = {
 
     // 5. Excluir pedido (apenas se não estiver ENVIADO/SINCRONIZADO)
     excluir: async (id) => {
-        const pedido = await prisma.pedido.findUnique({ where: { id } });
+        const pedido = await prisma.pedido.findUnique({
+            where: { id },
+            include: { contaReceber: { select: { status: true } } }
+        });
         if (!pedido) throw new Error("Pedido não encontrado");
 
-        // Regra de negócio: não pode excluir pedido que já foi para o ERP
-        if (pedido.statusEnvio !== 'ABERTO' && pedido.statusEnvio !== 'ERRO') {
-            throw new Error("Não é possível excluir um pedido que já foi enviado ou está processando.");
+        // Travas de exclusão
+        if (pedido.embarqueId) {
+            throw new Error("Não é possível excluir: pedido está vinculado a uma carga/embarque.");
+        }
+        if (pedido.statusEntrega && pedido.statusEntrega !== 'PENDENTE') {
+            throw new Error("Não é possível excluir: pedido já foi entregue ou devolvido.");
+        }
+        if (['FATURADO', 'EM_ABERTO', 'APROVADO'].includes(pedido.situacaoCA)) {
+            throw new Error("Não é possível excluir: pedido já foi faturado/aprovado no Conta Azul.");
+        }
+        if (pedido.contaReceber && pedido.contaReceber.status === 'QUITADO') {
+            throw new Error("Não é possível excluir: conta a receber já foi quitada.");
         }
 
         return await prisma.$transaction(async (tx) => {
-            // Remove itens primeiro (se não houvesse cascade/referential actions)
-            await tx.pedidoItem.deleteMany({
-                where: { pedidoId: id }
-            });
-            // Remove evento de webhook pendente se houver (relacionado ao requestId/referenceId caso existisse, mas não precisa pois não foi enviado)
+            // Remove dependências
+            await tx.entregaItemDevolvido.deleteMany({ where: { pedidoId: id } });
+            await tx.pedidoPagamentoReal.deleteMany({ where: { pedidoId: id } });
+            await tx.pedidoItem.deleteMany({ where: { pedidoId: id } });
+            // Remove conta a receber e parcelas se existirem
+            const cr = await tx.contaReceber.findUnique({ where: { pedidoId: id } });
+            if (cr) {
+                await tx.parcela.deleteMany({ where: { contaReceberId: cr.id } });
+                await tx.contaReceber.delete({ where: { id: cr.id } });
+            }
+            // Remove conferência de caixa se existir
+            await tx.caixaEntregaConferida.deleteMany({ where: { pedidoId: id } });
             // Remove pedido
-            return await tx.pedido.delete({
-                where: { id }
-            });
+            return await tx.pedido.delete({ where: { id } });
         });
     }
 };

@@ -654,8 +654,8 @@ const ListaPedidos = () => {
                                                 {pedido.situacaoCA === 'FATURADO' && (
                                                     <button onClick={(e) => { e.stopPropagation(); handlePrintPedido(pedido); }} className="p-1.5 text-gray-400 hover:text-purple-600 rounded hover:bg-gray-100" title="Imprimir Pedido"><Printer className="h-4 w-4" /></button>
                                                 )}
-                                                {((pedido.statusEnvio === 'ABERTO' || pedido.statusEnvio === 'ERRO') && (pedido.especial ? podeExcluirEspecial : podeExcluirPedido)) && (
-                                                    <button onClick={(e) => { e.stopPropagation(); handleExcluirPedido(pedido); }} className="p-1.5 text-gray-300 hover:text-red-600 rounded hover:bg-gray-100"><Trash2 className="h-4 w-4" /></button>
+                                                {(pedido.especial ? podeExcluirEspecial : podeExcluirPedido) && !pedido.embarqueId && (!pedido.statusEntrega || pedido.statusEntrega === 'PENDENTE') && !['FATURADO', 'EM_ABERTO', 'APROVADO'].includes(pedido.situacaoCA) && (
+                                                    <button onClick={(e) => { e.stopPropagation(); handleExcluirPedido(pedido); }} className="p-1.5 text-gray-300 hover:text-red-600 rounded hover:bg-gray-100" title="Excluir pedido"><Trash2 className="h-4 w-4" /></button>
                                                 )}
                                                 <button 
                                                     onClick={() => {
