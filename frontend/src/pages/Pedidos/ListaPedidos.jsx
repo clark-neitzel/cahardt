@@ -41,7 +41,13 @@ const ListaPedidos = () => {
     const [pedidos, setPedidos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedPedido, setSelectedPedido] = useState(null);
-    const [abaAtiva, setAbaAtiva] = useState('pedidos'); // 'pedidos' | 'especiais' | 'amostras'
+    const [abaAtiva, setAbaAtiva] = useState(() => {
+        return localStorage.getItem('pedidos_aba_ativa') || 'pedidos';
+    }); // 'pedidos' | 'especiais' | 'amostras'
+
+    useEffect(() => {
+        localStorage.setItem('pedidos_aba_ativa', abaAtiva);
+    }, [abaAtiva]);
     const [aprovando, setAprovando] = useState(null);
     const [amostras, setAmostras] = useState([]);
     const [loadingAmostras, setLoadingAmostras] = useState(false);
@@ -280,29 +286,74 @@ const ListaPedidos = () => {
         navigate(`/pedidos/imprimir/lote?ids=${ids}`);
     };
 
+    const isFiltroAtivo = React.useMemo(() => {
+        const hoje = new Date().toISOString().split('T')[0];
+        const trintaDiasAtras = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        return (
+            filtros.vendedorId !== '' ||
+            filtros.dataCriacaoDe !== '' ||
+            filtros.dataCriacaoAte !== '' ||
+            filtros.dataEntregaAte !== hoje ||
+            Math.abs(new Date(filtros.dataEntregaDe) - new Date(trintaDiasAtras)) > 86400000 // tolerance for exact MS
+        );
+    }, [filtros]);
+
+    // Retorno do render
     return (
-        <div className="container mx-auto px-2 py-4">
-            {/* Header: Busca e Botão de Filtro */}
-            <div className="flex items-center gap-2 mb-3">
-                <div className="relative flex-1">
-                    <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                        <Search className="h-4 w-4 text-gray-400" />
-                    </div>
-                    <input
-                        type="text"
-                        placeholder="Buscar por cliente, vendedor, cidade, bairro, nº..."
-                        value={filtros.busca}
-                        onChange={e => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
-                        className="block w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                    />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+                    <Package className="h-6 w-6 text-primary" />
+                    Gerenciador de Pedidos
+                </h1>
+                
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => navigate('/pedidos/novo')}
+                        className="bg-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-primary-dark transition-colors shadow-sm"
+                    >
+                        Criar Pedido Especial
+                    </button>
                 </div>
-                <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={`p-1.5 rounded border transition-colors ${showFilters ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
-                    title="Filtros avançados"
-                >
-                    <Filter className="h-5 w-5" />
-                </button>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+                <div className="flex flex-col md:flex-row gap-3">
+                    {/* Barra de Busca e Filtros - Layout Responsivo */}
+                    <div className="flex flex-col md:flex-row gap-2 mb-4 w-full">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <input
+                                autoFocus
+                                type="text"
+                                placeholder="Buscar por cliente, vendedor, cidade ou número (ex: 123 ou ZZ#123)..." 
+                                value={filtros.busca}
+                                onChange={e => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
+                                className="w-full pl-9 pr-4 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary text-sm shadow-sm"
+                            />
+                            {filtros.busca && (
+                                <button
+                                    onClick={() => setFiltros(prev => ({ ...prev, busca: '' }))}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`p-1.5 rounded border transition-colors relative ${showFilters || isFiltroAtivo ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
+                            title="Filtros avançados"
+                        >
+                            <Filter className="h-5 w-5" />
+                            {isFiltroAtivo && !showFilters && (
+                                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
+                                </span>
+                            )}
+                        </button>
+                    </div>                </div>
             </div>
 
             {/* Painel de Filtros Avançados */}
@@ -361,9 +412,13 @@ const ListaPedidos = () => {
                         <div className="space-y-2 lg:col-span-1">
                             <label className="text-[11px] font-bold text-gray-500 uppercase flex items-center gap-1.5 flex-1 w-full relative">
                                 <User className="h-3 w-3" /> Vendedor
-                                {(filtros.dataEntregaDe || filtros.dataEntregaAte || filtros.dataCriacaoDe || filtros.dataCriacaoAte || filtros.vendedorId) && (
+                                {isFiltroAtivo && (
                                     <button
-                                        onClick={() => setFiltros(prev => ({ ...prev, dataEntregaDe: '', dataEntregaAte: '', dataCriacaoDe: '', dataCriacaoAte: '', vendedorId: '' }))}
+                                        onClick={() => {
+                                            const hoje = new Date().toISOString().split('T')[0];
+                                            const trintaDiasAtras = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                                            setFiltros(prev => ({ ...prev, dataEntregaDe: trintaDiasAtras, dataEntregaAte: hoje, dataCriacaoDe: '', dataCriacaoAte: '', vendedorId: '' }));
+                                        }}
                                         className="text-[10px] font-medium text-gray-400 hover:text-red-500 absolute right-0 bottom-0 underline"
                                     >
                                         Limpar

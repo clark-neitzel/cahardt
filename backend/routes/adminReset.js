@@ -21,13 +21,15 @@ router.use(async (req, res, next) => {
 // Definição dos grupos de reset
 const RESET_GROUPS = {
     pedidos: {
-        label: 'Pedidos (itens, pagamentos, devoluções)',
+        label: 'Pedidos e Amostras (itens, pagamentos, devoluções)',
         run: async (tx) => {
             const r1 = await tx.entregaItemDevolvido.deleteMany({});
             const r2 = await tx.pedidoPagamentoReal.deleteMany({});
             const r3 = await tx.pedidoItem.deleteMany({});
             const r4 = await tx.pedido.deleteMany({});
-            return { devolucoes: r1.count, pagamentos: r2.count, itens: r3.count, pedidos: r4.count };
+            const r5 = await tx.amostraItem.deleteMany({});
+            const r6 = await tx.amostra.deleteMany({});
+            return { devolucoes: r1.count, pagamentos: r2.count, itens: r3.count, pedidos: r4.count, amostraItens: r5.count, amostras: r6.count };
         }
     },
     embarques: {
