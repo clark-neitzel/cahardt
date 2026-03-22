@@ -84,21 +84,11 @@ app.use('/api/insights', authMiddleware, insightRoutes); // Inteligência Comerc
 app.use('/api/amostras', authMiddleware, amostraRoutes); // Amostras (mini-pedidos)
 app.use('/api/contas-receber', contasReceberRoutes); // Contas a Receber (auth inside)
 
-app.use('/api/migrations', migrationRoutes); // Migration endpoint
+app.use('/api/migrations', authMiddleware, migrationRoutes); // Migration endpoint (protegido)
 
 // Rota base
 app.get('/', (req, res) => {
-    res.send('API Hardt Salgados - v1.0.1 (Prod Data Fix)');
-});
-
-app.get('/api/debug-version', (req, res) => {
-    const service = require('./services/contaAzulService');
-    res.json({
-        message: 'Debug Code Version',
-        mockDataLength: service.fetchProdutosFromAPI ? 'Function Exists' : 'Missing',
-        // Execute the function to see what it returns without writing to DB
-        previewData: service.fetchProdutosFromAPI().then(data => data.slice(0, 3))
-    });
+    res.send('API Hardt Salgados - v1.0.1');
 });
 
 const prisma = require('./config/database');
