@@ -351,6 +351,13 @@ const pedidoService = {
                 }
 
                 if (pedidoAntigo.statusEnvio === 'ENVIAR') {
+                    const crExistente = await tx.contaReceber.findUnique({
+                        where: { pedidoId: id },
+                        include: { parcelas: { select: { status: true } } }
+                    });
+                    if (crExistente?.parcelas?.some(p => p.status === 'PAGO')) {
+                        throw new Error("Não é possível editar: existem parcelas já pagas nesta conta a receber.");
+                    }
                     await tx.contaReceber.deleteMany({ where: { pedidoId: id } });
 
                     const valorTotalCalc = novosItens.reduce((s, i) => s + (i.valor * i.quantidade), 0);
@@ -479,7 +486,7 @@ const pedidoService = {
     excluir: async (id) => {
         const pedido = await prisma.pedido.findUnique({
             where: { id },
-            include: { contaReceber: { select: { status: true } } }
+            include: { contaReceber: { include: { parcelas: { select: { status: true } } } } }
         });
         if (!pedido) throw new Error("Pedido não encontrado");
 
@@ -495,6 +502,9 @@ const pedidoService = {
         }
         if (pedido.contaReceber && pedido.contaReceber.status === 'QUITADO') {
             throw new Error("Não é possível excluir: conta a receber já foi quitada.");
+        }
+        if (pedido.contaReceber?.parcelas?.some(p => p.status === 'PAGO')) {
+            throw new Error("Não é possível excluir: existem parcelas já pagas nesta conta a receber.");
         }
 
         return await prisma.$transaction(async (tx) => {
