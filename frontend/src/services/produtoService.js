@@ -35,6 +35,11 @@ const produtoService = {
         return response.data;
     },
 
+    reordenarImagens: async (id, ordem) => {
+        const response = await api.patch(`/produtos/${id}/imagens/reordenar`, { ordem });
+        return response.data;
+    },
+
     alterarStatus: async (id, ativo) => {
         const response = await api.patch(`/produtos/${id}/status`, { ativo });
         return response.data;

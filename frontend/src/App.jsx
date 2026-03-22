@@ -377,7 +377,6 @@ function App() {
 
               {/* Produtos / Admin */}
               <Route path="/admin/produtos" element={<PrivateRoute tab="produtos"><ListaProdutos /></PrivateRoute>} />
-              <Route path="/admin/produtos/novo" element={<PrivateRoute tab="produtos"><GerenciarProduto /></PrivateRoute>} />
               <Route path="/admin/produtos/:id" element={<PrivateRoute tab="produtos"><GerenciarProduto /></PrivateRoute>} />
 
               {/* Outros Admins */}

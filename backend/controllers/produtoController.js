@@ -72,6 +72,9 @@ const produtoController = {
                 include: {
                     imagens: {
                         orderBy: { ordem: 'asc' }
+                    },
+                    categoriaProduto: {
+                        select: { id: true, nome: true, permiteFracao: true }
                     }
                 }
             });
@@ -85,17 +88,22 @@ const produtoController = {
         }
     },
 
-    // Atualizar produto (Generic)
+    // Atualizar produto (somente campos locais — dados do CA são imutáveis)
     atualizar: async (req, res) => {
         try {
             const { id } = req.params;
-            const data = req.body;
+            const body = req.body;
 
-            // Remove campos que não devem ser atualizados diretamente ou que são de controle
-            delete data.id;
-            delete data.createdAt;
-            delete data.updatedAt;
-            delete data.imagens; // Imagens são via upload
+            // Whitelist: apenas campos gerenciados localmente
+            const CAMPOS_PERMITIDOS = [
+                'ativo', 'descricao', 'estoqueMinimo',
+                'categoriaProdutoId', 'produtoSubstitutoId',
+                'permiteRecomendacao', 'prioridadeRecomendacao'
+            ];
+            const data = {};
+            for (const campo of CAMPOS_PERMITIDOS) {
+                if (body[campo] !== undefined) data[campo] = body[campo];
+            }
 
             const produto = await prisma.produto.update({
                 where: { id },
@@ -119,21 +127,27 @@ const produtoController = {
                 return res.status(400).json({ error: 'Nenhuma imagem enviada' });
             }
 
-            const novasImagens = await Promise.all(files.map(async (file, index) => {
-                // Caminho relativo para salvar no banco
-                const relativePath = `/uploads/produtos/${id}/${file.filename}`;
+            // Buscar maior ordem existente para continuar a sequência
+            const ultimaImagem = await prisma.produtoImagem.findFirst({
+                where: { produtoId: id },
+                orderBy: { ordem: 'desc' },
+                select: { ordem: true }
+            });
+            const ordemBase = (ultimaImagem?.ordem ?? -1) + 1;
 
-                // Verifica se já existe imagem principal
-                const temPrincipal = await prisma.produtoImagem.findFirst({
-                    where: { produtoId: id, principal: true }
-                });
+            const temPrincipal = await prisma.produtoImagem.findFirst({
+                where: { produtoId: id, principal: true }
+            });
+
+            const novasImagens = await Promise.all(files.map(async (file, index) => {
+                const relativePath = `/uploads/produtos/${id}/${file.filename}`;
 
                 return prisma.produtoImagem.create({
                     data: {
                         produtoId: id,
                         url: relativePath,
-                        principal: !temPrincipal && index === 0, // Define como principal se for a primeira e não houver outra
-                        ordem: index // Simples ordenação sequencial
+                        principal: !temPrincipal && index === 0,
+                        ordem: ordemBase + index
                     }
                 });
             }));
@@ -210,11 +224,37 @@ const produtoController = {
         }
     },
 
+    // Reordenar imagens (recebe array de IDs na ordem desejada)
+    reordenarImagens: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { ordem } = req.body; // Array de IDs na ordem desejada
+
+            if (!Array.isArray(ordem) || ordem.length === 0) {
+                return res.status(400).json({ error: 'Array de ordem é obrigatório' });
+            }
+
+            await Promise.all(
+                ordem.map((imagemId, index) =>
+                    prisma.produtoImagem.update({
+                        where: { id: imagemId },
+                        data: { ordem: index }
+                    })
+                )
+            );
+
+            res.json({ message: 'Ordem atualizada com sucesso' });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Erro ao reordenar imagens' });
+        }
+    },
+
     // Listar categorias CA distintas (campo categoria do Produto)
     categoriasCA: async (req, res) => {
         try {
             const result = await prisma.produto.findMany({
-                where: { categoria: { not: null }, ativo: true },
+                where: { categoria: { not: null } },
                 select: { categoria: true },
                 distinct: ['categoria'],
                 orderBy: { categoria: 'asc' }

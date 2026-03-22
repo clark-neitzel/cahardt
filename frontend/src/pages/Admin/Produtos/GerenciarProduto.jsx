@@ -9,7 +9,8 @@ import categoriaProdutoService from '../../../services/categoriaProdutoService';
 import toast from 'react-hot-toast';
 import {
     ArrowLeft, Loader, AlertCircle, Camera, Tag, Plus, X,
-    CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Trash2, Search, Save, Sparkles
+    CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Trash2, Search, Save, Sparkles,
+    Star, ArrowUp, ArrowDown, Upload
 } from 'lucide-react';
 
 // Componente autocomplete de produto por nome
@@ -529,6 +530,9 @@ const GerenciarProduto = () => {
     // Data States
     const [produto, setProduto] = useState(null);
     const [imagemAtual, setImagemAtual] = useState(0);
+    const [imagensLocal, setImagensLocal] = useState([]);
+    const [uploadingImagem, setUploadingImagem] = useState(false);
+    const fileInputRef = useRef(null);
     const [categoriasProduto, setCategoriasProduto] = useState([]);
     const [todosProdutos, setTodosProdutos] = useState([]);
     const [salvandoComercial, setSalvandoComercial] = useState(false);
@@ -564,6 +568,7 @@ const GerenciarProduto = () => {
                 ]);
 
                 setProduto(data);
+                setImagensLocal(data.imagens || []);
                 setCategoriasProduto(cats);
                 setTodosProdutos(todos.data || todos || []);
 
@@ -628,6 +633,64 @@ const GerenciarProduto = () => {
         }
     };
 
+    // ── Handlers de Imagem ──
+    const handleUploadImagens = async (e) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        setUploadingImagem(true);
+        try {
+            const formData = new FormData();
+            for (const file of files) formData.append('imagens', file);
+            const novas = await produtoService.uploadImagens(id, formData);
+            setImagensLocal(prev => [...prev, ...novas]);
+            toast.success(`${novas.length} imagem(ns) enviada(s)!`);
+        } catch (err) {
+            console.error(err);
+            toast.error('Erro ao enviar imagens.');
+        } finally {
+            setUploadingImagem(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleRemoverImagem = async (imagemId) => {
+        if (!confirm('Remover esta imagem?')) return;
+        try {
+            await produtoService.removerImagem(imagemId);
+            setImagensLocal(prev => prev.filter(i => i.id !== imagemId));
+            setImagemAtual(0);
+            toast.success('Imagem removida.');
+        } catch (err) {
+            console.error(err);
+            toast.error('Erro ao remover imagem.');
+        }
+    };
+
+    const handleDefinirPrincipal = async (imagemId) => {
+        try {
+            await produtoService.definirPrincipal(id, imagemId);
+            setImagensLocal(prev => prev.map(i => ({ ...i, principal: i.id === imagemId })));
+            toast.success('Imagem principal definida!');
+        } catch (err) {
+            console.error(err);
+            toast.error('Erro ao definir principal.');
+        }
+    };
+
+    const handleMoverImagem = async (index, direcao) => {
+        const novaLista = [...imagensLocal];
+        const targetIndex = index + direcao;
+        if (targetIndex < 0 || targetIndex >= novaLista.length) return;
+        [novaLista[index], novaLista[targetIndex]] = [novaLista[targetIndex], novaLista[index]];
+        setImagensLocal(novaLista);
+        try {
+            await produtoService.reordenarImagens(id, novaLista.map(i => i.id));
+        } catch (err) {
+            console.error(err);
+            toast.error('Erro ao salvar ordem.');
+        }
+    };
+
     if (loading) return (
         <div className="flex justify-center items-center h-screen bg-gray-50">
             <Loader className="animate-spin h-8 w-8 text-primary" />
@@ -636,7 +699,7 @@ const GerenciarProduto = () => {
 
     if (!produto) return <div className="p-8 text-center text-red-500">Produto não encontrado.</div>;
 
-    const imagens = produto.imagens?.length > 0 ? produto.imagens : [{ url: null }];
+    const imagensExibir = imagensLocal.length > 0 ? imagensLocal : [{ url: null }];
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
@@ -689,23 +752,70 @@ const GerenciarProduto = () => {
                             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                                 <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                                     <h3 className="font-semibold text-gray-700">Imagens</h3>
-                                    <Camera className="h-4 w-4 text-gray-400" />
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            multiple
+                                            className="hidden"
+                                            onChange={handleUploadImagens}
+                                        />
+                                        <button
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={uploadingImagem}
+                                            className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 disabled:opacity-50"
+                                        >
+                                            <Upload className="h-3.5 w-3.5" />
+                                            {uploadingImagem ? 'Enviando...' : 'Enviar'}
+                                        </button>
+                                    </div>
                                 </div>
+                                {/* Preview grande */}
                                 <div className="aspect-square bg-gray-100 relative">
                                     <img
-                                        src={imagens[imagemAtual].url ? `${API_URL}${imagens[imagemAtual].url}` : 'https://via.placeholder.com/400?text=Sem+Imagem'}
+                                        src={imagensExibir[imagemAtual]?.url ? `${API_URL}${imagensExibir[imagemAtual].url}` : 'https://via.placeholder.com/400?text=Sem+Imagem'}
                                         alt="Produto"
                                         className="w-full h-full object-contain p-4"
                                         onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=Erro'; }}
                                     />
+                                    {imagensExibir[imagemAtual]?.principal && (
+                                        <span className="absolute top-2 left-2 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                                            <Star className="h-3 w-3" /> CAPA
+                                        </span>
+                                    )}
                                 </div>
-                                {imagens.length > 1 && (
-                                    <div className="p-4 flex gap-2 overflow-x-auto">
-                                        {imagens.map((img, idx) => (
-                                            <button key={idx} onClick={() => setImagemAtual(idx)}
-                                                className={`h-16 w-16 flex-shrink-0 rounded border-2 overflow-hidden ${idx === imagemAtual ? 'border-primary' : 'border-transparent'}`}>
-                                                <img src={`${API_URL}${img.url}`} className="w-full h-full object-cover" alt="" />
-                                            </button>
+                                {/* Thumbnails com ações */}
+                                {imagensLocal.length > 0 && (
+                                    <div className="p-3 space-y-2 border-t border-gray-100">
+                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Arraste a ordem ou use as setas</p>
+                                        {imagensLocal.map((img, idx) => (
+                                            <div key={img.id} className={`flex items-center gap-2 p-1.5 rounded-lg border ${idx === imagemAtual ? 'border-primary bg-blue-50' : 'border-gray-100 bg-white'}`}>
+                                                <button onClick={() => setImagemAtual(idx)} className="h-12 w-12 flex-shrink-0 rounded overflow-hidden border border-gray-200">
+                                                    <img src={`${API_URL}${img.url}`} className="w-full h-full object-cover" alt="" />
+                                                </button>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[11px] text-gray-500 truncate">#{idx + 1}{img.principal ? ' — Capa' : ''}</p>
+                                                </div>
+                                                <div className="flex items-center gap-0.5 flex-shrink-0">
+                                                    <button onClick={() => handleMoverImagem(idx, -1)} disabled={idx === 0}
+                                                        className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-20" title="Mover para cima">
+                                                        <ArrowUp className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <button onClick={() => handleMoverImagem(idx, 1)} disabled={idx === imagensLocal.length - 1}
+                                                        className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-20" title="Mover para baixo">
+                                                        <ArrowDown className="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <button onClick={() => handleDefinirPrincipal(img.id)}
+                                                        className={`p-1 ${img.principal ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-500'}`} title="Definir como capa">
+                                                        <Star className={`h-3.5 w-3.5 ${img.principal ? 'fill-current' : ''}`} />
+                                                    </button>
+                                                    <button onClick={() => handleRemoverImagem(img.id)}
+                                                        className="p-1 text-gray-300 hover:text-red-500" title="Remover imagem">
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         ))}
                                     </div>
                                 )}
