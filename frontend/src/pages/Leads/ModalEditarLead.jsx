@@ -7,7 +7,7 @@ import configService from '../../services/configService';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
-const DIAS_OPCOES = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
+const DIAS_OPCOES = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 const CANAIS = [
     { value: 'PRESENCIAL', label: 'Presencial' },
     { value: 'WHATSAPP', label: 'WhatsApp' },

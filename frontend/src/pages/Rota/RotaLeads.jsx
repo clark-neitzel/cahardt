@@ -23,7 +23,7 @@ import CheckoutEntregaModal from '../Motorista/Entregas/CheckoutEntregaModal';
 import ClientePopup from './ClientePopup';
 import roteirizacaoService from '../../services/roteirizacaoService';
 
-const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'N/D'];
 const ETAPA_COLORS = {
     NOVO: 'bg-blue-100 text-blue-700',
     AMOSTRA: 'bg-yellow-100 text-yellow-800',
@@ -43,8 +43,18 @@ const getDiaSigla = (idx) => DIAS_SIGLA[idx];
 
 const itemTemDiaBase = (diasStr) => {
     if (!diasStr) return false;
-    const base = getDiaSigla(getDiaBase());
-    return diasStr.toUpperCase().split(',').map(d => d.trim()).includes(base);
+    const arrayDias = diasStr.toUpperCase().split(',').map(d => d.trim());
+    
+    const d = new Date().getDay(); // 0=dom, 6=sáb
+    const base = getDiaSigla(d === 0 || d === 6 ? 1 : d);
+    const diaReal = getDiaSigla(d);
+    
+    return arrayDias.includes(base) || arrayDias.includes(diaReal);
+};
+
+const itemTemND = (diasStr) => {
+    if (!diasStr) return false;
+    return diasStr.toUpperCase().split(',').map(d => d.trim()).includes('N/D');
 };
 
 const getAtendimentoHoje = (atendimentos) => {
@@ -1324,11 +1334,17 @@ const RotaLeads = () => {
         const prioridade1 = resto.filter(i => i._tipo === 'cliente' && itemTemDiaBase(i.Dia_de_venda));
         const prioridade2 = resto.filter(i => i._tipo === 'lead' && itemTemDiaBase(i.diasVisita) && !isProximaVisitaHoje(i.proximaVisita));
         const prioridade3 = resto.filter(i => i._tipo === 'lead' && isProximaVisitaHoje(i.proximaVisita));
-        const demais = resto.filter(i =>
-            !prioridade1.includes(i) && !prioridade2.includes(i) && !prioridade3.includes(i)
-        );
+        
+        const sobra1 = resto.filter(i => !prioridade1.includes(i) && !prioridade2.includes(i) && !prioridade3.includes(i));
+        
+        const prioridadeND = sobra1.filter(i => {
+            const dias = i._tipo === 'cliente' ? i.Dia_de_venda : i.diasVisita;
+            return itemTemND(dias);
+        });
+        
+        const demais = sobra1.filter(i => !prioridadeND.includes(i));
 
-        return [...transferidos, ...prioridade1, ...prioridade2, ...prioridade3, ...demais];
+        return [...transferidos, ...prioridade1, ...prioridade2, ...prioridade3, ...prioridadeND, ...demais];
     }, [clientesComAtendimento, leads, matchBusca, alertasPorItem]);
 
     // Itens atendidos hoje (transferências ativas só aparecem aqui se o receptor já atendeu)

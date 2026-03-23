@@ -6,7 +6,7 @@ import vendedorService from '../../services/vendedorService'; // Import Service
 import { Search, MapPin, Phone, Truck, Building, User, Filter, CheckSquare, Settings, X, Save, AlertTriangle, MessageCircle } from 'lucide-react';
 import { cn } from '../../lib/utils'; // Assumindo utils (se não existir, criar inline)
 
-const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
+const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 
 const ListaClientes = () => {
     const [searchParams, setSearchParams] = useSearchParams();

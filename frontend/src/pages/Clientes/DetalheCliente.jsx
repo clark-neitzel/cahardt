@@ -13,7 +13,7 @@ import leadService from '../../services/leadService';
 import { API_URL } from '../../services/api';
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search } from 'lucide-react';
 
-const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX'];
+const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 
 const DayPicker = ({ label, selected, onChange }) => {
     const selectedDays = selected ? selected.split(',').map(d => d.trim()) : [];
