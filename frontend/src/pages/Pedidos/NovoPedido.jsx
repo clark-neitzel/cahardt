@@ -355,14 +355,11 @@ const NovoPedido = () => {
 
             let permitidas;
             if (especial) {
-                // Para especial: filtra pelas condições permitidas do vendedor (se configurado)
-                const vendedor = vendedores.find(v => v.id === cliente.idVendedor);
-                const condicoesVendedor = vendedor?.permissoes?.condicoesEspeciais || [];
-                if (condicoesVendedor.length > 0) {
-                    permitidas = todasCondicoes.filter(c => c.ativo !== false && condicoesVendedor.includes(c.idCondicao || c.id));
-                } else {
-                    permitidas = todasCondicoes.filter(c => c.ativo !== false);
-                }
+                // Para especial: apenas condições marcadas como permiteEspecial E que o cliente tenha (padrão ou extras)
+                const condicoesDoCliente = idsArray.length > 0
+                    ? todasCondicoes.filter(c => idsArray.includes(c.idCondicao) || idsArray.includes(c.id))
+                    : (cliente.Condicao_de_pagamento ? [todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento)].filter(Boolean) : []);
+                permitidas = condicoesDoCliente.filter(c => c.ativo !== false && c.permiteEspecial === true);
             } else {
                 permitidas = idsArray.length > 0
                     ? todasCondicoes.filter(c => idsArray.includes(c.idCondicao) || idsArray.includes(c.id))
@@ -1263,7 +1260,11 @@ const NovoPedido = () => {
                                             </ul>
                                         )}
                                         {condicoesPermitidas.length === 0 && (
-                                            <p className="text-red-500 text-xs mt-1">Nenhuma tabela de preço habilitada para este cliente.</p>
+                                            <p className="text-red-500 text-xs mt-1">
+                                                {especial
+                                                    ? 'Este cliente não possui condição de pagamento habilitada para pedido especial. Solicite ao administrador.'
+                                                    : 'Nenhuma tabela de preço habilitada para este cliente.'}
+                                            </p>
                                         )}
                                 </div>
 

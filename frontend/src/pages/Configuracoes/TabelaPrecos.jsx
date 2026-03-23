@@ -14,7 +14,7 @@ const TabelaPrecos = () => {
     const [editingItem, setEditingItem] = useState(null);
     const [isCreating, setIsCreating] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [editForm, setEditForm] = useState({ acrescimoPreco: 0, valorMinimo: 0, ativo: true, debitaCaixa: false });
+    const [editForm, setEditForm] = useState({ acrescimoPreco: 0, valorMinimo: 0, ativo: true, debitaCaixa: false, permiteEspecial: false });
     const [categoriasCA, setCategoriasCA] = useState([]);
 
     useEffect(() => {
@@ -54,6 +54,7 @@ const TabelaPrecos = () => {
             acrescimoPreco: item.acrescimoPreco || 0,
             valorMinimo: item.valorMinimo || 0,
             debitaCaixa: item.debitaCaixa || false,
+            permiteEspecial: item.permiteEspecial || false,
             ativo: item.ativo,
             regrasCategoria: item.regrasCategoria || []
         });
@@ -75,6 +76,7 @@ const TabelaPrecos = () => {
             acrescimoPreco: 0,
             valorMinimo: 0,
             debitaCaixa: false,
+            permiteEspecial: false,
             ativo: true,
             regrasCategoria: []
         });
@@ -205,6 +207,11 @@ const TabelaPrecos = () => {
                                                         <Landmark className="h-3 w-3" /> Exige Banco
                                                     </div>
                                                 )}
+                                                {item.permiteEspecial && (
+                                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200">
+                                                        Especial
+                                                    </span>
+                                                )}
                                                 {item.regrasCategoria?.length > 0 && (
                                                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-purple-50 text-purple-700 border-purple-200">
                                                         {item.regrasCategoria.length} regra(s) categoria
@@ -238,6 +245,11 @@ const TabelaPrecos = () => {
                                         <p className="text-[10px] text-gray-400 font-mono mt-0.5">ID: {item.idCondicao}</p>
                                     </div>
                                     <div className="flex items-center gap-1.5 ml-2">
+                                        {item.permiteEspecial && (
+                                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200">
+                                                Especial
+                                            </span>
+                                        )}
                                         {item.debitaCaixa && (
                                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
                                                 Caixa
@@ -432,6 +444,22 @@ const TabelaPrecos = () => {
                                     </div>
                                     <p className="text-[11px] text-gray-500 mt-1">0 = Sem bloqueio.</p>
                                 </div>
+                            </div>
+
+                            {/* Permite Especial */}
+                            <div className="p-4 bg-violet-50 rounded-lg border border-violet-200">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-gray-300 text-violet-600 focus:ring-violet-500 h-4 w-4"
+                                        checked={editForm.permiteEspecial}
+                                        onChange={(e) => setEditForm({ ...editForm, permiteEspecial: e.target.checked })}
+                                    />
+                                    <span className="text-sm font-semibold text-violet-800">Permite Pedido Especial</span>
+                                </label>
+                                <p className="text-[11px] text-violet-600 mt-1 ml-6">
+                                    Marque se esta condição pode ser usada em pedidos especiais. Apenas condições marcadas aparecerão no dropdown quando o vendedor ativar "Especial".
+                                </p>
                             </div>
 
                             {/* Debita Caixa */}

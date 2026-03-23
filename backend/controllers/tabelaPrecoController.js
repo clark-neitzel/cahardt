@@ -26,7 +26,7 @@ const tabelaPrecoController = {
     // Criar nova condição de pagamento
     criar: async (req, res) => {
         try {
-            const { id, idCondicao, nomeCondicao, tipoPagamento, opcaoCondicao, qtdParcelas, parcelasDias, acrescimoPreco, valorMinimo, exigeBanco, bancoPadrao, debitaCaixa, regrasCategoria } = req.body;
+            const { id, idCondicao, nomeCondicao, tipoPagamento, opcaoCondicao, qtdParcelas, parcelasDias, acrescimoPreco, valorMinimo, exigeBanco, bancoPadrao, debitaCaixa, regrasCategoria, permiteEspecial } = req.body;
 
             if (!id || !idCondicao || !nomeCondicao) {
                 return res.status(400).json({ error: 'Campos obrigatórios: id, idCondicao, nomeCondicao.' });
@@ -51,6 +51,7 @@ const tabelaPrecoController = {
                     exigeBanco: exigeBanco || false,
                     bancoPadrao: bancoPadrao || null,
                     debitaCaixa: debitaCaixa || false,
+                    permiteEspecial: permiteEspecial || false,
                     ativo: true,
                     regrasCategoria: regrasCategoria || null
                 }
@@ -98,6 +99,7 @@ const tabelaPrecoController = {
             if (valorMinimo !== undefined) {
                 updateData.valorMinimo = Number(valorMinimo) || 0;
             }
+            if (req.body.permiteEspecial !== undefined) updateData.permiteEspecial = req.body.permiteEspecial;
             if (req.body.regrasCategoria !== undefined) {
                 updateData.regrasCategoria = req.body.regrasCategoria;
             }

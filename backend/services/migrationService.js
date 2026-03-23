@@ -717,7 +717,10 @@ const migrationService = {
                 IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'clientes_indicacao_id_fkey') THEN
                     ALTER TABLE "clientes" ADD CONSTRAINT "clientes_indicacao_id_fkey" FOREIGN KEY ("indicacao_id") REFERENCES "clientes"("UUID") ON DELETE SET NULL ON UPDATE CASCADE;
                 END IF;
-            END $$;`
+            END $$;`,
+
+            // Update 47: Flag "permite especial" em tabela_precos
+            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "permite_especial" BOOLEAN NOT NULL DEFAULT FALSE`
         ];
 
         for (const [index, cmd] of commands.entries()) {
