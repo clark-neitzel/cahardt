@@ -589,10 +589,12 @@ const contaAzulService = {
                 };
 
                 // Upsert por Documento
+                // Campos definidos apenas no App (não sobrescrever no update)
+                const { Condicao_de_pagamento, ...dadosUpdate } = dadosCliente;
                 if (dadosCliente.Documento) {
                     await prisma.cliente.upsert({
                         where: { Documento: dadosCliente.Documento },
-                        update: dadosCliente,
+                        update: dadosUpdate,
                         create: { ...dadosCliente, UUID: c.id }
                     });
                     count++;
