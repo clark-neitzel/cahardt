@@ -207,7 +207,7 @@ const DetalheCliente = () => {
         try {
             await clienteService.atualizar(uuid, formData);
             alert('Dados atualizados com sucesso!');
-            fetchData();
+            navigate('/clientes');
         } catch (error) {
             alert('Erro ao atualizar cliente: ' + (error.response?.data?.error || error.message));
         }
