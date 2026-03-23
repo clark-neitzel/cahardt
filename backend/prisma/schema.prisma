@@ -220,6 +220,7 @@ model Pedido {
   divergenciaPagamento Boolean   @default(false) @map("divergencia_pagamento")
   motivoDevolucao      String?   @map("motivo_devolucao") @db.Text // Motivo geral da devolução (parcial ou total)
   observacaoEntrega    String?   @map("observacao_entrega") @db.Text // Observação geral do motorista na entrega
+  prioridadeEntrega    Int?      @map("prioridade_entrega") // Prioridade manual do motorista (1, 2, 3...)
 
   pagamentosReais   PedidoPagamentoReal[]
   itensDevolvidos   EntregaItemDevolvido[]

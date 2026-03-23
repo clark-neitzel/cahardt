@@ -115,18 +115,42 @@ router.post('/', verificarAuth, async (req, res) => {
             if (vend) responsavelNome = vend.nome;
         }
 
-        // 5. Separar pedidos com e sem GPS no cliente
-        const comGPS = [];
+        // 5. Separar pedidos: prioridade (com GPS), normais (com GPS), sem GPS
+        const comPrioridade = [];
+        const semPrioridade = [];
         const semGPS = [];
 
         for (const p of pedidos) {
             const gps = parsePontoGPS(p.cliente?.Ponto_GPS);
-            if (gps) {
-                comGPS.push({ pedido: p, gps });
+            if (p.prioridadeEntrega) {
+                if (gps) {
+                    comPrioridade.push({ pedido: p, gps });
+                } else {
+                    // Prioridade sem GPS: avisa e tira a prioridade para não travar
+                    semGPS.push(p);
+                }
+            } else if (gps) {
+                semPrioridade.push({ pedido: p, gps });
             } else {
                 semGPS.push(p);
             }
         }
+
+        // Ordenar prioridades na sequência definida pelo motorista
+        comPrioridade.sort((a, b) => a.pedido.prioridadeEntrega - b.pedido.prioridadeEntrega);
+
+        // Reordenar prioridades se houver gaps (ex: 1,3 → 1,2)
+        for (let i = 0; i < comPrioridade.length; i++) {
+            if (comPrioridade[i].pedido.prioridadeEntrega !== i + 1) {
+                await prisma.pedido.update({
+                    where: { id: comPrioridade[i].pedido.id },
+                    data: { prioridadeEntrega: i + 1 }
+                });
+                comPrioridade[i].pedido.prioridadeEntrega = i + 1;
+            }
+        }
+
+        const comGPS = [...comPrioridade, ...semPrioridade];
 
         if (comGPS.length === 0) {
             releaseLock();
@@ -141,95 +165,144 @@ router.post('/', verificarAuth, async (req, res) => {
             });
         }
 
-        // 6. Montar coordendas (Motorista + Clientes + Base)
-        const coordsString = [
-            `${lng},${lat}`, // Motorista (Index 0)
-            ...comGPS.map(({ gps }) => `${gps.lng},${gps.lat}`),
-            `-48.91079499767414,-26.189979385982618` // Base (Index N+1)
-        ].join(';');
+        // 6. Construir a rota respeitando prioridades
+        // Lógica: Motorista → Prioridade1 → ... → PrioridadeN → [OSRM otimiza restante] → Base
+        let listaFinalOrdenada;
 
-        let routeData;
-
-        // Se houver apenas 1 cliente, a rota é simplesmente: Motorista -> Cliente -> Base
-        if (comGPS.length === 1) {
-            const routeUrl = `${OSRM_URL}/route/v1/driving/${coordsString}?overview=false&annotations=duration,distance`;
-            console.log(`[OSRM] Chamando Route API para 1 destino: ${routeUrl}`);
-            try {
-                const res = await axios.get(routeUrl, { timeout: 10000 });
-                routeData = res.data;
-            } catch (err) {
-                console.error('[OSRM] Erro Route API:', err.message);
-                releaseLock();
-                return res.status(502).json({ error: 'Erro Route API', detalhe: err.message });
-            }
+        if (semPrioridade.length === 0) {
+            // Só tem prioridades (ou só 1 entrega) — ordem já está definida
+            listaFinalOrdenada = comPrioridade;
+        } else if (comPrioridade.length === 0) {
+            // Sem prioridades — usa OSRM Trip API para otimizar tudo (fluxo original)
+            listaFinalOrdenada = null; // será resolvido abaixo
         } else {
-            // Se houver mais de 1 cliente, usamos a Trip API *sem flags* pra descobrir o circuito ótimo
-            const tripUrl = `${OSRM_URL}/trip/v1/driving/${coordsString}`;
-            console.log(`[OSRM] Chamando Trip API para descobrir ordem: ${tripUrl}`);
+            // Misto: prioridades fixas + restante otimizado pelo OSRM
+            // Ponto de partida para o restante = último cliente prioridade
+            const ultimaPrioridade = comPrioridade[comPrioridade.length - 1];
 
-            let tripData;
-            try {
-                const tripRes = await axios.get(tripUrl, { timeout: 10000 });
-                tripData = tripRes.data;
-            } catch (err) {
-                console.error('[OSRM] Erro Trip API:', err.message);
-                releaseLock();
-                return res.status(502).json({ error: 'Erro Trip API', detalhe: err.message });
+            if (semPrioridade.length === 1) {
+                // Só 1 restante, nada pra otimizar
+                listaFinalOrdenada = [...comPrioridade, ...semPrioridade];
+            } else {
+                // OSRM Trip API para otimizar o restante, partindo do último prioridade
+                const restCoords = [
+                    `${ultimaPrioridade.gps.lng},${ultimaPrioridade.gps.lat}`,
+                    ...semPrioridade.map(({ gps }) => `${gps.lng},${gps.lat}`),
+                    `-48.91079499767414,-26.189979385982618`
+                ].join(';');
+
+                const tripUrl = `${OSRM_URL}/trip/v1/driving/${restCoords}`;
+                console.log(`[OSRM] Trip API para restante (${semPrioridade.length} paradas): ${tripUrl}`);
+
+                let tripData;
+                try {
+                    const tripRes = await axios.get(tripUrl, { timeout: 10000 });
+                    tripData = tripRes.data;
+                } catch (err) {
+                    console.error('[OSRM] Erro Trip API (restante):', err.message);
+                    // Fallback: concatena sem otimização
+                    listaFinalOrdenada = [...comPrioridade, ...semPrioridade];
+                    tripData = null;
+                }
+
+                if (tripData && tripData.code === 'Ok' && tripData.waypoints) {
+                    const tripOrder = [];
+                    for (let i = 0; i < tripData.waypoints.length; i++) {
+                        tripOrder[tripData.waypoints[i].waypoint_index] = i;
+                    }
+                    const startIdx = tripOrder.indexOf(0); // Index do último prioridade
+                    const baseIdx = semPrioridade.length + 1; // Index da base
+
+                    let forwardOrder = [];
+                    let reverseOrder = [];
+                    for (let i = 1; i < tripOrder.length; i++) {
+                        forwardOrder.push(tripOrder[(startIdx + i) % tripOrder.length]);
+                        reverseOrder.push(tripOrder[(startIdx - i + tripOrder.length) % tripOrder.length]);
+                    }
+
+                    const fBaseIdx = forwardOrder.indexOf(baseIdx);
+                    const rBaseIdx = reverseOrder.indexOf(baseIdx);
+                    const bestOrder = rBaseIdx > fBaseIdx ? reverseOrder : forwardOrder;
+                    const clientesOrder = bestOrder.filter(idx => idx !== baseIdx && idx !== 0);
+
+                    const restOrdenado = clientesOrder.map(idx => semPrioridade[idx - 1]);
+                    listaFinalOrdenada = [...comPrioridade, ...restOrdenado];
+                } else if (!listaFinalOrdenada) {
+                    listaFinalOrdenada = [...comPrioridade, ...semPrioridade];
+                }
             }
+        }
 
-            if (tripData.code !== 'Ok' || !tripData.waypoints) {
-                releaseLock();
-                return res.status(502).json({ error: 'OSRM retornou Trip inválida.' });
-            }
-
-            // Mapear qual índice original está em qual posição do loop do OSRM
-            const tripOrder = [];
-            for (let i = 0; i < tripData.waypoints.length; i++) {
-                tripOrder[tripData.waypoints[i].waypoint_index] = i;
-            }
-
-            const startIdx = tripOrder.indexOf(0); // Index do Motorista no array
-            const baseOriginalIndex = comGPS.length + 1; // Index original da Base
-
-            let forwardOrder = [];
-            let reverseOrder = [];
-            for (let i = 1; i < tripOrder.length; i++) {
-                forwardOrder.push(tripOrder[(startIdx + i) % tripOrder.length]);
-                reverseOrder.push(tripOrder[(startIdx - i + tripOrder.length) % tripOrder.length]);
-            }
-
-            // Escolhemos o sentido do circuito em que a Base aparece por último
-            const fBaseIdx = forwardOrder.indexOf(baseOriginalIndex);
-            const rBaseIdx = reverseOrder.indexOf(baseOriginalIndex);
-            const bestOrder = rBaseIdx > fBaseIdx ? reverseOrder : forwardOrder;
-
-            // Removemos a base da ordem, mantendo só os clientes na sequência que serão visitados
-            const clientesOrder = bestOrder.filter(idx => idx !== baseOriginalIndex && idx !== 0);
-
-            // Agora garantimos a direção final com a poderosa Route API
-            // Rota exata: Motorista -> (Clientes Ordenados) -> Base
-            const orderedCoords = [
+        // Se listaFinalOrdenada ainda é null, usar OSRM Trip para tudo (sem prioridades)
+        if (!listaFinalOrdenada) {
+            const coordsString = [
                 `${lng},${lat}`,
-                ...clientesOrder.map(idx => {
-                    const gps = comGPS[idx - 1].gps;
-                    return `${gps.lng},${gps.lat}`;
-                }),
+                ...comGPS.map(({ gps }) => `${gps.lng},${gps.lat}`),
                 `-48.91079499767414,-26.189979385982618`
             ].join(';');
 
-            const routeUrl = `${OSRM_URL}/route/v1/driving/${orderedCoords}?overview=false&annotations=duration,distance`;
-            console.log(`[OSRM] Chamando Route API para calcular ETAs finais: ${routeUrl}`);
-            try {
-                const res = await axios.get(routeUrl, { timeout: 10000 });
-                routeData = res.data;
-            } catch (err) {
-                console.error('[OSRM] Erro Route API (ETAs):', err.message);
-                releaseLock();
-                return res.status(502).json({ error: 'Erro Route API', detalhe: err.message });
-            }
+            if (comGPS.length === 1) {
+                // Rota direta
+                listaFinalOrdenada = comGPS;
+            } else {
+                const tripUrl = `${OSRM_URL}/trip/v1/driving/${coordsString}`;
+                console.log(`[OSRM] Trip API para otimizar todas (${comGPS.length} paradas): ${tripUrl}`);
 
-            // Armazena a lista de clientes já na posição exata para iterarmos abaixo
-            routeData._clientesInOrder = clientesOrder.map(idx => comGPS[idx - 1]);
+                let tripData;
+                try {
+                    const tripRes = await axios.get(tripUrl, { timeout: 10000 });
+                    tripData = tripRes.data;
+                } catch (err) {
+                    console.error('[OSRM] Erro Trip API:', err.message);
+                    releaseLock();
+                    return res.status(502).json({ error: 'Erro Trip API', detalhe: err.message });
+                }
+
+                if (tripData.code !== 'Ok' || !tripData.waypoints) {
+                    releaseLock();
+                    return res.status(502).json({ error: 'OSRM retornou Trip inválida.' });
+                }
+
+                const tripOrder = [];
+                for (let i = 0; i < tripData.waypoints.length; i++) {
+                    tripOrder[tripData.waypoints[i].waypoint_index] = i;
+                }
+                const startIdx = tripOrder.indexOf(0);
+                const baseOriginalIndex = comGPS.length + 1;
+
+                let forwardOrder = [];
+                let reverseOrder = [];
+                for (let i = 1; i < tripOrder.length; i++) {
+                    forwardOrder.push(tripOrder[(startIdx + i) % tripOrder.length]);
+                    reverseOrder.push(tripOrder[(startIdx - i + tripOrder.length) % tripOrder.length]);
+                }
+
+                const fBaseIdx = forwardOrder.indexOf(baseOriginalIndex);
+                const rBaseIdx = reverseOrder.indexOf(baseOriginalIndex);
+                const bestOrder = rBaseIdx > fBaseIdx ? reverseOrder : forwardOrder;
+                const clientesOrder = bestOrder.filter(idx => idx !== baseOriginalIndex && idx !== 0);
+                listaFinalOrdenada = clientesOrder.map(idx => comGPS[idx - 1]);
+            }
+        }
+
+        // 7. Calcular ETAs com Route API (rota exata na ordem final)
+        const orderedCoords = [
+            `${lng},${lat}`,
+            ...listaFinalOrdenada.map(({ gps }) => `${gps.lng},${gps.lat}`),
+            `-48.91079499767414,-26.189979385982618`
+        ].join(';');
+
+        const routeUrl = `${OSRM_URL}/route/v1/driving/${orderedCoords}?overview=false&annotations=duration,distance`;
+        console.log(`[OSRM] Route API para ETAs finais (${listaFinalOrdenada.length} paradas): ${routeUrl}`);
+
+        let routeData;
+        try {
+            const routeRes = await axios.get(routeUrl, { timeout: 10000 });
+            routeData = routeRes.data;
+        } catch (err) {
+            console.error('[OSRM] Erro Route API:', err.message);
+            releaseLock();
+            return res.status(502).json({ error: 'Erro Route API', detalhe: err.message });
         }
 
         if (routeData.code !== 'Ok' || !routeData.routes || routeData.routes.length === 0) {
@@ -250,7 +323,7 @@ router.post('/', verificarAuth, async (req, res) => {
         const legs = rota.legs || []; // Array de percursos exatos de A->B, B->C, etc.
 
         const sequencia = [];
-        const listaClientes = routeData._clientesInOrder || comGPS;
+        const listaClientes = listaFinalOrdenada;
 
         for (let i = 0; i < listaClientes.length; i++) {
             const clienteEntry = listaClientes[i];
@@ -273,6 +346,7 @@ router.post('/', verificarAuth, async (req, res) => {
                     clienteEntry.pedido.cliente?.End_Cidade
                 ].filter(Boolean).join(', '),
                 gps: clienteEntry.gps,
+                prioridadeEntrega: clienteEntry.pedido.prioridadeEntrega || null,
                 duracaoTrajetoSeg: Math.round(duracaoTrajetoSeg),
                 distanciaMetros: Math.round(distanciaMetros),
                 duracaoTrajetoMin: Math.round(duracaoTrajetoSeg / 60),

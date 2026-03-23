@@ -31,6 +31,14 @@ const entregasService = {
     concluirAmostra: async (id) => {
         const response = await api.post(`/entregas/amostra/${id}/concluir`);
         return response.data;
+    },
+    definirPrioridade: async (id, prioridade) => {
+        const response = await api.patch(`/entregas/${id}/prioridade`, { prioridade });
+        return response.data;
+    },
+    reordenarPrioridades: async () => {
+        const response = await api.post('/entregas/reordenar-prioridades');
+        return response.data;
     }
 };
 

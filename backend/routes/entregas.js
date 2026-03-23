@@ -70,7 +70,7 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
                 usuarioLancamento: { select: { id: true, nome: true } },
                 itens: { include: { produto: { select: { id: true, nome: true, unidade: true } } } }
             },
-            orderBy: { cliente: { NomeFantasia: 'asc' } }
+            orderBy: [{ prioridadeEntrega: { sort: 'asc', nulls: 'last' } }, { cliente: { NomeFantasia: 'asc' } }]
         });
 
         // Enriquece com o nome legível da condição de pagamento (join manual sem FK)
@@ -612,6 +612,75 @@ router.get('/:id', verificarAuth, checkAuditor, async (req, res) => {
     } catch (error) {
         console.error('Erro ao detalhar entrega:', error);
         res.status(500).json({ error: 'Erro ao buscar detalhes da entrega.' });
+    }
+});
+
+// ==========================================
+// MOTORISTA: DEFINIR/REMOVER PRIORIDADE
+// ==========================================
+router.patch('/:id/prioridade', verificarAuth, checkAcessoEntregador, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { prioridade } = req.body; // número (1,2,3...) ou null para remover
+
+        const pedido = await prisma.pedido.findUnique({
+            where: { id },
+            include: { cliente: { select: { Ponto_GPS: true, NomeFantasia: true } } }
+        });
+
+        if (!pedido) return res.status(404).json({ error: 'Entrega não encontrada.' });
+        if (pedido.statusEntrega !== 'PENDENTE') return res.status(400).json({ error: 'Só é possível priorizar entregas pendentes.' });
+
+        // Validar GPS ao definir prioridade
+        if (prioridade && !pedido.cliente?.Ponto_GPS) {
+            return res.status(400).json({
+                error: `Cliente "${pedido.cliente?.NomeFantasia}" não possui localização GPS cadastrada. Solicite ao administrador ou remova a prioridade.`
+            });
+        }
+
+        await prisma.pedido.update({
+            where: { id },
+            data: { prioridadeEntrega: prioridade || null }
+        });
+
+        res.json({ success: true, prioridade: prioridade || null });
+    } catch (error) {
+        console.error('Erro ao definir prioridade:', error);
+        res.status(500).json({ error: 'Erro ao definir prioridade.' });
+    }
+});
+
+// ==========================================
+// MOTORISTA: REORDENAR PRIORIDADES (compactar gaps)
+// ==========================================
+router.post('/reordenar-prioridades', verificarAuth, checkAcessoEntregador, async (req, res) => {
+    try {
+        const perms = req._perms || {};
+        const verTodas = perms.admin || perms.Pode_Ver_Todas_Entregas;
+
+        const where = { statusEntrega: 'PENDENTE', embarqueId: { not: null }, prioridadeEntrega: { not: null } };
+        if (!verTodas) where.embarque = { responsavelId: req.user.id };
+
+        const priorizados = await prisma.pedido.findMany({
+            where,
+            orderBy: { prioridadeEntrega: 'asc' },
+            select: { id: true, prioridadeEntrega: true }
+        });
+
+        // Reordena sequencialmente: 1, 2, 3...
+        for (let i = 0; i < priorizados.length; i++) {
+            if (priorizados[i].prioridadeEntrega !== i + 1) {
+                await prisma.pedido.update({
+                    where: { id: priorizados[i].id },
+                    data: { prioridadeEntrega: i + 1 }
+                });
+            }
+        }
+
+        res.json({ success: true, total: priorizados.length });
+    } catch (error) {
+        console.error('Erro ao reordenar prioridades:', error);
+        res.status(500).json({ error: 'Erro ao reordenar.' });
     }
 });
 
