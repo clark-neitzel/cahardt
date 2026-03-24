@@ -173,14 +173,18 @@ const contaAzulService = {
 
 
     fetchProdutosFromAPI: async (lastSyncDate = null) => {
-        return contaAzulService._fetchGeneric('PRODUTOS', lastSyncDate);
+        console.log("📥 Buscando produtos ATIVOS...");
+        const ativos = await contaAzulService._fetchGeneric('PRODUTOS', lastSyncDate, 'ATIVO');
+        console.log("📥 Buscando produtos INATIVOS...");
+        const inativos = await contaAzulService._fetchGeneric('PRODUTOS', lastSyncDate, 'INATIVO');
+        return [...ativos, ...inativos];
     },
 
     fetchClientesFromAPI: async (lastSyncDate = null) => {
         return contaAzulService._fetchGeneric('CLIENTES', lastSyncDate);
     },
 
-    _fetchGeneric: async (resourceType, lastSyncDate = null) => {
+    _fetchGeneric: async (resourceType, lastSyncDate = null, status = null) => {
         console.log(`📥 Buscando ${resourceType}...`);
         let items = [];
         let page = 0;
@@ -205,7 +209,8 @@ const contaAzulService = {
                 let url = '';
                 if (resourceType === 'PRODUTOS') {
                     // Full Sync: URL Corrigida (api-v2.contaazul.com) perante SKILL
-                    url = `https://api-v2.contaazul.com/v1/produtos?pagina=${page + 1}&tamanho_pagina=20${dateParams}`;
+                    const statusParam = status ? `&status=${status}` : '';
+                    url = `https://api-v2.contaazul.com/v1/produtos?pagina=${page + 1}&tamanho_pagina=20${statusParam}${dateParams}`;
                 } else {
                     // CLIENTES: v2 usa /v1/pessoas (Padrão API v2)
                     // Filtro tipo_perfil=Cliente (Title Case, conforme erro 400)
