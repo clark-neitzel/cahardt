@@ -356,6 +356,7 @@ model TabelaPreco {
   permiteEspecial     Boolean  @default(false) @map("permite_especial") // Condição disponível para pedidos especiais
   obs                 String?
   regrasCategoria     Json?    @map("regras_categoria") // Regras de preço por categoria CA para especiais: [{ categoria, precoBase, acrescimo }]
+  categoriasEspecial  Json?    @map("categorias_especial") // Categorias de produto visíveis em pedidos especiais: ["cat1", "cat2"]
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 

@@ -405,9 +405,10 @@ const NovoPedido = () => {
         const cond = todasCondicoes.find(c => c.idCondicao === condicaoPagamentoId);
         setCondicaoSelecionada(cond || null);
         if (cond) {
-            // Em modo especial: recarregar produtos com categorias da condição selecionada
-            if (especial && Array.isArray(cond.regrasCategoria) && cond.regrasCategoria.length > 0) {
-                const cats = [...new Set(cond.regrasCategoria.map(r => r.categoria))];
+            // Em modo especial: recarregar produtos com categorias definidas na condição
+            const catsEspecial = Array.isArray(cond.categoriasEspecial) ? cond.categoriasEspecial : [];
+            if (especial && catsEspecial.length > 0) {
+                const cats = catsEspecial;
                 (async () => {
                     const paramsProd = { limit: 1000, ativo: true, categorias: cats.join(',') };
                     const produtosData = await produtoService.listar(paramsProd);

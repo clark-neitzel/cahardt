@@ -55,6 +55,7 @@ const TabelaPrecos = () => {
             valorMinimo: item.valorMinimo || 0,
             debitaCaixa: item.debitaCaixa || false,
             permiteEspecial: item.permiteEspecial || false,
+            categoriasEspecial: item.categoriasEspecial || [],
             ativo: item.ativo,
             regrasCategoria: item.regrasCategoria || []
         });
@@ -77,6 +78,7 @@ const TabelaPrecos = () => {
             valorMinimo: 0,
             debitaCaixa: false,
             permiteEspecial: false,
+            categoriasEspecial: [],
             ativo: true,
             regrasCategoria: []
         });
@@ -447,7 +449,7 @@ const TabelaPrecos = () => {
                             </div>
 
                             {/* Permite Especial */}
-                            <div className="p-4 bg-violet-50 rounded-lg border border-violet-200">
+                            <div className="p-4 bg-violet-50 rounded-lg border border-violet-200 space-y-3">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
                                         type="checkbox"
@@ -460,6 +462,40 @@ const TabelaPrecos = () => {
                                 <p className="text-[11px] text-violet-600 mt-1 ml-6">
                                     Marque se esta condição pode ser usada em pedidos especiais. Apenas condições marcadas aparecerão no dropdown quando o vendedor ativar "Especial".
                                 </p>
+
+                                {/* Categorias visíveis no pedido especial */}
+                                {editForm.permiteEspecial && categoriasCA.length > 0 && (
+                                    <div className="mt-3 pt-3 border-t border-violet-200">
+                                        <label className="block text-sm font-semibold text-violet-800 mb-1">Categorias de Produto Visíveis</label>
+                                        <p className="text-[11px] text-violet-600 mb-2">
+                                            Selecione quais categorias de produto aparecem ao criar um pedido especial com esta condição.
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto">
+                                            {categoriasCA.map(cat => (
+                                                <label key={cat} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-violet-100 cursor-pointer transition-colors">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="rounded border-gray-300 text-violet-600 focus:ring-violet-500 h-3.5 w-3.5"
+                                                        checked={(editForm.categoriasEspecial || []).includes(cat)}
+                                                        onChange={(e) => {
+                                                            const atual = editForm.categoriasEspecial || [];
+                                                            const novas = e.target.checked
+                                                                ? [...atual, cat]
+                                                                : atual.filter(c => c !== cat);
+                                                            setEditForm({ ...editForm, categoriasEspecial: novas });
+                                                        }}
+                                                    />
+                                                    <span className="text-xs text-gray-800 font-medium">{cat}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        {(editForm.categoriasEspecial || []).length > 0 && (
+                                            <p className="text-[10px] text-violet-500 mt-2">
+                                                {(editForm.categoriasEspecial || []).length} categoria(s) selecionada(s)
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Debita Caixa */}

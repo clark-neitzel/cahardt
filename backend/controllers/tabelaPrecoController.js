@@ -53,7 +53,8 @@ const tabelaPrecoController = {
                     debitaCaixa: debitaCaixa || false,
                     permiteEspecial: permiteEspecial || false,
                     ativo: true,
-                    regrasCategoria: regrasCategoria || null
+                    regrasCategoria: regrasCategoria || null,
+                    categoriasEspecial: req.body.categoriasEspecial || null
                 }
             });
 
@@ -102,6 +103,9 @@ const tabelaPrecoController = {
             if (req.body.permiteEspecial !== undefined) updateData.permiteEspecial = req.body.permiteEspecial;
             if (req.body.regrasCategoria !== undefined) {
                 updateData.regrasCategoria = req.body.regrasCategoria;
+            }
+            if (req.body.categoriasEspecial !== undefined) {
+                updateData.categoriasEspecial = req.body.categoriasEspecial;
             }
 
             const condicaoAtualizada = await prisma.tabelaPreco.update({

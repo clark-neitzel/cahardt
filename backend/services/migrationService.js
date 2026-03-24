@@ -723,7 +723,10 @@ const migrationService = {
             `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "permite_especial" BOOLEAN NOT NULL DEFAULT FALSE`,
 
             // Update 48: Prioridade de entrega do motorista
-            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "prioridade_entrega" INTEGER`
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "prioridade_entrega" INTEGER`,
+
+            // Update 49: Categorias de produto visíveis em pedidos especiais por condição de pagamento
+            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "categorias_especial" JSONB`
         ];
 
         for (const [index, cmd] of commands.entries()) {
