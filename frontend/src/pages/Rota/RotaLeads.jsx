@@ -1459,25 +1459,15 @@ const RotaLeads = () => {
         }
     };
 
-    // --- Prioridade de entregas ---
-    const proximaPrioridadeDisponivel = () => {
-        const prioridades = entregasPendentes
-            .filter(e => e.prioridadeEntrega)
-            .map(e => e.prioridadeEntrega);
-        if (prioridades.length === 0) return 1;
-        return Math.max(...prioridades) + 1;
-    };
-
+    // --- Prioridade de entregas (backend calcula número por motorista) ---
     const handleTogglePrioridade = async (entrega) => {
         try {
             if (entrega.prioridadeEntrega) {
                 await entregasService.definirPrioridade(entrega.id, null);
-                await entregasService.reordenarPrioridades();
                 toast.success('Prioridade removida');
             } else {
-                const proxima = proximaPrioridadeDisponivel();
-                await entregasService.definirPrioridade(entrega.id, proxima);
-                toast.success(`Prioridade ${proxima} definida`);
+                await entregasService.definirPrioridade(entrega.id, 1); // backend calcula o número correto por motorista
+                toast.success('Prioridade definida');
             }
             carregarEntregas('pendentes');
         } catch (error) {

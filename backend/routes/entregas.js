@@ -621,11 +621,14 @@ router.get('/:id', verificarAuth, checkAuditor, async (req, res) => {
 router.patch('/:id/prioridade', verificarAuth, checkAcessoEntregador, async (req, res) => {
     try {
         const { id } = req.params;
-        const { prioridade } = req.body; // número (1,2,3...) ou null para remover
+        let { prioridade } = req.body; // número (1,2,3...) ou null para remover
 
         const pedido = await prisma.pedido.findUnique({
             where: { id },
-            include: { cliente: { select: { Ponto_GPS: true, NomeFantasia: true } } }
+            include: {
+                cliente: { select: { Ponto_GPS: true, NomeFantasia: true } },
+                embarque: { select: { responsavelId: true } }
+            }
         });
 
         if (!pedido) return res.status(404).json({ error: 'Entrega não encontrada.' });
@@ -638,10 +641,51 @@ router.patch('/:id/prioridade', verificarAuth, checkAcessoEntregador, async (req
             });
         }
 
+        // Se está definindo (não removendo), calcular próxima prioridade do MOTORISTA deste pedido
+        if (prioridade) {
+            const motoristaId = pedido.embarque?.responsavelId;
+            const prioridadesDoMotorista = await prisma.pedido.findMany({
+                where: {
+                    statusEntrega: 'PENDENTE',
+                    embarqueId: { not: null },
+                    prioridadeEntrega: { not: null },
+                    embarque: { responsavelId: motoristaId }
+                },
+                select: { prioridadeEntrega: true }
+            });
+            const maxAtual = prioridadesDoMotorista.length > 0
+                ? Math.max(...prioridadesDoMotorista.map(p => p.prioridadeEntrega))
+                : 0;
+            prioridade = maxAtual + 1;
+        }
+
         await prisma.pedido.update({
             where: { id },
             data: { prioridadeEntrega: prioridade || null }
         });
+
+        // Auto-reordenar prioridades deste motorista após alteração
+        const motoristaId = pedido.embarque?.responsavelId;
+        if (motoristaId) {
+            const priorizados = await prisma.pedido.findMany({
+                where: {
+                    statusEntrega: 'PENDENTE',
+                    embarqueId: { not: null },
+                    prioridadeEntrega: { not: null },
+                    embarque: { responsavelId: motoristaId }
+                },
+                orderBy: { prioridadeEntrega: 'asc' },
+                select: { id: true, prioridadeEntrega: true }
+            });
+            for (let i = 0; i < priorizados.length; i++) {
+                if (priorizados[i].prioridadeEntrega !== i + 1) {
+                    await prisma.pedido.update({
+                        where: { id: priorizados[i].id },
+                        data: { prioridadeEntrega: i + 1 }
+                    });
+                }
+            }
+        }
 
         res.json({ success: true, prioridade: prioridade || null });
     } catch (error) {
@@ -655,29 +699,35 @@ router.patch('/:id/prioridade', verificarAuth, checkAcessoEntregador, async (req
 // ==========================================
 router.post('/reordenar-prioridades', verificarAuth, checkAcessoEntregador, async (req, res) => {
     try {
-        const perms = req._perms || {};
-        const verTodas = perms.admin || perms.Pode_Ver_Todas_Entregas;
-
-        const where = { statusEntrega: 'PENDENTE', embarqueId: { not: null }, prioridadeEntrega: { not: null } };
-        if (!verTodas) where.embarque = { responsavelId: req.user.id };
-
-        const priorizados = await prisma.pedido.findMany({
-            where,
+        // Reordena prioridades agrupadas por motorista (responsavelId do embarque)
+        const todosPriorizados = await prisma.pedido.findMany({
+            where: { statusEntrega: 'PENDENTE', embarqueId: { not: null }, prioridadeEntrega: { not: null } },
             orderBy: { prioridadeEntrega: 'asc' },
-            select: { id: true, prioridadeEntrega: true }
+            select: { id: true, prioridadeEntrega: true, embarque: { select: { responsavelId: true } } }
         });
 
-        // Reordena sequencialmente: 1, 2, 3...
-        for (let i = 0; i < priorizados.length; i++) {
-            if (priorizados[i].prioridadeEntrega !== i + 1) {
-                await prisma.pedido.update({
-                    where: { id: priorizados[i].id },
-                    data: { prioridadeEntrega: i + 1 }
-                });
+        // Agrupar por motorista
+        const porMotorista = {};
+        for (const p of todosPriorizados) {
+            const mId = p.embarque?.responsavelId || '_sem';
+            if (!porMotorista[mId]) porMotorista[mId] = [];
+            porMotorista[mId].push(p);
+        }
+
+        let totalAtualizado = 0;
+        for (const lista of Object.values(porMotorista)) {
+            for (let i = 0; i < lista.length; i++) {
+                if (lista[i].prioridadeEntrega !== i + 1) {
+                    await prisma.pedido.update({
+                        where: { id: lista[i].id },
+                        data: { prioridadeEntrega: i + 1 }
+                    });
+                    totalAtualizado++;
+                }
             }
         }
 
-        res.json({ success: true, total: priorizados.length });
+        res.json({ success: true, total: totalAtualizado });
     } catch (error) {
         console.error('Erro ao reordenar prioridades:', error);
         res.status(500).json({ error: 'Erro ao reordenar.' });

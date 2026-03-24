@@ -46,28 +46,15 @@ const PainelMotorista = () => {
         toast.success('Check-in Logístico concluído! Muito bem.');
     };
 
-    // --- Prioridade ---
-    const proximaPrioridadeDisponivel = () => {
-        const prioridades = entregas
-            .filter(e => e.prioridadeEntrega)
-            .map(e => e.prioridadeEntrega);
-        if (prioridades.length === 0) return 1;
-        return Math.max(...prioridades) + 1;
-    };
-
+    // --- Prioridade (backend calcula número por motorista) ---
     const handleTogglePrioridade = async (entrega) => {
         try {
             if (entrega.prioridadeEntrega) {
-                // Remover prioridade
                 await entregasService.definirPrioridade(entrega.id, null);
-                // Reordenar as restantes
-                await entregasService.reordenarPrioridades();
                 toast.success('Prioridade removida');
             } else {
-                // Definir próxima prioridade
-                const proxima = proximaPrioridadeDisponivel();
-                await entregasService.definirPrioridade(entrega.id, proxima);
-                toast.success(`Prioridade ${proxima} definida`);
+                await entregasService.definirPrioridade(entrega.id, 1); // backend calcula o número correto
+                toast.success('Prioridade definida');
             }
             fetchEntregas();
         } catch (error) {
