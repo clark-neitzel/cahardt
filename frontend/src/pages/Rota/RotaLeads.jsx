@@ -1489,7 +1489,15 @@ const RotaLeads = () => {
     };
 
     useEffect(() => {
-        if (aba === 'entregas') carregarEntregas('pendentes');
+        if (aba === 'entregas') {
+            carregarEntregas('pendentes');
+            // Recalcular ETAs com base no horário atual (remove entregas já concluídas e ajusta horários)
+            if (rotaOrganizada) {
+                roteirizacaoService.recalcularEtas()
+                    .then(novaRota => setRotaOrganizada(novaRota || null))
+                    .catch(() => {});
+            }
+        }
         if (aba === 'entregues') carregarEntregas('concluidas');
     }, [aba, carregarEntregas]);
 
