@@ -412,7 +412,7 @@ const STATUS_ENTREGA_CORES = {
     DEVOLVIDO: 'bg-red-100 text-red-700',
 };
 
-const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente }) => {
+const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, onTogglePrioridade }) => {
     const totalValor = pedido.itens?.reduce((s, i) => s + (Number(i.valor) * Number(i.quantidade)), 0) || 0;
     const motoristaNome = pedido.embarque?.responsavel?.nome;
     const vendedorNome = pedido.vendedor?.nome;
@@ -426,7 +426,7 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente })
         window.open(`https://maps.google.com/?q=${lat},${lng}`);
     };
     return (
-        <div className="bg-white rounded-xl border border-sky-400/50 ring-1 ring-sky-500/20 shadow-sm overflow-hidden mb-2">
+        <div className={`bg-white rounded-xl border shadow-sm overflow-hidden mb-2 ${pedido.prioridadeEntrega ? 'border-amber-400 ring-1 ring-amber-300' : 'border-sky-400/50 ring-1 ring-sky-500/20'}`}>
             <div className="p-3 md:p-4">
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -465,6 +465,22 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente })
                 <div className="flex items-center gap-3 mt-1.5 text-[11px] md:text-[12px] text-gray-600">
                     <span className="flex items-center gap-1"><Package className="h-3 w-3" />{pedido.itens?.length || 0} prod.</span>
                     <span className="font-bold text-gray-900">R$ {totalValor.toFixed(2)}</span>
+                    {pedido._tipoEntrega !== 'amostra' && onTogglePrioridade && (
+                        <button
+                            onClick={() => onTogglePrioridade(pedido)}
+                            className={`ml-auto flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold transition-colors ${
+                                pedido.prioridadeEntrega
+                                    ? 'bg-amber-100 text-amber-700 border border-amber-300 active:bg-amber-200'
+                                    : 'bg-gray-100 text-gray-500 border border-gray-200 active:bg-gray-200'
+                            }`}
+                        >
+                            {pedido.prioridadeEntrega ? (
+                                <><span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-amber-500 text-white text-[10px] font-black">{pedido.prioridadeEntrega}</span> <X className="h-3 w-3" /></>
+                            ) : (
+                                <><Star className="h-3 w-3" /> Prioridade</>
+                            )}
+                        </button>
+                    )}
                 </div>
                 {podeCheckout && (
                     <button
@@ -1443,6 +1459,33 @@ const RotaLeads = () => {
         }
     };
 
+    // --- Prioridade de entregas ---
+    const proximaPrioridadeDisponivel = () => {
+        const prioridades = entregasPendentes
+            .filter(e => e.prioridadeEntrega)
+            .map(e => e.prioridadeEntrega);
+        if (prioridades.length === 0) return 1;
+        return Math.max(...prioridades) + 1;
+    };
+
+    const handleTogglePrioridade = async (entrega) => {
+        try {
+            if (entrega.prioridadeEntrega) {
+                await entregasService.definirPrioridade(entrega.id, null);
+                await entregasService.reordenarPrioridades();
+                toast.success('Prioridade removida');
+            } else {
+                const proxima = proximaPrioridadeDisponivel();
+                await entregasService.definirPrioridade(entrega.id, proxima);
+                toast.success(`Prioridade ${proxima} definida`);
+            }
+            carregarEntregas('pendentes');
+        } catch (error) {
+            const msg = error.response?.data?.error || 'Erro ao definir prioridade';
+            toast.error(msg, { duration: 5000 });
+        }
+    };
+
     const handleEstornar = async (pedido) => {
         if (!window.confirm(`Estornar a entrega de "${pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}"? O pedido voltará ao status PENDENTE.`)) return;
         try {
@@ -1722,6 +1765,7 @@ const RotaLeads = () => {
                                                             onCheckout={setCheckoutPedido}
                                                             podeCheckout={podeEntregas}
                                                             onVerCliente={setClientePopupItem}
+                                                            onTogglePrioridade={handleTogglePrioridade}
                                                         />
                                                     )}
                                                 </div>
