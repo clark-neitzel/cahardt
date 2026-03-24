@@ -160,7 +160,6 @@ const NovoPedido = () => {
     const carregouDraftRef = useRef(false);
     const searchInputRef = useRef(null);
     const categoriasNormalRef = useRef([]);
-    const categoriasEspecialRef = useRef([]);
 
     // Pré-selecionar cliente quando vindo da tela Rota (?clienteId=...)
     const clienteIdFromUrl = searchParams.get('clienteId');
@@ -178,11 +177,8 @@ const NovoPedido = () => {
     const carregarDadosBase = async () => {
         try {
             let cats = [];
-            let catsEspecial = [];
             try { cats = await configService.get('categorias_vendas'); } catch (e) { }
-            try { catsEspecial = await configService.get('categorias_especial'); } catch (e) { }
             categoriasNormalRef.current = Array.isArray(cats) ? cats : [];
-            categoriasEspecialRef.current = Array.isArray(catsEspecial) ? catsEspecial : [];
 
             const paramsProd = { limit: 1000, ativo: true };
             if (Array.isArray(cats) && cats.length > 0) paramsProd.categorias = cats.join(',');
@@ -217,10 +213,9 @@ const NovoPedido = () => {
                 try {
                     const pd = await pedidoService.detalhar(editId);
                     if (pd) {
-                        // Restaurar flag especial e CARREGAR produtos da categoria especial se for o caso!
+                        // Restaurar flag especial — produtos serão carregados quando a condição for selecionada (via useEffect)
                         if (pd.especial) {
                             setEspecial(true);
-                            await recarregarProdutos(categoriasEspecialRef.current);
                         }
 
                         setClienteId(pd.clienteId);
@@ -409,7 +404,22 @@ const NovoPedido = () => {
     useEffect(() => {
         const cond = todasCondicoes.find(c => c.idCondicao === condicaoPagamentoId);
         setCondicaoSelecionada(cond || null);
-        if (cond) recalcularItens(cond);
+        if (cond) {
+            // Em modo especial: recarregar produtos com categorias da condição selecionada
+            if (especial && Array.isArray(cond.regrasCategoria) && cond.regrasCategoria.length > 0) {
+                const cats = [...new Set(cond.regrasCategoria.map(r => r.categoria))];
+                (async () => {
+                    const paramsProd = { limit: 1000, ativo: true, categorias: cats.join(',') };
+                    const produtosData = await produtoService.listar(paramsProd);
+                    const listaProdutos = produtosData.data || produtosData || [];
+                    setProdutos(listaProdutos);
+                    // Recalcular itens com os novos produtos
+                    setItensMap(prev => reavaliarMapaItens(prev, cond, promocoesMap, listaProdutos));
+                })();
+            } else {
+                recalcularItens(cond);
+            }
+        }
     }, [condicaoPagamentoId]);
 
     const checkPromoLiberada = useCallback((promo, mapRef) => {
@@ -1222,12 +1232,14 @@ const NovoPedido = () => {
                                                     const isEspecial = e.target.checked;
                                                     setEspecial(isEspecial);
                                                     setCondicaoPagamentoId('');
-                                                    // Recarregar produtos com categorias do tipo selecionado
-                                                    const extrasCats = (user?.permissoes?.categoriasEspeciais || []);
-                                                    const cats = isEspecial
-                                                        ? [...new Set([...categoriasEspecialRef.current, ...extrasCats])]
-                                                        : categoriasNormalRef.current;
-                                                    await recarregarProdutos(cats);
+                                                    setCondicaoSelecionada(null);
+                                                    if (!isEspecial) {
+                                                        // Volta ao normal: recarregar com categorias normais
+                                                        await recarregarProdutos(categoriasNormalRef.current);
+                                                    } else {
+                                                        // Especial: limpar produtos até selecionar condição
+                                                        setProdutos([]);
+                                                    }
                                                 }}
                                             />
                                             <div className="w-9 h-5 bg-gray-300 peer-checked:bg-purple-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
@@ -1390,7 +1402,7 @@ const NovoPedido = () => {
                             <div>
                                 <AlertCircle className="h-10 w-10 text-amber-400 mx-auto mb-3" />
                                 <p className="text-sm text-gray-900 font-bold">Selecione a Condição de Pagamento</p>
-                                <p className="text-xs text-gray-500 mt-1 font-medium">Você precisa definir a tabela e juros base no topo.</p>
+                                <p className="text-xs text-gray-500 mt-1 font-medium">{especial ? 'As categorias de produtos serão definidas pela condição selecionada.' : 'Você precisa definir a tabela e juros base no topo.'}</p>
                             </div>
                         ) : (
                             <div>
