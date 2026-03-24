@@ -137,12 +137,18 @@ const clienteController = {
                 observacaoComercialFixa
             } = req.body;
 
+            // Verificar permissão para editar GPS
+            const perms = typeof req.user.permissoes === 'string'
+                ? JSON.parse(req.user.permissoes)
+                : (req.user.permissoes || {});
+            const podeEditarGPS = perms.admin || perms.Pode_Editar_GPS || perms.clientes?.edit;
+
             const cliente = await prisma.cliente.update({
                 where: { UUID: uuid },
                 data: {
                     Dia_de_entrega,
                     Dia_de_venda,
-                    Ponto_GPS,
+                    Ponto_GPS: podeEditarGPS ? Ponto_GPS : undefined,
                     Observacoes_Gerais,
                     idVendedor: idVendedor === "" ? null : idVendedor,
                     Formas_Atendimento,

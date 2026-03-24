@@ -19,6 +19,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Executar_Entregas: false,
     Pode_Ver_Todas_Entregas: false,
     Pode_Ajustar_Entregas: false,
+    Pode_Editar_GPS: false,
     // Módulo Caixa Diário e Despesas
     Pode_Acessar_Caixa: false,
     Pode_Editar_Caixa: false,
@@ -341,6 +342,19 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <div>
                                     <span className="text-red-900 font-bold block">Administrador Financeiro de Entrega</span>
                                     <span className="text-red-700 text-xs">Nível crítico: Pode desmanchar/alterar Devoluções ou Pagamentos efetuados pelo motorista após concluir entrega.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-sky-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-sky-300 text-sky-600 focus:ring-sky-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Editar_GPS}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Editar_GPS: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-sky-900 font-bold block">Editar GPS de Clientes</span>
+                                    <span className="text-sky-700 text-xs">Permite capturar e salvar localização GPS dos clientes pelo popup lateral na rota.</span>
                                 </div>
                             </label>
                         </div>

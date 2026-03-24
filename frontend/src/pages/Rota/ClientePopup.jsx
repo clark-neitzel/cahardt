@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     X, MapPin, Navigation, Phone, Mail, Package,
     Calendar, DollarSign, User, FileText, Save,
-    Loader, CheckCircle, ExternalLink, AlertCircle
+    Loader, CheckCircle, ExternalLink, AlertCircle, Lock
 } from 'lucide-react';
 import clienteService from '../../services/clienteService';
+import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 const formatDoc = (doc) => {
@@ -29,6 +30,8 @@ const DataRow = ({ label, value, icon: Icon }) => {
 };
 
 const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
+    const { user } = useAuth();
+    const podeEditarGPS = !!(user?.permissoes?.admin || user?.permissoes?.Pode_Editar_GPS || user?.permissoes?.clientes?.edit);
     const isLead = !!(cliente?.nomeEstabelecimento); // distingue Lead de Cliente
     const nome = isLead ? cliente.nomeEstabelecimento : (cliente.Nome || '');
     const fantasia = isLead ? null : cliente.NomeFantasia;
@@ -188,56 +191,79 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                     <div className="px-4 pt-3 pb-4 border-t border-gray-100">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">📍 Localização GPS</p>
 
-                        <div className="space-y-2">
-                            {/* Input de coordenadas */}
-                            <div className="relative">
-                                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <input
-                                    type="text"
-                                    value={gpsInput}
-                                    onChange={e => setGpsInput(e.target.value)}
-                                    placeholder="-26.123456,-48.912345"
-                                    className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg text-[12px] font-mono focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none"
-                                />
-                            </div>
+                        {podeEditarGPS ? (
+                            <div className="space-y-2">
+                                {/* Input de coordenadas */}
+                                <div className="relative">
+                                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        value={gpsInput}
+                                        onChange={e => setGpsInput(e.target.value)}
+                                        placeholder="-26.123456,-48.912345"
+                                        className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg text-[12px] font-mono focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none"
+                                    />
+                                </div>
 
-                            {/* Botões de ação */}
-                            <div className="grid grid-cols-2 gap-2">
-                                <button
-                                    onClick={capturarGpsAtual}
-                                    disabled={capturando}
-                                    className="flex items-center justify-center gap-1.5 py-2 text-[12px] font-semibold text-blue-600 border border-blue-200 rounded-lg bg-blue-50 hover:bg-blue-100 disabled:opacity-50 transition-colors"
-                                >
-                                    {capturando ? <Loader className="h-3.5 w-3.5 animate-spin" /> : <Navigation className="h-3.5 w-3.5" />}
-                                    {capturando ? 'Capturando...' : 'Minha localização'}
-                                </button>
-
-                                {gpsInput && (
+                                {/* Botões de ação */}
+                                <div className="grid grid-cols-2 gap-2">
                                     <button
-                                        onClick={abrirMapa}
-                                        className="flex items-center justify-center gap-1.5 py-2 text-[12px] font-semibold text-gray-600 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                                        onClick={capturarGpsAtual}
+                                        disabled={capturando}
+                                        className="flex items-center justify-center gap-1.5 py-2 text-[12px] font-semibold text-blue-600 border border-blue-200 rounded-lg bg-blue-50 hover:bg-blue-100 disabled:opacity-50 transition-colors"
                                     >
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                        Ver no Mapa
+                                        {capturando ? <Loader className="h-3.5 w-3.5 animate-spin" /> : <Navigation className="h-3.5 w-3.5" />}
+                                        {capturando ? 'Capturando...' : 'Minha localização'}
                                     </button>
-                                )}
-                            </div>
 
-                            {/* Salvar GPS */}
-                            <button
-                                onClick={salvarGps}
-                                disabled={salvandoGps || !gpsInput.trim()}
-                                className={`w-full py-2.5 text-[13px] font-bold rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 ${gpsSalvo ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                            >
-                                {salvandoGps ? (
-                                    <><Loader className="h-4 w-4 animate-spin" /> Salvando...</>
-                                ) : gpsSalvo ? (
-                                    <><CheckCircle className="h-4 w-4" /> Localização Salva!</>
+                                    {gpsInput && (
+                                        <button
+                                            onClick={abrirMapa}
+                                            className="flex items-center justify-center gap-1.5 py-2 text-[12px] font-semibold text-gray-600 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                                        >
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                            Ver no Mapa
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Salvar GPS */}
+                                <button
+                                    onClick={salvarGps}
+                                    disabled={salvandoGps || !gpsInput.trim()}
+                                    className={`w-full py-2.5 text-[13px] font-bold rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 ${gpsSalvo ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                                >
+                                    {salvandoGps ? (
+                                        <><Loader className="h-4 w-4 animate-spin" /> Salvando...</>
+                                    ) : gpsSalvo ? (
+                                        <><CheckCircle className="h-4 w-4" /> Localização Salva!</>
+                                    ) : (
+                                        <><Save className="h-4 w-4" /> Salvar Localização</>
+                                    )}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {/* Mostra GPS atual (somente leitura) */}
+                                {gpsInput ? (
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-[12px] font-mono text-gray-600 flex-1">{gpsInput}</p>
+                                        <button
+                                            onClick={abrirMapa}
+                                            className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-gray-600 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                                        >
+                                            <ExternalLink className="h-3 w-3" /> Mapa
+                                        </button>
+                                    </div>
                                 ) : (
-                                    <><Save className="h-4 w-4" /> Salvar Localização</>
+                                    <p className="text-[12px] text-gray-400 italic">Sem GPS cadastrado</p>
                                 )}
-                            </button>
-                        </div>
+                                <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+                                    <Lock className="h-4 w-4 text-amber-500 shrink-0" />
+                                    <p className="text-[11px] text-amber-700">Você não tem permissão para alterar o GPS. Solicite ao administrador.</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* ── Observações ── */}
