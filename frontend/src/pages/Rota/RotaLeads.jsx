@@ -1488,12 +1488,17 @@ const RotaLeads = () => {
         }
     };
 
+    // ID do motorista cuja rota está sendo visualizada (admin pode ver de outro vendedor)
+    const rotaVendedorId = podeEscolherVendedor
+        ? (vendedorFiltro === 'todos' ? undefined : vendedorFiltro)
+        : undefined;
+
     useEffect(() => {
         if (aba === 'entregas') {
             carregarEntregas('pendentes');
             // Recalcular ETAs com base no horário atual (remove entregas já concluídas e ajusta horários)
             if (rotaOrganizada) {
-                roteirizacaoService.recalcularEtas()
+                roteirizacaoService.recalcularEtas(rotaVendedorId)
                     .then(novaRota => setRotaOrganizada(novaRota || null))
                     .catch(() => {});
             }
@@ -1877,14 +1882,9 @@ const RotaLeads = () => {
                         if (entregasPendentes.length <= 1) {
                             handleLimparRota(false);
                         } else if (rotaOrganizada) {
-                            // Recalcular apenas os horários (ETAs) com base no horário atual
-                            roteirizacaoService.recalcularEtas()
-                                .then(novaRota => {
-                                    setRotaOrganizada(novaRota || null);
-                                })
-                                .catch(() => {
-                                    setRotaOrganizada(null);
-                                });
+                            roteirizacaoService.recalcularEtas(rotaVendedorId)
+                                .then(novaRota => setRotaOrganizada(novaRota || null))
+                                .catch(() => setRotaOrganizada(null));
                         }
                         carregarEntregas('pendentes');
                         carregarEntregas('concluidas');
@@ -1901,7 +1901,7 @@ const RotaLeads = () => {
                     onSuccess={() => {
                         setEditarEntregaPedido(null);
                         if (rotaOrganizada) {
-                            roteirizacaoService.recalcularEtas()
+                            roteirizacaoService.recalcularEtas(rotaVendedorId)
                                 .then(novaRota => setRotaOrganizada(novaRota || null))
                                 .catch(() => setRotaOrganizada(null));
                         }
