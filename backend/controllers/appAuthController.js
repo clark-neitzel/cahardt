@@ -13,9 +13,9 @@ const appAuthController = {
         }
 
         try {
-            // Verifica o usuário
-            const vendedor = await prisma.vendedor.findUnique({
-                where: { login: login }
+            // Verifica o usuário (ignorando case sensitive e espaços)
+            const vendedor = await prisma.vendedor.findFirst({
+                where: { login: { equals: login.trim(), mode: 'insensitive' } }
             });
 
             if (!vendedor) {

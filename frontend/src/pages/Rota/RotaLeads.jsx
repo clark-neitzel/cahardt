@@ -475,9 +475,9 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, o
                             }`}
                         >
                             {pedido.prioridadeEntrega ? (
-                                <><span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-amber-500 text-white text-[10px] font-black">{pedido.prioridadeEntrega}</span> <X className="h-3 w-3" /></>
+                                <span className="flex items-center gap-1"><span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-amber-500 text-white text-[10px] font-black">{pedido.prioridadeEntrega}</span><X className="h-3 w-3" /></span>
                             ) : (
-                                <><Star className="h-3 w-3" /> Prioridade</>
+                                <span className="flex items-center gap-1"><Star className="h-3 w-3" /> Prioridade</span>
                             )}
                         </button>
                     )}
