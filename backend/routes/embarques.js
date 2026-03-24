@@ -86,11 +86,14 @@ router.get('/amostras-disponiveis', verificarAuth, checkAcessoEmbarque, async (r
 // ==========================================
 router.get('/pedidos-disponiveis', verificarAuth, checkAcessoEmbarque, async (req, res) => {
     try {
-        // Regra de Ouro: Somente FATURADOS e Sem Embarque
+        // Regra de Ouro: FATURADOS ou Especiais prontos (ENVIAR), sem Embarque
         const pedidosLivres = await prisma.pedido.findMany({
             where: {
-                situacaoCA: 'FATURADO',
-                embarqueId: null
+                embarqueId: null,
+                OR: [
+                    { situacaoCA: 'FATURADO' },
+                    { especial: true, statusEnvio: 'ENVIAR' }
+                ]
             },
             orderBy: { dataVenda: 'asc' }, // Prioriza as entregas mais velhas
             include: {
@@ -221,20 +224,22 @@ router.post('/:id/pedidos', verificarAuth, checkAcessoEmbarque, async (req, res)
             return res.status(400).json({ error: 'Forneça a lista de pedidos a incluir.' });
         }
 
-        // Trava: Validar se os pedidos realmente estão livres e FATURADOS
-        const pedidosBloqueados = await prisma.pedido.findMany({
-            where: {
-                id: { in: pedidosIds },
-                OR: [
-                    { embarqueId: { not: null } },
-                    { situacaoCA: { not: 'FATURADO' } }
-                ]
-            }
+        // Trava: Validar se os pedidos realmente estão livres e aptos para embarque
+        const pedidosCandidatos = await prisma.pedido.findMany({
+            where: { id: { in: pedidosIds } },
+            select: { id: true, numero: true, embarqueId: true, situacaoCA: true, especial: true, statusEnvio: true }
+        });
+
+        const pedidosBloqueados = pedidosCandidatos.filter(p => {
+            if (p.embarqueId) return true; // Já em outro embarque
+            if (p.situacaoCA === 'FATURADO') return false; // OK: faturado
+            if (p.especial && p.statusEnvio === 'ENVIAR') return false; // OK: especial pronto
+            return true; // Bloqueado: nem faturado nem especial pronto
         });
 
         if (pedidosBloqueados.length > 0) {
             return res.status(400).json({
-                error: 'Restrição Estrutural: Um ou mais pedidos selecionados não estão FATURADOS ou já participam de outro embarque.',
+                error: 'Restrição Estrutural: Um ou mais pedidos selecionados não estão aptos para embarque (necessário FATURADO ou Especial pronto).',
                 bloqueados: pedidosBloqueados.map(p => p.numero || p.id)
             });
         }
