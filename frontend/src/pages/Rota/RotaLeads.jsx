@@ -1866,11 +1866,17 @@ const RotaLeads = () => {
                     onSuccess={() => {
                         setCheckoutPedido(null);
 
-                        // Automaticamente limpa a rota se foi a ultima entrega
                         if (entregasPendentes.length <= 1) {
                             handleLimparRota(false);
-                        } else {
-                            setRotaOrganizada(null); // Limpa a rota para forçar recalculo e tirar o concluído
+                        } else if (rotaOrganizada) {
+                            // Recalcular apenas os horários (ETAs) com base no horário atual
+                            roteirizacaoService.recalcularEtas()
+                                .then(novaRota => {
+                                    setRotaOrganizada(novaRota || null);
+                                })
+                                .catch(() => {
+                                    setRotaOrganizada(null);
+                                });
                         }
                         carregarEntregas('pendentes');
                         carregarEntregas('concluidas');
@@ -1886,7 +1892,11 @@ const RotaLeads = () => {
                     onClose={() => setEditarEntregaPedido(null)}
                     onSuccess={() => {
                         setEditarEntregaPedido(null);
-                        setRotaOrganizada(null); // Limpa a rota para evitar dessincronia
+                        if (rotaOrganizada) {
+                            roteirizacaoService.recalcularEtas()
+                                .then(novaRota => setRotaOrganizada(novaRota || null))
+                                .catch(() => setRotaOrganizada(null));
+                        }
                         carregarEntregas('concluidas');
                         carregarEntregas('pendentes');
                     }}

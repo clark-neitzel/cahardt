@@ -504,4 +504,89 @@ router.get('/admin/todas', verificarAuth, async (req, res) => {
     }
 });
 
+// ── POST /api/roteirizar/recalcular-etas ────────────────────────────────────
+// Recalcula APENAS os horários (ETAs) das entregas restantes usando now() como base.
+// NÃO recalcula rota, NÃO chama OSRM. Mantém sequência e distâncias intactas.
+router.post('/recalcular-etas', verificarAuth, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const perms = await getPerms(userId);
+        const isAdmin = perms.admin || perms.Pode_Ver_Todos_Clientes;
+        const targetVendedorId = (isAdmin && req.body.vendedorId) ? req.body.vendedorId : userId;
+
+        const rotaSalva = await prisma.roteirizacao.findUnique({
+            where: { vendedorId: targetVendedorId }
+        });
+
+        if (!rotaSalva || !rotaSalva.sequencia?.length) {
+            return res.status(204).send();
+        }
+
+        const tempoParadaMin = rotaSalva.dadosConfig?.tempoParadaMin || 10;
+        const tempoParadaSeg = tempoParadaMin * 60;
+
+        // Buscar quais pedidos da sequência ainda estão PENDENTE
+        const pedidoIds = rotaSalva.sequencia.map(s => s.pedidoId);
+        const pedidosPendentes = await prisma.pedido.findMany({
+            where: { id: { in: pedidoIds }, statusEntrega: 'PENDENTE' },
+            select: { id: true }
+        });
+        const pendentesSet = new Set(pedidosPendentes.map(p => p.id));
+
+        // Filtrar sequência mantendo apenas pendentes, na mesma ordem
+        const sequenciaRestante = rotaSalva.sequencia.filter(s => pendentesSet.has(s.pedidoId));
+
+        if (sequenciaRestante.length === 0) {
+            // Todas entregues — limpar roteirização
+            await prisma.roteirizacao.delete({ where: { vendedorId: targetVendedorId } });
+            return res.status(204).send();
+        }
+
+        // Filtrar semGPS também
+        const semGPSRestante = (rotaSalva.semGPS || []).filter(s => pendentesSet.has(s.pedidoId));
+
+        // Recalcular horários usando agora como base
+        let horarioAtual = new Date();
+        let duracaoTotalSeg = 0;
+
+        for (let i = 0; i < sequenciaRestante.length; i++) {
+            const item = sequenciaRestante[i];
+            const duracaoTrajeto = item.duracaoTrajetoSeg || 0;
+
+            const chegada = new Date(horarioAtual.getTime() + duracaoTrajeto * 1000);
+            const saida = new Date(chegada.getTime() + tempoParadaSeg * 1000);
+
+            item.sequencia = i + 1; // Renumerar
+            item.previsaoChegada = formatHorario(chegada);
+            item.previsaoSaida = formatHorario(saida);
+
+            duracaoTotalSeg += duracaoTrajeto + tempoParadaSeg;
+            horarioAtual = saida;
+        }
+
+        // Atualizar resumo
+        const resumo = {
+            ...rotaSalva.resumo,
+            totalParadas: sequenciaRestante.length,
+            totalSemGPS: semGPSRestante.length,
+            duracaoTotalMin: Math.round(duracaoTotalSeg / 60)
+        };
+
+        // Salvar no banco
+        await prisma.roteirizacao.update({
+            where: { vendedorId: targetVendedorId },
+            data: {
+                sequencia: sequenciaRestante,
+                semGPS: semGPSRestante,
+                resumo
+            }
+        });
+
+        return res.json({ sequencia: sequenciaRestante, semGPS: semGPSRestante, resumo });
+    } catch (error) {
+        console.error('[Roteirizacao recalcular-etas] Erro:', error);
+        res.status(500).json({ error: 'Erro ao recalcular horários.' });
+    }
+});
+
 module.exports = router;

@@ -44,6 +44,16 @@ const roteirizacaoService = {
     },
 
     /**
+     * Recalcula apenas os horários (ETAs) das entregas restantes usando now() como base.
+     * Não recalcula rota nem chama OSRM.
+     */
+    recalcularEtas: async (vendedorId) => {
+        const body = vendedorId ? { vendedorId } : {};
+        const res = await api.post('/roteirizar/recalcular-etas', body);
+        return res.status === 204 ? null : res.data;
+    },
+
+    /**
      * Busca todas as roteirizações (Somente Admin)
      */
     getTodasRotasAdmin: async () => {
