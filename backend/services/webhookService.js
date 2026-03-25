@@ -69,9 +69,9 @@ const webhookService = {
             const linhasItens = pedido.itens.map(i => {
                 const nomeProd = i.produto?.nome || 'Produto';
                 const qtd = Number(i.quantidade);
-                const subtotal = (Number(i.valor || 0) * qtd).toFixed(2).replace('.', ',');
-                return `  ${qtd}x  ${nomeProd}\n       R$ ${subtotal}`;
-            }).join('\n');
+                const valorUn = Number(i.valor || 0).toFixed(2).replace('.', ',');
+                return `\`${nomeProd}\`\n${qtd} un x R$ ${valorUn}`;
+            }).join('\n\n');
 
             const total = pedido.itens.reduce((sum, i) => sum + (Number(i.valor || 0) * Number(i.quantidade)), 0);
             const totalStr = total.toFixed(2);
@@ -146,8 +146,8 @@ const webhookService = {
 
             const linhasItens = amostra.itens.map(i => {
                 const qtd = Number(i.quantidade);
-                return `  ${qtd}x  ${i.nomeProduto}`;
-            }).join('\n');
+                return `\`${i.nomeProduto}\`\n${qtd} un`;
+            }).join('\n\n');
 
             const partes = [
                 `Ola, *${nome}*! \uD83D\uDC4B`,
