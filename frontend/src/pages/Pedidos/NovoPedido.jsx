@@ -922,9 +922,28 @@ const NovoPedido = () => {
                                     </span>
                                 </div>
                             ) : (
-                                <span className="text-xs font-bold text-orange-600">
-                                    R$ {Number(produto.valorVenda || 0).toFixed(2).replace('.', ',')}
-                                </span>
+                                (() => {
+                                    const acrescimoTabela = condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0;
+                                    // Para especiais com regra de categoria, usar regra específica
+                                    const regras = (especial && condicaoSelecionada?.regrasCategoria) || [];
+                                    const regraCategoria = especial && produto.categoria
+                                        ? regras.find(r => r.categoria === produto.categoria)
+                                        : null;
+                                    let precoExibido;
+                                    if (regraCategoria) {
+                                        const base = regraCategoria.precoBase === 'custoMedio'
+                                            ? (Number(produto.custoMedio) || Number(produto.valorVenda) || 0)
+                                            : (Number(produto.valorVenda) || 0);
+                                        precoExibido = base * (1 + (Number(regraCategoria.acrescimo) || 0) / 100);
+                                    } else {
+                                        precoExibido = Number(produto.valorVenda || 0) * (1 + acrescimoTabela / 100);
+                                    }
+                                    return (
+                                        <span className="text-xs font-bold text-orange-600">
+                                            R$ {precoExibido.toFixed(2).replace('.', ',')}
+                                        </span>
+                                    );
+                                })()
                             )}
                             {/* Flex badge */}
                             {qtd > 0 && item && (
