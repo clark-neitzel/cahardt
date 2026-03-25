@@ -849,164 +849,149 @@ const NovoPedido = () => {
             <div className={`border-b border-gray-100 ${qtd > 0 ? 'bg-blue-50/40' : 'bg-white'}`}>
                 {/* Linha principal — clicável para expandir histórico nos Já Comprados */}
                 <div
-                    className={`flex items-center gap-2 px-2 py-2 ${temExpand ? 'cursor-pointer active:bg-gray-50' : ''}`}
+                    className={`flex flex-col sm:flex-row sm:items-center gap-2 px-3 py-2 ${temExpand ? 'cursor-pointer active:bg-gray-50' : ''}`}
                     onClick={toggleExpand}
                 >
-                    {/* Foto do produto — mobile: esquerda / desktop: direita */}
-                    <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 shrink-0 border border-gray-200 md:order-last">
-                        {imgUrl ? (
-                            <img src={imgUrl} alt={produto.nome} className="w-full h-full object-cover" />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                                <Package className="h-5 w-5 text-gray-300" />
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Info do produto */}
-                    <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-gray-800 leading-tight line-clamp-2">{produto.nome}</div>
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                            {/* Tag de Promoção */}
-                            {(() => {
-                                if (!promo) return null;
-
-                                // Acréscimo da tabela selecionada (mesma regra do preço normal)
-                                const acrescimo = condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0;
-                                const precoPromoComTabela = Number(promo.precoPromocional) * (1 + acrescimo / 100);
-
-                                // Avalia condições em tempo real para tipo CONDICIONAL
-                                if (promo.tipo === 'CONDICIONAL') {
-                                    const liberada = checkPromoLiberada(promo, itensMap);
-                                    if (!liberada) return (
-                                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-dashed border-gray-300 flex items-center gap-1">
-                                            <Tag className="h-3 w-3" /> Promo Cond.
-                                        </span>
-                                    );
-                                }
-                                return (
-                                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-300 font-semibold flex items-center gap-1"
-                                        title={`Base: R$ ${Number(promo.precoPromocional).toFixed(2)} + ${condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0}% tabela`}>
-                                        <Tag className="h-3 w-3" /> R$ {precoPromoComTabela.toFixed(2).replace('.', ',')}
-                                    </span>
-                                );
-                            })()}
-
-                            {/* Preço / input de preço */}
-                            {qtd > 0 ? (
-                                <div className="flex items-center gap-1">
-                                    {/* Indica preço riscado se estiver sofrendo desconto ou se tiver promoção */}
-                                    {item && (Number(item.valorBase) > Number(item.valorUnitario) || promo) && (
-                                        <span className="text-xs text-gray-400 line-through mr-1" title={`Tabela: R$ ${Number(item.valorBase).toFixed(2)}`}>
-                                            R$ {Number(item.valorBase).toFixed(2).replace('.', ',')}
-                                        </span>
-                                    )}
-                                    <span
-                                        className="text-xs font-bold text-blue-700"
-                                        onClick={e => e.stopPropagation()}
-                                    >
-                                        <input
-                                            type="number"
-                                            min="0" step="any"
-                                            className="w-16 sm:w-20 border border-blue-300 bg-white text-blue-800 rounded px-1.5 py-0.5 text-xs font-bold text-center"
-                                            value={valor}
-                                            onFocus={e => e.target.select()}
-                                            onChange={e => setValorUnitario(produto.id, e.target.value)}
-                                            onBlur={() => verificarTravaValorUnitario(produto.id)}
-                                            onKeyDown={e => {
-                                                if (e.key === 'Enter') {
-                                                    e.target.blur();
-                                                }
-                                            }}
-                                        />
-                                    </span>
-                                </div>
+                    <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                        {/* Foto do produto */}
+                        <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
+                            {imgUrl ? (
+                                <img src={imgUrl} alt={produto.nome} className="w-full h-full object-cover" />
                             ) : (
-                                (() => {
-                                    const acrescimoTabela = condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0;
-                                    // Para especiais com regra de categoria, usar regra específica
-                                    const regras = (especial && condicaoSelecionada?.regrasCategoria) || [];
-                                    const regraCategoria = especial && produto.categoria
-                                        ? regras.find(r => r.categoria === produto.categoria)
-                                        : null;
-                                    let precoExibido;
-                                    if (regraCategoria) {
-                                        const base = regraCategoria.precoBase === 'custoMedio'
-                                            ? (Number(produto.custoMedio) || Number(produto.valorVenda) || 0)
-                                            : (Number(produto.valorVenda) || 0);
-                                        precoExibido = base * (1 + (Number(regraCategoria.acrescimo) || 0) / 100);
-                                    } else {
-                                        precoExibido = Number(produto.valorVenda || 0) * (1 + acrescimoTabela / 100);
+                                <div className="w-full h-full flex items-center justify-center">
+                                    <Package className="h-5 w-5 text-gray-300" />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Info do produto */}
+                        <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-gray-800 leading-tight line-clamp-2">{produto.nome}</div>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                                {/* Tag de Promoção */}
+                                {(() => {
+                                    if (!promo) return null;
+
+                                    const acrescimo = condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0;
+                                    const precoPromoComTabela = Number(promo.precoPromocional) * (1 + acrescimo / 100);
+
+                                    if (promo.tipo === 'CONDICIONAL') {
+                                        const liberada = checkPromoLiberada(promo, itensMap);
+                                        if (!liberada) return (
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-dashed border-gray-300 flex items-center gap-1">
+                                                <Tag className="h-3 w-3" /> P. Cond.
+                                            </span>
+                                        );
                                     }
                                     return (
-                                        <span className="text-xs font-bold text-orange-600">
-                                            R$ {precoExibido.toFixed(2).replace('.', ',')}
+                                        <span className="text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-300 font-semibold flex items-center gap-1">
+                                            <Tag className="h-3 w-3" /> R$ {precoPromoComTabela.toFixed(2).replace('.', ',')}
                                         </span>
                                     );
-                                })()
-                            )}
-                            {/* Flex badge */}
-                            {qtd > 0 && item && (
-                                <span className={`text-[10px] sm:text-xs font-semibold px-1 py-0 rounded-full ${item.flexUnitario >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                    {item.flexUnitario >= 0 ? '+' : ''}{item.flexUnitario.toFixed(2)}
+                                })()}
+
+                                {/* Preço / input de preço */}
+                                {qtd > 0 ? (
+                                    <div className="flex items-center gap-1">
+                                        {item && (Number(item.valorBase) > Number(item.valorUnitario) || promo) && (
+                                            <span className="text-[10px] sm:text-xs text-gray-400 line-through mr-1">
+                                                R$ {Number(item.valorBase).toFixed(2).replace('.', ',')}
+                                            </span>
+                                        )}
+                                        <span className="text-xs font-bold text-blue-700" onClick={e => e.stopPropagation()}>
+                                            <input
+                                                type="number"
+                                                min="0" step="any"
+                                                className="w-[60px] sm:w-[72px] border border-blue-300 bg-white text-blue-800 rounded px-1.5 py-0.5 text-xs font-bold text-center"
+                                                value={valor}
+                                                onFocus={e => e.target.select()}
+                                                onChange={e => setValorUnitario(produto.id, e.target.value)}
+                                                onBlur={() => verificarTravaValorUnitario(produto.id)}
+                                                onKeyDown={e => { if (e.key === 'Enter') { e.target.blur(); } }}
+                                            />
+                                        </span>
+                                    </div>
+                                ) : (
+                                    (() => {
+                                        const acrescimoTabela = condicaoSelecionada ? Number(condicaoSelecionada.acrescimoPreco) : 0;
+                                        const regras = (especial && condicaoSelecionada?.regrasCategoria) || [];
+                                        const regraCategoria = especial && produto.categoria ? regras.find(r => r.categoria === produto.categoria) : null;
+                                        let precoExibido;
+                                        if (regraCategoria) {
+                                            const base = regraCategoria.precoBase === 'custoMedio' ? (Number(produto.custoMedio) || Number(produto.valorVenda) || 0) : (Number(produto.valorVenda) || 0);
+                                            precoExibido = base * (1 + (Number(regraCategoria.acrescimo) || 0) / 100);
+                                        } else {
+                                            precoExibido = Number(produto.valorVenda || 0) * (1 + acrescimoTabela / 100);
+                                        }
+                                        return (
+                                            <span className="text-xs font-bold text-orange-600 border border-orange-200 bg-orange-50 px-1 rounded">
+                                                R$ {precoExibido.toFixed(2).replace('.', ',')}
+                                            </span>
+                                        );
+                                    })()
+                                )}
+                                {/* Flex badge */}
+                                {qtd > 0 && item && (
+                                    <span className={`text-[10px] font-semibold px-1 py-0 rounded ${item.flexUnitario >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                        {item.flexUnitario >= 0 ? '+' : ''}{item.flexUnitario.toFixed(2)}
+                                    </span>
+                                )}
+                                {/* Abaixo do custo médio */}
+                                {qtd > 0 && item?.abaixoCustoMedio && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-600 text-white animate-pulse">
+                                        ABAIXO CM
+                                    </span>
+                                )}
+                                {/* Peso */}
+                                {produto.pesoLiquido > 0 && (
+                                    <span className="text-[10px] sm:text-xs text-gray-400 font-medium">{Number(produto.pesoLiquido).toFixed(0)}g</span>
+                                )}
+                                {/* Estoque */}
+                                <span className={`text-[10px] sm:text-xs font-semibold ${Number(produto.estoqueDisponivel) > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                    Est: {Number(produto.estoqueDisponivel || 0).toFixed(0)} {produto.unidade || 'un'}
                                 </span>
-                            )}
-                            {/* Abaixo do custo médio */}
-                            {qtd > 0 && item?.abaixoCustoMedio && (
-                                <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-600 text-white animate-pulse">
-                                    ABAIXO CM
-                                </span>
-                            )}
-                            {/* Peso */}
-                            {produto.pesoLiquido > 0 && (
-                                <span className="text-xs text-gray-400">{Number(produto.pesoLiquido).toFixed(0)}g</span>
-                            )}
-                            {/* Estoque */}
-                            <span className={`text-xs font-semibold ${Number(produto.estoqueDisponivel) > 0 ? 'text-green-600' : 'text-red-500'
-                                }`}>
-                                Est: {Number(produto.estoqueDisponivel || 0).toFixed(0)} {produto.unidade || 'un'}
-                            </span>
-                            {/* Chevron para expand (histórico ou promo) */}
-                            {temExpand && (
-                                <span className="text-gray-400 ml-auto">
-                                    {expandido ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                </span>
-                            )}
+                            </div>
+                        </div>
+                        {/* Chevron (Desktop/Tablet) */}
+                        <div className="hidden sm:flex text-gray-400 ml-auto shrink-0 self-center pl-2">
+                            {temExpand && (expandido ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}
                         </div>
                     </div>
 
-                    {/* Controles de quantidade — sempre à direita */}
-                    <div
-                        className="flex items-center gap-1 shrink-0"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        {qtd > 0 && (
+                    {/* Controles de quantidade (E Chevron Mobile) */}
+                    <div className="flex items-center justify-between sm:justify-end gap-2 mt-1 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-gray-100" onClick={e => e.stopPropagation()}>
+                        <div className="flex sm:hidden text-gray-400 pl-1">
+                            {temExpand && (expandido ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0 ml-auto">
+                            {qtd > 0 && (
+                                <button
+                                    onMouseDown={e => e.preventDefault()}
+                                    onClick={() => {
+                                        const step = produto.categoriaProduto?.permiteFracao ? 0.1 : 1;
+                                        const next = Math.round((qtd - step) * 1000) / 1000;
+                                        setQuantidade(produto.id, next > 0 ? next : 0);
+                                    }}
+                                    className="w-8 h-8 flex items-center justify-center rounded-md bg-red-100 text-red-600 active:bg-red-200"
+                                >
+                                    <Minus className="h-4 w-4" />
+                                </button>
+                            )}
+                            {qtd > 0 && (
+                                <QuantidadeInput
+                                    value={qtd}
+                                    permiteFracao={!!produto.categoriaProduto?.permiteFracao}
+                                    onChange={v => setQuantidade(produto.id, v)}
+                                />
+                            )}
                             <button
                                 onMouseDown={e => e.preventDefault()}
-                                onClick={() => {
-                                    const step = produto.categoriaProduto?.permiteFracao ? 0.1 : 1;
-                                    const next = Math.round((qtd - step) * 1000) / 1000;
-                                    setQuantidade(produto.id, next > 0 ? next : 0);
-                                }}
-                                className="w-8 h-8 flex items-center justify-center rounded-full bg-red-100 text-red-600 active:bg-red-200"
+                                onClick={() => setQuantidade(produto.id, qtd + 1)}
+                                className="w-8 h-8 flex items-center justify-center rounded-md bg-blue-600 text-white active:bg-blue-700 shadow-sm"
                             >
-                                <Minus className="h-4 w-4" />
+                                <Plus className="h-4 w-4" />
                             </button>
-                        )}
-                        {qtd > 0 && (
-                            <QuantidadeInput
-                                value={qtd}
-                                permiteFracao={!!produto.categoriaProduto?.permiteFracao}
-                                onChange={v => setQuantidade(produto.id, v)}
-                            />
-                        )}
-                        <button
-                            onMouseDown={e => e.preventDefault()}
-                            onClick={() => setQuantidade(produto.id, qtd + 1)}
-                            className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-600 text-white active:bg-blue-700 shadow-sm"
-                        >
-                            <Plus className="h-4 w-4" />
-                        </button>
+                        </div>
                     </div>
                 </div>
 
