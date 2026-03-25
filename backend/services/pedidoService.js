@@ -248,7 +248,7 @@ const pedidoService = {
     },
 
     editar: async (id, dadosPedido) => {
-        const { clienteId, vendedorId, itens, statusEnvio, observacoes, dataVenda, opcaoCondicaoPagamento, nomeCondicaoPagamento } = dadosPedido;
+        const { clienteId, vendedorId, itens, statusEnvio, observacoes, dataVenda, opcaoCondicaoPagamento, nomeCondicaoPagamento, tipoPagamento } = dadosPedido;
 
         return await prisma.$transaction(async (tx) => {
             const pedidoAntigo = await tx.pedido.findUnique({
@@ -312,7 +312,9 @@ const pedidoService = {
                     observacoes,
                     opcaoCondicaoPagamento,
                     nomeCondicaoPagamento: nomeCondicaoPagamento || undefined,
+                    tipoPagamento: tipoPagamento || undefined,
                     idContaFinanceira: dadosPedido.idContaFinanceira,
+                    erroEnvio: statusEnvio === 'ENVIAR' ? null : undefined,
                     dataVenda: dataVenda ? new Date(dataVenda) : new Date(),
                     usuarioLancamentoId: dadosPedido.usuarioLancamentoId || undefined,
                     itens: {

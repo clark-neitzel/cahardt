@@ -174,9 +174,9 @@ const syncPedidosService = {
                         // Mapa de compatibilidade: tipoUso da conta → tipos de pagamento aceitos
                         const compatMap = {
                             'DINHEIRO': ['DINHEIRO'],
-                            'PIX': ['PIX'],
+                            'PIX': ['PIX', 'PIX_PAGAMENTO_INSTANTANEO'],
                             'BOLETO_BANCARIO': ['BOLETO_BANCARIO', 'A_PRAZO'],
-                            'CARTAO': ['CARTAO'],
+                            'CARTAO': ['CARTAO', 'CARTAO_CREDITO', 'CARTAO_DEBITO'],
                         };
                         const tiposAceitos = compatMap[contaFin.tipoUso] || [];
                         if (tiposAceitos.length > 0 && !tiposAceitos.includes(pedido.tipoPagamento)) {
@@ -197,6 +197,13 @@ const syncPedidosService = {
                 : null;
             const observacoesFinal = [pedido.observacoes, linhaPromo].filter(Boolean).join('\n') || undefined;
 
+            // Mapear tipos de pagamento internos para os valores aceitos pela API do CA
+            const tipoPagamentoMap = {
+                'PIX': 'PIX_PAGAMENTO_INSTANTANEO',
+                'CARTAO': 'CARTAO_CREDITO',
+            };
+            const tipoPagamentoCA = tipoPagamentoMap[pedido.tipoPagamento] || pedido.tipoPagamento || "A_PRAZO";
+
             const payload = {
                 id_cliente: pedido.cliente.contaAzulId || pedido.cliente.UUID,
                 numero: numeroVenda,
@@ -212,7 +219,7 @@ const syncPedidosService = {
                     tipo: "PRODUTO"
                 })),
                 condicao_pagamento: {
-                    tipo_pagamento: pedido.tipoPagamento || "A_PRAZO",
+                    tipo_pagamento: tipoPagamentoCA,
                     id_conta_financeira: contaFinId,
                     opcao_condicao_pagamento: pedido.opcaoCondicaoPagamento || "Personalizado",
                     pagamento_a_vista: false, // Pode ser dinâmico em futuras issues
