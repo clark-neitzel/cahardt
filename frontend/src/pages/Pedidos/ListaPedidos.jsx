@@ -646,12 +646,12 @@ const ListaPedidos = () => {
                                                 <button 
                                                     onClick={() => {
                                                         const bloq = pedido.statusEnvio === 'RECEBIDO' || ['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA);
-                                                        if (pedido.statusEnvio === 'ABERTO' && !bloq) navigate(`/pedidos/editar/${pedido.id}`);
+                                                        if (['ABERTO', 'ERRO'].includes(pedido.statusEnvio) && !bloq) navigate(`/pedidos/editar/${pedido.id}`);
                                                         else setSelectedPedido(pedido);
                                                     }}
                                                     className="px-3 py-1 text-[11px] font-bold bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 shadow-sm"
                                                 >
-                                                    {(pedido.statusEnvio === 'ABERTO' && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA))) ? 'Editar' : 'Detalhes'}
+                                                    {(['ABERTO', 'ERRO'].includes(pedido.statusEnvio) && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA))) ? 'Editar' : 'Detalhes'}
                                                 </button>
                                             </div>
                                         </div>
@@ -703,7 +703,7 @@ const ListaPedidos = () => {
                                     </button>
                                 </div>
                             )}
-                            {selectedPedido.especial && selectedPedido.statusEnvio === 'ABERTO' && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(selectedPedido.situacaoCA)) && (
+                            {selectedPedido.especial && ['ABERTO', 'ERRO'].includes(selectedPedido.statusEnvio) && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(selectedPedido.situacaoCA)) && (
                                 <div className="bg-blue-50 p-3 rounded border border-blue-200 flex justify-between items-center">
                                     <span className="text-sm font-bold text-blue-900">Pedido em aberto</span>
                                     <div className="flex gap-2">
