@@ -134,7 +134,9 @@ const clienteController = {
                 categoriaClienteId,
                 cicloCompraPersonalizadoDias,
                 insightAtivo,
-                observacaoComercialFixa
+                observacaoComercialFixa,
+                // WhatsApp
+                recebeAvisoPedido
             } = req.body;
 
             // Verificar permissão para editar GPS
@@ -162,7 +164,8 @@ const clienteController = {
                         ? parseInt(cicloCompraPersonalizadoDias)
                         : null,
                     insightAtivo: insightAtivo !== undefined ? insightAtivo : true,
-                    observacaoComercialFixa: observacaoComercialFixa || null
+                    observacaoComercialFixa: observacaoComercialFixa || null,
+                    recebeAvisoPedido: recebeAvisoPedido !== undefined ? recebeAvisoPedido : undefined
                 }
             });
 

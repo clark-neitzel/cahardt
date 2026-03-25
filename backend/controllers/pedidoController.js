@@ -42,6 +42,15 @@ const pedidoController = {
             }
 
             const novoPedido = await pedidoService.criar(dadosPedido);
+
+            // Enviar notificação WhatsApp via BotConversa (não bloqueia resposta)
+            if (novoPedido.statusEnvio === 'ENVIAR') {
+                const webhookService = require('../services/webhookService');
+                webhookService.notificarPedido(novoPedido.id).catch(err =>
+                    console.error('[Webhook] Erro async:', err.message)
+                );
+            }
+
             res.status(201).json(novoPedido);
         } catch (error) {
             console.error('Erro ao criar pedido:', error);

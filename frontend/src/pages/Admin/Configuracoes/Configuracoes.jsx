@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import configService from '../../../services/configService';
-import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2, ScrollText, MapPin, Zap, Target, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
+import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2, ScrollText, MapPin, Zap, Target, ChevronDown, ChevronUp, Eye, EyeOff, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 import RotasAtivasPreview from './RotasAtivasPreview';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -241,6 +241,10 @@ const Configuracoes = () => {
     const [resettingGroup, setResettingGroup] = useState(null);
     const podeResetar = user?.permissoes?.admin || user?.permissoes?.Pode_Resetar_Dados;
 
+    // Webhook BotConversa
+    const [webhookUrl, setWebhookUrl] = useState('');
+    const [savingWebhook, setSavingWebhook] = useState(false);
+
     // Log de auditoria
     const [auditLogs, setAuditLogs] = useState([]);
     const isAdmin = user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Caixa;
@@ -273,6 +277,8 @@ const Configuracoes = () => {
             if (logs) setAuditLogs(logs);
             const vList = Array.isArray(vendedoresData) ? vendedoresData : vendedoresData?.vendedores || [];
             setVendedores(vList.filter(v => v.ativo !== false));
+            // Webhook
+            try { const wh = await configService.get('webhook_botconversa_url'); setWebhookUrl(wh || ''); } catch { }
         } catch (error) {
             console.error('Erro ao carregar configurações:', error);
             setMessage({ type: 'error', text: 'Erro ao carregar dados.' });
@@ -745,6 +751,47 @@ const Configuracoes = () => {
                                 Limpar TODOS os Dados Transacionais
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Webhook BotConversa ── */}
+            {isAdmin && (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-6 border-b border-gray-100 bg-green-50">
+                        <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
+                            <MessageSquare className="h-5 w-5 text-green-600" />
+                            Notificação WhatsApp (BotConversa)
+                        </h2>
+                        <p className="text-sm text-gray-500 mt-0.5">Envia automaticamente o resumo do pedido ao cliente via WhatsApp ao salvar o pedido.</p>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">URL do Webhook</label>
+                            <input
+                                type="text"
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-green-400 focus:border-transparent outline-none"
+                                value={webhookUrl}
+                                onChange={e => setWebhookUrl(e.target.value)}
+                                placeholder="https://new-backend.botconversa.com.br/api/v1/webhooks-automation/catch/..."
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Cole aqui a URL do webhook criado no BotConversa. Deixe vazio para desativar.</p>
+                        </div>
+                        <button
+                            onClick={async () => {
+                                setSavingWebhook(true);
+                                try {
+                                    await configService.set('webhook_botconversa_url', webhookUrl.trim());
+                                    setMessage({ type: 'success', text: 'Webhook salvo com sucesso!' });
+                                } catch { setMessage({ type: 'error', text: 'Erro ao salvar webhook.' }); }
+                                finally { setSavingWebhook(false); }
+                            }}
+                            disabled={savingWebhook}
+                            className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {savingWebhook ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            Salvar Webhook
+                        </button>
                     </div>
                 </div>
             )}

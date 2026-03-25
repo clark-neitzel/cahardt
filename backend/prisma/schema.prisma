@@ -135,6 +135,8 @@ model Cliente {
   Serasa_consulta                String? // URL do arquivo principal
   Formas_Atendimento             String[] @default([])
 
+  recebeAvisoPedido  Boolean   @default(true) @map("recebe_aviso_pedido")
+
   contaAzulUpdatedAt DateTime? @map("conta_azul_updated_at")
   updated_at         DateTime  @updatedAt
 

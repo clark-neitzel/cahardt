@@ -84,7 +84,8 @@ const DetalheCliente = () => {
         categoriaClienteId: '',
         cicloCompraPersonalizadoDias: '',
         insightAtivo: true,
-        observacaoComercialFixa: ''
+        observacaoComercialFixa: '',
+        recebeAvisoPedido: true
     });
 
     // Indicação (busca de cliente)
@@ -156,7 +157,8 @@ const DetalheCliente = () => {
                 categoriaClienteId: clienteData.categoriaClienteId || '',
                 cicloCompraPersonalizadoDias: clienteData.cicloCompraPersonalizadoDias || '',
                 insightAtivo: clienteData.insightAtivo !== undefined ? clienteData.insightAtivo : true,
-                observacaoComercialFixa: clienteData.observacaoComercialFixa || ''
+                observacaoComercialFixa: clienteData.observacaoComercialFixa || '',
+                recebeAvisoPedido: clienteData.recebeAvisoPedido !== undefined ? clienteData.recebeAvisoPedido : true
             });
 
             // Setar nome da indicação se existir
@@ -1099,6 +1101,15 @@ const DetalheCliente = () => {
                                         className="h-4 w-4 text-primary bg-white focus:ring-primary border-gray-300 rounded"
                                     />
                                     <span className="text-gray-900 text-sm font-medium">Insights Ativos (Sugerir produtos na venda)</span>
+                                </label>
+                                <label className="flex items-center space-x-2 mt-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.recebeAvisoPedido}
+                                        onChange={(e) => setFormData({ ...formData, recebeAvisoPedido: e.target.checked })}
+                                        className="h-4 w-4 text-green-600 bg-white focus:ring-green-500 border-gray-300 rounded"
+                                    />
+                                    <span className="text-gray-900 text-sm font-medium">Recebe aviso de pedido via WhatsApp</span>
                                 </label>
                             </div>
 

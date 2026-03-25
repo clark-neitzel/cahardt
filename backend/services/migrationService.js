@@ -726,7 +726,10 @@ const migrationService = {
             `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "prioridade_entrega" INTEGER`,
 
             // Update 49: Categorias de produto visíveis em pedidos especiais por condição de pagamento
-            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "categorias_especial" JSONB`
+            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "categorias_especial" JSONB`,
+
+            // Update 50: Flag para cliente receber aviso de pedido via WhatsApp (default true)
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "recebe_aviso_pedido" BOOLEAN NOT NULL DEFAULT TRUE`
         ];
 
         for (const [index, cmd] of commands.entries()) {
