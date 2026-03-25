@@ -313,58 +313,55 @@ const ListaPedidos = () => {
 
     // Retorno do render
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-                    <Package className="h-6 w-6 text-primary" />
-                    Gerenciador de Pedidos
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8 w-full overflow-x-hidden">
+            <div className="flex justify-between items-center mb-4">
+                <h1 className="text-lg sm:text-2xl font-black text-gray-900 flex items-center gap-2">
+                    <Package className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                    Pedidos
                 </h1>
-                
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-                <div className="flex flex-col md:flex-row gap-3">
-                    {/* Barra de Busca e Filtros - Layout Responsivo */}
-                    <div className="flex flex-col md:flex-row gap-2 mb-4 w-full">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <input
-                                autoFocus
-                                type="text"
-                                placeholder="Buscar por cliente, vendedor, cidade ou número (ex: 123 ou ZZ#123)..." 
-                                value={filtros.busca}
-                                onChange={e => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
-                                className="w-full pl-9 pr-4 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary text-sm shadow-sm"
-                            />
-                            {filtros.busca && (
-                                <button
-                                    onClick={() => setFiltros(prev => ({ ...prev, busca: '' }))}
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
-                        </div>
-                        <button
-                            onClick={() => setShowFilters(!showFilters)}
-                            className={`p-1.5 rounded border transition-colors relative ${showFilters || isFiltroAtivo ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
-                            title="Filtros avançados"
-                        >
-                            <Filter className="h-5 w-5" />
-                            {isFiltroAtivo && !showFilters && (
-                                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
-                                </span>
-                            )}
-                        </button>
-                    </div>                </div>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-4">
+                <div className="flex gap-2 w-full">
+                    <div className="relative flex-1 min-w-0">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                            autoFocus
+                            type="text"
+                            placeholder="Buscar cliente, vendedor, nº..."
+                            value={filtros.busca}
+                            onChange={e => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
+                            className="w-full pl-9 pr-8 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary text-sm shadow-sm"
+                        />
+                        {filtros.busca && (
+                            <button
+                                onClick={() => setFiltros(prev => ({ ...prev, busca: '' }))}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        )}
+                    </div>
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`p-1.5 rounded border transition-colors relative shrink-0 ${showFilters || isFiltroAtivo ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
+                        title="Filtros avançados"
+                    >
+                        <Filter className="h-5 w-5" />
+                        {isFiltroAtivo && !showFilters && (
+                            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
+                            </span>
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* Painel de Filtros Avançados */}
             {showFilters && (
-                <div className="mb-4 bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm animate-in fade-in slide-in-from-top-2">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="mb-4 bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
                         {/* Data de Entrega */}
                         <div className="space-y-2 lg:col-span-2">
                             <label className="text-[11px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
@@ -447,41 +444,41 @@ const ListaPedidos = () => {
             )}
 
             {/* Abas: Pedidos | Especiais | Amostras */}
-            <div className="flex gap-1 mb-2 items-center">
+            <div className="flex flex-wrap gap-1 mb-2 items-center">
                 <button
                     onClick={() => setAbaAtiva('pedidos')}
-                    className={`px-4 py-2 text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'pedidos' ? 'bg-white text-blue-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'pedidos' ? 'bg-white text-blue-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
                 >
                     Pedidos
                 </button>
                 <button
                     onClick={() => setAbaAtiva('especiais')}
-                    className={`px-4 py-2 text-[13px] font-bold rounded-t border transition-colors flex items-center gap-1.5 ${abaAtiva === 'especiais' ? 'bg-white text-purple-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors flex items-center gap-1 ${abaAtiva === 'especiais' ? 'bg-white text-purple-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
                 >
                     Especiais
                 </button>
                 <button
                     onClick={() => setAbaAtiva('amostras')}
-                    className={`px-4 py-2 text-[13px] font-bold rounded-t border transition-colors flex items-center gap-1.5 ${abaAtiva === 'amostras' ? 'bg-white text-orange-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors flex items-center gap-1 ${abaAtiva === 'amostras' ? 'bg-white text-orange-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
                 >
-                    <Package className="h-4 w-4" />
+                    <Package className="h-3.5 w-3.5" />
                     Amostras
                 </button>
-                
+
                 {abaAtiva !== 'amostras' && pedidos.filter(p => p.situacaoCA === 'FATURADO').length > 0 && (
                     <button
                         onClick={toggleTodosFiltrados}
                         className="ml-auto px-2 py-1 text-[10px] font-medium text-gray-500 hover:text-purple-600 transition-colors"
                     >
-                        {pedidos.filter(p => p.situacaoCA === 'FATURADO').length > 0 && pedidos.filter(p => p.situacaoCA === 'FATURADO').every(p => selecionados.has(p.id)) ? 'Desmarcar todos' : 'Selecionar todos faturados'}
+                        {pedidos.filter(p => p.situacaoCA === 'FATURADO').every(p => selecionados.has(p.id)) ? 'Desmarcar' : 'Selecionar faturados'}
                     </button>
                 )}
             </div>
 
             {/* Barra de seleção em lote */}
             {abaAtiva !== 'amostras' && selecionados.size > 0 && (
-                <div className="flex items-center justify-between bg-purple-50 border border-purple-200 rounded px-3 py-2 mb-2">
-                    <div className="flex items-center gap-2 text-sm text-purple-700">
+                <div className="flex items-center justify-between bg-purple-50 border border-purple-200 rounded px-2 sm:px-3 py-2 mb-2">
+                    <div className="flex items-center gap-1.5 text-xs sm:text-sm text-purple-700">
                         <CheckSquare className="h-4 w-4" />
                         <span className="font-bold">{selecionados.size} selecionado{selecionados.size > 1 ? 's' : ''}</span>
                         <button onClick={() => setSelecionados(new Set())} className="text-purple-500 hover:text-purple-700 ml-1">
@@ -610,25 +607,23 @@ const ListaPedidos = () => {
                             <div className="p-8 text-center text-gray-500">Nenhum pedido encontrado nos filtros aplicados.</div>
                         ) : (
                             pedidos.map((pedido) => (
-                                <div key={pedido.id} className="p-3 hover:bg-gray-50 transition-colors border-b border-gray-100">
-                                    <div className="flex justify-between items-start gap-2">
-                                        {pedido.situacaoCA === 'FATURADO' ? (
+                                <div key={pedido.id} className="p-2.5 sm:p-3 hover:bg-gray-50 transition-colors border-b border-gray-100">
+                                    <div className="flex items-start gap-1.5 sm:gap-2">
+                                        {pedido.situacaoCA === 'FATURADO' && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); toggleSelecao(pedido.id); }}
                                                 className="mt-1 flex-shrink-0 text-gray-400 hover:text-primary transition-colors"
                                             >
                                                 {selecionados.has(pedido.id) ? <CheckSquare className="h-5 w-5 text-primary" /> : <Square className="h-5 w-5" />}
                                             </button>
-                                        ) : (
-                                            <div className="mt-1 w-5 h-5 opacity-0"></div>
                                         )}
-                                        
+
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-1.5 mb-1">
                                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 shadow-sm ${pedido.especial ? 'text-purple-700 bg-purple-50 border-purple-200' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
                                                     {fmtNumero(pedido)}
                                                 </span>
-                                                <h3 className="text-[14px] font-bold text-gray-900 truncate">
+                                                <h3 className="text-[13px] sm:text-[14px] font-bold text-gray-900 truncate">
                                                     {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Cliente Desconhecido'}
                                                 </h3>
                                             </div>
@@ -661,11 +656,11 @@ const ListaPedidos = () => {
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col items-end gap-2 shrink-0">
-                                            <div className="text-[14px] font-black text-gray-900">
+                                        <div className="flex flex-col items-end gap-1 shrink-0">
+                                            <div className="text-[13px] sm:text-[14px] font-black text-gray-900 whitespace-nowrap">
                                                 R$ {Number(pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </div>
-                                            <div className="flex items-center gap-1">
+                                            <div className="flex items-center gap-0.5">
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleEnviarWhatsapp(pedido.id, 'pedido'); }}
                                                     disabled={whatsappStatus[pedido.id] === 'enviando'}
@@ -680,13 +675,13 @@ const ListaPedidos = () => {
                                                 {(pedido.especial ? podeExcluirEspecial : podeExcluirPedido) && !pedido.embarqueId && (!pedido.statusEntrega || pedido.statusEntrega === 'PENDENTE') && !['FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA) && (
                                                     <button onClick={(e) => { e.stopPropagation(); handleExcluirPedido(pedido); }} className="p-1.5 text-gray-300 hover:text-red-600 rounded hover:bg-gray-100" title="Excluir pedido"><Trash2 className="h-4 w-4" /></button>
                                                 )}
-                                                <button 
+                                                <button
                                                     onClick={() => {
                                                         const bloq = pedido.statusEnvio === 'RECEBIDO' || ['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA);
                                                         if (['ABERTO', 'ERRO'].includes(pedido.statusEnvio) && !bloq) navigate(`/pedidos/editar/${pedido.id}`);
                                                         else setSelectedPedido(pedido);
                                                     }}
-                                                    className="px-3 py-1 text-[11px] font-bold bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 shadow-sm"
+                                                    className="px-2 sm:px-3 py-1 text-[10px] sm:text-[11px] font-bold bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 shadow-sm"
                                                 >
                                                     {(['ABERTO', 'ERRO'].includes(pedido.statusEnvio) && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA))) ? 'Editar' : 'Detalhes'}
                                                 </button>
@@ -702,21 +697,21 @@ const ListaPedidos = () => {
 
             {/* Modal de Detalhes */}
             {selectedPedido && (
-                <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-2 z-50 animate-in fade-in">
-                    <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-                        <div className="flex justify-between items-center p-4 border-b">
-                            <div>
-                                <h2 className="text-lg font-black text-gray-900">
+                <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-end sm:items-center justify-center sm:p-2 z-50 animate-in fade-in">
+                    <div className="bg-white rounded-t-xl sm:rounded-lg shadow-2xl w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col">
+                        <div className="flex justify-between items-center p-3 sm:p-4 border-b">
+                            <div className="min-w-0">
+                                <h2 className="text-base sm:text-lg font-black text-gray-900 truncate">
                                     Pedido {fmtNumero(selectedPedido)}
                                 </h2>
-                                <p className="text-xs text-gray-500">{selectedPedido.cliente?.NomeFantasia || selectedPedido.cliente?.Nome}</p>
+                                <p className="text-xs text-gray-500 truncate">{selectedPedido.cliente?.NomeFantasia || selectedPedido.cliente?.Nome}</p>
                             </div>
-                            <button onClick={() => setSelectedPedido(null)} className="p-2 text-gray-400 hover:text-gray-700"><X className="h-6 w-6" /></button>
+                            <button onClick={() => setSelectedPedido(null)} className="p-2 text-gray-400 hover:text-gray-700 shrink-0"><X className="h-6 w-6" /></button>
                         </div>
-                        <div className="p-4 overflow-y-auto flex-1 space-y-4">
+                        <div className="p-3 sm:p-4 overflow-y-auto flex-1 space-y-3 sm:space-y-4">
                             {/* Actions area inside modal */}
                             {selectedPedido.especial && selectedPedido.statusEnvio === 'ENVIAR' && (
-                                <div className="bg-purple-50 p-3 rounded border border-purple-200 flex justify-between items-center">
+                                <div className="bg-purple-50 p-3 rounded border border-purple-200 flex flex-wrap justify-between items-center gap-2">
                                     <span className="text-sm font-bold text-purple-900">Pendente de aprovação</span>
                                     <div className="flex gap-2">
                                         <button onClick={() => { setSelectedPedido(null); navigate(`/pedidos/editar/${selectedPedido.id}`); }} className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1">
@@ -729,7 +724,7 @@ const ListaPedidos = () => {
                                 </div>
                             )}
                             {selectedPedido.especial && selectedPedido.statusEnvio === 'RECEBIDO' && podeReverter && (
-                                <div className="bg-orange-50 p-3 rounded border border-orange-200 flex justify-between items-center">
+                                <div className="bg-orange-50 p-3 rounded border border-orange-200 flex flex-wrap justify-between items-center gap-2">
                                     <span className="text-sm font-bold text-orange-900">Pedido faturado</span>
                                     <button
                                         onClick={() => handleReverterEspecial(selectedPedido.id)}
@@ -741,7 +736,7 @@ const ListaPedidos = () => {
                                 </div>
                             )}
                             {selectedPedido.especial && ['ABERTO', 'ERRO'].includes(selectedPedido.statusEnvio) && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(selectedPedido.situacaoCA)) && (
-                                <div className="bg-blue-50 p-3 rounded border border-blue-200 flex justify-between items-center">
+                                <div className="bg-blue-50 p-3 rounded border border-blue-200 flex flex-wrap justify-between items-center gap-2">
                                     <span className="text-sm font-bold text-blue-900">Pedido em aberto</span>
                                     <div className="flex gap-2">
                                         <button onClick={() => { setSelectedPedido(null); navigate(`/pedidos/editar/${selectedPedido.id}`); }} className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1">
@@ -782,10 +777,10 @@ const ListaPedidos = () => {
                                 </div>
                             )}
                         </div>
-                        <div className="p-4 border-t bg-gray-50 flex justify-between items-center">
-                            <div className="text-right">
+                        <div className="p-3 sm:p-4 border-t bg-gray-50 flex justify-between items-center gap-2">
+                            <div className="min-w-0">
                                 <p className="text-[10px] uppercase font-bold text-gray-400 leading-none">Total Geral</p>
-                                <p className="text-2xl font-black text-primary">R$ {Number(selectedPedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                <p className="text-xl sm:text-2xl font-black text-primary whitespace-nowrap">R$ {Number(selectedPedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                             </div>
                             <div className="flex gap-2">
                                 <button
