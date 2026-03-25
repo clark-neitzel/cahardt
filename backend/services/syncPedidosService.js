@@ -247,22 +247,8 @@ const syncPedidosService = {
 
             console.log(`[Pedido ${pedido.id}] Payload construído, enviando via POST...`);
 
-            // 3. Submeter via ContaAzul Service (com retry para número duplicado)
-            let resultadoCA;
-            try {
-                resultadoCA = await contaAzulService.enviarPedido(payload);
-            } catch (envioErr) {
-                // Se o erro for de número duplicado, buscar próximo número e tentar novamente
-                if (envioErr.message && envioErr.message.includes('número da venda informado já foi utilizado')) {
-                    const novoNumero = await contaAzulService.obterProximoNumeroPedido();
-                    console.log(`[Pedido ${pedido.id}] Número ${numeroVenda} já usado no CA. Tentando com nº ${novoNumero}...`);
-                    payload.numero = novoNumero;
-                    await prisma.pedido.update({ where: { id: pedido.id }, data: { numero: novoNumero } });
-                    resultadoCA = await contaAzulService.enviarPedido(payload);
-                } else {
-                    throw envioErr;
-                }
-            }
+            // 3. Submeter via ContaAzul Service
+            const resultadoCA = await contaAzulService.enviarPedido(payload);
             console.log(`[Pedido ${pedido.id}] Sucesso ContaAzul ID: ${resultadoCA.id}`);
 
             // 4. Salvar Sucesso
@@ -283,7 +269,8 @@ const syncPedidosService = {
                 where: { id: pedido.id },
                 data: {
                     statusEnvio: 'ERRO',
-                    erroEnvio: error.message || 'Erro desconhecido ao comunicar com CA'
+                    erroEnvio: error.message || 'Erro desconhecido ao comunicar com CA',
+                    numero: null // Limpa o número para buscar um novo na próxima tentativa
                 }
             });
         }
