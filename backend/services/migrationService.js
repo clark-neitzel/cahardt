@@ -729,7 +729,10 @@ const migrationService = {
             `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "categorias_especial" JSONB`,
 
             // Update 50: Flag para cliente receber aviso de pedido via WhatsApp (default true)
-            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "recebe_aviso_pedido" BOOLEAN NOT NULL DEFAULT TRUE`
+            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "recebe_aviso_pedido" BOOLEAN NOT NULL DEFAULT TRUE`,
+
+            // Update 51: Webhook BotConversa URL
+            `INSERT INTO "app_configs" ("key", "value") VALUES ('webhook_botconversa_url', '"https://new-backend.botconversa.com.br/api/v1/webhooks-automation/catch/17768/F0bIWyB1Aduz/"') ON CONFLICT ("key") DO NOTHING`
         ];
 
         for (const [index, cmd] of commands.entries()) {
