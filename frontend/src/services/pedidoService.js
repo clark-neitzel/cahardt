@@ -67,6 +67,12 @@ const pedidoService = {
         return response.data;
     },
 
+    // Enviar pedido via WhatsApp (BotConversa)
+    enviarWhatsapp: async (id) => {
+        const response = await api.post(`/pedidos/${id}/enviar-whatsapp`);
+        return response.data;
+    },
+
     // Registrar data e hora de impressão
     registrarImpressao: async (id) => {
         const response = await api.put(`/pedidos/${id}/impresso`);

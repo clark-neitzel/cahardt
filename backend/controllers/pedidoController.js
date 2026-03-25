@@ -99,6 +99,21 @@ const pedidoController = {
         }
     },
 
+    enviarWhatsapp: async (req, res) => {
+        try {
+            const webhookService = require('../services/webhookService');
+            const result = await webhookService.notificarPedido(req.params.id);
+            if (result.ok) {
+                res.json({ ok: true });
+            } else {
+                res.status(400).json({ ok: false, motivo: result.motivo });
+            }
+        } catch (error) {
+            console.error('Erro ao enviar WhatsApp:', error);
+            res.status(500).json({ ok: false, motivo: error.message });
+        }
+    },
+
     marcarRevisado: async (req, res) => {
         try {
             const id = req.params.id;

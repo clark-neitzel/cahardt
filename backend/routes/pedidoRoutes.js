@@ -35,6 +35,9 @@ router.put('/:id/reverter-especial', pedidoController.reverterEspecial);
 // Excluir Pedido Existente (Apenas Rascunho/ABERTO/ERRO)
 router.delete('/:id', pedidoController.excluir);
 
+// Enviar pedido via WhatsApp (BotConversa)
+router.post('/:id/enviar-whatsapp', pedidoController.enviarWhatsapp);
+
 // Registrar Impressão de Pedido ou Especial
 router.put('/:id/impresso', pedidoController.registrarImpressao);
 

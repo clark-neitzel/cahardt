@@ -21,6 +21,11 @@ const amostraService = {
         return response.data;
     },
 
+    enviarWhatsapp: async (id) => {
+        const response = await api.post(`/amostras/${id}/enviar-whatsapp`);
+        return response.data;
+    },
+
     excluir: async (id) => {
         const response = await api.delete(`/amostras/${id}`);
         return response.data;

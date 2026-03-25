@@ -1,96 +1,80 @@
 const prisma = require('../config/database');
 
+// Helpers compartilhados
+const getWebhookUrl = async () => {
+    const config = await prisma.appConfig.findUnique({ where: { key: 'webhook_botconversa_url' } });
+    const raw = config?.value;
+    return typeof raw === 'string' ? raw : (raw ? String(raw) : null);
+};
+
+const formatPhone = (cliente) => {
+    const telefoneRaw = cliente.Telefone_Celular || cliente.Telefone;
+    if (!telefoneRaw) return null;
+    let phone = telefoneRaw.replace(/\D/g, '');
+    if (phone.length < 10) return null;
+    if (!phone.startsWith('55')) phone = '55' + phone;
+    return phone;
+};
+
+const formatDate = (d) => {
+    if (!d) return '-';
+    const dt = new Date(d);
+    return `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}.${dt.getFullYear()}`;
+};
+
+const formatDateMsg = (d) => {
+    if (!d) return '-';
+    return new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+};
+
+const enviarWebhook = async (webhookUrl, payload) => {
+    const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+    return true;
+};
+
 const webhookService = {
     /**
      * Envia notificação de pedido para o BotConversa via webhook.
-     * Chamado automaticamente após criação de pedido com statusEnvio = 'ENVIAR'.
+     * Retorna { ok: true } ou { ok: false, motivo: '...' }
      */
     notificarPedido: async (pedidoId) => {
         try {
-            // Buscar URL do webhook na config
-            const configWebhook = await prisma.appConfig.findUnique({ where: { key: 'webhook_botconversa_url' } });
-            const rawValue = configWebhook?.value;
-            const webhookUrl = typeof rawValue === 'string' ? rawValue : (rawValue ? String(rawValue) : null);
-            if (!webhookUrl) {
-                console.log('[Webhook] URL do BotConversa não configurada. Pulando notificação.');
-                return;
-            }
+            const webhookUrl = await getWebhookUrl();
+            if (!webhookUrl) return { ok: false, motivo: 'URL do webhook não configurada' };
 
-            // Buscar pedido completo com cliente e itens
             const pedido = await prisma.pedido.findUnique({
                 where: { id: pedidoId },
                 include: {
                     cliente: true,
-                    itens: {
-                        include: { produto: { select: { nome: true } } }
-                    }
+                    itens: { include: { produto: { select: { nome: true } } } }
                 }
             });
 
-            if (!pedido || !pedido.cliente) {
-                console.warn('[Webhook] Pedido ou cliente não encontrado:', pedidoId);
-                return;
-            }
+            if (!pedido || !pedido.cliente) return { ok: false, motivo: 'Pedido ou cliente não encontrado' };
+            if (pedido.cliente.recebeAvisoPedido === false) return { ok: false, motivo: 'Cliente optou por não receber avisos' };
 
-            // Verificar se cliente aceita notificações
-            if (pedido.cliente.recebeAvisoPedido === false) {
-                console.log(`[Webhook] Cliente ${pedido.cliente.Nome} optou por não receber avisos.`);
-                return;
-            }
+            const phone = formatPhone(pedido.cliente);
+            if (!phone) return { ok: false, motivo: 'Cliente sem telefone celular válido' };
 
-            // Buscar telefone celular do cliente (prioridade: Celular > Telefone)
-            const telefoneRaw = pedido.cliente.Telefone_Celular || pedido.cliente.Telefone;
-            if (!telefoneRaw) {
-                console.warn(`[Webhook] Cliente ${pedido.cliente.Nome} sem telefone cadastrado.`);
-                return;
-            }
-
-            // Formatar telefone: remover tudo que não é número e adicionar DDI 55 se necessário
-            let phone = telefoneRaw.replace(/\D/g, '');
-            if (phone.length < 10) {
-                console.warn(`[Webhook] Telefone inválido para ${pedido.cliente.Nome}: ${telefoneRaw}`);
-                return;
-            }
-            // Garantir DDI 55 no início
-            if (!phone.startsWith('55')) {
-                phone = '55' + phone;
-            }
-
-            // Nome do cliente
             const nome = pedido.cliente.NomeFantasia || pedido.cliente.Nome;
 
-            // Formatar datas (dd.mm.yyyy para BotConversa)
-            const formatDate = (d) => {
-                if (!d) return '-';
-                const dt = new Date(d);
-                const dd = String(dt.getDate()).padStart(2, '0');
-                const mm = String(dt.getMonth() + 1).padStart(2, '0');
-                const yyyy = dt.getFullYear();
-                return `${dd}.${mm}.${yyyy}`;
-            };
-            // Formato legível para a mensagem (dd/mm/yyyy)
-            const formatDateMsg = (d) => {
-                if (!d) return '-';
-                const dt = new Date(d);
-                return dt.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-            };
-
-            // Montar lista de itens
             const linhasItens = pedido.itens.map(i => {
                 const nomeProd = i.produto?.nome || 'Produto';
-                const qtd = i.quantidade;
-                const val = Number(i.valor || 0).toFixed(2).replace('.', ',');
-                return `- ${nomeProd} - ${qtd}x - R$ ${val}`;
+                return `- ${nomeProd} - ${i.quantidade}x - R$ ${Number(i.valor || 0).toFixed(2).replace('.', ',')}`;
             }).join('\n');
 
-            // Calcular total
             const total = pedido.itens.reduce((sum, i) => sum + (Number(i.valor || 0) * i.quantidade), 0);
             const totalStr = total.toFixed(2);
-
-            // Condição de pagamento
             const condicao = pedido.nomeCondicaoPagamento || `${pedido.tipoPagamento || ''} ${pedido.opcaoCondicaoPagamento || ''}`.trim();
 
-            // Montar mensagem
             const mensagem = [
                 `Olá, ${nome}!`,
                 '',
@@ -110,33 +94,83 @@ const webhookService = {
                 'Obrigado pela preferência!'
             ].filter(l => l !== undefined).join('\n');
 
-            // Payload para o BotConversa
             const payload = {
-                phone,
-                nome,
-                mensagem,
+                phone, nome, mensagem,
                 data_pedido: formatDate(pedido.createdAt),
                 data_entrega: formatDate(pedido.dataVenda),
-                total: totalStr,
-                condicao
+                total: totalStr, condicao
             };
 
-            // Enviar webhook
-            const response = await fetch(webhookUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+            await enviarWebhook(webhookUrl, payload);
+            console.log(`[Webhook] Pedido enviado para ${nome} (${phone}) - #${pedido.numero || pedidoId.substring(0, 8)}`);
+            return { ok: true };
+        } catch (error) {
+            console.error('[Webhook] Erro pedido:', error.message);
+            return { ok: false, motivo: error.message };
+        }
+    },
+
+    /**
+     * Envia notificação de amostra para o BotConversa via webhook.
+     * Retorna { ok: true } ou { ok: false, motivo: '...' }
+     */
+    notificarAmostra: async (amostraId) => {
+        try {
+            const webhookUrl = await getWebhookUrl();
+            if (!webhookUrl) return { ok: false, motivo: 'URL do webhook não configurada' };
+
+            const amostra = await prisma.amostra.findUnique({
+                where: { id: amostraId },
+                include: {
+                    cliente: true,
+                    lead: true,
+                    itens: true
+                }
             });
 
-            if (response.ok) {
-                console.log(`[Webhook] Notificação enviada para ${nome} (${phone}) - Pedido #${pedido.numero || pedido.id.substring(0, 8)}`);
-            } else {
-                const errorText = await response.text();
-                console.error(`[Webhook] Erro ${response.status}: ${errorText}`);
-            }
+            if (!amostra) return { ok: false, motivo: 'Amostra não encontrada' };
+
+            const cliente = amostra.cliente;
+            if (!cliente) return { ok: false, motivo: 'Amostra sem cliente vinculado' };
+            if (cliente.recebeAvisoPedido === false) return { ok: false, motivo: 'Cliente optou por não receber avisos' };
+
+            const phone = formatPhone(cliente);
+            if (!phone) return { ok: false, motivo: 'Cliente sem telefone celular válido' };
+
+            const nome = cliente.NomeFantasia || cliente.Nome;
+
+            const linhasItens = amostra.itens.map(i => {
+                return `- ${i.nomeProduto} - ${Number(i.quantidade)}x`;
+            }).join('\n');
+
+            const mensagem = [
+                `Olá, ${nome}!`,
+                '',
+                'Segue abaixo sua amostra da Hardt Salgados',
+                '',
+                amostra.dataEntrega ? `Data Entrega: ${formatDateMsg(amostra.dataEntrega)}` : '',
+                '',
+                'Itens:',
+                linhasItens,
+                amostra.observacao ? `\nObservação: ${amostra.observacao}` : '',
+                '',
+                'Obrigado pela preferência!'
+            ].filter(l => l !== undefined && l !== '').join('\n');
+
+            const payload = {
+                phone, nome, mensagem,
+                data_pedido: formatDate(amostra.createdAt),
+                data_entrega: formatDate(amostra.dataEntrega),
+                total: '0.00',
+                condicao: 'Amostra'
+            };
+
+            await enviarWebhook(webhookUrl, payload);
+            console.log(`[Webhook] Amostra enviada para ${nome} (${phone}) - AM#${amostra.numero}`);
+            return { ok: true };
         } catch (error) {
-            // Não deve travar o fluxo do pedido se o webhook falhar
-            console.error('[Webhook] Erro ao enviar notificação:', error.message);
+            console.error('[Webhook] Erro amostra:', error.message);
+            return { ok: false, motivo: error.message };
         }
     }
 };
