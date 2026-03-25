@@ -263,8 +263,8 @@ const pedidoService = {
 
             const podeEditarEspecial = pedidoAntigo.especial && pedidoAntigo.statusEnvio === 'ENVIAR';
 
-            if (pedidoAntigo.statusEnvio !== 'ABERTO' && !isSomenteRevisao && !podeEditarEspecial) {
-                throw new Error('Só é permitido editar dados de vendas em Rascunho (Em Aberto) ou Especiais Pendentes.');
+            if (!['ABERTO', 'ERRO'].includes(pedidoAntigo.statusEnvio) && !isSomenteRevisao && !podeEditarEspecial) {
+                throw new Error('Só é permitido editar dados de vendas em Rascunho (Em Aberto), com Erro de Envio ou Especiais Pendentes.');
             }
 
             if (isSomenteRevisao) {
