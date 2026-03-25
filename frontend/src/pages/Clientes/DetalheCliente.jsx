@@ -270,30 +270,6 @@ const DetalheCliente = () => {
                 </div>
             </div>
 
-            {/* Abas */}
-            <div className="flex border-b border-gray-200 mb-5">
-                <button
-                    onClick={() => setAbaAtiva('dados')}
-                    className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'dados' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
-                >
-                    ✏️ Operacional
-                </button>
-                <button
-                    onClick={() => setAbaAtiva('historico')}
-                    className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'historico' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
-                >
-                    Histórico ({atendimentos.length + pedidosCliente.length + leadsCliente.reduce((acc, l) => acc + (l.atendimentos?.length || 0), 0)})
-                </button>
-                {leadsCliente.length > 0 && (
-                    <button
-                        onClick={() => setAbaAtiva('lead')}
-                        className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'lead' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500'}`}
-                    >
-                        Lead ({leadsCliente.length})
-                    </button>
-                )}
-            </div>
-
             {abaAtiva === 'historico' && (() => {
                 // Unificar atendimentos (cliente + leads) e pedidos em um único histórico ordenado por data
                 const leadAtendimentos = leadsCliente.flatMap(lead =>
@@ -667,195 +643,48 @@ const DetalheCliente = () => {
                 </div>
             )}
 
+            {/* Abas */}
+            <div className="flex flex-wrap border-b border-gray-200 mb-5 gap-0">
+                <button
+                    onClick={() => setAbaAtiva('dados')}
+                    className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'dados' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
+                >
+                    ✏️ Operacional
+                </button>
+                <button
+                    onClick={() => setAbaAtiva('ca')}
+                    className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'ca' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
+                >
+                    📋 Conta Azul
+                </button>
+                <button
+                    onClick={() => setAbaAtiva('historico')}
+                    className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'historico' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
+                >
+                    Histórico ({atendimentos.length + pedidosCliente.length + leadsCliente.reduce((acc, l) => acc + (l.atendimentos?.length || 0), 0)})
+                </button>
+                <button
+                    onClick={() => setAbaAtiva('analitico')}
+                    className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'analitico' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500'}`}
+                >
+                    Motor Analítico
+                </button>
+                {leadsCliente.length > 0 && (
+                    <button
+                        onClick={() => setAbaAtiva('lead')}
+                        className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'lead' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500'}`}
+                    >
+                        Lead ({leadsCliente.length})
+                    </button>
+                )}
+            </div>
             {abaAtiva === 'dados' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* SEÇÃO 1: DADOS DO CONTA AZUL (SOMENTE LEITURA) */}
-                    <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                        <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
-                            <Building className="h-5 w-5 mr-2 text-gray-600" />
-                            📋 Dados do Conta Azul (Somente Leitura)
-                        </h2>
-
-                        <div className="space-y-4">
-                            {/* Identificação */}
-                            <div className="border-b border-gray-200 pb-3">
-                                <h3 className="text-sm font-semibold text-gray-600 mb-2">Identificação</h3>
-                                <div className="grid grid-cols-2 gap-3 text-sm">
-                                    <div>
-                                        <span className="text-gray-500">UUID:</span>
-                                        <p className="text-gray-900 font-mono text-xs">{cliente.UUID}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500">Código:</span>
-                                        <p className="text-gray-900">{cliente.Codigo || '-'}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500">Tipo Pessoa:</span>
-                                        <p className="text-gray-900">{cliente.Tipo_Pessoa || '-'}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500">Perfis:</span>
-                                        <p className="text-gray-900">{cliente.Perfis || '-'}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Contato */}
-                            <div className="border-b border-gray-200 pb-3">
-                                <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                                    <Phone className="h-4 w-4 mr-1" /> Contato
-                                </h3>
-                                <div className="space-y-2 text-sm">
-                                    <div><span className="text-gray-500">Email:</span><p className="text-gray-900">{cliente.Email || '-'}</p></div>
-                                    <div><span className="text-gray-500">Telefone:</span><p className="text-gray-900">{cliente.Telefone || '-'}</p></div>
-                                    <div><span className="text-gray-500">Celular:</span><p className="text-gray-900">{cliente.Telefone_Celular || '-'}</p></div>
-                                    <div><span className="text-gray-500">Comercial:</span><p className="text-gray-900">{cliente.Telefone_Comercial || '-'}</p></div>
-                                </div>
-                            </div>
-
-                            {/* Endereço */}
-                            <div className="border-b border-gray-200 pb-3">
-                                <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                                    <MapPin className="h-4 w-4 mr-1" /> Endereço
-                                </h3>
-                                <div className="text-sm text-gray-900">
-                                    <p>{cliente.End_Logradouro}, {cliente.End_Numero}</p>
-                                    {cliente.End_Complemento && <p>{cliente.End_Complemento}</p>}
-                                    <p>{cliente.End_Bairro}</p>
-                                    <p>{cliente.End_Cidade} - {cliente.End_Estado}</p>
-                                    <p>CEP: {cliente.End_CEP}</p>
-                                    <p>{cliente.End_Pais}</p>
-                                </div>
-                            </div>
-
-                            {/* Financeiro */}
-                            <div className="border-b border-gray-200 pb-3">
-                                <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                                    <DollarSign className="h-4 w-4 mr-1" /> Dados Financeiros
-                                </h3>
-                                <div className="grid grid-cols-2 gap-3 text-sm">
-                                    <div><span className="text-gray-500">Atrasos Pagamentos:</span><p className="text-gray-900">{cliente.Atrasos_Pagamentos || '0'}</p></div>
-                                    <div><span className="text-gray-500">Atrasos Recebimentos:</span><p className="text-gray-900">{cliente.Atrasos_Recebimentos || '0'}</p></div>
-                                    <div><span className="text-gray-500">Pagamentos Mês:</span><p className="text-gray-900">{cliente.Pagamentos_Mes_Atual || '0'}</p></div>
-                                    <div><span className="text-gray-500">Recebimentos Mês:</span><p className="text-gray-900">{cliente.Recebimentos_Mes_Atual || '0'}</p></div>
-                                </div>
-                            </div>
-
-                            {/* Fiscal */}
-                            <div className="border-b border-gray-200 pb-3">
-                                <h3 className="text-sm font-semibold text-gray-600 mb-2">Fiscal</h3>
-                                <div className="text-sm">
-                                    <span className="text-gray-500">Indicador Inscrição Estadual:</span>
-                                    <p className="text-gray-900">{cliente.Indicador_Inscricao_Estadual || '-'}</p>
-                                </div>
-                            </div>
-
-                            {/* Auditoria */}
-                            <div>
-                                <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                                    <Calendar className="h-4 w-4 mr-1" /> Auditoria
-                                </h3>
-                                <div className="space-y-1 text-sm">
-                                    <div>
-                                        <span className="text-gray-500">Data Criação:</span>
-                                        <p className="text-gray-900">{cliente.Data_Criacao ? new Date(cliente.Data_Criacao).toLocaleDateString('pt-BR') : '-'}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500">Data Alteração:</span>
-                                        <p className="text-gray-900">{cliente.Data_Alteracao ? new Date(cliente.Data_Alteracao).toLocaleDateString('pt-BR') : '-'}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* SEÇÃO 2: DADOS OPERACIONAIS (EDITÁVEIS) */}
-                    <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
-                        {/* INTELIGÊNCIA COMERCIAL: ADMIN DEBUG BLOCK */}
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-5 mb-8">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-md font-semibold text-gray-800 flex items-center">
-                                    <Sparkles className="h-5 w-5 mr-2 text-purple-600" />
-                                    [Admin] Motor Analítico (Inteligência Comercial)
-                                </h3>
-                                <button
-                                    onClick={handleRecalcularInsight}
-                                    disabled={recalculandoInsight}
-                                    className="flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-                                >
-                                    <RefreshCw className={`h-4 w-4 mr-1 ${recalculandoInsight ? 'animate-spin' : ''}`} />
-                                    {recalculandoInsight ? 'Recalculando...' : 'Forçar Recálculo'}
-                                </button>
-                            </div>
-
-                            {!insight ? (
-                                <p className="text-sm text-gray-500">Nenhum cálculo efetuado para este cliente ainda.</p>
-                            ) : (
-                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                                    <div className="p-3 bg-white border rounded">
-                                        <span className="block text-xs text-gray-500 mb-1">Status Recompra</span>
-                                        <span className={`font-semibold ${insight.statusRecompra === 'NO_PRAZO' ? 'text-green-600' :
-                                                insight.statusRecompra === 'ATENCAO' ? 'text-yellow-600' :
-                                                    insight.statusRecompra === 'ATRASADO' ? 'text-orange-600' :
-                                                        insight.statusRecompra === 'CRITICO' ? 'text-red-600' : 'text-gray-600'
-                                            }`}>{insight.statusRecompra}</span>
-                                        <div className="text-xs text-gray-500 mt-1">
-                                            Ciclo: {insight.cicloReferenciaDias}d ({insight.origemCiclo})<br />
-                                            Dias s/ compra: {insight.diasSemComprar ?? '-'}
-                                        </div>
-                                    </div>
-
-                                    <div className="p-3 bg-white border rounded">
-                                        <span className="block text-xs text-gray-500 mb-1">Ticket Médio Histórico</span>
-                                        <span className="font-semibold text-gray-800">
-                                            R$ {Number(insight.ticketMedioBase || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                        </span>
-                                        <div className="text-xs text-gray-500 mt-1">
-                                            Recente: R$ {Number(insight.ticketMedioRecente || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br />
-                                            Variação: <span className={Number(insight.variacaoTicketPct) < 0 ? 'text-red-600' : 'text-green-600'}>
-                                                {Number(insight.variacaoTicketPct || 0).toFixed(1)}%
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-3 bg-white border rounded">
-                                        <span className="block text-xs text-gray-500 mb-1">Oportunidade (Upsell)</span>
-                                        <span className="font-semibold text-gray-800">
-                                            Score: {insight.scoreOportunidade}/100
-                                        </span>
-                                        <div className="text-xs text-gray-500 mt-1">
-                                            {insight.produtoAusenteId ? (
-                                                <span className="text-purple-600">Produto Parou de Sair (ID: {insight.produtoAusenteId.substring(0, 8)}...)</span>
-                                            ) : 'Sem oportunidade clara gerada nativamente'}
-                                        </div>
-                                    </div>
-
-                                    <div className="p-3 bg-white border rounded">
-                                        <span className="block text-xs text-gray-500 mb-1">Risco (Churn)</span>
-                                        <span className="font-semibold text-gray-800">
-                                            Score: {insight.scoreRisco}/100
-                                        </span>
-                                        <div className="text-xs text-gray-500 mt-1 flex flex-col gap-0.5">
-                                            {insight.teveDevolucaoRecente && <span className="text-red-600">• Teve devolução (30d)</span>}
-                                            {insight.qtdAtendimentosSemPedido30d > 1 && <span className="text-orange-600">• {insight.qtdAtendimentosSemPedido30d} visitas s/ pedido</span>}
-                                            {(!insight.teveDevolucaoRecente && insight.qtdAtendimentosSemPedido30d <= 1) && <span>Risco baixo aparente</span>}
-                                        </div>
-                                    </div>
-
-                                    <div className="col-span-2 lg:col-span-4 p-2 bg-gray-100 rounded text-xs text-gray-500 flex justify-between items-center">
-                                        <span>Este é um painel de debug. O vendedor não verá estes dados desta forma.</span>
-                                        <span>Último cálculo: {new Date(insight.recalculadoEm).toLocaleString('pt-BR')}</span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <h2 className="text-lg font-semibold text-primary mb-4 flex items-center">
-                            <FileText className="h-5 w-5 mr-2" />
-                            ✏️ Dados Operacionais (Editáveis)
-                        </h2>
-
-                        <div className="space-y-5">
+                <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+                    <h2 className="text-lg font-semibold text-primary mb-4 flex items-center">
+                        <FileText className="h-5 w-5 mr-2" />
+                        ✏️ Dados Operacionais (Editáveis)
+                    </h2>
+                    <div className="space-y-5">
                             {/* Vendedor Responsável */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1147,6 +976,185 @@ const DetalheCliente = () => {
                             </div>
                         </div>
                     </div>
+            )}
+            {abaAtiva === 'ca' && (
+                <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                    <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                        <Building className="h-5 w-5 mr-2 text-gray-600" />
+                        📋 Dados do Conta Azul (Somente Leitura)
+                    </h2>
+                    <div className="space-y-4">
+                            {/* Identificação */}
+                            <div className="border-b border-gray-200 pb-3">
+                                <h3 className="text-sm font-semibold text-gray-600 mb-2">Identificação</h3>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                    <div>
+                                        <span className="text-gray-500">UUID:</span>
+                                        <p className="text-gray-900 font-mono text-xs">{cliente.UUID}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Código:</span>
+                                        <p className="text-gray-900">{cliente.Codigo || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Tipo Pessoa:</span>
+                                        <p className="text-gray-900">{cliente.Tipo_Pessoa || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Perfis:</span>
+                                        <p className="text-gray-900">{cliente.Perfis || '-'}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Contato */}
+                            <div className="border-b border-gray-200 pb-3">
+                                <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
+                                    <Phone className="h-4 w-4 mr-1" /> Contato
+                                </h3>
+                                <div className="space-y-2 text-sm">
+                                    <div><span className="text-gray-500">Email:</span><p className="text-gray-900">{cliente.Email || '-'}</p></div>
+                                    <div><span className="text-gray-500">Telefone:</span><p className="text-gray-900">{cliente.Telefone || '-'}</p></div>
+                                    <div><span className="text-gray-500">Celular:</span><p className="text-gray-900">{cliente.Telefone_Celular || '-'}</p></div>
+                                    <div><span className="text-gray-500">Comercial:</span><p className="text-gray-900">{cliente.Telefone_Comercial || '-'}</p></div>
+                                </div>
+                            </div>
+
+                            {/* Endereço */}
+                            <div className="border-b border-gray-200 pb-3">
+                                <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
+                                    <MapPin className="h-4 w-4 mr-1" /> Endereço
+                                </h3>
+                                <div className="text-sm text-gray-900">
+                                    <p>{cliente.End_Logradouro}, {cliente.End_Numero}</p>
+                                    {cliente.End_Complemento && <p>{cliente.End_Complemento}</p>}
+                                    <p>{cliente.End_Bairro}</p>
+                                    <p>{cliente.End_Cidade} - {cliente.End_Estado}</p>
+                                    <p>CEP: {cliente.End_CEP}</p>
+                                    <p>{cliente.End_Pais}</p>
+                                </div>
+                            </div>
+
+                            {/* Financeiro */}
+                            <div className="border-b border-gray-200 pb-3">
+                                <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
+                                    <DollarSign className="h-4 w-4 mr-1" /> Dados Financeiros
+                                </h3>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                    <div><span className="text-gray-500">Atrasos Pagamentos:</span><p className="text-gray-900">{cliente.Atrasos_Pagamentos || '0'}</p></div>
+                                    <div><span className="text-gray-500">Atrasos Recebimentos:</span><p className="text-gray-900">{cliente.Atrasos_Recebimentos || '0'}</p></div>
+                                    <div><span className="text-gray-500">Pagamentos Mês:</span><p className="text-gray-900">{cliente.Pagamentos_Mes_Atual || '0'}</p></div>
+                                    <div><span className="text-gray-500">Recebimentos Mês:</span><p className="text-gray-900">{cliente.Recebimentos_Mes_Atual || '0'}</p></div>
+                                </div>
+                            </div>
+
+                            {/* Fiscal */}
+                            <div className="border-b border-gray-200 pb-3">
+                                <h3 className="text-sm font-semibold text-gray-600 mb-2">Fiscal</h3>
+                                <div className="text-sm">
+                                    <span className="text-gray-500">Indicador Inscrição Estadual:</span>
+                                    <p className="text-gray-900">{cliente.Indicador_Inscricao_Estadual || '-'}</p>
+                                </div>
+                            </div>
+
+                            {/* Auditoria */}
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
+                                    <Calendar className="h-4 w-4 mr-1" /> Auditoria
+                                </h3>
+                                <div className="space-y-1 text-sm">
+                                    <div>
+                                        <span className="text-gray-500">Data Criação:</span>
+                                        <p className="text-gray-900">{cliente.Data_Criacao ? new Date(cliente.Data_Criacao).toLocaleDateString('pt-BR') : '-'}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Data Alteração:</span>
+                                        <p className="text-gray-900">{cliente.Data_Alteracao ? new Date(cliente.Data_Alteracao).toLocaleDateString('pt-BR') : '-'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+            )}
+            {abaAtiva === 'analitico' && (
+                <div className="bg-white rounded-lg p-6 border border-purple-200 shadow-sm">
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-5 mb-8">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-md font-semibold text-gray-800 flex items-center">
+                                    <Sparkles className="h-5 w-5 mr-2 text-purple-600" />
+                                    [Admin] Motor Analítico (Inteligência Comercial)
+                                </h3>
+                                <button
+                                    onClick={handleRecalcularInsight}
+                                    disabled={recalculandoInsight}
+                                    className="flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                                >
+                                    <RefreshCw className={`h-4 w-4 mr-1 ${recalculandoInsight ? 'animate-spin' : ''}`} />
+                                    {recalculandoInsight ? 'Recalculando...' : 'Forçar Recálculo'}
+                                </button>
+                            </div>
+
+                            {!insight ? (
+                                <p className="text-sm text-gray-500">Nenhum cálculo efetuado para este cliente ainda.</p>
+                            ) : (
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                                    <div className="p-3 bg-white border rounded">
+                                        <span className="block text-xs text-gray-500 mb-1">Status Recompra</span>
+                                        <span className={`font-semibold ${insight.statusRecompra === 'NO_PRAZO' ? 'text-green-600' :
+                                                insight.statusRecompra === 'ATENCAO' ? 'text-yellow-600' :
+                                                    insight.statusRecompra === 'ATRASADO' ? 'text-orange-600' :
+                                                        insight.statusRecompra === 'CRITICO' ? 'text-red-600' : 'text-gray-600'
+                                            }`}>{insight.statusRecompra}</span>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                            Ciclo: {insight.cicloReferenciaDias}d ({insight.origemCiclo})<br />
+                                            Dias s/ compra: {insight.diasSemComprar ?? '-'}
+                                        </div>
+                                    </div>
+
+                                    <div className="p-3 bg-white border rounded">
+                                        <span className="block text-xs text-gray-500 mb-1">Ticket Médio Histórico</span>
+                                        <span className="font-semibold text-gray-800">
+                                            R$ {Number(insight.ticketMedioBase || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </span>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                            Recente: R$ {Number(insight.ticketMedioRecente || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br />
+                                            Variação: <span className={Number(insight.variacaoTicketPct) < 0 ? 'text-red-600' : 'text-green-600'}>
+                                                {Number(insight.variacaoTicketPct || 0).toFixed(1)}%
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-3 bg-white border rounded">
+                                        <span className="block text-xs text-gray-500 mb-1">Oportunidade (Upsell)</span>
+                                        <span className="font-semibold text-gray-800">
+                                            Score: {insight.scoreOportunidade}/100
+                                        </span>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                            {insight.produtoAusenteId ? (
+                                                <span className="text-purple-600">Produto Parou de Sair (ID: {insight.produtoAusenteId.substring(0, 8)}...)</span>
+                                            ) : 'Sem oportunidade clara gerada nativamente'}
+                                        </div>
+                                    </div>
+
+                                    <div className="p-3 bg-white border rounded">
+                                        <span className="block text-xs text-gray-500 mb-1">Risco (Churn)</span>
+                                        <span className="font-semibold text-gray-800">
+                                            Score: {insight.scoreRisco}/100
+                                        </span>
+                                        <div className="text-xs text-gray-500 mt-1 flex flex-col gap-0.5">
+                                            {insight.teveDevolucaoRecente && <span className="text-red-600">• Teve devolução (30d)</span>}
+                                            {insight.qtdAtendimentosSemPedido30d > 1 && <span className="text-orange-600">• {insight.qtdAtendimentosSemPedido30d} visitas s/ pedido</span>}
+                                            {(!insight.teveDevolucaoRecente && insight.qtdAtendimentosSemPedido30d <= 1) && <span>Risco baixo aparente</span>}
+                                        </div>
+                                    </div>
+
+                                    <div className="col-span-2 lg:col-span-4 p-2 bg-gray-100 rounded text-xs text-gray-500 flex justify-between items-center">
+                                        <span>Este é um painel de debug. O vendedor não verá estes dados desta forma.</span>
+                                        <span>Último cálculo: {new Date(insight.recalculadoEm).toLocaleString('pt-BR')}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                 </div>
             )}
         </div>
