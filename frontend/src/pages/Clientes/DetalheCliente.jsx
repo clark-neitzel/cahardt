@@ -245,30 +245,89 @@ const DetalheCliente = () => {
                 <ArrowLeft className="h-5 w-5 mr-1" /> Voltar
             </button>
 
-            {/* Cabeçalho */}
-            <div className="bg-white shadow rounded-lg p-6 mb-6 border-l-4 border-primary">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">
-                            <span className="text-sm font-normal text-gray-500 block mb-1">Razão Social</span>
-                            {cliente.Nome}
-                        </h1>
-                        {cliente.NomeFantasia && (
-                            <p className="text-lg text-gray-600 font-medium mt-1">
-                                <span className="text-sm font-normal text-gray-400">Fantasia:</span> {cliente.NomeFantasia}
+            {/* Cabeçalho Sticky */}
+            <div className="sticky top-0 z-10 bg-white -mx-4 px-4 pb-0 pt-2">
+                <div className="shadow rounded-lg p-4 md:p-6 mb-3 border-l-4 border-primary bg-white">
+                    <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                            <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+                                <span className="text-sm font-normal text-gray-500 block mb-1">Razão Social</span>
+                                {cliente.Nome}
+                            </h1>
+                            {cliente.NomeFantasia && (
+                                <p className="text-base md:text-lg text-gray-600 font-medium mt-1">
+                                    <span className="text-sm font-normal text-gray-400">Fantasia:</span> {cliente.NomeFantasia}
+                                </p>
+                            )}
+                            <p className="text-gray-500 text-sm mt-2">
+                                <span className="font-medium text-gray-600">
+                                    {String(cliente.Tipo_Pessoa).toUpperCase().includes('JUR') ? 'CNPJ' : 'CPF'}:
+                                </span> {cliente.Documento}
                             </p>
-                        )}
-                        <p className="text-gray-500 text-sm mt-3">
-                            <span className="font-medium text-gray-600">
-                                {String(cliente.Tipo_Pessoa).toUpperCase().includes('JUR') ? 'CNPJ' : 'CPF'}:
-                            </span> {cliente.Documento}
-                        </p>
+                        </div>
+                        <div className="flex items-center gap-2 ml-3 shrink-0">
+                            <span className={`px-3 py-1 rounded-full font-medium text-sm ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {cliente.Ativo ? 'ATIVO' : 'INATIVO'}
+                            </span>
+                            {/* Botões Salvar/Cancelar - apenas desktop */}
+                            <div className="hidden md:flex items-center gap-2 ml-2">
+                                <button
+                                    onClick={handleCancel}
+                                    className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors flex items-center"
+                                >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    className="px-3 py-1.5 bg-primary text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors flex items-center shadow-sm"
+                                >
+                                    <Save className="h-4 w-4 mr-1" />
+                                    Salvar
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <span className={`px-3 py-1 rounded-full font-medium text-sm ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {cliente.Ativo ? 'ATIVO' : 'INATIVO'}
-                    </span>
+                </div>
+
+                {/* Abas */}
+                <div className="flex flex-wrap border-b border-gray-200 gap-0 bg-white">
+                    <button
+                        onClick={() => setAbaAtiva('dados')}
+                        className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'dados' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
+                    >
+                        ✏️ Operacional
+                    </button>
+                    <button
+                        onClick={() => setAbaAtiva('ca')}
+                        className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'ca' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
+                    >
+                        📋 Conta Azul
+                    </button>
+                    <button
+                        onClick={() => setAbaAtiva('historico')}
+                        className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'historico' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
+                    >
+                        Histórico ({atendimentos.length + pedidosCliente.length + leadsCliente.reduce((acc, l) => acc + (l.atendimentos?.length || 0), 0)})
+                    </button>
+                    <button
+                        onClick={() => setAbaAtiva('analitico')}
+                        className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'analitico' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500'}`}
+                    >
+                        Motor Analítico
+                    </button>
+                    {leadsCliente.length > 0 && (
+                        <button
+                            onClick={() => setAbaAtiva('lead')}
+                            className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'lead' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500'}`}
+                        >
+                            Lead ({leadsCliente.length})
+                        </button>
+                    )}
                 </div>
             </div>
+
+            <div className="mt-4">
 
             {abaAtiva === 'historico' && (() => {
                 // Unificar atendimentos (cliente + leads) e pedidos em um único histórico ordenado por data
@@ -643,41 +702,6 @@ const DetalheCliente = () => {
                 </div>
             )}
 
-            {/* Abas */}
-            <div className="flex flex-wrap border-b border-gray-200 mb-5 gap-0">
-                <button
-                    onClick={() => setAbaAtiva('dados')}
-                    className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'dados' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
-                >
-                    ✏️ Operacional
-                </button>
-                <button
-                    onClick={() => setAbaAtiva('ca')}
-                    className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'ca' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
-                >
-                    📋 Conta Azul
-                </button>
-                <button
-                    onClick={() => setAbaAtiva('historico')}
-                    className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'historico' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
-                >
-                    Histórico ({atendimentos.length + pedidosCliente.length + leadsCliente.reduce((acc, l) => acc + (l.atendimentos?.length || 0), 0)})
-                </button>
-                <button
-                    onClick={() => setAbaAtiva('analitico')}
-                    className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'analitico' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500'}`}
-                >
-                    Motor Analítico
-                </button>
-                {leadsCliente.length > 0 && (
-                    <button
-                        onClick={() => setAbaAtiva('lead')}
-                        className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'lead' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500'}`}
-                    >
-                        Lead ({leadsCliente.length})
-                    </button>
-                )}
-            </div>
             {abaAtiva === 'dados' && (
                 <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
                     <h2 className="text-lg font-semibold text-primary mb-4 flex items-center">
@@ -1157,6 +1181,7 @@ const DetalheCliente = () => {
                         </div>
                 </div>
             )}
+            </div>
         </div>
     );
 };
