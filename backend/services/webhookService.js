@@ -8,8 +8,9 @@ const webhookService = {
     notificarPedido: async (pedidoId) => {
         try {
             // Buscar URL do webhook na config
-            const configWebhook = await prisma.appConfig.findUnique({ where: { chave: 'webhook_botconversa_url' } });
-            const webhookUrl = configWebhook?.valor;
+            const configWebhook = await prisma.appConfig.findUnique({ where: { key: 'webhook_botconversa_url' } });
+            const rawValue = configWebhook?.value;
+            const webhookUrl = typeof rawValue === 'string' ? rawValue : (rawValue ? String(rawValue) : null);
             if (!webhookUrl) {
                 console.log('[Webhook] URL do BotConversa não configurada. Pulando notificação.');
                 return;
