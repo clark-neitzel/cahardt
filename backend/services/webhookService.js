@@ -68,31 +68,36 @@ const webhookService = {
 
             const linhasItens = pedido.itens.map(i => {
                 const nomeProd = i.produto?.nome || 'Produto';
-                return `- ${nomeProd} - ${i.quantidade}x - R$ ${Number(i.valor || 0).toFixed(2).replace('.', ',')}`;
+                const qtd = Number(i.quantidade);
+                const subtotal = (Number(i.valor || 0) * qtd).toFixed(2).replace('.', ',');
+                return `  ${qtd}x  ${nomeProd}\n       R$ ${subtotal}`;
             }).join('\n');
 
-            const total = pedido.itens.reduce((sum, i) => sum + (Number(i.valor || 0) * i.quantidade), 0);
+            const total = pedido.itens.reduce((sum, i) => sum + (Number(i.valor || 0) * Number(i.quantidade)), 0);
             const totalStr = total.toFixed(2);
             const condicao = pedido.nomeCondicaoPagamento || `${pedido.tipoPagamento || ''} ${pedido.opcaoCondicaoPagamento || ''}`.trim();
 
-            const mensagem = [
-                `Olá, ${nome}!`,
+            const partes = [
+                `Ola, *${nome}*! \uD83D\uDC4B`,
                 '',
-                'Segue abaixo o seu pedido da Hardt Salgados',
+                `Segue o resumo do seu pedido \uD83D\uDCCB`,
                 '',
-                `Data Pedido: ${formatDateMsg(pedido.createdAt)}`,
-                `Data Entrega: ${formatDateMsg(pedido.dataVenda)}`,
+                `\uD83D\uDCC5 *Pedido:* ${formatDateMsg(pedido.createdAt)}`,
+                `\uD83D\uDE9A *Entrega:* ${formatDateMsg(pedido.dataVenda)}`,
                 '',
-                'Itens:',
+                '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
                 linhasItens,
+                '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
                 '',
-                `Total: R$ ${totalStr.replace('.', ',')}`,
-                '',
-                `Condição: ${condicao}`,
-                pedido.observacoes ? `Observação: ${pedido.observacoes}` : '',
-                '',
-                'Obrigado pela preferência!'
-            ].filter(l => l !== undefined).join('\n');
+                `\uD83D\uDCB0 *Total: R$ ${totalStr.replace('.', ',')}*`,
+                `\uD83D\uDCB3 *Condição:* ${condicao}`,
+            ];
+            if (pedido.observacoes) {
+                partes.push('', `\uD83D\uDCDD *Obs:* ${pedido.observacoes}`);
+            }
+            partes.push('', 'Obrigado pela preferência! \uD83D\uDE4F');
+
+            const mensagem = partes.join('\n');
 
             const payload = {
                 phone, nome, mensagem,
@@ -140,22 +145,30 @@ const webhookService = {
             const nome = cliente.NomeFantasia || cliente.Nome;
 
             const linhasItens = amostra.itens.map(i => {
-                return `- ${i.nomeProduto} - ${Number(i.quantidade)}x`;
+                const qtd = Number(i.quantidade);
+                return `  ${qtd}x  ${i.nomeProduto}`;
             }).join('\n');
 
-            const mensagem = [
-                `Olá, ${nome}!`,
+            const partes = [
+                `Ola, *${nome}*! \uD83D\uDC4B`,
                 '',
-                'Segue abaixo sua amostra da Hardt Salgados',
+                `Segue sua *amostra* da Hardt Salgados \uD83C\uDF81`,
                 '',
-                amostra.dataEntrega ? `Data Entrega: ${formatDateMsg(amostra.dataEntrega)}` : '',
-                '',
-                'Itens:',
+            ];
+            if (amostra.dataEntrega) {
+                partes.push(`\uD83D\uDE9A *Entrega:* ${formatDateMsg(amostra.dataEntrega)}`, '');
+            }
+            partes.push(
+                '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
                 linhasItens,
-                amostra.observacao ? `\nObservação: ${amostra.observacao}` : '',
-                '',
-                'Obrigado pela preferência!'
-            ].filter(l => l !== undefined && l !== '').join('\n');
+                '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+            );
+            if (amostra.observacao) {
+                partes.push('', `\uD83D\uDCDD *Obs:* ${amostra.observacao}`);
+            }
+            partes.push('', 'Obrigado pela preferência! \uD83D\uDE4F');
+
+            const mensagem = partes.join('\n');
 
             const payload = {
                 phone, nome, mensagem,
