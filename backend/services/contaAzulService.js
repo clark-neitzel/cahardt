@@ -526,15 +526,14 @@ const contaAzulService = {
                     const caDate = ultimaAtualizacaoCA ? ultimaAtualizacaoCA.getTime() : 0;
                     const localDate = localCLI?.contaAzulUpdatedAt ? localCLI.contaAzulUpdatedAt.getTime() : 0;
 
-                    // Busca detalhe se: cliente novo, mudou no CA, ou celular local está vazio
-                    const celularVazio = localCLI && !localCLI.Telefone_Celular;
-                    if (!localCLI || caDate > localDate || celularVazio) {
+                    // Busca detalhe se: cliente novo, mudou no CA, ou nunca buscou detalhe antes
+                    const nuncaBuscouDetalhe = localCLI && !localCLI.contaAzulUpdatedAt;
+                    if (!localCLI || caDate > localDate || nuncaBuscouDetalhe) {
                         try {
                             const urlDet = `https://api-v2.contaazul.com/v1/pessoas/${c.id}`; // V2 is required for Cognito JWT Auth
                             const resDet = await contaAzulService._axiosGet(urlDet, 'CLIENTES_DETALHE');
                             if (resDet && resDet.data) {
                                 detalheC = resDet.data;
-                                console.log(`📞 [DEBUG TELEFONES] Cliente ${detalheC.nome_empresa || detalheC.nome || c.id}:`, JSON.stringify({ telefone_comercial: detalheC.telefone_comercial, telefone_celular: detalheC.telefone_celular, telefone: detalheC.telefone, celular: detalheC.celular }));
                             }
                             await new Promise(r => setTimeout(r, 200)); // Rate limit 5req/s
                         } catch (e) {
@@ -593,7 +592,7 @@ const contaAzulService = {
                     Observacoes_Gerais: c.notes || c.observacoes,
 
                     Perfil_Filtro: "PADRAO",
-                    contaAzulUpdatedAt: ultimaAtualizacaoCA,
+                    contaAzulUpdatedAt: ultimaAtualizacaoCA || new Date(),
                     updated_at: new Date()
                 };
 
