@@ -513,7 +513,6 @@ const contaAzulService = {
                 if (count === 0) {
                     console.log('🔎 [DEBUG MAPPING] Primeiro Cliente Raw:', JSON.stringify(c, null, 2));
                     console.log('🔎 [DEBUG MAPPING] Endereço Identificado:', JSON.stringify(enderecoPrincipal, null, 2));
-                    console.log('🔎 [DEBUG MAPPING] Telefones detalheC:', JSON.stringify({ telefone_comercial: detalheC.telefone_comercial, telefone_celular: detalheC.telefone_celular, telefone: detalheC.telefone, celular: detalheC.celular, mobile_phone: detalheC.mobile_phone, business_phone: detalheC.business_phone }));
                 }
 
                 // Mapeamento baseado no JSON real fornecido pelo usuário
@@ -535,15 +534,19 @@ const contaAzulService = {
                             const resDet = await contaAzulService._axiosGet(urlDet, 'CLIENTES_DETALHE');
                             if (resDet && resDet.data) {
                                 detalheC = resDet.data;
+                                console.log(`📞 [DEBUG TELEFONES] Cliente ${detalheC.nome_empresa || detalheC.nome || c.id}:`, JSON.stringify({ telefone_comercial: detalheC.telefone_comercial, telefone_celular: detalheC.telefone_celular, telefone: detalheC.telefone, celular: detalheC.celular }));
                             }
                             await new Promise(r => setTimeout(r, 200)); // Rate limit 5req/s
                         } catch (e) {
                             console.error(`⚠️ Erro ao buscar detalhe do Cliente ${c.id}:`, e.message);
                         }
                     } else {
-                        // Reutilizar Razão e Fantasia local já validados para economizar requisições
+                        // Reutilizar dados locais já validados para economizar requisições
                         detalheC.nome_empresa = localCLI.Nome;
                         detalheC.nome = localCLI.NomeFantasia;
+                        // Preservar telefones locais (lista CA não retorna telefone_celular)
+                        detalheC.telefone_celular = localCLI.Telefone_Celular || detalheC.telefone_celular;
+                        detalheC.telefone_comercial = localCLI.Telefone || detalheC.telefone_comercial;
                     }
                 }
 
