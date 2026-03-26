@@ -8,7 +8,7 @@ const getWebhookUrl = async () => {
 };
 
 const formatPhone = (cliente) => {
-    const telefoneRaw = cliente.Telefone_Celular || cliente.Telefone;
+    const telefoneRaw = cliente.Telefone_Celular;
     if (!telefoneRaw) return null;
     let phone = telefoneRaw.replace(/\D/g, '');
     if (phone.length < 10) return null;
@@ -46,9 +46,18 @@ const webhookService = {
      * Retorna { ok: true } ou { ok: false, motivo: '...' }
      */
     notificarPedido: async (pedidoId) => {
+        const salvarStatus = async (ok, motivo) => {
+            try {
+                await prisma.pedido.update({
+                    where: { id: pedidoId },
+                    data: { whatsappEnviado: ok, whatsappErro: ok ? null : (motivo || null) }
+                });
+            } catch (e) { console.error('[Webhook] Erro ao salvar status:', e.message); }
+        };
+
         try {
             const webhookUrl = await getWebhookUrl();
-            if (!webhookUrl) return { ok: false, motivo: 'URL do webhook não configurada' };
+            if (!webhookUrl) { await salvarStatus(false, 'Webhook não configurado'); return { ok: false, motivo: 'URL do webhook não configurada' }; }
 
             const pedido = await prisma.pedido.findUnique({
                 where: { id: pedidoId },
@@ -58,11 +67,11 @@ const webhookService = {
                 }
             });
 
-            if (!pedido || !pedido.cliente) return { ok: false, motivo: 'Pedido ou cliente não encontrado' };
-            if (pedido.cliente.recebeAvisoPedido === false) return { ok: false, motivo: 'Cliente optou por não receber avisos' };
+            if (!pedido || !pedido.cliente) { await salvarStatus(false, 'Pedido/cliente não encontrado'); return { ok: false, motivo: 'Pedido ou cliente não encontrado' }; }
+            if (pedido.cliente.recebeAvisoPedido === false) { await salvarStatus(false, 'Cliente não recebe avisos'); return { ok: false, motivo: 'Cliente optou por não receber avisos' }; }
 
             const phone = formatPhone(pedido.cliente);
-            if (!phone) return { ok: false, motivo: 'Cliente sem telefone celular válido' };
+            if (!phone) { await salvarStatus(false, 'Sem celular cadastrado'); return { ok: false, motivo: 'Cliente sem telefone celular válido' }; }
 
             const nome = pedido.cliente.NomeFantasia || pedido.cliente.Nome;
 
@@ -107,10 +116,12 @@ const webhookService = {
             };
 
             await enviarWebhook(webhookUrl, payload);
+            await salvarStatus(true, null);
             console.log(`[Webhook] Pedido enviado para ${nome} (${phone}) - #${pedido.numero || pedidoId.substring(0, 8)}`);
             return { ok: true };
         } catch (error) {
             console.error('[Webhook] Erro pedido:', error.message);
+            await salvarStatus(false, `Erro BotConversa: ${error.message}`);
             return { ok: false, motivo: error.message };
         }
     },

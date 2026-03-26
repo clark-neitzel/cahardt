@@ -65,22 +65,35 @@ const ListaPedidos = () => {
     const [revertendo, setRevertendo] = useState(null);
     const [selecionados, setSelecionados] = useState(new Set());
 
-    // WhatsApp: { [id]: 'enviando' | 'ok' | 'erro' }
+    // WhatsApp: { [id]: { status: 'enviando'|'ok'|'erro', motivo?: string } }
     const [whatsappStatus, setWhatsappStatus] = useState({});
 
+    const getWsStatus = (id) => whatsappStatus[id]?.status || whatsappStatus[id]; // compat string ou objeto
+    const getWsMotivo = (id) => whatsappStatus[id]?.motivo || '';
+    const getWsTitle = (id, pedido) => {
+        const st = getWsStatus(id);
+        if (st === 'ok') return 'WhatsApp enviado!';
+        if (st === 'erro') {
+            const motivo = getWsMotivo(id) || pedido?.whatsappErro || 'Falha no envio';
+            return `Erro: ${motivo}`;
+        }
+        return 'Enviar via WhatsApp';
+    };
+
     const handleEnviarWhatsapp = async (id, tipo = 'pedido') => {
-        setWhatsappStatus(prev => ({ ...prev, [id]: 'enviando' }));
+        setWhatsappStatus(prev => ({ ...prev, [id]: { status: 'enviando' } }));
         try {
             if (tipo === 'amostra') {
                 await amostraService.enviarWhatsapp(id);
             } else {
                 await pedidoService.enviarWhatsapp(id);
             }
-            setWhatsappStatus(prev => ({ ...prev, [id]: 'ok' }));
+            setWhatsappStatus(prev => ({ ...prev, [id]: { status: 'ok' } }));
             toast.success('WhatsApp enviado!');
         } catch (error) {
-            setWhatsappStatus(prev => ({ ...prev, [id]: 'erro' }));
-            toast.error(error.response?.data?.motivo || 'Erro ao enviar WhatsApp');
+            const motivo = error.response?.data?.motivo || 'Erro ao enviar';
+            setWhatsappStatus(prev => ({ ...prev, [id]: { status: 'erro', motivo } }));
+            toast.error(motivo);
         }
     };
 
@@ -115,6 +128,13 @@ const ListaPedidos = () => {
                 params.especial = abaAtiva === 'especiais' ? 'true' : 'false';
                 const data = await pedidoService.listar(params);
                 setPedidos(data);
+                // Inicializar status WhatsApp a partir dos dados persistidos
+                const wsStatus = {};
+                data.forEach(p => {
+                    if (p.whatsappEnviado) wsStatus[p.id] = { status: 'ok' };
+                    else if (p.whatsappErro) wsStatus[p.id] = { status: 'erro', motivo: p.whatsappErro };
+                });
+                setWhatsappStatus(prev => ({ ...prev, ...wsStatus }));
             } 
             // Se for aba de amostras, busca da tabela de amostras
             else if (abaAtiva === 'amostras') {
@@ -543,11 +563,11 @@ const ListaPedidos = () => {
                                                         {amostra.clienteId && (
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); handleEnviarWhatsapp(amostra.id, 'amostra'); }}
-                                                                disabled={whatsappStatus[amostra.id] === 'enviando'}
-                                                                className={`p-1 rounded hover:bg-gray-100 ${whatsappStatus[amostra.id] === 'ok' ? 'text-green-500' : whatsappStatus[amostra.id] === 'erro' ? 'text-red-500' : 'text-gray-400 hover:text-green-600'}`}
-                                                                title={whatsappStatus[amostra.id] === 'ok' ? 'Enviado!' : whatsappStatus[amostra.id] === 'erro' ? 'Falha no envio' : 'Enviar via WhatsApp'}
+                                                                disabled={getWsStatus(amostra.id) === 'enviando'}
+                                                                className={`p-1 rounded hover:bg-gray-100 ${getWsStatus(amostra.id) === 'ok' ? 'text-green-500' : getWsStatus(amostra.id) === 'erro' ? 'text-red-500' : 'text-gray-400 hover:text-green-600'}`}
+                                                                title={getWsTitle(amostra.id, amostra)}
                                                             >
-                                                                {whatsappStatus[amostra.id] === 'enviando' ? <Loader2 className="h-4 w-4 animate-spin" /> : whatsappStatus[amostra.id] === 'ok' ? <CheckCircle className="h-4 w-4" /> : whatsappStatus[amostra.id] === 'erro' ? <XCircle className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
+                                                                {getWsStatus(amostra.id) === 'enviando' ? <Loader2 className="h-4 w-4 animate-spin" /> : getWsStatus(amostra.id) === 'ok' ? <CheckCircle className="h-4 w-4" /> : getWsStatus(amostra.id) === 'erro' ? <XCircle className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
                                                             </button>
                                                         )}
                                                         {podeExcluirAmostra && (amostra.status !== 'ENTREGUE' || user?.permissoes?.admin) && (
@@ -663,11 +683,11 @@ const ListaPedidos = () => {
                                             <div className="flex items-center gap-0.5">
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleEnviarWhatsapp(pedido.id, 'pedido'); }}
-                                                    disabled={whatsappStatus[pedido.id] === 'enviando'}
-                                                    className={`p-1.5 rounded hover:bg-gray-100 ${whatsappStatus[pedido.id] === 'ok' ? 'text-green-500' : whatsappStatus[pedido.id] === 'erro' ? 'text-red-500' : 'text-gray-400 hover:text-green-600'}`}
-                                                    title={whatsappStatus[pedido.id] === 'ok' ? 'Enviado!' : whatsappStatus[pedido.id] === 'erro' ? 'Falha no envio' : 'Enviar via WhatsApp'}
+                                                    disabled={getWsStatus(pedido.id) === 'enviando'}
+                                                    className={`p-1.5 rounded hover:bg-gray-100 ${getWsStatus(pedido.id) === 'ok' ? 'text-green-500' : getWsStatus(pedido.id) === 'erro' ? 'text-red-500' : 'text-gray-400 hover:text-green-600'}`}
+                                                    title={getWsTitle(pedido.id, pedido)}
                                                 >
-                                                    {whatsappStatus[pedido.id] === 'enviando' ? <Loader2 className="h-4 w-4 animate-spin" /> : whatsappStatus[pedido.id] === 'ok' ? <CheckCircle className="h-4 w-4" /> : whatsappStatus[pedido.id] === 'erro' ? <XCircle className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
+                                                    {getWsStatus(pedido.id) === 'enviando' ? <Loader2 className="h-4 w-4 animate-spin" /> : getWsStatus(pedido.id) === 'ok' ? <CheckCircle className="h-4 w-4" /> : getWsStatus(pedido.id) === 'erro' ? <XCircle className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
                                                 </button>
                                                 {pedido.situacaoCA === 'FATURADO' && (
                                                     <button onClick={(e) => { e.stopPropagation(); handlePrintPedido(pedido); }} className="p-1.5 text-gray-400 hover:text-purple-600 rounded hover:bg-gray-100" title="Imprimir Pedido"><Printer className="h-4 w-4" /></button>
@@ -785,11 +805,11 @@ const ListaPedidos = () => {
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => handleEnviarWhatsapp(selectedPedido.id, 'pedido')}
-                                    disabled={whatsappStatus[selectedPedido.id] === 'enviando'}
-                                    className={`p-2 rounded flex items-center gap-1.5 border ${whatsappStatus[selectedPedido.id] === 'ok' ? 'border-green-300 bg-green-50 text-green-700' : whatsappStatus[selectedPedido.id] === 'erro' ? 'border-red-300 bg-red-50 text-red-700' : 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100'}`}
-                                    title="Enviar via WhatsApp"
+                                    disabled={getWsStatus(selectedPedido.id) === 'enviando'}
+                                    className={`p-2 rounded flex items-center gap-1.5 border ${getWsStatus(selectedPedido.id) === 'ok' ? 'border-green-300 bg-green-50 text-green-700' : getWsStatus(selectedPedido.id) === 'erro' ? 'border-red-300 bg-red-50 text-red-700' : 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100'}`}
+                                    title={getWsTitle(selectedPedido.id, selectedPedido)}
                                 >
-                                    {whatsappStatus[selectedPedido.id] === 'enviando' ? <Loader2 className="h-5 w-5 animate-spin" /> : whatsappStatus[selectedPedido.id] === 'ok' ? <CheckCircle className="h-5 w-5" /> : whatsappStatus[selectedPedido.id] === 'erro' ? <XCircle className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
+                                    {getWsStatus(selectedPedido.id) === 'enviando' ? <Loader2 className="h-5 w-5 animate-spin" /> : getWsStatus(selectedPedido.id) === 'ok' ? <CheckCircle className="h-5 w-5" /> : getWsStatus(selectedPedido.id) === 'erro' ? <XCircle className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
                                 </button>
                                 {selectedPedido.situacaoCA === 'FATURADO' && (
                                     <button onClick={() => handlePrintPedido(selectedPedido)} className="p-2 border border-purple-300 bg-purple-50 text-purple-700 rounded hover:bg-purple-100 flex items-center gap-1.5"><Printer className="h-5 w-5" /></button>

@@ -199,6 +199,8 @@ model Pedido {
   revisaoPendente    Boolean   @default(false) @map("revisao_pendente")
   contaAzulUpdatedAt DateTime? @map("conta_azul_updated_at")
   impressoEm         DateTime? @map("impresso_em")
+  whatsappEnviado    Boolean   @default(false) @map("whatsapp_enviado")
+  whatsappErro       String?   @map("whatsapp_erro")
 
   canalOrigem         String?   @map("canal_origem") // Ex: VISITA, WHATSAPP, LIGACAO
   usuarioLancamentoId String?   @map("usuario_lancamento_id")
