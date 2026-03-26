@@ -526,9 +526,9 @@ const contaAzulService = {
                     const caDate = ultimaAtualizacaoCA ? ultimaAtualizacaoCA.getTime() : 0;
                     const localDate = localCLI?.contaAzulUpdatedAt ? localCLI.contaAzulUpdatedAt.getTime() : 0;
 
-                    // Busca detalhe APENAS se mudou ou se é um cliente novo.
-                    // Isso evita o loop infinito de tentar buscar detalhes de clientes sem NomeFantasia em toda sincronização.
-                    if (!localCLI || caDate > localDate) {
+                    // Busca detalhe se: cliente novo, mudou no CA, ou celular local está vazio
+                    const celularVazio = localCLI && !localCLI.Telefone_Celular;
+                    if (!localCLI || caDate > localDate || celularVazio) {
                         try {
                             const urlDet = `https://api-v2.contaazul.com/v1/pessoas/${c.id}`; // V2 is required for Cognito JWT Auth
                             const resDet = await contaAzulService._axiosGet(urlDet, 'CLIENTES_DETALHE');
