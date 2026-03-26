@@ -513,6 +513,7 @@ const contaAzulService = {
                 if (count === 0) {
                     console.log('🔎 [DEBUG MAPPING] Primeiro Cliente Raw:', JSON.stringify(c, null, 2));
                     console.log('🔎 [DEBUG MAPPING] Endereço Identificado:', JSON.stringify(enderecoPrincipal, null, 2));
+                    console.log('🔎 [DEBUG MAPPING] Telefones detalheC:', JSON.stringify({ telefone_comercial: detalheC.telefone_comercial, telefone_celular: detalheC.telefone_celular, telefone: detalheC.telefone, celular: detalheC.celular, mobile_phone: detalheC.mobile_phone, business_phone: detalheC.business_phone }));
                 }
 
                 // Mapeamento baseado no JSON real fornecido pelo usuário
@@ -565,9 +566,9 @@ const contaAzulService = {
                     Recebimentos_Mes_Atual: c.recebimentos_mes_atual || 0,
 
                     Documento: c.document || c.documento,
-                    Email: c.email,
-                    Telefone: c.telefone_comercial || c.business_phone || c.telefone,
-                    Telefone_Celular: c.telefone_celular || c.mobile_phone || c.celular,
+                    Email: detalheC.email || c.email,
+                    Telefone: detalheC.telefone_comercial || detalheC.business_phone || detalheC.telefone || c.telefone_comercial || c.business_phone || c.telefone,
+                    Telefone_Celular: detalheC.telefone_celular || detalheC.mobile_phone || detalheC.celular || c.telefone_celular || c.mobile_phone || c.celular,
                     Ativo: (c.ativo === true), // JSON confirma booleano
                     Data_Criacao: c.criado_em ? new Date(c.criado_em) : (c.created_at ? new Date(c.created_at) : new Date()),
                     Data_Alteracao: ultimaAtualizacaoCA,
