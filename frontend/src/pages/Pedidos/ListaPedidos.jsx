@@ -325,11 +325,22 @@ const ListaPedidos = () => {
         navigate(`/pedidos/imprimir/lote?ids=${ids}`);
     };
 
+    const filtrosPadrao = React.useMemo(() => {
+        const hoje = new Date().toISOString().split('T')[0];
+        const trintaDiasAtras = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        return { dataEntregaDe: trintaDiasAtras, dataEntregaAte: hoje, dataCriacaoDe: '', dataCriacaoAte: '', vendedorId: '', busca: '' };
+    }, []);
+
     const isFiltroAtivo = React.useMemo(() => {
         if (filtros.vendedorId) return true;
         if (filtros.dataCriacaoDe || filtros.dataCriacaoAte) return true;
+        if (filtros.dataEntregaDe !== filtrosPadrao.dataEntregaDe || filtros.dataEntregaAte !== filtrosPadrao.dataEntregaAte) return true;
         return false;
-    }, [filtros]);
+    }, [filtros, filtrosPadrao]);
+
+    const limparFiltros = () => {
+        setFiltros({ ...filtrosPadrao });
+    };
 
     // Retorno do render
     return (
@@ -432,20 +443,8 @@ const ListaPedidos = () => {
 
                         {/* Vendedor */}
                         <div className="space-y-2 lg:col-span-1">
-                            <label className="text-[11px] font-bold text-gray-500 uppercase flex items-center gap-1.5 flex-1 w-full relative">
+                            <label className="text-[11px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
                                 <User className="h-3 w-3" /> Vendedor
-                                {isFiltroAtivo && (
-                                    <button
-                                        onClick={() => {
-                                            const hoje = new Date().toISOString().split('T')[0];
-                                            const trintaDiasAtras = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-                                            setFiltros(prev => ({ ...prev, dataEntregaDe: trintaDiasAtras, dataEntregaAte: hoje, dataCriacaoDe: '', dataCriacaoAte: '', vendedorId: '' }));
-                                        }}
-                                        className="text-[10px] font-medium text-gray-400 hover:text-red-500 absolute right-0 bottom-0 underline"
-                                    >
-                                        Limpar
-                                    </button>
-                                )}
                             </label>
                             <select
                                 value={filtros.vendedorId}
@@ -460,6 +459,17 @@ const ListaPedidos = () => {
                             </select>
                         </div>
                     </div>
+                    {isFiltroAtivo && (
+                        <div className="mt-3 flex justify-end">
+                            <button
+                                onClick={limparFiltros}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-500 hover:text-white hover:bg-red-500 border border-red-300 rounded-full transition-colors"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                                Limpar filtros
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 
