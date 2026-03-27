@@ -36,10 +36,13 @@ export const AuthProvider = ({ children }) => {
             return { success: true };
         } catch (error) {
             console.error(error);
-            return {
-                success: false,
-                error: error.response?.data?.error || 'Erro ao fazer login'
-            };
+            let msg = error.response?.data?.error;
+            if (!msg) {
+                msg = error.code === 'ERR_NETWORK'
+                    ? 'Erro de conexão com o servidor. Verifique sua internet.'
+                    : error.message || 'Erro ao fazer login';
+            }
+            return { success: false, error: msg };
         }
     };
 
