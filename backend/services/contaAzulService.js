@@ -915,13 +915,21 @@ const contaAzulService = {
     // Precisamos pingar ativamente os pedidos locais "RECEBIDO" para ver se retornam 404 (Excluídos).
     _verificarPedidosExcluidosContAzul: async () => {
         try {
+            // Cooldown de 4h: só pinga pedidos que NÃO foram verificados recentemente.
+            // Isso garante que pedidos confirmados "girem" para o final da fila e
+            // pedidos novos sem retorno do CA sempre tenham chance de ser verificados.
+            const cooldownLimite = new Date(Date.now() - 4 * 60 * 60 * 1000); // 4 horas atrás
+
             const pedidosLocaisAtivos = await prisma.pedido.findMany({
                 where: {
                     statusEnvio: 'RECEBIDO',
-                    idVendaContaAzul: { not: null }
+                    idVendaContaAzul: { not: null },
+                    OR: [
+                        { contaAzulUpdatedAt: null },              // Nunca verificado
+                        { contaAzulUpdatedAt: { lt: cooldownLimite } } // Não verificado nas últimas 4h
+                    ]
                 },
-                // Rotação: processar os mais antigos sem confirmação primeiro
-                // Isso garante cobertura uniforme mesmo com 1000+ pedidos RECEBIDO
+                // Rotação: processar os mais antigos primeiro para cobertura uniforme
                 orderBy: { contaAzulUpdatedAt: 'asc' },
                 take: 20 // Máx 20 pings/ciclo → ~3s total, dentro do rate limit da CA (10 req/s)
             });
@@ -968,10 +976,17 @@ const contaAzulService = {
                             where: { id: local.id },
                             data: {
                                 situacaoCA: situacaoNome,
-                                contaAzulUpdatedAt: new Date()
+                                contaAzulUpdatedAt: new Date() // Atualiza → sai da fila de cooldown
                             }
                         });
                         console.log(`🔄 [GARBAGE COLLECTOR] Pedido #${local.numero} corrigido: ${local.situacaoCA} → ${situacaoNome}`);
+                    } else {
+                        // Pedido está OK (situação local = CA). Atualizar timestamp para sair do topo
+                        // da fila e permitir que pedidos novos sejam verificados no próximo ciclo.
+                        await prisma.pedido.update({
+                            where: { id: local.id },
+                            data: { contaAzulUpdatedAt: new Date() }
+                        });
                     }
 
                 } catch (error) {
