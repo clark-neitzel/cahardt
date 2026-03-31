@@ -918,15 +918,15 @@ const contaAzulService = {
             // Cooldown de 4h para pedidos já confirmados (APROVADO).
             const cooldownLimite = new Date(Date.now() - 4 * 60 * 60 * 1000); // 4 horas atrás
 
-            // === PRIORIDADE 1: Pedidos sem retorno do CA ou com situação diferente de APROVADO ===
-            // Sem cooldown — ficam sempre na frente da fila até receberem situacaoCA = APROVADO.
+            // === PRIORIDADE 1: Pedidos sem retorno do CA ou em rascunho (EM_ABERTO) ===
+            // Sem cooldown — ficam sempre na frente da fila até serem APROVADOS ou FATURADOS.
             const pedidosPrioritarios = await prisma.pedido.findMany({
                 where: {
                     statusEnvio: 'RECEBIDO',
                     idVendaContaAzul: { not: null },
                     OR: [
                         { situacaoCA: null },
-                        { situacaoCA: { not: 'APROVADO' } }
+                        { situacaoCA: 'EM_ABERTO' }
                     ]
                 },
                 orderBy: { createdAt: 'asc' }, // Mais antigos primeiro
@@ -943,6 +943,8 @@ const contaAzulService = {
                     where: {
                         statusEnvio: 'RECEBIDO',
                         idVendaContaAzul: { not: null },
+                        // Pula pedidos já em estágio final (não mudam mais) para poupar varredura
+                        situacaoCA: { notIn: ['FATURADO', 'EMITIDO', 'CANCELADO'] },
                         ...(idsPrioritarios.length > 0 ? { id: { notIn: idsPrioritarios } } : {}),
                         OR: [
                             { contaAzulUpdatedAt: null },
