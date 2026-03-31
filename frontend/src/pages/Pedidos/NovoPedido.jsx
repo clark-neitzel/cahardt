@@ -159,6 +159,7 @@ const NovoPedido = () => {
     const [flexTotal, setFlexTotal] = useState(0);
 
     const carregouDraftRef = useRef(false);
+    const isRestoringDraftRef = useRef(false);
     const searchInputRef = useRef(null);
     const categoriasNormalRef = useRef([]);
 
@@ -268,6 +269,7 @@ const NovoPedido = () => {
                         if (pd.canalOrigem && mesmoCLiente) setCanalOrigem(pd.canalOrigem);
 
                         if (mesmoCLiente) {
+                            isRestoringDraftRef.current = true;
                             // Mesmo cliente: restaura itens e condição de pagamento
                             if (pd.condicaoPagamentoId) setTimeout(() => setCondicaoPagamentoId(pd.condicaoPagamentoId), 600);
                             if (pd.itensMap && Array.isArray(pd.itensMap)) {
@@ -347,7 +349,7 @@ const NovoPedido = () => {
             setClienteSearchText(cliente.NomeFantasia || cliente.Nome);
 
             // Calcular automaticamente a próxima data de entrega do cliente (apenas em novo pedido)
-            if (!editId && cliente.Dia_de_entrega) {
+            if (!editId && !isRestoringDraftRef.current && cliente.Dia_de_entrega) {
                 const proximaData = calcularProximaData(cliente.Dia_de_entrega);
                 setDataEntrega(proximaData);
                 verificarDataEntrega(proximaData, cliente);
@@ -381,7 +383,7 @@ const NovoPedido = () => {
 
             setCondicoesPermitidas(permitidas);
 
-            if (!editId || !carregouDraftRef.current) {
+            if (!editId && !isRestoringDraftRef.current) {
                 const padrao = todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento);
                 if (permitidas.length === 1) setCondicaoPagamentoId(permitidas[0].idCondicao);
                 else if (padrao && permitidas.some(c => c.idCondicao === padrao.idCondicao)) setCondicaoPagamentoId(padrao.idCondicao);
@@ -399,6 +401,10 @@ const NovoPedido = () => {
 
             // Abrir o formulário (Data/Condição) para o vendedor configurar
             setMostrarFormulario(true);
+
+            if (isRestoringDraftRef.current) {
+                setTimeout(() => { isRestoringDraftRef.current = false; }, 500);
+            }
         }
     }, [clienteId, clientes, todasCondicoes, especial, bonificacao]);
 
@@ -1535,12 +1541,17 @@ const NovoPedido = () => {
                                     key={c.UUID}
                                     className="bg-white p-4 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 cursor-pointer active:bg-blue-50 active:border-blue-100 transition-colors"
                                     onClick={() => {
+                                        if (clienteId && clienteId !== c.UUID) {
+                                            setItensMap(new Map());
+                                            setCondicaoPagamentoId('');
+                                            setObservacoes('');
+                                            setCanalOrigem('');
+                                            setIsEncaixe(false);
+                                        }
                                         setClienteId(c.UUID);
                                         setShowClienteModal(false);
                                         setClienteSearchText(c.NomeFantasia || c.Nome);
-                                        if (c.Dia_de_entrega) {
-                                            setDataEntrega(calcularProximaData(c.Dia_de_entrega));
-                                        }
+                                        // A data e a condição de pagamento padrão serão atualizadas pelo useEffect de clienteId
                                     }}
                                 >
                                     <div className="font-bold text-[15px] text-gray-900 mb-1 leading-tight tracking-tight">{c.NomeFantasia || c.Nome}</div>
