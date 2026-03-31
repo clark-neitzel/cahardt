@@ -915,24 +915,50 @@ const contaAzulService = {
     // Precisamos pingar ativamente os pedidos locais "RECEBIDO" para ver se retornam 404 (Excluídos).
     _verificarPedidosExcluidosContAzul: async () => {
         try {
-            // Cooldown de 4h: só pinga pedidos que NÃO foram verificados recentemente.
-            // Isso garante que pedidos confirmados "girem" para o final da fila e
-            // pedidos novos sem retorno do CA sempre tenham chance de ser verificados.
+            // Cooldown de 4h para pedidos já confirmados (APROVADO).
             const cooldownLimite = new Date(Date.now() - 4 * 60 * 60 * 1000); // 4 horas atrás
 
-            const pedidosLocaisAtivos = await prisma.pedido.findMany({
+            // === PRIORIDADE 1: Pedidos sem retorno do CA ou com situação diferente de APROVADO ===
+            // Sem cooldown — ficam sempre na frente da fila até receberem situacaoCA = APROVADO.
+            const pedidosPrioritarios = await prisma.pedido.findMany({
                 where: {
                     statusEnvio: 'RECEBIDO',
                     idVendaContaAzul: { not: null },
                     OR: [
-                        { contaAzulUpdatedAt: null },              // Nunca verificado
-                        { contaAzulUpdatedAt: { lt: cooldownLimite } } // Não verificado nas últimas 4h
+                        { situacaoCA: null },
+                        { situacaoCA: { not: 'APROVADO' } }
                     ]
                 },
-                // Rotação: processar os mais antigos primeiro para cobertura uniforme
-                orderBy: { contaAzulUpdatedAt: 'asc' },
-                take: 20 // Máx 20 pings/ciclo → ~3s total, dentro do rate limit da CA (10 req/s)
+                orderBy: { createdAt: 'asc' }, // Mais antigos primeiro
+                take: 20
             });
+
+            // === PRIORIDADE 2: Pedidos APROVADO fora do cooldown (rotação normal) ===
+            const idsPrioritarios = pedidosPrioritarios.map(p => p.id);
+            const vagasRestantes = 20 - pedidosPrioritarios.length;
+
+            let pedidosNormais = [];
+            if (vagasRestantes > 0) {
+                pedidosNormais = await prisma.pedido.findMany({
+                    where: {
+                        statusEnvio: 'RECEBIDO',
+                        idVendaContaAzul: { not: null },
+                        ...(idsPrioritarios.length > 0 ? { id: { notIn: idsPrioritarios } } : {}),
+                        OR: [
+                            { contaAzulUpdatedAt: null },
+                            { contaAzulUpdatedAt: { lt: cooldownLimite } }
+                        ]
+                    },
+                    orderBy: { contaAzulUpdatedAt: 'asc' },
+                    take: vagasRestantes
+                });
+            }
+
+            // Merge: prioritários primeiro, depois normais
+            const pedidosLocaisAtivos = [...pedidosPrioritarios, ...pedidosNormais];
+            if (pedidosPrioritarios.length > 0) {
+                console.log(`[GARBAGE COLLECTOR] ⚡ ${pedidosPrioritarios.length} pedido(s) SEM retorno CA na frente da fila.`);
+            }
 
             console.log(`[GARBAGE COLLECTOR] Iniciando varredura em ${pedidosLocaisAtivos.length} pedidos marcados como RECEBIDO.`);
             if (!pedidosLocaisAtivos.length) return 0;

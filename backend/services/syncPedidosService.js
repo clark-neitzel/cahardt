@@ -4,6 +4,8 @@ const contaAzulService = require('./contaAzulService');
 const syncPedidosService = {
     // Flag to prevent overlapping executions if the sync takes longer than the interval
     isRunning: false,
+    // Flag para evitar múltiplos timers de syncProdutos em ciclos consecutivos
+    _syncProdutosAgendado: false,
 
     _resolverIndicadorIE: (cliente) => {
         const tipoPessoa = String(cliente?.Tipo_Pessoa || '').toUpperCase();
@@ -54,10 +56,34 @@ const syncPedidosService = {
 
             console.log(`🚀 Iniciando Sync de Pedidos: ${pedidosPendentes.length} pendentes.`);
 
+            let pedidosEnviados = 0;
             for (const pedido of pedidosPendentes) {
+                const statusAntes = pedido.statusEnvio;
                 await syncPedidosService.enviarPedidoContaAzul(pedido);
+                // Verificar se o pedido foi enviado com sucesso (statusEnvio virou RECEBIDO no banco)
+                const pedidoAtualizado = await prisma.pedido.findUnique({ where: { id: pedido.id }, select: { statusEnvio: true } });
+                if (pedidoAtualizado?.statusEnvio === 'RECEBIDO' && statusAntes !== 'RECEBIDO') {
+                    pedidosEnviados++;
+                }
                 // Pause slightly to respect API rate limits (10 req/s on CA)
                 await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+
+            // Se houve envio com sucesso, agendar syncProdutos em 60s (estoque mudou)
+            if (pedidosEnviados > 0 && !syncPedidosService._syncProdutosAgendado) {
+                syncPedidosService._syncProdutosAgendado = true;
+                console.log(`📦 [Worker] ${pedidosEnviados} pedido(s) enviado(s) → syncProdutos agendado para 60s (estoque atualizado).`);
+                setTimeout(async () => {
+                    try {
+                        console.log('📦 [Worker] Executando syncProdutos pós-pedido...');
+                        await contaAzulService.syncProdutos();
+                        console.log('✅ [Worker] syncProdutos pós-pedido concluído.');
+                    } catch (e) {
+                        console.error('⚠️ [Worker] Erro no syncProdutos pós-pedido:', e.message);
+                    } finally {
+                        syncPedidosService._syncProdutosAgendado = false;
+                    }
+                }, 60000); // 60 segundos após o envio
             }
 
         } catch (error) {
