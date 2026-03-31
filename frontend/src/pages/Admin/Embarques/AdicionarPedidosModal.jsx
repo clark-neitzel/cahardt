@@ -87,12 +87,13 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
                 (filtroTipo === 'bonificacao' && p.bonificacao);
             let dataOk = true;
             if (filtroDataInicio || filtroDataFim) {
-                const dataEntrega = p.dataEntrega ? new Date(p.dataEntrega) : null;
-                if (!dataEntrega) {
+                // dataVenda = data de entrega escolhida pelo vendedor no pedido
+                const dataVenda = p.dataVenda ? new Date(p.dataVenda) : null;
+                if (!dataVenda) {
                     dataOk = false;
                 } else {
-                    if (filtroDataInicio) dataOk = dataOk && dataEntrega >= new Date(filtroDataInicio);
-                    if (filtroDataFim) dataOk = dataOk && dataEntrega <= new Date(filtroDataFim + 'T23:59:59');
+                    if (filtroDataInicio) dataOk = dataOk && dataVenda >= new Date(filtroDataInicio);
+                    if (filtroDataFim) dataOk = dataOk && dataVenda <= new Date(filtroDataFim + 'T23:59:59');
                 }
             }
             return buscaOk && vendedorOk && tipoOk && dataOk;
@@ -316,7 +317,7 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
                                                         {pedido.vendedor?.nome || '-'}
                                                     </td>
                                                     <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                                                        {fmtData(pedido.dataEntrega)}
+                                                        {fmtData(pedido.dataVenda)}
                                                     </td>
                                                     <td className="hidden lg:table-cell px-3 py-3 whitespace-nowrap text-sm text-right font-mono text-gray-700">
                                                         {pedido.bonificacao ? <span className="text-green-600 font-bold">R$ 0,00</span> : fmtValor(pedido.itens)}
