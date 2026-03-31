@@ -359,6 +359,7 @@ model TabelaPreco {
   debitaCaixa         Boolean  @default(false) @map("debita_caixa")
   ativo               Boolean  @default(true)
   permiteEspecial     Boolean  @default(false) @map("permite_especial") // Condição disponível para pedidos especiais
+  permitePedido       Boolean  @default(true)  @map("permite_pedido")   // Condição disponível para pedidos comuns
   permiteBonificacao  Boolean  @default(false) @map("permite_bonificacao") // Condição disponível para pedidos bonificação
   obs                 String?
   regrasCategoria     Json?    @map("regras_categoria") // Regras de preço por categoria CA para especiais: [{ categoria, precoBase, acrescimo }]

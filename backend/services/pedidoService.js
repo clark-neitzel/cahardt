@@ -267,7 +267,7 @@ const pedidoService = {
     },
 
     editar: async (id, dadosPedido) => {
-        const { clienteId, vendedorId, itens, statusEnvio, observacoes, dataVenda, opcaoCondicaoPagamento, nomeCondicaoPagamento, tipoPagamento } = dadosPedido;
+        const { clienteId, vendedorId, itens, statusEnvio, observacoes, dataVenda, opcaoCondicaoPagamento, nomeCondicaoPagamento, tipoPagamento, especial, bonificacao } = dadosPedido;
 
         return await prisma.$transaction(async (tx) => {
             const pedidoAntigo = await tx.pedido.findUnique({
@@ -322,6 +322,29 @@ const pedidoService = {
                 where: { pedidoId: id }
             });
 
+            // Se for enviar pedido especial ou bonificacao e ainda nao tem numero, gera a sequencia
+            let numeroGerado = undefined;
+            if (statusEnvio === 'ENVIAR') {
+                const isEspecial = especial !== undefined ? !!especial : pedidoAntigo.especial;
+                const isBonificacao = bonificacao !== undefined ? !!bonificacao : pedidoAntigo.bonificacao;
+                
+                if (isEspecial && !pedidoAntigo.numero) {
+                    const ultimoEspecial = await tx.pedido.findFirst({
+                        where: { especial: true, numero: { not: null } },
+                        orderBy: { numero: 'desc' },
+                        select: { numero: true }
+                    });
+                    numeroGerado = (ultimoEspecial?.numero || 0) + 1;
+                } else if (isBonificacao && !pedidoAntigo.numero) {
+                    const ultimoBonificacao = await tx.pedido.findFirst({
+                        where: { bonificacao: true, numero: { not: null } },
+                        orderBy: { numero: 'desc' },
+                        select: { numero: true }
+                    });
+                    numeroGerado = (ultimoBonificacao?.numero || 0) + 1;
+                }
+            }
+
             const pedidoAtualizado = await tx.pedido.update({
                 where: { id },
                 data: {
@@ -330,6 +353,9 @@ const pedidoService = {
                     flexTotal: flexTotalPedido,
                     statusEnvio,
                     observacoes,
+                    especial: especial !== undefined ? !!especial : undefined,
+                    bonificacao: bonificacao !== undefined ? !!bonificacao : undefined,
+                    ...(numeroGerado !== undefined ? { numero: numeroGerado } : {}),
                     opcaoCondicaoPagamento,
                     nomeCondicaoPagamento: nomeCondicaoPagamento || undefined,
                     tipoPagamento: tipoPagamento || undefined,

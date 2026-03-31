@@ -736,7 +736,10 @@ const migrationService = {
 
             // Update 52: Status de envio WhatsApp no pedido
             `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "whatsapp_enviado" BOOLEAN NOT NULL DEFAULT FALSE`,
-            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "whatsapp_erro" TEXT`
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "whatsapp_erro" TEXT`,
+
+            // Update 53: Flag "permite pedido" padrão em tabela_precos
+            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "permite_pedido" BOOLEAN NOT NULL DEFAULT TRUE`
         ];
 
         for (const [index, cmd] of commands.entries()) {

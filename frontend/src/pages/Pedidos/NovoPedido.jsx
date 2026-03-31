@@ -376,9 +376,10 @@ const NovoPedido = () => {
                     : (cliente.Condicao_de_pagamento ? [todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento)].filter(Boolean) : []);
                 permitidas = condicoesDoCliente.filter(c => c.ativo !== false && c.permiteBonificacao === true);
             } else {
-                permitidas = idsArray.length > 0
+                const condicoesDoCliente = idsArray.length > 0
                     ? todasCondicoes.filter(c => idsArray.includes(c.idCondicao) || idsArray.includes(c.id))
                     : (cliente.Condicao_de_pagamento ? [todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento)].filter(Boolean) : []);
+                permitidas = condicoesDoCliente.filter(c => c.ativo !== false && c.permitePedido !== false);
             }
 
             setCondicoesPermitidas(permitidas);
