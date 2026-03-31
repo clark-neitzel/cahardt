@@ -214,13 +214,17 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                                                 {chunkPedidos.map(p => {
                                                     const totalPedido = p.itens?.reduce((acc, i) => acc + (Number(i.valor || 0) * Number(i.quantidade || 0)), 0) || 0;
                                                     const pgto = p.nomeCondicaoPagamento || p.opcaoCondicaoPagamento || p.tipoPagamento || '-';
+                                                    const prefixoImp = p.bonificacao ? 'BN#' : p.especial ? 'ZZ#' : '';
+                                                    const numImp = prefixoImp ? `${prefixoImp}${p.numero}` : (p.numero || 'N/A');
 
                                                     return (
                                                         <tr key={p.id}>
-                                                            <td className="font-bold text-center">{p.numero || 'N/A'}</td>
+                                                            <td className="font-bold text-center">{numImp}</td>
                                                             <td className="wrap-text leading-tight">
-                                                                <div className="font-bold text-black">{p.cliente?.NomeFantasia}</div>
-                                                                <div className="text-[7px] text-black font-semibold">{p.cliente?.Nome}</div>
+                                                                <div className="font-bold text-black">{p.cliente?.NomeFantasia || p.cliente?.Nome || '—'}</div>
+                                                                {p.cliente?.NomeFantasia && p.cliente?.Nome && p.cliente.NomeFantasia !== p.cliente.Nome && (
+                                                                    <div className="text-[7px] text-black font-semibold">{p.cliente.Nome}</div>
+                                                                )}
                                                             </td>
                                                             <td className="text-[7px] italic wrap-text">{p.observacoes || ''}</td>
                                                             <td className="text-[7px] wrap-text font-bold leading-tight">{pgto}</td>
@@ -392,28 +396,35 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-gray-50">
                                         <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NF CA</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Endereço Geográfico</th>
-                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Volumes</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Retirar</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo / Nº</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Endereço Geográfico</th>
+                                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Volumes</th>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Retirar</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {embarque.pedidos.length === 0 ? (
                                             <tr><td colSpan="5" className="px-6 py-8 text-center text-gray-500">Caminhão Vazio.</td></tr>
-                                        ) : embarque.pedidos.map(p => (
+                                        ) : embarque.pedidos.map(p => {
+                                            const nomeCliente = p.cliente?.NomeFantasia || p.cliente?.Nome || '—';
+                                            const prefixo = p.bonificacao ? 'BN#' : p.especial ? 'ZZ#' : '';
+                                            const numExibido = prefixo ? `${prefixo}${p.numero}` : (p.numero || 'S/N');
+                                            const tipoCor = p.bonificacao ? 'text-green-700 bg-green-50' : p.especial ? 'text-purple-700 bg-purple-50' : 'text-gray-700';
+                                            return (
                                             <tr key={p.id}>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{p.numero || 'Sem Nº'}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{p.cliente?.NomeFantasia}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                                                    <MapPin className="inline h-3 w-3 mr-1 text-gray-400" />
-                                                    {p.cliente?.End_Logradouro || 'N/A'}, {p.cliente?.End_Numero || 'SN'} - {p.cliente?.End_Bairro || 'N/A'} ({p.cliente?.End_Cidade})
+                                                <td className="px-4 py-4 whitespace-nowrap">
+                                                    <span className={`text-sm font-mono font-bold px-1.5 py-0.5 rounded ${tipoCor}`}>{numExibido}</span>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-gray-700 bg-gray-50">
+                                                <td className="px-4 py-4 text-sm font-bold text-gray-900">{nomeCliente}</td>
+                                                <td className="px-4 py-4 text-sm text-gray-500 max-w-xs truncate">
+                                                    <MapPin className="inline h-3 w-3 mr-1 text-gray-400" />
+                                                    {p.cliente?.End_Logradouro || 'N/A'}, {p.cliente?.End_Numero || 'SN'} - {p.cliente?.End_Bairro || 'N/A'} ({p.cliente?.End_Cidade || '—'})
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-center text-sm font-bold text-gray-700 bg-gray-50">
                                                     {p.itens.reduce((acc, i) => acc + Number(i.quantidade), 0)} itens
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                                                <td className="px-4 py-4 whitespace-nowrap text-right text-sm">
                                                     <button
                                                         onClick={() => handleRemover(p.id)}
                                                         disabled={removerLoader === p.id}
@@ -424,7 +435,8 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                                                     </button>
                                                 </td>
                                             </tr>
-                                        ))}
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
