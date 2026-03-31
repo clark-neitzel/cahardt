@@ -345,7 +345,15 @@ const NovoPedido = () => {
             setVendedorId(cliente.idVendedor);
             setVendedorSelecionado(vendedorDoCliente || null);
             setClienteSearchText(cliente.NomeFantasia || cliente.Nome);
-            verificarDataEntrega(dataEntrega, cliente);
+
+            // Calcular automaticamente a próxima data de entrega do cliente (apenas em novo pedido)
+            if (!editId && cliente.Dia_de_entrega) {
+                const proximaData = calcularProximaData(cliente.Dia_de_entrega);
+                setDataEntrega(proximaData);
+                verificarDataEntrega(proximaData, cliente);
+            } else {
+                verificarDataEntrega(dataEntrega, cliente);
+            }
 
             let idsArray = [];
             if (Array.isArray(cliente.condicoes_pagamento_permitidas)) idsArray = cliente.condicoes_pagamento_permitidas;
