@@ -1,23 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, CheckSquare, Square, Save, X, Package, ChevronDown } from 'lucide-react';
+import { Search, CheckSquare, Square, Save, X, Package, ChevronDown, MapPin, User, CreditCard, Calendar, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
 
 const TipoBadge = ({ pedido }) => {
-    if (pedido.bonificacao) return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-green-100 text-green-700">BN</span>;
-    if (pedido.especial) return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-purple-100 text-purple-700">ZZ</span>;
-    return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-sky-100 text-sky-700">CA</span>;
+    if (pedido.bonificacao) return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200">BN</span>;
+    if (pedido.especial) return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200">ZZ</span>;
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-sky-100 text-sky-700 border border-sky-200">CA</span>;
 };
 
 const fmtData = (d) => {
-    if (!d) return '-';
+    if (!d) return null;
     const dt = new Date(d);
-    return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 };
 
-const fmtValor = (itens) => {
-    if (!itens?.length) return '-';
-    const total = itens.reduce((acc, item) => acc + (Number(item.precoUnitario || 0) * Number(item.quantidade || 0)), 0);
+const fmtValor = (pedido) => {
+    if (pedido.bonificacao) return <span className="text-green-600 font-bold text-xs">BONIFICAÇÃO</span>;
+    if (!pedido.itens?.length) return null;
+    const total = pedido.itens.reduce((acc, item) => acc + (Number(item.precoUnitario || 0) * Number(item.quantidade || 0)), 0);
+    if (total === 0) return null;
     return total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
@@ -53,7 +55,6 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
         fetchLivres();
     }, []);
 
-    // Lista de vendedores únicos para o filtro
     const vendedoresUnicos = useMemo(() => {
         const map = new Map();
         pedidosLivres.forEach(p => {
@@ -87,7 +88,6 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
                 (filtroTipo === 'bonificacao' && p.bonificacao);
             let dataOk = true;
             if (filtroDataInicio || filtroDataFim) {
-                // dataVenda = data de entrega escolhida pelo vendedor no pedido
                 const dataVenda = p.dataVenda ? new Date(p.dataVenda) : null;
                 if (!dataVenda) {
                     dataOk = false;
@@ -121,7 +121,6 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
         const temPedidos = selecionados.size > 0;
         const temAmostras = amostrasSelecionadas.size > 0;
         if (!temPedidos && !temAmostras) return toast.error('Selecione ao menos um pedido ou amostra.');
-
         try {
             setSaving(true);
             const promises = [];
@@ -140,71 +139,71 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
         }
     };
 
+    const temFiltroAtivo = filtroVendedor || filtroDataInicio || filtroDataFim || filtroTipo !== 'todos';
     const totalSelecionados = selecionados.size + amostrasSelecionadas.size;
     const todosSelecionados = aba === 'pedidos'
         ? selecionados.size === pedidosFiltrados.length && pedidosFiltrados.length > 0
         : amostrasSelecionadas.size === amostrasFiltradas.length && amostrasFiltradas.length > 0;
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-60 px-2 py-4 sm:px-4 sm:py-8">
-            <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-60 px-2 py-4 sm:px-4 sm:py-6">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[95vh] flex flex-col">
+
                 {/* Header */}
-                <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 rounded-t-lg">
-                    <h3 className="text-lg font-bold text-gray-900">Embarcar Pedidos e Amostras</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-                        <X className="h-6 w-6" />
+                <div className="px-4 sm:px-5 py-3.5 border-b border-gray-200 flex items-center justify-between bg-gray-50 rounded-t-xl">
+                    <h3 className="text-base font-bold text-gray-900">Embarcar Pedidos e Amostras</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                        <X className="h-5 w-5" />
                     </button>
                 </div>
 
                 {/* Abas */}
-                <div className="px-4 sm:px-6 pt-3 pb-0 border-b border-gray-200 bg-white">
-                    <div className="flex gap-2 overflow-x-auto">
+                <div className="px-4 sm:px-5 pt-3 pb-0 bg-white border-b border-gray-200">
+                    <div className="flex gap-4">
                         <button
                             onClick={() => setAba('pedidos')}
-                            className={`flex-shrink-0 px-3 py-1.5 text-xs font-bold rounded-t border-b-2 transition-colors ${aba === 'pedidos' ? 'border-sky-500 text-sky-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            className={`pb-2.5 text-sm font-semibold border-b-2 transition-colors ${aba === 'pedidos' ? 'border-sky-500 text-sky-700' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
                         >
-                            Pedidos ({pedidosLivres.length})
+                            Pedidos <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs ${aba === 'pedidos' ? 'bg-sky-100 text-sky-700' : 'bg-gray-100 text-gray-500'}`}>{pedidosLivres.length}</span>
                         </button>
                         <button
                             onClick={() => setAba('amostras')}
-                            className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-t border-b-2 transition-colors ${aba === 'amostras' ? 'border-orange-500 text-orange-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            className={`pb-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5 ${aba === 'amostras' ? 'border-orange-500 text-orange-700' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
                         >
                             <Package className="h-3.5 w-3.5" />
-                            Amostras ({amostrasLivres.length})
+                            Amostras <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-xs ${aba === 'amostras' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>{amostrasLivres.length}</span>
                         </button>
                     </div>
                 </div>
 
                 {/* Filtros */}
-                <div className="px-4 sm:px-6 py-3 border-b border-gray-200 bg-white space-y-2">
-                    {/* Busca */}
+                <div className="px-4 sm:px-5 py-3 border-b border-gray-100 bg-white space-y-2">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <input
                             type="text"
-                            placeholder={aba === 'pedidos' ? 'Buscar cliente ou nº...' : 'Buscar destinatário ou nº...'}
-                            className="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                            placeholder={aba === 'pedidos' ? 'Buscar por cliente ou nº do pedido...' : 'Buscar destinatário ou nº...'}
+                            className="block w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 transition"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
 
-                    {/* Filtros extras — só para aba pedidos */}
                     {aba === 'pedidos' && (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 items-center">
                             {/* Tipo */}
                             <div className="relative">
                                 <select
                                     value={filtroTipo}
                                     onChange={(e) => setFiltroTipo(e.target.value)}
-                                    className="appearance-none pl-3 pr-7 py-1.5 border border-gray-300 rounded text-xs bg-white focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                                    className="appearance-none pl-2.5 pr-6 py-1.5 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 font-medium text-gray-700"
                                 >
                                     <option value="todos">Todos os tipos</option>
-                                    <option value="normal">Normal (CA)</option>
-                                    <option value="especial">Especial (ZZ)</option>
-                                    <option value="bonificacao">Bonificação (BN)</option>
+                                    <option value="normal">CA — Normal</option>
+                                    <option value="especial">ZZ — Especial</option>
+                                    <option value="bonificacao">BN — Bonificação</option>
                                 </select>
-                                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                                <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
                             </div>
 
                             {/* Vendedor */}
@@ -213,190 +212,225 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
                                     <select
                                         value={filtroVendedor}
                                         onChange={(e) => setFiltroVendedor(e.target.value)}
-                                        className="appearance-none pl-3 pr-7 py-1.5 border border-gray-300 rounded text-xs bg-white focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                                        className="appearance-none pl-2.5 pr-6 py-1.5 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 font-medium text-gray-700"
                                     >
                                         <option value="">Todos os vendedores</option>
                                         {vendedoresUnicos.map(v => <option key={v} value={v}>{v}</option>)}
                                     </select>
-                                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                                    <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
                                 </div>
                             )}
 
-                            {/* Data entrega */}
-                            <input
-                                type="date"
-                                title="Entrega de"
-                                value={filtroDataInicio}
-                                onChange={(e) => setFiltroDataInicio(e.target.value)}
-                                className="pl-2 pr-2 py-1.5 border border-gray-300 rounded text-xs bg-white focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                            />
-                            <input
-                                type="date"
-                                title="Entrega até"
-                                value={filtroDataFim}
-                                onChange={(e) => setFiltroDataFim(e.target.value)}
-                                className="pl-2 pr-2 py-1.5 border border-gray-300 rounded text-xs bg-white focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                            />
+                            {/* Data de/até */}
+                            <div className="flex items-center gap-1">
+                                <input
+                                    type="date"
+                                    title="Entrega a partir de"
+                                    value={filtroDataInicio}
+                                    onChange={(e) => setFiltroDataInicio(e.target.value)}
+                                    className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-sky-400 text-gray-700 w-[130px]"
+                                />
+                                <span className="text-gray-400 text-xs">até</span>
+                                <input
+                                    type="date"
+                                    title="Entrega até"
+                                    value={filtroDataFim}
+                                    onChange={(e) => setFiltroDataFim(e.target.value)}
+                                    className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-sky-400 text-gray-700 w-[130px]"
+                                />
+                            </div>
 
-                            {(filtroVendedor || filtroDataInicio || filtroDataFim || filtroTipo !== 'todos') && (
+                            {temFiltroAtivo && (
                                 <button
                                     onClick={() => { setFiltroVendedor(''); setFiltroDataInicio(''); setFiltroDataFim(''); setFiltroTipo('todos'); }}
-                                    className="px-2 py-1.5 text-xs text-red-600 hover:text-red-800 border border-red-200 rounded"
+                                    className="px-2.5 py-1.5 text-xs font-medium text-red-500 hover:text-red-700 border border-red-200 hover:border-red-300 rounded-lg transition-colors"
                                 >
-                                    Limpar filtros
+                                    Limpar
                                 </button>
                             )}
                         </div>
                     )}
                 </div>
 
-                {/* Conteúdo */}
-                <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+                {/* Lista */}
+                <div className="flex-1 overflow-y-auto bg-gray-50">
                     {loading ? (
-                        <div className="text-center py-10 text-gray-500">Carregando...</div>
+                        <div className="text-center py-12 text-gray-400 text-sm">Carregando...</div>
                     ) : aba === 'pedidos' ? (
                         pedidosFiltrados.length === 0 ? (
-                            <div className="text-center py-10 text-gray-500">
-                                {pedidosLivres.length === 0 ? 'Nenhum pedido disponível no momento.' : 'Nenhum pedido encontrado com estes filtros.'}
+                            <div className="text-center py-12 text-gray-400 text-sm">
+                                {pedidosLivres.length === 0 ? 'Nenhum pedido disponível.' : 'Nenhum pedido com estes filtros.'}
                             </div>
                         ) : (
-                            <div className="overflow-x-auto shadow rounded-lg">
-                                <table className="min-w-full divide-y divide-gray-200 bg-white">
-                                    <thead className="bg-gray-100">
-                                        <tr>
-                                            <th className="px-3 py-3 text-left">
-                                                <button onClick={toggleTodos} className="text-sky-600 hover:text-sky-800">
-                                                    {todosSelecionados ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5" />}
-                                                </button>
-                                            </th>
-                                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Tipo</th>
-                                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Nº</th>
-                                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                                            <th className="hidden sm:table-cell px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Cidade</th>
-                                            <th className="hidden md:table-cell px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Condição</th>
-                                            <th className="hidden md:table-cell px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Vendedor</th>
-                                            <th className="hidden sm:table-cell px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Entrega</th>
-                                            <th className="hidden lg:table-cell px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {pedidosFiltrados.map((pedido) => {
-                                            const sel = selecionados.has(pedido.id);
-                                            const condicao = pedido.nomeCondicaoPagamento || pedido.opcaoCondicaoPagamento || pedido.tipoPagamento || '-';
-                                            return (
-                                                <tr
-                                                    key={pedido.id}
-                                                    onClick={() => toggleSelecao(pedido.id)}
-                                                    className={`cursor-pointer transition-colors ${sel ? 'bg-sky-50 hover:bg-sky-100' : 'hover:bg-gray-50'}`}
-                                                >
-                                                    <td className="px-3 py-3 whitespace-nowrap">
-                                                        {sel ? <CheckSquare className="h-5 w-5 text-sky-600" /> : <Square className="h-5 w-5 text-gray-400" />}
-                                                    </td>
-                                                    <td className="px-3 py-3 whitespace-nowrap">
+                            <>
+                                {/* Linha selecionar todos */}
+                                <div className="flex items-center gap-2 px-4 sm:px-5 py-2 bg-white border-b border-gray-100">
+                                    <button onClick={toggleTodos} className="flex items-center gap-2 text-xs font-medium text-gray-500 hover:text-sky-600 transition-colors">
+                                        {todosSelecionados
+                                            ? <CheckSquare className="h-4 w-4 text-sky-600" />
+                                            : <Square className="h-4 w-4" />}
+                                        {todosSelecionados ? 'Desmarcar todos' : `Selecionar todos (${pedidosFiltrados.length})`}
+                                    </button>
+                                    {selecionados.size > 0 && (
+                                        <span className="ml-auto text-xs font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full">
+                                            {selecionados.size} selecionado{selecionados.size > 1 ? 's' : ''}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Cards de pedidos */}
+                                <div className="divide-y divide-gray-100">
+                                    {pedidosFiltrados.map((pedido) => {
+                                        const sel = selecionados.has(pedido.id);
+                                        const condicao = pedido.nomeCondicaoPagamento || pedido.opcaoCondicaoPagamento || pedido.tipoPagamento;
+                                        const valorFormatado = fmtValor(pedido);
+                                        const dataEntrega = fmtData(pedido.dataVenda);
+                                        return (
+                                            <div
+                                                key={pedido.id}
+                                                onClick={() => toggleSelecao(pedido.id)}
+                                                className={`flex items-start gap-3 px-4 sm:px-5 py-3.5 cursor-pointer transition-colors ${sel ? 'bg-sky-50 border-l-4 border-l-sky-500' : 'bg-white hover:bg-gray-50 border-l-4 border-l-transparent'}`}
+                                            >
+                                                {/* Checkbox */}
+                                                <div className="flex-shrink-0 pt-0.5">
+                                                    {sel
+                                                        ? <CheckSquare className="h-5 w-5 text-sky-600" />
+                                                        : <Square className="h-5 w-5 text-gray-300" />}
+                                                </div>
+
+                                                {/* Conteúdo */}
+                                                <div className="flex-1 min-w-0">
+                                                    {/* Linha 1: tipo + número + nome cliente */}
+                                                    <div className="flex items-center gap-2 flex-wrap">
                                                         <TipoBadge pedido={pedido} />
-                                                    </td>
-                                                    <td className="px-3 py-3 whitespace-nowrap text-sm font-mono text-gray-900 font-semibold">
-                                                        {pedido.numero || 'S/N'}
-                                                    </td>
-                                                    <td className="px-3 py-3 text-sm text-gray-900 font-medium">
-                                                        <div className="max-w-[150px] truncate">
-                                                            {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Não encontrado'}
-                                                        </div>
-                                                        {/* Mobile: info extra */}
-                                                        <div className="sm:hidden text-xs text-gray-400 mt-0.5">
-                                                            {pedido.cliente?.End_Cidade || ''}{pedido.vendedor?.nome ? ` · ${pedido.vendedor.nome}` : ''}
-                                                        </div>
-                                                    </td>
-                                                    <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                                                        {pedido.cliente?.End_Cidade || '-'}
-                                                    </td>
-                                                    <td className="hidden md:table-cell px-3 py-3 text-xs text-gray-600 max-w-[120px]">
-                                                        <div className="truncate" title={condicao}>{condicao}</div>
-                                                    </td>
-                                                    <td className="hidden md:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                                                        {pedido.vendedor?.nome || '-'}
-                                                    </td>
-                                                    <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                                                        {fmtData(pedido.dataVenda)}
-                                                    </td>
-                                                    <td className="hidden lg:table-cell px-3 py-3 whitespace-nowrap text-sm text-right font-mono text-gray-700">
-                                                        {pedido.bonificacao ? <span className="text-green-600 font-bold">R$ 0,00</span> : fmtValor(pedido.itens)}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                        <span className="text-xs font-mono font-bold text-gray-500">#{pedido.numero || 'S/N'}</span>
+                                                        <span className="text-sm font-semibold text-gray-900 leading-tight">
+                                                            {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Cliente não encontrado'}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Linha 2: cidade, vendedor, condição, data, valor */}
+                                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                                                        {pedido.cliente?.End_Cidade && (
+                                                            <span className="flex items-center gap-1 text-xs text-gray-500">
+                                                                <MapPin className="h-3 w-3 flex-shrink-0" />
+                                                                {pedido.cliente.End_Cidade}
+                                                            </span>
+                                                        )}
+                                                        {pedido.vendedor?.nome && (
+                                                            <span className="flex items-center gap-1 text-xs text-gray-500">
+                                                                <User className="h-3 w-3 flex-shrink-0" />
+                                                                {pedido.vendedor.nome}
+                                                            </span>
+                                                        )}
+                                                        {condicao && (
+                                                            <span className="flex items-center gap-1 text-xs text-gray-500">
+                                                                <CreditCard className="h-3 w-3 flex-shrink-0" />
+                                                                {condicao}
+                                                            </span>
+                                                        )}
+                                                        {dataEntrega && (
+                                                            <span className="flex items-center gap-1 text-xs font-medium text-indigo-600">
+                                                                <Calendar className="h-3 w-3 flex-shrink-0" />
+                                                                {dataEntrega}
+                                                            </span>
+                                                        )}
+                                                        {valorFormatado && (
+                                                            <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 ml-auto">
+                                                                {typeof valorFormatado === 'string' ? (
+                                                                    <><DollarSign className="h-3 w-3 flex-shrink-0" />{valorFormatado}</>
+                                                                ) : valorFormatado}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
                         )
                     ) : (
                         amostrasFiltradas.length === 0 ? (
-                            <div className="text-center py-10 text-gray-500">Nenhuma amostra LIBERADA disponível.</div>
+                            <div className="text-center py-12 text-gray-400 text-sm">Nenhuma amostra LIBERADA disponível.</div>
                         ) : (
-                            <div className="overflow-x-auto shadow rounded-lg border border-orange-200">
-                                <table className="min-w-full divide-y divide-orange-100 bg-white">
-                                    <thead className="bg-orange-50">
-                                        <tr>
-                                            <th className="px-3 py-3 text-left">
-                                                <button onClick={toggleTodos} className="text-orange-600 hover:text-orange-800">
-                                                    {todosSelecionados ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5" />}
-                                                </button>
-                                            </th>
-                                            <th className="px-3 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">Nº</th>
-                                            <th className="px-3 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">Destinatário</th>
-                                            <th className="px-3 py-3 text-center text-xs font-medium text-orange-700 uppercase tracking-wider">Itens</th>
-                                            <th className="hidden sm:table-cell px-3 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">Vendedor</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-orange-100">
-                                        {amostrasFiltradas.map((amostra) => (
-                                            <tr key={amostra.id} onClick={() => toggleAmostra(amostra.id)} className={`cursor-pointer transition-colors ${amostrasSelecionadas.has(amostra.id) ? 'bg-orange-50 hover:bg-orange-100' : 'hover:bg-orange-50'}`}>
-                                                <td className="px-3 py-3 whitespace-nowrap">
-                                                    {amostrasSelecionadas.has(amostra.id) ? <CheckSquare className="h-5 w-5 text-orange-600" /> : <Square className="h-5 w-5 text-gray-400" />}
-                                                </td>
-                                                <td className="px-3 py-3 whitespace-nowrap text-sm text-orange-700 font-mono font-bold">
-                                                    AM#{amostra.numero}
-                                                </td>
-                                                <td className="px-3 py-3 text-sm text-gray-900 font-medium">
-                                                    {amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || '-'}
-                                                    <div className="sm:hidden text-xs text-gray-400 mt-0.5">{amostra.solicitadoPor?.nome || ''}</div>
-                                                </td>
-                                                <td className="px-3 py-3 whitespace-nowrap text-center text-sm text-gray-700 font-bold">
-                                                    {amostra.itens?.length || 0}
-                                                </td>
-                                                <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                                                    {amostra.solicitadoPor?.nome || '-'}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <>
+                                <div className="flex items-center gap-2 px-4 sm:px-5 py-2 bg-white border-b border-gray-100">
+                                    <button onClick={toggleTodos} className="flex items-center gap-2 text-xs font-medium text-gray-500 hover:text-orange-600 transition-colors">
+                                        {todosSelecionados
+                                            ? <CheckSquare className="h-4 w-4 text-orange-600" />
+                                            : <Square className="h-4 w-4" />}
+                                        {todosSelecionados ? 'Desmarcar todos' : `Selecionar todos (${amostrasFiltradas.length})`}
+                                    </button>
+                                    {amostrasSelecionadas.size > 0 && (
+                                        <span className="ml-auto text-xs font-bold text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full">
+                                            {amostrasSelecionadas.size} selecionada{amostrasSelecionadas.size > 1 ? 's' : ''}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="divide-y divide-gray-100">
+                                    {amostrasFiltradas.map((amostra) => {
+                                        const selA = amostrasSelecionadas.has(amostra.id);
+                                        return (
+                                            <div
+                                                key={amostra.id}
+                                                onClick={() => toggleAmostra(amostra.id)}
+                                                className={`flex items-start gap-3 px-4 sm:px-5 py-3.5 cursor-pointer transition-colors ${selA ? 'bg-orange-50 border-l-4 border-l-orange-400' : 'bg-white hover:bg-orange-50 border-l-4 border-l-transparent'}`}
+                                            >
+                                                <div className="flex-shrink-0 pt-0.5">
+                                                    {selA ? <CheckSquare className="h-5 w-5 text-orange-500" /> : <Square className="h-5 w-5 text-gray-300" />}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-mono font-bold text-orange-600">AM#{amostra.numero}</span>
+                                                        <span className="text-sm font-semibold text-gray-900">
+                                                            {amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || '-'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                                                        <span className="text-xs text-gray-500">{amostra.itens?.length || 0} itens</span>
+                                                        {amostra.solicitadoPor?.nome && (
+                                                            <span className="flex items-center gap-1 text-xs text-gray-500">
+                                                                <User className="h-3 w-3" />{amostra.solicitadoPor.nome}
+                                                            </span>
+                                                        )}
+                                                        {amostra.cliente?.End_Cidade && (
+                                                            <span className="flex items-center gap-1 text-xs text-gray-500">
+                                                                <MapPin className="h-3 w-3" />{amostra.cliente.End_Cidade}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
                         )
                     )}
                 </div>
 
                 {/* Footer */}
-                <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between rounded-b-lg gap-3">
-                    <div className="text-sm text-gray-700 flex-shrink-0">
-                        <span className="font-bold text-sky-700">{selecionados.size}</span> pedidos
-                        {amostrasSelecionadas.size > 0 && (
-                            <> + <span className="font-bold text-orange-700">{amostrasSelecionadas.size}</span> amostras</>
-                        )}
+                <div className="px-4 sm:px-5 py-3.5 bg-white border-t border-gray-200 flex items-center justify-between rounded-b-xl gap-3">
+                    <div className="text-sm text-gray-600 flex-shrink-0">
+                        {selecionados.size > 0 && <span className="font-bold text-sky-700">{selecionados.size} pedido{selecionados.size > 1 ? 's' : ''}</span>}
+                        {selecionados.size > 0 && amostrasSelecionadas.size > 0 && <span className="text-gray-400"> + </span>}
+                        {amostrasSelecionadas.size > 0 && <span className="font-bold text-orange-700">{amostrasSelecionadas.size} amostra{amostrasSelecionadas.size > 1 ? 's' : ''}</span>}
+                        {totalSelecionados === 0 && <span className="text-gray-400 text-xs">Nenhum selecionado</span>}
                         {aba === 'pedidos' && pedidosFiltrados.length !== pedidosLivres.length && (
                             <span className="ml-2 text-xs text-gray-400">({pedidosFiltrados.length} de {pedidosLivres.length} visíveis)</span>
                         )}
                     </div>
-                    <div className="flex space-x-3">
-                        <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-100">
+                    <div className="flex gap-2">
+                        <button onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 bg-white hover:bg-gray-50 transition-colors">
                             Cancelar
                         </button>
                         <button
                             onClick={handleAtrelar}
                             disabled={saving || totalSelecionados === 0}
-                            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
                         >
-                            <Save className="h-4 w-4 mr-2" />
+                            <Save className="h-4 w-4" />
                             {saving ? 'Atrelando...' : 'Atrelar à Carga'}
                         </button>
                     </div>
