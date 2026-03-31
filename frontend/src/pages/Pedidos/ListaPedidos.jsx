@@ -520,29 +520,29 @@ const ListaPedidos = () => {
                 </div>
             )}
 
-            {/* Abas: Pedidos | Especiais | Amostras */}
-            <div className="flex flex-wrap gap-1 mb-2 items-center">
+            {/* Abas: Pedidos | Especiais | Bonificação | Amostras */}
+            <div className="flex items-center mb-2 overflow-x-auto scrollbar-hide gap-1 pb-0.5">
                 <button
                     onClick={() => setAbaAtiva('pedidos')}
-                    className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'pedidos' ? 'bg-white text-blue-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                    className={`flex-shrink-0 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'pedidos' ? 'bg-white text-blue-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
                 >
                     Pedidos
                 </button>
                 <button
                     onClick={() => setAbaAtiva('especiais')}
-                    className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors flex items-center gap-1 ${abaAtiva === 'especiais' ? 'bg-white text-purple-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                    className={`flex-shrink-0 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'especiais' ? 'bg-white text-purple-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
                 >
                     Especiais
                 </button>
                 <button
                     onClick={() => setAbaAtiva('bonificacao')}
-                    className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors flex items-center gap-1 ${abaAtiva === 'bonificacao' ? 'bg-white text-green-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                    className={`flex-shrink-0 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'bonificacao' ? 'bg-white text-green-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
                 >
                     Bonificação
                 </button>
                 <button
                     onClick={() => setAbaAtiva('amostras')}
-                    className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors flex items-center gap-1 ${abaAtiva === 'amostras' ? 'bg-white text-orange-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                    className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'amostras' ? 'bg-white text-orange-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
                 >
                     <Package className="h-3.5 w-3.5" />
                     Amostras

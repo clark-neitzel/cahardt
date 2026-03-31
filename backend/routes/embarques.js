@@ -235,7 +235,8 @@ router.post('/:id/pedidos', verificarAuth, checkAcessoEmbarque, async (req, res)
             if (p.embarqueId) return true; // Já em outro embarque
             if (p.situacaoCA === 'FATURADO') return false; // OK: faturado
             if (p.especial && p.statusEnvio === 'ENVIAR') return false; // OK: especial pronto
-            return true; // Bloqueado: nem faturado nem especial pronto
+            if (p.bonificacao && p.statusEnvio === 'ENVIAR') return false; // OK: bonificação pronta
+            return true; // Bloqueado
         });
 
         if (pedidosBloqueados.length > 0) {

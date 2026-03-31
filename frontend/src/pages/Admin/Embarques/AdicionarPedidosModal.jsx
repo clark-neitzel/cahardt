@@ -1,7 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { Search, CheckSquare, Square, Save, X, Package } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, CheckSquare, Square, Save, X, Package, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
+
+const TipoBadge = ({ pedido }) => {
+    if (pedido.bonificacao) return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-green-100 text-green-700">BN</span>;
+    if (pedido.especial) return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-purple-100 text-purple-700">ZZ</span>;
+    return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-sky-100 text-sky-700">CA</span>;
+};
+
+const fmtData = (d) => {
+    if (!d) return '-';
+    const dt = new Date(d);
+    return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+};
+
+const fmtValor = (itens) => {
+    if (!itens?.length) return '-';
+    const total = itens.reduce((acc, item) => acc + (Number(item.precoUnitario || 0) * Number(item.quantidade || 0)), 0);
+    return total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+};
 
 const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
     const [pedidosLivres, setPedidosLivres] = useState([]);
@@ -11,7 +29,11 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
     const [selecionados, setSelecionados] = useState(new Set());
     const [amostrasSelecionadas, setAmostrasSelecionadas] = useState(new Set());
     const [searchTerm, setSearchTerm] = useState('');
-    const [aba, setAba] = useState('pedidos'); // 'pedidos' | 'amostras'
+    const [aba, setAba] = useState('pedidos');
+    const [filtroVendedor, setFiltroVendedor] = useState('');
+    const [filtroDataInicio, setFiltroDataInicio] = useState('');
+    const [filtroDataFim, setFiltroDataFim] = useState('');
+    const [filtroTipo, setFiltroTipo] = useState('todos');
 
     useEffect(() => {
         const fetchLivres = async () => {
@@ -22,7 +44,7 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
                 ]);
                 setPedidosLivres(livres);
                 setAmostrasLivres(amostras);
-            } catch (error) {
+            } catch {
                 toast.error('Erro ao buscar fila de faturamento.');
             } finally {
                 setLoading(false);
@@ -30,6 +52,15 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
         };
         fetchLivres();
     }, []);
+
+    // Lista de vendedores únicos para o filtro
+    const vendedoresUnicos = useMemo(() => {
+        const map = new Map();
+        pedidosLivres.forEach(p => {
+            if (p.vendedor?.nome) map.set(p.vendedor.nome, p.vendedor.nome);
+        });
+        return Array.from(map.values()).sort();
+    }, [pedidosLivres]);
 
     const toggleSelecao = (id) => {
         const novoSet = new Set(selecionados);
@@ -44,6 +75,36 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
         else novoSet.add(id);
         setAmostrasSelecionadas(novoSet);
     };
+
+    const pedidosFiltrados = useMemo(() => {
+        return pedidosLivres.filter(p => {
+            const nome = (p.cliente?.NomeFantasia || p.cliente?.Nome || '').toLowerCase();
+            const buscaOk = nome.includes(searchTerm.toLowerCase()) || String(p.numero || '').includes(searchTerm);
+            const vendedorOk = !filtroVendedor || p.vendedor?.nome === filtroVendedor;
+            const tipoOk = filtroTipo === 'todos' ||
+                (filtroTipo === 'normal' && !p.especial && !p.bonificacao) ||
+                (filtroTipo === 'especial' && p.especial) ||
+                (filtroTipo === 'bonificacao' && p.bonificacao);
+            let dataOk = true;
+            if (filtroDataInicio || filtroDataFim) {
+                const dataEntrega = p.dataEntrega ? new Date(p.dataEntrega) : null;
+                if (!dataEntrega) {
+                    dataOk = false;
+                } else {
+                    if (filtroDataInicio) dataOk = dataOk && dataEntrega >= new Date(filtroDataInicio);
+                    if (filtroDataFim) dataOk = dataOk && dataEntrega <= new Date(filtroDataFim + 'T23:59:59');
+                }
+            }
+            return buscaOk && vendedorOk && tipoOk && dataOk;
+        });
+    }, [pedidosLivres, searchTerm, filtroVendedor, filtroTipo, filtroDataInicio, filtroDataFim]);
+
+    const amostrasFiltradas = useMemo(() => {
+        return amostrasLivres.filter(a => {
+            const nome = (a.cliente?.NomeFantasia || a.cliente?.Nome || a.lead?.nomeEstabelecimento || '').toLowerCase();
+            return nome.includes(searchTerm.toLowerCase()) || String(a.numero || '').includes(searchTerm);
+        });
+    }, [amostrasLivres, searchTerm]);
 
     const toggleTodos = () => {
         if (aba === 'pedidos') {
@@ -63,12 +124,8 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
         try {
             setSaving(true);
             const promises = [];
-            if (temPedidos) {
-                promises.push(embarqueService.inserirPedidos(embarqueId, Array.from(selecionados)));
-            }
-            if (temAmostras) {
-                promises.push(embarqueService.inserirAmostras(embarqueId, Array.from(amostrasSelecionadas)));
-            }
+            if (temPedidos) promises.push(embarqueService.inserirPedidos(embarqueId, Array.from(selecionados)));
+            if (temAmostras) promises.push(embarqueService.inserirAmostras(embarqueId, Array.from(amostrasSelecionadas)));
             await Promise.all(promises);
             const msgs = [];
             if (temPedidos) msgs.push(`${selecionados.size} pedidos`);
@@ -82,144 +139,231 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
         }
     };
 
-    const pedidosFiltrados = pedidosLivres.filter(p => {
-        const nome = (p.cliente?.NomeFantasia || p.cliente?.Nome || '').toLowerCase();
-        return nome.includes(searchTerm.toLowerCase()) || String(p.numero || '').includes(searchTerm);
-    });
-
-    const amostrasFiltradas = amostrasLivres.filter(a => {
-        const nome = (a.cliente?.NomeFantasia || a.cliente?.Nome || a.lead?.nomeEstabelecimento || '').toLowerCase();
-        return nome.includes(searchTerm.toLowerCase()) || String(a.numero || '').includes(searchTerm);
-    });
-
     const totalSelecionados = selecionados.size + amostrasSelecionadas.size;
+    const todosSelecionados = aba === 'pedidos'
+        ? selecionados.size === pedidosFiltrados.length && pedidosFiltrados.length > 0
+        : amostrasSelecionadas.size === amostrasFiltradas.length && amostrasFiltradas.length > 0;
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-60 px-4 py-8">
-            <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 rounded-t-lg">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-60 px-2 py-4 sm:px-4 sm:py-8">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col">
+                {/* Header */}
+                <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 rounded-t-lg">
                     <h3 className="text-lg font-bold text-gray-900">Embarcar Pedidos e Amostras</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
                         <X className="h-6 w-6" />
                     </button>
                 </div>
 
-                {/* Abas + Busca */}
-                <div className="p-4 border-b border-gray-200 bg-white space-y-2">
-                    <div className="flex gap-2">
+                {/* Abas */}
+                <div className="px-4 sm:px-6 pt-3 pb-0 border-b border-gray-200 bg-white">
+                    <div className="flex gap-2 overflow-x-auto">
                         <button
                             onClick={() => setAba('pedidos')}
-                            className={`px-3 py-1.5 text-xs font-bold rounded border transition-colors ${aba === 'pedidos' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                            className={`flex-shrink-0 px-3 py-1.5 text-xs font-bold rounded-t border-b-2 transition-colors ${aba === 'pedidos' ? 'border-sky-500 text-sky-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                         >
-                            Pedidos FATURADOS ({pedidosLivres.length})
+                            Pedidos ({pedidosLivres.length})
                         </button>
                         <button
                             onClick={() => setAba('amostras')}
-                            className={`px-3 py-1.5 text-xs font-bold rounded border transition-colors flex items-center gap-1 ${aba === 'amostras' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                            className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-t border-b-2 transition-colors ${aba === 'amostras' ? 'border-orange-500 text-orange-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                         >
                             <Package className="h-3.5 w-3.5" />
-                            Amostras LIBERADAS ({amostrasLivres.length})
+                            Amostras ({amostrasLivres.length})
                         </button>
                     </div>
+                </div>
+
+                {/* Filtros */}
+                <div className="px-4 sm:px-6 py-3 border-b border-gray-200 bg-white space-y-2">
+                    {/* Busca */}
                     <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-gray-400" />
-                        </div>
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <input
                             type="text"
-                            placeholder={aba === 'pedidos' ? 'Buscar por cliente ou nº do pedido CA...' : 'Buscar por destinatário ou nº da amostra...'}
-                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"
+                            placeholder={aba === 'pedidos' ? 'Buscar cliente ou nº...' : 'Buscar destinatário ou nº...'}
+                            className="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-sky-500 focus:border-sky-500"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+
+                    {/* Filtros extras — só para aba pedidos */}
+                    {aba === 'pedidos' && (
+                        <div className="flex flex-wrap gap-2">
+                            {/* Tipo */}
+                            <div className="relative">
+                                <select
+                                    value={filtroTipo}
+                                    onChange={(e) => setFiltroTipo(e.target.value)}
+                                    className="appearance-none pl-3 pr-7 py-1.5 border border-gray-300 rounded text-xs bg-white focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                                >
+                                    <option value="todos">Todos os tipos</option>
+                                    <option value="normal">Normal (CA)</option>
+                                    <option value="especial">Especial (ZZ)</option>
+                                    <option value="bonificacao">Bonificação (BN)</option>
+                                </select>
+                                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                            </div>
+
+                            {/* Vendedor */}
+                            {vendedoresUnicos.length > 0 && (
+                                <div className="relative">
+                                    <select
+                                        value={filtroVendedor}
+                                        onChange={(e) => setFiltroVendedor(e.target.value)}
+                                        className="appearance-none pl-3 pr-7 py-1.5 border border-gray-300 rounded text-xs bg-white focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                                    >
+                                        <option value="">Todos os vendedores</option>
+                                        {vendedoresUnicos.map(v => <option key={v} value={v}>{v}</option>)}
+                                    </select>
+                                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                                </div>
+                            )}
+
+                            {/* Data entrega */}
+                            <input
+                                type="date"
+                                title="Entrega de"
+                                value={filtroDataInicio}
+                                onChange={(e) => setFiltroDataInicio(e.target.value)}
+                                className="pl-2 pr-2 py-1.5 border border-gray-300 rounded text-xs bg-white focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                            />
+                            <input
+                                type="date"
+                                title="Entrega até"
+                                value={filtroDataFim}
+                                onChange={(e) => setFiltroDataFim(e.target.value)}
+                                className="pl-2 pr-2 py-1.5 border border-gray-300 rounded text-xs bg-white focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                            />
+
+                            {(filtroVendedor || filtroDataInicio || filtroDataFim || filtroTipo !== 'todos') && (
+                                <button
+                                    onClick={() => { setFiltroVendedor(''); setFiltroDataInicio(''); setFiltroDataFim(''); setFiltroTipo('todos'); }}
+                                    className="px-2 py-1.5 text-xs text-red-600 hover:text-red-800 border border-red-200 rounded"
+                                >
+                                    Limpar filtros
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
+                {/* Conteúdo */}
                 <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
                     {loading ? (
                         <div className="text-center py-10 text-gray-500">Carregando...</div>
                     ) : aba === 'pedidos' ? (
-                        pedidosLivres.length === 0 ? (
-                            <div className="text-center py-10 text-gray-500">Nenhum pedido FATURADO livre no momento.</div>
+                        pedidosFiltrados.length === 0 ? (
+                            <div className="text-center py-10 text-gray-500">
+                                {pedidosLivres.length === 0 ? 'Nenhum pedido disponível no momento.' : 'Nenhum pedido encontrado com estes filtros.'}
+                            </div>
                         ) : (
-                            <div className="shadow border-b border-gray-200 sm:rounded-lg">
+                            <div className="overflow-x-auto shadow rounded-lg">
                                 <table className="min-w-full divide-y divide-gray-200 bg-white">
                                     <thead className="bg-gray-100">
                                         <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            <th className="px-3 py-3 text-left">
                                                 <button onClick={toggleTodos} className="text-sky-600 hover:text-sky-800">
-                                                    {selecionados.size === pedidosFiltrados.length && pedidosFiltrados.length > 0 ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5" />}
+                                                    {todosSelecionados ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5" />}
                                                 </button>
                                             </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nº Pedido CA</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cidade</th>
+                                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Tipo</th>
+                                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Nº</th>
+                                            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                            <th className="hidden sm:table-cell px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Cidade</th>
+                                            <th className="hidden md:table-cell px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Condição</th>
+                                            <th className="hidden md:table-cell px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Vendedor</th>
+                                            <th className="hidden sm:table-cell px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Entrega</th>
+                                            <th className="hidden lg:table-cell px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Total</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {pedidosFiltrados.map((pedido) => (
-                                            <tr key={pedido.id} onClick={() => toggleSelecao(pedido.id)} className="cursor-pointer hover:bg-gray-50">
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    {selecionados.has(pedido.id) ? (
-                                                        <CheckSquare className="h-5 w-5 text-sky-600" />
-                                                    ) : (
-                                                        <Square className="h-5 w-5 text-gray-400" />
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                                                    {pedido.numero || 'S/N'}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                                    {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Cliente não encontrado'}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {pedido.cliente?.End_Cidade || 'Sem endereço'}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {pedidosFiltrados.map((pedido) => {
+                                            const sel = selecionados.has(pedido.id);
+                                            const condicao = pedido.nomeCondicaoPagamento || pedido.opcaoCondicaoPagamento || pedido.tipoPagamento || '-';
+                                            return (
+                                                <tr
+                                                    key={pedido.id}
+                                                    onClick={() => toggleSelecao(pedido.id)}
+                                                    className={`cursor-pointer transition-colors ${sel ? 'bg-sky-50 hover:bg-sky-100' : 'hover:bg-gray-50'}`}
+                                                >
+                                                    <td className="px-3 py-3 whitespace-nowrap">
+                                                        {sel ? <CheckSquare className="h-5 w-5 text-sky-600" /> : <Square className="h-5 w-5 text-gray-400" />}
+                                                    </td>
+                                                    <td className="px-3 py-3 whitespace-nowrap">
+                                                        <TipoBadge pedido={pedido} />
+                                                    </td>
+                                                    <td className="px-3 py-3 whitespace-nowrap text-sm font-mono text-gray-900 font-semibold">
+                                                        {pedido.numero || 'S/N'}
+                                                    </td>
+                                                    <td className="px-3 py-3 text-sm text-gray-900 font-medium">
+                                                        <div className="max-w-[150px] truncate">
+                                                            {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Não encontrado'}
+                                                        </div>
+                                                        {/* Mobile: info extra */}
+                                                        <div className="sm:hidden text-xs text-gray-400 mt-0.5">
+                                                            {pedido.cliente?.End_Cidade || ''}{pedido.vendedor?.nome ? ` · ${pedido.vendedor.nome}` : ''}
+                                                        </div>
+                                                    </td>
+                                                    <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                                                        {pedido.cliente?.End_Cidade || '-'}
+                                                    </td>
+                                                    <td className="hidden md:table-cell px-3 py-3 text-xs text-gray-600 max-w-[120px]">
+                                                        <div className="truncate" title={condicao}>{condicao}</div>
+                                                    </td>
+                                                    <td className="hidden md:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                                                        {pedido.vendedor?.nome || '-'}
+                                                    </td>
+                                                    <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                                                        {fmtData(pedido.dataEntrega)}
+                                                    </td>
+                                                    <td className="hidden lg:table-cell px-3 py-3 whitespace-nowrap text-sm text-right font-mono text-gray-700">
+                                                        {pedido.bonificacao ? <span className="text-green-600 font-bold">R$ 0,00</span> : fmtValor(pedido.itens)}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
                         )
                     ) : (
-                        amostrasLivres.length === 0 ? (
+                        amostrasFiltradas.length === 0 ? (
                             <div className="text-center py-10 text-gray-500">Nenhuma amostra LIBERADA disponível.</div>
                         ) : (
-                            <div className="shadow border-b border-orange-200 sm:rounded-lg">
+                            <div className="overflow-x-auto shadow rounded-lg border border-orange-200">
                                 <table className="min-w-full divide-y divide-orange-100 bg-white">
                                     <thead className="bg-orange-50">
                                         <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">
+                                            <th className="px-3 py-3 text-left">
                                                 <button onClick={toggleTodos} className="text-orange-600 hover:text-orange-800">
-                                                    {amostrasSelecionadas.size === amostrasFiltradas.length && amostrasFiltradas.length > 0 ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5" />}
+                                                    {todosSelecionados ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5" />}
                                                 </button>
                                             </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">Nº</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">Destinatário</th>
-                                            <th className="px-6 py-3 text-center text-xs font-medium text-orange-700 uppercase tracking-wider">Itens</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">Vendedor</th>
+                                            <th className="px-3 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">Nº</th>
+                                            <th className="px-3 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">Destinatário</th>
+                                            <th className="px-3 py-3 text-center text-xs font-medium text-orange-700 uppercase tracking-wider">Itens</th>
+                                            <th className="hidden sm:table-cell px-3 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">Vendedor</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-orange-100">
                                         {amostrasFiltradas.map((amostra) => (
-                                            <tr key={amostra.id} onClick={() => toggleAmostra(amostra.id)} className="cursor-pointer hover:bg-orange-50">
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    {amostrasSelecionadas.has(amostra.id) ? (
-                                                        <CheckSquare className="h-5 w-5 text-orange-600" />
-                                                    ) : (
-                                                        <Square className="h-5 w-5 text-gray-400" />
-                                                    )}
+                                            <tr key={amostra.id} onClick={() => toggleAmostra(amostra.id)} className={`cursor-pointer transition-colors ${amostrasSelecionadas.has(amostra.id) ? 'bg-orange-50 hover:bg-orange-100' : 'hover:bg-orange-50'}`}>
+                                                <td className="px-3 py-3 whitespace-nowrap">
+                                                    {amostrasSelecionadas.has(amostra.id) ? <CheckSquare className="h-5 w-5 text-orange-600" /> : <Square className="h-5 w-5 text-gray-400" />}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-700 font-mono font-bold">
+                                                <td className="px-3 py-3 whitespace-nowrap text-sm text-orange-700 font-mono font-bold">
                                                     AM#{amostra.numero}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                                <td className="px-3 py-3 text-sm text-gray-900 font-medium">
                                                     {amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || '-'}
+                                                    <div className="sm:hidden text-xs text-gray-400 mt-0.5">{amostra.solicitadoPor?.nome || ''}</div>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700 font-bold">
+                                                <td className="px-3 py-3 whitespace-nowrap text-center text-sm text-gray-700 font-bold">
                                                     {amostra.itens?.length || 0}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500">
                                                     {amostra.solicitadoPor?.nome || '-'}
                                                 </td>
                                             </tr>
@@ -231,11 +375,15 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
                     )}
                 </div>
 
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between rounded-b-lg">
-                    <div className="text-sm text-gray-700">
+                {/* Footer */}
+                <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between rounded-b-lg gap-3">
+                    <div className="text-sm text-gray-700 flex-shrink-0">
                         <span className="font-bold text-sky-700">{selecionados.size}</span> pedidos
                         {amostrasSelecionadas.size > 0 && (
                             <> + <span className="font-bold text-orange-700">{amostrasSelecionadas.size}</span> amostras</>
+                        )}
+                        {aba === 'pedidos' && pedidosFiltrados.length !== pedidosLivres.length && (
+                            <span className="ml-2 text-xs text-gray-400">({pedidosFiltrados.length} de {pedidosLivres.length} visíveis)</span>
                         )}
                     </div>
                     <div className="flex space-x-3">
