@@ -32,6 +32,12 @@ router.put('/:id/aprovar-especial', pedidoController.aprovarEspecial);
 // Reverter Pedido Especial (desfazer aprovação → volta para ABERTO)
 router.put('/:id/reverter-especial', pedidoController.reverterEspecial);
 
+// Aprovar Pedido Bonificação
+router.put('/:id/aprovar-bonificacao', pedidoController.aprovarBonificacao);
+
+// Reverter Pedido Bonificação (desfazer aprovação → volta para ABERTO)
+router.put('/:id/reverter-bonificacao', pedidoController.reverterBonificacao);
+
 // Excluir Pedido Existente (Apenas Rascunho/ABERTO/ERRO)
 router.delete('/:id', pedidoController.excluir);
 

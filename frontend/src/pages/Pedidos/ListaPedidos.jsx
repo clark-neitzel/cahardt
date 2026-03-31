@@ -57,8 +57,11 @@ const ListaPedidos = () => {
 
     const podeAprovar = user?.permissoes?.Pode_Aprovar_Especial || user?.permissoes?.admin;
     const podeReverter = user?.permissoes?.Pode_Reverter_Especial || user?.permissoes?.admin;
+    const podeAprovarBonificacao = user?.permissoes?.Pode_Aprovar_Bonificacao || user?.permissoes?.admin;
+    const podeReverterBonificacao = user?.permissoes?.Pode_Reverter_Bonificacao || user?.permissoes?.admin;
     const podeExcluirPedido = user?.permissoes?.Pode_Excluir_Pedido || user?.permissoes?.admin;
     const podeExcluirEspecial = user?.permissoes?.Pode_Excluir_Especial || user?.permissoes?.admin;
+    const podeExcluirBonificacao = user?.permissoes?.Pode_Excluir_Bonificacao || user?.permissoes?.admin;
     const podeExcluirAmostra = user?.permissoes?.Pode_Excluir_Amostra || user?.permissoes?.admin;
     const podeVerTodosVendedores = user?.permissoes?.admin || user?.permissoes?.pedidos?.clientes === 'todos';
     
@@ -216,8 +219,47 @@ const ListaPedidos = () => {
         }
     };
 
+    const handleAprovarBonificacao = async (pedidoId) => {
+        if (!podeAprovarBonificacao) return;
+        try {
+            setAprovando(pedidoId);
+            await pedidoService.aprovarBonificacao(pedidoId);
+            toast.success('Bonificação aprovada!');
+            setPedidos(prev => prev.map(p =>
+                p.id === pedidoId ? { ...p, statusEnvio: 'RECEBIDO', situacaoCA: 'FATURADO' } : p
+            ));
+            if (selectedPedido?.id === pedidoId) {
+                setSelectedPedido(prev => ({ ...prev, statusEnvio: 'RECEBIDO', situacaoCA: 'FATURADO' }));
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao aprovar bonificação.');
+        } finally {
+            setAprovando(null);
+        }
+    };
+
+    const handleReverterBonificacao = async (pedidoId) => {
+        if (!podeReverterBonificacao) return;
+        if (!window.confirm('Tem certeza que deseja reverter esta bonificação para ABERTO?')) return;
+        try {
+            setRevertendo(pedidoId);
+            await pedidoService.reverterBonificacao(pedidoId);
+            toast.success('Bonificação revertida para ABERTO!');
+            setPedidos(prev => prev.map(p =>
+                p.id === pedidoId ? { ...p, statusEnvio: 'ABERTO', situacaoCA: null } : p
+            ));
+            if (selectedPedido?.id === pedidoId) {
+                setSelectedPedido(prev => ({ ...prev, statusEnvio: 'ABERTO', situacaoCA: null }));
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao reverter bonificação.');
+        } finally {
+            setRevertendo(null);
+        }
+    };
+
     const handleExcluirPedido = async (pedido) => {
-        const tipo = pedido.especial ? 'pedido especial' : 'pedido';
+        const tipo = pedido.bonificacao ? 'bonificação' : pedido.especial ? 'pedido especial' : 'pedido';
         if (!window.confirm(`Tem certeza que deseja excluir este ${tipo}? Esta ação não pode ser desfeita.`)) return;
         try {
             await pedidoService.excluir(pedido.id);
@@ -713,7 +755,7 @@ const ListaPedidos = () => {
                                                 {pedido.situacaoCA === 'FATURADO' && (
                                                     <button onClick={(e) => { e.stopPropagation(); handlePrintPedido(pedido); }} className="p-1.5 text-gray-400 hover:text-purple-600 rounded hover:bg-gray-100" title="Imprimir Pedido"><Printer className="h-4 w-4" /></button>
                                                 )}
-                                                {(pedido.especial ? podeExcluirEspecial : podeExcluirPedido) && !pedido.embarqueId && (!pedido.statusEntrega || pedido.statusEntrega === 'PENDENTE') && !['FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA) && (
+                                                {(pedido.bonificacao ? podeExcluirBonificacao : pedido.especial ? podeExcluirEspecial : podeExcluirPedido) && !pedido.embarqueId && (!pedido.statusEntrega || pedido.statusEntrega === 'PENDENTE') && !['FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA) && (
                                                     <button onClick={(e) => { e.stopPropagation(); handleExcluirPedido(pedido); }} className="p-1.5 text-gray-300 hover:text-red-600 rounded hover:bg-gray-100" title="Excluir pedido"><Trash2 className="h-4 w-4" /></button>
                                                 )}
                                                 <button
@@ -785,6 +827,50 @@ const ListaPedidos = () => {
                                         </button>
                                         {podeAprovar && (
                                             <button onClick={() => handleAprovarEspecial(selectedPedido.id)} className="px-4 py-2 bg-green-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1">
+                                                <CheckCircle className="h-4 w-4" /> Faturar
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Bonificação: pendente de aprovação */}
+                            {selectedPedido.bonificacao && selectedPedido.statusEnvio === 'ENVIAR' && (
+                                <div className="bg-green-50 p-3 rounded border border-green-200 flex flex-wrap justify-between items-center gap-2">
+                                    <span className="text-sm font-bold text-green-900">Bonificação pendente de aprovação</span>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => { setSelectedPedido(null); navigate(`/pedidos/editar/${selectedPedido.id}`); }} className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1">
+                                            <Pencil className="h-4 w-4" /> Editar
+                                        </button>
+                                        {podeAprovarBonificacao && (
+                                            <button onClick={() => handleAprovarBonificacao(selectedPedido.id)} disabled={aprovando === selectedPedido.id} className="px-4 py-2 bg-green-600 text-white rounded font-bold text-sm shadow-sm disabled:opacity-50">{aprovando === selectedPedido.id ? 'Aprovando...' : 'Aprovar agora'}</button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                            {/* Bonificação: faturada */}
+                            {selectedPedido.bonificacao && selectedPedido.statusEnvio === 'RECEBIDO' && podeReverterBonificacao && (
+                                <div className="bg-orange-50 p-3 rounded border border-orange-200 flex flex-wrap justify-between items-center gap-2">
+                                    <span className="text-sm font-bold text-orange-900">Bonificação faturada</span>
+                                    <button
+                                        onClick={() => handleReverterBonificacao(selectedPedido.id)}
+                                        disabled={revertendo === selectedPedido.id}
+                                        className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1 hover:bg-orange-700 disabled:opacity-50"
+                                    >
+                                        <RotateCcw className="h-4 w-4" /> {revertendo === selectedPedido.id ? 'Revertendo...' : 'Reverter para Aberto'}
+                                    </button>
+                                </div>
+                            )}
+                            {/* Bonificação: em aberto */}
+                            {selectedPedido.bonificacao && ['ABERTO', 'ERRO'].includes(selectedPedido.statusEnvio) && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(selectedPedido.situacaoCA)) && (
+                                <div className="bg-green-50 p-3 rounded border border-green-200 flex flex-wrap justify-between items-center gap-2">
+                                    <span className="text-sm font-bold text-green-900">Bonificação em aberto</span>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => { setSelectedPedido(null); navigate(`/pedidos/editar/${selectedPedido.id}`); }} className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1">
+                                            <Pencil className="h-4 w-4" /> Editar
+                                        </button>
+                                        {podeAprovarBonificacao && (
+                                            <button onClick={() => handleAprovarBonificacao(selectedPedido.id)} disabled={aprovando === selectedPedido.id} className="px-4 py-2 bg-green-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1 disabled:opacity-50">
                                                 <CheckCircle className="h-4 w-4" /> Faturar
                                             </button>
                                         )}

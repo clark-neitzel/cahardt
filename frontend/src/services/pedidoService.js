@@ -61,6 +61,18 @@ const pedidoService = {
         return response.data;
     },
 
+    // Aprovar Pedido Bonificação
+    aprovarBonificacao: async (id) => {
+        const response = await api.put(`/pedidos/${id}/aprovar-bonificacao`);
+        return response.data;
+    },
+
+    // Reverter Pedido Bonificação (desfaz aprovação → volta ABERTO)
+    reverterBonificacao: async (id) => {
+        const response = await api.put(`/pedidos/${id}/reverter-bonificacao`);
+        return response.data;
+    },
+
     // Excluir Pedido Existente (Apenas Rascunho/Em Aberto)
     excluir: async (id) => {
         const response = await api.delete(`/pedidos/${id}`);

@@ -14,7 +14,7 @@ const TabelaPrecos = () => {
     const [editingItem, setEditingItem] = useState(null);
     const [isCreating, setIsCreating] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [editForm, setEditForm] = useState({ acrescimoPreco: 0, valorMinimo: 0, ativo: true, debitaCaixa: false, permiteEspecial: false });
+    const [editForm, setEditForm] = useState({ acrescimoPreco: 0, valorMinimo: 0, ativo: true, debitaCaixa: false, permiteEspecial: false, permiteBonificacao: false });
     const [categoriasCA, setCategoriasCA] = useState([]);
 
     useEffect(() => {
@@ -55,6 +55,7 @@ const TabelaPrecos = () => {
             valorMinimo: item.valorMinimo || 0,
             debitaCaixa: item.debitaCaixa || false,
             permiteEspecial: item.permiteEspecial || false,
+            permiteBonificacao: item.permiteBonificacao || false,
             categoriasEspecial: item.categoriasEspecial || [],
             ativo: item.ativo,
             regrasCategoria: item.regrasCategoria || []
@@ -78,6 +79,7 @@ const TabelaPrecos = () => {
             valorMinimo: 0,
             debitaCaixa: false,
             permiteEspecial: false,
+            permiteBonificacao: false,
             categoriasEspecial: [],
             ativo: true,
             regrasCategoria: []
@@ -212,6 +214,11 @@ const TabelaPrecos = () => {
                                                 {item.permiteEspecial && (
                                                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200">
                                                         Especial
+                                                    </span>
+                                                )}
+                                                {item.permiteBonificacao && (
+                                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-green-50 text-green-700 border-green-200">
+                                                        Bonificação
                                                     </span>
                                                 )}
                                                 {item.regrasCategoria?.length > 0 && (
@@ -496,6 +503,22 @@ const TabelaPrecos = () => {
                                         )}
                                     </div>
                                 )}
+                            </div>
+
+                            {/* Permite Bonificação */}
+                            <div className="p-4 bg-green-50 rounded-lg border border-green-200 space-y-3">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-gray-300 text-green-600 focus:ring-green-500 h-4 w-4"
+                                        checked={editForm.permiteBonificacao}
+                                        onChange={(e) => setEditForm({ ...editForm, permiteBonificacao: e.target.checked })}
+                                    />
+                                    <span className="text-sm font-semibold text-green-800">Permite Pedido Bonificação</span>
+                                </label>
+                                <p className="text-[11px] text-green-600 mt-1 ml-6">
+                                    Marque se esta condição pode ser usada em pedidos de bonificação. Apenas condições marcadas aparecerão quando o vendedor ativar "Bonificação".
+                                </p>
                             </div>
 
                             {/* Debita Caixa */}

@@ -34,6 +34,7 @@ const DEFAULT_PERMISSIONS = {
     // Exclusão de Registros
     Pode_Excluir_Pedido: false,
     Pode_Excluir_Especial: false,
+    Pode_Excluir_Bonificacao: false,
     Pode_Excluir_Amostra: false,
     // Pedidos Especiais
     Pode_Criar_Especial: false,
@@ -41,6 +42,10 @@ const DEFAULT_PERMISSIONS = {
     Pode_Reverter_Especial: false,
     categoriasEspeciais: [], // Categorias extras visíveis em pedidos especiais
     condicoesEspeciais: [], // Condições de pagamento permitidas para pedidos especiais
+    // Pedidos Bonificação
+    Pode_Criar_Bonificacao: false,
+    Pode_Aprovar_Bonificacao: false,
+    Pode_Reverter_Bonificacao: false,
     // Metas de Vendas
     Pode_Gerenciar_Metas: false,
     // Financeiro
@@ -516,6 +521,19 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <input
                                     type="checkbox"
                                     className="rounded border-red-300 text-red-600 focus:ring-red-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Excluir_Bonificacao}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Excluir_Bonificacao: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-red-900 font-bold block">Excluir Bonificações</span>
+                                    <span className="text-red-700 text-xs">Permite excluir pedidos de bonificação em status ABERTO.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-red-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-red-300 text-red-600 focus:ring-red-500 h-4 w-4"
                                     checked={!!permissoes.Pode_Excluir_Amostra}
                                     onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Excluir_Amostra: e.target.checked }))}
                                 />
@@ -636,6 +654,51 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 </p>
                             </div>
                         )}
+                    </div>
+
+                    {/* Pedidos Bonificação */}
+                    <div className="border-t pt-4">
+                        <h4 className="font-medium text-gray-900 mb-4">Pedidos Bonificação</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-green-50 p-4 rounded-md border border-green-200">
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-green-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-green-300 text-green-600 focus:ring-green-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Criar_Bonificacao}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Criar_Bonificacao: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-green-900 font-bold block">Pode Criar Bonificação</span>
+                                    <span className="text-green-700 text-xs">Habilita o botão "Bonificação" na tela de novo pedido. Não gera contas a receber e não envia ao CA.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-green-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-green-300 text-green-600 focus:ring-green-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Aprovar_Bonificacao}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Aprovar_Bonificacao: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-green-900 font-bold block">Pode Aprovar Bonificação</span>
+                                    <span className="text-green-700 text-xs">Permite aprovar/faturar pedidos de bonificação pendentes na aba Bonificação.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-red-50 rounded transition-colors col-span-full">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-red-300 text-red-600 focus:ring-red-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Reverter_Bonificacao}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Reverter_Bonificacao: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-red-900 font-bold block">Pode Reverter Bonificação</span>
+                                    <span className="text-red-700 text-xs">Nível crítico: Permite reverter bonificações aprovadas para ABERTO (editável).</span>
+                                </div>
+                            </label>
+                        </div>
                     </div>
 
                     {/* Metas de Vendas */}

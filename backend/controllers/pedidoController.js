@@ -260,6 +260,80 @@ const pedidoController = {
         }
     },
 
+    aprovarBonificacao: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const permissoes = req.user?.permissoes || {};
+
+            if (!permissoes.Pode_Aprovar_Bonificacao && !permissoes.admin) {
+                return res.status(403).json({ error: 'Você não tem permissão para aprovar pedidos de bonificação.' });
+            }
+
+            const pedido = await prisma.pedido.findUnique({ where: { id }, select: { bonificacao: true, statusEnvio: true } });
+            if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+            if (!pedido.bonificacao) return res.status(400).json({ error: 'Este pedido não é uma bonificação.' });
+            if (pedido.statusEnvio === 'RECEBIDO') return res.status(400).json({ error: 'Este pedido já foi aprovado.' });
+
+            const pedidoAprovado = await prisma.pedido.update({
+                where: { id },
+                data: {
+                    statusEnvio: 'RECEBIDO',
+                    situacaoCA: 'FATURADO',
+                    enviadoEm: new Date()
+                }
+            });
+
+            res.json({ message: 'Bonificação aprovada com sucesso.', pedido: pedidoAprovado });
+        } catch (error) {
+            console.error('Erro ao aprovar bonificação:', error);
+            res.status(500).json({ error: 'Erro ao aprovar bonificação.' });
+        }
+    },
+
+    reverterBonificacao: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const permissoes = req.user?.permissoes || {};
+
+            if (!permissoes.Pode_Reverter_Bonificacao && !permissoes.admin) {
+                return res.status(403).json({ error: 'Você não tem permissão para reverter bonificações.' });
+            }
+
+            const pedido = await prisma.pedido.findUnique({
+                where: { id },
+                select: { bonificacao: true, statusEnvio: true, embarqueId: true },
+            });
+            if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+            if (!pedido.bonificacao) return res.status(400).json({ error: 'Este pedido não é uma bonificação.' });
+            if (pedido.statusEnvio !== 'RECEBIDO') return res.status(400).json({ error: 'Bonificação não está aprovada/faturada.' });
+
+            const pedidoRevertido = await prisma.pedido.update({
+                where: { id },
+                data: {
+                    statusEnvio: 'ABERTO',
+                    situacaoCA: null,
+                    enviadoEm: null
+                }
+            });
+
+            await prisma.auditLog.create({
+                data: {
+                    acao: 'REVERTER_BONIFICACAO',
+                    entidade: 'Pedido',
+                    entidadeId: id,
+                    detalhes: `Bonificação revertida para ABERTO por ${req.user.nome || req.user.login}`,
+                    usuarioId: req.user.id,
+                    usuarioNome: req.user.nome || req.user.login || '-'
+                }
+            });
+
+            res.json({ message: 'Bonificação revertida para ABERTO com sucesso.', pedido: pedidoRevertido });
+        } catch (error) {
+            console.error('Erro ao reverter bonificação:', error);
+            res.status(500).json({ error: 'Erro ao reverter bonificação.' });
+        }
+    },
+
     relatorio: async (req, res) => {
         try {
             const { dataVendaDe, dataVendaAte, dataCriacaoDe, dataCriacaoAte, vendedorId, clienteId, statusEnvio, especial, situacaoCA, statusEntrega } = req.query;

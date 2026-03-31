@@ -367,6 +367,12 @@ const NovoPedido = () => {
                     ? todasCondicoes.filter(c => idsArray.includes(c.idCondicao) || idsArray.includes(c.id))
                     : (cliente.Condicao_de_pagamento ? [todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento)].filter(Boolean) : []);
                 permitidas = condicoesDoCliente.filter(c => c.ativo !== false && c.permiteEspecial === true);
+            } else if (bonificacao) {
+                // Para bonificação: apenas condições marcadas como permiteBonificacao E que o cliente tenha
+                const condicoesDoCliente = idsArray.length > 0
+                    ? todasCondicoes.filter(c => idsArray.includes(c.idCondicao) || idsArray.includes(c.id))
+                    : (cliente.Condicao_de_pagamento ? [todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento)].filter(Boolean) : []);
+                permitidas = condicoesDoCliente.filter(c => c.ativo !== false && c.permiteBonificacao === true);
             } else {
                 permitidas = idsArray.length > 0
                     ? todasCondicoes.filter(c => idsArray.includes(c.idCondicao) || idsArray.includes(c.id))
@@ -1309,7 +1315,7 @@ const NovoPedido = () => {
                                                 {especial
                                                     ? 'Este cliente não possui condição de pagamento habilitada para pedido especial. Solicite ao administrador.'
                                                     : bonificacao
-                                                    ? 'Nenhuma tabela de preço habilitada para este cliente.'
+                                                    ? 'Este cliente não está autorizado para bonificação. Solicite a liberação ao administrador.'
                                                     : 'Nenhuma tabela de preço habilitada para este cliente.'}
                                             </p>
                                         )}

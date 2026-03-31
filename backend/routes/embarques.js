@@ -86,13 +86,14 @@ router.get('/amostras-disponiveis', verificarAuth, checkAcessoEmbarque, async (r
 // ==========================================
 router.get('/pedidos-disponiveis', verificarAuth, checkAcessoEmbarque, async (req, res) => {
     try {
-        // Regra de Ouro: FATURADOS ou Especiais prontos (ENVIAR), sem Embarque
+        // Regra de Ouro: FATURADOS, Especiais prontos (ENVIAR) ou Bonificações prontas (ENVIAR), sem Embarque
         const pedidosLivres = await prisma.pedido.findMany({
             where: {
                 embarqueId: null,
                 OR: [
                     { situacaoCA: 'FATURADO' },
-                    { especial: true, statusEnvio: 'ENVIAR' }
+                    { especial: true, statusEnvio: 'ENVIAR' },
+                    { bonificacao: true, statusEnvio: 'ENVIAR' }
                 ]
             },
             orderBy: { dataVenda: 'asc' }, // Prioriza as entregas mais velhas
