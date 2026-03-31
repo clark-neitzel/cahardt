@@ -185,6 +185,7 @@ model Pedido {
   primeiroVencimento     DateTime? @map("primeiro_vencimento")
   intervaloDias          Int       @default(0) @map("intervalo_dias")
   especial               Boolean   @default(false) // Pedido especial (sem nota) - não envia ao CA
+  bonificacao            Boolean   @default(false) // Pedido bonificação - não envia ao CA, valor total 0, sem contas a receber
 
   // Status de Integração
   statusEnvio            String    @default("ABERTO") @map("status_envio") // ABERTO, ENVIAR, SINCRONIZANDO, RECEBIDO, ERRO

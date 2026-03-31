@@ -6,12 +6,16 @@ const { calcularItensComFlex, calcularDiferencaFlex, gerarParcelasData } = requi
 const pedidoService = {
     // 1. Listagem de pedidos com filtros (para a tela de histórico)
     listar: async (filtros) => {
-        const { statusEnvio, vendedorId, clienteId, especial, dataVendaDe, dataVendaAte, createdAtDe, createdAtAte, busca } = filtros;
+        const { statusEnvio, vendedorId, clienteId, especial, bonificacao, dataVendaDe, dataVendaAte, createdAtDe, createdAtAte, busca } = filtros;
 
         const where = {};
         if (statusEnvio) where.statusEnvio = statusEnvio;
         if (vendedorId) where.vendedorId = vendedorId;
         if (clienteId) where.clienteId = clienteId;
+
+        if (bonificacao !== undefined && bonificacao !== '') {
+            where.bonificacao = (bonificacao === 'true' || bonificacao === true);
+        }
 
         if (especial !== undefined && especial !== '') {
             where.especial = (especial === 'true' || especial === true);
@@ -44,11 +48,13 @@ const pedidoService = {
                 { cliente: { End_Bairro: { contains: termo, mode: 'insensitive' } } },
                 { vendedor: { nome: { contains: termo, mode: 'insensitive' } } },
                 !isNaN(numBusca) ? { numero: numBusca } : null,
-                // Suporte para busca por prefixo ZZ# e #
-                termo.toLowerCase().startsWith('zz#') && !isNaN(parseInt(termo.substring(3))) 
+                // Suporte para busca por prefixo ZZ#, BN# e #
+                termo.toLowerCase().startsWith('zz#') && !isNaN(parseInt(termo.substring(3)))
                     ? { numero: parseInt(termo.substring(3)), especial: true } : null,
-                termo.startsWith('#') && !isNaN(parseInt(termo.substring(1))) 
-                    ? { numero: parseInt(termo.substring(1)), especial: false } : null,
+                termo.toLowerCase().startsWith('bn#') && !isNaN(parseInt(termo.substring(3)))
+                    ? { numero: parseInt(termo.substring(3)), bonificacao: true } : null,
+                termo.startsWith('#') && !isNaN(parseInt(termo.substring(1)))
+                    ? { numero: parseInt(termo.substring(1)), especial: false, bonificacao: false } : null,
             ].filter(Boolean);
         }
 
@@ -101,6 +107,7 @@ const pedidoService = {
             canalOrigem,
             usuarioLancamentoId,
             especial, // Pedido especial (sem nota)
+            bonificacao, // Pedido bonificação (não vai pro CA, valor 0)
             itens, // array de objetos
             statusEnvio // ABERTO ou ENVIAR
         } = dadosPedido;
@@ -153,6 +160,17 @@ const pedidoService = {
                 numeroEspecial = (ultimoEspecial?.numero || 0) + 1;
             }
 
+            // Se pedido bonificação, atribuir número BN sequencial
+            let numeroBonificacao = undefined;
+            if (bonificacao && statusEnvio === 'ENVIAR') {
+                const ultimoBonificacao = await tx.pedido.findFirst({
+                    where: { bonificacao: true, numero: { not: null } },
+                    orderBy: { numero: 'desc' },
+                    select: { numero: true }
+                });
+                numeroBonificacao = (ultimoBonificacao?.numero || 0) + 1;
+            }
+
             // Criação base do pedido
             const novoPedido = await tx.pedido.create({
                 data: {
@@ -161,10 +179,11 @@ const pedidoService = {
                     dataVenda: new Date(dataVenda),
                     observacoes,
                     especial: !!especial,
-                    numero: numeroEspecial || undefined,
-                    tipoPagamento: tipoPagamento || (especial ? 'DINHEIRO' : undefined),
+                    bonificacao: !!bonificacao,
+                    numero: numeroBonificacao || numeroEspecial || undefined,
+                    tipoPagamento: tipoPagamento || (especial ? 'DINHEIRO' : (bonificacao ? 'DINHEIRO' : undefined)),
                     opcaoCondicaoPagamento: opcaoCondicaoPagamento || undefined,
-                    nomeCondicaoPagamento: nomeCondicaoPagamento || (especial ? 'Especial' : null),
+                    nomeCondicaoPagamento: nomeCondicaoPagamento || (especial ? 'Especial' : (bonificacao ? 'Bonificação' : null)),
                     qtdParcelas: qtdParcelas ? parseInt(qtdParcelas) : 1,
                     primeiroVencimento: primeiroVencimento ? new Date(primeiroVencimento) : undefined,
                     intervaloDias: intervaloDias ? parseInt(intervaloDias) : 0,
@@ -226,8 +245,8 @@ const pedidoService = {
                 }, 0);
             }
 
-            // Gerar Conta a Receber para todos os pedidos enviados
-            if (statusEnvio === 'ENVIAR') {
+            // Gerar Conta a Receber para todos os pedidos enviados (exceto bonificação)
+            if (statusEnvio === 'ENVIAR' && !bonificacao) {
                 const valorTotal = itensData.reduce((s, i) => s + (i.valor * i.quantidade), 0);
                 const parcelasData = gerarParcelasData({ valorTotal, qtdParcelas, intervaloDias, primeiroVencimento, dataVenda });
 
@@ -262,9 +281,10 @@ const pedidoService = {
             const isSomenteRevisao = Object.keys(dadosPedido).length === 1 && typeof dadosPedido.revisaoPendente === 'boolean';
 
             const podeEditarEspecial = pedidoAntigo.especial && pedidoAntigo.statusEnvio === 'ENVIAR';
+            const podeEditarBonificacao = pedidoAntigo.bonificacao && pedidoAntigo.statusEnvio === 'ENVIAR';
 
-            if (!['ABERTO', 'ERRO'].includes(pedidoAntigo.statusEnvio) && !isSomenteRevisao && !podeEditarEspecial) {
-                throw new Error('Só é permitido editar dados de vendas em Rascunho (Em Aberto), com Erro de Envio ou Especiais Pendentes.');
+            if (!['ABERTO', 'ERRO'].includes(pedidoAntigo.statusEnvio) && !isSomenteRevisao && !podeEditarEspecial && !podeEditarBonificacao) {
+                throw new Error('Só é permitido editar dados de vendas em Rascunho (Em Aberto), com Erro de Envio ou Especiais/Bonificação Pendentes.');
             }
 
             if (isSomenteRevisao) {

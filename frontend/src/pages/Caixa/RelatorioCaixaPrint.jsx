@@ -74,7 +74,7 @@ const RelatorioCaixaPrint = () => {
             tipo: 'PEDIDO',
             clienteNome: p.clienteNome,
             observacao: p.observacao,
-            pedidoId: p.especial ? `ZZ#${p.numero || '—'}` : `#${p.numero || '—'}`,
+            pedidoId: p.bonificacao ? `BN#${p.numero || '—'}` : p.especial ? `ZZ#${p.numero || '—'}` : `#${p.numero || '—'}`,
             canal: null,
             leadNome: null,
             hora: p.createdAt,

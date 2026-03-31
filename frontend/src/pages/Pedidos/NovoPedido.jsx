@@ -116,6 +116,7 @@ const NovoPedido = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [especial, setEspecial] = useState(false);
+    const [bonificacao, setBonificacao] = useState(false);
 
     // Core Data
     const [clientes, setClientes] = useState([]);
@@ -213,9 +214,12 @@ const NovoPedido = () => {
                 try {
                     const pd = await pedidoService.detalhar(editId);
                     if (pd) {
-                        // Restaurar flag especial — produtos serão carregados quando a condição for selecionada (via useEffect)
+                        // Restaurar flag especial/bonificacao — produtos serão carregados quando a condição for selecionada (via useEffect)
                         if (pd.especial) {
                             setEspecial(true);
+                        }
+                        if (pd.bonificacao) {
+                            setBonificacao(true);
                         }
 
                         setClienteId(pd.clienteId);
@@ -382,7 +386,7 @@ const NovoPedido = () => {
             // Abrir o formulário (Data/Condição) para o vendedor configurar
             setMostrarFormulario(true);
         }
-    }, [clienteId, clientes, todasCondicoes, especial]);
+    }, [clienteId, clientes, todasCondicoes, especial, bonificacao]);
 
     useEffect(() => {
         if (clienteSelecionado) verificarDataEntrega(dataEntrega, clienteSelecionado);
@@ -719,6 +723,7 @@ const NovoPedido = () => {
             idCategoria: null, latLng, statusEnvio,
             canalOrigem: canalOrigem || null,
             especial: !!especial,
+            bonificacao: !!bonificacao,
             itens: itensLimpos
         };
 
@@ -727,7 +732,7 @@ const NovoPedido = () => {
             else await pedidoService.criar(payload);
 
             localStorage.removeItem('@CAHardt:NovoPedido_Draft');
-            navigate('/pedidos');
+            navigate('/rotas');
         } catch (error) {
             toast.error(error.response?.data?.error || "Erro ao salvar pedido.", { duration: 6000, style: { maxWidth: "600px" } });
         } finally {
@@ -754,14 +759,11 @@ const NovoPedido = () => {
                 || (p.codigo && p.codigo.toLowerCase().includes(termoBusca));
         });
 
-        const itensAdicionadosIds = Array.from(itensMap.keys());
-        
         const historicoPorData = Array.from(historicoMap.entries())
             .sort((a, b) => new Date(b[1].ultimaCompra) - new Date(a[1].ultimaCompra));
-        
-        // Unir produtos já comprados com os produtos que estão no carrinho (itensMap), 
-        // para garantir que apareçam na mesma tabela principal de edição.
-        const jaCompradosIds = new Set([...historicoPorData.map(([pid]) => pid), ...itensAdicionadosIds]);
+
+        // Apenas produtos do histórico de compras (sem incluir itensMap para evitar que itens pulem de seção)
+        const jaCompradosIds = new Set(historicoPorData.map(([pid]) => pid));
 
         const jaC = [];
         const promoC = [];
@@ -801,7 +803,7 @@ const NovoPedido = () => {
         try {
             await pedidoService.excluir(editId);
             localStorage.removeItem('@CAHardt:NovoPedido_Draft');
-            navigate('/pedidos');
+            navigate('/rotas');
         } catch (error) {
             toast.error(error.response?.data?.error || "Erro ao excluir o pedido.", { duration: 6000, style: { maxWidth: "600px" } });
         } finally {
@@ -1115,10 +1117,13 @@ const NovoPedido = () => {
                             <ArrowLeft className="h-5 w-5" />
                         </button>
                         <h1 className="text-base font-bold text-gray-900">
-                            {editId ? 'Editar Pedido' : 'Novo Pedido'}
+                            {editId ? 'Editar Pedido' : bonificacao ? 'Nova Bonificação' : especial ? 'Novo Especial' : 'Novo Pedido'}
                         </h1>
                         {isEncaixe && (
                             <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">ENCAIXE</span>
+                        )}
+                        {bonificacao && (
+                            <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">BONIFICAÇÃO</span>
                         )}
                     </div>
                     <div className="flex items-center gap-3">
@@ -1134,10 +1139,10 @@ const NovoPedido = () => {
                 </div>
 
                 {/* Barra flex */}
-                <div className={`px-4 py-1 flex justify-between items-center text-xs font-bold text-white ${flexTotal >= 0 ? 'bg-green-600' : 'bg-red-600'}`}>
-                    <span>Flex: {flexTotal > 0 && '+'}{flexTotal.toFixed(2).replace('.', ',')}</span>
+                <div className={`px-4 py-1 flex justify-between items-center text-xs font-bold text-white ${bonificacao ? 'bg-green-700' : flexTotal >= 0 ? 'bg-green-600' : 'bg-red-600'}`}>
+                    <span>{bonificacao ? 'Bonificação' : `Flex: ${flexTotal > 0 ? '+' : ''}${flexTotal.toFixed(2).replace('.', ',')}`}</span>
                     <span className="font-normal opacity-80">
-                        {itensMap.size} {itensMap.size === 1 ? 'item' : 'itens'} · Total: R$ {vTotal.toFixed(2).replace('.', ',')}
+                        {itensMap.size} {itensMap.size === 1 ? 'item' : 'itens'} · Total: R$ {bonificacao ? '0,00' : vTotal.toFixed(2).replace('.', ',')}
                     </span>
                 </div>
             </div>
@@ -1221,40 +1226,55 @@ const NovoPedido = () => {
                                     )}
                                 </div>
 
-                                {/* Toggle Pedido Especial */}
-                                {(user?.permissoes?.Pode_Criar_Especial || user?.permissoes?.admin) && (
-                                    <div className="flex items-center justify-between bg-purple-50 p-2.5 rounded-md border border-purple-200">
-                                        <div>
-                                            <span className="text-xs font-bold text-purple-900">Pedido Especial</span>
-                                            <p className="text-[10px] text-purple-700">Sem nota fiscal — categorias e condições especiais</p>
-                                        </div>
-                                        <label className="relative inline-flex items-center cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                className="sr-only peer"
-                                                checked={especial}
-                                                onChange={async (e) => {
-                                                    const isEspecial = e.target.checked;
-                                                    setEspecial(isEspecial);
+                                {/* Botões Especial / Bonificação */}
+                                {(user?.permissoes?.Pode_Criar_Especial || user?.permissoes?.Pode_Criar_Bonificacao || user?.permissoes?.admin) && (
+                                    <div className="flex gap-2">
+                                        {(user?.permissoes?.Pode_Criar_Especial || user?.permissoes?.admin) && (
+                                            <button
+                                                type="button"
+                                                className={`flex-1 px-3 py-2 rounded-md text-xs font-bold border transition-colors ${especial ? 'bg-purple-600 text-white border-purple-600' : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'}`}
+                                                onClick={async () => {
+                                                    const novo = !especial;
+                                                    setEspecial(novo);
+                                                    if (novo) setBonificacao(false);
                                                     setCondicaoPagamentoId('');
                                                     setCondicaoSelecionada(null);
-                                                    if (!isEspecial) {
-                                                        // Volta ao normal: recarregar com categorias normais
+                                                    if (!novo && !bonificacao) {
                                                         await recarregarProdutos(categoriasNormalRef.current);
-                                                    } else {
-                                                        // Especial: limpar produtos até selecionar condição
+                                                    } else if (novo) {
                                                         setProdutos([]);
                                                     }
                                                 }}
-                                            />
-                                            <div className="w-9 h-5 bg-gray-300 peer-checked:bg-purple-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
-                                        </label>
+                                            >
+                                                Especial
+                                            </button>
+                                        )}
+                                        {(user?.permissoes?.Pode_Criar_Bonificacao || user?.permissoes?.admin) && (
+                                            <button
+                                                type="button"
+                                                className={`flex-1 px-3 py-2 rounded-md text-xs font-bold border transition-colors ${bonificacao ? 'bg-green-600 text-white border-green-600' : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'}`}
+                                                onClick={async () => {
+                                                    const novo = !bonificacao;
+                                                    setBonificacao(novo);
+                                                    if (novo) setEspecial(false);
+                                                    setCondicaoPagamentoId('');
+                                                    setCondicaoSelecionada(null);
+                                                    if (!novo && !especial) {
+                                                        await recarregarProdutos(categoriasNormalRef.current);
+                                                    } else if (novo) {
+                                                        await recarregarProdutos(categoriasNormalRef.current);
+                                                    }
+                                                }}
+                                            >
+                                                Bonificação
+                                            </button>
+                                        )}
                                     </div>
                                 )}
 
                                 {/* Condição de pagamento */}
                                 <div className="relative">
-                                    <label className="text-xs text-gray-500 font-medium">Condição de Pagamento {especial && <span className="text-purple-600">(Especial)</span>}</label>
+                                    <label className="text-xs text-gray-500 font-medium">Condição de Pagamento {especial && <span className="text-purple-600">(Especial)</span>}{bonificacao && <span className="text-green-600">(Bonificação)</span>}</label>
                                         <div
                                             className="mt-0.5 w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm font-semibold flex justify-between items-center cursor-pointer"
                                             onClick={() => setMostrarCondicoesDropdown(!mostrarCondicoesDropdown)}
@@ -1280,6 +1300,8 @@ const NovoPedido = () => {
                                             <p className="text-red-500 text-xs mt-1">
                                                 {especial
                                                     ? 'Este cliente não possui condição de pagamento habilitada para pedido especial. Solicite ao administrador.'
+                                                    : bonificacao
+                                                    ? 'Nenhuma tabela de preço habilitada para este cliente.'
                                                     : 'Nenhuma tabela de preço habilitada para este cliente.'}
                                             </p>
                                         )}
@@ -1407,7 +1429,7 @@ const NovoPedido = () => {
                             <div>
                                 <AlertCircle className="h-10 w-10 text-amber-400 mx-auto mb-3" />
                                 <p className="text-sm text-gray-900 font-bold">Selecione a Condição de Pagamento</p>
-                                <p className="text-xs text-gray-500 mt-1 font-medium">{especial ? 'As categorias de produtos serão definidas pela condição selecionada.' : 'Você precisa definir a tabela e juros base no topo.'}</p>
+                                <p className="text-xs text-gray-500 mt-1 font-medium">{especial ? 'As categorias de produtos serão definidas pela condição selecionada.' : bonificacao ? 'Selecione a condição de pagamento para o pedido bonificação.' : 'Você precisa definir a tabela e juros base no topo.'}</p>
                             </div>
                         ) : (
                             <div>
@@ -1461,7 +1483,7 @@ const NovoPedido = () => {
                                 className="w-full bg-green-600 active:bg-green-700 text-white font-bold py-3.5 rounded-lg shadow-sm text-[15px] disabled:opacity-50 transition-colors flex items-center justify-center gap-2 tracking-wide"
                             >
                                 <CheckCircle className="h-5 w-5" />
-                                {saving ? 'ENVIANDO...' : `FECHAR PEDIDO · R$ ${vTotal.toFixed(2).replace('.', ',')}`}
+                                {saving ? 'ENVIANDO...' : bonificacao ? `FECHAR BONIFICAÇÃO · R$ 0,00` : `FECHAR PEDIDO · R$ ${vTotal.toFixed(2).replace('.', ',')}`}
                             </button>
                         );
                     })()}

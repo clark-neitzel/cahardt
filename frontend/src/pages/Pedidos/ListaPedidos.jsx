@@ -7,7 +7,7 @@ import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
-const fmtNumero = (pedido) => pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
+const fmtNumero = (pedido) => pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
 
 const ListaPedidos = () => {
     const navigate = useNavigate();
@@ -43,7 +43,7 @@ const ListaPedidos = () => {
     const [selectedPedido, setSelectedPedido] = useState(null);
     const [abaAtiva, setAbaAtiva] = useState(() => {
         return localStorage.getItem('pedidos_aba_ativa') || 'pedidos';
-    }); // 'pedidos' | 'especiais' | 'amostras'
+    }); // 'pedidos' | 'especiais' | 'bonificacao' | 'amostras'
 
     useEffect(() => {
         localStorage.setItem('pedidos_aba_ativa', abaAtiva);
@@ -123,9 +123,14 @@ const ListaPedidos = () => {
                 params.createdAtAte = filtros.dataCriacaoAte;
             }
 
-            // Se for aba de pedidos ou especiais, busca da tabela de pedidos
-            if (abaAtiva === 'pedidos' || abaAtiva === 'especiais') {
-                params.especial = abaAtiva === 'especiais' ? 'true' : 'false';
+            // Se for aba de pedidos, especiais ou bonificacao, busca da tabela de pedidos
+            if (abaAtiva === 'pedidos' || abaAtiva === 'especiais' || abaAtiva === 'bonificacao') {
+                if (abaAtiva === 'bonificacao') {
+                    params.bonificacao = 'true';
+                } else {
+                    params.especial = abaAtiva === 'especiais' ? 'true' : 'false';
+                    params.bonificacao = 'false';
+                }
                 const data = await pedidoService.listar(params);
                 setPedidos(data);
                 // Inicializar status WhatsApp a partir dos dados persistidos
@@ -488,6 +493,12 @@ const ListaPedidos = () => {
                     Especiais
                 </button>
                 <button
+                    onClick={() => setAbaAtiva('bonificacao')}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors flex items-center gap-1 ${abaAtiva === 'bonificacao' ? 'bg-white text-green-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                >
+                    Bonificação
+                </button>
+                <button
                     onClick={() => setAbaAtiva('amostras')}
                     className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors flex items-center gap-1 ${abaAtiva === 'amostras' ? 'bg-white text-orange-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
                 >
@@ -495,7 +506,7 @@ const ListaPedidos = () => {
                     Amostras
                 </button>
 
-                {abaAtiva !== 'amostras' && pedidos.filter(p => p.situacaoCA === 'FATURADO').length > 0 && (
+                {!['amostras', 'bonificacao'].includes(abaAtiva) && pedidos.filter(p => p.situacaoCA === 'FATURADO').length > 0 && (
                     <button
                         onClick={toggleTodosFiltrados}
                         className="ml-auto px-2 py-1 text-[10px] font-medium text-gray-500 hover:text-purple-600 transition-colors"

@@ -41,6 +41,14 @@ const pedidoController = {
                 }
             }
 
+            // Validação de permissão para pedidos bonificação
+            if (dadosPedido.bonificacao) {
+                const permissoes = req.user?.permissoes || {};
+                if (!permissoes.Pode_Criar_Bonificacao && !permissoes.admin) {
+                    return res.status(403).json({ error: 'Você não tem permissão para criar pedidos de bonificação.' });
+                }
+            }
+
             const novoPedido = await pedidoService.criar(dadosPedido);
 
             // Enviar notificação WhatsApp via BotConversa (não bloqueia resposta)

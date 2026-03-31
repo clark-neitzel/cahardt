@@ -27,7 +27,8 @@ const syncPedidosService = {
                     statusEnvio: {
                         in: ['ENVIAR', 'SINCRONIZANDO']
                     },
-                    especial: false // Pedidos especiais não são enviados ao CA
+                    especial: false, // Pedidos especiais não são enviados ao CA
+                    bonificacao: false // Pedidos bonificação não são enviados ao CA
                 },
                 include: {
                     cliente: true,

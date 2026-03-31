@@ -14,7 +14,7 @@ const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
 // ═══════════════════════════════════════════════════════════
 const PedidoA4 = ({ pedido }) => {
     const total = pedido.itens?.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0) || 0;
-    const numStr = pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
+    const numStr = pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
 
     return (
         <div className="print-page bg-white text-black" style={{ width: '210mm', minHeight: '148mm', padding: '8mm 12mm' }}>
@@ -105,7 +105,7 @@ const PedidoA4 = ({ pedido }) => {
 // ═══════════════════════════════════════════════════════════
 const PedidoCupom = ({ pedido, isLast }) => {
     const total = pedido.itens?.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0) || 0;
-    const numStr = pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
+    const numStr = pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
     const sep = '━'.repeat(26);
 
     return (
@@ -366,7 +366,7 @@ const ImpressaoPedido = () => {
     // Gerar dados ESC/POS para um pedido
     const gerarEscPos = (pedido) => {
         const total = pedido.itens?.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0) || 0;
-        const numStr = pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
+        const numStr = pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
         const sep = ''.padStart(42, '-');
         const ESC = '\x1B';
         const GS = '\x1D';
