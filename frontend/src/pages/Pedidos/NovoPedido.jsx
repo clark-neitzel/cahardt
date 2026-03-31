@@ -95,7 +95,6 @@ const calcularProximaData = (diasAbertosStr) => {
 
 const TIPOS_ATENDIMENTO = [
     { value: 'VISITA', label: 'Visita Presencial' },
-    { value: 'AMOSTRA', label: 'Amostra' },
     { value: 'LIGACAO', label: 'Ligação' },
     { value: 'WHATSAPP', label: 'WhatsApp' },
     { value: 'OUTROS', label: 'Outros' }

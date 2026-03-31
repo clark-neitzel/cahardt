@@ -18,7 +18,7 @@ const fmtData = (d) => {
 const fmtValor = (pedido) => {
     if (pedido.bonificacao) return <span className="text-green-600 font-bold text-xs">BONIFICAÇÃO</span>;
     if (!pedido.itens?.length) return null;
-    const total = pedido.itens.reduce((acc, item) => acc + (Number(item.precoUnitario || 0) * Number(item.quantidade || 0)), 0);
+    const total = pedido.itens.reduce((acc, item) => acc + (Number(item.valor || item.precoUnitario || 0) * Number(item.quantidade || 0)), 0);
     if (total === 0) return null;
     return total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
@@ -78,9 +78,17 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
     };
 
     const pedidosFiltrados = useMemo(() => {
+        const termo = searchTerm.toLowerCase();
         return pedidosLivres.filter(p => {
-            const nome = (p.cliente?.NomeFantasia || p.cliente?.Nome || '').toLowerCase();
-            const buscaOk = nome.includes(searchTerm.toLowerCase()) || String(p.numero || '').includes(searchTerm);
+            const condicao = (p.nomeCondicaoPagamento || p.opcaoCondicaoPagamento || p.tipoPagamento || '').toLowerCase();
+            const clienteNome = (p.cliente?.NomeFantasia || p.cliente?.Nome || '').toLowerCase();
+            const cidade = (p.cliente?.End_Cidade || '').toLowerCase();
+            const vendedorNome = (p.vendedor?.nome || '').toLowerCase();
+            const tipoAbreviacao = p.bonificacao ? 'bn' : (p.especial ? 'zz' : 'ca');
+            const dataVenda = p.dataVenda ? new Date(p.dataVenda).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '';
+
+            const strBusca = `${clienteNome} ${String(p.numero || '')} ${cidade} ${vendedorNome} ${condicao} ${dataVenda} ${tipoAbreviacao}`;
+            const buscaOk = termo === '' || strBusca.includes(termo);
             const vendedorOk = !filtroVendedor || p.vendedor?.nome === filtroVendedor;
             const tipoOk = filtroTipo === 'todos' ||
                 (filtroTipo === 'normal' && !p.especial && !p.bonificacao) ||
@@ -101,9 +109,14 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
     }, [pedidosLivres, searchTerm, filtroVendedor, filtroTipo, filtroDataInicio, filtroDataFim]);
 
     const amostrasFiltradas = useMemo(() => {
+        const termo = searchTerm.toLowerCase();
         return amostrasLivres.filter(a => {
-            const nome = (a.cliente?.NomeFantasia || a.cliente?.Nome || a.lead?.nomeEstabelecimento || '').toLowerCase();
-            return nome.includes(searchTerm.toLowerCase()) || String(a.numero || '').includes(searchTerm);
+            const clienteNome = (a.cliente?.NomeFantasia || a.cliente?.Nome || a.lead?.nomeEstabelecimento || '').toLowerCase();
+            const cidade = (a.cliente?.End_Cidade || '').toLowerCase();
+            const usuarioNome = (a.solicitadoPor?.nome || '').toLowerCase();
+
+            const strBusca = `${clienteNome} ${String(a.numero || '')} ${cidade} ${usuarioNome}`;
+            return termo === '' || strBusca.includes(termo);
         });
     }, [amostrasLivres, searchTerm]);
 
