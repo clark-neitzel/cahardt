@@ -187,7 +187,7 @@ const NovoPedido = () => {
             const [clientesData, produtosData, condicoesData, vendedoresData] = await Promise.all([
                 clienteService.listar({ limit: 2000 }),
                 produtoService.listar(paramsProd),
-                tabelaPrecoService.listar(),
+                tabelaPrecoService.listar(true),
                 vendedorService.listar()
             ]);
 

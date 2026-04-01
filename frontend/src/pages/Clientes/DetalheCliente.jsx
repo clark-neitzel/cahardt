@@ -102,7 +102,7 @@ const DetalheCliente = () => {
         try {
             const [clienteData, condicoesData, condicoesCAData, vendedoresData, categoriasCli] = await Promise.all([
                 clienteService.detalhar(uuid),
-                tabelaPrecoService.listar(),
+                tabelaPrecoService.listar(true),
                 condicaoPagamentoService.listar(),
                 vendedorService.listar(),
                 categoriaClienteService.listar().catch(() => [])
