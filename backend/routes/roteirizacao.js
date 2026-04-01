@@ -47,7 +47,7 @@ const parsePontoGPS = (pontoGPS) => {
 };
 
 const formatHorario = (date) => {
-    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' });
 };
 
 // ── POST /api/roteirizar ──────────────────────────────────────────────────────
@@ -311,11 +311,12 @@ router.post('/', verificarAuth, async (req, res) => {
         }
 
         // 7. Calcular ETAs progressivos exatos
+        // horaSaida é no fuso do usuário (BRT = America/Sao_Paulo).
+        // Constrói o Date via string ISO com offset -03:00 para que o timestamp interno seja UTC correto.
         let horarioAtual = new Date();
         if (horaSaida) {
-            const [hh, mm] = horaSaida.split(':').map(Number);
-            horarioAtual = new Date();
-            horarioAtual.setHours(hh, mm, 0, 0);
+            const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // "YYYY-MM-DD"
+            horarioAtual = new Date(`${hoje}T${horaSaida}:00-03:00`);
         }
 
         const tempoParadaSegundos = (tempoParadaMin || 10) * 60;
