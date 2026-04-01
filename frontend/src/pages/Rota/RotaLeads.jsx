@@ -1430,11 +1430,20 @@ const RotaLeads = () => {
     const carregarEntregas = useCallback(async (tipo) => {
         try {
             setLoadingEntregas(true);
+            // Se não é admin, passa sempre o próprio ID para garantir isolamento
+            // Se é admin com filtro específico, passa o ID do motorista selecionado
+            // Se é admin com 'todos', não passa nada (vê tudo)
+            let responsavelId;
+            if (!podeEscolherVendedor) {
+                responsavelId = vendedorId;
+            } else if (vendedorFiltro !== 'todos') {
+                responsavelId = vendedorFiltro;
+            }
             if (tipo === 'pendentes') {
-                const data = await entregasService.getPendentes();
+                const data = await entregasService.getPendentes(responsavelId);
                 setEntregasPendentes(data);
             } else {
-                const data = await entregasService.getConcluidas();
+                const data = await entregasService.getConcluidas(responsavelId);
                 setEntregasConcluidas(data);
             }
         } catch (e) {
@@ -1445,7 +1454,7 @@ const RotaLeads = () => {
         } finally {
             setLoadingEntregas(false);
         }
-    }, []);
+    }, [podeEscolherVendedor, vendedorId, vendedorFiltro]);
 
     const handleEntregarAmostra = async (amostraId) => {
         if (!window.confirm('Confirmar entrega desta amostra?')) return;

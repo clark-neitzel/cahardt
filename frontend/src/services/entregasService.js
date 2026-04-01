@@ -1,12 +1,14 @@
 import api from './api';
 
 const entregasService = {
-    getPendentes: async () => {
-        const response = await api.get('/entregas/pendentes');
+    getPendentes: async (responsavelId) => {
+        const params = responsavelId ? { responsavelId } : {};
+        const response = await api.get('/entregas/pendentes', { params });
         return response.data;
     },
-    getConcluidas: async () => {
-        const response = await api.get('/entregas/concluidas');
+    getConcluidas: async (responsavelId) => {
+        const params = responsavelId ? { responsavelId } : {};
+        const response = await api.get('/entregas/concluidas', { params });
         return response.data;
     },
     getById: async (id) => {
