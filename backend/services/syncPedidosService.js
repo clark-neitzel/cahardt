@@ -164,9 +164,9 @@ const syncPedidosService = {
                 // Could double-check if it's a valid uuid form here if necessary
             }
 
-            // Fallback to simple date parsing using the required CA date format (YYYY-MM-DD)
+            // Data no fuso BRT (SP/GMT-3) conforme exigido pela API CA
             const d = new Date(pedido.dataVenda);
-            const dataVendaStr = d.toISOString().split('T')[0];
+            const dataVendaStr = d.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // "YYYY-MM-DD"
 
             const qtdParcelas = Math.max(1, Number(pedido.qtdParcelas) || 1);
 
@@ -269,7 +269,7 @@ const syncPedidosService = {
                 dataVenc.setDate(dataVenc.getDate() + dueDayOffsets[i - 1]);
 
                 payload.condicao_pagamento.parcelas.push({
-                    data_vencimento: dataVenc.toISOString().split('T')[0],
+                    data_vencimento: dataVenc.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }),
                     valor: Number((parcelaCentavos / 100).toFixed(2)),
                     descricao: `Parcela ${i}/${qtdParcelas}`
                 });
