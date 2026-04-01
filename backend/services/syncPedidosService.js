@@ -170,9 +170,12 @@ const syncPedidosService = {
 
             const qtdParcelas = Math.max(1, Number(pedido.qtdParcelas) || 1);
 
-            // Interpreta opções como "7, 14" (ou com separadores comuns) para usar vencimentos reais por parcela.
+            // Interpreta opções como "7/14/21" ou "7,14,21" (offsets explícitos por parcela).
+            // Só usa se a opção contiver múltiplos números separados — ignora "1x", "2x", "À vista" etc.
             const parseDayOffsets = (opcao) => {
                 if (!opcao || typeof opcao !== 'string') return [];
+                // Exige pelo menos um separador (, / ; espaço) entre números para ser considerado lista de offsets
+                if (!/\d[\s,/;]+\d/.test(opcao)) return [];
                 const offsets = (opcao.match(/\d+/g) || [])
                     .map(Number)
                     .filter((n) => Number.isFinite(n) && n >= 0);
