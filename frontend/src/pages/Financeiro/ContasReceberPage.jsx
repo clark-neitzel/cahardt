@@ -402,7 +402,7 @@ const ContasReceberPage = () => {
                                             <span>{conta.parcelasPagas}/{conta.parcelasTotal} parc.</span>
                                             {conta.proximoVencimento && (
                                                 <span>
-                                                    Venc.: {new Date(conta.proximoVencimento).toLocaleDateString('pt-BR')}
+                                                    Venc.: {new Date(conta.proximoVencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                                                 </span>
                                             )}
                                         </div>
@@ -430,7 +430,7 @@ const ContasReceberPage = () => {
                                                 {conta.condicaoPagamento && <span>{conta.condicaoPagamento}</span>}
                                                 {conta.proximoVencimento && (
                                                     <span>
-                                                        Próx. venc.: {new Date(conta.proximoVencimento).toLocaleDateString('pt-BR')}
+                                                        Próx. venc.: {new Date(conta.proximoVencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                                                     </span>
                                                 )}
                                             </div>
@@ -467,10 +467,10 @@ const ContasReceberPage = () => {
                                                             </div>
                                                             <div className="flex items-center justify-between mt-1.5">
                                                                 <div className="text-[11px] text-gray-500">
-                                                                    <span>Venc.: {new Date(p.dataVencimento).toLocaleDateString('pt-BR')}</span>
+                                                                    <span>Venc.: {new Date(p.dataVencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</span>
                                                                     {p.dataPagamento && (
                                                                         <span className="ml-2 text-green-600">
-                                                                            Pago: {new Date(p.dataPagamento).toLocaleDateString('pt-BR')}
+                                                                            Pago: {new Date(p.dataPagamento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                                                                         </span>
                                                                     )}
                                                                     {p.valorPago && p.valorPago !== p.valor && (
@@ -514,10 +514,10 @@ const ContasReceberPage = () => {
                                                                         )}
                                                                     </p>
                                                                     <p className="text-xs text-gray-500">
-                                                                        Venc.: {new Date(p.dataVencimento).toLocaleDateString('pt-BR')}
+                                                                        Venc.: {new Date(p.dataVencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                                                                         {p.dataPagamento && (
                                                                             <span className="ml-2 text-green-600">
-                                                                                Pago em: {new Date(p.dataPagamento).toLocaleDateString('pt-BR')}
+                                                                                Pago em: {new Date(p.dataPagamento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                                                                             </span>
                                                                         )}
                                                                         {p.formaPagamento && <span className="ml-2">({p.formaPagamento})</span>}
@@ -595,7 +595,7 @@ const ContasReceberPage = () => {
                         <div className="bg-gray-50 rounded-md p-3 mb-4 text-sm">
                             <p className="text-gray-600">Parcela <strong>{baixaModal.numeroParcela}</strong></p>
                             <p className="text-gray-600">Valor: <strong>R$ {fmt(baixaModal.valor)}</strong></p>
-                            <p className="text-gray-600">Vencimento: <strong>{new Date(baixaModal.dataVencimento).toLocaleDateString('pt-BR')}</strong></p>
+                            <p className="text-gray-600">Vencimento: <strong>{new Date(baixaModal.dataVencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</strong></p>
                         </div>
 
                         <div className="space-y-3">

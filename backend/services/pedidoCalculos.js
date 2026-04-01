@@ -69,13 +69,26 @@ function calcularDiferencaFlex(flexTotalPedido, pedidoAntigo) {
 }
 
 /**
+ * Converte string de data "YYYY-MM-DD" para Date BRT (evita UTC -1 dia).
+ * Se já for um objeto Date ou string ISO completa, usa diretamente.
+ */
+function parseDateBRT(val) {
+    if (!val) return new Date();
+    if (val instanceof Date) return val;
+    const str = String(val);
+    // Apenas "YYYY-MM-DD" sem horário → interpreta como meia-noite BRT
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return new Date(`${str}T00:00:00-03:00`);
+    return new Date(str);
+}
+
+/**
  * Gera array de parcelas com datas de vencimento e valores.
  * Última parcela absorve diferença de arredondamento.
  */
 function gerarParcelasData({ valorTotal, qtdParcelas, intervaloDias, primeiroVencimento, dataVenda }) {
     const numParcelas = parseInt(qtdParcelas) || 1;
     const intervalo = parseInt(intervaloDias) || 0;
-    const baseDate = primeiroVencimento ? new Date(primeiroVencimento) : new Date(dataVenda);
+    const baseDate = primeiroVencimento ? parseDateBRT(primeiroVencimento) : parseDateBRT(dataVenda);
     const valorParcela = Math.round((valorTotal / numParcelas) * 100) / 100;
 
     const parcelas = [];
