@@ -1189,19 +1189,20 @@ const contaAzulService = {
                         const valorCA = Number(venda.total || 0).toFixed(2);
                         const mudouValor = Math.abs(valorCA - valorLocal) > 0.05; // tolerância centavos
 
-                        if (isAprovado && !mudouValor) {
-                            // Se foi aprovado sem diferença de valor, podemos remover o alerta
-                            if (pedidoLocal.revisaoPendente || pedidoLocal.situacaoCA !== situacaoFinal) {
-                                await prisma.pedido.update({
-                                    where: { id: pedidoLocal.id },
-                                    data: {
-                                        revisaoPendente: false,
-                                        situacaoCA: situacaoFinal,
-                                        contaAzulUpdatedAt: dataAtualizacaoCA
-                                    }
-                                });
-                            }
-                        } else if (mudouValor || !pedidoLocal.contaAzulUpdatedAt || pedidoLocal.situacaoCA !== situacaoFinal) {
+                            if (isAprovado && !mudouValor) {
+                                // Se foi aprovado sem diferença de valor, podemos remover o alerta
+                                if (pedidoLocal.revisaoPendente || pedidoLocal.situacaoCA !== situacaoFinal || (venda.data && new Date(venda.data).getTime() !== new Date(pedidoLocal.dataVenda).getTime())) {
+                                    await prisma.pedido.update({
+                                        where: { id: pedidoLocal.id },
+                                        data: {
+                                            revisaoPendente: false,
+                                            situacaoCA: situacaoFinal,
+                                            contaAzulUpdatedAt: dataAtualizacaoCA,
+                                            ...(venda.data ? { dataVenda: new Date(venda.data) } : {})
+                                        }
+                                    });
+                                }
+                            } else if (mudouValor || !pedidoLocal.contaAzulUpdatedAt || pedidoLocal.situacaoCA !== situacaoFinal || (venda.data && new Date(venda.data).getTime() !== new Date(pedidoLocal.dataVenda).getTime())) {
                             // Houve diferença de valor, mudança de status ou é a primeira sincronização
 
                             if (mudouValor) {
@@ -1244,6 +1245,7 @@ const contaAzulService = {
                                                     revisaoPendente: true,
                                                     situacaoCA: situacaoFinal,
                                                     contaAzulUpdatedAt: dataAtualizacaoCA,
+                                                    ...(venda.data ? { dataVenda: new Date(venda.data) } : {}),
                                                     itens: { create: novosItens }
                                                 }
                                             });
@@ -1257,7 +1259,8 @@ const contaAzulService = {
                                             data: {
                                                 revisaoPendente: true,
                                                 situacaoCA: situacaoFinal,
-                                                contaAzulUpdatedAt: dataAtualizacaoCA
+                                                contaAzulUpdatedAt: dataAtualizacaoCA,
+                                                ...(venda.data ? { dataVenda: new Date(venda.data) } : {})
                                             }
                                         });
                                         count++;
@@ -1270,19 +1273,21 @@ const contaAzulService = {
                                         data: {
                                             revisaoPendente: true,
                                             situacaoCA: situacaoFinal,
-                                            contaAzulUpdatedAt: dataAtualizacaoCA
+                                            contaAzulUpdatedAt: dataAtualizacaoCA,
+                                            ...(venda.data ? { dataVenda: new Date(venda.data) } : {})
                                         }
                                     });
                                     count++;
                                 }
                             } else {
-                                // Apenas mudança de status ou primeira sync — sem divergência de valor
+                                // Apenas mudança de status, data ou primeira sync — sem divergência de valor
                                 await prisma.pedido.update({
                                     where: { id: pedidoLocal.id },
                                     data: {
                                         revisaoPendente: false,
                                         situacaoCA: situacaoFinal,
-                                        contaAzulUpdatedAt: dataAtualizacaoCA
+                                        contaAzulUpdatedAt: dataAtualizacaoCA,
+                                        ...(venda.data ? { dataVenda: new Date(venda.data) } : {})
                                     }
                                 });
                                 count++;
