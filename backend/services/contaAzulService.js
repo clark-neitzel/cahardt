@@ -1082,22 +1082,27 @@ const contaAzulService = {
             const diasAtras = `${diasAtrasDate}T00:00:00`;
             const dataAtual = `${dataAtualDate}T23:59:59`;
 
-            // API V2 Endpoint oficial para buscar vendas (A V1 devolve 401 com tokens Cognito)
-            // A API V2 EXIGE que seja enviada a data inicial e final juntas
-            const url = `https://api-v2.contaazul.com/v1/venda/busca?data_alteracao_de=${diasAtras}&data_alteracao_ate=${dataAtual}&tamanho_pagina=50`;
-            console.log(`🔎 Buscando Pedidos na CA: ${url}`);
+            // API V2 Endpoint oficial para buscar vendas — paginar até esgotar resultados
+            const baseUrl = `https://api-v2.contaazul.com/v1/venda/busca?data_alteracao_de=${diasAtras}&data_alteracao_ate=${dataAtual}&tamanho_pagina=50`;
 
-            // Usa o wrapper interno para garantir refresh de token automático
-            const response = await contaAzulService._axiosGet(url, 'PEDIDOS_MODIFICADOS');
-            const vendasModificadas = response.data?.itens || [];
-            console.log(`Encontradas ${vendasModificadas.length} vendas recentemente alteradas.`);
-
-            // DUMP ABSOLUTO PARA DEBUG: Entender porque o pedido BROTHAUS não fica EXCLUIDO
-            if (vendasModificadas.length > 0) {
-                console.log(`\n\n--- INÍCIO DUMP VENDAS MODIFICADAS V2 ---`);
-                console.log(JSON.stringify(vendasModificadas.slice(0, 3), null, 2));
-                console.log(`--- FIM DUMP VENDAS MODIFICADAS V2 ---\n\n`);
+            const vendasModificadas = [];
+            let pagina = 1;
+            let totalPaginas = 1;
+            while (pagina <= totalPaginas && pagina <= 20) { // limite de segurança: 20 páginas = 1000 vendas
+                const url = `${baseUrl}&pagina=${pagina}`;
+                console.log(`🔎 Buscando Pedidos na CA (pág ${pagina}/${totalPaginas}): ${url}`);
+                const response = await contaAzulService._axiosGet(url, 'PEDIDOS_MODIFICADOS');
+                const itens = response.data?.itens || [];
+                vendasModificadas.push(...itens);
+                // A API V2 retorna total_paginas ou calcula pelo total_itens
+                const totalItens = response.data?.total_itens || response.data?.totalItens || 0;
+                const tamPag = response.data?.tamanho_pagina || 50;
+                totalPaginas = totalItens > 0 ? Math.ceil(totalItens / tamPag) : 1;
+                if (itens.length < tamPag) break; // última página
+                pagina++;
+                await new Promise(r => setTimeout(r, 120)); // rate limit CA: ~10 req/s
             }
+            console.log(`Encontradas ${vendasModificadas.length} vendas recentemente alteradas.`);
 
             let count = 0;
             for (const venda of vendasModificadas) {
