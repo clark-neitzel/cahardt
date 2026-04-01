@@ -1034,6 +1034,8 @@ const RotaLeads = () => {
 
     const vendedorId = user?.id;
     const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
+    // Pode filtrar entregas por motorista = mesma regra do backend (admin ou Pode_Ver_Todas_Entregas)
+    const podeVerTodasEntregas = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ver_Todas_Entregas);
     const podeEntregas = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Executar_Entregas);
     const podeAjustar = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ajustar_Entregas);
 
@@ -1043,16 +1045,16 @@ const RotaLeads = () => {
     });
     const [vendedores, setVendedores] = useState([]);
 
-    // Se admin, carrega vendedores para o select
+    // Carrega vendedores para o select (quem pode ver todas entregas ou escolher vendedor)
     useEffect(() => {
-        if (podeEscolherVendedor) {
+        if (podeEscolherVendedor || podeVerTodasEntregas) {
             import('../../services/vendedorService').then(module => {
                 module.default.listar().then(vends => {
                     setVendedores(vends.filter(v => v.ativo));
                 }).catch(console.error);
             });
         }
-    }, [podeEscolherVendedor]);
+    }, [podeEscolherVendedor, podeVerTodasEntregas]);
 
     const handleFiltroVendedor = (e) => {
         const val = e.target.value;
@@ -1430,12 +1432,12 @@ const RotaLeads = () => {
     const carregarEntregas = useCallback(async (tipo) => {
         try {
             setLoadingEntregas(true);
-            // Se não é admin, passa sempre o próprio ID para garantir isolamento
-            // Se é admin com filtro específico, passa o ID do motorista selecionado
-            // Se é admin com 'todos', não passa nada (vê tudo)
+            // podeVerTodasEntregas espelha exatamente a regra do backend (admin ou Pode_Ver_Todas_Entregas)
+            // Sem essa permissão, o backend sempre filtra pelo req.user.id — não adianta enviar responsavelId
             let responsavelId;
-            if (!podeEscolherVendedor) {
-                responsavelId = vendedorId;
+            if (!podeVerTodasEntregas) {
+                // Backend ignorará o param e usará req.user.id — não enviamos nada
+                responsavelId = undefined;
             } else if (vendedorFiltro !== 'todos') {
                 responsavelId = vendedorFiltro;
             }
@@ -1454,7 +1456,7 @@ const RotaLeads = () => {
         } finally {
             setLoadingEntregas(false);
         }
-    }, [podeEscolherVendedor, vendedorId, vendedorFiltro]);
+    }, [podeVerTodasEntregas, vendedorId, vendedorFiltro]);
 
     const handleEntregarAmostra = async (amostraId) => {
         if (!window.confirm('Confirmar entrega desta amostra?')) return;
@@ -1544,13 +1546,13 @@ const RotaLeads = () => {
                         <h1 className="text-[16px] md:text-[18px] font-bold text-gray-900">Rota / Leads</h1>
                         <p className="text-[11px] md:text-[12px] text-gray-500 mt-0.5">Dia base: {diaBase} · {new Date().toLocaleDateString('pt-BR')}</p>
                     </div>
-                    {podeEscolherVendedor && (
+                    {(podeEscolherVendedor || podeVerTodasEntregas) && (
                         <select
                             value={vendedorFiltro}
                             onChange={handleFiltroVendedor}
                             className="text-[12px] md:text-[13px] border border-gray-300 rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:ring-blue-500 focus:border-blue-500 outline-none max-w-[130px] md:max-w-[150px] truncate"
                         >
-                            <option value="todos">Todos Vendedores</option>
+                            <option value="todos">Todos</option>
                             {vendedores.map(v => (
                                 <option key={v.id} value={v.id}>{v.nome.split(' ')[0]}</option>
                             ))}
