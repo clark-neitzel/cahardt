@@ -8,6 +8,19 @@ const CLIENT_SECRET = process.env.CONTA_AZUL_CLIENT_SECRET || '1fvmga9ikj9dk4mkc
 let isRefreshing = false;
 let refreshPromise = null;
 
+/**
+ * Converte uma string de data do Conta Azul ("YYYY-MM-DD" ou "YYYY-MM-DDTHH:mm:ss")
+ * para um Date UTC correto considerando o fuso BRT (America/Sao_Paulo, -03:00).
+ * Sem isso, new Date("2026-04-01") vira 31/03 às 21h BRT.
+ */
+const parseDateCA = (str) => {
+    if (!str) return null;
+    // Se já tem hora (ISO completo), usa diretamente
+    if (str.length > 10) return new Date(str);
+    // Apenas "YYYY-MM-DD" — interpreta como meia-noite BRT (offset -03:00)
+    return new Date(`${str}T00:00:00-03:00`);
+};
+
 const contaAzulService = {
     // === LOGGING HELPER ===
     _logStep: async (tipo, status, msg, details = {}) => {
@@ -1196,18 +1209,18 @@ const contaAzulService = {
 
                             if (isAprovado && !mudouValor) {
                                 // Se foi aprovado sem diferença de valor, podemos remover o alerta
-                                if (pedidoLocal.revisaoPendente || pedidoLocal.situacaoCA !== situacaoFinal || (venda.data && new Date(venda.data).getTime() !== new Date(pedidoLocal.dataVenda).getTime())) {
+                                if (pedidoLocal.revisaoPendente || pedidoLocal.situacaoCA !== situacaoFinal || (venda.data && parseDateCA(venda.data).getTime() !== new Date(pedidoLocal.dataVenda).getTime())) {
                                     await prisma.pedido.update({
                                         where: { id: pedidoLocal.id },
                                         data: {
                                             revisaoPendente: false,
                                             situacaoCA: situacaoFinal,
                                             contaAzulUpdatedAt: dataAtualizacaoCA,
-                                            ...(venda.data ? { dataVenda: new Date(venda.data) } : {})
+                                            ...(venda.data ? { dataVenda: parseDateCA(venda.data) } : {})
                                         }
                                     });
                                 }
-                            } else if (mudouValor || !pedidoLocal.contaAzulUpdatedAt || pedidoLocal.situacaoCA !== situacaoFinal || (venda.data && new Date(venda.data).getTime() !== new Date(pedidoLocal.dataVenda).getTime())) {
+                            } else if (mudouValor || !pedidoLocal.contaAzulUpdatedAt || pedidoLocal.situacaoCA !== situacaoFinal || (venda.data && parseDateCA(venda.data).getTime() !== new Date(pedidoLocal.dataVenda).getTime())) {
                             // Houve diferença de valor, mudança de status ou é a primeira sincronização
 
                             if (mudouValor) {
@@ -1250,7 +1263,7 @@ const contaAzulService = {
                                                     revisaoPendente: true,
                                                     situacaoCA: situacaoFinal,
                                                     contaAzulUpdatedAt: dataAtualizacaoCA,
-                                                    ...(venda.data ? { dataVenda: new Date(venda.data) } : {}),
+                                                    ...(venda.data ? { dataVenda: parseDateCA(venda.data) } : {}),
                                                     itens: { create: novosItens }
                                                 }
                                             });
@@ -1265,7 +1278,7 @@ const contaAzulService = {
                                                 revisaoPendente: true,
                                                 situacaoCA: situacaoFinal,
                                                 contaAzulUpdatedAt: dataAtualizacaoCA,
-                                                ...(venda.data ? { dataVenda: new Date(venda.data) } : {})
+                                                ...(venda.data ? { dataVenda: parseDateCA(venda.data) } : {})
                                             }
                                         });
                                         count++;
@@ -1279,7 +1292,7 @@ const contaAzulService = {
                                             revisaoPendente: true,
                                             situacaoCA: situacaoFinal,
                                             contaAzulUpdatedAt: dataAtualizacaoCA,
-                                            ...(venda.data ? { dataVenda: new Date(venda.data) } : {})
+                                            ...(venda.data ? { dataVenda: parseDateCA(venda.data) } : {})
                                         }
                                     });
                                     count++;
@@ -1292,7 +1305,7 @@ const contaAzulService = {
                                         revisaoPendente: false,
                                         situacaoCA: situacaoFinal,
                                         contaAzulUpdatedAt: dataAtualizacaoCA,
-                                        ...(venda.data ? { dataVenda: new Date(venda.data) } : {})
+                                        ...(venda.data ? { dataVenda: parseDateCA(venda.data) } : {})
                                     }
                                 });
                                 count++;
@@ -1356,7 +1369,7 @@ const contaAzulService = {
                             continue;
                         }
 
-                        const dataVendaCA = venda.data ? new Date(venda.data) : new Date();
+                        const dataVendaCA = venda.data ? parseDateCA(venda.data) : new Date();
                         const dataAltCA = venda.data_alteracao ? new Date(venda.data_alteracao) : new Date();
 
                         // === ENRIQUECIMENTO: Buscar detalhes completos da venda no CA ===
