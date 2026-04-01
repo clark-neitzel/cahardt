@@ -58,8 +58,15 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
         const perms = req._perms || {};
         const verTodas = perms.admin || perms.Pode_Ver_Todas_Entregas;
 
-        const where = { statusEntrega: 'PENDENTE', embarqueId: { not: null } };
-        if (!verTodas) where.embarque = { responsavelId: req.user.id };
+        const where = { statusEntrega: 'PENDENTE' };
+        if (!verTodas) {
+            where.embarque = { responsavelId: req.user.id };
+        } else if (req.query.responsavelId) {
+            // Admin filtrando por motorista específico
+            where.embarque = { responsavelId: req.query.responsavelId };
+        } else {
+            where.embarqueId = { not: null };
+        }
 
         const entregas = await prisma.pedido.findMany({
             where,
@@ -103,7 +110,11 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
 
         // Amostras pendentes no embarque
         const whereAmostra = { status: 'LIBERADO', embarqueId: { not: null } };
-        if (!verTodas) whereAmostra.embarque = { responsavelId: req.user.id };
+        if (!verTodas) {
+            whereAmostra.embarque = { responsavelId: req.user.id };
+        } else if (req.query.responsavelId) {
+            whereAmostra.embarque = { responsavelId: req.query.responsavelId };
+        }
 
         const amostrasPendentes = await prisma.amostra.findMany({
             where: whereAmostra,
@@ -151,7 +162,11 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
         const verTodas = perms.admin || perms.Pode_Ver_Todas_Entregas;
 
         const where = { statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL', 'DEVOLVIDO'] } };
-        if (!verTodas) where.embarque = { responsavelId: req.user.id };
+        if (!verTodas) {
+            where.embarque = { responsavelId: req.user.id };
+        } else if (req.query.responsavelId) {
+            where.embarque = { responsavelId: req.query.responsavelId };
+        }
 
         const entregas = await prisma.pedido.findMany({
             where,
@@ -194,7 +209,11 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
 
         // Amostras entregues
         const whereAmostraConcluida = { status: 'ENTREGUE', embarqueId: { not: null } };
-        if (!verTodas) whereAmostraConcluida.embarque = { responsavelId: req.user.id };
+        if (!verTodas) {
+            whereAmostraConcluida.embarque = { responsavelId: req.user.id };
+        } else if (req.query.responsavelId) {
+            whereAmostraConcluida.embarque = { responsavelId: req.query.responsavelId };
+        }
 
         const amostrasEntregues = await prisma.amostra.findMany({
             where: whereAmostraConcluida,
