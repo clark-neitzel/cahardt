@@ -1045,16 +1045,16 @@ const RotaLeads = () => {
     });
     const [vendedores, setVendedores] = useState([]);
 
-    // Carrega vendedores para o select (quem pode ver todas entregas ou escolher vendedor)
+    // Carrega vendedores para o select (quem pode escolher vendedor)
     useEffect(() => {
-        if (podeEscolherVendedor || podeVerTodasEntregas) {
+        if (podeEscolherVendedor) {
             import('../../services/vendedorService').then(module => {
                 module.default.listar().then(vends => {
                     setVendedores(vends.filter(v => v.ativo));
                 }).catch(console.error);
             });
         }
-    }, [podeEscolherVendedor, podeVerTodasEntregas]);
+    }, [podeEscolherVendedor]);
 
     const handleFiltroVendedor = (e) => {
         const val = e.target.value;
@@ -1546,7 +1546,7 @@ const RotaLeads = () => {
                         <h1 className="text-[16px] md:text-[18px] font-bold text-gray-900">Rota / Leads</h1>
                         <p className="text-[11px] md:text-[12px] text-gray-500 mt-0.5">Dia base: {diaBase} · {new Date().toLocaleDateString('pt-BR')}</p>
                     </div>
-                    {(podeEscolherVendedor || podeVerTodasEntregas) && (
+                    {podeEscolherVendedor && (
                         <select
                             value={vendedorFiltro}
                             onChange={handleFiltroVendedor}
