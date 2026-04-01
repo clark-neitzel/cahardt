@@ -1120,7 +1120,8 @@ const contaAzulService = {
                     });
                 }
                 if (pedidoLocal) {
-                    const dataAtualizacaoCA = venda.data_atualizacao ? new Date(venda.data_atualizacao) : new Date();
+                    // API V2 usa "data_alteracao", não "data_atualizacao"
+                    const dataAtualizacaoCA = venda.data_alteracao ? new Date(venda.data_alteracao) : (venda.data_atualizacao ? new Date(venda.data_atualizacao) : new Date());
 
                     // Lógica solicitada pelo usuário para Pedidos Excluídos/Cancelados
                     // API V2 envia situacao como um Objeto: { "nome": "CANCELADO", "descricao": "Cancelado" }

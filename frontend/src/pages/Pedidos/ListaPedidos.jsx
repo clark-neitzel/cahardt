@@ -15,7 +15,7 @@ const ListaPedidos = () => {
     
     // Filtros persistentes
     const [filtros, setFiltros] = useState(() => {
-        const key = `pedidos_filtros_${user?.id}`;
+        const key = `pedidos_filtros_v2_${user?.id}`; // v2: reseta cache antigo com janela de 30d
         const saved = localStorage.getItem(key);
         if (saved) {
             try {
@@ -24,12 +24,12 @@ const ListaPedidos = () => {
                 console.error("Erro ao carregar filtros salvos", e);
             }
         }
-        
+
         const hoje = new Date().toISOString().split('T')[0];
-        const trintaDiasAtras = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        
+        const noventaDiasAtras = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
         return {
-            dataEntregaDe: trintaDiasAtras,
+            dataEntregaDe: noventaDiasAtras,
             dataEntregaAte: hoje,
             dataCriacaoDe: '',
             dataCriacaoAte: '',
@@ -102,7 +102,7 @@ const ListaPedidos = () => {
 
     // Salvar filtros no localStorage sempre que mudarem
     useEffect(() => {
-        const key = `pedidos_filtros_${user?.id}`;
+        const key = `pedidos_filtros_v2_${user?.id}`;
         localStorage.setItem(key, JSON.stringify(filtros));
     }, [filtros, user]);
 
