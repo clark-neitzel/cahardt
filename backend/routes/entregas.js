@@ -58,15 +58,20 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
         const perms = req._perms || {};
         const verTodas = perms.admin || perms.Pode_Ver_Todas_Entregas;
 
-        // Início e fim do dia atual em BRT para filtrar entregas do dia
+        // Data de hoje em BRT no formato YYYY-MM-DD
         const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-        const inicioDia = new Date(`${hoje}T00:00:00-03:00`);
-        const fimDia = new Date(`${hoje}T23:59:59-03:00`);
 
         const where = { statusEntrega: 'PENDENTE' };
         if (!verTodas) {
-            // Motorista: só vê as entregas do embarque do dia
-            where.embarque = { responsavelId: req.user.id, dataSaida: { gte: inicioDia, lte: fimDia } };
+            // Motorista: só vê entregas cujo embarque tem dataSaida = hoje em BRT
+            // Compara usando AT TIME ZONE para ignorar o horário salvo no banco
+            const embarquesHoje = await prisma.$queryRaw`
+                SELECT id FROM embarques
+                WHERE responsavel_id = ${req.user.id}
+                AND (data_saida AT TIME ZONE 'America/Sao_Paulo')::date = ${hoje}::date
+            `;
+            const idsEmbarquesHoje = embarquesHoje.map(e => e.id);
+            where.embarqueId = { in: idsEmbarquesHoje };
         } else if (req.query.responsavelId) {
             // Admin filtrando por motorista específico
             where.embarque = { responsavelId: req.query.responsavelId };
