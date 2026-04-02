@@ -58,18 +58,32 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
         const perms = req._perms || {};
         const verTodas = perms.admin || perms.Pode_Ver_Todas_Entregas;
 
-        // Data de hoje em BRT no formato YYYY-MM-DD
+        // Data de hoje em BRT — registros antigos foram salvos como meia-noite UTC (= dia seguinte BRT)
+        // Para cobrir ambos os casos (antigos UTC e novos com T12:00-03:00), filtramos:
+        // data_saida >= hoje BRT 00:00 UTC-3  E  data_saida < amanhã BRT 00:00 UTC-3
         const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const inicioDiaUtc = new Date(`${hoje}T03:00:00Z`); // 00:00 BRT = 03:00 UTC
+        const fimDiaUtc = new Date(`${hoje}T03:00:00Z`);
+        fimDiaUtc.setDate(fimDiaUtc.getDate() + 1); // 00:00 BRT amanhã = 03:00 UTC amanhã
+
+        // Também inclui registros salvos como meia-noite UTC do dia seguinte (formato antigo)
+        const diaUTC = new Date(`${hoje}T00:00:00Z`);
+        diaUTC.setDate(diaUTC.getDate() + 1); // 2026-04-03T00:00:00Z = dia 03/04 UTC = 02/04 BRT
 
         const where = { statusEntrega: 'PENDENTE' };
         if (!verTodas) {
-            // Motorista: só vê entregas cujo embarque tem dataSaida = hoje em BRT
-            // Compara usando AT TIME ZONE para ignorar o horário salvo no banco
-            const embarquesHoje = await prisma.$queryRaw`
-                SELECT id FROM embarques
-                WHERE responsavel_id = ${req.user.id}
-                AND (data_saida AT TIME ZONE 'America/Sao_Paulo')::date = ${hoje}::date
-            `;
+            const embarquesHoje = await prisma.embarque.findMany({
+                where: {
+                    responsavelId: req.user.id,
+                    OR: [
+                        // Registros novos: dataSaida com horário BRT correto
+                        { dataSaida: { gte: inicioDiaUtc, lt: fimDiaUtc } },
+                        // Registros antigos: meia-noite UTC do dia +1 (ex: 03/04 UTC = 02/04 BRT)
+                        { dataSaida: { gte: diaUTC, lt: new Date(diaUTC.getTime() + 24 * 60 * 60 * 1000) } }
+                    ]
+                },
+                select: { id: true }
+            });
             const idsEmbarquesHoje = embarquesHoje.map(e => e.id);
             where.embarqueId = { in: idsEmbarquesHoje };
         } else if (req.query.responsavelId) {
