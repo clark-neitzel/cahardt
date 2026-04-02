@@ -71,7 +71,7 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
         const entregas = await prisma.pedido.findMany({
             where,
             include: {
-                cliente: { select: { NomeFantasia: true, Nome: true, End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, Ponto_GPS: true } },
+                cliente: { select: { UUID: true, NomeFantasia: true, Nome: true, End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, Ponto_GPS: true } },
                 embarque: { select: { numero: true, responsavel: { select: { id: true, nome: true } } } },
                 vendedor: { select: { id: true, nome: true } },
                 usuarioLancamento: { select: { id: true, nome: true } },
@@ -119,7 +119,7 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
         const amostrasPendentes = await prisma.amostra.findMany({
             where: whereAmostra,
             include: {
-                cliente: { select: { NomeFantasia: true, Nome: true, End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, Ponto_GPS: true } },
+                cliente: { select: { UUID: true, NomeFantasia: true, Nome: true, End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, Ponto_GPS: true } },
                 lead: { select: { nomeEstabelecimento: true, pontoGps: true } },
                 embarque: { select: { numero: true, responsavel: { select: { id: true, nome: true } } } },
                 solicitadoPor: { select: { id: true, nome: true } },
