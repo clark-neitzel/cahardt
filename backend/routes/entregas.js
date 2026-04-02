@@ -58,24 +58,21 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
         const perms = req._perms || {};
         const verTodas = perms.admin || perms.Pode_Ver_Todas_Entregas;
 
-        // Filtra embarques cujo data_saida, convertida para BRT, seja igual a hoje
-        const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        // O motorista deve ver apenas cargas agendadas até a data de hoje.
+        // Cargas para datas futuras (ex: amanhã) só deverão aparecer à meia-noite do dia da carga.
+        const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const maxDataSaida = new Date(`${hojeStr}T23:59:59.999-03:00`);
 
         const where = { statusEntrega: 'PENDENTE' };
+        const embarqueFiltro = { dataSaida: { lte: maxDataSaida } };
+
         if (!verTodas) {
-            const embarquesHoje = await prisma.$queryRaw`
-                SELECT id FROM embarques
-                WHERE responsavel_id = ${req.user.id}
-                AND (data_saida AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')::date = ${hoje}::date
-            `;
-            const idsEmbarquesHoje = embarquesHoje.map(e => e.id);
-            where.embarqueId = { in: idsEmbarquesHoje };
+            embarqueFiltro.responsavelId = req.user.id;
         } else if (req.query.responsavelId) {
-            // Admin filtrando por motorista específico
-            where.embarque = { responsavelId: req.query.responsavelId };
-        } else {
-            where.embarqueId = { not: null };
+            // Admin filtrando por um motorista específico
+            embarqueFiltro.responsavelId = req.query.responsavelId;
         }
+        where.embarque = embarqueFiltro;
 
         const entregas = await prisma.pedido.findMany({
             where,
@@ -118,12 +115,8 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
         });
 
         // Amostras pendentes no embarque
-        const whereAmostra = { status: 'LIBERADO', embarqueId: { not: null } };
-        if (!verTodas) {
-            whereAmostra.embarque = { responsavelId: req.user.id };
-        } else if (req.query.responsavelId) {
-            whereAmostra.embarque = { responsavelId: req.query.responsavelId };
-        }
+        const whereAmostra = { status: 'LIBERADO' };
+        whereAmostra.embarque = { ...embarqueFiltro };
 
         const amostrasPendentes = await prisma.amostra.findMany({
             where: whereAmostra,
