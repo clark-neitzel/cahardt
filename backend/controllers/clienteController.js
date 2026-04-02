@@ -143,7 +143,7 @@ const clienteController = {
             const perms = typeof req.user.permissoes === 'string'
                 ? JSON.parse(req.user.permissoes)
                 : (req.user.permissoes || {});
-            const podeEditarGPS = perms.admin || perms.Pode_Editar_GPS || perms.clientes?.edit;
+            const podeEditarGPS = perms.admin || perms.Pode_Editar_GPS || perms.clientes?.edit || perms.Pode_Executar_Entregas;
 
             const cliente = await prisma.cliente.update({
                 where: { UUID: uuid },
