@@ -195,7 +195,7 @@ router.patch('/:id', verificarAuth, async (req, res) => {
         }
 
         const data = {};
-        if (dataSaida) data.dataSaida = new Date(dataSaida);
+        if (dataSaida) data.dataSaida = new Date(`${dataSaida}T12:00:00-03:00`);
         if (responsavelId) data.responsavelId = responsavelId;
 
         const embarque = await prisma.embarque.update({
@@ -225,7 +225,7 @@ router.post('/', verificarAuth, checkAcessoEmbarque, async (req, res) => {
         // Criar o embarque e opcionalmente atrelar pedidos iniciais (se vierem)
         const embarque = await prisma.embarque.create({
             data: {
-                dataSaida: new Date(dataSaida),
+                dataSaida: new Date(`${dataSaida}T12:00:00-03:00`),
                 responsavelId,
                 ...(pedidosIds && pedidosIds.length > 0 ? {
                     pedidos: {
