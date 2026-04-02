@@ -183,6 +183,7 @@ const PainelEmbarque = () => {
                     embarqueId={cargaSelecionadaId}
                     onClose={() => setCargaSelecionadaId(null)}
                     onUpdated={fetchData}
+                    motoristas={vendedores}
                 />
             )}
         </div>

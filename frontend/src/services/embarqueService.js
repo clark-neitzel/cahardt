@@ -36,6 +36,10 @@ const embarqueService = {
     removerAmostra: async (id, amostraId) => {
         const response = await api.delete(`/embarques/${id}/amostras/${amostraId}`);
         return response.data;
+    },
+    editar: async (id, dados) => {
+        const response = await api.patch(`/embarques/${id}`, dados);
+        return response.data;
     }
 };
 

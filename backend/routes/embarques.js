@@ -174,6 +174,44 @@ router.get('/:id', verificarAuth, checkAcessoEmbarque, async (req, res) => {
 });
 
 // ==========================================
+// 3b. EDITAR UM EMBARQUE (dataSaida / responsavel)
+// ==========================================
+router.patch('/:id', verificarAuth, async (req, res) => {
+    try {
+        const vendedor = await prisma.vendedor.findUnique({
+            where: { id: req.user.id },
+            select: { permissoes: true }
+        });
+        const perms = typeof vendedor?.permissoes === 'string'
+            ? JSON.parse(vendedor.permissoes)
+            : (vendedor?.permissoes || {});
+        if (!perms.admin && !perms.Pode_Editar_Embarque) {
+            return res.status(403).json({ error: 'Você não possui permissão para editar embarques.' });
+        }
+
+        const { dataSaida, responsavelId } = req.body;
+        if (!dataSaida && !responsavelId) {
+            return res.status(400).json({ error: 'Informe dataSaida ou responsavelId para atualizar.' });
+        }
+
+        const data = {};
+        if (dataSaida) data.dataSaida = new Date(dataSaida);
+        if (responsavelId) data.responsavelId = responsavelId;
+
+        const embarque = await prisma.embarque.update({
+            where: { id: req.params.id },
+            data,
+            include: { responsavel: { select: { id: true, nome: true } } }
+        });
+
+        res.json(embarque);
+    } catch (error) {
+        console.error('Erro ao editar embarque:', error);
+        res.status(500).json({ error: 'Erro ao atualizar o embarque.' });
+    }
+});
+
+// ==========================================
 // 4. CRIAR UM EMBARQUE
 // ==========================================
 router.post('/', verificarAuth, checkAcessoEmbarque, async (req, res) => {

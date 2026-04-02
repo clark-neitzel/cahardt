@@ -16,6 +16,7 @@ const DEFAULT_PERMISSIONS = {
     configuracoes: { view: false, edit: false },
     // Módulo de Expedição e Logística
     Pode_Acessar_Embarque: false,
+    Pode_Editar_Embarque: false,
     Pode_Executar_Entregas: false,
     Pode_Ver_Todas_Entregas: false,
     Pode_Ajustar_Entregas: false,
@@ -308,6 +309,19 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <div>
                                     <span className="text-sky-900 font-bold block">Montar Cargas (Expedição)</span>
                                     <span className="text-sky-700 text-xs">Acessa painel de impressão rápida de Romaneiros A4 e atrela pedidos Faturados.</span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center space-x-3 text-sm cursor-pointer p-2 hover:bg-sky-100 rounded transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-sky-300 text-sky-600 focus:ring-sky-500 h-4 w-4"
+                                    checked={!!permissoes.Pode_Editar_Embarque}
+                                    onChange={(e) => setPermissoes(prev => ({ ...prev, Pode_Editar_Embarque: e.target.checked }))}
+                                />
+                                <div>
+                                    <span className="text-sky-900 font-bold block">Editar Carga (Expedição)</span>
+                                    <span className="text-sky-700 text-xs">Permite alterar a data e o motorista de uma carga já criada.</span>
                                 </div>
                             </label>
 

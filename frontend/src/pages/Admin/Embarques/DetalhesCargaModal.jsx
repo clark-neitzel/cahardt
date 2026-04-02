@@ -1,15 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Printer, Plus, Trash2, MapPin, Package } from 'lucide-react';
+import { X, Printer, Plus, Trash2, MapPin, Package, Edit2, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
 import AdicionarPedidosModal from './AdicionarPedidosModal';
+import { useAuth } from '../../../contexts/AuthContext';
 
-const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
+const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] }) => {
+    const { user } = useAuth();
     const [embarque, setEmbarque] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [removerLoader, setRemoverLoader] = useState(null);
     const [showPreview, setShowPreview] = useState(false);
+    const [editando, setEditando] = useState(false);
+    const [editData, setEditData] = useState({ dataSaida: '', responsavelId: '' });
+    const [salvando, setSalvando] = useState(false);
+
+    const podeEditarEmbarque = !!(user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Embarque);
 
     // Referencia para o Print
     const printRef = useRef();
@@ -60,6 +67,32 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
             toast.error(error.response?.data?.error || 'Erro ao remover amostra.');
         } finally {
             setRemoverLoader(null);
+        }
+    };
+
+    const abrirEdicao = () => {
+        setEditData({
+            dataSaida: embarque.dataSaida ? new Date(embarque.dataSaida).toISOString().slice(0, 10) : '',
+            responsavelId: embarque.responsavel?.id || ''
+        });
+        setEditando(true);
+    };
+
+    const salvarEdicao = async () => {
+        try {
+            setSalvando(true);
+            await embarqueService.editar(embarqueId, {
+                dataSaida: editData.dataSaida,
+                responsavelId: editData.responsavelId
+            });
+            toast.success('Carga atualizada.');
+            setEditando(false);
+            fetchDetalhes();
+            if (onUpdated) onUpdated();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao salvar.');
+        } finally {
+            setSalvando(false);
         }
     };
 
@@ -375,13 +408,69 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated }) => {
                         <div className="text-center py-20 text-red-500">Falha ao localizar os dados.</div>
                     ) : (
                         <div>
-                            <div className="flex justify-between items-center mb-6">
-                                <div>
-                                    <p className="text-sm text-gray-500">Motorista Responsável</p>
-                                    <p className="text-lg font-bold text-gray-900">{embarque.responsavel?.nome}</p>
-                                    <p className="text-sm text-gray-500 mt-1">Data de Saída: {new Date(embarque.dataSaida).toLocaleDateString('pt-BR')}</p>
+                            <div className="flex justify-between items-start mb-6 gap-4">
+                                <div className="flex-1">
+                                    {editando ? (
+                                        <div className="flex flex-col gap-3">
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-medium">Data de Saída</label>
+                                                <input
+                                                    type="date"
+                                                    value={editData.dataSaida}
+                                                    onChange={e => setEditData(d => ({ ...d, dataSaida: e.target.value }))}
+                                                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-sky-500 focus:border-sky-500"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-medium">Motorista Responsável</label>
+                                                <select
+                                                    value={editData.responsavelId}
+                                                    onChange={e => setEditData(d => ({ ...d, responsavelId: e.target.value }))}
+                                                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-sky-500 focus:border-sky-500"
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    {motoristas.map(m => (
+                                                        <option key={m.id} value={m.id}>{m.nome}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={salvarEdicao}
+                                                    disabled={salvando}
+                                                    className="inline-flex items-center px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium rounded-md disabled:opacity-50"
+                                                >
+                                                    <Check className="h-4 w-4 mr-1" />
+                                                    {salvando ? 'Salvando...' : 'Salvar'}
+                                                </button>
+                                                <button
+                                                    onClick={() => setEditando(false)}
+                                                    className="px-3 py-1.5 border border-gray-300 text-gray-600 text-sm rounded-md hover:bg-gray-50"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-start gap-3">
+                                            <div>
+                                                <p className="text-sm text-gray-500">Motorista Responsável</p>
+                                                <p className="text-lg font-bold text-gray-900">{embarque.responsavel?.nome}</p>
+                                                <p className="text-sm text-gray-500 mt-1">Data de Saída: {new Date(embarque.dataSaida).toLocaleDateString('pt-BR')}</p>
+                                            </div>
+                                            {podeEditarEmbarque && (
+                                                <button
+                                                    onClick={abrirEdicao}
+                                                    className="mt-1 p-1.5 text-gray-400 hover:text-sky-600 hover:bg-sky-50 rounded-md"
+                                                    title="Editar carga"
+                                                >
+                                                    <Edit2 className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                                <div>
+                                <div className="flex-shrink-0">
                                     <button
                                         onClick={() => setIsAddOpen(true)}
                                         className="inline-flex items-center px-4 py-2 border border-sky-600 shadow-sm text-sm font-medium rounded-md text-sky-600 bg-white hover:bg-sky-50 focus:outline-none"
