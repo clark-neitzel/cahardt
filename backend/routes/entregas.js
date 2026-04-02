@@ -58,9 +58,15 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
         const perms = req._perms || {};
         const verTodas = perms.admin || perms.Pode_Ver_Todas_Entregas;
 
+        // Início e fim do dia atual em BRT para filtrar entregas do dia
+        const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const inicioDia = new Date(`${hoje}T00:00:00-03:00`);
+        const fimDia = new Date(`${hoje}T23:59:59-03:00`);
+
         const where = { statusEntrega: 'PENDENTE' };
         if (!verTodas) {
-            where.embarque = { responsavelId: req.user.id };
+            // Motorista: só vê as entregas do embarque do dia
+            where.embarque = { responsavelId: req.user.id, dataSaida: { gte: inicioDia, lte: fimDia } };
         } else if (req.query.responsavelId) {
             // Admin filtrando por motorista específico
             where.embarque = { responsavelId: req.query.responsavelId };
