@@ -1096,26 +1096,41 @@ const contaAzulService = {
             const dataAtual = `${dataAtualDate}T23:59:59`;
 
             // API V2 Endpoint oficial para buscar vendas — paginar até esgotar resultados
-            const baseUrl = `https://api-v2.contaazul.com/v1/venda/busca?data_alteracao_de=${diasAtras}&data_alteracao_ate=${dataAtual}&tamanho_pagina=50`;
+            // Busca em duas passadas: sem filtro (ativas/aprovadas) + situacao=CANCELADO
+            const buscarPaginas = async (baseUrl) => {
+                const resultados = [];
+                let pagina = 1;
+                let totalPaginas = 1;
+                while (pagina <= totalPaginas && pagina <= 20) {
+                    const url = `${baseUrl}&pagina=${pagina}`;
+                    console.log(`🔎 Buscando Pedidos na CA (pág ${pagina}/${totalPaginas}): ${url}`);
+                    const response = await contaAzulService._axiosGet(url, 'PEDIDOS_MODIFICADOS');
+                    const itens = response.data?.itens || [];
+                    resultados.push(...itens);
+                    const totalItens = response.data?.total_itens || response.data?.totalItens || 0;
+                    const tamPag = response.data?.tamanho_pagina || 50;
+                    totalPaginas = totalItens > 0 ? Math.ceil(totalItens / tamPag) : 1;
+                    if (itens.length < tamPag) break;
+                    pagina++;
+                    await new Promise(r => setTimeout(r, 120));
+                }
+                return resultados;
+            };
 
-            const vendasModificadas = [];
-            let pagina = 1;
-            let totalPaginas = 1;
-            while (pagina <= totalPaginas && pagina <= 20) { // limite de segurança: 20 páginas = 1000 vendas
-                const url = `${baseUrl}&pagina=${pagina}`;
-                console.log(`🔎 Buscando Pedidos na CA (pág ${pagina}/${totalPaginas}): ${url}`);
-                const response = await contaAzulService._axiosGet(url, 'PEDIDOS_MODIFICADOS');
-                const itens = response.data?.itens || [];
-                vendasModificadas.push(...itens);
-                // A API V2 retorna total_paginas ou calcula pelo total_itens
-                const totalItens = response.data?.total_itens || response.data?.totalItens || 0;
-                const tamPag = response.data?.tamanho_pagina || 50;
-                totalPaginas = totalItens > 0 ? Math.ceil(totalItens / tamPag) : 1;
-                if (itens.length < tamPag) break; // última página
-                pagina++;
-                await new Promise(r => setTimeout(r, 120)); // rate limit CA: ~10 req/s
-            }
-            console.log(`Encontradas ${vendasModificadas.length} vendas recentemente alteradas.`);
+            const baseUrl = `https://api-v2.contaazul.com/v1/venda/busca?data_alteracao_de=${diasAtras}&data_alteracao_ate=${dataAtual}&tamanho_pagina=50`;
+            const baseUrlCancelados = `${baseUrl}&situacao=CANCELADO`;
+
+            const [vendasAtivas, vendasCanceladas] = await Promise.all([
+                buscarPaginas(baseUrl),
+                buscarPaginas(baseUrlCancelados)
+            ]);
+
+            // Merge sem duplicatas (pelo id da venda CA)
+            const mapaVendas = new Map();
+            for (const v of vendasAtivas) mapaVendas.set(v.id, v);
+            for (const v of vendasCanceladas) mapaVendas.set(v.id, v); // cancelados sobrescrevem se duplicado
+            const vendasModificadas = [...mapaVendas.values()];
+            console.log(`Encontradas ${vendasModificadas.length} vendas recentemente alteradas (${vendasAtivas.length} ativas + ${vendasCanceladas.length} canceladas).`);
 
             let count = 0;
             for (const venda of vendasModificadas) {
