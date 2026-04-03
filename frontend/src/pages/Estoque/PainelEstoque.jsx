@@ -36,8 +36,8 @@ export default function PainelEstoque() {
         buscaTimeout.current = setTimeout(async () => {
             setLoadingBusca(true);
             try {
-                const data = await api.get('/produtos', { params: { busca: busca.trim(), ativo: true, tamanho: 20 } }).then(r => r.data);
-                setProdutos(Array.isArray(data) ? data : (data.produtos || data.items || []));
+                const data = await api.get('/produtos', { params: { search: busca.trim(), ativo: 'true', limit: 20 } }).then(r => r.data);
+                setProdutos(Array.isArray(data) ? data : (data.data || data.produtos || data.items || []));
             } catch {
                 setProdutos([]);
             } finally {

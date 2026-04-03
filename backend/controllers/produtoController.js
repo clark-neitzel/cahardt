@@ -13,7 +13,8 @@ const produtoController = {
             if (search) {
                 where.OR = [
                     { nome: { contains: search, mode: 'insensitive' } },
-                    { codigo: { contains: search, mode: 'insensitive' } }
+                    { codigo: { contains: search, mode: 'insensitive' } },
+                    { ean: { contains: search, mode: 'insensitive' } }
                 ];
             }
             // Filtro de Ativo/Inativo
