@@ -107,15 +107,17 @@ export default function PainelEstoque() {
             });
 
             const label = tipo === 'ENTRADA' ? 'Entrada' : 'Saída';
-            toast.success(`${label} registrada! Estoque: ${Number(res.estoqueAntes).toFixed(0)} → ${Number(res.estoqueDepois).toFixed(0)} ${produtoSelecionado.unidade || 'un'}`);
+            const novoSaldo = res.estoqueCA ?? res.estoqueDepois;
 
-            // Atualiza saldo exibido localmente
-            setProdutoSelecionado(prev => ({ ...prev, estoqueDisponivel: res.estoqueDepois }));
+            // Mantém produto selecionado, só limpa quantidade e observação
+            setProdutoSelecionado(prev => ({ ...prev, estoqueDisponivel: novoSaldo }));
             setQuantidade('');
             setObservacao('');
-            if (!res.sincCA) {
-                toast('Ajuste salvo localmente. Sincronização com CA pendente.', { icon: '⚠️' });
-            }
+
+            toast.success(
+                `${label} registrada! ${Number(res.estoqueAntes).toFixed(0)} → ${Number(novoSaldo).toFixed(0)} ${produtoSelecionado.unidade || 'un'}`,
+                { duration: 3000 }
+            );
         } catch (err) {
             toast.error(err.response?.data?.error || 'Erro ao ajustar estoque.');
         } finally {

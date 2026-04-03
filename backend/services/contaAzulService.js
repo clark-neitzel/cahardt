@@ -1518,31 +1518,44 @@ const contaAzulService = {
         }
     },
 
-    // === AJUSTE DE ESTOQUE NO CA ===
-    // Busca saldo atual do produto no CA e aplica delta (+/-).
-    // delta positivo = entrada, delta negativo = saída.
-    // Retorna { estoqueAntes, estoqueDepois }.
-    ajustarEstoqueCA: async (contaAzulId, delta) => {
+    // === SYNC INDIVIDUAL DE PRODUTO ===
+    // Busca um produto específico do CA pelo contaAzulId e atualiza o banco local.
+    // Usado após movimentações de estoque para manter o saldo local em sincronia com o CA.
+    syncProdutoIndividual: async (contaAzulId) => {
         const token = await contaAzulService.getAccessToken();
         const url = `https://api-v2.contaazul.com/v1/produtos/${contaAzulId}`;
 
-        // 1. Busca saldo atual
         const respGet = await axios.get(url, {
             headers: { Authorization: `Bearer ${token}` }
         });
-        const produto = respGet.data;
-        const estoqueAntes = parseFloat(produto.estoque?.quantidade_disponivel ?? produto.estoque?.estoque_disponivel ?? 0);
-        const estoqueDepois = Math.max(0, estoqueAntes + delta);
+        const p = respGet.data;
+        if (!p || !p.id) throw new Error('Produto não encontrado no CA');
 
-        // 2. Envia PATCH com novo saldo
-        const patchToken = await contaAzulService.getAccessToken();
-        await axios.patch(
-            url,
-            { estoque: { estoque_disponivel: estoqueDepois } },
-            { headers: { Authorization: `Bearer ${patchToken}`, 'Content-Type': 'application/json' } }
-        );
+        const estoqueObj = p.estoque || {};
+        const fiscalObj = p.fiscal || {};
+        const unidadeObj = p.unidade_medida || {};
+        const unidadeFiscal = fiscalObj.unidade_medida || {};
+        const unidadeValor = unidadeFiscal.descricao || unidadeFiscal.codigo ||
+            unidadeObj.descricao || unidadeObj.codigo ||
+            (typeof p.unidade_medida === 'string' ? p.unidade_medida : 'UN');
 
-        return { estoqueAntes, estoqueDepois };
+        const estoqueDisponivel = parseFloat(estoqueObj.quantidade_disponivel ?? estoqueObj.estoque_disponivel ?? 0);
+
+        await prisma.produto.updateMany({
+            where: { contaAzulId: p.id },
+            data: {
+                estoqueDisponivel,
+                estoqueReservado: parseFloat(estoqueObj.quantidade_reservada ?? 0),
+                estoqueTotal: parseFloat(estoqueObj.quantidade_total ?? estoqueDisponivel),
+                valorVenda: parseFloat(estoqueObj.valor_venda ?? p.value ?? p.valor_venda ?? 0) || undefined,
+                status: p.status,
+                ativo: p.status === 'ACTIVE' || p.status === 'ativo' || p.status === 'ATIVO',
+                contaAzulUpdatedAt: new Date(),
+                updatedAt: new Date()
+            }
+        });
+
+        return { estoqueDisponivel, contaAzulId: p.id };
     }
 };
 

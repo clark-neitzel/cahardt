@@ -11,24 +11,8 @@ const estoqueService = {
         if (!produto) throw new Error('Produto não encontrado');
 
         const delta = tipo === 'ENTRADA' ? Math.abs(quantidade) : -Math.abs(quantidade);
-
-        let estoqueAntes = parseFloat(produto.estoqueDisponivel);
-        let estoqueDepois = Math.max(0, estoqueAntes + delta);
-        let sincCA = false;
-        let erroCA = null;
-
-        // Tenta sincronizar com CA se o produto tem ID no CA
-        if (produto.contaAzulId) {
-            try {
-                const resultado = await contaAzulService.ajustarEstoqueCA(produto.contaAzulId, delta);
-                estoqueAntes = resultado.estoqueAntes;
-                estoqueDepois = resultado.estoqueDepois;
-                sincCA = true;
-            } catch (err) {
-                console.error(`[Estoque] Falha ao sincronizar com CA para produto ${produto.nome}:`, err.message);
-                erroCA = err.message?.substring(0, 500) || 'Erro desconhecido';
-            }
-        }
+        const estoqueAntes = parseFloat(produto.estoqueDisponivel);
+        const estoqueDepois = Math.max(0, estoqueAntes + delta);
 
         // Atualiza estoque local e registra movimentação
         await prisma.$transaction(async (tx) => {
@@ -48,16 +32,41 @@ const estoqueService = {
                     observacao,
                     estoqueAntes,
                     estoqueDepois,
-                    sincCA,
-                    erroCA
+                    sincCA: false,
+                    erroCA: null
                 }
             });
         });
 
-        return { estoqueAntes, estoqueDepois, sincCA };
+        // Sincroniza com CA imediatamente (busca saldo real do CA e atualiza local)
+        // A API do CA não permite gravar estoque via PATCH — o saldo no CA é atualizado
+        // automaticamente pelos pedidos de venda enviados. Para pedidos especiais/bonificação
+        // (que não vão ao CA), o controle de estoque é local neste sistema.
+        let sincCA = false;
+        let erroCA = null;
+        let estoqueCA = estoqueDepois;
+        if (produto.contaAzulId) {
+            try {
+                const res = await contaAzulService.syncProdutoIndividual(produto.contaAzulId);
+                estoqueCA = res.estoqueDisponivel;
+                sincCA = true;
+            } catch (err) {
+                console.error(`[Estoque] Falha ao sincronizar CA para ${produto.nome}:`, err.message);
+                erroCA = err.message?.substring(0, 500) || 'Erro desconhecido';
+            }
+        }
+
+        // Atualiza o registro da movimentação com o resultado da sync
+        await prisma.movimentacaoEstoque.updateMany({
+            where: { produtoId, tipo, motivo, estoqueAntes, estoqueDepois },
+            data: { sincCA, erroCA }
+        });
+
+        return { estoqueAntes, estoqueDepois, estoqueCA, sincCA };
     },
 
     // Dá baixa de todos os itens de um pedido especial/bonificação
+    // e sincroniza os produtos com o CA em seguida
     baixarPedido: async (pedidoId, vendedorId = null) => {
         const pedido = await prisma.pedido.findUnique({
             where: { id: pedidoId },
@@ -67,6 +76,7 @@ const estoqueService = {
 
         const motivo = pedido.bonificacao ? 'PEDIDO_BONIFICACAO' : 'PEDIDO_ESPECIAL';
         const resultados = [];
+        const contaAzulIds = [];
 
         for (const item of pedido.itens) {
             if (!item.produto) continue;
@@ -81,16 +91,25 @@ const estoqueService = {
                     observacao: `Pedido #${pedido.numero || pedidoId}`
                 });
                 resultados.push({ produtoId: item.produtoId, nome: item.produto.nome, ...res });
+                if (item.produto.contaAzulId) contaAzulIds.push(item.produto.contaAzulId);
             } catch (err) {
                 console.error(`[Estoque] Erro ao baixar item ${item.produto.nome}:`, err.message);
                 resultados.push({ produtoId: item.produtoId, nome: item.produto.nome, erro: err.message });
             }
         }
 
+        // Sync CA para todos os produtos afetados
+        for (const caId of contaAzulIds) {
+            contaAzulService.syncProdutoIndividual(caId).catch(err =>
+                console.error(`[Estoque] Falha sync CA pós-pedido ${pedidoId}:`, err.message)
+            );
+        }
+
         return resultados;
     },
 
     // Devolve estoque de todos os itens de um pedido (cancelamento/exclusão)
+    // e sincroniza os produtos com o CA em seguida
     devolverPedido: async (pedidoId, vendedorId = null) => {
         const pedido = await prisma.pedido.findUnique({
             where: { id: pedidoId },
@@ -102,14 +121,14 @@ const estoqueService = {
         const movExistentes = await prisma.movimentacaoEstoque.findMany({
             where: { pedidoId, tipo: 'SAIDA' }
         });
-        if (movExistentes.length === 0) return []; // Nunca teve baixa, nada a devolver
+        if (movExistentes.length === 0) return [];
 
         const motivo = 'CANCELAMENTO';
         const resultados = [];
+        const contaAzulIds = [];
 
         for (const item of pedido.itens) {
             if (!item.produto) continue;
-            // Só devolve se houve baixa deste produto neste pedido
             const movItem = movExistentes.find(m => m.produtoId === item.produtoId);
             if (!movItem) continue;
 
@@ -124,10 +143,18 @@ const estoqueService = {
                     observacao: `Devolução pedido #${pedido.numero || pedidoId}`
                 });
                 resultados.push({ produtoId: item.produtoId, nome: item.produto.nome, ...res });
+                if (item.produto.contaAzulId) contaAzulIds.push(item.produto.contaAzulId);
             } catch (err) {
                 console.error(`[Estoque] Erro ao devolver item ${item.produto.nome}:`, err.message);
                 resultados.push({ produtoId: item.produtoId, nome: item.produto.nome, erro: err.message });
             }
+        }
+
+        // Sync CA para todos os produtos afetados
+        for (const caId of contaAzulIds) {
+            contaAzulService.syncProdutoIndividual(caId).catch(err =>
+                console.error(`[Estoque] Falha sync CA pós-devolução ${pedidoId}:`, err.message)
+            );
         }
 
         return resultados;

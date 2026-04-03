@@ -83,6 +83,25 @@ router.get('/historico', async (req, res) => {
     }
 });
 
+// POST /api/estoque/sync-produto/:produtoId — sincroniza um produto específico com o CA
+router.post('/sync-produto/:produtoId', async (req, res) => {
+    try {
+        const produto = await prisma.produto.findUnique({
+            where: { id: req.params.produtoId },
+            select: { contaAzulId: true, nome: true, estoqueDisponivel: true }
+        });
+        if (!produto) return res.status(404).json({ error: 'Produto não encontrado.' });
+        if (!produto.contaAzulId) return res.json({ sincCA: false, motivo: 'Produto sem vínculo CA.' });
+
+        const contaAzulService = require('../services/contaAzulService');
+        const resultado = await contaAzulService.syncProdutoIndividual(produto.contaAzulId);
+        return res.json({ sincCA: true, estoqueDisponivel: resultado.estoqueDisponivel });
+    } catch (err) {
+        console.error('[Estoque] Erro sync-produto:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/estoque/permissoes — retorna o que o usuário logado pode fazer
 router.get('/permissoes', async (req, res) => {
     const permissoes = req.user?.permissoes || {};
