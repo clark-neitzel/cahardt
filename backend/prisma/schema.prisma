@@ -41,12 +41,13 @@ model Produto {
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  imagens         ProdutoImagem[]
-  itens           PedidoItem[]
-  promocoes       Promocao[]
-  itensDevolvidos EntregaItemDevolvido[]
-  metasProdutos   MetaProduto[]
-  itensAmostra    AmostraItem[]
+  imagens              ProdutoImagem[]
+  itens                PedidoItem[]
+  promocoes            Promocao[]
+  itensDevolvidos      EntregaItemDevolvido[]
+  metasProdutos        MetaProduto[]
+  itensAmostra         AmostraItem[]
+  movimentacoesEstoque MovimentacaoEstoque[]
 
   // Inteligência Comercial
   categoriaProdutoId      String?           @map("categoria_produto_id")
@@ -227,10 +228,11 @@ model Pedido {
   observacaoEntrega    String?   @map("observacao_entrega") @db.Text // Observação geral do motorista na entrega
   prioridadeEntrega    Int?      @map("prioridade_entrega") // Prioridade manual do motorista (1, 2, 3...)
 
-  pagamentosReais   PedidoPagamentoReal[]
-  itensDevolvidos   EntregaItemDevolvido[]
-  caixaConferencias CaixaEntregaConferida[]
-  contaReceber      ContaReceber?
+  pagamentosReais      PedidoPagamentoReal[]
+  itensDevolvidos      EntregaItemDevolvido[]
+  caixaConferencias    CaixaEntregaConferida[]
+  contaReceber         ContaReceber?
+  movimentacoesEstoque MovimentacaoEstoque[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -333,7 +335,31 @@ model Vendedor {
   roteirizacao      Roteirizacao?
   baixasRealizadas  Parcela[]             @relation("BaixasRealizadas")
 
+  movimentacoesEstoque MovimentacaoEstoque[]
+
   @@map("vendedores")
+}
+
+model MovimentacaoEstoque {
+  id          String   @id @default(uuid())
+  produtoId   String   @map("produto_id")
+  vendedorId  String?  @map("vendedor_id")
+  pedidoId    String?  @map("pedido_id")
+  tipo        String   // ENTRADA | SAIDA
+  quantidade  Decimal  @db.Decimal(12, 3)
+  motivo      String   // AJUSTE_MANUAL | PEDIDO_ESPECIAL | PEDIDO_BONIFICACAO | CANCELAMENTO | EXCLUSAO
+  observacao  String?
+  estoqueAntes Decimal @map("estoque_antes") @db.Decimal(12, 3)
+  estoqueDepois Decimal @map("estoque_depois") @db.Decimal(12, 3)
+  sincCA      Boolean  @default(false) @map("sinc_ca")
+  erroCA      String?  @map("erro_ca")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  produto  Produto   @relation(fields: [produtoId], references: [id])
+  vendedor Vendedor? @relation(fields: [vendedorId], references: [id])
+  pedido   Pedido?   @relation(fields: [pedidoId], references: [id])
+
+  @@map("movimentacoes_estoque")
 }
 
 model AppConfig {

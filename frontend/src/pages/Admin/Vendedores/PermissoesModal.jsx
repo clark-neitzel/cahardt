@@ -54,7 +54,9 @@ const DEFAULT_PERMISSIONS = {
     Pode_Baixar_Contas_Receber: false,
     // Utilitários Admin
     Pode_Resetar_Dados: false,
-    admin: false // Flag Global Mestre
+    admin: false, // Flag Global Mestre
+    // Permissões de Estoque: array de { categoria, pode: ['adicionar','diminuir'] }
+    estoque: []
 };
 
 const TAB_LABELS = {
@@ -782,6 +784,82 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                     <span className="text-red-700 text-xs">Permite acessar a ferramenta de limpeza de dados na tela de Configurações Gerais. Ação destrutiva e irreversível.</span>
                                 </div>
                             </label>
+                        </div>
+                    </div>
+
+                    {/* Permissões de Estoque */}
+                    <div className="border-t pt-4">
+                        <h4 className="font-medium text-gray-900 mb-1">Movimentação de Estoque</h4>
+                        <p className="text-sm text-gray-500 mb-3">Define o que este usuário pode fazer no painel de estoque por categoria de produto.</p>
+                        <div className="bg-teal-50 border border-teal-200 rounded-md p-4 space-y-3">
+                            {(permissoes.estoque || []).map((regra, idx) => (
+                                <div key={idx} className="flex items-center gap-2 flex-wrap">
+                                    <select
+                                        value={regra.categoria || ''}
+                                        onChange={e => {
+                                            const nova = [...(permissoes.estoque || [])];
+                                            nova[idx] = { ...nova[idx], categoria: e.target.value };
+                                            setPermissoes(prev => ({ ...prev, estoque: nova }));
+                                        }}
+                                        className="flex-1 min-w-[140px] border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    >
+                                        <option value="">Todas as categorias</option>
+                                        {todasCategorias.map(c => (
+                                            <option key={c.id || c.descricao} value={c.descricao}>{c.descricao}</option>
+                                        ))}
+                                    </select>
+                                    <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-teal-300 text-teal-600 focus:ring-teal-500"
+                                            checked={regra.pode?.includes('adicionar')}
+                                            onChange={e => {
+                                                const nova = [...(permissoes.estoque || [])];
+                                                const pode = new Set(nova[idx].pode || []);
+                                                e.target.checked ? pode.add('adicionar') : pode.delete('adicionar');
+                                                nova[idx] = { ...nova[idx], pode: [...pode] };
+                                                setPermissoes(prev => ({ ...prev, estoque: nova }));
+                                            }}
+                                        />
+                                        Adicionar
+                                    </label>
+                                    <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-teal-300 text-teal-600 focus:ring-teal-500"
+                                            checked={regra.pode?.includes('diminuir')}
+                                            onChange={e => {
+                                                const nova = [...(permissoes.estoque || [])];
+                                                const pode = new Set(nova[idx].pode || []);
+                                                e.target.checked ? pode.add('diminuir') : pode.delete('diminuir');
+                                                nova[idx] = { ...nova[idx], pode: [...pode] };
+                                                setPermissoes(prev => ({ ...prev, estoque: nova }));
+                                            }}
+                                        />
+                                        Diminuir
+                                    </label>
+                                    <button
+                                        onClick={() => {
+                                            const nova = (permissoes.estoque || []).filter((_, i) => i !== idx);
+                                            setPermissoes(prev => ({ ...prev, estoque: nova }));
+                                        }}
+                                        className="text-red-400 hover:text-red-600 text-lg font-light leading-none"
+                                        title="Remover regra"
+                                    >×</button>
+                                </div>
+                            ))}
+                            <button
+                                onClick={() => setPermissoes(prev => ({
+                                    ...prev,
+                                    estoque: [...(prev.estoque || []), { categoria: '', pode: [] }]
+                                }))}
+                                className="text-sm text-teal-700 font-medium hover:text-teal-900 flex items-center gap-1"
+                            >
+                                + Adicionar regra de categoria
+                            </button>
+                            {(permissoes.estoque || []).length === 0 && (
+                                <p className="text-xs text-teal-700 opacity-70">Nenhuma regra definida — usuário não pode acessar o painel de estoque (exceto admin).</p>
+                            )}
                         </div>
                     </div>
 

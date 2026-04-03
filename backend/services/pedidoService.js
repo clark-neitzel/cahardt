@@ -2,6 +2,7 @@ const prisma = require('../config/database');
 const promocaoService = require('./promocaoService');
 const clienteInsightService = require('./clienteInsightService');
 const { calcularItensComFlex, calcularDiferencaFlex, gerarParcelasData } = require('./pedidoCalculos');
+const estoqueService = require('./estoqueService');
 
 const pedidoService = {
     // 1. Listagem de pedidos com filtros (para a tela de histórico)
@@ -245,6 +246,15 @@ const pedidoService = {
                 }, 0);
             }
 
+            // Baixa de estoque para pedidos especiais e bonificação aprovados
+            if (statusEnvio === 'ENVIAR' && (especial || bonificacao)) {
+                setTimeout(() => {
+                    estoqueService.baixarPedido(novoPedido.id, vendedorId).catch(err =>
+                        console.error(`[Estoque] Falha ao baixar estoque do pedido ${novoPedido.id}:`, err.message)
+                    );
+                }, 0);
+            }
+
             // Gerar Conta a Receber para todos os pedidos enviados (exceto bonificação)
             if (statusEnvio === 'ENVIAR' && !bonificacao) {
                 const valorTotal = itensData.reduce((s, i) => s + (i.valor * i.quantidade), 0);
@@ -433,6 +443,29 @@ const pedidoService = {
                 setTimeout(() => {
                     clienteInsightService.recalcularCliente(clienteId).catch(console.error);
                 }, 0);
+
+                // Baixa estoque quando especial/bonificação passa de ABERTO → ENVIAR
+                const isEspecialOuBon = (especial !== undefined ? !!especial : pedidoAntigo.especial) ||
+                    (bonificacao !== undefined ? !!bonificacao : pedidoAntigo.bonificacao);
+                if (isEspecialOuBon && pedidoAntigo.statusEnvio !== 'ENVIAR') {
+                    setTimeout(() => {
+                        estoqueService.baixarPedido(id, vendedorId).catch(err =>
+                            console.error(`[Estoque] Falha ao baixar estoque pedido ${id}:`, err.message)
+                        );
+                    }, 0);
+                }
+            }
+
+            // Devolve estoque quando especial/bonificação passa de ENVIAR → ABERTO
+            if (pedidoAntigo.statusEnvio === 'ENVIAR' && statusEnvio !== 'ENVIAR') {
+                const isEspecialOuBon = pedidoAntigo.especial || pedidoAntigo.bonificacao;
+                if (isEspecialOuBon) {
+                    setTimeout(() => {
+                        estoqueService.devolverPedido(id).catch(err =>
+                            console.error(`[Estoque] Falha ao devolver estoque pedido ${id}:`, err.message)
+                        );
+                    }, 0);
+                }
             }
 
             return pedidoAtualizado;
@@ -555,10 +588,18 @@ const pedidoService = {
             throw new Error("Não é possível excluir: existem parcelas já pagas nesta conta a receber.");
         }
 
+        // Devolve estoque se for especial/bonificação aprovado
+        if ((pedido.especial || pedido.bonificacao) && pedido.statusEnvio === 'ENVIAR') {
+            await estoqueService.devolverPedido(id).catch(err =>
+                console.error(`[Estoque] Falha ao devolver estoque do pedido ${id}:`, err.message)
+            );
+        }
+
         return await prisma.$transaction(async (tx) => {
             // Remove dependências
             await tx.entregaItemDevolvido.deleteMany({ where: { pedidoId: id } });
             await tx.pedidoPagamentoReal.deleteMany({ where: { pedidoId: id } });
+            await tx.movimentacaoEstoque.deleteMany({ where: { pedidoId: id } });
             await tx.pedidoItem.deleteMany({ where: { pedidoId: id } });
             // Remove conta a receber e parcelas se existirem
             const cr = await tx.contaReceber.findUnique({ where: { pedidoId: id } });

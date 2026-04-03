@@ -32,13 +32,15 @@ import CaixaDiarioPage from './pages/Caixa/CaixaDiarioPage';
 import RelatorioCaixaPrint from './pages/Caixa/RelatorioCaixaPrint';
 import ContasReceberPage from './pages/Financeiro/ContasReceberPage';
 import RelatorioPedidos from './pages/Relatorios/RelatorioPedidos';
+import PainelEstoque from './pages/Estoque/PainelEstoque';
+import HistoricoEstoque from './pages/Estoque/HistoricoEstoque';
 
 import {
   Menu, X, LogOut, ChevronDown,
   LayoutDashboard, BookOpen, ClipboardList, Map, Target, Users,
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText,
-  Settings, DollarSign, Building2, TrendingUp, FolderOpen
+  Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -120,6 +122,7 @@ const Layout = ({ children }) => {
   const showLogistica = hasPermission('Pode_Acessar_Embarque') || hasPermission('Pode_Ver_Todas_Entregas');
   const showFinanceiro = hasPermission('Pode_Acessar_Caixa') || hasPermission('Pode_Ver_Todas_Entregas') || hasPermission('Pode_Acessar_Contas_Receber');
   const showAdmin = hasPermission('produtos') || hasPermission('vendedores') || hasPermission('sync') || user?.permissoes?.admin;
+  const showEstoque = user?.permissoes?.admin || (Array.isArray(user?.permissoes?.estoque) && user.permissoes.estoque.length > 0);
   const showConfig = hasPermission('configuracoes');
 
   return (
@@ -168,6 +171,10 @@ const Layout = ({ children }) => {
           {hasPermission('vendedores') && <SidebarItem to="/admin/vendedores" icon={UserCog} label="Vendedores" />}
           {(user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && <SidebarItem to="/admin/veiculos" icon={Car} label="Veículos" />}
           {hasPermission('sync') && <SidebarItem to="/admin/sync" icon={RefreshCw} label="Sincronizar" />}
+
+          {/* Produção / Estoque */}
+          {showEstoque && <SidebarSection label="Produção" />}
+          {showEstoque && <SidebarItem to="/estoque" icon={Warehouse} label="Estoque" />}
 
           {/* Configurações */}
           {showConfig && <SidebarSection label="Configurações" />}
@@ -283,6 +290,14 @@ const Layout = ({ children }) => {
               </MobileMenuSection>
             )}
 
+            {/* Produção / Estoque */}
+            {showEstoque && (
+              <MobileMenuSection label="Produção / Estoque" icon={Warehouse}>
+                <NavLink to="/estoque" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Ajuste de Estoque</NavLink>
+                <NavLink to="/estoque/historico" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Histórico</NavLink>
+              </MobileMenuSection>
+            )}
+
             {/* Configurações */}
             {showConfig && (
               <MobileMenuSection label="Configurações" icon={Settings}>
@@ -374,6 +389,10 @@ function App() {
               <Route path="/despesas" element={<PrivateRoute tab="Pode_Acessar_Caixa"><DespesasPage /></PrivateRoute>} />
               <Route path="/caixa" element={<PrivateRoute tab="Pode_Acessar_Caixa"><CaixaDiarioPage /></PrivateRoute>} />
               <Route path="/caixa/impressao" element={<PrivateRoute tab="Pode_Acessar_Caixa"><RelatorioCaixaPrint /></PrivateRoute>} />
+
+              {/* Produção / Estoque */}
+              <Route path="/estoque" element={<PrivateRoute><PainelEstoque /></PrivateRoute>} />
+              <Route path="/estoque/historico" element={<PrivateRoute><HistoricoEstoque /></PrivateRoute>} />
 
               {/* Produtos / Admin */}
               <Route path="/admin/produtos" element={<PrivateRoute tab="produtos"><ListaProdutos /></PrivateRoute>} />

@@ -1516,6 +1516,33 @@ const contaAzulService = {
             });
             throw error;
         }
+    },
+
+    // === AJUSTE DE ESTOQUE NO CA ===
+    // Busca saldo atual do produto no CA e aplica delta (+/-).
+    // delta positivo = entrada, delta negativo = saída.
+    // Retorna { estoqueAntes, estoqueDepois }.
+    ajustarEstoqueCA: async (contaAzulId, delta) => {
+        const token = await contaAzulService.getAccessToken();
+        const url = `https://api-v2.contaazul.com/v1/produtos/${contaAzulId}`;
+
+        // 1. Busca saldo atual
+        const respGet = await axios.get(url, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const produto = respGet.data;
+        const estoqueAntes = parseFloat(produto.estoque?.quantidade_disponivel ?? produto.estoque?.estoque_disponivel ?? 0);
+        const estoqueDepois = Math.max(0, estoqueAntes + delta);
+
+        // 2. Envia PATCH com novo saldo
+        const patchToken = await contaAzulService.getAccessToken();
+        await axios.patch(
+            url,
+            { estoque: { estoque_disponivel: estoqueDepois } },
+            { headers: { Authorization: `Bearer ${patchToken}`, 'Content-Type': 'application/json' } }
+        );
+
+        return { estoqueAntes, estoqueDepois };
     }
 };
 
