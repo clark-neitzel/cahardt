@@ -17,6 +17,8 @@ export default function PainelEstoque() {
     const [loadingBusca, setLoadingBusca] = useState(false);
     const [loadingAjuste, setLoadingAjuste] = useState(false);
     const [permissoes, setPermissoes] = useState(null);
+    const [buscaFeita, setBuscaFeita] = useState(false);
+    const [erroBusca, setErroBusca] = useState(null);
     const buscaTimeout = useRef(null);
     const inputRef = useRef(null);
 
@@ -30,16 +32,24 @@ export default function PainelEstoque() {
     useEffect(() => {
         if (!busca.trim()) {
             setProdutos([]);
+            setBuscaFeita(false);
+            setErroBusca(null);
             return;
         }
         clearTimeout(buscaTimeout.current);
         buscaTimeout.current = setTimeout(async () => {
             setLoadingBusca(true);
+            setErroBusca(null);
             try {
-                const data = await api.get('/produtos', { params: { search: busca.trim(), ativo: 'true', limit: 20 } }).then(r => r.data);
-                setProdutos(Array.isArray(data) ? data : (data.data || data.produtos || data.items || []));
-            } catch {
+                const data = await api.get('/produtos', { params: { search: busca.trim(), limit: 20 } }).then(r => r.data);
+                const lista = Array.isArray(data) ? data : (data.data || data.produtos || data.items || []);
+                setProdutos(lista);
+                setBuscaFeita(true);
+            } catch (err) {
+                console.error('[Estoque busca]', err);
                 setProdutos([]);
+                setBuscaFeita(true);
+                setErroBusca(err.response?.data?.error || 'Erro ao buscar produtos.');
             } finally {
                 setLoadingBusca(false);
             }
@@ -50,6 +60,8 @@ export default function PainelEstoque() {
         setProdutoSelecionado(produto);
         setProdutos([]);
         setBusca(produto.nome);
+        setBuscaFeita(false);
+        setErroBusca(null);
         setQuantidade('');
         setObservacao('');
     };
@@ -58,6 +70,8 @@ export default function PainelEstoque() {
         setProdutoSelecionado(null);
         setBusca('');
         setProdutos([]);
+        setBuscaFeita(false);
+        setErroBusca(null);
         setQuantidade('');
         setObservacao('');
         setTimeout(() => inputRef.current?.focus(), 50);
@@ -153,22 +167,37 @@ export default function PainelEstoque() {
             </div>
 
             {/* Lista de resultados da busca */}
-            {produtos.length > 0 && !produtoSelecionado && (
-                <div className="border border-gray-200 rounded-xl overflow-hidden mb-4 shadow-sm">
-                    {produtos.map(p => (
-                        <button
-                            key={p.id}
-                            onClick={() => selecionarProduto(p)}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0"
-                        >
-                            <Package className="h-5 w-5 text-gray-400 shrink-0" />
-                            <div className="min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">{p.nome}</p>
-                                <p className="text-xs text-gray-500">{p.codigo || p.ean || '—'} · {p.categoria || 'sem categoria'} · Estoque: {Number(p.estoqueDisponivel || 0).toFixed(0)} {p.unidade}</p>
-                            </div>
-                        </button>
-                    ))}
-                </div>
+            {!produtoSelecionado && (
+                <>
+                    {erroBusca && (
+                        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
+                            <AlertCircle className="h-4 w-4 shrink-0" />
+                            {erroBusca}
+                        </div>
+                    )}
+                    {!loadingBusca && buscaFeita && produtos.length === 0 && !erroBusca && busca.trim() && (
+                        <div className="text-center py-6 text-gray-400 text-sm">
+                            Nenhum produto encontrado para <strong className="text-gray-600">"{busca}"</strong>
+                        </div>
+                    )}
+                    {produtos.length > 0 && (
+                        <div className="border border-gray-200 rounded-xl overflow-hidden mb-4 shadow-sm">
+                            {produtos.map(p => (
+                                <button
+                                    key={p.id}
+                                    onClick={() => selecionarProduto(p)}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0"
+                                >
+                                    <Package className="h-5 w-5 text-gray-400 shrink-0" />
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 truncate">{p.nome}</p>
+                                        <p className="text-xs text-gray-500">{p.codigo || p.ean || '—'} · {p.categoria || 'sem categoria'} · Estoque: {Number(p.estoqueDisponivel || 0).toFixed(0)} {p.unidade}</p>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </>
             )}
 
             {/* Produto selecionado */}
