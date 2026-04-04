@@ -105,11 +105,11 @@ const ListaProdutos = () => {
 
     return (
         <div className="container mx-auto px-4 py-6">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <h1 className="text-2xl font-bold text-gray-800">Gerenciar Produtos</h1>
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
+                <h1 className="text-2xl font-bold text-gray-800 text-center sm:text-left">Gerenciar Produtos</h1>
                 <Link
                     to="/admin/sync"
-                    className="text-primary hover:text-blue-700 text-sm font-medium flex items-center"
+                    className="text-primary hover:text-blue-700 text-sm font-medium flex items-center justify-center sm:justify-start"
                 >
                     ir para Sincronização <ArrowLeft className="h-4 w-4 ml-1 rotate-180" />
                 </Link>
@@ -117,14 +117,14 @@ const ListaProdutos = () => {
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 {/* Header de Filtros */}
-                <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
                     {/* Tabs de Status */}
-                    <div className="flex space-x-1 bg-gray-200 p-1 rounded-lg self-start md:self-auto">
+                    <div className="flex w-full md:w-auto overflow-x-auto space-x-1 bg-gray-200 p-1 rounded-lg flex-shrink-0 hide-scrollbar">
                         {['ativo', 'inativo', 'todos'].map((status) => (
                             <button
                                 key={status}
                                 onClick={() => handleStatusChange(status)}
-                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${statusFilter === status
+                                className={`flex-1 md:flex-none whitespace-nowrap px-4 py-1.5 rounded-md text-sm font-medium transition-all ${statusFilter === status
                                     ? 'bg-white text-gray-900 shadow-sm'
                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                                     }`}
@@ -199,11 +199,11 @@ const ListaProdutos = () => {
                                         <div className="text-xs text-gray-500">
                                             {produto.codigo} • {produto.categoria || 'Sem Cat.'}
                                         </div>
-                                        <div className="flex mt-1 space-x-3 text-xs">
-                                            <span className={Number(produto.estoqueDisponivel) > 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                                        <div className="flex flex-wrap mt-1 gap-x-3 gap-y-1 text-xs">
+                                            <span className={Number(produto.estoqueDisponivel) > 0 ? 'text-green-600 font-medium whitespace-nowrap' : 'text-red-600 font-medium whitespace-nowrap'}>
                                                 {Number(produto.estoqueDisponivel)} {produto.unidade}
                                             </span>
-                                            <span className="text-gray-900">
+                                            <span className="text-gray-900 whitespace-nowrap">
                                                 Venda: R$ {Number(produto.valorVenda || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                             </span>
                                         </div>

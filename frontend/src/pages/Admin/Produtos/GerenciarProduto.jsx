@@ -706,15 +706,15 @@ const GerenciarProduto = () => {
             {/* Header Sticky */}
             <div className="sticky top-0 z-10 bg-white border-b shadow-sm px-4 py-4 mb-6">
                 <div className="container mx-auto max-w-5xl flex justify-between items-center">
-                    <div className="flex items-center space-x-4">
-                        <button onClick={handleBack} className="text-gray-500 hover:text-gray-800 transition-colors p-1 rounded-full hover:bg-gray-100">
+                    <div className="flex items-center space-x-4 w-full min-w-0">
+                        <button onClick={handleBack} className="text-gray-500 hover:text-gray-800 transition-colors p-1 rounded-full hover:bg-gray-100 flex-shrink-0">
                             <ArrowLeft className="h-6 w-6" />
                         </button>
-                        <div>
-                            <h1 className="text-xl font-bold text-gray-900 leading-tight">{formData.nome || 'Produto'}</h1>
-                            <div className="flex items-center space-x-2 text-sm">
-                                <span className="text-gray-500">Código: {formData.codigo}</span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${formData.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-xl font-bold text-gray-900 leading-tight truncate">{formData.nome || 'Produto'}</h1>
+                            <div className="flex items-center space-x-2 text-sm mt-1 flex-wrap gap-y-1">
+                                <span className="text-gray-500 whitespace-nowrap">Código: {formData.codigo}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${formData.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                     {formData.ativo ? 'Ativo' : 'Inativo'}
                                 </span>
                             </div>
