@@ -391,7 +391,7 @@ const ListaPedidos = () => {
 
     // Retorno do render
     return (
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8 w-full overflow-x-hidden">
+        <div className="w-full py-4 sm:py-6 overflow-x-hidden">
             <div className="flex justify-between items-center mb-4">
                 <h1 className="text-lg sm:text-2xl font-black text-gray-900 flex items-center gap-2">
                     <Package className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
