@@ -397,6 +397,13 @@ const ListaPedidos = () => {
                     <Package className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                     Pedidos
                 </h1>
+                <button
+                    onClick={() => navigate('/pedidos/novo')}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-primary text-white text-sm font-bold rounded-lg shadow-sm hover:bg-blue-700 active:scale-95 transition-all"
+                >
+                    <span className="text-lg leading-none">+</span>
+                    <span className="hidden sm:inline">Novo Pedido</span>
+                </button>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-4">
@@ -445,22 +452,25 @@ const ListaPedidos = () => {
                             <label className="text-[11px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
                                 <Calendar className="h-3 w-3" /> Data de Entrega
                             </label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="date"
-                                    value={filtros.dataEntregaDe}
-                                    onChange={e => setFiltros(prev => ({ ...prev, dataEntregaDe: e.target.value }))}
-                                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
-                                    title="Entrega A Partir de"
-                                />
-                                <span className="text-gray-400 self-center">-</span>
-                                <input
-                                    type="date"
-                                    value={filtros.dataEntregaAte}
-                                    onChange={e => setFiltros(prev => ({ ...prev, dataEntregaAte: e.target.value }))}
-                                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
-                                    title="Entrega Até"
-                                />
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <p className="text-[10px] text-gray-400 mb-0.5">De</p>
+                                    <input
+                                        type="date"
+                                        value={filtros.dataEntregaDe}
+                                        onChange={e => setFiltros(prev => ({ ...prev, dataEntregaDe: e.target.value }))}
+                                        className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
+                                    />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-gray-400 mb-0.5">Até</p>
+                                    <input
+                                        type="date"
+                                        value={filtros.dataEntregaAte}
+                                        onChange={e => setFiltros(prev => ({ ...prev, dataEntregaAte: e.target.value }))}
+                                        className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -469,22 +479,25 @@ const ListaPedidos = () => {
                             <label className="text-[11px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
                                 <Calendar className="h-3 w-3" /> Emissão/Criação
                             </label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="date"
-                                    value={filtros.dataCriacaoDe}
-                                    onChange={e => setFiltros(prev => ({ ...prev, dataCriacaoDe: e.target.value }))}
-                                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
-                                    title="Criação A Partir de"
-                                />
-                                <span className="text-gray-400 self-center">-</span>
-                                <input
-                                    type="date"
-                                    value={filtros.dataCriacaoAte}
-                                    onChange={e => setFiltros(prev => ({ ...prev, dataCriacaoAte: e.target.value }))}
-                                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
-                                    title="Criação Até"
-                                />
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <p className="text-[10px] text-gray-400 mb-0.5">De</p>
+                                    <input
+                                        type="date"
+                                        value={filtros.dataCriacaoDe}
+                                        onChange={e => setFiltros(prev => ({ ...prev, dataCriacaoDe: e.target.value }))}
+                                        className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
+                                    />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-gray-400 mb-0.5">Até</p>
+                                    <input
+                                        type="date"
+                                        value={filtros.dataCriacaoAte}
+                                        onChange={e => setFiltros(prev => ({ ...prev, dataCriacaoAte: e.target.value }))}
+                                        className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -739,7 +752,7 @@ const ListaPedidos = () => {
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col items-end gap-1 shrink-0">
+                                        <div className="flex flex-col items-end gap-1.5 shrink-0">
                                             <div className="text-[13px] sm:text-[14px] font-black text-gray-900 whitespace-nowrap">
                                                 R$ {Number(pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </div>
@@ -764,7 +777,7 @@ const ListaPedidos = () => {
                                                         if (['ABERTO', 'ERRO'].includes(pedido.statusEnvio) && !bloq) navigate(`/pedidos/editar/${pedido.id}`);
                                                         else setSelectedPedido(pedido);
                                                     }}
-                                                    className="px-2 sm:px-3 py-1 text-[10px] sm:text-[11px] font-bold bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 shadow-sm"
+                                                    className="px-2.5 py-1.5 text-[11px] font-bold bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 shadow-sm whitespace-nowrap"
                                                 >
                                                     {(['ABERTO', 'ERRO'].includes(pedido.statusEnvio) && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA))) ? 'Editar' : 'Detalhes'}
                                                 </button>
