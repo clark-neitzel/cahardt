@@ -62,6 +62,54 @@ router.post('/ajuste', async (req, res) => {
     }
 });
 
+// GET /api/estoque/posicao — produtos com saldo de estoque para a tela Posição
+router.get('/posicao', async (req, res) => {
+    try {
+        const { search, categorias, categoriasComerciais } = req.query;
+
+        const where = { ativo: true };
+
+        if (search?.trim()) {
+            where.OR = [
+                { nome: { contains: search.trim(), mode: 'insensitive' } },
+                { codigo: { contains: search.trim(), mode: 'insensitive' } }
+            ];
+        }
+
+        if (categorias) {
+            const cats = categorias.split(',').map(c => c.trim()).filter(Boolean);
+            if (cats.length > 0) where.categoria = { in: cats };
+        }
+
+        if (categoriasComerciais) {
+            const cats = categoriasComerciais.split(',').map(c => c.trim()).filter(Boolean);
+            if (cats.length > 0) where.categoriaProdutoId = { in: cats };
+        }
+
+        const produtos = await prisma.produto.findMany({
+            where,
+            select: {
+                id: true,
+                nome: true,
+                codigo: true,
+                unidade: true,
+                categoria: true,
+                estoqueTotal: true,
+                estoqueReservado: true,
+                estoqueDisponivel: true,
+                estoqueMinimo: true,
+                categoriaProduto: { select: { id: true, nome: true } }
+            },
+            orderBy: [{ categoria: 'asc' }, { nome: 'asc' }]
+        });
+
+        return res.json(produtos);
+    } catch (err) {
+        console.error('[Estoque] Erro posição:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/estoque/historico — listagem de movimentações
 router.get('/historico', async (req, res) => {
     try {

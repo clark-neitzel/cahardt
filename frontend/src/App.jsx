@@ -35,6 +35,7 @@ import ContasReceberPage from './pages/Financeiro/ContasReceberPage';
 import RelatorioPedidos from './pages/Relatorios/RelatorioPedidos';
 import PainelEstoque from './pages/Estoque/PainelEstoque';
 import HistoricoEstoque from './pages/Estoque/HistoricoEstoque';
+import PosicaoEstoque from './pages/Estoque/PosicaoEstoque';
 
 import {
   Menu, X, LogOut, ChevronDown,
@@ -175,7 +176,8 @@ const Layout = ({ children }) => {
 
           {/* Produção / Estoque */}
           {showEstoque && <SidebarSection label="Produção" />}
-          {showEstoque && <SidebarItem to="/estoque" icon={Warehouse} label="Estoque" />}
+          {showEstoque && <SidebarItem to="/estoque/posicao" icon={Warehouse} label="Posição" />}
+          {showEstoque && <SidebarItem to="/estoque" icon={Warehouse} label="Ajuste" />}
 
           {/* Configurações */}
           {showConfig && <SidebarSection label="Configurações" />}
@@ -295,6 +297,7 @@ const Layout = ({ children }) => {
             {/* Produção / Estoque */}
             {showEstoque && (
               <MobileMenuSection label="Produção / Estoque" icon={Warehouse}>
+                <NavLink to="/estoque/posicao" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Posição</NavLink>
                 <NavLink to="/estoque" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Ajuste de Estoque</NavLink>
                 <NavLink to="/estoque/historico" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Histórico</NavLink>
               </MobileMenuSection>
@@ -396,6 +399,7 @@ function App() {
               {/* Produção / Estoque */}
               <Route path="/estoque" element={<PrivateRoute><PainelEstoque /></PrivateRoute>} />
               <Route path="/estoque/historico" element={<PrivateRoute><HistoricoEstoque /></PrivateRoute>} />
+              <Route path="/estoque/posicao" element={<PrivateRoute><PosicaoEstoque /></PrivateRoute>} />
 
               {/* Produtos / Admin */}
               <Route path="/admin/produtos" element={<PrivateRoute tab="produtos"><ListaProdutos /></PrivateRoute>} />
