@@ -697,7 +697,7 @@ const ListaPedidos = () => {
                             <div className="p-8 text-center text-gray-500">Nenhum pedido encontrado nos filtros aplicados.</div>
                         ) : (
                             pedidos.map((pedido) => (
-                                <div key={pedido.id} className="px-3 pt-3 pb-2 hover:bg-gray-50 transition-colors border-b border-gray-100">
+                                <div key={pedido.id} className="px-3 pt-3 pb-2 hover:bg-gray-50 transition-colors border-b border-gray-100 overflow-hidden">
                                     {/* Linha 1: checkbox + número + cliente + valor */}
                                     <div className="flex items-start gap-2 mb-1">
                                         {pedido.situacaoCA === 'FATURADO' && (
