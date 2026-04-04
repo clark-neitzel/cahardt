@@ -397,13 +397,6 @@ const ListaPedidos = () => {
                     <Package className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                     Pedidos
                 </h1>
-                <button
-                    onClick={() => navigate('/pedidos/novo')}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-primary text-white text-sm font-bold rounded-lg shadow-sm hover:bg-blue-700 active:scale-95 transition-all"
-                >
-                    <span className="text-lg leading-none">+</span>
-                    <span className="hidden sm:inline">Novo Pedido</span>
-                </button>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-4">
