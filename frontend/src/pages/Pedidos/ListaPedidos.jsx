@@ -54,6 +54,15 @@ const ListaPedidos = () => {
     const [expandedAmostra, setExpandedAmostra] = useState(null);
     const [todosVendedores, setTodosVendedores] = useState([]);
     const [showFilters, setShowFilters] = useState(false);
+    const [filtroStatus, setFiltroStatus] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem(`pedidos_filtro_status_${user?.id}`)) || 'TODOS';
+        } catch { return 'TODOS'; }
+    });
+
+    useEffect(() => {
+        localStorage.setItem(`pedidos_filtro_status_${user?.id}`, JSON.stringify(filtroStatus));
+    }, [filtroStatus, user]);
 
     const podeAprovar = user?.permissoes?.Pode_Aprovar_Especial || user?.permissoes?.admin;
     const podeReverter = user?.permissoes?.Pode_Reverter_Especial || user?.permissoes?.admin;
@@ -565,6 +574,38 @@ const ListaPedidos = () => {
                 )}
             </div>
 
+            {/* Filtro rápido por status */}
+            {!['amostras'].includes(abaAtiva) && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                    {[
+                        { key: 'TODOS', label: 'Todos', active: 'bg-gray-200 text-gray-800 border-gray-400' },
+                        { key: 'ABERTO', label: 'Aberto', active: 'bg-gray-100 text-gray-800 border-gray-300' },
+                        { key: 'ENVIAR', label: 'Enviar', active: 'bg-blue-100 text-blue-800 border-blue-300' },
+                        { key: 'SINCRONIZANDO', label: 'Sincroniz.', active: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
+                        { key: 'RECEBIDO', label: 'Recebido', active: 'bg-green-100 text-green-800 border-green-300' },
+                        { key: 'ERRO', label: 'Erro', active: 'bg-red-100 text-red-800 border-red-300' },
+                        { key: 'FATURADO', label: 'Faturado', active: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+                    ].map(({ key, label, active }) => {
+                        const ativo = filtroStatus === key;
+                        const count = key === 'TODOS' ? pedidos.length
+                            : key === 'FATURADO' ? pedidos.filter(p => p.situacaoCA === 'FATURADO').length
+                            : pedidos.filter(p => p.statusEnvio === key && p.situacaoCA !== 'FATURADO').length;
+                        return (
+                            <button
+                                key={key}
+                                onClick={() => setFiltroStatus(key)}
+                                className={`px-2.5 py-1 text-[11px] font-bold rounded-full border transition-colors ${ativo
+                                    ? active
+                                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                                }`}
+                            >
+                                {label} {count > 0 && <span className="ml-0.5 text-[10px] opacity-70">({count})</span>}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
             {/* Barra de seleção em lote */}
             {abaAtiva !== 'amostras' && selecionados.size > 0 && (
                 <div className="flex items-center justify-between bg-purple-50 border border-purple-200 rounded px-2 sm:px-3 py-2 mb-2">
@@ -696,7 +737,11 @@ const ListaPedidos = () => {
                         ) : pedidos.length === 0 ? (
                             <div className="p-8 text-center text-gray-500">Nenhum pedido encontrado nos filtros aplicados.</div>
                         ) : (
-                            pedidos.map((pedido) => (
+                            pedidos.filter(p => {
+                                if (filtroStatus === 'TODOS') return true;
+                                if (filtroStatus === 'FATURADO') return p.situacaoCA === 'FATURADO';
+                                return p.statusEnvio === filtroStatus && p.situacaoCA !== 'FATURADO';
+                            }).map((pedido) => (
                                 <div key={pedido.id} className="px-3 pt-3 pb-2 hover:bg-gray-50 transition-colors border-b border-gray-100 overflow-hidden">
                                     {/* Linha 1: checkbox + número + cliente + valor */}
                                     <div className="flex items-start gap-2 mb-1">
