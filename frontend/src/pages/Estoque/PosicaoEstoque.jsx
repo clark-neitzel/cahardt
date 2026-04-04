@@ -308,6 +308,7 @@ export default function PosicaoEstoque() {
     const [loading, setLoading] = useState(true);
     const [categoriasEstoque, setCategoriasEstoque] = useState([]);
     const [categoriasComerciais, setCategoriasComerciais] = useState([]);
+    const [filtrosAbertos, setFiltrosAbertos] = useState(true);
     const searchTimeout = useRef(null);
 
     // Carrega listas de opções de filtro
@@ -380,53 +381,74 @@ export default function PosicaoEstoque() {
                 </div>
 
                 {/* Filtros */}
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                        {/* Search */}
-                        <div className="sm:col-span-2 lg:col-span-2">
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Nome do produto</label>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                                <input
-                                    type="text"
-                                    value={filtros.search}
-                                    onChange={e => setFiltros({ ...filtros, search: e.target.value })}
-                                    placeholder="Buscar por nome ou código..."
-                                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                                {filtros.search && (
-                                    <button onClick={() => setFiltros({ ...filtros, search: '' })} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                        <X className="h-3.5 w-3.5" />
-                                    </button>
-                                )}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-5">
+                    {/* Cabeçalho do painel — sempre visível, clicável no mobile */}
+                    <button
+                        type="button"
+                        onClick={() => setFiltrosAbertos(o => !o)}
+                        className="w-full flex items-center justify-between px-4 py-3 sm:cursor-default"
+                    >
+                        <div className="flex items-center gap-2">
+                            <Search className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm font-medium text-gray-700">Filtros</span>
+                            {temFiltro && (
+                                <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                                    {[filtros.search ? 1 : 0, filtros.categorias?.length || 0, filtros.categoriasComerciais?.length || 0].reduce((a, b) => a + b, 0)} ativo{[filtros.search ? 1 : 0, filtros.categorias?.length || 0, filtros.categoriasComerciais?.length || 0].reduce((a, b) => a + b, 0) !== 1 ? 's' : ''}
+                                </span>
+                            )}
+                        </div>
+                        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform sm:hidden ${filtrosAbertos ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Corpo dos filtros — colapsa no mobile */}
+                    <div className={`${filtrosAbertos ? 'block' : 'hidden'} sm:block px-4 pb-4 border-t border-gray-100`}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3">
+                            {/* Search */}
+                            <div className="sm:col-span-2 lg:col-span-2">
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Nome do produto</label>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                                    <input
+                                        type="text"
+                                        value={filtros.search}
+                                        onChange={e => setFiltros({ ...filtros, search: e.target.value })}
+                                        placeholder="Buscar por nome ou código..."
+                                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    {filtros.search && (
+                                        <button onClick={() => setFiltros({ ...filtros, search: '' })} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                            <X className="h-3.5 w-3.5" />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
+
+                            <MultiSelect
+                                label="Categoria de estoque"
+                                options={categoriasEstoque}
+                                selected={filtros.categorias || []}
+                                onChange={v => { setFiltros({ ...filtros, categorias: v }); setFiltrosAbertos(false); }}
+                                placeholder="Todas"
+                            />
+
+                            <MultiSelect
+                                label="Categoria comercial"
+                                options={categoriasComerciais}
+                                selected={filtros.categoriasComerciais || []}
+                                onChange={v => { setFiltros({ ...filtros, categoriasComerciais: v }); setFiltrosAbertos(false); }}
+                                placeholder="Todas"
+                            />
                         </div>
 
-                        <MultiSelect
-                            label="Categoria de estoque"
-                            options={categoriasEstoque}
-                            selected={filtros.categorias || []}
-                            onChange={v => setFiltros({ ...filtros, categorias: v })}
-                            placeholder="Todas"
-                        />
-
-                        <MultiSelect
-                            label="Categoria comercial"
-                            options={categoriasComerciais}
-                            selected={filtros.categoriasComerciais || []}
-                            onChange={v => setFiltros({ ...filtros, categoriasComerciais: v })}
-                            placeholder="Todas"
-                        />
+                        {temFiltro && (
+                            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                                <p className="text-xs text-gray-500">{produtos.length} produto{produtos.length !== 1 ? 's' : ''} encontrado{produtos.length !== 1 ? 's' : ''}</p>
+                                <button onClick={limparFiltros} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
+                                    <X className="h-3 w-3" /> Limpar filtros
+                                </button>
+                            </div>
+                        )}
                     </div>
-
-                    {temFiltro && (
-                        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                            <p className="text-xs text-gray-500">{produtos.length} produto{produtos.length !== 1 ? 's' : ''} encontrado{produtos.length !== 1 ? 's' : ''}</p>
-                            <button onClick={limparFiltros} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
-                                <X className="h-3 w-3" /> Limpar filtros
-                            </button>
-                        </div>
-                    )}
                 </div>
 
                 {/* Conteúdo */}
