@@ -1006,6 +1006,17 @@ model CategoriaProduto {
   @@map("categorias_produto")
 }
 
+// Categorias de produto vindas do Conta Azul (ex: Produto Acabado, Materia Prima)
+// Controla quais categorias participam do controle de estoque local
+model CategoriaEstoque {
+  id              String   @id @default(uuid())
+  nome            String   @unique
+  controlaEstoque Boolean  @default(false) @map("controla_estoque")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("categorias_estoque")
+}
+
 model CategoriaCliente {
   id               String   @id @default(uuid())
   nome             String   @unique

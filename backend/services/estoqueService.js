@@ -3,10 +3,10 @@ const prisma = require('../config/database');
 // Status de pedido que geram reserva de estoque (excluído e recebido/faturado não reservam)
 const STATUS_RESERVA = ['ABERTO', 'ENVIAR', 'SINCRONIZANDO', 'ERRO'];
 
-// Verifica se a categoria de um produto controla estoque
-async function categoriaCOntrolaEstoque(categoriaNome, db) {
+// Verifica se a categoria de produto (campo livre do CA) controla estoque
+async function categoriaControlaEstoque(categoriaNome, db) {
     if (!categoriaNome) return false;
-    const cat = await (db || prisma).categoriaProduto.findUnique({
+    const cat = await (db || prisma).categoriaEstoque.findUnique({
         where: { nome: categoriaNome },
         select: { controlaEstoque: true }
     });
@@ -25,7 +25,7 @@ async function recalcularEstoqueProduto(produtoId, tx) {
     });
     if (!produto) return null;
 
-    const controla = await categoriaCOntrolaEstoque(produto.categoria, db);
+    const controla = await categoriaControlaEstoque(produto.categoria, db);
     if (!controla) return null;
 
     // Soma itens de pedidos ativos (todos os pedidos que ainda não saíram do estoque)
@@ -132,7 +132,7 @@ const estoqueService = {
             for (const item of pedido.itens) {
                 if (!item.produto) continue;
 
-                const controla = await categoriaCOntrolaEstoque(item.produto.categoria, tx);
+                const controla = await categoriaControlaEstoque(item.produto.categoria, tx);
                 if (!controla) continue;
 
                 const qtd = parseFloat(item.quantidade || 0);

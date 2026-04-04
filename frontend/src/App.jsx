@@ -14,6 +14,7 @@ import ContasFinanceiras from './pages/Configuracoes/ContasFinanceiras';
 import GerenciarMetas from './pages/Configuracoes/Metas/GerenciarMetas';
 import CategoriasProduto from './pages/Configuracoes/CategoriasProduto';
 import CategoriasCliente from './pages/Configuracoes/CategoriasCliente';
+import CategoriasEstoque from './pages/Configuracoes/CategoriasEstoque';
 import DashboardVendedor from './pages/Dashboard/DashboardVendedor';
 import ListaPedidos from './pages/Pedidos/ListaPedidos';
 import Veiculos from './pages/Veiculos/Veiculos';
@@ -184,6 +185,7 @@ const Layout = ({ children }) => {
           {showConfig && <SidebarItem to="/config/metas" icon={TrendingUp} label="Metas" />}
           {showConfig && <SidebarItem to="/config/categorias-produto" icon={FolderOpen} label="Cat. Produtos" />}
           {showConfig && <SidebarItem to="/config/categorias-cliente" icon={FolderOpen} label="Cat. Clientes" />}
+          {showConfig && <SidebarItem to="/config/categorias-estoque" icon={FolderOpen} label="Cat. Estoque" />}
         </nav>
 
         {/* Footer */}
@@ -307,6 +309,7 @@ const Layout = ({ children }) => {
                 <NavLink to="/config/metas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Metas de Vendas</NavLink>
                 <NavLink to="/config/categorias-produto" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Cat. Produtos</NavLink>
                 <NavLink to="/config/categorias-cliente" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Cat. Clientes</NavLink>
+                <NavLink to="/config/categorias-estoque" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Cat. Estoque</NavLink>
               </MobileMenuSection>
             )}
           </div>
@@ -411,6 +414,7 @@ function App() {
               <Route path="/config/metas" element={<PrivateRoute tab="configuracoes"><GerenciarMetas /></PrivateRoute>} />
               <Route path="/config/categorias-produto" element={<PrivateRoute tab="configuracoes"><CategoriasProduto /></PrivateRoute>} />
               <Route path="/config/categorias-cliente" element={<PrivateRoute tab="configuracoes"><CategoriasCliente /></PrivateRoute>} />
+              <Route path="/config/categorias-estoque" element={<PrivateRoute tab="configuracoes"><CategoriasEstoque /></PrivateRoute>} />
             </Routes>
           </Layout>
           <Toaster position="top-right" />
