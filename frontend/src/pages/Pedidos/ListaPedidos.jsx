@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2 } from 'lucide-react';
+import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import amostraService from '../../services/amostraService';
 import vendedorService from '../../services/vendedorService';
@@ -396,6 +396,7 @@ const ListaPedidos = () => {
 
     const limparFiltros = () => {
         setFiltros({ ...filtrosPadrao });
+        setFiltroStatus('TODOS');
     };
 
     // Retorno do render
@@ -576,30 +577,34 @@ const ListaPedidos = () => {
 
             {/* Filtro rápido por status */}
             {!['amostras'].includes(abaAtiva) && (
-                <div className="flex flex-wrap gap-1.5 mb-3">
+                <div className="flex items-center gap-1.5 mb-3 overflow-x-auto scrollbar-hide">
                     {[
-                        { key: 'TODOS', label: 'Todos', active: 'bg-gray-200 text-gray-800 border-gray-400' },
-                        { key: 'ABERTO', label: 'Aberto', active: 'bg-gray-100 text-gray-800 border-gray-300' },
-                        { key: 'ENVIAR', label: 'Enviar', active: 'bg-blue-100 text-blue-800 border-blue-300' },
-                        { key: 'SINCRONIZANDO', label: 'Sincroniz.', active: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
-                        { key: 'RECEBIDO', label: 'Recebido', active: 'bg-green-100 text-green-800 border-green-300' },
-                        { key: 'ERRO', label: 'Erro', active: 'bg-red-100 text-red-800 border-red-300' },
-                        { key: 'FATURADO', label: 'Faturado', active: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
-                    ].map(({ key, label, active }) => {
+                        { key: 'TODOS', label: 'Todos', icon: List, active: 'bg-gray-200 text-gray-800 border-gray-400' },
+                        { key: 'ABERTO', label: 'Aberto', icon: FileEdit, active: 'bg-gray-100 text-gray-800 border-gray-300' },
+                        { key: 'ENVIAR', label: 'Enviar', icon: Send, active: 'bg-blue-100 text-blue-800 border-blue-300' },
+                        { key: 'SINCRONIZANDO', label: 'Sincroniz.', icon: RefreshCw, active: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
+                        { key: 'APROVADO', label: 'Aprovado', icon: CheckCircle, active: 'bg-green-100 text-green-800 border-green-300' },
+                        { key: 'ERRO', label: 'Erro', icon: XCircle, active: 'bg-red-100 text-red-800 border-red-300' },
+                        { key: 'FATURADO', label: 'Faturado', icon: Receipt, active: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+                    ].map(({ key, label, icon: Icon, active }) => {
                         const ativo = filtroStatus === key;
                         const count = key === 'TODOS' ? pedidos.length
                             : key === 'FATURADO' ? pedidos.filter(p => p.situacaoCA === 'FATURADO').length
-                            : pedidos.filter(p => p.statusEnvio === key && p.situacaoCA !== 'FATURADO').length;
+                            : key === 'APROVADO' ? pedidos.filter(p => p.situacaoCA === 'APROVADO' && p.situacaoCA !== 'FATURADO').length
+                            : pedidos.filter(p => p.statusEnvio === key && p.situacaoCA !== 'FATURADO' && p.situacaoCA !== 'APROVADO').length;
                         return (
                             <button
                                 key={key}
-                                onClick={() => setFiltroStatus(key)}
-                                className={`px-2.5 py-1 text-[11px] font-bold rounded-full border transition-colors ${ativo
+                                onClick={() => setFiltroStatus(ativo ? 'TODOS' : key)}
+                                title={label}
+                                className={`flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-full border transition-colors shrink-0 ${ativo
                                     ? active
                                     : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
                                 }`}
                             >
-                                {label} {count > 0 && <span className="ml-0.5 text-[10px] opacity-70">({count})</span>}
+                                <Icon className="h-3.5 w-3.5" />
+                                <span className={`${ativo ? 'inline' : 'hidden sm:inline'}`}>{label}</span>
+                                {count > 0 && <span className="text-[10px] opacity-70">({count})</span>}
                             </button>
                         );
                     })}
@@ -740,7 +745,8 @@ const ListaPedidos = () => {
                             pedidos.filter(p => {
                                 if (filtroStatus === 'TODOS') return true;
                                 if (filtroStatus === 'FATURADO') return p.situacaoCA === 'FATURADO';
-                                return p.statusEnvio === filtroStatus && p.situacaoCA !== 'FATURADO';
+                                if (filtroStatus === 'APROVADO') return p.situacaoCA === 'APROVADO' && p.situacaoCA !== 'FATURADO';
+                                return p.statusEnvio === filtroStatus && p.situacaoCA !== 'FATURADO' && p.situacaoCA !== 'APROVADO';
                             }).map((pedido) => (
                                 <div key={pedido.id} className="px-3 pt-3 pb-2 hover:bg-gray-50 transition-colors border-b border-gray-100 overflow-hidden">
                                     {/* Linha 1: checkbox + número + cliente + valor */}
