@@ -527,39 +527,40 @@ const ListaPedidos = () => {
             )}
 
             {/* Abas: Pedidos | Especiais | Bonificação | Amostras */}
-            <div className="flex items-center mb-2 overflow-x-auto scrollbar-hide gap-1 pb-0.5">
-                <button
-                    onClick={() => setAbaAtiva('pedidos')}
-                    className={`flex-shrink-0 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'pedidos' ? 'bg-white text-blue-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
-                >
-                    Pedidos
-                </button>
-                <button
-                    onClick={() => setAbaAtiva('especiais')}
-                    className={`flex-shrink-0 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'especiais' ? 'bg-white text-purple-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
-                >
-                    Especiais
-                </button>
-                <button
-                    onClick={() => setAbaAtiva('bonificacao')}
-                    className={`flex-shrink-0 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'bonificacao' ? 'bg-white text-green-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
-                >
-                    Bonificação
-                </button>
-                <button
-                    onClick={() => setAbaAtiva('amostras')}
-                    className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'amostras' ? 'bg-white text-orange-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
-                >
-                    <Package className="h-3.5 w-3.5" />
-                    Amostras
-                </button>
-
+            <div className="mb-2">
+                <div className="flex overflow-x-auto scrollbar-hide gap-1 pb-0.5">
+                    <button
+                        onClick={() => setAbaAtiva('pedidos')}
+                        className={`flex-shrink-0 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'pedidos' ? 'bg-white text-blue-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                    >
+                        Pedidos
+                    </button>
+                    <button
+                        onClick={() => setAbaAtiva('especiais')}
+                        className={`flex-shrink-0 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'especiais' ? 'bg-white text-purple-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                    >
+                        Especiais
+                    </button>
+                    <button
+                        onClick={() => setAbaAtiva('bonificacao')}
+                        className={`flex-shrink-0 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'bonificacao' ? 'bg-white text-green-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                    >
+                        Bonificação
+                    </button>
+                    <button
+                        onClick={() => setAbaAtiva('amostras')}
+                        className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'amostras' ? 'bg-white text-orange-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                    >
+                        <Package className="h-3.5 w-3.5" />
+                        Amostras
+                    </button>
+                </div>
                 {!['amostras', 'bonificacao'].includes(abaAtiva) && pedidos.filter(p => p.situacaoCA === 'FATURADO').length > 0 && (
                     <button
                         onClick={toggleTodosFiltrados}
-                        className="ml-auto px-2 py-1 text-[10px] font-medium text-gray-500 hover:text-purple-600 transition-colors"
+                        className="mt-1 px-2 py-1 text-[10px] font-medium text-gray-500 hover:text-purple-600 transition-colors"
                     >
-                        {pedidos.filter(p => p.situacaoCA === 'FATURADO').every(p => selecionados.has(p.id)) ? 'Desmarcar' : 'Selecionar faturados'}
+                        {pedidos.filter(p => p.situacaoCA === 'FATURADO').every(p => selecionados.has(p.id)) ? 'Desmarcar todos' : 'Selecionar faturados'}
                     </button>
                 )}
             </div>
@@ -696,85 +697,82 @@ const ListaPedidos = () => {
                             <div className="p-8 text-center text-gray-500">Nenhum pedido encontrado nos filtros aplicados.</div>
                         ) : (
                             pedidos.map((pedido) => (
-                                <div key={pedido.id} className="p-2.5 sm:p-3 hover:bg-gray-50 transition-colors border-b border-gray-100">
-                                    <div className="flex items-start gap-1.5 sm:gap-2">
+                                <div key={pedido.id} className="px-3 pt-3 pb-2 hover:bg-gray-50 transition-colors border-b border-gray-100">
+                                    {/* Linha 1: checkbox + número + cliente + valor */}
+                                    <div className="flex items-start gap-2 mb-1">
                                         {pedido.situacaoCA === 'FATURADO' && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); toggleSelecao(pedido.id); }}
-                                                className="mt-1 flex-shrink-0 text-gray-400 hover:text-primary transition-colors"
+                                                className="mt-0.5 flex-shrink-0 text-gray-400 hover:text-primary transition-colors"
                                             >
                                                 {selecionados.has(pedido.id) ? <CheckSquare className="h-5 w-5 text-primary" /> : <Square className="h-5 w-5" />}
                                             </button>
                                         )}
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 shadow-sm mt-0.5 ${pedido.especial ? 'text-purple-700 bg-purple-50 border-purple-200' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
+                                            {fmtNumero(pedido)}
+                                        </span>
+                                        <h3 className="text-[13px] font-bold text-gray-900 truncate flex-1 min-w-0">
+                                            {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Cliente Desconhecido'}
+                                        </h3>
+                                        <span className="text-[13px] font-black text-gray-900 whitespace-nowrap shrink-0 ml-1">
+                                            R$ {Number(pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
 
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-1.5 mb-1">
-                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 shadow-sm ${pedido.especial ? 'text-purple-700 bg-purple-50 border-purple-200' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
-                                                    {fmtNumero(pedido)}
-                                                </span>
-                                                <h3 className="text-[13px] sm:text-[14px] font-bold text-gray-900 truncate">
-                                                    {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Cliente Desconhecido'}
-                                                </h3>
-                                            </div>
-                                            <div className="flex flex-col gap-0.5 text-[11px] text-gray-500 mb-2">
-                                                <div className="flex items-center gap-1 font-medium">
-                                                    <span className="text-gray-800">Entrega: {pedido.dataVenda ? new Date(pedido.dataVenda).toLocaleDateString('pt-BR') : '-'}</span>
-                                                    <span className="text-gray-300">|</span>
-                                                    <span>Criação: {new Date(pedido.createdAt).toLocaleDateString('pt-BR')}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1 uppercase text-gray-400 font-normal">
-                                                    <span>{pedido.cliente?.End_Cidade || ''}</span>
-                                                    {pedido.cliente?.End_Bairro && <span> - {pedido.cliente.End_Bairro}</span>}
-                                                </div>
-                                                <div className="text-[10px] text-gray-400">Vendedor: {pedido.vendedor?.nome || '-'}</div>
-                                            </div>
-                                            
-                                            <div className="flex flex-wrap items-center gap-1.5">
-                                                <StatusBadge status={pedido.statusEnvio} />
-                                                {pedido.situacaoCA && (
-                                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border shadow-sm ${pedido.situacaoCA === 'FATURADO' ? 'text-green-700 bg-green-50 border-green-200' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
-                                                        {pedido.especial ? '' : 'CA: '}{pedido.situacaoCA}
-                                                    </span>
-                                                )}
-                                                {pedido.revisaoPendente && <span className="text-[9px] font-bold text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded flex items-center gap-0.5"><AlertCircle className="h-2.5 w-2.5" /> ALT ERP</span>}
-                                                {pedido.impressoEm && (
-                                                    <span className="text-[9px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 shadow-sm flex items-center gap-0.5" title={`Impresso em: ${new Date(pedido.impressoEm).toLocaleString('pt-BR')}`}>
-                                                        <Printer className="h-2.5 w-2.5" /> Impresso
-                                                    </span>
-                                                )}
-                                            </div>
+                                    {/* Linha 2: infos */}
+                                    <div className="flex flex-col gap-0.5 text-[11px] text-gray-500 mb-2 pl-0">
+                                        <div className="flex items-center gap-1 font-medium flex-wrap">
+                                            <span className="text-gray-800">Entrega: {pedido.dataVenda ? new Date(pedido.dataVenda).toLocaleDateString('pt-BR') : '-'}</span>
+                                            <span className="text-gray-300">|</span>
+                                            <span>Criação: {new Date(pedido.createdAt).toLocaleDateString('pt-BR')}</span>
                                         </div>
+                                        <div className="uppercase text-gray-400">
+                                            {pedido.cliente?.End_Cidade || ''}{pedido.cliente?.End_Bairro ? ` - ${pedido.cliente.End_Bairro}` : ''}
+                                        </div>
+                                        <div className="text-[10px] text-gray-400">Vendedor: {pedido.vendedor?.nome || '-'}</div>
+                                    </div>
 
-                                        <div className="flex flex-col items-end gap-1.5 shrink-0">
-                                            <div className="text-[13px] sm:text-[14px] font-black text-gray-900 whitespace-nowrap">
-                                                R$ {Number(pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </div>
-                                            <div className="flex items-center gap-0.5">
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleEnviarWhatsapp(pedido.id, 'pedido'); }}
-                                                    disabled={getWsStatus(pedido.id) === 'enviando'}
-                                                    className={`p-1.5 rounded hover:bg-gray-100 ${getWsStatus(pedido.id) === 'ok' ? 'text-green-500' : getWsStatus(pedido.id) === 'erro' ? 'text-red-500' : 'text-gray-400 hover:text-green-600'}`}
-                                                    title={getWsTitle(pedido.id, pedido)}
-                                                >
-                                                    {getWsStatus(pedido.id) === 'enviando' ? <Loader2 className="h-4 w-4 animate-spin" /> : getWsStatus(pedido.id) === 'ok' ? <CheckCircle className="h-4 w-4" /> : getWsStatus(pedido.id) === 'erro' ? <XCircle className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
-                                                </button>
-                                                {pedido.situacaoCA === 'FATURADO' && (
-                                                    <button onClick={(e) => { e.stopPropagation(); handlePrintPedido(pedido); }} className="p-1.5 text-gray-400 hover:text-purple-600 rounded hover:bg-gray-100" title="Imprimir Pedido"><Printer className="h-4 w-4" /></button>
-                                                )}
-                                                {(pedido.bonificacao ? podeExcluirBonificacao : pedido.especial ? podeExcluirEspecial : podeExcluirPedido) && !pedido.embarqueId && (!pedido.statusEntrega || pedido.statusEntrega === 'PENDENTE') && !['FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA) && (
-                                                    <button onClick={(e) => { e.stopPropagation(); handleExcluirPedido(pedido); }} className="p-1.5 text-gray-300 hover:text-red-600 rounded hover:bg-gray-100" title="Excluir pedido"><Trash2 className="h-4 w-4" /></button>
-                                                )}
-                                                <button
-                                                    onClick={() => {
-                                                        const bloq = pedido.statusEnvio === 'RECEBIDO' || ['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA);
-                                                        if (['ABERTO', 'ERRO'].includes(pedido.statusEnvio) && !bloq) navigate(`/pedidos/editar/${pedido.id}`);
-                                                        else setSelectedPedido(pedido);
-                                                    }}
-                                                    className="px-2.5 py-1.5 text-[11px] font-bold bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 shadow-sm whitespace-nowrap"
-                                                >
-                                                    {(['ABERTO', 'ERRO'].includes(pedido.statusEnvio) && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA))) ? 'Editar' : 'Detalhes'}
-                                                </button>
-                                            </div>
+                                    {/* Linha 3: badges de status + botões de ação */}
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex flex-wrap items-center gap-1 min-w-0">
+                                            <StatusBadge status={pedido.statusEnvio} />
+                                            {pedido.situacaoCA && (
+                                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border shadow-sm ${pedido.situacaoCA === 'FATURADO' ? 'text-green-700 bg-green-50 border-green-200' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
+                                                    {pedido.especial ? '' : 'CA: '}{pedido.situacaoCA}
+                                                </span>
+                                            )}
+                                            {pedido.revisaoPendente && <span className="text-[9px] font-bold text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded flex items-center gap-0.5"><AlertCircle className="h-2.5 w-2.5" /> ALT ERP</span>}
+                                            {pedido.impressoEm && (
+                                                <span className="text-[9px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 shadow-sm flex items-center gap-0.5" title={`Impresso em: ${new Date(pedido.impressoEm).toLocaleString('pt-BR')}`}>
+                                                    <Printer className="h-2.5 w-2.5" /> Impresso
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-0.5 shrink-0">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleEnviarWhatsapp(pedido.id, 'pedido'); }}
+                                                disabled={getWsStatus(pedido.id) === 'enviando'}
+                                                className={`p-1.5 rounded hover:bg-gray-100 ${getWsStatus(pedido.id) === 'ok' ? 'text-green-500' : getWsStatus(pedido.id) === 'erro' ? 'text-red-500' : 'text-gray-400 hover:text-green-600'}`}
+                                                title={getWsTitle(pedido.id, pedido)}
+                                            >
+                                                {getWsStatus(pedido.id) === 'enviando' ? <Loader2 className="h-4 w-4 animate-spin" /> : getWsStatus(pedido.id) === 'ok' ? <CheckCircle className="h-4 w-4" /> : getWsStatus(pedido.id) === 'erro' ? <XCircle className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
+                                            </button>
+                                            {pedido.situacaoCA === 'FATURADO' && (
+                                                <button onClick={(e) => { e.stopPropagation(); handlePrintPedido(pedido); }} className="p-1.5 text-gray-400 hover:text-purple-600 rounded hover:bg-gray-100" title="Imprimir Pedido"><Printer className="h-4 w-4" /></button>
+                                            )}
+                                            {(pedido.bonificacao ? podeExcluirBonificacao : pedido.especial ? podeExcluirEspecial : podeExcluirPedido) && !pedido.embarqueId && (!pedido.statusEntrega || pedido.statusEntrega === 'PENDENTE') && !['FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA) && (
+                                                <button onClick={(e) => { e.stopPropagation(); handleExcluirPedido(pedido); }} className="p-1.5 text-gray-300 hover:text-red-600 rounded hover:bg-gray-100" title="Excluir pedido"><Trash2 className="h-4 w-4" /></button>
+                                            )}
+                                            <button
+                                                onClick={() => {
+                                                    const bloq = pedido.statusEnvio === 'RECEBIDO' || ['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA);
+                                                    if (['ABERTO', 'ERRO'].includes(pedido.statusEnvio) && !bloq) navigate(`/pedidos/editar/${pedido.id}`);
+                                                    else setSelectedPedido(pedido);
+                                                }}
+                                                className="px-2.5 py-1.5 text-[11px] font-bold bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 shadow-sm whitespace-nowrap"
+                                            >
+                                                {(['ABERTO', 'ERRO'].includes(pedido.statusEnvio) && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA))) ? 'Editar' : 'Detalhes'}
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
