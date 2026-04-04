@@ -246,14 +246,12 @@ const pedidoService = {
                 }, 0);
             }
 
-            // Baixa de estoque para pedidos especiais e bonificação aprovados
-            if (statusEnvio === 'ENVIAR' && (especial || bonificacao)) {
-                setTimeout(() => {
-                    estoqueService.baixarPedido(novoPedido.id, vendedorId).catch(err =>
-                        console.error(`[Estoque] Falha ao baixar estoque do pedido ${novoPedido.id}:`, err.message)
-                    );
-                }, 0);
-            }
+            // Recalcula reservas de estoque para todos os pedidos criados
+            setTimeout(() => {
+                estoqueService.recalcularPedido(novoPedido.id).catch(err =>
+                    console.error(`[Estoque] Falha ao recalcular estoque do pedido ${novoPedido.id}:`, err.message)
+                );
+            }, 0);
 
             // Gerar Conta a Receber para todos os pedidos enviados (exceto bonificação)
             if (statusEnvio === 'ENVIAR' && !bonificacao) {
@@ -444,29 +442,14 @@ const pedidoService = {
                     clienteInsightService.recalcularCliente(clienteId).catch(console.error);
                 }, 0);
 
-                // Baixa estoque quando especial/bonificação passa de ABERTO → ENVIAR
-                const isEspecialOuBon = (especial !== undefined ? !!especial : pedidoAntigo.especial) ||
-                    (bonificacao !== undefined ? !!bonificacao : pedidoAntigo.bonificacao);
-                if (isEspecialOuBon && pedidoAntigo.statusEnvio !== 'ENVIAR') {
-                    setTimeout(() => {
-                        estoqueService.baixarPedido(id, vendedorId).catch(err =>
-                            console.error(`[Estoque] Falha ao baixar estoque pedido ${id}:`, err.message)
-                        );
-                    }, 0);
-                }
             }
 
-            // Devolve estoque quando especial/bonificação passa de ENVIAR → ABERTO
-            if (pedidoAntigo.statusEnvio === 'ENVIAR' && statusEnvio !== 'ENVIAR') {
-                const isEspecialOuBon = pedidoAntigo.especial || pedidoAntigo.bonificacao;
-                if (isEspecialOuBon) {
-                    setTimeout(() => {
-                        estoqueService.devolverPedido(id).catch(err =>
-                            console.error(`[Estoque] Falha ao devolver estoque pedido ${id}:`, err.message)
-                        );
-                    }, 0);
-                }
-            }
+            // Recalcula reservas de estoque após qualquer edição de pedido
+            setTimeout(() => {
+                estoqueService.recalcularPedido(id).catch(err =>
+                    console.error(`[Estoque] Falha ao recalcular estoque pedido ${id}:`, err.message)
+                );
+            }, 0);
 
             return pedidoAtualizado;
         });
@@ -588,14 +571,12 @@ const pedidoService = {
             throw new Error("Não é possível excluir: existem parcelas já pagas nesta conta a receber.");
         }
 
-        // Devolve estoque se for especial/bonificação aprovado
-        if ((pedido.especial || pedido.bonificacao) && pedido.statusEnvio === 'ENVIAR') {
-            await estoqueService.devolverPedido(id).catch(err =>
-                console.error(`[Estoque] Falha ao devolver estoque do pedido ${id}:`, err.message)
-            );
-        }
+        // Coleta produtos afetados antes de excluir (para recalcular estoque depois)
+        const produtosAfetados = pedido.itens
+            ? [...new Set(pedido.itens.map(i => i.produtoId))]
+            : (await prisma.pedidoItem.findMany({ where: { pedidoId: id }, select: { produtoId: true } })).map(i => i.produtoId);
 
-        return await prisma.$transaction(async (tx) => {
+        const resultado = await prisma.$transaction(async (tx) => {
             // Remove dependências
             await tx.entregaItemDevolvido.deleteMany({ where: { pedidoId: id } });
             await tx.pedidoPagamentoReal.deleteMany({ where: { pedidoId: id } });
@@ -612,6 +593,15 @@ const pedidoService = {
             // Remove pedido
             return await tx.pedido.delete({ where: { id } });
         });
+
+        // Recalcula estoque dos produtos afetados (a reserva cai porque os itens foram excluídos)
+        for (const produtoId of produtosAfetados) {
+            estoqueService.recalcularEstoqueProduto(produtoId).catch(err =>
+                console.error(`[Estoque] Falha ao recalcular produto ${produtoId} após exclusão do pedido ${id}:`, err.message)
+            );
+        }
+
+        return resultado;
     }
 };
 

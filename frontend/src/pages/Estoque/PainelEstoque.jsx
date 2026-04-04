@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Minus, Search, Package, CheckCircle, AlertCircle, Loader2, History } from 'lucide-react';
+import { Plus, Minus, Search, Package, AlertCircle, Loader2, History, AlertTriangle, Lock, Unlock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -19,8 +19,13 @@ export default function PainelEstoque() {
     const [permissoes, setPermissoes] = useState(null);
     const [buscaFeita, setBuscaFeita] = useState(false);
     const [erroBusca, setErroBusca] = useState(null);
+    const [editandoMinimo, setEditandoMinimo] = useState(false);
+    const [estoqueMinimo, setEstoqueMinimo] = useState('');
+    const [salvandoMinimo, setSalvandoMinimo] = useState(false);
     const buscaTimeout = useRef(null);
     const inputRef = useRef(null);
+
+    const isAdmin = user?.permissoes?.admin === true;
 
     useEffect(() => {
         estoqueService.getPermissoes()
@@ -64,6 +69,8 @@ export default function PainelEstoque() {
         setErroBusca(null);
         setQuantidade('');
         setObservacao('');
+        setEditandoMinimo(false);
+        setEstoqueMinimo(String(produto.estoqueMinimo ?? '0'));
     };
 
     const limparSelecao = () => {
@@ -74,6 +81,7 @@ export default function PainelEstoque() {
         setErroBusca(null);
         setQuantidade('');
         setObservacao('');
+        setEditandoMinimo(false);
         setTimeout(() => inputRef.current?.focus(), 50);
     };
 
@@ -107,15 +115,17 @@ export default function PainelEstoque() {
             });
 
             const label = tipo === 'ENTRADA' ? 'Entrada' : 'Saída';
-            const novoSaldo = res.estoqueCA ?? res.estoqueDepois;
-
-            // Mantém produto selecionado, só limpa quantidade e observação
-            setProdutoSelecionado(prev => ({ ...prev, estoqueDisponivel: novoSaldo }));
+            setProdutoSelecionado(prev => ({
+                ...prev,
+                estoqueTotal: res.estoqueTotal,
+                estoqueReservado: res.estoqueReservado,
+                estoqueDisponivel: res.estoqueDisponivel
+            }));
             setQuantidade('');
             setObservacao('');
 
             toast.success(
-                `${label} registrada! ${Number(res.estoqueAntes).toFixed(0)} → ${Number(novoSaldo).toFixed(0)} ${produtoSelecionado.unidade || 'un'}`,
+                `${label} registrada! Disponível: ${Number(res.estoqueDisponivel).toFixed(0)} ${produtoSelecionado.unidade || 'un'}`,
                 { duration: 3000 }
             );
         } catch (err) {
@@ -125,8 +135,29 @@ export default function PainelEstoque() {
         }
     };
 
+    const handleSalvarMinimo = async () => {
+        if (!produtoSelecionado) return;
+        const val = parseFloat(estoqueMinimo);
+        if (isNaN(val) || val < 0) return toast.error('Valor de mínimo inválido.');
+        setSalvandoMinimo(true);
+        try {
+            const res = await estoqueService.atualizarMinimo(produtoSelecionado.id, val);
+            setProdutoSelecionado(prev => ({ ...prev, estoqueMinimo: res.estoqueMinimo }));
+            setEditandoMinimo(false);
+            toast.success('Estoque mínimo atualizado.');
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'Erro ao salvar estoque mínimo.');
+        } finally {
+            setSalvandoMinimo(false);
+        }
+    };
+
     const podeEntrada = podeFazer('ENTRADA');
     const podeSaida = podeFazer('SAIDA');
+
+    const estoqueMin = parseFloat(produtoSelecionado?.estoqueMinimo || 0);
+    const estoqueDisp = parseFloat(produtoSelecionado?.estoqueDisponivel || 0);
+    const abaixoMinimo = estoqueMin > 0 && estoqueDisp < estoqueMin;
 
     return (
         <div className="max-w-lg mx-auto px-4 py-6">
@@ -193,7 +224,7 @@ export default function PainelEstoque() {
                                     <Package className="h-5 w-5 text-gray-400 shrink-0" />
                                     <div className="min-w-0">
                                         <p className="text-sm font-medium text-gray-900 truncate">{p.nome}</p>
-                                        <p className="text-xs text-gray-500">{p.codigo || p.ean || '—'} · {p.categoria || 'sem categoria'} · Estoque: {Number(p.estoqueDisponivel || 0).toFixed(0)} {p.unidade}</p>
+                                        <p className="text-xs text-gray-500">{p.codigo || p.ean || '—'} · {p.categoria || 'sem categoria'} · Disponível: {Number(p.estoqueDisponivel || 0).toFixed(0)} {p.unidade}</p>
                                     </div>
                                 </button>
                             ))}
@@ -202,9 +233,9 @@ export default function PainelEstoque() {
                 </>
             )}
 
-            {/* Produto selecionado */}
+            {/* Produto selecionado — card com 3 estados */}
             {produtoSelecionado && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-5">
+                <div className={`border rounded-xl p-4 mb-5 ${abaixoMinimo ? 'bg-amber-50 border-amber-300' : 'bg-blue-50 border-blue-200'}`}>
                     <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                             <p className="font-semibold text-gray-900 leading-snug">{produtoSelecionado.nome}</p>
@@ -214,12 +245,76 @@ export default function PainelEstoque() {
                         </div>
                         <button onClick={limparSelecao} className="text-gray-400 hover:text-gray-600 text-xl font-light shrink-0 leading-none mt-0.5">×</button>
                     </div>
-                    <div className="mt-3 flex items-center gap-2">
-                        <span className="text-sm text-gray-600">Estoque atual:</span>
-                        <span className="text-lg font-bold text-blue-700">
-                            {Number(produtoSelecionado.estoqueDisponivel || 0).toFixed(0)} {produtoSelecionado.unidade || 'un'}
-                        </span>
+
+                    {/* 3 estados de estoque */}
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-white rounded-lg p-2 border border-gray-200">
+                            <p className="text-xs text-gray-500 mb-0.5">Total</p>
+                            <p className="text-base font-bold text-gray-800">
+                                {Number(produtoSelecionado.estoqueTotal || 0).toFixed(0)}
+                            </p>
+                        </div>
+                        <div className="bg-white rounded-lg p-2 border border-orange-200">
+                            <p className="text-xs text-orange-600 mb-0.5">Reservado</p>
+                            <p className="text-base font-bold text-orange-600">
+                                {Number(produtoSelecionado.estoqueReservado || 0).toFixed(0)}
+                            </p>
+                        </div>
+                        <div className={`bg-white rounded-lg p-2 border ${abaixoMinimo ? 'border-amber-400' : 'border-blue-200'}`}>
+                            <p className={`text-xs mb-0.5 ${abaixoMinimo ? 'text-amber-600' : 'text-blue-600'}`}>Disponível</p>
+                            <p className={`text-base font-bold ${abaixoMinimo ? 'text-amber-600' : 'text-blue-700'}`}>
+                                {Number(produtoSelecionado.estoqueDisponivel || 0).toFixed(0)}
+                            </p>
+                        </div>
                     </div>
+                    <p className="text-xs text-center text-gray-400 mt-1">{produtoSelecionado.unidade || 'un'}</p>
+
+                    {/* Alerta abaixo do mínimo */}
+                    {abaixoMinimo && (
+                        <div className="flex items-center gap-1.5 mt-2 text-xs text-amber-700">
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                            Abaixo do mínimo ({Number(estoqueMin).toFixed(0)} {produtoSelecionado.unidade || 'un'})
+                        </div>
+                    )}
+
+                    {/* Estoque mínimo — editar (admin only) */}
+                    {isAdmin && (
+                        <div className="mt-3 flex items-center gap-2">
+                            <span className="text-xs text-gray-500">Mínimo:</span>
+                            {editandoMinimo ? (
+                                <>
+                                    <input
+                                        type="number"
+                                        value={estoqueMinimo}
+                                        onChange={e => setEstoqueMinimo(e.target.value)}
+                                        className="w-20 px-2 py-1 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                        min="0"
+                                        step="1"
+                                        inputMode="decimal"
+                                    />
+                                    <button
+                                        onClick={handleSalvarMinimo}
+                                        disabled={salvandoMinimo}
+                                        className="text-xs text-blue-600 font-medium hover:text-blue-800 disabled:opacity-50"
+                                    >
+                                        {salvandoMinimo ? 'Salvando...' : 'Salvar'}
+                                    </button>
+                                    <button onClick={() => setEditandoMinimo(false)} className="text-xs text-gray-400 hover:text-gray-600">Cancelar</button>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-xs font-medium text-gray-700">{Number(produtoSelecionado.estoqueMinimo || 0).toFixed(0)} {produtoSelecionado.unidade || 'un'}</span>
+                                    <button
+                                        onClick={() => { setEditandoMinimo(true); setEstoqueMinimo(String(produtoSelecionado.estoqueMinimo ?? '0')); }}
+                                        className="text-xs text-gray-400 hover:text-blue-500 flex items-center gap-0.5"
+                                        title="Editar estoque mínimo"
+                                    >
+                                        <Unlock className="h-3 w-3" />
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
 

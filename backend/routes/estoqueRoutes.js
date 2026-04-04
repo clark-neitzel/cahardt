@@ -102,6 +102,43 @@ router.post('/sync-produto/:produtoId', async (req, res) => {
     }
 });
 
+// PATCH /api/estoque/produto/:produtoId/minimo — atualiza estoqueMinimo
+router.patch('/produto/:produtoId/minimo', async (req, res) => {
+    try {
+        const permissoes = req.user?.permissoes || {};
+        if (!permissoes.admin) return res.status(403).json({ error: 'Apenas administradores podem alterar o estoque mínimo.' });
+
+        const { estoqueMinimo } = req.body;
+        if (estoqueMinimo === undefined || isNaN(parseFloat(estoqueMinimo))) {
+            return res.status(400).json({ error: 'estoqueMinimo inválido.' });
+        }
+        const produto = await prisma.produto.update({
+            where: { id: req.params.produtoId },
+            data: { estoqueMinimo: parseFloat(estoqueMinimo) },
+            select: { id: true, nome: true, estoqueMinimo: true, estoqueDisponivel: true, estoqueTotal: true, estoqueReservado: true }
+        });
+        return res.json(produto);
+    } catch (err) {
+        console.error('[Estoque] Erro ao atualizar estoqueMinimo:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/estoque/produto/:produtoId/recalcular — força recálculo dos 3 estados de estoque
+router.post('/produto/:produtoId/recalcular', async (req, res) => {
+    try {
+        const permissoes = req.user?.permissoes || {};
+        if (!permissoes.admin) return res.status(403).json({ error: 'Apenas administradores podem forçar o recálculo.' });
+
+        const resultado = await estoqueService.recalcularEstoqueProduto(req.params.produtoId);
+        if (!resultado) return res.status(400).json({ error: 'Produto não encontrado ou categoria não controla estoque.' });
+        return res.json(resultado);
+    } catch (err) {
+        console.error('[Estoque] Erro ao recalcular:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/estoque/permissoes — retorna o que o usuário logado pode fazer
 router.get('/permissoes', async (req, res) => {
     const permissoes = req.user?.permissoes || {};

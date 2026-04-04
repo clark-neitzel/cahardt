@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
+const estoqueService = require('./estoqueService');
 
 const syncPedidosService = {
     // Flag to prevent overlapping executions if the sync takes longer than the interval
@@ -64,6 +65,10 @@ const syncPedidosService = {
                 const pedidoAtualizado = await prisma.pedido.findUnique({ where: { id: pedido.id }, select: { statusEnvio: true } });
                 if (pedidoAtualizado?.statusEnvio === 'RECEBIDO' && statusAntes !== 'RECEBIDO') {
                     pedidosEnviados++;
+                    // Deduz do estoqueTotal agora que o pedido foi confirmado pelo CA
+                    estoqueService.faturarPedido(pedido.id).catch(err =>
+                        console.error(`[Estoque] Falha ao faturar estoque do pedido ${pedido.id}:`, err.message)
+                    );
                 }
                 // Pause slightly to respect API rate limits (10 req/s on CA)
                 await new Promise(resolve => setTimeout(resolve, 1500));
