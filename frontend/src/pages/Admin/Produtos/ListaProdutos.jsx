@@ -117,9 +117,9 @@ const ListaProdutos = () => {
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 {/* Header de Filtros */}
-                <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+                <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between min-w-0">
                     {/* Tabs de Status */}
-                    <div className="flex w-full md:w-auto overflow-x-auto space-x-1 bg-gray-200 p-1 rounded-lg flex-shrink-0 hide-scrollbar">
+                    <div className="flex w-full md:w-auto overflow-x-auto space-x-1 bg-gray-200 p-1 rounded-lg hide-scrollbar">
                         {['ativo', 'inativo', 'todos'].map((status) => (
                             <button
                                 key={status}
@@ -193,7 +193,7 @@ const ListaProdutos = () => {
                                         )}
                                     </div>
                                     <div className="ml-3 flex-1 min-w-0">
-                                        <div className="text-sm font-medium text-gray-900 truncate">
+                                        <div className="text-sm font-medium text-gray-900 line-clamp-2 leading-snug">
                                             {produto.nome}
                                         </div>
                                         <div className="text-xs text-gray-500">
@@ -215,7 +215,7 @@ const ListaProdutos = () => {
                 </div>
 
                 {/* Tabela de Produtos (Desktop) */}
-                <div className="hidden md:block bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
+                <div className="hidden md:block bg-white shadow overflow-x-auto sm:rounded-lg border border-gray-200">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
