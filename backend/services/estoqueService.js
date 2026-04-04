@@ -68,9 +68,11 @@ const estoqueService = {
         const totalDepois = Math.max(0, totalAntes + delta);
 
         const result = await prisma.$transaction(async (tx) => {
+            // Atualiza estoqueTotal; estoqueDisponivel parte do mesmo valor e será corrigido
+            // pelo recalculo se a categoria controlar estoque (com reservas de pedidos).
             await tx.produto.update({
                 where: { id: produtoId },
-                data: { estoqueTotal: totalDepois }
+                data: { estoqueTotal: totalDepois, estoqueDisponivel: totalDepois }
             });
 
             const mov = await tx.movimentacaoEstoque.create({
@@ -89,16 +91,20 @@ const estoqueService = {
                 }
             });
 
+            // Se a categoria controla estoque, recalcula reservado/disponivel
             const recalc = await recalcularEstoqueProduto(produtoId, tx);
             return { movId: mov.id, recalc };
         });
+
+        const reservado = result.recalc?.estoqueReservado ?? parseFloat(produto.estoqueReservado || 0);
+        const disponivel = result.recalc?.estoqueDisponivel ?? totalDepois;
 
         return {
             estoqueAntes: totalAntes,
             estoqueDepois: totalDepois,
             estoqueTotal: result.recalc?.estoqueTotal ?? totalDepois,
-            estoqueReservado: result.recalc?.estoqueReservado ?? parseFloat(produto.estoqueReservado || 0),
-            estoqueDisponivel: result.recalc?.estoqueDisponivel ?? parseFloat(produto.estoqueDisponivel || 0)
+            estoqueReservado: reservado,
+            estoqueDisponivel: disponivel
         };
     },
 
