@@ -62,6 +62,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Baixar_Contas_Receber: false,
     // Utilitários Admin
     Pode_Resetar_Dados: false,
+    Isento_Ponto: false,
     admin: false,
     // Permissões de Estoque
     estoque: [],
@@ -591,6 +592,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 label="Editar Veículos" sublabel="Cadastrar/editar/excluir veículos, lançar manutenção" danger />
                             <Toggle checked={!!permissoes.Pode_Resetar_Dados} onChange={() => toggleBool('Pode_Resetar_Dados')}
                                 label="Resetar Dados" sublabel="Ferramenta de limpeza de dados (ação irreversível)" danger />
+                            <Toggle checked={!!permissoes.Isento_Ponto} onChange={() => toggleBool('Isento_Ponto')}
+                                label="Isento de Ponto/Diário" sublabel="Pula a trava de check-in diário (veículo/home office) ao fazer login" />
                         </div>
                     </DeptSection>
 
@@ -610,9 +613,10 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                         className="flex-1 min-w-[120px] border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                                     >
                                         <option value="">Todas as categorias</option>
-                                        {todasCategorias.map(c => (
-                                            <option key={c.id || c.descricao} value={c.descricao}>{c.descricao}</option>
-                                        ))}
+                                        {todasCategorias.map(c => {
+                                            const nome = typeof c === 'string' ? c : (c.descricao || c.nome || c.id);
+                                            return <option key={nome} value={nome}>{nome}</option>;
+                                        })}
                                     </select>
                                     <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                                         <input type="checkbox" className="rounded border-teal-300 text-teal-600 focus:ring-teal-500"

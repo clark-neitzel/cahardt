@@ -123,7 +123,7 @@ const DiarioGateway = () => {
     };
 
     if (!signed) return null; // Prevenção se a sessão estiver limpando
-    if (user?.permissoes?.admin) return null; // SE for Admin/Master, pula o ponto (pois não faz Rota). SE FOR Vendedor comum, tranca.
+    if (user?.permissoes?.admin || user?.permissoes?.Isento_Ponto) return null; // Admin ou Isento de Ponto pula o check-in diário
 
     if (diarioStatus.loading) {
         return <div className="fixed inset-0 bg-white z-[100] flex justify-center items-center font-semibold text-gray-500">Aguarde, verificando seu Ponto Diário...</div>;
