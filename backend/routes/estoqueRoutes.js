@@ -62,12 +62,30 @@ router.post('/ajuste', async (req, res) => {
     }
 });
 
+// Extrai as categorias permitidas pelas regras de estoque do usuário
+function categoriasPermitidasEstoque(permissoes) {
+    if (!permissoes || permissoes.admin) return null; // null = sem restrição
+    const regras = Array.isArray(permissoes.estoque) ? permissoes.estoque : [];
+    if (regras.length === 0) return []; // sem regras = não vê nada
+    // Se alguma regra tem categoria vazia, significa "todas"
+    if (regras.some(r => !r.categoria)) return null;
+    return [...new Set(regras.map(r => r.categoria).filter(Boolean))];
+}
+
 // GET /api/estoque/posicao — produtos com saldo de estoque para a tela Posição
 router.get('/posicao', async (req, res) => {
     try {
         const { search, categorias, categoriasComerciais } = req.query;
+        const permissoes = req.user?.permissoes || {};
 
         const where = { ativo: true };
+
+        // Restrição por permissão de estoque (não-admin só vê categorias configuradas)
+        const catPermitidas = categoriasPermitidasEstoque(permissoes);
+        if (catPermitidas !== null) {
+            if (catPermitidas.length === 0) return res.json([]);
+            where.categoria = { in: catPermitidas };
+        }
 
         if (search?.trim()) {
             where.OR = [
@@ -78,7 +96,17 @@ router.get('/posicao', async (req, res) => {
 
         if (categorias) {
             const cats = categorias.split(',').map(c => c.trim()).filter(Boolean);
-            if (cats.length > 0) where.categoria = { in: cats };
+            if (cats.length > 0) {
+                // Intersecta com as categorias permitidas
+                if (catPermitidas !== null) {
+                    const permitidoSet = new Set(catPermitidas);
+                    const filtradas = cats.filter(c => permitidoSet.has(c));
+                    if (filtradas.length === 0) return res.json([]);
+                    where.categoria = { in: filtradas };
+                } else {
+                    where.categoria = { in: cats };
+                }
+            }
         }
 
         if (categoriasComerciais) {
@@ -191,10 +219,11 @@ router.post('/produto/:produtoId/recalcular', async (req, res) => {
 router.get('/permissoes', async (req, res) => {
     const permissoes = req.user?.permissoes || {};
     if (permissoes.admin) {
-        return res.json({ admin: true, pode: { adicionar: true, diminuir: true } });
+        return res.json({ admin: true, pode: { adicionar: true, diminuir: true }, categoriasPermitidas: null });
     }
     const regraEstoque = Array.isArray(permissoes.estoque) ? permissoes.estoque : [];
-    return res.json({ admin: false, regras: regraEstoque });
+    const catPermitidas = categoriasPermitidasEstoque(permissoes);
+    return res.json({ admin: false, regras: regraEstoque, categoriasPermitidas: catPermitidas });
 });
 
 module.exports = router;

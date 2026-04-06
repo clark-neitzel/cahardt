@@ -33,8 +33,9 @@ export default function PainelEstoque() {
             .catch(() => setPermissoes({ admin: false, regras: [] }));
     }, []);
 
-    // Busca produtos por nome ou EAN (código de barras)
+    // Busca produtos por nome ou EAN (código de barras) — espera permissões carregarem
     useEffect(() => {
+        if (!permissoes) return; // aguarda permissões
         if (!busca.trim()) {
             setProdutos([]);
             setBuscaFeita(false);
@@ -46,7 +47,12 @@ export default function PainelEstoque() {
             setLoadingBusca(true);
             setErroBusca(null);
             try {
-                const data = await api.get('/produtos', { params: { search: busca.trim(), limit: 20 } }).then(r => r.data);
+                const params = { search: busca.trim(), limit: 20 };
+                // Filtra por categorias permitidas (não-admin)
+                if (permissoes?.categoriasPermitidas) {
+                    params.categorias = permissoes.categoriasPermitidas.join(',');
+                }
+                const data = await api.get('/produtos', { params }).then(r => r.data);
                 const lista = Array.isArray(data) ? data : (data.data || data.produtos || data.items || []);
                 setProdutos(lista);
                 setBuscaFeita(true);
@@ -59,7 +65,7 @@ export default function PainelEstoque() {
                 setLoadingBusca(false);
             }
         }, 350);
-    }, [busca]);
+    }, [busca, permissoes]);
 
     const selecionarProduto = (produto) => {
         setProdutoSelecionado(produto);
