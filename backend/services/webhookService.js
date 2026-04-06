@@ -58,7 +58,9 @@ const webhookService = {
         try {
             // Verificar se WhatsApp está ativo
             const whatsappConfig = await prisma.appConfig.findUnique({ where: { key: 'whatsapp_ativo' } });
-            if (whatsappConfig && whatsappConfig.value === false) {
+            const whatsappValue = whatsappConfig?.value;
+            const isDesativado = whatsappValue === false || (typeof whatsappValue === 'object' && whatsappValue?.value === false);
+            if (whatsappConfig && isDesativado) {
                 return { ok: false, motivo: 'WhatsApp pausado pelo administrador' };
             }
 
@@ -140,7 +142,9 @@ const webhookService = {
         try {
             // Verificar se WhatsApp está ativo
             const whatsappConfig = await prisma.appConfig.findUnique({ where: { key: 'whatsapp_ativo' } });
-            if (whatsappConfig && whatsappConfig.value === false) {
+            const whatsappValue = whatsappConfig?.value;
+            const isDesativado = whatsappValue === false || (typeof whatsappValue === 'object' && whatsappValue?.value === false);
+            if (whatsappConfig && isDesativado) {
                 return { ok: false, motivo: 'WhatsApp pausado pelo administrador' };
             }
 

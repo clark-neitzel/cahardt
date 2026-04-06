@@ -282,7 +282,11 @@ const Configuracoes = () => {
             // Webhook
             try { const wh = await configService.get('webhook_botconversa_url'); setWebhookUrl(wh || ''); } catch { }
             // WhatsApp ativo/pausado
-            try { const wa = await configService.get('whatsapp_ativo'); setWhatsappAtivo(wa !== false); } catch { setWhatsappAtivo(true); }
+            try {
+                const wa = await configService.get('whatsapp_ativo');
+                const ativo = wa === false ? false : (typeof wa === 'object' && wa?.value === false) ? false : true;
+                setWhatsappAtivo(ativo);
+            } catch { setWhatsappAtivo(true); }
         } catch (error) {
             console.error('Erro ao carregar configurações:', error);
             setMessage({ type: 'error', text: 'Erro ao carregar dados.' });
@@ -781,7 +785,7 @@ const Configuracoes = () => {
                                     const novo = !whatsappAtivo;
                                     setWhatsappLoading(true);
                                     try {
-                                        await configService.set('whatsapp_ativo', novo);
+                                        await api.post('/config/whatsapp_ativo', { value: novo });
                                         setWhatsappAtivo(novo);
                                         toast.success(novo ? 'WhatsApp ativado' : 'WhatsApp pausado');
                                     } catch { toast.error('Erro ao alterar'); }
