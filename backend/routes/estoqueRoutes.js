@@ -3,6 +3,12 @@ const router = express.Router();
 const estoqueService = require('../services/estoqueService');
 const prisma = require('../config/database');
 
+// Busca permissões frescas do banco (o JWT pode estar desatualizado)
+async function getPermsFromDB(userId) {
+    const v = await prisma.vendedor.findUnique({ where: { id: userId }, select: { permissoes: true } });
+    return typeof v?.permissoes === 'string' ? JSON.parse(v.permissoes) : (v?.permissoes || {});
+}
+
 // Verifica se o usuário tem permissão de estoque para a categoria e tipo de operação
 function verificarPermissaoEstoque(permissoes, categoriasProduto, tipo) {
     if (!permissoes) return false;
@@ -22,7 +28,7 @@ router.post('/ajuste', async (req, res) => {
     try {
         const { produtoId, tipo, quantidade, observacao } = req.body;
         const vendedorId = req.user?.id;
-        const permissoes = req.user?.permissoes || {};
+        const permissoes = await getPermsFromDB(req.user.id);
 
         if (!produtoId || !tipo || !quantidade) {
             return res.status(400).json({ error: 'produtoId, tipo e quantidade são obrigatórios.' });
@@ -76,7 +82,7 @@ function categoriasPermitidasEstoque(permissoes) {
 router.get('/posicao', async (req, res) => {
     try {
         const { search, categorias, categoriasComerciais } = req.query;
-        const permissoes = req.user?.permissoes || {};
+        const permissoes = await getPermsFromDB(req.user.id);
 
         const where = { ativo: true };
 
@@ -181,7 +187,7 @@ router.post('/sync-produto/:produtoId', async (req, res) => {
 // PATCH /api/estoque/produto/:produtoId/minimo — atualiza estoqueMinimo
 router.patch('/produto/:produtoId/minimo', async (req, res) => {
     try {
-        const permissoes = req.user?.permissoes || {};
+        const permissoes = await getPermsFromDB(req.user.id);
         if (!permissoes.admin) return res.status(403).json({ error: 'Apenas administradores podem alterar o estoque mínimo.' });
 
         const { estoqueMinimo } = req.body;
@@ -203,7 +209,7 @@ router.patch('/produto/:produtoId/minimo', async (req, res) => {
 // POST /api/estoque/produto/:produtoId/recalcular — força recálculo dos 3 estados de estoque
 router.post('/produto/:produtoId/recalcular', async (req, res) => {
     try {
-        const permissoes = req.user?.permissoes || {};
+        const permissoes = await getPermsFromDB(req.user.id);
         if (!permissoes.admin) return res.status(403).json({ error: 'Apenas administradores podem forçar o recálculo.' });
 
         const resultado = await estoqueService.recalcularEstoqueProduto(req.params.produtoId);
@@ -217,7 +223,7 @@ router.post('/produto/:produtoId/recalcular', async (req, res) => {
 
 // GET /api/estoque/permissoes — retorna o que o usuário logado pode fazer
 router.get('/permissoes', async (req, res) => {
-    const permissoes = req.user?.permissoes || {};
+    const permissoes = await getPermsFromDB(req.user.id);
     if (permissoes.admin) {
         return res.json({ admin: true, pode: { adicionar: true, diminuir: true }, categoriasPermitidas: null });
     }
