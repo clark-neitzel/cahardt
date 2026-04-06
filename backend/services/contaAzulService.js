@@ -1146,6 +1146,9 @@ const contaAzulService = {
             console.log(`Encontradas ${vendasModificadas.length} vendas recentemente alteradas (${vendasAtivas.length} ativas + ${vendasCanceladas.length} canceladas).`);
 
             let count = 0;
+            let matchCount = 0;
+            let noMatchCount = 0;
+            console.log(`🔍 [Sync v2] Iniciando loop em ${vendasModificadas.length} vendas...`);
             for (const venda of vendasModificadas) {
                 // Procurar pedido correspondente na base local
                 // PRIORIDADE 1: Match exato pelo CA ID (sem ambiguidade)
@@ -1165,6 +1168,8 @@ const contaAzulService = {
                         include: { itens: true }
                     });
                 }
+                if (!pedidoLocal) { noMatchCount++; continue; }
+                matchCount++;
                 if (pedidoLocal) {
                     // API V2 usa "data_alteracao", não "data_atualizacao"
                     const dataAtualizacaoCA = venda.data_alteracao ? new Date(venda.data_alteracao) : (venda.data_atualizacao ? new Date(venda.data_atualizacao) : new Date());
@@ -1528,6 +1533,8 @@ const contaAzulService = {
 
                 }
             }
+
+            console.log(`🔍 [Sync v2] Resumo: ${matchCount} vendas casadas com pedidos locais, ${noMatchCount} sem match local, ${count} alterações.`);
 
             // Dispara a rotina pesada de caça aos "Ressuscitados 404" (Pedidos deletados na CA)
             const excluidosSilenciosos = await contaAzulService._verificarPedidosExcluidosContAzul();
