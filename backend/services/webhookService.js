@@ -56,6 +56,12 @@ const webhookService = {
         };
 
         try {
+            // Verificar se WhatsApp está ativo
+            const whatsappConfig = await prisma.appConfig.findUnique({ where: { key: 'whatsapp_ativo' } });
+            if (whatsappConfig && whatsappConfig.value === false) {
+                return { ok: false, motivo: 'WhatsApp pausado pelo administrador' };
+            }
+
             const webhookUrl = await getWebhookUrl();
             if (!webhookUrl) { await salvarStatus(false, 'Webhook não configurado'); return { ok: false, motivo: 'URL do webhook não configurada' }; }
 
@@ -132,6 +138,12 @@ const webhookService = {
      */
     notificarAmostra: async (amostraId) => {
         try {
+            // Verificar se WhatsApp está ativo
+            const whatsappConfig = await prisma.appConfig.findUnique({ where: { key: 'whatsapp_ativo' } });
+            if (whatsappConfig && whatsappConfig.value === false) {
+                return { ok: false, motivo: 'WhatsApp pausado pelo administrador' };
+            }
+
             const webhookUrl = await getWebhookUrl();
             if (!webhookUrl) return { ok: false, motivo: 'URL do webhook não configurada' };
 
