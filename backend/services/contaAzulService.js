@@ -1213,16 +1213,18 @@ const contaAzulService = {
 
                     const ignorar = pedidoLocal.contaAzulUpdatedAt && pedidoLocal.contaAzulUpdatedAt.getTime() >= dataAtualizacaoCA.getTime();
 
-                    // Mesmo se timestamp não mudou, re-checar parcelas para pedidos APROVADO
-                    // porque faturamento no CA nem sempre atualiza data_alteracao
-                    const forcarCheckFaturamento = ignorar && venda.situacao?.nome === 'APROVADO' && pedidoLocal.situacaoCA === 'APROVADO';
+                    // Forçar reprocessamento quando CA tem status diferente do local
+                    // (ex: CA retorna FATURADO mas local ainda está APROVADO)
+                    const situacaoCA = venda.situacao?.nome || 'ABERTO';
+                    const statusMudou = situacaoCA !== pedidoLocal.situacaoCA;
+                    const forcarReprocessamento = ignorar && statusMudou;
 
-                    // Debug: logar pedidos APROVADO para rastrear faturamento
-                    if (venda.situacao?.nome === 'APROVADO' && pedidoLocal.situacaoCA !== 'FATURADO') {
-                        console.log(`🔍 [Sync Debug] Pedido #${pedidoLocal.numero}: CA=${venda.situacao?.nome}, Local=${pedidoLocal.situacaoCA}, ignorar=${ignorar}, forcar=${forcarCheckFaturamento}`);
+                    // Debug para rastrear
+                    if (statusMudou || (situacaoCA === 'APROVADO' && pedidoLocal.situacaoCA === 'APROVADO')) {
+                        console.log(`🔍 [Sync Debug] Pedido #${pedidoLocal.numero}: CA=${situacaoCA}, Local=${pedidoLocal.situacaoCA}, ignorar=${ignorar}, forcar=${forcarReprocessamento}`);
                     }
 
-                    if (!ignorar || forcarCheckFaturamento) {
+                    if (!ignorar || forcarReprocessamento) {
                         const isAprovado = venda.situacao?.nome === 'APROVADO';
                         let situacaoFinal = venda.situacao?.nome || 'ABERTO';
 
