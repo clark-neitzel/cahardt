@@ -63,6 +63,7 @@ export const AuthProvider = ({ children }) => {
 
     const hasPermission = (tab, action = 'view') => {
         if (!user || !user.permissoes) return false;
+        if (user.permissoes.admin) return true;
 
         // Se a permissao for boolean direto (novas tags logisticas), responde ela.
         if (typeof user.permissoes[tab] === 'boolean') {

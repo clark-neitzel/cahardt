@@ -337,6 +337,23 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         </button>
                     </div>
 
+                    {/* ── Isento de Ponto ── */}
+                    {!permissoes.admin && (
+                        <div className="flex items-center justify-between bg-amber-50 p-4 rounded-lg border border-amber-200">
+                            <div>
+                                <h4 className="font-bold text-amber-900 text-sm">Isento de Ponto / Diário</h4>
+                                <p className="text-xs text-amber-700 mt-0.5">Pula a trava de check-in diário (veículo/home office) ao fazer login</p>
+                            </div>
+                            <button
+                                type="button" role="switch" aria-checked={!!permissoes.Isento_Ponto}
+                                onClick={() => toggleBool('Isento_Ponto')}
+                                className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${permissoes.Isento_Ponto ? 'bg-amber-600' : 'bg-gray-200'}`}
+                            >
+                                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${permissoes.Isento_Ponto ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
+                    )}
+
                     {/* ── Tela Inicial ── */}
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                         <div className="flex items-center gap-2 mb-2">
@@ -592,8 +609,6 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 label="Editar Veículos" sublabel="Cadastrar/editar/excluir veículos, lançar manutenção" danger />
                             <Toggle checked={!!permissoes.Pode_Resetar_Dados} onChange={() => toggleBool('Pode_Resetar_Dados')}
                                 label="Resetar Dados" sublabel="Ferramenta de limpeza de dados (ação irreversível)" danger />
-                            <Toggle checked={!!permissoes.Isento_Ponto} onChange={() => toggleBool('Isento_Ponto')}
-                                label="Isento de Ponto/Diário" sublabel="Pula a trava de check-in diário (veículo/home office) ao fazer login" />
                         </div>
                     </DeptSection>
 
