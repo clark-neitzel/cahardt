@@ -1208,7 +1208,11 @@ const contaAzulService = {
 
                     const ignorar = pedidoLocal.contaAzulUpdatedAt && pedidoLocal.contaAzulUpdatedAt.getTime() >= dataAtualizacaoCA.getTime();
 
-                    if (!ignorar) {
+                    // Mesmo se timestamp não mudou, re-checar parcelas para pedidos APROVADO
+                    // porque faturamento no CA nem sempre atualiza data_alteracao
+                    const forcarCheckFaturamento = ignorar && venda.situacao?.nome === 'APROVADO' && pedidoLocal.situacaoCA === 'APROVADO';
+
+                    if (!ignorar || forcarCheckFaturamento) {
                         const isAprovado = venda.situacao?.nome === 'APROVADO';
                         let situacaoFinal = venda.situacao?.nome || 'ABERTO';
 
@@ -1247,6 +1251,16 @@ const contaAzulService = {
                                             ...(venda.data ? { dataVenda: parseDateCA(venda.data) } : {})
                                         }
                                     });
+                                    // Se transitou para FATURADO, deduzir estoque
+                                    if (situacaoFinal === 'FATURADO' && pedidoLocal.situacaoCA !== 'FATURADO') {
+                                        try {
+                                            const estoqueService = require('./estoqueService');
+                                            await estoqueService.faturarPedido(pedidoLocal.id);
+                                            console.log(`📦 [Sync CA] Estoque faturado para pedido #${pedidoLocal.numero}`);
+                                        } catch (eFat) {
+                                            console.error(`[Sync CA] Erro ao faturar estoque pedido #${pedidoLocal.numero}:`, eFat.message);
+                                        }
+                                    }
                                 }
                             } else if (mudouValor || !pedidoLocal.contaAzulUpdatedAt || pedidoLocal.situacaoCA !== situacaoFinal || (venda.data && parseDateCA(venda.data).getTime() !== new Date(pedidoLocal.dataVenda).getTime())) {
                             // Houve diferença de valor, mudança de status ou é a primeira sincronização
