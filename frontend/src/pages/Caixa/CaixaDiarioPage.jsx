@@ -648,6 +648,7 @@ const CaixaDiarioPage = () => {
                     onSaved={() => { setShowDespesaModal(false); toast.success('Despesa criada!'); fetchResumo(); }}
                     vendedorId={vendedorId}
                     dataReferencia={data}
+                    veiculoDoDia={resumo?.diario?.veiculoId || null}
                 />
             )}
             {veiculoFichaId && (

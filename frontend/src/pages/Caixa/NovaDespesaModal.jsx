@@ -20,7 +20,7 @@ const TIPOS_MANUTENCAO = [
     { value: 'OUTRO', label: 'Outro' }
 ];
 
-const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despesaEditando }) => {
+const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despesaEditando, veiculoDoDia }) => {
     const [categoria, setCategoria] = useState('');
     const [descricao, setDescricao] = useState('');
     const [valor, setValor] = useState('');
@@ -48,8 +48,11 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
             setLitros(String(despesaEditando.litros || ''));
             setKmNoAbastecimento(String(despesaEditando.kmNoAbastecimento || ''));
             setTipoManutencao(despesaEditando.tipoManutencao || '');
+        } else if (veiculoDoDia) {
+            // Pré-seleciona o veículo do dia ao abrir
+            setVeiculoId(veiculoDoDia);
         }
-    }, [despesaEditando]);
+    }, [despesaEditando, veiculoDoDia]);
 
     // Quando selecionar veículo em Combustível, busca último km para referência (NÃO pré-preenche)
     useEffect(() => {
@@ -164,13 +167,17 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
                                 <select
                                     value={veiculoId}
                                     onChange={(e) => setVeiculoId(e.target.value)}
-                                    className="w-full border-gray-300 rounded-md shadow-sm text-sm focus:ring-primary focus:border-primary p-2 border"
+                                    disabled={!isAdmin && !!veiculoDoDia && !despesaEditando}
+                                    className={`w-full rounded-md shadow-sm text-sm focus:ring-primary focus:border-primary p-2 border ${!isAdmin && veiculoDoDia && !despesaEditando ? 'bg-gray-100 text-gray-600 border-gray-200' : 'border-gray-300'}`}
                                 >
                                     <option value="">Selecione o veículo...</option>
                                     {veiculos.map(v => (
                                         <option key={v.id} value={v.id}>{v.placa} - {v.modelo}</option>
                                     ))}
                                 </select>
+                                {!isAdmin && veiculoDoDia && !despesaEditando && (
+                                    <p className="text-[10px] text-gray-500 mt-1">Veículo do dia selecionado automaticamente</p>
+                                )}
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
