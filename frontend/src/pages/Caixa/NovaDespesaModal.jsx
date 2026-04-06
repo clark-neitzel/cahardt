@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const CATEGORIAS = [
     { value: 'MERCADORIA_EMPRESA', label: 'Mercadoria da Empresa' },
@@ -31,6 +32,8 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
     const [veiculos, setVeiculos] = useState([]);
     const [saving, setSaving] = useState(false);
     const [erroKm, setErroKm] = useState(false);
+    const { user: authUser } = useAuth();
+    const isAdmin = !!authUser?.permissoes?.admin;
 
     useEffect(() => {
         api.get('/veiculos').then(res => setVeiculos(res.data || [])).catch(() => { });
@@ -48,13 +51,12 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
         }
     }, [despesaEditando]);
 
-    // Quando selecionar veículo em Combustível, busca último km para pré-preenchimento e validação
+    // Quando selecionar veículo em Combustível, busca último km para referência (NÃO pré-preenche)
     useEffect(() => {
         if (categoria !== 'COMBUSTIVEL' || !veiculoId) {
             setKmMinimo(null);
             return;
         }
-        // Busca em paralelo: último KM do diário E último KM de abastecimento
         Promise.all([
             api.get(`/veiculos/${veiculoId}/ultimo-km`).catch(() => ({ data: null })),
             api.get(`/veiculos/${veiculoId}/ultimo-km-abastecimento`).catch(() => ({ data: null }))
@@ -62,29 +64,31 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
             const kmDiario = diarioRes.data?.kmFinal ? Number(diarioRes.data.kmFinal) : 0;
             const kmAbast = abastecRes.data?.kmNoAbastecimento ? Number(abastecRes.data.kmNoAbastecimento) : 0;
             const maiorKm = Math.max(kmDiario, kmAbast);
-            if (maiorKm > 0) {
-                setKmMinimo(maiorKm);
-                // Só pré-preenche se o campo estiver vazio ou for menor
-                if (!despesaEditando) {
-                    setKmNoAbastecimento(String(maiorKm));
-                }
-            } else {
-                setKmMinimo(null);
-            }
+            setKmMinimo(maiorKm > 0 ? maiorKm : null);
         });
     }, [veiculoId, categoria]);
 
     const handleKmChange = (e) => {
         const v = e.target.value;
         setKmNoAbastecimento(v);
-        setErroKm(kmMinimo !== null && parseInt(v) < kmMinimo);
+        // Admin pode lançar qualquer valor
+        if (isAdmin) {
+            setErroKm(false);
+        } else {
+            setErroKm(kmMinimo !== null && v && parseInt(v) <= kmMinimo);
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!categoria || !valor) return;
+        // Combustível: KM obrigatório
+        if (categoria === 'COMBUSTIVEL' && veiculoId && !kmNoAbastecimento) {
+            alert('Informe o KM do hodômetro.');
+            return;
+        }
         if (erroKm) {
-            alert(`O KM informado (${kmNoAbastecimento}) é menor que o último abastecimento (${kmMinimo} km). Corrija antes de salvar.`);
+            alert(`O KM informado (${kmNoAbastecimento}) deve ser maior que o último registro (${kmMinimo?.toLocaleString('pt-BR')} km).`);
             return;
         }
 
@@ -182,20 +186,28 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        KM Hodômetro
-                                        {kmMinimo && <span className="ml-1 text-xs text-gray-400">(mín: {kmMinimo.toLocaleString('pt-BR')})</span>}
+                                        KM Hodômetro *
                                     </label>
                                     <input
                                         type="number"
+                                        required={!!veiculoId}
                                         value={kmNoAbastecimento}
                                         onChange={handleKmChange}
-                                        className={`w-full rounded-md shadow-sm text-sm p-2 border focus:ring-primary focus:border-primary ${erroKm ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                                            }`}
-                                        placeholder={kmMinimo ? `≥ ${kmMinimo.toLocaleString('pt-BR')}` : 'Ex: 125430'}
+                                        min={!isAdmin && kmMinimo ? kmMinimo + 1 : undefined}
+                                        className={`w-full rounded-md shadow-sm text-sm p-2 border focus:ring-primary focus:border-primary ${erroKm ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                        placeholder={kmMinimo ? `Maior que ${kmMinimo.toLocaleString('pt-BR')}` : 'Ex: 125430'}
                                     />
+                                    {kmMinimo ? (
+                                        <p className={`text-xs mt-1 ${!isAdmin ? 'text-orange-600 font-medium' : 'text-gray-400'}`}>
+                                            Último KM: {kmMinimo.toLocaleString('pt-BR')}
+                                            {isAdmin && <span className="text-blue-500 ml-1">(admin: sem restrição)</span>}
+                                        </p>
+                                    ) : veiculoId ? (
+                                        <p className="text-xs text-gray-400 mt-1">Primeiro registro deste veículo</p>
+                                    ) : null}
                                     {erroKm && (
                                         <p className="text-xs text-red-600 mt-1">
-                                            ⚠️ KM não pode ser menor que o último abastecimento ({kmMinimo?.toLocaleString('pt-BR')})
+                                            KM deve ser maior que {kmMinimo?.toLocaleString('pt-BR')}
                                         </p>
                                     )}
                                 </div>

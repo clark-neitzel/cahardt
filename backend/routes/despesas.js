@@ -67,6 +67,27 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Campos obrigatórios: dataReferencia, categoria, valor.' });
         }
 
+        // Validar KM de combustível: obrigatório e deve ser maior que o último
+        if (categoria === 'COMBUSTIVEL' && veiculoId) {
+            if (!kmNoAbastecimento) {
+                return res.status(400).json({ error: 'KM do hodômetro é obrigatório para abastecimento.' });
+            }
+            const kmInt = parseInt(kmNoAbastecimento);
+            const isAdmin = req.user?.permissoes?.admin === true;
+            if (!isAdmin) {
+                const ultimoAbast = await prisma.despesa.findFirst({
+                    where: { veiculoId, categoria: 'COMBUSTIVEL', kmNoAbastecimento: { not: null } },
+                    orderBy: { kmNoAbastecimento: 'desc' },
+                    select: { kmNoAbastecimento: true }
+                });
+                if (ultimoAbast && kmInt <= ultimoAbast.kmNoAbastecimento) {
+                    return res.status(400).json({
+                        error: `KM informado (${kmInt}) deve ser maior que o último registro (${ultimoAbast.kmNoAbastecimento}).`
+                    });
+                }
+            }
+        }
+
         const targetVendedor = vendedorId || req.user.id;
 
         const despesa = await prisma.despesa.create({
@@ -78,7 +99,7 @@ router.post('/', async (req, res) => {
                 valor,
                 veiculoId: categoria === 'COMBUSTIVEL' ? veiculoId : null,
                 litros: categoria === 'COMBUSTIVEL' ? litros : null,
-                kmNoAbastecimento: categoria === 'COMBUSTIVEL' ? kmNoAbastecimento : null,
+                kmNoAbastecimento: categoria === 'COMBUSTIVEL' && kmNoAbastecimento ? parseInt(kmNoAbastecimento) : null,
                 tipoManutencao: categoria === 'MANUTENCAO_VEICULO' ? tipoManutencao : null,
                 criadoPor: req.user.id
             },
@@ -119,17 +140,39 @@ router.put('/:id', async (req, res) => {
         }
 
         const { categoria, descricao, valor, veiculoId, litros, kmNoAbastecimento, tipoManutencao } = req.body;
+        const catFinal = categoria || despesa.categoria;
+
+        // Validar KM de combustível na edição
+        if (catFinal === 'COMBUSTIVEL' && veiculoId) {
+            if (!kmNoAbastecimento) {
+                return res.status(400).json({ error: 'KM do hodômetro é obrigatório para abastecimento.' });
+            }
+            const kmInt = parseInt(kmNoAbastecimento);
+            const isAdminUser = req.user?.permissoes?.admin === true;
+            if (!isAdminUser) {
+                const ultimoAbast = await prisma.despesa.findFirst({
+                    where: { veiculoId, categoria: 'COMBUSTIVEL', kmNoAbastecimento: { not: null }, id: { not: id } },
+                    orderBy: { kmNoAbastecimento: 'desc' },
+                    select: { kmNoAbastecimento: true }
+                });
+                if (ultimoAbast && kmInt <= ultimoAbast.kmNoAbastecimento) {
+                    return res.status(400).json({
+                        error: `KM informado (${kmInt}) deve ser maior que o último registro (${ultimoAbast.kmNoAbastecimento}).`
+                    });
+                }
+            }
+        }
 
         const updated = await prisma.despesa.update({
             where: { id },
             data: {
-                categoria: categoria || despesa.categoria,
+                categoria: catFinal,
                 descricao: descricao !== undefined ? descricao : despesa.descricao,
                 valor: valor !== undefined ? valor : despesa.valor,
-                veiculoId: categoria === 'COMBUSTIVEL' ? veiculoId : null,
-                litros: categoria === 'COMBUSTIVEL' ? litros : null,
-                kmNoAbastecimento: categoria === 'COMBUSTIVEL' ? kmNoAbastecimento : null,
-                tipoManutencao: categoria === 'MANUTENCAO_VEICULO' ? tipoManutencao : null
+                veiculoId: catFinal === 'COMBUSTIVEL' ? veiculoId : null,
+                litros: catFinal === 'COMBUSTIVEL' ? litros : null,
+                kmNoAbastecimento: catFinal === 'COMBUSTIVEL' && kmNoAbastecimento ? parseInt(kmNoAbastecimento) : null,
+                tipoManutencao: catFinal === 'MANUTENCAO_VEICULO' ? tipoManutencao : null
             },
             include: { veiculo: { select: { placa: true, modelo: true } } }
         });
