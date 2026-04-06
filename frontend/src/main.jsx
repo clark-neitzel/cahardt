@@ -23,7 +23,7 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div style={{ padding: 20, fontFamily: 'monospace', color: 'red', whiteSpace: 'pre-wrap' }}>
-          <h1>Something went wrong.</h1>
+          <h1>Algo deu errado.</h1>
           <h3>{this.state.error && this.state.error.toString()}</h3>
           <p>{this.state.errorInfo && this.state.errorInfo.componentStack}</p>
         </div>

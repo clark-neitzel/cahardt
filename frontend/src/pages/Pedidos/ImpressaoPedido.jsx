@@ -8,6 +8,11 @@ import qz from 'qz-tray';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
+const fmtEndereco = (c) => {
+    if (!c) return null;
+    const parts = [c.End_Logradouro, c.End_Numero, c.End_Bairro].filter(Boolean).join(', ');
+    return parts ? `${parts}${c.End_Cidade ? ` - ${c.End_Cidade}` : ''}` : null;
+};
 
 // ═══════════════════════════════════════════════════════════
 //  Componente de Impressão A4
@@ -45,9 +50,9 @@ const PedidoA4 = ({ pedido }) => {
                         <p style={{ margin: '1px 0' }}><strong>Telefone:</strong> {pedido.cliente?.Celular || pedido.cliente?.Telefone || '-'}</p>
                     </div>
                 </div>
-                {pedido.cliente?.Endereco && (
+                {fmtEndereco(pedido.cliente) && (
                     <p style={{ margin: '1px 0', fontSize: '9px', color: '#555' }}>
-                        <strong>Endereço:</strong> {pedido.cliente.Endereco}{pedido.cliente.Bairro ? `, ${pedido.cliente.Bairro}` : ''}{pedido.cliente.Cidade ? ` - ${pedido.cliente.Cidade}` : ''}
+                        <strong>Endereço:</strong> {fmtEndereco(pedido.cliente)}
                     </p>
                 )}
             </div>
@@ -119,6 +124,9 @@ const PedidoCupom = ({ pedido, isLast }) => {
 
             <div style={{ fontSize: '14px', marginBottom: '3mm' }}>
                 <p style={{ margin: '3px 0' }}><strong>Cliente:</strong> {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || '-'}</p>
+                {fmtEndereco(pedido.cliente) && (
+                    <p style={{ margin: '3px 0', fontSize: '12px' }}><strong>End.:</strong> {fmtEndereco(pedido.cliente)}</p>
+                )}
                 <p style={{ margin: '3px 0' }}><strong>Emissao:</strong> {fmtData(pedido.createdAt)}</p>
                 <p style={{ margin: '3px 0' }}><strong>Entrega:</strong> {fmtData(pedido.dataVenda)}</p>
                 <p style={{ margin: '3px 0' }}><strong>Vendedor:</strong> {pedido.vendedor?.nome || '-'}</p>
@@ -193,6 +201,16 @@ const AmostraA4 = ({ amostra }) => {
 
             <div style={{ marginBottom: '4mm', fontSize: '10px' }}>
                 <p style={{ margin: '1px 0' }}><strong>Destinatário:</strong> {amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || '-'}</p>
+                {fmtEndereco(amostra.cliente) && (
+                    <p style={{ margin: '1px 0', fontSize: '9px', color: '#555' }}>
+                        <strong>Endereço:</strong> {fmtEndereco(amostra.cliente)}
+                    </p>
+                )}
+                {(amostra.cliente?.Celular || amostra.cliente?.Telefone) && (
+                    <p style={{ margin: '1px 0', fontSize: '9px', color: '#555' }}>
+                        <strong>Telefone:</strong> {amostra.cliente?.Celular || amostra.cliente?.Telefone}
+                    </p>
+                )}
                 {amostra.observacao && <p style={{ margin: '3px 0', fontStyle: 'italic' }}><strong>Obs:</strong> {amostra.observacao}</p>}
             </div>
 
@@ -239,6 +257,9 @@ const AmostraCupom = ({ amostra }) => {
 
             <div style={{ fontSize: '12px', marginBottom: '2mm' }}>
                 <p style={{ margin: '2px 0' }}><strong>Dest.:</strong> {amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || '-'}</p>
+                {fmtEndereco(amostra.cliente) && (
+                    <p style={{ margin: '2px 0', fontSize: '11px' }}><strong>End.:</strong> {fmtEndereco(amostra.cliente)}</p>
+                )}
                 <p style={{ margin: '2px 0' }}><strong>Data:</strong> {fmtData(amostra.createdAt)}</p>
                 <p style={{ margin: '2px 0' }}><strong>Vendedor:</strong> {amostra.solicitadoPor?.nome || '-'}</p>
                 {amostra.observacao && <p style={{ margin: '2px 0', fontStyle: 'italic' }}>Obs: {amostra.observacao}</p>}

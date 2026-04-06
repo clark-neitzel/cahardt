@@ -89,7 +89,7 @@ const amostraService = {
                 itens: { include: { produto: { select: { nome: true, codigo: true, unidade: true } } } },
                 solicitadoPor: { select: { nome: true } },
                 lead: { select: { nomeEstabelecimento: true, numero: true } },
-                cliente: { select: { UUID: true, NomeFantasia: true, Nome: true } },
+                cliente: { select: { UUID: true, NomeFantasia: true, Nome: true, End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, End_CEP: true, Celular: true, Telefone: true } },
             }
         });
     },

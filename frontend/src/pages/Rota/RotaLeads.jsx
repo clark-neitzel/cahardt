@@ -1651,8 +1651,8 @@ const RotaLeads = () => {
                                                 <Route className="h-4 w-4" />
                                                 Organizar Rota
                                             </button>
-                                            {rotaOrganizada && (
-                                                <>
+                                            {rotaOrganizada ? (
+                                                <div className="flex items-center gap-2">
                                                     <span className="text-[11px] text-sky-700 font-semibold bg-sky-50 border border-sky-200 px-2 py-1 rounded-lg flex items-center gap-1">
                                                         <span title="Motorista">{rotaOrganizada.resumo?.motorista ? `🚚 ${rotaOrganizada.resumo.motorista.split(' ')[0]} - ` : '🗺️ '}</span>
                                                         {rotaOrganizada.resumo?.totalParadas} paradas · {rotaOrganizada.resumo?.distanciaTotalKm} km · {rotaOrganizada.resumo?.duracaoTotalMin} min est.
@@ -1660,8 +1660,8 @@ const RotaLeads = () => {
                                                     <button onClick={() => setRotaOrganizada(null)} className="text-gray-400 hover:text-gray-600 p-1" title="Limpar rota">
                                                         <X className="h-4 w-4" />
                                                     </button>
-                                                </>
-                                            )}
+                                                </div>
+                                            ) : null}
                                         </div>
                                     ) : (
                                         <div className="bg-white border border-sky-200 rounded-xl p-4 shadow-sm">
