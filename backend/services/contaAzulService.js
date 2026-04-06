@@ -988,8 +988,15 @@ const contaAzulService = {
                     // GET ID → { venda: { situacao: { nome: "APROVADO" } }, vendedor: {...} }
                     const vendaObj = resCA.data?.venda || resCA.data; // fallback para compatibilidade
                     const situacaoRaw = vendaObj?.situacao;
-                    const situacaoNome = (typeof situacaoRaw === 'object' ? situacaoRaw?.nome : situacaoRaw) || vendaObj?.status || null;
-                    console.log(`[GARBAGE COLLECTOR] ✅ Venda #${local.numero} (CA ${local.idVendaContaAzul}) → CA situacao: ${situacaoNome || 'n/d'}`);
+                    let situacaoNome = (typeof situacaoRaw === 'object' ? situacaoRaw?.nome : situacaoRaw) || vendaObj?.status || null;
+
+                    // Detectar FATURADO: CA retorna "APROVADO" mas se tem parcelas, é faturado
+                    if (situacaoNome === 'APROVADO' && vendaObj?.parcelas && vendaObj.parcelas.length > 0) {
+                        situacaoNome = 'FATURADO';
+                        console.log(`💲 [GARBAGE COLLECTOR] Pedido #${local.numero} diagnosticado como FATURADO (parcelas presentes).`);
+                    } else {
+                        console.log(`[GARBAGE COLLECTOR] ✅ Venda #${local.numero} (CA ${local.idVendaContaAzul}) → CA situacao: ${situacaoNome || 'n/d'}`);
+                    }
 
                     if (!situacaoNome || situacaoNome === 'CANCELADO') {
                         // sem situacao = pedido excluído do CA via interface (soft-delete: API retorna 200 mas sem status)
@@ -1017,6 +1024,16 @@ const contaAzulService = {
                             }
                         });
                         console.log(`🔄 [GARBAGE COLLECTOR] Pedido #${local.numero} corrigido: ${local.situacaoCA} → ${situacaoNome}`);
+                        // Se transitou para FATURADO, deduzir estoque
+                        if (situacaoNome === 'FATURADO' && local.situacaoCA !== 'FATURADO') {
+                            try {
+                                const estoqueService = require('./estoqueService');
+                                await estoqueService.faturarPedido(local.id);
+                                console.log(`📦 [GARBAGE COLLECTOR] Estoque faturado para pedido #${local.numero}`);
+                            } catch (eFat) {
+                                console.error(`[GARBAGE COLLECTOR] Erro ao faturar estoque pedido #${local.numero}:`, eFat.message);
+                            }
+                        }
                     } else {
                         // Pedido está OK (situação local = CA). Atualizar timestamp para sair do topo
                         // da fila e permitir que pedidos novos sejam verificados no próximo ciclo.
