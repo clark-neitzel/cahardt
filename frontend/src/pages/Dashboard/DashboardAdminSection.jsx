@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertCircle, AlertTriangle, FileText, CheckSquare, DollarSign, TrendingUp, Lock, MessageCircle } from 'lucide-react';
+import { AlertCircle, AlertTriangle, FileText, CheckSquare, DollarSign, TrendingUp, Lock } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 const DashboardAdminSection = () => {
     const [adminData, setAdminData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [whatsappAtivo, setWhatsappAtivo] = useState(true);
-    const [whatsappLoading, setWhatsappLoading] = useState(false);
 
     useEffect(() => {
         const fetchAdminData = async () => {
@@ -21,29 +19,8 @@ const DashboardAdminSection = () => {
                 setLoading(false);
             }
         };
-        const fetchWhatsappStatus = async () => {
-            try {
-                const res = await api.get('/config/whatsapp_ativo');
-                setWhatsappAtivo(res.data?.value !== false);
-            } catch { setWhatsappAtivo(true); }
-        };
         fetchAdminData();
-        fetchWhatsappStatus();
     }, []);
-
-    const toggleWhatsapp = async () => {
-        const novo = !whatsappAtivo;
-        setWhatsappLoading(true);
-        try {
-            await api.post('/config/whatsapp_ativo', { value: novo });
-            setWhatsappAtivo(novo);
-            toast.success(novo ? 'WhatsApp ativado' : 'WhatsApp pausado');
-        } catch {
-            toast.error('Erro ao alterar configuração');
-        } finally {
-            setWhatsappLoading(false);
-        }
-    };
 
     const formatCurrency = (value) => {
         return `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -122,23 +99,6 @@ const DashboardAdminSection = () => {
                         <h4 className="text-xl font-bold text-gray-900">{adminData.pedidosEspeciais}</h4>
                     </div>
                 </Link>
-
-                {/* Toggle WhatsApp */}
-                <button
-                    onClick={toggleWhatsapp}
-                    disabled={whatsappLoading}
-                    className={`border rounded-xl p-4 shadow-sm flex items-start gap-4 transition-all cursor-pointer ${whatsappAtivo ? 'bg-white hover:border-green-500' : 'bg-red-50 border-red-200 hover:border-red-400'}`}
-                >
-                    <div className={`p-3 rounded-lg transition-colors ${whatsappAtivo ? 'bg-green-50 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                        <MessageCircle size={24} />
-                    </div>
-                    <div className="text-left">
-                        <p className="text-sm font-medium text-gray-500">WhatsApp</p>
-                        <h4 className={`text-lg font-bold ${whatsappAtivo ? 'text-green-600' : 'text-red-600'}`}>
-                            {whatsappLoading ? '...' : whatsappAtivo ? 'Ativo' : 'Pausado'}
-                        </h4>
-                    </div>
-                </button>
 
             </div>
         </div>

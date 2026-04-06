@@ -244,6 +244,8 @@ const Configuracoes = () => {
     // Webhook BotConversa
     const [webhookUrl, setWebhookUrl] = useState('');
     const [savingWebhook, setSavingWebhook] = useState(false);
+    const [whatsappAtivo, setWhatsappAtivo] = useState(true);
+    const [whatsappLoading, setWhatsappLoading] = useState(false);
 
     // Log de auditoria
     const [auditLogs, setAuditLogs] = useState([]);
@@ -279,6 +281,8 @@ const Configuracoes = () => {
             setVendedores(vList.filter(v => v.ativo !== false));
             // Webhook
             try { const wh = await configService.get('webhook_botconversa_url'); setWebhookUrl(wh || ''); } catch { }
+            // WhatsApp ativo/pausado
+            try { const wa = await configService.get('whatsapp_ativo'); setWhatsappAtivo(wa !== false); } catch { setWhatsappAtivo(true); }
         } catch (error) {
             console.error('Erro ao carregar configurações:', error);
             setMessage({ type: 'error', text: 'Erro ao carregar dados.' });
@@ -766,6 +770,29 @@ const Configuracoes = () => {
                         <p className="text-sm text-gray-500 mt-0.5">Envia automaticamente o resumo do pedido ao cliente via WhatsApp ao salvar o pedido.</p>
                     </div>
                     <div className="p-6 space-y-4">
+                        {/* Toggle Ativar/Pausar WhatsApp */}
+                        <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-gray-50">
+                            <div>
+                                <p className="text-sm font-semibold text-gray-700">Envio de mensagens</p>
+                                <p className="text-xs text-gray-500">{whatsappAtivo ? 'Mensagens estão sendo enviadas aos clientes' : 'Envio de mensagens está pausado'}</p>
+                            </div>
+                            <button
+                                onClick={async () => {
+                                    const novo = !whatsappAtivo;
+                                    setWhatsappLoading(true);
+                                    try {
+                                        await configService.set('whatsapp_ativo', novo);
+                                        setWhatsappAtivo(novo);
+                                        toast.success(novo ? 'WhatsApp ativado' : 'WhatsApp pausado');
+                                    } catch { toast.error('Erro ao alterar'); }
+                                    finally { setWhatsappLoading(false); }
+                                }}
+                                disabled={whatsappLoading}
+                                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${whatsappAtivo ? 'bg-green-500' : 'bg-gray-300'}`}
+                            >
+                                <span className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${whatsappAtivo ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
+                        </div>
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-1">URL do Webhook</label>
                             <input
