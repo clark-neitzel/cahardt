@@ -58,6 +58,16 @@ const PrivateRoute = ({ children, tab }) => {
   return children;
 };
 
+// Redireciona para a tela inicial configurada pelo admin
+const HomeRedirect = () => {
+  const { user } = useAuth();
+  const telaInicial = user?.permissoes?.telaInicial;
+  if (telaInicial && telaInicial !== '/') {
+    return <Navigate to={telaInicial} replace />;
+  }
+  return <DashboardVendedor />;
+};
+
 // ── Sidebar helpers ──
 const SidebarItem = ({ to, icon: Icon, label, end }) => {
   const location = useLocation();
@@ -358,8 +368,8 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
 
-              {/* Dashboard Inicial */}
-              <Route path="/" element={<PrivateRoute><DashboardVendedor /></PrivateRoute>} />
+              {/* Dashboard / Tela Inicial */}
+              <Route path="/" element={<PrivateRoute><HomeRedirect /></PrivateRoute>} />
 
               {/* Catálogo */}
               <Route path="/catalogo" element={<PrivateRoute tab="catalogo"><Catalogo /></PrivateRoute>} />

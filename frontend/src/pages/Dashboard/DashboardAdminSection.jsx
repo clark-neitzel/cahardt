@@ -3,10 +3,13 @@ import { Link } from 'react-router-dom';
 import { AlertCircle, AlertTriangle, FileText, CheckSquare, DollarSign, TrendingUp, Lock } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 const DashboardAdminSection = () => {
+    const { user, hasPermission } = useAuth();
     const [adminData, setAdminData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const podeVerVendas = !!user?.permissoes?.admin || !!user?.permissoes?.Pode_Ver_Dashboard_Vendas;
 
     useEffect(() => {
         const fetchAdminData = async () => {
@@ -44,16 +47,18 @@ const DashboardAdminSection = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
 
-                {/* Vendas Hoje */}
-                <div className="bg-white border rounded-xl p-4 shadow-sm flex items-start gap-4">
-                    <div className="bg-emerald-50 text-emerald-600 p-3 rounded-lg">
-                        <TrendingUp size={24} />
+                {/* Vendas Hoje — só para quem tem permissão */}
+                {podeVerVendas && (
+                    <div className="bg-white border rounded-xl p-4 shadow-sm flex items-start gap-4">
+                        <div className="bg-emerald-50 text-emerald-600 p-3 rounded-lg">
+                            <TrendingUp size={24} />
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-gray-500">Vendas (Hoje)</p>
+                            <h4 className="text-xl font-bold text-gray-900">{formatCurrency(adminData.vendasHojeNum)}</h4>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-sm font-medium text-gray-500">Vendas (Hoje)</p>
-                        <h4 className="text-xl font-bold text-gray-900">{formatCurrency(adminData.vendasHojeNum)}</h4>
-                    </div>
-                </div>
+                )}
 
                 {/* Caixas a Conferir */}
                 <Link to="/caixa" className="bg-white hover:border-indigo-500 border rounded-xl p-4 shadow-sm flex items-start gap-4 relative group cursor-pointer transition-all">
