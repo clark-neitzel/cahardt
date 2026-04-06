@@ -6,6 +6,7 @@ import {
 import { toast } from 'react-hot-toast';
 import api, { API_URL } from '../../services/api';
 import vendedorService from '../../services/vendedorService';
+import { useAuth } from '../../contexts/AuthContext';
 
 const TABS = [
     { id: 'resumo', label: 'Resumo', icon: Car },
@@ -57,6 +58,10 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
     const [showAbastForm, setShowAbastForm] = useState(false);
     const [abastForm, setAbastForm] = useState({ dataReferencia: '', litros: '', valor: '', kmNoAbastecimento: '', descricao: '' });
     const [savingAbast, setSavingAbast] = useState(false);
+    const [ultimoKmAbast, setUltimoKmAbast] = useState(null);
+
+    const { user: authUser } = useAuth();
+    const isAdmin = !!authUser?.permissoes?.admin;
 
     // Edição inline
     const [editingAbastId, setEditingAbastId] = useState(null);
@@ -197,15 +202,33 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
         }
     };
 
+    // Buscar último KM quando abre o form de abastecimento
+    useEffect(() => {
+        if (showAbastForm && veiculoId) {
+            api.get(`/veiculos/${veiculoId}/ultimo-km-abastecimento`)
+                .then(res => setUltimoKmAbast(res.data?.kmNoAbastecimento ? Number(res.data.kmNoAbastecimento) : null))
+                .catch(() => setUltimoKmAbast(null));
+        }
+    }, [showAbastForm, veiculoId]);
+
     const handleRegistrarAbastecimento = async (e) => {
         e.preventDefault();
+        const kmVal = abastForm.kmNoAbastecimento ? parseInt(abastForm.kmNoAbastecimento) : null;
+        if (!kmVal) {
+            toast.error('Informe o KM do hodômetro.');
+            return;
+        }
+        if (!isAdmin && ultimoKmAbast && kmVal <= ultimoKmAbast) {
+            toast.error(`KM deve ser maior que o último registro (${ultimoKmAbast.toLocaleString('pt-BR')}).`);
+            return;
+        }
         try {
             setSavingAbast(true);
             await api.post(`/veiculos/${veiculoId}/abastecimento`, {
                 dataReferencia: abastForm.dataReferencia,
                 litros: abastForm.litros || null,
                 valor: abastForm.valor,
-                kmNoAbastecimento: abastForm.kmNoAbastecimento || null,
+                kmNoAbastecimento: kmVal,
                 descricao: abastForm.descricao || null
             });
             toast.success('Abastecimento registrado!');
@@ -754,12 +777,23 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs text-gray-600 mb-1">KM no Hodômetro</label>
-                                        <input type="number" value={abastForm.kmNoAbastecimento}
+                                        <label className="block text-xs text-gray-600 mb-1">KM no Hodômetro *</label>
+                                        <input type="number" required value={abastForm.kmNoAbastecimento}
                                             onChange={e => setAbastForm(p => ({ ...p, kmNoAbastecimento: e.target.value }))}
-                                            placeholder="Ex: 145000"
-                                            className="w-full border border-gray-300 rounded-md p-2 text-sm" />
-                                        <p className="text-[10px] text-gray-400 mt-1">Informar o KM melhora o cálculo de consumo</p>
+                                            placeholder={ultimoKmAbast ? `Maior que ${ultimoKmAbast.toLocaleString('pt-BR')}` : 'Ex: 145000'}
+                                            min={!isAdmin && ultimoKmAbast ? ultimoKmAbast + 1 : undefined}
+                                            className={`w-full border rounded-md p-2 text-sm ${!isAdmin && ultimoKmAbast && abastForm.kmNoAbastecimento && parseInt(abastForm.kmNoAbastecimento) <= ultimoKmAbast ? 'border-red-400 bg-red-50' : 'border-gray-300'}`} />
+                                        {ultimoKmAbast ? (
+                                            <p className={`text-[10px] mt-1 ${!isAdmin ? 'text-orange-600 font-medium' : 'text-gray-400'}`}>
+                                                Último KM: {ultimoKmAbast.toLocaleString('pt-BR')}
+                                                {isAdmin && <span className="text-blue-500 ml-1">(admin: sem restrição)</span>}
+                                            </p>
+                                        ) : (
+                                            <p className="text-[10px] text-gray-400 mt-1">Primeiro registro de KM deste veículo</p>
+                                        )}
+                                        {!isAdmin && ultimoKmAbast && abastForm.kmNoAbastecimento && parseInt(abastForm.kmNoAbastecimento) <= ultimoKmAbast && (
+                                            <p className="text-[10px] text-red-600 font-medium mt-0.5">KM deve ser maior que {ultimoKmAbast.toLocaleString('pt-BR')}</p>
+                                        )}
                                     </div>
 
                                     <div>

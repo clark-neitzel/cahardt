@@ -182,6 +182,27 @@ router.post('/:id/abastecimento', authMiddleware, async (req, res) => {
             return res.status(400).json({ error: 'Data e valor são obrigatórios.' });
         }
 
+        if (!kmNoAbastecimento) {
+            return res.status(400).json({ error: 'KM do hodômetro é obrigatório.' });
+        }
+
+        const kmInt = parseInt(kmNoAbastecimento);
+
+        // Validar que KM é maior que o último abastecimento (exceto admin)
+        const isAdmin = req.user?.permissoes?.admin === true;
+        if (!isAdmin) {
+            const ultimoAbast = await prisma.despesa.findFirst({
+                where: { veiculoId: req.params.id, categoria: 'COMBUSTIVEL', kmNoAbastecimento: { not: null } },
+                orderBy: { kmNoAbastecimento: 'desc' },
+                select: { kmNoAbastecimento: true }
+            });
+            if (ultimoAbast && kmInt <= ultimoAbast.kmNoAbastecimento) {
+                return res.status(400).json({
+                    error: `KM informado (${kmInt}) deve ser maior que o último registro (${ultimoAbast.kmNoAbastecimento}).`
+                });
+            }
+        }
+
         const despesa = await prisma.despesa.create({
             data: {
                 vendedorId: vendedorId || req.user.id,
@@ -191,7 +212,7 @@ router.post('/:id/abastecimento', authMiddleware, async (req, res) => {
                 valor: parseFloat(valor),
                 veiculoId: req.params.id,
                 litros: litros ? parseFloat(litros) : null,
-                kmNoAbastecimento: kmNoAbastecimento ? parseInt(kmNoAbastecimento) : null,
+                kmNoAbastecimento: kmInt,
                 criadoPor: req.user.id
             },
             include: { veiculo: { select: { placa: true, modelo: true } } }
@@ -282,6 +303,32 @@ router.put('/:id/abastecimento/:despesaId', authMiddleware, async (req, res) => 
             return res.status(400).json({ error: 'Data e valor são obrigatórios.' });
         }
 
+        if (!kmNoAbastecimento) {
+            return res.status(400).json({ error: 'KM do hodômetro é obrigatório.' });
+        }
+
+        const kmInt = parseInt(kmNoAbastecimento);
+
+        // Validar KM maior que último (excluindo o registro atual), exceto admin
+        const isAdmin = req.user?.permissoes?.admin === true;
+        if (!isAdmin) {
+            const ultimoAbast = await prisma.despesa.findFirst({
+                where: {
+                    veiculoId: req.params.id,
+                    categoria: 'COMBUSTIVEL',
+                    kmNoAbastecimento: { not: null },
+                    id: { not: req.params.despesaId }
+                },
+                orderBy: { kmNoAbastecimento: 'desc' },
+                select: { kmNoAbastecimento: true }
+            });
+            if (ultimoAbast && kmInt <= ultimoAbast.kmNoAbastecimento) {
+                return res.status(400).json({
+                    error: `KM informado (${kmInt}) deve ser maior que o último registro (${ultimoAbast.kmNoAbastecimento}).`
+                });
+            }
+        }
+
         const despesa = await prisma.despesa.update({
             where: { id: req.params.despesaId },
             data: {
@@ -289,7 +336,7 @@ router.put('/:id/abastecimento/:despesaId', authMiddleware, async (req, res) => 
                 descricao: descricao || null,
                 valor: parseFloat(valor),
                 litros: litros ? parseFloat(litros) : null,
-                kmNoAbastecimento: kmNoAbastecimento ? parseInt(kmNoAbastecimento) : null,
+                kmNoAbastecimento: kmInt,
             },
             include: { veiculo: { select: { placa: true, modelo: true } } }
         });
