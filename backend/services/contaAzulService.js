@@ -1212,6 +1212,11 @@ const contaAzulService = {
                     // porque faturamento no CA nem sempre atualiza data_alteracao
                     const forcarCheckFaturamento = ignorar && venda.situacao?.nome === 'APROVADO' && pedidoLocal.situacaoCA === 'APROVADO';
 
+                    // Debug: logar pedidos APROVADO para rastrear faturamento
+                    if (venda.situacao?.nome === 'APROVADO' && pedidoLocal.situacaoCA !== 'FATURADO') {
+                        console.log(`🔍 [Sync Debug] Pedido #${pedidoLocal.numero}: CA=${venda.situacao?.nome}, Local=${pedidoLocal.situacaoCA}, ignorar=${ignorar}, forcar=${forcarCheckFaturamento}`);
+                    }
+
                     if (!ignorar || forcarCheckFaturamento) {
                         const isAprovado = venda.situacao?.nome === 'APROVADO';
                         let situacaoFinal = venda.situacao?.nome || 'ABERTO';
@@ -1225,7 +1230,9 @@ const contaAzulService = {
                                 const resDet = await axios.get(urlDet, { headers: { 'Authorization': `Bearer ${tokenFetch}` } });
                                 const vendaDetalhada = resDet.data?.venda || resDet.data;
 
-                                if (vendaDetalhada && vendaDetalhada.parcelas && vendaDetalhada.parcelas.length > 0) {
+                                const temParcelas = vendaDetalhada && vendaDetalhada.parcelas && vendaDetalhada.parcelas.length > 0;
+                                console.log(`🔍 [Sync Debug] Pedido #${pedidoLocal.numero}: parcelas=${vendaDetalhada?.parcelas?.length || 0}, temParcelas=${temParcelas}`);
+                                if (temParcelas) {
                                     situacaoFinal = 'FATURADO';
                                     console.log(`💲 [Sync CA] Pedido #${pedidoLocal.numero} diagnosticado como FATURADO (parcelas presentes).`);
                                 }
