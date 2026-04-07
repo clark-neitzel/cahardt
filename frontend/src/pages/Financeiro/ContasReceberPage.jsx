@@ -80,16 +80,40 @@ const ContasReceberPage = () => {
         });
     };
 
-    const toggleTodasVisiveis = () => {
-        if (!expandido) return;
-        const conta = contas.find(c => c.id === expandido);
-        if (!conta) return;
-        const elegiveis = conta.parcelas.filter(p => p.status === 'PENDENTE' || p.status === 'VENCIDO');
+    const toggleContaParcelas = (conta) => {
+        const elegiveis = (conta.parcelas || []).filter(p => p.status === 'PENDENTE' || p.status === 'VENCIDO');
+        if (elegiveis.length === 0) return;
         const todasSelecionadas = elegiveis.every(p => selecionadas.has(p.id));
         setSelecionadas(prev => {
             const next = new Set(prev);
             elegiveis.forEach(p => {
                 if (todasSelecionadas) next.delete(p.id);
+                else next.add(p.id);
+            });
+            return next;
+        });
+    };
+
+    const contaTemElegivel = (conta) =>
+        (conta.parcelas || []).some(p => p.status === 'PENDENTE' || p.status === 'VENCIDO');
+
+    const contaTodasSelecionadas = (conta) => {
+        const elegiveis = (conta.parcelas || []).filter(p => p.status === 'PENDENTE' || p.status === 'VENCIDO');
+        return elegiveis.length > 0 && elegiveis.every(p => selecionadas.has(p.id));
+    };
+
+    const contaAlgumaSelecionada = (conta) =>
+        (conta.parcelas || []).some(p => selecionadas.has(p.id));
+
+    const toggleTodasContas = () => {
+        const todasElegiveis = contas.flatMap(c =>
+            (c.parcelas || []).filter(p => p.status === 'PENDENTE' || p.status === 'VENCIDO')
+        );
+        const todasJaSelecionadas = todasElegiveis.length > 0 && todasElegiveis.every(p => selecionadas.has(p.id));
+        setSelecionadas(prev => {
+            const next = new Set(prev);
+            todasElegiveis.forEach(p => {
+                if (todasJaSelecionadas) next.delete(p.id);
                 else next.add(p.id);
             });
             return next;
@@ -410,7 +434,19 @@ const ContasReceberPage = () => {
             {/* Ordenação rápida (fora do painel de filtros) */}
             {!showFiltros && (
                 <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-gray-400">{contas.length} conta{contas.length !== 1 ? 's' : ''}</span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs text-gray-400">{contas.length} conta{contas.length !== 1 ? 's' : ''}</span>
+                        {podeBaixar && todasParcelasElegiveis.length > 0 && (
+                            <button
+                                onClick={toggleTodasContas}
+                                className="flex items-center gap-1 text-xs text-gray-500 hover:text-green-700 font-medium"
+                            >
+                                {todasParcelasElegiveis.length > 0 && todasParcelasElegiveis.every(p => selecionadas.has(p.id))
+                                    ? <><CheckSquare className="h-3.5 w-3.5 text-green-600" /> Desmarcar todas</>
+                                    : <><Square className="h-3.5 w-3.5" /> Selecionar todas</>}
+                            </button>
+                        )}
+                    </div>
                     <button
                         onClick={() => handleOrdenarChange(ordenarPor === 'vencimento' ? 'recente' : 'vencimento')}
                         className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
@@ -445,6 +481,18 @@ const ContasReceberPage = () => {
                                     {/* Mobile layout */}
                                     <div className="sm:hidden">
                                         <div className="flex items-start justify-between gap-2">
+                                            {podeBaixar && contaTemElegivel(conta) && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); toggleContaParcelas(conta); }}
+                                                    className="mt-0.5 flex-shrink-0"
+                                                >
+                                                    {contaTodasSelecionadas(conta)
+                                                        ? <CheckSquare className="h-4.5 w-4.5 text-green-600" />
+                                                        : contaAlgumaSelecionada(conta)
+                                                            ? <CheckSquare className="h-4.5 w-4.5 text-green-400" />
+                                                            : <Square className="h-4.5 w-4.5 text-gray-300" />}
+                                                </button>
+                                            )}
                                             <div className="min-w-0 flex-1">
                                                 <p className="font-semibold text-gray-900 text-sm truncate">{conta.clienteNome}</p>
                                                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -478,6 +526,18 @@ const ContasReceberPage = () => {
 
                                     {/* Desktop layout */}
                                     <div className="hidden sm:flex items-center justify-between">
+                                        {podeBaixar && contaTemElegivel(conta) && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); toggleContaParcelas(conta); }}
+                                                className="mr-3 flex-shrink-0"
+                                            >
+                                                {contaTodasSelecionadas(conta)
+                                                    ? <CheckSquare className="h-5 w-5 text-green-600" />
+                                                    : contaAlgumaSelecionada(conta)
+                                                        ? <CheckSquare className="h-5 w-5 text-green-400" />
+                                                        : <Square className="h-5 w-5 text-gray-300" />}
+                                            </button>
+                                        )}
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <span className="font-semibold text-gray-900 truncate">{conta.clienteNome}</span>
@@ -513,14 +573,12 @@ const ContasReceberPage = () => {
                                 {/* Parcelas expandidas */}
                                 {isExpanded && (
                                     <div className="border-t border-gray-100 p-3 sm:p-4 bg-gray-50">
-                                        {podeBaixar && conta.parcelas.some(p => p.status === 'PENDENTE' || p.status === 'VENCIDO') && (
+                                        {podeBaixar && contaTemElegivel(conta) && (
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); toggleTodasVisiveis(); }}
+                                                onClick={(e) => { e.stopPropagation(); toggleContaParcelas(conta); }}
                                                 className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-green-700 mb-2 font-medium"
                                             >
-                                                {conta.parcelas
-                                                    .filter(p => p.status === 'PENDENTE' || p.status === 'VENCIDO')
-                                                    .every(p => selecionadas.has(p.id))
+                                                {contaTodasSelecionadas(conta)
                                                     ? <><CheckSquare className="h-3.5 w-3.5 text-green-600" /> Desmarcar todas</>
                                                     : <><Square className="h-3.5 w-3.5" /> Selecionar todas pendentes</>}
                                             </button>
