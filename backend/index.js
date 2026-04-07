@@ -38,6 +38,7 @@ const categoriaEstoqueRoutes = require('./routes/categoriaEstoqueRoutes'); // Ca
 const pcpItemRoutes = require('./routes/pcpItemRoutes'); // PCP: Itens
 const pcpReceitaRoutes = require('./routes/pcpReceitaRoutes'); // PCP: Receitas
 const pcpEstoqueRoutes = require('./routes/pcpEstoqueRoutes'); // PCP: Estoque
+const pcpOrdemRoutes = require('./routes/pcpOrdemRoutes'); // PCP: Ordens de Produção
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -95,6 +96,7 @@ app.use('/api/categorias-estoque', authMiddleware, categoriaEstoqueRoutes); // C
 app.use('/api/pcp/itens', authMiddleware, pcpItemRoutes);
 app.use('/api/pcp/receitas', authMiddleware, pcpReceitaRoutes);
 app.use('/api/pcp/estoque', authMiddleware, pcpEstoqueRoutes);
+app.use('/api/pcp/ordens', authMiddleware, pcpOrdemRoutes);
 
 app.use('/api/migrations', authMiddleware, migrationRoutes); // Migration endpoint (protegido)
 
