@@ -4,6 +4,7 @@ import { ArrowLeft, Save, Plus, Trash2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpReceitaService from '../../services/pcpReceitaService';
 import pcpItemService from '../../services/pcpItemService';
+import api from '../../services/api';
 
 const TIPOS_CONSUMO = ['MP', 'SUB', 'EMB'];
 const ETAPAS = ['', 'preparo', 'modelagem', 'fritura', 'cozimento', 'montagem', 'embalagem'];
@@ -14,11 +15,14 @@ export default function ReceitaForm() {
     const isEdicao = !!id;
     const [loading, setLoading] = useState(false);
     const [salvando, setSalvando] = useState(false);
-    const [itensDisponiveis, setItensDisponiveis] = useState([]);
-    const [itensProduzidos, setItensProduzidos] = useState([]);
+
+    // Listas de selecao
+    const [subprodutos, setSubprodutos] = useState([]); // SUBs do PCP
+    const [produtos, setProdutos] = useState([]);         // Produtos do cadastro (MP/EMB/PA)
+    const [itensResultado, setItensResultado] = useState([]); // PA: Produtos + SUBs
 
     const [form, setForm] = useState({
-        itemPcpId: '',
+        itemPcpId: '',       // pode ser itemPcpId existente ou "produto:UUID"
         nome: '',
         rendimentoBase: '',
         perdaPercentual: '',
@@ -30,11 +34,47 @@ export default function ReceitaForm() {
     const [itens, setItens] = useState([]);
 
     useEffect(() => {
-        // Carregar itens disponiveis para selecao
-        pcpItemService.listar({ ativo: 'true' }).then(data => {
-            setItensDisponiveis(data.filter(i => ['MP', 'SUB', 'EMB'].includes(i.tipo)));
-            setItensProduzidos(data.filter(i => ['PA', 'SUB'].includes(i.tipo)));
-        }).catch(() => {});
+        const carregarDados = async () => {
+            try {
+                // Carregar SUBprodutos do PCP
+                const subs = await pcpItemService.listar({ ativo: 'true', tipo: 'SUB' });
+                setSubprodutos(Array.isArray(subs) ? subs : []);
+
+                // Carregar todos os itens PCP que ja existem (para PA vinculado)
+                const todosItens = await pcpItemService.listar({ ativo: 'true' });
+                const todosArr = Array.isArray(todosItens) ? todosItens : [];
+
+                // Carregar Produtos do cadastro (sistema)
+                const resProd = await api.get('/produtos', { params: { limit: 500 } });
+                const prodList = resProd.data?.data || resProd.data || [];
+                const prodArr = Array.isArray(prodList) ? prodList : [];
+                setProdutos(prodArr);
+
+                // Itens resultado (PA): Produtos do sistema + SUBs
+                const produtosPa = prodArr.map(p => ({
+                    id: 'produto:' + p.id,
+                    produtoId: p.id,
+                    codigo: p.codigo,
+                    nome: p.nome,
+                    tipo: 'PA',
+                    unidade: p.unidade,
+                    origem: 'cadastro',
+                }));
+                const subsPa = (Array.isArray(subs) ? subs : []).map(s => ({
+                    id: s.id,
+                    codigo: s.codigo,
+                    nome: s.nome,
+                    tipo: 'SUB',
+                    unidade: s.unidade,
+                    origem: 'pcp',
+                }));
+                setItensResultado([...subsPa, ...produtosPa]);
+            } catch {
+                toast.error('Erro ao carregar dados');
+            }
+        };
+
+        carregarDados();
 
         if (isEdicao) {
             setLoading(true);
@@ -62,6 +102,23 @@ export default function ReceitaForm() {
         }
     }, [id, isEdicao]);
 
+    // Montar lista unificada de ingredientes: Produtos (MP/EMB) + SUBs
+    const ingredientesDisponiveis = [
+        ...subprodutos.map(s => ({
+            id: s.id,
+            label: `[SUB] ${s.codigo} - ${s.nome}`,
+            tipo: 'SUB',
+            origem: 'pcp',
+        })),
+        ...produtos.map(p => ({
+            id: 'produto:' + p.id,
+            produtoId: p.id,
+            label: `${p.codigo} - ${p.nome} (${p.unidade})`,
+            tipo: 'MP',
+            origem: 'cadastro',
+        })),
+    ];
+
     const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
     const addItem = () => {
@@ -74,10 +131,9 @@ export default function ReceitaForm() {
         setItens(prev => prev.map((item, i) => {
             if (i !== idx) return item;
             const updated = { ...item, [field]: value };
-            // Auto-preencher tipo baseado no item selecionado
             if (field === 'itemPcpId') {
-                const itemSel = itensDisponiveis.find(d => d.id === value);
-                if (itemSel) updated.tipo = itemSel.tipo;
+                const sel = ingredientesDisponiveis.find(d => d.id === value);
+                if (sel) updated.tipo = sel.tipo === 'SUB' ? 'SUB' : 'MP';
             }
             return updated;
         }));
@@ -96,17 +152,51 @@ export default function ReceitaForm() {
 
         setSalvando(true);
         try {
+            // Resolver IDs: se comeca com "produto:" precisa garantir ItemPcp
+            let itemPcpIdFinal = form.itemPcpId;
+            if (itemPcpIdFinal.startsWith('produto:')) {
+                const produtoId = itemPcpIdFinal.replace('produto:', '');
+                const res = await pcpItemService.importar({ produtoId, tipo: 'PA' });
+                itemPcpIdFinal = res.id;
+            }
+
+            const itensResolvidos = [];
+            for (const item of itens) {
+                let itemId = item.itemPcpId;
+                if (itemId.startsWith('produto:')) {
+                    const produtoId = itemId.replace('produto:', '');
+                    const tipo = item.tipo === 'EMB' ? 'EMB' : 'MP';
+                    try {
+                        const res = await pcpItemService.importar({ produtoId, tipo });
+                        itemId = res.id;
+                    } catch (err) {
+                        // Ja existe - buscar o existente
+                        if (err.response?.data?.error?.includes('já está importado')) {
+                            const todos = await pcpItemService.listar({ ativo: 'true' });
+                            const todosArr = Array.isArray(todos) ? todos : [];
+                            const existente = todosArr.find(i => i.produtoId === produtoId);
+                            if (existente) itemId = existente.id;
+                            else throw err;
+                        } else {
+                            throw err;
+                        }
+                    }
+                }
+                itensResolvidos.push({
+                    itemPcpId: itemId,
+                    quantidade: parseFloat(item.quantidade),
+                    tipo: item.tipo,
+                    ordemEtapa: item.ordemEtapa || null,
+                    observacao: item.observacao || null,
+                });
+            }
+
             const dados = {
                 ...form,
+                itemPcpId: itemPcpIdFinal,
                 rendimentoBase: parseFloat(form.rendimentoBase),
                 perdaPercentual: form.perdaPercentual ? parseFloat(form.perdaPercentual) : null,
-                itens: itens.map(i => ({
-                    itemPcpId: i.itemPcpId,
-                    quantidade: parseFloat(i.quantidade),
-                    tipo: i.tipo,
-                    ordemEtapa: i.ordemEtapa || null,
-                    observacao: i.observacao || null,
-                })),
+                itens: itensResolvidos,
             };
 
             if (isEdicao) {
@@ -141,7 +231,7 @@ export default function ReceitaForm() {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Item Produzido *</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Item Produzido (PA ou SUB) *</label>
                             <select
                                 value={form.itemPcpId}
                                 onChange={e => handleChange('itemPcpId', e.target.value)}
@@ -149,9 +239,18 @@ export default function ReceitaForm() {
                                 required
                             >
                                 <option value="">Selecione...</option>
-                                {itensProduzidos.map(p => (
-                                    <option key={p.id} value={p.id}>[{p.tipo}] {p.codigo} - {p.nome}</option>
-                                ))}
+                                {itensResultado.filter(i => i.tipo === 'SUB').length > 0 && (
+                                    <optgroup label="Subprodutos (PCP)">
+                                        {itensResultado.filter(i => i.tipo === 'SUB').map(p => (
+                                            <option key={p.id} value={p.id}>[SUB] {p.codigo} - {p.nome}</option>
+                                        ))}
+                                    </optgroup>
+                                )}
+                                <optgroup label="Produtos do Sistema (PA)">
+                                    {itensResultado.filter(i => i.tipo === 'PA').map(p => (
+                                        <option key={p.id} value={p.id}>{p.codigo} - {p.nome}</option>
+                                    ))}
+                                </optgroup>
                             </select>
                         </div>
                         <div>
@@ -249,9 +348,18 @@ export default function ReceitaForm() {
                                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
                                         >
                                             <option value="">Selecione...</option>
-                                            {itensDisponiveis.map(d => (
-                                                <option key={d.id} value={d.id}>[{d.tipo}] {d.codigo} - {d.nome}</option>
-                                            ))}
+                                            {subprodutos.length > 0 && (
+                                                <optgroup label="Subprodutos (PCP)">
+                                                    {subprodutos.map(s => (
+                                                        <option key={s.id} value={s.id}>[SUB] {s.codigo} - {s.nome}</option>
+                                                    ))}
+                                                </optgroup>
+                                            )}
+                                            <optgroup label="Produtos do Sistema (MP / EMB)">
+                                                {produtos.map(p => (
+                                                    <option key={'p-' + p.id} value={'produto:' + p.id}>{p.codigo} - {p.nome} ({p.unidade})</option>
+                                                ))}
+                                            </optgroup>
                                         </select>
                                     </div>
                                     <div className="col-span-2">

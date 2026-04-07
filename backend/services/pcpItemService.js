@@ -51,7 +51,7 @@ const pcpItemService = {
         });
     },
 
-    // Importar produto do cadastro comercial como item PCP (MP, PA ou EMB)
+    // Garantir que existe ItemPcp para um Produto do cadastro (find or create)
     importar: async ({ produtoId, tipo }) => {
         if (!['MP', 'PA', 'EMB'].includes(tipo)) {
             throw new Error('Tipo para importação deve ser MP, PA ou EMB.');
@@ -60,15 +60,20 @@ const pcpItemService = {
         const produto = await prisma.produto.findUnique({ where: { id: produtoId } });
         if (!produto) throw new Error('Produto não encontrado no cadastro.');
 
-        // Verificar se já existe item PCP vinculado a este produto com este tipo
+        // Se já existe, retorna o existente (sem erro)
         const existente = await prisma.itemPcp.findFirst({
-            where: { produtoId, tipo }
+            where: { produtoId },
+            include: { produto: { select: { id: true, nome: true, codigo: true } } }
         });
-        if (existente) throw new Error(`Este produto já está importado como ${tipo} (${existente.codigo} - ${existente.nome}).`);
+        if (existente) return existente;
+
+        // Verificar se codigo ja existe (pode ter outro item com mesmo codigo)
+        const codigoExiste = await prisma.itemPcp.findUnique({ where: { codigo: produto.codigo } });
+        const codigo = codigoExiste ? `${produto.codigo}-${tipo}` : produto.codigo;
 
         return prisma.itemPcp.create({
             data: {
-                codigo: produto.codigo,
+                codigo,
                 nome: produto.nome,
                 tipo,
                 unidade: produto.unidade || 'UN',
