@@ -309,7 +309,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                 motoristaNome: editUsoForm.motoristaNome || null,
                 dataReferencia: editUsoForm.dataReferencia,
                 kmInicial: parseInt(editUsoForm.kmInicial),
-                kmFinal: parseInt(editUsoForm.kmFinal),
+                kmFinal: editUsoForm.kmFinal ? parseInt(editUsoForm.kmFinal) : null,
                 obs: editUsoForm.obs || null
             });
             toast.success('Uso atualizado!');
@@ -1074,9 +1074,10 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                                         className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-[10px] text-gray-500 mb-0.5">KM Final</label>
+                                                    <label className="block text-[10px] text-gray-500 mb-0.5">KM Final {isAdmin && <span className="text-blue-500">(opcional)</span>}</label>
                                                     <input type="number" value={editUsoForm.kmFinal}
                                                         onChange={e => setEditUsoForm(p => ({ ...p, kmFinal: e.target.value }))}
+                                                        placeholder={isAdmin ? 'Opcional para admin' : ''}
                                                         className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm" />
                                                 </div>
                                             </div>

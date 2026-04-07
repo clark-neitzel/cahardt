@@ -229,16 +229,23 @@ router.post('/:id/abastecimento', authMiddleware, async (req, res) => {
 router.put('/:id/uso-manual/:diarioId', authMiddleware, async (req, res) => {
     try {
         const { motoristaNome, motoristaId, dataReferencia, kmInicial, kmFinal, obs } = req.body;
+        const isAdmin = req.user?.permissoes?.admin === true;
 
-        if (!dataReferencia || kmInicial === undefined || kmFinal === undefined) {
-            return res.status(400).json({ error: 'Data, KM inicial e KM final são obrigatórios.' });
-        }
-        if (kmFinal <= kmInicial) {
-            return res.status(400).json({ error: 'KM final deve ser maior que KM inicial.' });
+        if (!dataReferencia || kmInicial === undefined) {
+            return res.status(400).json({ error: 'Data e KM inicial são obrigatórios.' });
         }
 
-        // Validar overlap de KM (excluindo o registro atual)
-        const diarios = await prisma.diarioVendedor.findMany({
+        // Admin pode salvar sem kmFinal (dia ainda em andamento)
+        if (kmFinal !== undefined && kmFinal !== null && kmFinal !== '') {
+            if (kmFinal <= kmInicial) {
+                return res.status(400).json({ error: 'KM final deve ser maior que KM inicial.' });
+            }
+        } else if (!isAdmin) {
+            return res.status(400).json({ error: 'KM final é obrigatório.' });
+        }
+
+        // Validar overlap de KM (excluindo o registro atual), só se tem kmFinal
+        const diarios = kmFinal ? await prisma.diarioVendedor.findMany({
             where: {
                 veiculoId: req.params.id,
                 id: { not: req.params.diarioId },
@@ -246,7 +253,7 @@ router.put('/:id/uso-manual/:diarioId', authMiddleware, async (req, res) => {
                 kmFinal: { not: null }
             },
             select: { kmInicial: true, kmFinal: true }
-        });
+        }) : [];
 
         const overlap = diarios.find(d =>
             kmInicial < d.kmFinal && kmFinal > d.kmInicial
@@ -260,17 +267,22 @@ router.put('/:id/uso-manual/:diarioId', authMiddleware, async (req, res) => {
 
         const vendedorId = motoristaId || req.user.id;
 
+        const updateData = {
+            vendedorId,
+            dataReferencia,
+            kmInicial: parseInt(kmInicial),
+            obs: motoristaNome
+                ? `[Uso Interno - ${motoristaNome}] ${obs || ''}`.trim()
+                : `[Uso Interno] ${obs || ''}`.trim(),
+        };
+        // Só atualiza kmFinal se foi informado (admin pode omitir)
+        if (kmFinal !== undefined && kmFinal !== null && kmFinal !== '') {
+            updateData.kmFinal = parseInt(kmFinal);
+        }
+
         const diario = await prisma.diarioVendedor.update({
             where: { id: req.params.diarioId },
-            data: {
-                vendedorId,
-                dataReferencia,
-                kmInicial: parseInt(kmInicial),
-                kmFinal: parseInt(kmFinal),
-                obs: motoristaNome
-                    ? `[Uso Interno - ${motoristaNome}] ${obs || ''}`.trim()
-                    : `[Uso Interno] ${obs || ''}`.trim(),
-            },
+            data: updateData,
             include: { vendedor: { select: { nome: true } } }
         });
 
