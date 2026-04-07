@@ -32,31 +32,88 @@ const pcpItemService = {
         });
     },
 
+    // Criar apenas SUB (subproduto) — MP, PA e EMB vem do cadastro de Produtos via importar
     criar: async (data) => {
+        if (data.tipo !== 'SUB') {
+            throw new Error('Apenas subprodutos (SUB) podem ser criados manualmente. MP, PA e EMB devem ser importados do cadastro de Produtos.');
+        }
         return prisma.itemPcp.create({
             data: {
                 codigo: data.codigo,
                 nome: data.nome,
-                tipo: data.tipo,
+                tipo: 'SUB',
                 unidade: data.unidade,
                 descricao: data.descricao || null,
-                produtoId: data.produtoId || null,
+                produtoId: null,
                 custoUnitario: data.custoUnitario ? parseFloat(data.custoUnitario) : null,
                 estoqueMinimo: data.estoqueMinimo ? parseFloat(data.estoqueMinimo) : 0
             }
         });
     },
 
+    // Importar produto do cadastro comercial como item PCP (MP, PA ou EMB)
+    importar: async ({ produtoId, tipo }) => {
+        if (!['MP', 'PA', 'EMB'].includes(tipo)) {
+            throw new Error('Tipo para importação deve ser MP, PA ou EMB.');
+        }
+
+        const produto = await prisma.produto.findUnique({ where: { id: produtoId } });
+        if (!produto) throw new Error('Produto não encontrado no cadastro.');
+
+        // Verificar se já existe item PCP vinculado a este produto com este tipo
+        const existente = await prisma.itemPcp.findFirst({
+            where: { produtoId, tipo }
+        });
+        if (existente) throw new Error(`Este produto já está importado como ${tipo} (${existente.codigo} - ${existente.nome}).`);
+
+        return prisma.itemPcp.create({
+            data: {
+                codigo: produto.codigo,
+                nome: produto.nome,
+                tipo,
+                unidade: produto.unidade || 'UN',
+                descricao: produto.descricao || null,
+                produtoId: produto.id,
+                custoUnitario: produto.custoMedio ? parseFloat(produto.custoMedio) : null,
+                estoqueMinimo: 0
+            },
+            include: { produto: { select: { id: true, nome: true, codigo: true } } }
+        });
+    },
+
+    // Importar múltiplos produtos de uma vez
+    importarLote: async (itens) => {
+        const resultados = [];
+        for (const { produtoId, tipo } of itens) {
+            try {
+                const item = await pcpItemService.importar({ produtoId, tipo });
+                resultados.push({ sucesso: true, item });
+            } catch (err) {
+                resultados.push({ sucesso: false, produtoId, tipo, erro: err.message });
+            }
+        }
+        return resultados;
+    },
+
     atualizar: async (id, data) => {
+        const item = await prisma.itemPcp.findUnique({ where: { id }, select: { tipo: true, produtoId: true } });
+        if (!item) throw new Error('Item não encontrado');
+
         const updateData = {};
-        if (data.codigo !== undefined) updateData.codigo = data.codigo;
-        if (data.nome !== undefined) updateData.nome = data.nome;
-        if (data.tipo !== undefined) updateData.tipo = data.tipo;
-        if (data.unidade !== undefined) updateData.unidade = data.unidade;
-        if (data.descricao !== undefined) updateData.descricao = data.descricao;
-        if (data.produtoId !== undefined) updateData.produtoId = data.produtoId || null;
-        if (data.custoUnitario !== undefined) updateData.custoUnitario = data.custoUnitario ? parseFloat(data.custoUnitario) : null;
-        if (data.estoqueMinimo !== undefined) updateData.estoqueMinimo = parseFloat(data.estoqueMinimo);
+        // Itens importados (MP/PA/EMB com produtoId): só permite editar campos PCP
+        if (item.produtoId) {
+            if (data.estoqueMinimo !== undefined) updateData.estoqueMinimo = parseFloat(data.estoqueMinimo);
+            if (data.custoUnitario !== undefined) updateData.custoUnitario = data.custoUnitario ? parseFloat(data.custoUnitario) : null;
+            if (data.descricao !== undefined) updateData.descricao = data.descricao;
+        } else {
+            // SUB: pode editar tudo
+            if (data.codigo !== undefined) updateData.codigo = data.codigo;
+            if (data.nome !== undefined) updateData.nome = data.nome;
+            if (data.unidade !== undefined) updateData.unidade = data.unidade;
+            if (data.descricao !== undefined) updateData.descricao = data.descricao;
+            if (data.custoUnitario !== undefined) updateData.custoUnitario = data.custoUnitario ? parseFloat(data.custoUnitario) : null;
+            if (data.estoqueMinimo !== undefined) updateData.estoqueMinimo = parseFloat(data.estoqueMinimo);
+        }
 
         return prisma.itemPcp.update({ where: { id }, data: updateData });
     },
