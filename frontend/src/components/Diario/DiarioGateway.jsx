@@ -44,10 +44,17 @@ const DiarioGateway = () => {
         }
     }, [diarioStatus.pendenciaAnterior]);
 
-    // Carrega a placa dos veiculos caso o usuario selecione Presencial
+    const [veiculosEmUso, setVeiculosEmUso] = useState({}); // { veiculoId: nomeMotorista }
+
+    // Carrega a placa dos veiculos e quais estão em uso hoje
     useEffect(() => {
         if (modo === 'PRESENCIAL' && veiculos.length === 0) {
             api.get('/veiculos').then(res => setVeiculos(res.data)).catch(console.error);
+            api.get('/diarios/veiculos-em-uso-hoje').then(res => {
+                const map = {};
+                (res.data || []).forEach(d => { map[d.veiculoId] = d.motorista; });
+                setVeiculosEmUso(map);
+            }).catch(() => {});
         }
     }, [modo]);
 
@@ -260,9 +267,14 @@ const DiarioGateway = () => {
                                             onChange={(e) => setVeiculoId(e.target.value)}
                                         >
                                             <option value="">-- Selecione a Placa --</option>
-                                            {veiculos.map(v => (
-                                                <option key={v.id} value={v.id}>{v.placa} - {v.modelo}</option>
-                                            ))}
+                                            {veiculos.map(v => {
+                                                const emUso = veiculosEmUso[v.id];
+                                                return (
+                                                    <option key={v.id} value={v.id} disabled={!!emUso}>
+                                                        {v.placa} - {v.modelo}{emUso ? ` (em uso: ${emUso})` : ''}
+                                                    </option>
+                                                );
+                                            })}
                                         </select>
 
                                         {/* Botão de Documento (se existir URL no veiculo) */}

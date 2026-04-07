@@ -64,16 +64,42 @@ const diarioService = {
             throw new Error('O dia de hoje já foi iniciado.');
         }
 
-        // Bloqueia ignorar pendência
+        // Bloqueia ignorar pendência de KM
         const status = await diarioService.statusDoDia(vendedorId);
         if (status.pendenciaAnterior) {
             throw new Error('Você precisa informar o KM final do seu último dia de trabalho Presencial antes de iniciar outro!');
+        }
+
+        // Bloqueia se o caixa do dia anterior não foi fechado
+        const caixaAberto = await prisma.caixaDiario.findFirst({
+            where: {
+                vendedorId,
+                status: 'ABERTO',
+                dataReferencia: { not: hojeDateRef }
+            },
+            orderBy: { dataReferencia: 'desc' }
+        });
+        if (caixaAberto) {
+            throw new Error(`Você tem um caixa aberto do dia ${caixaAberto.dataReferencia.split('-').reverse().join('/')}. Feche-o antes de iniciar um novo dia.`);
         }
 
         // Valida modo Presencial
         if (modo === 'PRESENCIAL') {
             if (!veiculoId || kmInicial === undefined || kmInicial === null || !checklist) {
                 throw new Error('Para o modo presencial, informe Veículo, KM Inicial e Checklist.');
+            }
+
+            // Bloqueia veículo já em uso por outro motorista hoje
+            const veiculoEmUso = await prisma.diarioVendedor.findFirst({
+                where: {
+                    veiculoId,
+                    dataReferencia: hojeDateRef,
+                    vendedorId: { not: vendedorId }
+                },
+                include: { vendedor: { select: { nome: true } } }
+            });
+            if (veiculoEmUso) {
+                throw new Error(`Este veículo já está sendo usado hoje por ${veiculoEmUso.vendedor?.nome || 'outro motorista'}.`);
             }
         }
 

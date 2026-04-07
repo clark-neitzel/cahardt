@@ -112,6 +112,7 @@ router.get('/resumo', async (req, res) => {
         });
 
         const diarioInfo = diario ? {
+            id: diario.id,
             veiculoId: diario.veiculoId,
             placa: diario.veiculo?.placa,
             modelo: diario.veiculo?.modelo,

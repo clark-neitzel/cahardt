@@ -5,9 +5,10 @@ import vendedorService from '../../services/vendedorService';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     Wallet, Truck, Fuel, Package, CheckCircle, AlertTriangle,
-    Lock, Printer, ClipboardCheck, ChevronDown, ChevronUp, ReceiptText, Plus, Undo2, FlaskConical
+    Lock, Printer, ClipboardCheck, ChevronDown, ChevronUp, ReceiptText, Plus, Undo2, FlaskConical, Edit3
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '../../services/api';
 import NovaDespesaModal from './NovaDespesaModal';
 import VeiculoFicha from '../Veiculos/VeiculoFicha';
 
@@ -62,6 +63,8 @@ const CaixaDiarioPage = () => {
     const [obsAdmin, setObsAdmin] = useState('');
     const [showDespesaModal, setShowDespesaModal] = useState(false);
     const [veiculoFichaId, setVeiculoFichaId] = useState(null);
+    const [editandoKm, setEditandoKm] = useState(false);
+    const [kmInicialEdit, setKmInicialEdit] = useState('');
 
     // Persistir filtros na sessão sempre que mudarem
     useEffect(() => {
@@ -234,10 +237,33 @@ const CaixaDiarioPage = () => {
                             {resumo.diario ? (
                                 <div className="text-sm text-gray-600">
                                     <p className="font-medium text-gray-900">{resumo.diario.placa} — {resumo.diario.modelo}</p>
-                                    <p className="text-xs mt-1">
-                                        KM: {resumo.diario.kmInicial || '—'} → {resumo.diario.kmFinal || '—'}
-                                        {resumo.diario.totalKm > 0 && <span className="ml-1 font-medium">({resumo.diario.totalKm} km)</span>}
-                                    </p>
+                                    {editandoKm ? (
+                                        <div className="flex items-center gap-2 mt-1" onClick={e => e.stopPropagation()}>
+                                            <input type="number" className="w-24 border border-gray-300 rounded px-2 py-1 text-xs font-mono"
+                                                value={kmInicialEdit} onChange={e => setKmInicialEdit(e.target.value)} autoFocus />
+                                            <button className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
+                                                onClick={async () => {
+                                                    try {
+                                                        await api.put(`/diarios/${resumo.diario.id}/km`, { kmInicial: parseInt(kmInicialEdit) });
+                                                        toast.success('KM inicial atualizado!');
+                                                        setEditandoKm(false);
+                                                        fetchResumo();
+                                                    } catch (e) { toast.error(e.response?.data?.error || 'Erro ao salvar KM.'); }
+                                                }}>OK</button>
+                                            <button className="text-xs text-gray-500 hover:text-gray-700" onClick={() => setEditandoKm(false)}>✕</button>
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs mt-1">
+                                            KM: {resumo.diario.kmInicial || '—'} → {resumo.diario.kmFinal || '—'}
+                                            {resumo.diario.totalKm > 0 && <span className="ml-1 font-medium">({resumo.diario.totalKm} km)</span>}
+                                            {isAdmin && resumo.diario.id && (
+                                                <button className="ml-2 text-indigo-500 hover:text-indigo-700" title="Editar KM inicial"
+                                                    onClick={(e) => { e.stopPropagation(); setKmInicialEdit(String(resumo.diario.kmInicial || '')); setEditandoKm(true); }}>
+                                                    <Edit3 className="h-3 w-3 inline" />
+                                                </button>
+                                            )}
+                                        </p>
+                                    )}
                                     <p className="text-[11px] text-sky-700 mt-2">Clique para ver Resumo, Documentos e Manutenção</p>
                                 </div>
                             ) : (
