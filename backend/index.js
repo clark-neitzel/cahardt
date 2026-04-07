@@ -40,6 +40,7 @@ const pcpReceitaRoutes = require('./routes/pcpReceitaRoutes'); // PCP: Receitas
 const pcpEstoqueRoutes = require('./routes/pcpEstoqueRoutes'); // PCP: Estoque
 const pcpOrdemRoutes = require('./routes/pcpOrdemRoutes'); // PCP: Ordens de Produção
 const pcpAgendaRoutes = require('./routes/pcpAgendaRoutes'); // PCP: Agenda/Calendário
+const pcpSugestaoRoutes = require('./routes/pcpSugestaoRoutes'); // PCP: Sugestões de Produção
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -99,6 +100,7 @@ app.use('/api/pcp/receitas', authMiddleware, pcpReceitaRoutes);
 app.use('/api/pcp/estoque', authMiddleware, pcpEstoqueRoutes);
 app.use('/api/pcp/ordens', authMiddleware, pcpOrdemRoutes);
 app.use('/api/pcp/agenda', authMiddleware, pcpAgendaRoutes);
+app.use('/api/pcp/sugestoes', authMiddleware, pcpSugestaoRoutes);
 
 app.use('/api/migrations', authMiddleware, migrationRoutes); // Migration endpoint (protegido)
 

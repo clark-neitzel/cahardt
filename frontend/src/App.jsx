@@ -46,6 +46,8 @@ import OrdensProducao from './pages/PCP/OrdensProducao';
 import OrdemProducaoForm from './pages/PCP/OrdemProducaoForm';
 import PainelOperacional from './pages/PCP/PainelOperacional';
 import CalendarioProducao from './pages/PCP/CalendarioProducao';
+import SugestoesProducao from './pages/PCP/SugestoesProducao';
+import DashboardPcp from './pages/PCP/DashboardPcp';
 
 import {
   Menu, X, LogOut, ChevronDown,
@@ -53,7 +55,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -204,6 +206,8 @@ const Layout = ({ children }) => {
           {showPcp && <SidebarItem to="/pcp/painel" icon={Play} label="Painel" />}
           {showPcp && <SidebarItem to="/pcp/calendario" icon={CalendarIcon} label="Calendário" />}
           {showPcp && <SidebarItem to="/pcp/estoque" icon={Factory} label="Estoque PCP" />}
+          {showPcp && <SidebarItem to="/pcp/sugestoes" icon={Lightbulb} label="Sugestoes" />}
+          {showPcp && <SidebarItem to="/pcp/dashboard" icon={BarChart3} label="Dashboard" />}
 
           {/* Produção / Estoque */}
           {showEstoque && <SidebarSection label="Produção" />}
@@ -334,6 +338,8 @@ const Layout = ({ children }) => {
                 <NavLink to="/pcp/painel" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Painel</NavLink>
                 <NavLink to="/pcp/calendario" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Calendário</NavLink>
                 <NavLink to="/pcp/estoque" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Estoque PCP</NavLink>
+                <NavLink to="/pcp/sugestoes" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Sugestoes</NavLink>
+                <NavLink to="/pcp/dashboard" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Dashboard</NavLink>
               </MobileMenuSection>
             )}
 
@@ -452,6 +458,8 @@ function App() {
               <Route path="/pcp/painel" element={<PrivateRoute><PainelOperacional /></PrivateRoute>} />
               <Route path="/pcp/calendario" element={<PrivateRoute><CalendarioProducao /></PrivateRoute>} />
               <Route path="/pcp/estoque" element={<PrivateRoute><EstoquePcp /></PrivateRoute>} />
+              <Route path="/pcp/sugestoes" element={<PrivateRoute><SugestoesProducao /></PrivateRoute>} />
+              <Route path="/pcp/dashboard" element={<PrivateRoute><DashboardPcp /></PrivateRoute>} />
 
               {/* Produção / Estoque */}
               <Route path="/estoque" element={<PrivateRoute><PainelEstoque /></PrivateRoute>} />
