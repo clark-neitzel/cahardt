@@ -48,6 +48,7 @@ model Produto {
   metasProdutos        MetaProduto[]
   itensAmostra         AmostraItem[]
   movimentacoesEstoque MovimentacaoEstoque[]
+  itensPcp             ItemPcp[]
 
   // Inteligência Comercial
   categoriaProdutoId      String?           @map("categoria_produto_id")
@@ -1081,4 +1082,178 @@ model Parcela {
   @@index([dataVencimento])
   @@index([status])
   @@map("parcelas")
+}
+
+// =============================================
+// PCP - Planejamento e Controle de Produção
+// =============================================
+
+model ItemPcp {
+  id        String  @id @default(uuid())
+  codigo    String  @unique
+  nome      String
+  tipo      String  // MP | SUB | PA | EMB
+  unidade   String  // KG | UN | L | PCT | CX
+  descricao String? @db.Text
+  ativo     Boolean @default(true)
+
+  estoqueAtual     Decimal @default(0) @map("estoque_atual") @db.Decimal(12, 3)
+  estoqueMinimo    Decimal @default(0) @map("estoque_minimo") @db.Decimal(12, 3)
+  estoqueReservado Decimal @default(0) @map("estoque_reservado") @db.Decimal(12, 3)
+
+  produtoId     String?  @map("produto_id")
+  produto       Produto? @relation(fields: [produtoId], references: [id])
+  custoUnitario Decimal? @map("custo_unitario") @db.Decimal(12, 4)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  receitasComoResultado Receita[]
+  receitaItens          ReceitaItem[]
+  ordensConsumo         OrdemConsumo[]
+  movimentacoesPcp      MovimentacaoPcp[]
+  sugestoes             SugestaoProducao[]
+
+  @@index([tipo])
+  @@index([produtoId])
+  @@map("itens_pcp")
+}
+
+model Receita {
+  id             String    @id @default(uuid())
+  itemPcpId      String    @map("item_pcp_id")
+  versao         Int       @default(1)
+  nome           String
+  rendimentoBase Decimal   @map("rendimento_base") @db.Decimal(12, 3)
+  perdaPercentual Decimal? @map("perda_percentual") @db.Decimal(5, 2)
+  status         String    @default("ativa") // rascunho | ativa | inativa
+  dataInicioVigencia DateTime  @map("data_inicio_vigencia")
+  dataFimVigencia    DateTime? @map("data_fim_vigencia")
+  observacoes    String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  itemPcp        ItemPcp        @relation(fields: [itemPcpId], references: [id])
+  itens          ReceitaItem[]
+  ordensProducao OrdemProducao[]
+
+  @@unique([itemPcpId, versao])
+  @@index([status])
+  @@map("receitas")
+}
+
+model ReceitaItem {
+  id         String  @id @default(uuid())
+  receitaId  String  @map("receita_id")
+  itemPcpId  String  @map("item_pcp_id")
+  quantidade Decimal @db.Decimal(12, 3)
+  tipo       String  // MP | SUB | EMB
+  ordemEtapa String? @map("ordem_etapa") // preparo, modelagem, fritura, embalagem
+  observacao String? @db.Text
+
+  receita Receita @relation(fields: [receitaId], references: [id], onDelete: Cascade)
+  itemPcp ItemPcp @relation(fields: [itemPcpId], references: [id])
+
+  @@map("receita_itens")
+}
+
+model OrdemProducao {
+  id                  String   @id @default(uuid())
+  numero              Int      @unique @default(autoincrement())
+  receitaId           String   @map("receita_id")
+  quantidadePlanejada Decimal  @map("quantidade_planejada") @db.Decimal(12, 3)
+  quantidadeProduzida Decimal  @default(0) @map("quantidade_produzida") @db.Decimal(12, 3)
+  fatorEscala         Decimal  @map("fator_escala") @db.Decimal(10, 4)
+  status              String   @default("PLANEJADA") // PLANEJADA | EM_PRODUCAO | FINALIZADA | CANCELADA
+  receitaSnapshot     Json     @map("receita_snapshot")
+  dataPlanejada       DateTime @map("data_planejada")
+  dataInicio          DateTime? @map("data_inicio")
+  dataFim             DateTime? @map("data_fim")
+  observacoes         String?  @db.Text
+  criadoPorId         String?  @map("criado_por_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  receita      Receita          @relation(fields: [receitaId], references: [id])
+  itensConsumo OrdemConsumo[]
+  agendas      AgendaProducao[]
+
+  @@index([status])
+  @@index([dataPlanejada])
+  @@map("ordens_producao")
+}
+
+model OrdemConsumo {
+  id                 String  @id @default(uuid())
+  ordemProducaoId    String  @map("ordem_producao_id")
+  itemPcpId          String  @map("item_pcp_id")
+  quantidadePrevista Decimal @map("quantidade_prevista") @db.Decimal(12, 3)
+  quantidadeReal     Decimal @default(0) @map("quantidade_real") @db.Decimal(12, 3)
+  tipo               String  // MP | SUB | EMB
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ordemProducao OrdemProducao @relation(fields: [ordemProducaoId], references: [id], onDelete: Cascade)
+  itemPcp       ItemPcp       @relation(fields: [itemPcpId], references: [id])
+
+  @@map("ordens_consumo")
+}
+
+model AgendaProducao {
+  id              String   @id @default(uuid())
+  ordemProducaoId String   @map("ordem_producao_id")
+  titulo          String
+  dataInicio      DateTime @map("data_inicio")
+  dataFim         DateTime @map("data_fim")
+  cor             String?  @default("#3B82F6")
+  observacoes     String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ordemProducao OrdemProducao @relation(fields: [ordemProducaoId], references: [id], onDelete: Cascade)
+
+  @@map("agenda_producao")
+}
+
+model MovimentacaoPcp {
+  id              String   @id @default(uuid())
+  itemPcpId       String   @map("item_pcp_id")
+  tipo            String   // ENTRADA | SAIDA
+  quantidade      Decimal  @db.Decimal(12, 3)
+  motivo          String   // PRODUCAO_ENTRADA | PRODUCAO_CONSUMO | AJUSTE_MANUAL | COMPRA
+  ordemProducaoId String?  @map("ordem_producao_id")
+  observacao      String?  @db.Text
+  estoqueAntes    Decimal  @map("estoque_antes") @db.Decimal(12, 3)
+  estoqueDepois   Decimal  @map("estoque_depois") @db.Decimal(12, 3)
+  criadoPorId     String?  @map("criado_por_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  itemPcp ItemPcp @relation(fields: [itemPcpId], references: [id])
+
+  @@index([itemPcpId])
+  @@index([createdAt])
+  @@map("movimentacoes_pcp")
+}
+
+model SugestaoProducao {
+  id                 String   @id @default(uuid())
+  itemPcpId          String   @map("item_pcp_id")
+  quantidadeSugerida Decimal  @map("quantidade_sugerida") @db.Decimal(12, 3)
+  bateladas          Int      @default(1)
+  motivo             String   // ESTOQUE_MINIMO | DEMANDA_PEDIDOS
+  status             String   @default("PENDENTE") // PENDENTE | ACEITA | REJEITADA
+  ordemProducaoId    String?  @map("ordem_producao_id")
+  observacoes        String?  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  itemPcp ItemPcp @relation(fields: [itemPcpId], references: [id])
+
+  @@index([status])
+  @@map("sugestoes_producao")
 }

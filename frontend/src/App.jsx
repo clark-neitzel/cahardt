@@ -36,13 +36,20 @@ import RelatorioPedidos from './pages/Relatorios/RelatorioPedidos';
 import PainelEstoque from './pages/Estoque/PainelEstoque';
 import HistoricoEstoque from './pages/Estoque/HistoricoEstoque';
 import PosicaoEstoque from './pages/Estoque/PosicaoEstoque';
+import ItensPcp from './pages/PCP/ItensPcp';
+import ItemPcpForm from './pages/PCP/ItemPcpForm';
+import ReceitasList from './pages/PCP/ReceitasList';
+import ReceitaForm from './pages/PCP/ReceitaForm';
+import ReceitaDetalhe from './pages/PCP/ReceitaDetalhe';
+import EstoquePcp from './pages/PCP/EstoquePcp';
 
 import {
   Menu, X, LogOut, ChevronDown,
   LayoutDashboard, BookOpen, ClipboardList, Map, Target, Users,
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText,
-  Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse
+  Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
+  Package, BookOpen as BookOpenIcon, Factory
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -135,6 +142,7 @@ const Layout = ({ children }) => {
   const showFinanceiro = hasPermission('Pode_Acessar_Caixa') || hasPermission('Pode_Ver_Todas_Entregas') || hasPermission('Pode_Acessar_Contas_Receber');
   const showAdmin = hasPermission('produtos') || hasPermission('vendedores') || hasPermission('sync') || user?.permissoes?.admin;
   const showEstoque = user?.permissoes?.admin || (Array.isArray(user?.permissoes?.estoque) && user.permissoes.estoque.length > 0);
+  const showPcp = user?.permissoes?.admin || !!user?.permissoes?.pcp;
   const showConfig = hasPermission('configuracoes');
 
   return (
@@ -183,6 +191,12 @@ const Layout = ({ children }) => {
           {hasPermission('vendedores') && <SidebarItem to="/admin/vendedores" icon={UserCog} label="Vendedores" />}
           {(user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && <SidebarItem to="/admin/veiculos" icon={Car} label="Veículos" />}
           {hasPermission('sync') && <SidebarItem to="/admin/sync" icon={RefreshCw} label="Sincronizar" />}
+
+          {/* PCP */}
+          {showPcp && <SidebarSection label="PCP" />}
+          {showPcp && <SidebarItem to="/pcp/itens" icon={Package} label="Itens" />}
+          {showPcp && <SidebarItem to="/pcp/receitas" icon={BookOpenIcon} label="Receitas" />}
+          {showPcp && <SidebarItem to="/pcp/estoque" icon={Factory} label="Estoque PCP" />}
 
           {/* Produção / Estoque */}
           {showEstoque && <SidebarSection label="Produção" />}
@@ -304,6 +318,15 @@ const Layout = ({ children }) => {
               </MobileMenuSection>
             )}
 
+            {/* PCP */}
+            {showPcp && (
+              <MobileMenuSection label="PCP" icon={Factory}>
+                <NavLink to="/pcp/itens" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Itens</NavLink>
+                <NavLink to="/pcp/receitas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Receitas</NavLink>
+                <NavLink to="/pcp/estoque" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Estoque PCP</NavLink>
+              </MobileMenuSection>
+            )}
+
             {/* Produção / Estoque */}
             {showEstoque && (
               <MobileMenuSection label="Produção / Estoque" icon={Warehouse}>
@@ -405,6 +428,16 @@ function App() {
               <Route path="/despesas" element={<PrivateRoute tab="Pode_Acessar_Caixa"><DespesasPage /></PrivateRoute>} />
               <Route path="/caixa" element={<PrivateRoute tab="Pode_Acessar_Caixa"><CaixaDiarioPage /></PrivateRoute>} />
               <Route path="/caixa/impressao" element={<PrivateRoute tab="Pode_Acessar_Caixa"><RelatorioCaixaPrint /></PrivateRoute>} />
+
+              {/* PCP */}
+              <Route path="/pcp/itens" element={<PrivateRoute><ItensPcp /></PrivateRoute>} />
+              <Route path="/pcp/itens/novo" element={<PrivateRoute><ItemPcpForm /></PrivateRoute>} />
+              <Route path="/pcp/itens/:id" element={<PrivateRoute><ItemPcpForm /></PrivateRoute>} />
+              <Route path="/pcp/receitas" element={<PrivateRoute><ReceitasList /></PrivateRoute>} />
+              <Route path="/pcp/receitas/nova" element={<PrivateRoute><ReceitaForm /></PrivateRoute>} />
+              <Route path="/pcp/receitas/:id" element={<PrivateRoute><ReceitaDetalhe /></PrivateRoute>} />
+              <Route path="/pcp/receitas/:id/editar" element={<PrivateRoute><ReceitaForm /></PrivateRoute>} />
+              <Route path="/pcp/estoque" element={<PrivateRoute><EstoquePcp /></PrivateRoute>} />
 
               {/* Produção / Estoque */}
               <Route path="/estoque" element={<PrivateRoute><PainelEstoque /></PrivateRoute>} />

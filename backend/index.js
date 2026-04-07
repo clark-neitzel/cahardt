@@ -35,6 +35,9 @@ const amostraRoutes = require('./routes/amostraRoutes'); // Amostras (mini-pedid
 const contasReceberRoutes = require('./routes/contasReceber'); // Contas a Receber
 const estoqueRoutes = require('./routes/estoqueRoutes'); // Módulo de Estoque
 const categoriaEstoqueRoutes = require('./routes/categoriaEstoqueRoutes'); // Categorias de Estoque
+const pcpItemRoutes = require('./routes/pcpItemRoutes'); // PCP: Itens
+const pcpReceitaRoutes = require('./routes/pcpReceitaRoutes'); // PCP: Receitas
+const pcpEstoqueRoutes = require('./routes/pcpEstoqueRoutes'); // PCP: Estoque
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -87,6 +90,11 @@ app.use('/api/amostras', authMiddleware, amostraRoutes); // Amostras (mini-pedid
 app.use('/api/contas-receber', contasReceberRoutes); // Contas a Receber (auth inside)
 app.use('/api/estoque', authMiddleware, estoqueRoutes); // Módulo de Estoque
 app.use('/api/categorias-estoque', authMiddleware, categoriaEstoqueRoutes); // Categorias de Estoque
+
+// PCP — Planejamento e Controle de Produção
+app.use('/api/pcp/itens', authMiddleware, pcpItemRoutes);
+app.use('/api/pcp/receitas', authMiddleware, pcpReceitaRoutes);
+app.use('/api/pcp/estoque', authMiddleware, pcpEstoqueRoutes);
 
 app.use('/api/migrations', authMiddleware, migrationRoutes); // Migration endpoint (protegido)
 
