@@ -13,6 +13,10 @@ const contasReceberService = {
         const response = await api.post(`/contas-receber/${parcelaId}/baixa`, dados);
         return response.data;
     },
+    darBaixaLote: async (dados) => {
+        const response = await api.post('/contas-receber/baixa-lote', dados);
+        return response.data;
+    },
     estornarBaixa: async (parcelaId) => {
         const response = await api.delete(`/contas-receber/${parcelaId}/baixa`);
         return response.data;

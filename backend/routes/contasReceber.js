@@ -183,6 +183,97 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── POST /baixa-lote — Dar baixa em várias parcelas de uma vez ──
+router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
+    try {
+        const { parcelaIds, formaPagamento, dataPagamento, observacao } = req.body;
+
+        if (!Array.isArray(parcelaIds) || parcelaIds.length === 0) {
+            return res.status(400).json({ error: 'Informe ao menos uma parcela.' });
+        }
+
+        if (parcelaIds.length > 200) {
+            return res.status(400).json({ error: 'Máximo de 200 parcelas por vez.' });
+        }
+
+        const parcelas = await prisma.parcela.findMany({
+            where: { id: { in: parcelaIds } },
+            include: { contaReceber: true }
+        });
+
+        const elegiveis = parcelas.filter(p => p.status === 'PENDENTE' || p.status === 'VENCIDO');
+        if (elegiveis.length === 0) {
+            return res.status(400).json({ error: 'Nenhuma parcela elegível para baixa.' });
+        }
+
+        const dataPgto = dataPagamento ? new Date(dataPagamento) : new Date();
+
+        // Executar tudo em transação
+        await prisma.$transaction(async (tx) => {
+            // 1. Atualizar todas as parcelas
+            for (const parcela of elegiveis) {
+                await tx.parcela.update({
+                    where: { id: parcela.id },
+                    data: {
+                        status: 'PAGO',
+                        valorPago: parcela.valor,
+                        formaPagamento: formaPagamento || null,
+                        dataPagamento: dataPgto,
+                        baixadoPorId: req.user.id,
+                        observacao: observacao || null
+                    }
+                });
+            }
+
+            // 2. Recalcular status de cada conta afetada
+            const contaIds = [...new Set(elegiveis.map(p => p.contaReceberId))];
+            for (const contaId of contaIds) {
+                const todasParcelas = await tx.parcela.findMany({
+                    where: { contaReceberId: contaId }
+                });
+
+                const pagas = todasParcelas.filter(p => p.status === 'PAGO').length;
+                const total = todasParcelas.length;
+                const canceladas = todasParcelas.filter(p => p.status === 'CANCELADO').length;
+
+                let novoStatus;
+                if (pagas + canceladas >= total) novoStatus = 'QUITADO';
+                else if (pagas > 0) novoStatus = 'PARCIAL';
+                else novoStatus = 'ABERTO';
+
+                await tx.contaReceber.update({
+                    where: { id: contaId },
+                    data: { status: novoStatus }
+                });
+            }
+
+            // 3. Registrar no histórico
+            for (const parcela of elegiveis) {
+                const conta = parcela.contaReceber;
+                const formaPg = formaPagamento || 'N/I';
+                await tx.atendimento.create({
+                    data: {
+                        tipo: 'FINANCEIRO',
+                        observacao: `Baixa em lote - parcela ${parcela.numeroParcela} - R$ ${Number(parcela.valor).toFixed(2)} (${formaPg})${observacao ? ` | ${observacao}` : ''}`,
+                        clienteId: conta.clienteId,
+                        idVendedor: req.user.id,
+                        pedidoId: conta.pedidoId || null
+                    }
+                });
+            }
+        });
+
+        res.json({
+            message: `Baixa realizada em ${elegiveis.length} parcela(s)!`,
+            totalBaixadas: elegiveis.length,
+            totalIgnoradas: parcelas.length - elegiveis.length
+        });
+    } catch (error) {
+        console.error('Erro ao dar baixa em lote:', error);
+        res.status(500).json({ error: 'Erro ao dar baixa em lote.' });
+    }
+});
+
 // ── POST /:parcelaId/baixa — Dar baixa em parcela ──
 router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => {
     try {

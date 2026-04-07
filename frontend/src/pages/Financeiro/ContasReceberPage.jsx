@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import contasReceberService from '../../services/contasReceberService';
 import {
     DollarSign, ChevronDown, ChevronUp, Search, Filter, X,
-    CheckCircle, AlertTriangle, Clock, Ban, Undo2, ArrowUpDown
+    CheckCircle, AlertTriangle, Clock, Ban, Undo2, ArrowUpDown, CheckSquare, Square
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -58,6 +58,74 @@ const ContasReceberPage = () => {
         valorPago: '', formaPagamento: '', dataPagamento: '', observacao: ''
     });
     const [salvandoBaixa, setSalvandoBaixa] = useState(false);
+
+    // Seleção em lote
+    const [selecionadas, setSelecionadas] = useState(new Set());
+    const [baixaLoteModal, setBaixaLoteModal] = useState(false);
+    const [baixaLoteForm, setBaixaLoteForm] = useState({
+        formaPagamento: '', dataPagamento: '', observacao: ''
+    });
+    const [salvandoLote, setSalvandoLote] = useState(false);
+
+    const todasParcelasElegiveis = contas.flatMap(c =>
+        (c.parcelas || []).filter(p => p.status === 'PENDENTE' || p.status === 'VENCIDO')
+    );
+
+    const toggleSelecionada = (parcelaId) => {
+        setSelecionadas(prev => {
+            const next = new Set(prev);
+            if (next.has(parcelaId)) next.delete(parcelaId);
+            else next.add(parcelaId);
+            return next;
+        });
+    };
+
+    const toggleTodasVisiveis = () => {
+        if (!expandido) return;
+        const conta = contas.find(c => c.id === expandido);
+        if (!conta) return;
+        const elegiveis = conta.parcelas.filter(p => p.status === 'PENDENTE' || p.status === 'VENCIDO');
+        const todasSelecionadas = elegiveis.every(p => selecionadas.has(p.id));
+        setSelecionadas(prev => {
+            const next = new Set(prev);
+            elegiveis.forEach(p => {
+                if (todasSelecionadas) next.delete(p.id);
+                else next.add(p.id);
+            });
+            return next;
+        });
+    };
+
+    const abrirBaixaLote = () => {
+        const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        setBaixaLoteForm({ formaPagamento: '', dataPagamento: hoje, observacao: '' });
+        setBaixaLoteModal(true);
+    };
+
+    const handleDarBaixaLote = async () => {
+        if (selecionadas.size === 0) return;
+        try {
+            setSalvandoLote(true);
+            const result = await contasReceberService.darBaixaLote({
+                parcelaIds: [...selecionadas],
+                formaPagamento: baixaLoteForm.formaPagamento || null,
+                dataPagamento: baixaLoteForm.dataPagamento || null,
+                observacao: baixaLoteForm.observacao || null
+            });
+            toast.success(result.message);
+            setBaixaLoteModal(false);
+            setSelecionadas(new Set());
+            fetchData();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao dar baixa em lote.');
+        } finally {
+            setSalvandoLote(false);
+        }
+    };
+
+    const valorTotalSelecionadas = todasParcelasElegiveis
+        .filter(p => selecionadas.has(p.id))
+        .reduce((sum, p) => sum + Number(p.valor || 0), 0);
 
     const saveFilters = useCallback((overrides = {}) => {
         const filters = {
@@ -445,6 +513,18 @@ const ContasReceberPage = () => {
                                 {/* Parcelas expandidas */}
                                 {isExpanded && (
                                     <div className="border-t border-gray-100 p-3 sm:p-4 bg-gray-50">
+                                        {podeBaixar && conta.parcelas.some(p => p.status === 'PENDENTE' || p.status === 'VENCIDO') && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); toggleTodasVisiveis(); }}
+                                                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-green-700 mb-2 font-medium"
+                                            >
+                                                {conta.parcelas
+                                                    .filter(p => p.status === 'PENDENTE' || p.status === 'VENCIDO')
+                                                    .every(p => selecionadas.has(p.id))
+                                                    ? <><CheckSquare className="h-3.5 w-3.5 text-green-600" /> Desmarcar todas</>
+                                                    : <><Square className="h-3.5 w-3.5" /> Selecionar todas pendentes</>}
+                                            </button>
+                                        )}
                                         <div className="space-y-2">
                                             {conta.parcelas.map(p => {
                                                 const pBadge = PARCELA_BADGES[p.status] || PARCELA_BADGES.PENDENTE;
@@ -456,6 +536,16 @@ const ContasReceberPage = () => {
                                                         <div className="sm:hidden">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex items-center gap-2">
+                                                                    {podeBaixar && (p.status === 'PENDENTE' || p.status === 'VENCIDO') && (
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); toggleSelecionada(p.id); }}
+                                                                            className="text-gray-400 hover:text-green-600 flex-shrink-0"
+                                                                        >
+                                                                            {selecionadas.has(p.id)
+                                                                                ? <CheckSquare className="h-4 w-4 text-green-600" />
+                                                                                : <Square className="h-4 w-4" />}
+                                                                        </button>
+                                                                    )}
                                                                     <span className="text-xs font-bold text-gray-700">
                                                                         {p.numeroParcela}/{conta.parcelasTotal}
                                                                     </span>
@@ -503,6 +593,16 @@ const ContasReceberPage = () => {
                                                         {/* Desktop parcela */}
                                                         <div className="hidden sm:flex items-center justify-between">
                                                             <div className="flex items-center gap-3">
+                                                                {podeBaixar && (p.status === 'PENDENTE' || p.status === 'VENCIDO') && (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); toggleSelecionada(p.id); }}
+                                                                        className="text-gray-400 hover:text-green-600 flex-shrink-0"
+                                                                    >
+                                                                        {selecionadas.has(p.id)
+                                                                            ? <CheckSquare className="h-4 w-4 text-green-600" />
+                                                                            : <Square className="h-4 w-4" />}
+                                                                    </button>
+                                                                )}
                                                                 <span className="text-sm font-bold text-gray-700 w-8">
                                                                     {p.numeroParcela}/{conta.parcelasTotal}
                                                                 </span>
@@ -578,6 +678,95 @@ const ContasReceberPage = () => {
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Barra de seleção em lote */}
+            {selecionadas.size > 0 && (
+                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-green-700 text-white rounded-xl shadow-2xl px-4 py-3 flex items-center gap-3 sm:gap-4 max-w-lg w-[calc(100%-2rem)]">
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold">{selecionadas.size} parcela{selecionadas.size !== 1 ? 's' : ''} selecionada{selecionadas.size !== 1 ? 's' : ''}</p>
+                        <p className="text-xs text-green-200">Total: R$ {fmt(valorTotalSelecionadas)}</p>
+                    </div>
+                    <button
+                        onClick={() => setSelecionadas(new Set())}
+                        className="px-3 py-1.5 text-xs bg-green-600 rounded-md hover:bg-green-500 font-medium"
+                    >
+                        Limpar
+                    </button>
+                    <button
+                        onClick={abrirBaixaLote}
+                        className="px-4 py-1.5 text-sm bg-white text-green-700 rounded-md font-bold hover:bg-green-50"
+                    >
+                        Dar Baixa
+                    </button>
+                </div>
+            )}
+
+            {/* Modal de Baixa em Lote */}
+            {baixaLoteModal && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40">
+                    <div className="bg-white rounded-t-xl sm:rounded-lg shadow-xl w-full sm:max-w-md sm:mx-4 p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold text-gray-900">Baixa em Lote</h3>
+                            <button onClick={() => setBaixaLoteModal(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-md p-3 mb-4 text-sm">
+                            <p className="text-gray-600"><strong>{selecionadas.size}</strong> parcela{selecionadas.size !== 1 ? 's' : ''}</p>
+                            <p className="text-gray-600">Total: <strong>R$ {fmt(valorTotalSelecionadas)}</strong></p>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs text-gray-500 font-medium">Forma de Pagamento</label>
+                                <input
+                                    type="text"
+                                    value={baixaLoteForm.formaPagamento}
+                                    onChange={(e) => setBaixaLoteForm(prev => ({ ...prev, formaPagamento: e.target.value }))}
+                                    placeholder="Dinheiro, PIX, Transferência..."
+                                    className="w-full mt-1 px-3 py-2.5 text-sm border rounded-md bg-white text-gray-900"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-500 font-medium">Data do Pagamento</label>
+                                <input
+                                    type="date"
+                                    value={baixaLoteForm.dataPagamento}
+                                    onChange={(e) => setBaixaLoteForm(prev => ({ ...prev, dataPagamento: e.target.value }))}
+                                    className="w-full mt-1 px-3 py-2.5 text-sm border rounded-md bg-white text-gray-900"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-500 font-medium">Observação</label>
+                                <textarea
+                                    value={baixaLoteForm.observacao}
+                                    onChange={(e) => setBaixaLoteForm(prev => ({ ...prev, observacao: e.target.value }))}
+                                    rows={2}
+                                    placeholder="Opcional..."
+                                    className="w-full mt-1 px-3 py-2.5 text-sm border rounded-md bg-white text-gray-900"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2 mt-5">
+                            <button
+                                onClick={() => setBaixaLoteModal(false)}
+                                className="flex-1 sm:flex-none px-4 py-2.5 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleDarBaixaLote}
+                                disabled={salvandoLote}
+                                className="flex-1 sm:flex-none px-4 py-2.5 text-sm bg-green-600 text-white rounded-md font-medium hover:bg-green-700 disabled:opacity-50"
+                            >
+                                {salvandoLote ? 'Processando...' : `Confirmar Baixa (${selecionadas.size})`}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
