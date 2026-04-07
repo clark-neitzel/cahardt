@@ -65,6 +65,7 @@ const CaixaDiarioPage = () => {
     const [veiculoFichaId, setVeiculoFichaId] = useState(null);
     const [editandoKm, setEditandoKm] = useState(false);
     const [kmInicialEdit, setKmInicialEdit] = useState('');
+    const [caixaPendente, setCaixaPendente] = useState(null);
 
     // Persistir filtros na sessão sempre que mudarem
     useEffect(() => {
@@ -76,6 +77,14 @@ const CaixaDiarioPage = () => {
             vendedorService.listar().then(res => setVendedores(res || [])).catch(() => { });
         }
     }, [isAdmin]);
+
+    // Verifica se há caixa pendente de dia anterior
+    useEffect(() => {
+        if (!vendedorId) return;
+        caixaService.getPendente(vendedorId).then(res => {
+            setCaixaPendente(res.pendente ? res : null);
+        }).catch(() => {});
+    }, [vendedorId]);
 
     useEffect(() => {
         if (vendedorId && data) fetchResumo();
@@ -113,6 +122,7 @@ const CaixaDiarioPage = () => {
         try {
             await caixaService.fecharCaixa({ vendedorId, data });
             toast.success('Caixa fechado!');
+            setCaixaPendente(null);
             fetchResumo();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao fechar caixa.');
@@ -212,6 +222,24 @@ const CaixaDiarioPage = () => {
                     )}
                 </div>
             </div>
+
+            {/* Alerta de caixa pendente */}
+            {caixaPendente && caixaPendente.pendente && data !== caixaPendente.dataReferencia && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-300 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                        <p className="text-sm text-red-800 font-medium">
+                            Você tem um caixa aberto do dia <strong>{caixaPendente.dataReferencia.split('-').reverse().join('/')}</strong> que precisa ser fechado.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setData(caixaPendente.dataReferencia)}
+                        className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 whitespace-nowrap"
+                    >
+                        Ir para o caixa pendente
+                    </button>
+                </div>
+            )}
 
             {loading ? (
                 <div className="flex justify-center items-center py-20">

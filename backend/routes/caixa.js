@@ -345,6 +345,28 @@ router.get('/resumo', async (req, res) => {
     }
 });
 
+// ── GET /pendente — Retorna caixa ABERTO de dia anterior (se existir) ──
+router.get('/pendente', async (req, res) => {
+    try {
+        const targetVendedor = req.query.vendedorId || req.user.id;
+        const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+
+        const caixaPendente = await prisma.caixaDiario.findFirst({
+            where: {
+                vendedorId: targetVendedor,
+                status: 'ABERTO',
+                dataReferencia: { not: hoje }
+            },
+            orderBy: { dataReferencia: 'desc' }
+        });
+
+        res.json(caixaPendente ? { pendente: true, dataReferencia: caixaPendente.dataReferencia } : { pendente: false });
+    } catch (error) {
+        console.error('Erro ao buscar caixa pendente:', error);
+        res.status(500).json({ error: 'Erro ao buscar caixa pendente.' });
+    }
+});
+
 // ── PATCH /adiantamento — Definir adiantamento ──
 router.patch('/adiantamento', async (req, res) => {
     try {

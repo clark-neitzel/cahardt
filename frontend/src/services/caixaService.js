@@ -38,6 +38,12 @@ const caixaService = {
         return response.data;
     },
 
+    getPendente: async (vendedorId) => {
+        const params = vendedorId ? { vendedorId } : {};
+        const response = await api.get('/caixa/pendente', { params });
+        return response.data;
+    },
+
     getAuditLogs: async () => {
         const response = await api.get('/caixa/audit-logs');
         return response.data;
