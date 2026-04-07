@@ -39,11 +39,13 @@ export default function CalendarioProducao() {
                 end: ev.dataFim,
                 backgroundColor: ev.cor || STATUS_CORES_BG[ev.ordemProducao?.status] || '#3B82F6',
                 borderColor: ev.cor || STATUS_CORES_BG[ev.ordemProducao?.status] || '#3B82F6',
+                editable: !ev.automatico,
                 extendedProps: {
                     agendaId: ev.id,
                     ordemProducao: ev.ordemProducao,
                     observacoes: ev.observacoes,
-                    cor: ev.cor
+                    cor: ev.cor,
+                    automatico: !!ev.automatico
                 }
             })));
         } catch (err) {
@@ -304,12 +306,17 @@ export default function CalendarioProducao() {
                             {modalDetalhe.observacoes && <p><strong>Obs:</strong> {modalDetalhe.observacoes}</p>}
                         </div>
                         <div className="flex justify-end gap-3 mt-6">
-                            <button
-                                onClick={() => excluirEvento(modalDetalhe.id)}
-                                className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg"
-                            >
-                                Remover
-                            </button>
+                            {!modalDetalhe.automatico && (
+                                <button
+                                    onClick={() => excluirEvento(modalDetalhe.id)}
+                                    className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+                                >
+                                    Remover
+                                </button>
+                            )}
+                            {modalDetalhe.automatico && (
+                                <span className="text-xs text-gray-400 self-center">Gerado automaticamente pela data planejada da OP</span>
+                            )}
                             <button onClick={() => setModalDetalhe(null)} className="px-4 py-2 text-sm bg-gray-100 rounded-lg">Fechar</button>
                         </div>
                     </div>

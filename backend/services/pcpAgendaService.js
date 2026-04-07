@@ -1,17 +1,25 @@
 const prisma = require('../config/database');
 
+const STATUS_CORES = {
+    PLANEJADA: '#3B82F6',
+    EM_PRODUCAO: '#EAB308',
+    FINALIZADA: '#22C55E',
+    CANCELADA: '#EF4444',
+};
+
 const pcpAgendaService = {
 
     listar: async ({ dataInicio, dataFim }) => {
-        const where = {};
+        // 1) Eventos manuais da agenda
+        const whereAgenda = {};
         if (dataInicio || dataFim) {
-            where.dataInicio = {};
-            if (dataInicio) where.dataInicio.gte = new Date(dataInicio);
-            if (dataFim) where.dataInicio.lte = new Date(dataFim);
+            whereAgenda.dataInicio = {};
+            if (dataInicio) whereAgenda.dataInicio.gte = new Date(dataInicio);
+            if (dataFim) whereAgenda.dataInicio.lte = new Date(dataFim);
         }
 
-        return prisma.agendaProducao.findMany({
-            where,
+        const eventosAgenda = await prisma.agendaProducao.findMany({
+            where: whereAgenda,
             include: {
                 ordemProducao: {
                     select: {
@@ -27,6 +35,54 @@ const pcpAgendaService = {
             },
             orderBy: { dataInicio: 'asc' }
         });
+
+        // IDs de ordens que ja tem evento manual
+        const ordensComEvento = new Set(eventosAgenda.map(e => e.ordemProducaoId));
+
+        // 2) Ordens sem evento manual — aparecem automaticamente pela dataPlanejada
+        const whereOrdens = {
+            status: { in: ['PLANEJADA', 'EM_PRODUCAO'] },
+            id: { notIn: Array.from(ordensComEvento) }
+        };
+        if (dataInicio || dataFim) {
+            whereOrdens.dataPlanejada = {};
+            if (dataInicio) whereOrdens.dataPlanejada.gte = new Date(dataInicio);
+            if (dataFim) whereOrdens.dataPlanejada.lte = new Date(dataFim);
+        }
+
+        const ordensAutomatic = await prisma.ordemProducao.findMany({
+            where: whereOrdens,
+            select: {
+                id: true,
+                numero: true,
+                status: true,
+                quantidadePlanejada: true,
+                dataPlanejada: true,
+                receita: {
+                    select: { nome: true, itemPcp: { select: { nome: true, unidade: true } } }
+                }
+            },
+            orderBy: { dataPlanejada: 'asc' }
+        });
+
+        // Converter ordens automaticas para formato de evento
+        const eventosAuto = ordensAutomatic.map(op => {
+            const inicio = new Date(op.dataPlanejada);
+            const fim = new Date(inicio.getTime() + 2 * 60 * 60 * 1000); // 2h default
+            return {
+                id: 'op-' + op.id,
+                ordemProducaoId: op.id,
+                titulo: `OP #${op.numero} - ${op.receita?.nome || ''}`,
+                dataInicio: inicio.toISOString(),
+                dataFim: fim.toISOString(),
+                cor: STATUS_CORES[op.status] || '#3B82F6',
+                observacoes: null,
+                automatico: true,
+                ordemProducao: op
+            };
+        });
+
+        return [...eventosAgenda, ...eventosAuto];
     },
 
     criar: async (data) => {
