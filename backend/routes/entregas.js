@@ -304,6 +304,26 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
             return res.status(403).json({ error: 'Este pedido pertence à carga de outro motorista.' });
         }
 
+        // Buscar regras da condição de pagamento do pedido
+        let regrasCondicao = null;
+        if (pedido.opcaoCondicaoPagamento || pedido.tipoPagamento) {
+            const condicoes = await prisma.tabelaPreco.findMany({ where: { ativo: true } });
+            const chave = `${pedido.tipoPagamento || ''}|${pedido.opcaoCondicaoPagamento || ''}`;
+            regrasCondicao = condicoes.find(t => `${t.tipoPagamento || ''}|${t.opcaoCondicao || ''}` === chave)
+                || condicoes.find(t => t.opcaoCondicao === pedido.opcaoCondicaoPagamento)
+                || null;
+        }
+
+        // Validar restrições de devolução da condição
+        if (regrasCondicao) {
+            if (statusEntrega === 'DEVOLVIDO' && regrasCondicao.permiteDevolucaoTotal === false) {
+                return res.status(400).json({ error: 'Esta condição de pagamento não permite devolução total.' });
+            }
+            if (statusEntrega === 'ENTREGUE_PARCIAL' && regrasCondicao.permiteDevolucaoParcial === false) {
+                return res.status(400).json({ error: 'Esta condição de pagamento não permite devolução parcial.' });
+            }
+        }
+
         // Validação Matemática Financeira! (Se o motorista não devolveu tudo, tem que pagar o resto).
         let valorDevolvidoBruto = 0;
         const operacoesItem = [];
@@ -338,6 +358,9 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
                 return res.status(400).json({ error: `Falta registrar R$ ${valorSaldoDevedor.toFixed(2)} em pagamentos para esta entrega.` });
             }
             for (const pgto of pagamentos) {
+                if (Number(pgto.valor) <= 0) {
+                    return res.status(400).json({ error: 'Cada pagamento deve ter valor maior que R$ 0,00.' });
+                }
                 somaRecebida += Number(pgto.valor);
                 operacoesPgto.push({
                     formaPagamentoEntregaId: pgto.formaPagamentoEntregaId,
@@ -346,6 +369,26 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
                     vendedorResponsavelId: pgto.vendedorResponsavelId || null,
                     escritorioResponsavel: pgto.escritorioResponsavel || false
                 });
+            }
+
+            // Validar formas de recebimento permitidas pela condição
+            if (regrasCondicao?.formasRecebimentoPermitidas?.length > 0) {
+                const permitidas = regrasCondicao.formasRecebimentoPermitidas;
+                // Montar mapa de nomes permitidos a partir dos _selectId salvos
+                const todasCondicoes = await prisma.tabelaPreco.findMany({ where: { ativo: true }, select: { idCondicao: true, nomeCondicao: true } });
+                const formasCustom = await prisma.formaPagamentoEntrega.findMany({ where: { ativo: true }, select: { id: true, nome: true } });
+                const mapaNomes = {};
+                todasCondicoes.forEach(c => { mapaNomes['tabela_' + c.idCondicao] = c.nomeCondicao; });
+                formasCustom.forEach(f => { mapaNomes[f.id] = f.nome; });
+                const nomesPermitidos = permitidas.map(p => mapaNomes[p]?.toLowerCase()).filter(Boolean);
+
+                for (const op of operacoesPgto) {
+                    const nomeUsado = op.formaPagamentoNome?.toLowerCase();
+                    const idPermitido = op.formaPagamentoEntregaId && permitidas.includes(op.formaPagamentoEntregaId);
+                    if (!idPermitido && !nomesPermitidos.includes(nomeUsado)) {
+                        return res.status(400).json({ error: `Forma de pagamento "${op.formaPagamentoNome}" não é permitida para esta condição.` });
+                    }
+                }
             }
 
             // Tolerância de centavos

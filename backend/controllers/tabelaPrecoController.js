@@ -26,7 +26,7 @@ const tabelaPrecoController = {
     // Criar nova condição de pagamento
     criar: async (req, res) => {
         try {
-            const { id, idCondicao, nomeCondicao, tipoPagamento, opcaoCondicao, qtdParcelas, parcelasDias, acrescimoPreco, valorMinimo, exigeBanco, bancoPadrao, debitaCaixa, regrasCategoria, permiteEspecial, permiteBonificacao, permitePedido } = req.body;
+            const { id, idCondicao, nomeCondicao, tipoPagamento, opcaoCondicao, qtdParcelas, parcelasDias, acrescimoPreco, valorMinimo, exigeBanco, bancoPadrao, debitaCaixa, regrasCategoria, permiteEspecial, permiteBonificacao, permitePedido, formasRecebimentoPermitidas, permiteDevolucaoTotal, permiteDevolucaoParcial } = req.body;
 
             if (!id || !idCondicao || !nomeCondicao) {
                 return res.status(400).json({ error: 'Campos obrigatórios: id, idCondicao, nomeCondicao.' });
@@ -55,6 +55,9 @@ const tabelaPrecoController = {
                     permiteBonificacao: permiteBonificacao || false,
                     permitePedido: permitePedido !== undefined ? permitePedido : true,
                     ativo: true,
+                    formasRecebimentoPermitidas: formasRecebimentoPermitidas || null,
+                    permiteDevolucaoTotal: permiteDevolucaoTotal !== undefined ? permiteDevolucaoTotal : true,
+                    permiteDevolucaoParcial: permiteDevolucaoParcial !== undefined ? permiteDevolucaoParcial : true,
                     regrasCategoria: regrasCategoria || null,
                     categoriasEspecial: req.body.categoriasEspecial || null
                 }
@@ -104,6 +107,9 @@ const tabelaPrecoController = {
             }
             if (req.body.permiteEspecial !== undefined) updateData.permiteEspecial = req.body.permiteEspecial;
             if (req.body.permiteBonificacao !== undefined) updateData.permiteBonificacao = req.body.permiteBonificacao;
+            if (req.body.formasRecebimentoPermitidas !== undefined) updateData.formasRecebimentoPermitidas = req.body.formasRecebimentoPermitidas;
+            if (req.body.permiteDevolucaoTotal !== undefined) updateData.permiteDevolucaoTotal = req.body.permiteDevolucaoTotal;
+            if (req.body.permiteDevolucaoParcial !== undefined) updateData.permiteDevolucaoParcial = req.body.permiteDevolucaoParcial;
             if (req.body.regrasCategoria !== undefined) {
                 updateData.regrasCategoria = req.body.regrasCategoria;
             }

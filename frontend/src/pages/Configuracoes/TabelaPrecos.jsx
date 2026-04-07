@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
 import contaFinanceiraService from '../../services/contaFinanceiraService';
+import formasPagamentoService from '../../services/formasPagamentoService';
 import api from '../../services/api';
-import { BadgeDollarSign, Landmark, X, Save, Plus, Wallet, Trash2 } from 'lucide-react';
+import { BadgeDollarSign, Landmark, X, Save, Plus, Wallet, Trash2, Truck } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const TabelaPrecos = () => {
@@ -16,6 +17,7 @@ const TabelaPrecos = () => {
     const [saving, setSaving] = useState(false);
     const [editForm, setEditForm] = useState({ acrescimoPreco: 0, valorMinimo: 0, ativo: true, debitaCaixa: false, permitePedido: true, permiteEspecial: false, permiteBonificacao: false });
     const [categoriasCA, setCategoriasCA] = useState([]);
+    const [formasEntrega, setFormasEntrega] = useState([]);
 
     useEffect(() => {
         carregarDados();
@@ -24,14 +26,16 @@ const TabelaPrecos = () => {
     const carregarDados = async () => {
         try {
             setLoading(true);
-            const [dados, bancosData, catsRes] = await Promise.all([
+            const [dados, bancosData, catsRes, formasRes] = await Promise.all([
                 tabelaPrecoService.listar(),
                 contaFinanceiraService.listar(),
-                api.get('/produtos/categorias-ca').then(r => r.data).catch(() => [])
+                api.get('/produtos/categorias-ca').then(r => r.data).catch(() => []),
+                formasPagamentoService.listar().catch(() => [])
             ]);
             setCondicoes(dados);
             setBancos(bancosData.filter(b => b.ativo));
             setCategoriasCA(catsRes);
+            setFormasEntrega(formasRes);
         } catch (error) {
             toast.error('Erro ao carregar dados');
             console.error(error);
@@ -59,7 +63,10 @@ const TabelaPrecos = () => {
             permitePedido: item.permitePedido !== undefined ? item.permitePedido : true,
             categoriasEspecial: item.categoriasEspecial || [],
             ativo: item.ativo,
-            regrasCategoria: item.regrasCategoria || []
+            regrasCategoria: item.regrasCategoria || [],
+            formasRecebimentoPermitidas: item.formasRecebimentoPermitidas || [],
+            permiteDevolucaoTotal: item.permiteDevolucaoTotal !== undefined ? item.permiteDevolucaoTotal : true,
+            permiteDevolucaoParcial: item.permiteDevolucaoParcial !== undefined ? item.permiteDevolucaoParcial : true
         });
     };
 
@@ -84,7 +91,10 @@ const TabelaPrecos = () => {
             permitePedido: true,
             categoriasEspecial: [],
             ativo: true,
-            regrasCategoria: []
+            regrasCategoria: [],
+            formasRecebimentoPermitidas: [],
+            permiteDevolucaoTotal: true,
+            permiteDevolucaoParcial: true
         });
     };
 
@@ -563,6 +573,107 @@ const TabelaPrecos = () => {
                                 <p className="text-[11px] text-amber-600 mt-1 ml-6">
                                     Marque se o motorista recebe o dinheiro em mãos (ex: À vista Dinheiro). Não marque se o pagamento vai pelo banco (ex: Pix, Boleto).
                                 </p>
+                            </div>
+
+                            {/* Regras de Entrega / Recebimento */}
+                            <div className="p-4 bg-sky-50 rounded-lg border border-sky-200 space-y-4">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Truck className="h-4 w-4 text-sky-600" />
+                                    <span className="text-sm font-bold text-sky-800">Regras de Entrega / Recebimento</span>
+                                </div>
+                                <p className="text-[11px] text-sky-600 -mt-2">
+                                    Configure como o motorista pode registrar esta condição na hora da entrega.
+                                </p>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <label className="flex items-center gap-2 cursor-pointer bg-white p-3 rounded border border-gray-200 shadow-sm hover:bg-gray-50">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-gray-300 text-sky-600 focus:ring-sky-500 h-4 w-4"
+                                            checked={editForm.permiteDevolucaoTotal}
+                                            onChange={(e) => setEditForm({ ...editForm, permiteDevolucaoTotal: e.target.checked })}
+                                        />
+                                        <span className="text-sm font-semibold text-gray-800 leading-tight">
+                                            Devolução Total
+                                            <span className="block text-[10px] text-gray-400 font-normal">Motorista pode devolver 100%</span>
+                                        </span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer bg-white p-3 rounded border border-gray-200 shadow-sm hover:bg-gray-50">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-gray-300 text-sky-600 focus:ring-sky-500 h-4 w-4"
+                                            checked={editForm.permiteDevolucaoParcial}
+                                            onChange={(e) => setEditForm({ ...editForm, permiteDevolucaoParcial: e.target.checked })}
+                                        />
+                                        <span className="text-sm font-semibold text-gray-800 leading-tight">
+                                            Devolução Parcial
+                                            <span className="block text-[10px] text-gray-400 font-normal">Motorista pode devolver parte</span>
+                                        </span>
+                                    </label>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-sky-700 uppercase tracking-wide mb-2">Formas de Recebimento Permitidas na Entrega</label>
+                                    <p className="text-[10px] text-sky-600 mb-2">
+                                        Selecione quais opções o motorista verá no checkout. Se nenhuma for marcada, todas ficam disponíveis.
+                                    </p>
+                                    {/* Grupo: Condições de Pagamento (outras tabelas) */}
+                                    <div className="mb-2">
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Condições de Pagamento</span>
+                                        <div className="grid grid-cols-2 gap-1 mt-1 max-h-36 overflow-y-auto">
+                                            {condicoes.filter(c => c.ativo).map(c => {
+                                                const selectId = 'tabela_' + c.idCondicao;
+                                                return (
+                                                    <label key={selectId} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-sky-100 cursor-pointer transition-colors">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="rounded border-gray-300 text-sky-600 focus:ring-sky-500 h-3.5 w-3.5"
+                                                            checked={(editForm.formasRecebimentoPermitidas || []).includes(selectId)}
+                                                            onChange={(e) => {
+                                                                const atual = editForm.formasRecebimentoPermitidas || [];
+                                                                const novas = e.target.checked
+                                                                    ? [...atual, selectId]
+                                                                    : atual.filter(id => id !== selectId);
+                                                                setEditForm({ ...editForm, formasRecebimentoPermitidas: novas });
+                                                            }}
+                                                        />
+                                                        <span className="text-xs text-gray-800 font-medium">{c.nomeCondicao}</span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                    {/* Grupo: Formas de Entrega customizadas */}
+                                    {formasEntrega.filter(f => f.ativo).length > 0 && (
+                                        <div>
+                                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Formas de Entrega (Extras)</span>
+                                            <div className="grid grid-cols-2 gap-1 mt-1">
+                                                {formasEntrega.filter(f => f.ativo).map(f => (
+                                                    <label key={f.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-sky-100 cursor-pointer transition-colors">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="rounded border-gray-300 text-sky-600 focus:ring-sky-500 h-3.5 w-3.5"
+                                                            checked={(editForm.formasRecebimentoPermitidas || []).includes(f.id)}
+                                                            onChange={(e) => {
+                                                                const atual = editForm.formasRecebimentoPermitidas || [];
+                                                                const novas = e.target.checked
+                                                                    ? [...atual, f.id]
+                                                                    : atual.filter(id => id !== f.id);
+                                                                setEditForm({ ...editForm, formasRecebimentoPermitidas: novas });
+                                                            }}
+                                                        />
+                                                        <span className="text-xs text-gray-800 font-medium">{f.nome}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {(editForm.formasRecebimentoPermitidas || []).length > 0 && (
+                                        <p className="text-[10px] text-sky-500 mt-2">
+                                            {(editForm.formasRecebimentoPermitidas || []).length} forma(s) selecionada(s) — motorista só verá estas opções.
+                                        </p>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-3">

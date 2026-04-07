@@ -32,6 +32,9 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     // Diversos
     const [divergencia, setDivergencia] = useState(false);
 
+    // Regras da condição de pagamento do pedido
+    const [regrasCondicao, setRegrasCondicao] = useState({ permiteDevolucaoTotal: true, permiteDevolucaoParcial: true, formasRecebimentoPermitidas: [] });
+
     useEffect(() => {
         const fetchF = async () => {
             setLoadingFormas(true);
@@ -63,7 +66,24 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                         permiteEscritorioResponsavel: false,
                         _grupo: 'Condições de Pagamento'
                     }));
-                setFormasDisp([...tabelas, ...ativas]);
+                // Extrair regras da condição do pedido
+                let todasFormas = [...tabelas, ...ativas];
+                if (pedido.idCondicaoResolvido) {
+                    const condicaoPedido = tabelaForms.find(t => t.idCondicao === pedido.idCondicaoResolvido);
+                    if (condicaoPedido) {
+                        setRegrasCondicao({
+                            permiteDevolucaoTotal: condicaoPedido.permiteDevolucaoTotal !== false,
+                            permiteDevolucaoParcial: condicaoPedido.permiteDevolucaoParcial !== false,
+                            formasRecebimentoPermitidas: condicaoPedido.formasRecebimentoPermitidas || []
+                        });
+                        // Filtrar formas disponíveis se há restrição
+                        if (condicaoPedido.formasRecebimentoPermitidas?.length > 0) {
+                            const permitidas = condicaoPedido.formasRecebimentoPermitidas;
+                            todasFormas = todasFormas.filter(f => permitidas.includes(f._selectId));
+                        }
+                    }
+                }
+                setFormasDisp(todasFormas);
             } catch (error) {
                 toast.error('Erro ao buscar Formas de Pagamento.');
             } finally {
@@ -194,6 +214,12 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
         if (statusFinal === 'DEVOLVIDO') {
             setStep(4);
             return;
+        }
+
+        // Bloquear pagamentos com valor zerado ou negativo
+        const pgtoZerado = pagamentos.find(p => Number(p.valor) <= 0);
+        if (pgtoZerado) {
+            return toast.error('Remova pagamentos com valor R$ 0,00. Cada linha precisa ter um valor real.');
         }
 
         // Validação Matemática RIGOROSA (Travada de Segurança contra Calote Cego)
@@ -344,24 +370,28 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                             </button>
 
                             <button
-                                onClick={() => handleSelectStatus('ENTREGUE_PARCIAL')}
-                                className="w-full flex items-center p-4 bg-white border-2 border-amber-200 hover:border-amber-500 rounded-xl shadow-sm transition-all focus:outline-none"
+                                onClick={() => regrasCondicao.permiteDevolucaoParcial ? handleSelectStatus('ENTREGUE_PARCIAL') : toast.error('Esta condição de pagamento não permite devolução parcial.')}
+                                className={`w-full flex items-center p-4 bg-white border-2 rounded-xl shadow-sm transition-all focus:outline-none ${regrasCondicao.permiteDevolucaoParcial ? 'border-amber-200 hover:border-amber-500' : 'border-gray-200 opacity-50 cursor-not-allowed'}`}
                             >
-                                <Package className="h-8 w-8 text-amber-500 mr-4 flex-shrink-0" />
+                                <Package className={`h-8 w-8 mr-4 flex-shrink-0 ${regrasCondicao.permiteDevolucaoParcial ? 'text-amber-500' : 'text-gray-400'}`} />
                                 <div className="text-left">
-                                    <h5 className="font-bold text-amber-800 text-lg">Entregou Parcial</h5>
-                                    <p className="text-xs text-gray-500 leading-tight mt-1">Cliente não quis 1 ou mais caixas. Abrirei o Carrinho Reverso.</p>
+                                    <h5 className={`font-bold text-lg ${regrasCondicao.permiteDevolucaoParcial ? 'text-amber-800' : 'text-gray-400'}`}>Entregou Parcial</h5>
+                                    <p className="text-xs text-gray-500 leading-tight mt-1">
+                                        {regrasCondicao.permiteDevolucaoParcial ? 'Cliente não quis 1 ou mais caixas. Abrirei o Carrinho Reverso.' : 'Bloqueado para esta condição de pagamento.'}
+                                    </p>
                                 </div>
                             </button>
 
                             <button
-                                onClick={() => handleSelectStatus('DEVOLVIDO')}
-                                className="w-full flex items-center p-4 bg-white border-2 border-red-200 hover:border-red-500 rounded-xl shadow-sm transition-all focus:outline-none mt-8"
+                                onClick={() => regrasCondicao.permiteDevolucaoTotal ? handleSelectStatus('DEVOLVIDO') : toast.error('Esta condição de pagamento não permite devolução total.')}
+                                className={`w-full flex items-center p-4 bg-white border-2 rounded-xl shadow-sm transition-all focus:outline-none mt-8 ${regrasCondicao.permiteDevolucaoTotal ? 'border-red-200 hover:border-red-500' : 'border-gray-200 opacity-50 cursor-not-allowed'}`}
                             >
-                                <ArrowRight className="h-8 w-8 text-red-500 mr-4 flex-shrink-0 transform rotate-180" />
+                                <ArrowRight className={`h-8 w-8 mr-4 flex-shrink-0 transform rotate-180 ${regrasCondicao.permiteDevolucaoTotal ? 'text-red-500' : 'text-gray-400'}`} />
                                 <div className="text-left">
-                                    <h5 className="font-bold text-red-800 text-lg">Voltou Tudo. Rejeitou.</h5>
-                                    <p className="text-xs text-gray-500 leading-tight mt-1">A loja estava fechada ou ele descartou todo o pedido.</p>
+                                    <h5 className={`font-bold text-lg ${regrasCondicao.permiteDevolucaoTotal ? 'text-red-800' : 'text-gray-400'}`}>Voltou Tudo. Rejeitou.</h5>
+                                    <p className="text-xs text-gray-500 leading-tight mt-1">
+                                        {regrasCondicao.permiteDevolucaoTotal ? 'A loja estava fechada ou ele descartou todo o pedido.' : 'Bloqueado para esta condição de pagamento.'}
+                                    </p>
                                 </div>
                             </button>
                         </div>
@@ -522,12 +552,14 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                     ))
                                 )}
 
-                                <button
-                                    onClick={handleAddPagamento}
-                                    className="w-full py-4 border-2 border-dashed border-sky-300 text-sky-600 font-bold rounded-xl flex items-center justify-center hover:bg-sky-50 active:bg-sky-100 transition-colors"
-                                >
-                                    <Plus className="h-5 w-5 mr-1" /> Adicionar Forma de Pagamento
-                                </button>
+                                {saldoRestante > 0.01 && (
+                                    <button
+                                        onClick={handleAddPagamento}
+                                        className="w-full py-4 border-2 border-dashed border-sky-300 text-sky-600 font-bold rounded-xl flex items-center justify-center hover:bg-sky-50 active:bg-sky-100 transition-colors"
+                                    >
+                                        <Plus className="h-5 w-5 mr-1" /> Adicionar Forma de Pagamento
+                                    </button>
+                                )}
 
                                 <div className="mt-6 bg-amber-50 rounded-xl p-4 border border-amber-200">
                                     <label className="flex items-start cursor-pointer">
