@@ -70,19 +70,6 @@ const diarioService = {
             throw new Error('Você precisa informar o KM final do seu último dia de trabalho Presencial antes de iniciar outro!');
         }
 
-        // Bloqueia se o caixa do dia anterior não foi fechado
-        const caixaAberto = await prisma.caixaDiario.findFirst({
-            where: {
-                vendedorId,
-                status: 'ABERTO',
-                dataReferencia: { lt: hojeDateRef }
-            },
-            orderBy: { dataReferencia: 'desc' }
-        });
-        if (caixaAberto) {
-            throw new Error(`Você tem um caixa aberto do dia ${caixaAberto.dataReferencia.split('-').reverse().join('/')}. Feche-o antes de iniciar um novo dia.`);
-        }
-
         // Valida modo Presencial
         if (modo === 'PRESENCIAL') {
             if (!veiculoId || kmInicial === undefined || kmInicial === null || !checklist) {
