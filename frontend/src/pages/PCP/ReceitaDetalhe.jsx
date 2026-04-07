@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pencil, Copy, Calculator } from 'lucide-react';
+import { ArrowLeft, Pencil, Copy, Calculator, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpReceitaService from '../../services/pcpReceitaService';
 import SimuladorEscalonamento from './SimuladorEscalonamento';
@@ -31,6 +31,17 @@ export default function ReceitaDetalhe() {
             .catch(() => toast.error('Erro ao carregar receita'))
             .finally(() => setLoading(false));
     }, [id]);
+
+    const excluirReceita = async () => {
+        if (!confirm('Excluir esta receita? Essa acao nao pode ser desfeita.')) return;
+        try {
+            await pcpReceitaService.excluir(id);
+            toast.success('Receita excluida');
+            navigate('/pcp/receitas');
+        } catch (err) {
+            toast.error(err.response?.data?.error || err.message);
+        }
+    };
 
     const criarNovaVersao = async () => {
         try {
@@ -115,6 +126,12 @@ export default function ReceitaDetalhe() {
                         className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
                     >
                         <Calculator className="h-3.5 w-3.5" /> Simular Escalonamento
+                    </button>
+                    <button
+                        onClick={excluirReceita}
+                        className="flex items-center gap-1 px-3 py-1.5 text-sm bg-red-50 text-red-600 rounded-lg hover:bg-red-100 ml-auto"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" /> Excluir
                     </button>
                 </div>
             </div>

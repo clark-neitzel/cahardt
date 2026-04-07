@@ -246,6 +246,22 @@ const pcpReceitaService = {
         };
     },
 
+    excluir: async (id) => {
+        const receita = await prisma.receita.findUnique({
+            where: { id },
+            include: { _count: { select: { ordensProducao: true } } }
+        });
+        if (!receita) throw new Error('Receita não encontrada');
+        if (receita._count.ordensProducao > 0) {
+            throw new Error('Receita possui ordens de produção vinculadas e não pode ser excluída.');
+        }
+
+        return prisma.$transaction(async (tx) => {
+            await tx.receitaItem.deleteMany({ where: { receitaId: id } });
+            return tx.receita.delete({ where: { id } });
+        });
+    },
+
     buscarReceitaAtiva: async (itemPcpId) => {
         return prisma.receita.findFirst({
             where: {

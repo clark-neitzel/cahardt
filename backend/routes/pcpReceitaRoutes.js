@@ -129,4 +129,18 @@ router.patch('/:id/status', async (req, res) => {
     }
 });
 
+// DELETE /api/pcp/receitas/:id — excluir receita
+router.delete('/:id', async (req, res) => {
+    try {
+        const permissoes = await getPermsFromDB(req.user.id);
+        if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
+
+        await pcpReceitaService.excluir(req.params.id);
+        return res.json({ ok: true });
+    } catch (err) {
+        console.error('[PCP Receitas] Erro excluir:', err.message);
+        return res.status(400).json({ error: err.message });
+    }
+});
+
 module.exports = router;
