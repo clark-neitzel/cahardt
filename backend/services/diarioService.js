@@ -75,7 +75,7 @@ const diarioService = {
             where: {
                 vendedorId,
                 status: 'ABERTO',
-                dataReferencia: { not: hojeDateRef }
+                dataReferencia: { lt: hojeDateRef }
             },
             orderBy: { dataReferencia: 'desc' }
         });

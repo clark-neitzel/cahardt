@@ -355,7 +355,7 @@ router.get('/pendente', async (req, res) => {
             where: {
                 vendedorId: targetVendedor,
                 status: 'ABERTO',
-                dataReferencia: { not: hoje }
+                dataReferencia: { lt: hoje }
             },
             orderBy: { dataReferencia: 'desc' }
         });
