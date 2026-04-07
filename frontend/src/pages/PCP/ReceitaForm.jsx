@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Loader2, Search, X, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpReceitaService from '../../services/pcpReceitaService';
 import pcpItemService from '../../services/pcpItemService';
@@ -9,6 +9,113 @@ import api from '../../services/api';
 const TIPOS_CONSUMO = ['MP', 'SUB', 'EMB'];
 const ETAPAS = ['', 'preparo', 'modelagem', 'fritura', 'cozimento', 'montagem', 'embalagem'];
 
+// ── Combobox com busca ──
+function ComboboxBusca({ value, onChange, opcoes, placeholder = 'Buscar...', className = '' }) {
+    const [aberto, setAberto] = useState(false);
+    const [busca, setBusca] = useState('');
+    const ref = useRef(null);
+    const inputRef = useRef(null);
+
+    // Fechar ao clicar fora
+    useEffect(() => {
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setAberto(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const selecionado = opcoes.find(o => o.id === value);
+
+    const filtradas = busca.trim()
+        ? opcoes.filter(o => {
+            if (o.tipo === 'grupo') return false;
+            const q = busca.toLowerCase();
+            return (o.label || '').toLowerCase().includes(q);
+        })
+        : opcoes;
+
+    const handleSelect = (id) => {
+        onChange(id);
+        setAberto(false);
+        setBusca('');
+    };
+
+    const abrir = () => {
+        setAberto(true);
+        setBusca('');
+        setTimeout(() => inputRef.current?.focus(), 50);
+    };
+
+    return (
+        <div ref={ref} className={`relative ${className}`}>
+            {/* Botao que mostra selecionado */}
+            <button
+                type="button"
+                onClick={abrir}
+                className="w-full flex items-center gap-2 px-2 py-1.5 border border-gray-300 rounded text-sm text-left bg-white hover:border-gray-400 transition-colors min-h-[34px]"
+            >
+                <span className={`flex-1 truncate ${selecionado ? 'text-gray-800' : 'text-gray-400'}`}>
+                    {selecionado ? selecionado.label : placeholder}
+                </span>
+                {value ? (
+                    <X className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600 shrink-0" onClick={(e) => { e.stopPropagation(); onChange(''); }} />
+                ) : (
+                    <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                )}
+            </button>
+
+            {/* Dropdown */}
+            {aberto && (
+                <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 flex flex-col">
+                    {/* Campo de busca */}
+                    <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100">
+                        <Search className="h-4 w-4 text-gray-400 shrink-0" />
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={busca}
+                            onChange={e => setBusca(e.target.value)}
+                            placeholder="Digite para buscar..."
+                            className="flex-1 text-sm bg-transparent outline-none placeholder-gray-400"
+                        />
+                        {busca && (
+                            <button type="button" onClick={() => setBusca('')} className="text-gray-400 hover:text-gray-600">
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Lista */}
+                    <div className="flex-1 overflow-y-auto">
+                        {filtradas.length === 0 ? (
+                            <div className="px-3 py-4 text-center text-sm text-gray-400">Nenhum resultado</div>
+                        ) : (
+                            filtradas.map((o, i) => {
+                                if (o.tipo === 'grupo') {
+                                    return (
+                                        <div key={`g-${i}`} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-gray-50 sticky top-0">
+                                            {o.label}
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <button
+                                        key={o.id}
+                                        type="button"
+                                        onClick={() => handleSelect(o.id)}
+                                        className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${o.id === value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                                    >
+                                        {o.label}
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function ReceitaForm() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -16,13 +123,11 @@ export default function ReceitaForm() {
     const [loading, setLoading] = useState(false);
     const [salvando, setSalvando] = useState(false);
 
-    // Listas de selecao
-    const [subprodutos, setSubprodutos] = useState([]); // SUBs do PCP
-    const [produtos, setProdutos] = useState([]);         // Produtos do cadastro (MP/EMB/PA)
-    const [itensResultado, setItensResultado] = useState([]); // PA: Produtos + SUBs
+    const [subprodutos, setSubprodutos] = useState([]);
+    const [produtos, setProdutos] = useState([]);
 
     const [form, setForm] = useState({
-        itemPcpId: '',       // pode ser itemPcpId existente ou "produto:UUID"
+        itemPcpId: '',
         nome: '',
         rendimentoBase: '',
         perdaPercentual: '',
@@ -36,39 +141,12 @@ export default function ReceitaForm() {
     useEffect(() => {
         const carregarDados = async () => {
             try {
-                // Carregar SUBprodutos do PCP
                 const subs = await pcpItemService.listar({ ativo: 'true', tipo: 'SUB' });
                 setSubprodutos(Array.isArray(subs) ? subs : []);
 
-                // Carregar todos os itens PCP que ja existem (para PA vinculado)
-                const todosItens = await pcpItemService.listar({ ativo: 'true' });
-                const todosArr = Array.isArray(todosItens) ? todosItens : [];
-
-                // Carregar Produtos do cadastro (sistema)
                 const resProd = await api.get('/produtos', { params: { limit: 500 } });
                 const prodList = resProd.data?.data || resProd.data || [];
-                const prodArr = Array.isArray(prodList) ? prodList : [];
-                setProdutos(prodArr);
-
-                // Itens resultado (PA): Produtos do sistema + SUBs
-                const produtosPa = prodArr.map(p => ({
-                    id: 'produto:' + p.id,
-                    produtoId: p.id,
-                    codigo: p.codigo,
-                    nome: p.nome,
-                    tipo: 'PA',
-                    unidade: p.unidade,
-                    origem: 'cadastro',
-                }));
-                const subsPa = (Array.isArray(subs) ? subs : []).map(s => ({
-                    id: s.id,
-                    codigo: s.codigo,
-                    nome: s.nome,
-                    tipo: 'SUB',
-                    unidade: s.unidade,
-                    origem: 'pcp',
-                }));
-                setItensResultado([...subsPa, ...produtosPa]);
+                setProdutos(Array.isArray(prodList) ? prodList : []);
             } catch {
                 toast.error('Erro ao carregar dados');
             }
@@ -102,21 +180,24 @@ export default function ReceitaForm() {
         }
     }, [id, isEdicao]);
 
-    // Montar lista unificada de ingredientes: Produtos (MP/EMB) + SUBs
-    const ingredientesDisponiveis = [
-        ...subprodutos.map(s => ({
-            id: s.id,
-            label: `[SUB] ${s.codigo} - ${s.nome}`,
-            tipo: 'SUB',
-            origem: 'pcp',
-        })),
-        ...produtos.map(p => ({
-            id: 'produto:' + p.id,
-            produtoId: p.id,
-            label: `${p.codigo} - ${p.nome} (${p.unidade})`,
-            tipo: 'MP',
-            origem: 'cadastro',
-        })),
+    // Opcoes para "Item Produzido" (PA ou SUB)
+    const opcoesResultado = [
+        ...(subprodutos.length > 0 ? [
+            { id: '__g_sub', tipo: 'grupo', label: 'Subprodutos (PCP)' },
+            ...subprodutos.map(s => ({ id: s.id, label: `[SUB] ${s.codigo} - ${s.nome}`, tipo: 'SUB' })),
+        ] : []),
+        { id: '__g_pa', tipo: 'grupo', label: 'Produtos do Sistema (PA)' },
+        ...produtos.map(p => ({ id: 'produto:' + p.id, label: `${p.codigo} - ${p.nome}`, tipo: 'PA' })),
+    ];
+
+    // Opcoes para ingredientes (MP/EMB + SUB)
+    const opcoesIngredientes = [
+        ...(subprodutos.length > 0 ? [
+            { id: '__g_sub', tipo: 'grupo', label: 'Subprodutos (PCP)' },
+            ...subprodutos.map(s => ({ id: s.id, label: `[SUB] ${s.codigo} - ${s.nome}`, tipo: 'SUB' })),
+        ] : []),
+        { id: '__g_prod', tipo: 'grupo', label: 'Produtos do Sistema (MP / EMB)' },
+        ...produtos.map(p => ({ id: 'produto:' + p.id, label: `${p.codigo} - ${p.nome} (${p.unidade})`, tipo: 'MP' })),
     ];
 
     const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
@@ -132,8 +213,8 @@ export default function ReceitaForm() {
             if (i !== idx) return item;
             const updated = { ...item, [field]: value };
             if (field === 'itemPcpId') {
-                const sel = ingredientesDisponiveis.find(d => d.id === value);
-                if (sel) updated.tipo = sel.tipo === 'SUB' ? 'SUB' : 'MP';
+                const sel = opcoesIngredientes.find(d => d.id === value);
+                if (sel && sel.tipo !== 'grupo') updated.tipo = sel.tipo === 'SUB' ? 'SUB' : 'MP';
             }
             return updated;
         }));
@@ -152,7 +233,7 @@ export default function ReceitaForm() {
 
         setSalvando(true);
         try {
-            // Resolver IDs: se comeca com "produto:" precisa garantir ItemPcp
+            // Resolver item produzido
             let itemPcpIdFinal = form.itemPcpId;
             if (itemPcpIdFinal.startsWith('produto:')) {
                 const produtoId = itemPcpIdFinal.replace('produto:', '');
@@ -160,27 +241,15 @@ export default function ReceitaForm() {
                 itemPcpIdFinal = res.id;
             }
 
+            // Resolver ingredientes
             const itensResolvidos = [];
             for (const item of itens) {
                 let itemId = item.itemPcpId;
                 if (itemId.startsWith('produto:')) {
                     const produtoId = itemId.replace('produto:', '');
                     const tipo = item.tipo === 'EMB' ? 'EMB' : 'MP';
-                    try {
-                        const res = await pcpItemService.importar({ produtoId, tipo });
-                        itemId = res.id;
-                    } catch (err) {
-                        // Ja existe - buscar o existente
-                        if (err.response?.data?.error?.includes('já está importado')) {
-                            const todos = await pcpItemService.listar({ ativo: 'true' });
-                            const todosArr = Array.isArray(todos) ? todos : [];
-                            const existente = todosArr.find(i => i.produtoId === produtoId);
-                            if (existente) itemId = existente.id;
-                            else throw err;
-                        } else {
-                            throw err;
-                        }
-                    }
+                    const res = await pcpItemService.importar({ produtoId, tipo });
+                    itemId = res.id;
                 }
                 itensResolvidos.push({
                     itemPcpId: itemId,
@@ -225,33 +294,18 @@ export default function ReceitaForm() {
             <h1 className="text-2xl font-bold text-gray-800 mb-6">{isEdicao ? 'Editar Receita' : 'Nova Receita'}</h1>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Cabecalho */}
                 <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
                     <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Dados da Receita</h2>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Item Produzido (PA ou SUB) *</label>
-                            <select
+                            <ComboboxBusca
                                 value={form.itemPcpId}
-                                onChange={e => handleChange('itemPcpId', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                                required
-                            >
-                                <option value="">Selecione...</option>
-                                {itensResultado.filter(i => i.tipo === 'SUB').length > 0 && (
-                                    <optgroup label="Subprodutos (PCP)">
-                                        {itensResultado.filter(i => i.tipo === 'SUB').map(p => (
-                                            <option key={p.id} value={p.id}>[SUB] {p.codigo} - {p.nome}</option>
-                                        ))}
-                                    </optgroup>
-                                )}
-                                <optgroup label="Produtos do Sistema (PA)">
-                                    {itensResultado.filter(i => i.tipo === 'PA').map(p => (
-                                        <option key={p.id} value={p.id}>{p.codigo} - {p.nome}</option>
-                                    ))}
-                                </optgroup>
-                            </select>
+                                onChange={v => handleChange('itemPcpId', v)}
+                                opcoes={opcoesResultado}
+                                placeholder="Buscar produto..."
+                            />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Receita *</label>
@@ -314,7 +368,7 @@ export default function ReceitaForm() {
                     </div>
                 </div>
 
-                {/* Componentes da receita */}
+                {/* Componentes */}
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Componentes</h2>
@@ -330,7 +384,7 @@ export default function ReceitaForm() {
                     {itens.length === 0 ? (
                         <p className="text-center py-6 text-gray-400 text-sm">Nenhum componente. Clique em "Adicionar" acima.</p>
                     ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-1">
                                 <div className="col-span-4">Item</div>
                                 <div className="col-span-2">Quantidade</div>
@@ -342,25 +396,12 @@ export default function ReceitaForm() {
                             {itens.map((item, idx) => (
                                 <div key={idx} className="grid grid-cols-12 gap-2 items-center">
                                     <div className="col-span-4">
-                                        <select
+                                        <ComboboxBusca
                                             value={item.itemPcpId}
-                                            onChange={e => updateItem(idx, 'itemPcpId', e.target.value)}
-                                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-                                        >
-                                            <option value="">Selecione...</option>
-                                            {subprodutos.length > 0 && (
-                                                <optgroup label="Subprodutos (PCP)">
-                                                    {subprodutos.map(s => (
-                                                        <option key={s.id} value={s.id}>[SUB] {s.codigo} - {s.nome}</option>
-                                                    ))}
-                                                </optgroup>
-                                            )}
-                                            <optgroup label="Produtos do Sistema (MP / EMB)">
-                                                {produtos.map(p => (
-                                                    <option key={'p-' + p.id} value={'produto:' + p.id}>{p.codigo} - {p.nome} ({p.unidade})</option>
-                                                ))}
-                                            </optgroup>
-                                        </select>
+                                            onChange={v => updateItem(idx, 'itemPcpId', v)}
+                                            opcoes={opcoesIngredientes}
+                                            placeholder="Buscar ingrediente..."
+                                        />
                                     </div>
                                     <div className="col-span-2">
                                         <input
