@@ -4,7 +4,8 @@ import {
     LayoutDashboard, BookOpen, ClipboardList, Map, Target, Users,
     PackageCheck, Truck, Wallet, Receipt, Search,
     Box, UserCog, Car, RefreshCw, FileText,
-    Settings, DollarSign, Warehouse, TrendingUp
+    Settings, DollarSign, Warehouse, TrendingUp,
+    Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3
 } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import configService from '../../../services/configService';
@@ -66,6 +67,15 @@ const DEFAULT_PERMISSIONS = {
     admin: false,
     // Permissões de Estoque
     estoque: [],
+    // Permissões PCP
+    pcp: {
+        itens: false,
+        receitas: false,
+        ordens: false,
+        agenda: false,
+        estoque: false,
+        sugestoes: false,
+    },
     // Tela inicial preferida
     telaInicial: '/',
 };
@@ -83,6 +93,8 @@ const TELAS_INICIAIS = [
     { value: '/financeiro/contas-receber', label: 'Contas a Receber', icon: DollarSign },
     { value: '/estoque', label: 'Ajuste de Estoque', icon: Warehouse },
     { value: '/estoque/posicao', label: 'Posição de Estoque', icon: Warehouse },
+    { value: '/pcp/dashboard', label: 'Dashboard PCP', icon: BarChart3 },
+    { value: '/pcp/painel', label: 'Painel Operacional', icon: Play },
     { value: '/admin/produtos', label: 'Produtos (Admin)', icon: Box },
     { value: '/admin/vendedores', label: 'Vendedores (Admin)', icon: UserCog },
     { value: '/admin/config', label: 'Configurações Gerais', icon: Settings },
@@ -227,6 +239,18 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     const toggleBool = (key) => {
         setPermissoes(prev => ({ ...prev, [key]: !prev[key] }));
     };
+    const togglePcp = (key) => {
+        setPermissoes(prev => ({
+            ...prev,
+            pcp: { ...(prev.pcp || {}), [key]: !(prev.pcp || {})[key] }
+        }));
+    };
+    const togglePcpAll = (val) => {
+        setPermissoes(prev => ({
+            ...prev,
+            pcp: { itens: val, receitas: val, ordens: val, agenda: val, estoque: val, sugestoes: val }
+        }));
+    };
     const changeClientesScope = (val) => {
         setPermissoes(prev => ({ ...prev, pedidos: { ...prev.pedidos, clientes: val } }));
     };
@@ -263,6 +287,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
         permissoes.produtos?.view, permissoes.vendedores?.view, permissoes.sync?.view, permissoes.Pode_Acessar_Veiculos
     ].filter(Boolean).length;
     const countEstoque = (permissoes.estoque || []).length;
+    const pcpPerms = permissoes.pcp || {};
+    const countPcp = [pcpPerms.itens, pcpPerms.receitas, pcpPerms.ordens, pcpPerms.agenda, pcpPerms.estoque, pcpPerms.sugestoes].filter(Boolean).length;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-black bg-opacity-50">
@@ -670,6 +696,25 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 className="text-sm text-teal-700 font-medium hover:text-teal-900 flex items-center gap-1 px-2"
                             >+ Adicionar regra de categoria</button>
                         </div>
+                    </DeptSection>
+
+                    {/* ── PCP ── */}
+                    <DeptSection label="PCP — Producao" icon={Factory} color="amber" badge={`${countPcp} telas`}>
+                        <div className="flex items-center justify-between mb-3 px-2">
+                            <p className="text-xs text-gray-500">Selecione as telas do PCP que este usuario pode acessar.</p>
+                            <div className="flex gap-2">
+                                <button type="button" onClick={() => togglePcpAll(true)} className="text-[10px] text-amber-700 font-medium hover:underline">Marcar todas</button>
+                                <button type="button" onClick={() => togglePcpAll(false)} className="text-[10px] text-gray-500 font-medium hover:underline">Desmarcar</button>
+                            </div>
+                        </div>
+                        <MenuToggle icon={Package} label="Subprodutos" checked={!!pcpPerms.itens} onChange={() => togglePcp('itens')} />
+                        <MenuToggle icon={BookOpenIcon} label="Receitas" checked={!!pcpPerms.receitas} onChange={() => togglePcp('receitas')} />
+                        <MenuToggle icon={ClipboardList} label="Ordens de Producao" checked={!!pcpPerms.ordens} onChange={() => togglePcp('ordens')} />
+                        <MenuToggle icon={Play} label="Painel Operacional" checked={!!pcpPerms.ordens} onChange={() => togglePcp('ordens')} />
+                        <MenuToggle icon={Calendar} label="Calendario" checked={!!pcpPerms.agenda} onChange={() => togglePcp('agenda')} />
+                        <MenuToggle icon={Warehouse} label="Estoque PCP" checked={!!pcpPerms.estoque} onChange={() => togglePcp('estoque')} />
+                        <MenuToggle icon={Lightbulb} label="Sugestoes de Producao" checked={!!pcpPerms.sugestoes} onChange={() => togglePcp('sugestoes')} />
+                        <MenuToggle icon={BarChart3} label="Dashboard PCP" checked={!!pcpPerms.sugestoes} onChange={() => togglePcp('sugestoes')} />
                     </DeptSection>
 
                     {/* ── CONFIGURAÇÕES ── */}
