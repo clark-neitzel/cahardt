@@ -19,6 +19,12 @@ const pedidoService = {
 
 
 
+    // Resumo de pendências (contagens por tipo e status)
+    resumoPendencias: async (filtros = {}) => {
+        const response = await api.get('/pedidos/resumo-pendencias', { params: filtros });
+        return response.data;
+    },
+
     // Listagem de Pedidos
     listar: async (filtros) => {
         const response = await api.get('/pedidos', { params: filtros });

@@ -5,6 +5,37 @@ const { calcularItensComFlex, calcularDiferencaFlex, gerarParcelasData } = requi
 const estoqueService = require('./estoqueService');
 
 const pedidoService = {
+    // Resumo de pendências: conta pedidos por tipo e status (leve, só COUNT)
+    resumoPendencias: async (filtros = {}) => {
+        const { vendedorId, dataVendaDe, dataVendaAte } = filtros;
+
+        const where = {
+            situacaoCA: { not: 'FATURADO' },
+        };
+        if (vendedorId) where.vendedorId = vendedorId;
+        if (dataVendaDe || dataVendaAte) {
+            where.dataVenda = {};
+            if (dataVendaDe) where.dataVenda.gte = new Date(dataVendaDe + 'T00:00:00.000Z');
+            if (dataVendaAte) where.dataVenda.lte = new Date(dataVendaAte + 'T23:59:59.999Z');
+        }
+
+        const rows = await prisma.pedido.groupBy({
+            by: ['especial', 'bonificacao', 'statusEnvio', 'situacaoCA'],
+            where,
+            _count: { id: true },
+        });
+
+        // Agrupa em estrutura útil para o frontend
+        const resultado = { pedidos: {}, especiais: {}, bonificacao: {} };
+        for (const r of rows) {
+            const tipo = r.bonificacao ? 'bonificacao' : r.especial ? 'especiais' : 'pedidos';
+            // Para APROVADO/EM_ABERTO usamos situacaoCA como chave, senão statusEnvio
+            const status = ['APROVADO', 'EM_ABERTO'].includes(r.situacaoCA) ? r.situacaoCA : r.statusEnvio;
+            resultado[tipo][status] = (resultado[tipo][status] || 0) + r._count.id;
+        }
+        return resultado;
+    },
+
     // 1. Listagem de pedidos com filtros (para a tela de histórico)
     listar: async (filtros) => {
         const { statusEnvio, vendedorId, clienteId, especial, bonificacao, dataVendaDe, dataVendaAte, createdAtDe, createdAtAte, busca } = filtros;

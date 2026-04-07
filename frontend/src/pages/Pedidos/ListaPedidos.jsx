@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt } from 'lucide-react';
+import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import amostraService from '../../services/amostraService';
 import vendedorService from '../../services/vendedorService';
@@ -76,6 +76,7 @@ const ListaPedidos = () => {
     
     const [revertendo, setRevertendo] = useState(null);
     const [selecionados, setSelecionados] = useState(new Set());
+    const [pendencias, setPendencias] = useState(null);
 
     // WhatsApp: { [id]: { status: 'enviando'|'ok'|'erro', motivo?: string } }
     const [whatsappStatus, setWhatsappStatus] = useState({});
@@ -166,6 +167,14 @@ const ListaPedidos = () => {
                 const data = await amostraService.listar(amostraParams);
                 setAmostras(data);
             }
+
+            // Carregar pendências em paralelo (não bloqueia)
+            const pendenciaParams = {};
+            if (filtros.dataEntregaDe) pendenciaParams.dataVendaDe = filtros.dataEntregaDe;
+            if (filtros.dataEntregaAte) pendenciaParams.dataVendaAte = filtros.dataEntregaAte;
+            pedidoService.resumoPendencias(pendenciaParams)
+                .then(setPendencias)
+                .catch(() => {});
 
         } catch (error) {
             console.error("Erro ao carregar dados", error);
@@ -535,6 +544,89 @@ const ListaPedidos = () => {
                     )}
                 </div>
             )}
+
+            {/* Painel de Ações Pendentes */}
+            {pendencias && (() => {
+                const statusConfig = [
+                    { key: 'ENVIAR', label: 'Enviar', color: 'blue', icon: Send, pulse: true },
+                    { key: 'APROVADO', label: 'Aprovados', color: 'green', icon: CheckCircle, pulse: true },
+                    { key: 'ERRO', label: 'Erro', color: 'red', icon: XCircle, pulse: true },
+                    { key: 'ABERTO', label: 'Aberto', color: 'gray', icon: FileEdit, pulse: false },
+                    { key: 'SINCRONIZANDO', label: 'Sincroniz.', color: 'yellow', icon: RefreshCw, pulse: false },
+                ];
+                const tipoConfig = [
+                    { key: 'pedidos', label: 'Pedidos' },
+                    { key: 'especiais', label: 'Especiais' },
+                    { key: 'bonificacao', label: 'Bonificação' },
+                ];
+
+                // Agregar totais globais por status
+                const totais = {};
+                const detalhe = {};
+                for (const st of statusConfig) {
+                    totais[st.key] = 0;
+                    detalhe[st.key] = [];
+                    for (const tp of tipoConfig) {
+                        const cnt = pendencias[tp.key]?.[st.key] || 0;
+                        if (cnt > 0) {
+                            totais[st.key] += cnt;
+                            detalhe[st.key].push({ ...tp, count: cnt });
+                        }
+                    }
+                }
+
+                const temPendencias = totais.ENVIAR > 0 || totais.APROVADO > 0 || totais.ERRO > 0;
+                if (!temPendencias) return null;
+
+                const colorMap = {
+                    blue: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', badge: 'bg-blue-100 text-blue-800', dot: 'bg-blue-500' },
+                    green: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', badge: 'bg-green-100 text-green-800', dot: 'bg-green-500' },
+                    red: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', badge: 'bg-red-100 text-red-800', dot: 'bg-red-500' },
+                    gray: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', badge: 'bg-gray-100 text-gray-800', dot: 'bg-gray-500' },
+                    yellow: { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700', badge: 'bg-yellow-100 text-yellow-800', dot: 'bg-yellow-500' },
+                };
+
+                return (
+                    <div className="mb-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-center gap-1.5 mb-2">
+                            <Bell className="h-3.5 w-3.5 text-amber-600 animate-bounce" />
+                            <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wide">Ações Pendentes</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                            {statusConfig.filter(st => totais[st.key] > 0).map(st => {
+                                const c = colorMap[st.color];
+                                const Icon = st.icon;
+                                const detalhes = detalhe[st.key];
+                                return (
+                                    <button
+                                        key={st.key}
+                                        onClick={() => {
+                                            // Navega para a primeira aba que tem esse status
+                                            const primeiro = detalhes[0];
+                                            if (primeiro) setAbaAtiva(primeiro.key);
+                                            setFiltroStatus(st.key);
+                                        }}
+                                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border ${c.border} ${c.bg} hover:opacity-80 transition-all cursor-pointer group`}
+                                    >
+                                        <span className="relative flex h-2 w-2">
+                                            {st.pulse && <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${c.dot} opacity-75`}></span>}
+                                            <span className={`relative inline-flex rounded-full h-2 w-2 ${c.dot}`}></span>
+                                        </span>
+                                        <Icon className={`h-3.5 w-3.5 ${c.text}`} />
+                                        <span className={`text-[12px] font-bold ${c.text}`}>{totais[st.key]}</span>
+                                        <span className={`text-[11px] ${c.text} opacity-80`}>{st.label}</span>
+                                        {detalhes.length > 1 && (
+                                            <span className={`text-[9px] ${c.text} opacity-60 hidden sm:inline`}>
+                                                ({detalhes.map(d => `${d.label}: ${d.count}`).join(', ')})
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Abas: Pedidos | Especiais | Bonificação | Amostras */}
             <div className="mb-2">

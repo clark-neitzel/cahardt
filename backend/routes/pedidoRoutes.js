@@ -8,6 +8,9 @@ router.get('/ultimo-preco', pedidoController.obterUltimoPreco);
 // Buscar histórico de compras por cliente (para novo pedido mobile)
 router.get('/historico-cliente', pedidoController.historicoComprasCliente);
 
+// Resumo de pendências (contagens por tipo e status)
+router.get('/resumo-pendencias', pedidoController.resumoPendencias);
+
 // Relatório de Pedidos (com filtros avançados)
 router.get('/relatorio', pedidoController.relatorio);
 

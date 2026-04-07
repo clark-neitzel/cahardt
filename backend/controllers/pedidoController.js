@@ -3,6 +3,26 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const pedidoController = {
+    resumoPendencias: async (req, res) => {
+        try {
+            const filtros = {};
+            if (req.query.dataVendaDe) filtros.dataVendaDe = req.query.dataVendaDe;
+            if (req.query.dataVendaAte) filtros.dataVendaAte = req.query.dataVendaAte;
+
+            if (req.user) {
+                const permissoes = req.user.permissoes || {};
+                const podeVerTodos = permissoes.admin || permissoes.pedidos?.clientes === 'todos';
+                if (!podeVerTodos) filtros.vendedorId = req.user.id;
+            }
+
+            const resumo = await pedidoService.resumoPendencias(filtros);
+            res.json(resumo);
+        } catch (error) {
+            console.error('Erro ao buscar resumo de pendências:', error);
+            res.status(500).json({ error: 'Erro ao buscar resumo de pendências' });
+        }
+    },
+
     listar: async (req, res) => {
         try {
             const filtros = req.query;
@@ -110,7 +130,7 @@ const pedidoController = {
     enviarWhatsapp: async (req, res) => {
         try {
             const webhookService = require('../services/webhookService');
-            const result = await webhookService.notificarPedido(req.params.id);
+            const result = await webhookService.notificarPedido(req.params.id, { forceManual: true });
             if (result.ok) {
                 res.json({ ok: true });
             } else {
