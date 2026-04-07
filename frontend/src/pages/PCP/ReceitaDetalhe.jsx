@@ -96,7 +96,7 @@ export default function ReceitaDetalhe() {
 
                 {/* Acoes */}
                 <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-                    {receita.status === 'rascunho' && (
+                    {receita.status !== 'inativa' && (
                         <button
                             onClick={() => navigate(`/pcp/receitas/${id}/editar`)}
                             className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"

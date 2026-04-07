@@ -67,7 +67,7 @@ const pcpReceitaService = {
     atualizar: async (id, data) => {
         const receita = await prisma.receita.findUnique({ where: { id }, select: { status: true } });
         if (!receita) throw new Error('Receita não encontrada');
-        if (receita.status !== 'rascunho') throw new Error('Somente receitas em rascunho podem ser editadas. Crie uma nova versão.');
+        if (receita.status === 'inativa') throw new Error('Receitas inativas não podem ser editadas. Crie uma nova versão.');
 
         return prisma.$transaction(async (tx) => {
             if (data.itens) {
