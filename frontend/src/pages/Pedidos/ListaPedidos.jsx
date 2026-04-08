@@ -6,6 +6,7 @@ import amostraService from '../../services/amostraService';
 import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import ListaDevolucoes from './ListaDevolucoes';
 
 const fmtNumero = (pedido) => pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
 
@@ -656,6 +657,15 @@ const ListaPedidos = () => {
                         <Package className="h-3.5 w-3.5" />
                         Amostras
                     </button>
+                    {(user?.permissoes?.admin || user?.permissoes?.Pode_Fazer_Devolucao) && (
+                        <button
+                            onClick={() => setAbaAtiva('devolucoes')}
+                            className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 text-[12px] sm:text-[13px] font-bold rounded-t border transition-colors ${abaAtiva === 'devolucoes' ? 'bg-white text-red-700 border-gray-200 border-b-white z-10 -mb-[1px]' : 'bg-gray-100 text-gray-500 border-transparent hover:text-gray-700'}`}
+                        >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            Devoluções
+                        </button>
+                    )}
                 </div>
                 {!['amostras', 'bonificacao'].includes(abaAtiva) && pedidos.filter(p => p.situacaoCA === 'FATURADO').length > 0 && (
                     <button
@@ -723,8 +733,10 @@ const ListaPedidos = () => {
                 </div>
             )}
 
-            {/* Conteúdo: Amostras */}
-            {abaAtiva === 'amostras' ? (
+            {/* Conteúdo: Devoluções */}
+            {abaAtiva === 'devolucoes' ? (
+                <ListaDevolucoes filtros={filtros} />
+            ) : abaAtiva === 'amostras' ? (
                 <div className="bg-white rounded overflow-hidden border border-gray-200">
                     <div className="divide-y divide-gray-200">
                         {loadingAmostras ? (

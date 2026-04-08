@@ -10,6 +10,7 @@ import pedidoService from '../../services/pedidoService';
 import categoriaClienteService from '../../services/categoriaClienteService';
 import clienteInsightService from '../../services/clienteInsightService';
 import leadService from '../../services/leadService';
+import devolucaoService from '../../services/devolucaoService';
 import { API_URL } from '../../services/api';
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search } from 'lucide-react';
 
@@ -93,6 +94,7 @@ const DetalheCliente = () => {
     const [indicacaoResultados, setIndicacaoResultados] = useState([]);
     const [indicacaoNome, setIndicacaoNome] = useState('');
     const [showIndicacaoDropdown, setShowIndicacaoDropdown] = useState(false);
+    const [devolucoesCliente, setDevolucoesCliente] = useState([]);
 
     useEffect(() => {
         fetchData();
@@ -143,6 +145,11 @@ const DetalheCliente = () => {
                 const leadsData = await leadService.buscarPorCliente(uuid);
                 setLeadsCliente(leadsData || []);
             } catch (_) { setLeadsCliente([]); }
+
+            try {
+                const devsData = await devolucaoService.listar({ clienteId: uuid, tamanhoPagina: 100 });
+                setDevolucoesCliente(devsData.items || []);
+            } catch (_) { setDevolucoesCliente([]); }
 
             setFormData({
                 Dia_de_entrega: clienteData.Dia_de_entrega || '',
@@ -294,7 +301,7 @@ const DetalheCliente = () => {
                     onClick={() => setAbaAtiva('historico')}
                     className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'historico' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
                 >
-                    Histórico ({atendimentos.length + pedidosCliente.length + leadsCliente.reduce((acc, l) => acc + (l.atendimentos?.length || 0), 0)})
+                    Histórico ({atendimentos.length + pedidosCliente.length + devolucoesCliente.length + leadsCliente.reduce((acc, l) => acc + (l.atendimentos?.length || 0), 0)})
                 </button>
                 {leadsCliente.length > 0 && (
                     <button
@@ -315,7 +322,8 @@ const DetalheCliente = () => {
                 const itensHistorico = [
                     ...atendimentos.map(a => ({ ...a, _tipo: 'ATENDIMENTO', _data: new Date(a.criadoEm) })),
                     ...leadAtendimentos.map(a => ({ ...a, _tipo: 'ATENDIMENTO_LEAD', _data: new Date(a.criadoEm) })),
-                    ...pedidosCliente.map(p => ({ ...p, _tipo: 'PEDIDO', _data: new Date(p.dataVenda || p.createdAt) }))
+                    ...pedidosCliente.map(p => ({ ...p, _tipo: 'PEDIDO', _data: new Date(p.dataVenda || p.createdAt) })),
+                    ...devolucoesCliente.map(d => ({ ...d, _tipo: 'DEVOLUCAO', _data: new Date(d.dataDevolucao) }))
                 ].sort((a, b) => b._data - a._data);
 
                 return (
@@ -327,6 +335,44 @@ const DetalheCliente = () => {
                             </div>
                         ) : (
                             itensHistorico.map(item => {
+                                if (item._tipo === 'DEVOLUCAO') {
+                                    const dev = item;
+                                    const numPedido = dev.pedidoOriginal?.numero
+                                        ? (dev.pedidoOriginal.especial ? `ZZ#${dev.pedidoOriginal.numero}` : `#${dev.pedidoOriginal.numero}`)
+                                        : '';
+                                    return (
+                                        <div key={`dev-${dev.id}`} className="border border-red-200 rounded-lg p-3 bg-red-50">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-200 text-red-800">DEVOLUÇÃO DEV#{dev.numero}</span>
+                                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-200 text-gray-700">{dev.escopo}</span>
+                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${dev.status === 'ATIVA' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>{dev.status}</span>
+                                                {dev.tipo === 'CONTA_AZUL' && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">CA</span>}
+                                            </div>
+                                            <p className="text-sm font-semibold text-red-900">
+                                                Pedido {numPedido} · R$ {Number(dev.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                            </p>
+                                            <p className="text-xs text-red-700 mt-0.5">
+                                                <span className="font-medium">Motivo:</span> {dev.motivo}
+                                            </p>
+                                            <div className="text-[11px] text-gray-600 mt-1 space-y-0.5">
+                                                {dev.itens?.map(it => (
+                                                    <p key={it.id}>• {it.produto?.nome || it.produtoId}: {Number(it.quantidade)} × R$ {Number(it.valorUnitario).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                                ))}
+                                            </div>
+                                            <div className="flex flex-wrap gap-3 text-[10px] text-gray-500 mt-2">
+                                                <span>Motorista: {dev.motorista?.nome || '-'}</span>
+                                                <span>Entrega: {dev.dataEntregaOriginal ? new Date(dev.dataEntregaOriginal).toLocaleDateString('pt-BR') : '-'}</span>
+                                                <span>Caixa: {dev.caixaDataReferencia || '-'}</span>
+                                                <span>Registrado por: {dev.registradoPor?.nome || '-'}</span>
+                                                <span>{new Date(dev.dataDevolucao).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                            </div>
+                                            {dev.notaDevolucaoCA && <p className="text-[10px] text-blue-600 mt-1">Nota CA: {dev.notaDevolucaoCA}</p>}
+                                            {dev.status === 'REVERTIDA' && (
+                                                <p className="text-[10px] text-amber-600 mt-1">Revertida por {dev.revertidoPor?.nome || '-'} em {new Date(dev.revertidoEm).toLocaleDateString('pt-BR')}</p>
+                                            )}
+                                        </div>
+                                    );
+                                }
                                 if (item._tipo === 'PEDIDO') {
                                     const pedido = item;
                                     const totalPedido = pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0;

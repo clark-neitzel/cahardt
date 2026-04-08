@@ -742,7 +742,92 @@ const migrationService = {
             `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "permite_pedido" BOOLEAN NOT NULL DEFAULT TRUE`,
 
             // Update 54: Migrar leads com etapa AMOSTRA para VISITA
-            `UPDATE "leads" SET "etapa" = 'VISITA' WHERE "etapa" = 'AMOSTRA'`
+            `UPDATE "leads" SET "etapa" = 'VISITA' WHERE "etapa" = 'AMOSTRA'`,
+
+            // Update 55: Tabela de devoluções
+            `CREATE TABLE IF NOT EXISTS "devolucoes" (
+                "id" TEXT NOT NULL,
+                "numero" SERIAL,
+                "pedido_original_id" TEXT NOT NULL,
+                "cliente_id" TEXT NOT NULL,
+                "tipo" TEXT NOT NULL,
+                "escopo" TEXT NOT NULL,
+                "motivo" TEXT NOT NULL,
+                "observacao" TEXT,
+                "nota_devolucao_ca" TEXT,
+                "pdf_devolucao_url" TEXT,
+                "motorista_id" TEXT,
+                "data_entrega_original" TIMESTAMPTZ,
+                "caixa_data_referencia" TEXT,
+                "registrado_por_id" TEXT NOT NULL,
+                "data_devolucao" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "status" TEXT NOT NULL DEFAULT 'ATIVA',
+                "revertido_por_id" TEXT,
+                "revertido_em" TIMESTAMPTZ,
+                "motivo_reversao" TEXT,
+                "valor_total" DECIMAL(12,2) NOT NULL DEFAULT 0,
+                "snapshot_parcelas" JSONB,
+                "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "devolucoes_pkey" PRIMARY KEY ("id")
+            )`,
+
+            // Update 56: Índices e FKs da tabela devolucoes
+            `CREATE INDEX IF NOT EXISTS "devolucoes_pedido_original_id_idx" ON "devolucoes"("pedido_original_id")`,
+            `CREATE INDEX IF NOT EXISTS "devolucoes_cliente_id_idx" ON "devolucoes"("cliente_id")`,
+            `CREATE INDEX IF NOT EXISTS "devolucoes_status_idx" ON "devolucoes"("status")`,
+            `CREATE INDEX IF NOT EXISTS "devolucoes_data_devolucao_idx" ON "devolucoes"("data_devolucao")`,
+
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'devolucoes_pedido_original_id_fkey') THEN
+                    ALTER TABLE "devolucoes" ADD CONSTRAINT "devolucoes_pedido_original_id_fkey" FOREIGN KEY ("pedido_original_id") REFERENCES "pedidos"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'devolucoes_cliente_id_fkey') THEN
+                    ALTER TABLE "devolucoes" ADD CONSTRAINT "devolucoes_cliente_id_fkey" FOREIGN KEY ("cliente_id") REFERENCES "clientes"("UUID") ON DELETE RESTRICT ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'devolucoes_registrado_por_id_fkey') THEN
+                    ALTER TABLE "devolucoes" ADD CONSTRAINT "devolucoes_registrado_por_id_fkey" FOREIGN KEY ("registrado_por_id") REFERENCES "vendedores"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'devolucoes_revertido_por_id_fkey') THEN
+                    ALTER TABLE "devolucoes" ADD CONSTRAINT "devolucoes_revertido_por_id_fkey" FOREIGN KEY ("revertido_por_id") REFERENCES "vendedores"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'devolucoes_motorista_id_fkey') THEN
+                    ALTER TABLE "devolucoes" ADD CONSTRAINT "devolucoes_motorista_id_fkey" FOREIGN KEY ("motorista_id") REFERENCES "vendedores"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+
+            // Update 57: Tabela de itens de devolução
+            `CREATE TABLE IF NOT EXISTS "devolucao_itens" (
+                "id" TEXT NOT NULL,
+                "devolucao_id" TEXT NOT NULL,
+                "produto_id" TEXT NOT NULL,
+                "quantidade" DECIMAL(12,3) NOT NULL,
+                "valor_unitario" DECIMAL(12,2) NOT NULL,
+                "valor_total" DECIMAL(12,2) NOT NULL,
+                CONSTRAINT "devolucao_itens_pkey" PRIMARY KEY ("id")
+            )`,
+            `CREATE INDEX IF NOT EXISTS "devolucao_itens_devolucao_id_idx" ON "devolucao_itens"("devolucao_id")`,
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'devolucao_itens_devolucao_id_fkey') THEN
+                    ALTER TABLE "devolucao_itens" ADD CONSTRAINT "devolucao_itens_devolucao_id_fkey" FOREIGN KEY ("devolucao_id") REFERENCES "devolucoes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'devolucao_itens_produto_id_fkey') THEN
+                    ALTER TABLE "devolucao_itens" ADD CONSTRAINT "devolucao_itens_produto_id_fkey" FOREIGN KEY ("produto_id") REFERENCES "produtos"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+                END IF;
+            END $$;`,
+
+            // Update 58: Campo devolucao_finalizada no pedido
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "devolucao_finalizada" BOOLEAN NOT NULL DEFAULT FALSE`
         ];
 
         for (const [index, cmd] of commands.entries()) {

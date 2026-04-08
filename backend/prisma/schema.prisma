@@ -45,6 +45,7 @@ model Produto {
   itens                PedidoItem[]
   promocoes            Promocao[]
   itensDevolvidos      EntregaItemDevolvido[]
+  itensDevolucao       DevolucaoItem[]
   metasProdutos        MetaProduto[]
   itensAmostra         AmostraItem[]
   movimentacoesEstoque MovimentacaoEstoque[]
@@ -150,6 +151,7 @@ model Cliente {
   leads          Lead[]
   amostras       Amostra[]
   contasReceber  ContaReceber[]
+  devolucoes     Devolucao[]
 
   // Indicação (auto-referência: quem indicou este cliente)
   indicacaoId    String?   @map("indicacao_id")
@@ -234,6 +236,8 @@ model Pedido {
   caixaConferencias    CaixaEntregaConferida[]
   contaReceber         ContaReceber?
   movimentacoesEstoque MovimentacaoEstoque[]
+  devolucoes           Devolucao[]
+  devolucaoFinalizada  Boolean   @default(false) @map("devolucao_finalizada")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -337,6 +341,10 @@ model Vendedor {
   baixasRealizadas  Parcela[]             @relation("BaixasRealizadas")
 
   movimentacoesEstoque MovimentacaoEstoque[]
+
+  devolucoesRegistradas Devolucao[] @relation("DevolucaoRegistrada")
+  devolucoesRevertidas  Devolucao[] @relation("DevolucaoRevertida")
+  devolucoesMotorista   Devolucao[] @relation("DevolucaoMotorista")
 
   @@map("vendedores")
 }
@@ -1259,4 +1267,75 @@ model SugestaoProducao {
 
   @@index([status])
   @@map("sugestoes_producao")
+}
+
+// =============================================
+// MÓDULO DEVOLUÇÕES
+// =============================================
+
+model Devolucao {
+  id                  String   @id @default(uuid())
+  numero              Int      @default(autoincrement())
+  pedidoOriginalId    String   @map("pedido_original_id")
+  clienteId           String   @map("cliente_id")
+
+  tipo                String   // ESPECIAL | CONTA_AZUL
+  escopo              String   // TOTAL | PARCIAL
+  motivo              String   @db.Text
+  observacao          String?  @db.Text
+
+  // Campos exclusivos para devolução Conta Azul
+  notaDevolucaoCA     String?  @map("nota_devolucao_ca")
+  pdfDevolucaoUrl     String?  @map("pdf_devolucao_url")
+
+  // Contexto da entrega original
+  motoristaId         String?  @map("motorista_id")
+  dataEntregaOriginal DateTime? @map("data_entrega_original")
+  caixaDataReferencia String?  @map("caixa_data_referencia") // YYYY-MM-DD
+
+  // Auditoria
+  registradoPorId     String   @map("registrado_por_id")
+  dataDevolucao       DateTime @default(now()) @map("data_devolucao")
+
+  // Status e reversão
+  status              String   @default("ATIVA") // ATIVA | REVERTIDA
+  revertidoPorId      String?  @map("revertido_por_id")
+  revertidoEm         DateTime? @map("revertido_em")
+  motivoReversao      String?  @map("motivo_reversao") @db.Text
+
+  // Financeiro
+  valorTotal          Decimal  @map("valor_total") @db.Decimal(12, 2)
+  snapshotParcelas    Json?    @map("snapshot_parcelas") // Snapshot das parcelas antes do ajuste
+
+  // Relações
+  pedidoOriginal Pedido    @relation(fields: [pedidoOriginalId], references: [id])
+  cliente        Cliente   @relation(fields: [clienteId], references: [UUID])
+  registradoPor  Vendedor  @relation("DevolucaoRegistrada", fields: [registradoPorId], references: [id])
+  revertidoPor   Vendedor? @relation("DevolucaoRevertida", fields: [revertidoPorId], references: [id])
+  motorista      Vendedor? @relation("DevolucaoMotorista", fields: [motoristaId], references: [id])
+  itens          DevolucaoItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([pedidoOriginalId])
+  @@index([clienteId])
+  @@index([status])
+  @@index([dataDevolucao])
+  @@map("devolucoes")
+}
+
+model DevolucaoItem {
+  id            String  @id @default(uuid())
+  devolucaoId   String  @map("devolucao_id")
+  produtoId     String  @map("produto_id")
+  quantidade    Decimal @db.Decimal(12, 3)
+  valorUnitario Decimal @map("valor_unitario") @db.Decimal(12, 2)
+  valorTotal    Decimal @map("valor_total") @db.Decimal(12, 2)
+
+  devolucao Devolucao @relation(fields: [devolucaoId], references: [id], onDelete: Cascade)
+  produto   Produto   @relation(fields: [produtoId], references: [id])
+
+  @@index([devolucaoId])
+  @@map("devolucao_itens")
 }

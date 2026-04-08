@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import api from '../../services/api';
 import NovaDespesaModal from './NovaDespesaModal';
 import VeiculoFicha from '../Veiculos/VeiculoFicha';
+import ModalDevolucao from '../Pedidos/ModalDevolucao';
 
 const SESSION_KEY = '@CAHardt:CaixaFiltros';
 
@@ -874,7 +875,17 @@ const CaixaDiarioPage = () => {
                 />
             )}
 
-            {/* ModalDevolucao — será adicionado quando o componente estiver pronto */}
+            {modalDevolucao && (
+                <ModalDevolucao
+                    entrega={modalDevolucao}
+                    onClose={() => setModalDevolucao(null)}
+                    onSalvo={() => {
+                        setModalDevolucao(null);
+                        toast.success('Devolução registrada!');
+                        carregarResumo();
+                    }}
+                />
+            )}
         </div>
     );
 };

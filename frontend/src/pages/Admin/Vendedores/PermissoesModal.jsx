@@ -61,6 +61,9 @@ const DEFAULT_PERMISSIONS = {
     // Financeiro
     Pode_Acessar_Contas_Receber: false,
     Pode_Baixar_Contas_Receber: false,
+    // Devoluções
+    Pode_Fazer_Devolucao: false,
+    Pode_Reverter_Devolucao: false,
     // Utilitários Admin
     Pode_Resetar_Dados: false,
     Isento_Ponto: false,
@@ -605,6 +608,16 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                     label="Dar Baixa em Parcelas" sublabel="Registrar pagamentos e estornar baixas" />
                             </div>
                         )}
+
+                        {/* Devoluções */}
+                        <div className="border-t mt-3 pt-3">
+                            <Toggle checked={!!permissoes.Pode_Fazer_Devolucao} onChange={() => toggleBool('Pode_Fazer_Devolucao')}
+                                label="Fazer Devolução" sublabel="Registrar devoluções de pedidos entregues" />
+                            {permissoes.Pode_Fazer_Devolucao && (
+                                <Toggle checked={!!permissoes.Pode_Reverter_Devolucao} onChange={() => toggleBool('Pode_Reverter_Devolucao')}
+                                    label="Reverter Devolução" sublabel="Desfazer devoluções já registradas" danger />
+                            )}
+                        </div>
 
                         {/* Metas */}
                         <div className="border-t mt-3 pt-3">

@@ -172,6 +172,114 @@ const estoqueService = {
         return resultados;
     },
 
+    // Credita itens devolvidos de volta ao estoque (ENTRADA com motivo DEVOLUCAO).
+    // itens: [{ produtoId, quantidade }]
+    creditarDevolucao: async (pedidoId, itens, vendedorId = null) => {
+        const produtosAfetados = new Set();
+        const resultados = [];
+
+        await prisma.$transaction(async (tx) => {
+            for (const item of itens) {
+                const produto = await tx.produto.findUnique({
+                    where: { id: item.produtoId },
+                    select: { id: true, nome: true, estoqueTotal: true, categoria: true }
+                });
+                if (!produto) continue;
+
+                const controla = await categoriaControlaEstoque(produto.categoria, tx);
+                if (!controla) continue;
+
+                const qtd = parseFloat(item.quantidade || 0);
+                const totalAntes = parseFloat(produto.estoqueTotal || 0);
+                const totalDepois = totalAntes + qtd;
+
+                await tx.produto.update({
+                    where: { id: item.produtoId },
+                    data: { estoqueTotal: totalDepois }
+                });
+
+                await tx.movimentacaoEstoque.create({
+                    data: {
+                        produtoId: item.produtoId,
+                        vendedorId,
+                        pedidoId,
+                        tipo: 'ENTRADA',
+                        quantidade: qtd,
+                        motivo: 'DEVOLUCAO',
+                        observacao: `Devolução de itens do pedido ${pedidoId}`,
+                        estoqueAntes: totalAntes,
+                        estoqueDepois: totalDepois,
+                        sincCA: false,
+                        erroCA: null
+                    }
+                });
+
+                produtosAfetados.add(item.produtoId);
+                resultados.push({ produtoId: item.produtoId, nome: produto.nome, totalAntes, totalDepois });
+            }
+
+            for (const pid of produtosAfetados) {
+                await recalcularEstoqueProduto(pid, tx);
+            }
+        });
+
+        return resultados;
+    },
+
+    // Debita itens quando uma devolução é revertida (SAIDA com motivo REVERSAO_DEVOLUCAO).
+    // itens: [{ produtoId, quantidade }]
+    debitarReversaoDevolucao: async (pedidoId, itens, vendedorId = null) => {
+        const produtosAfetados = new Set();
+        const resultados = [];
+
+        await prisma.$transaction(async (tx) => {
+            for (const item of itens) {
+                const produto = await tx.produto.findUnique({
+                    where: { id: item.produtoId },
+                    select: { id: true, nome: true, estoqueTotal: true, categoria: true }
+                });
+                if (!produto) continue;
+
+                const controla = await categoriaControlaEstoque(produto.categoria, tx);
+                if (!controla) continue;
+
+                const qtd = parseFloat(item.quantidade || 0);
+                const totalAntes = parseFloat(produto.estoqueTotal || 0);
+                const totalDepois = Math.max(0, totalAntes - qtd);
+
+                await tx.produto.update({
+                    where: { id: item.produtoId },
+                    data: { estoqueTotal: totalDepois }
+                });
+
+                await tx.movimentacaoEstoque.create({
+                    data: {
+                        produtoId: item.produtoId,
+                        vendedorId,
+                        pedidoId,
+                        tipo: 'SAIDA',
+                        quantidade: qtd,
+                        motivo: 'REVERSAO_DEVOLUCAO',
+                        observacao: `Reversão de devolução do pedido ${pedidoId}`,
+                        estoqueAntes: totalAntes,
+                        estoqueDepois: totalDepois,
+                        sincCA: false,
+                        erroCA: null
+                    }
+                });
+
+                produtosAfetados.add(item.produtoId);
+                resultados.push({ produtoId: item.produtoId, nome: produto.nome, totalAntes, totalDepois });
+            }
+
+            for (const pid of produtosAfetados) {
+                await recalcularEstoqueProduto(pid, tx);
+            }
+        });
+
+        return resultados;
+    },
+
     // Recalcula reserva para todos os produtos de um pedido.
     // Usar em: criar pedido, editar itens, cancelar, excluir.
     recalcularPedido: async (pedidoId) => {
