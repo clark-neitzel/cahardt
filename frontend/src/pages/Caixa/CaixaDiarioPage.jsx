@@ -570,6 +570,8 @@ const CaixaDiarioPage = () => {
                                                     <td className="py-2 px-2 font-medium text-gray-900">
                                                         {e.clienteNome}
                                                         {e.especial && <span className="ml-1.5 text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>}
+                                                        {e.quitado === 'QUITADO' && <span className="ml-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">QUITADO</span>}
+                                                        {e.quitado === 'PARCIAL' && <span className="ml-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">PARCIAL</span>}
                                                     </td>
                                                     <td className="py-2 px-2 text-gray-500">{e.condicaoPagamento}</td>
                                                     <td className="py-2 px-2 text-right font-medium">
@@ -606,6 +608,8 @@ const CaixaDiarioPage = () => {
                                                     <p className="font-medium text-gray-900 text-sm">
                                                         {e.clienteNome}
                                                         {e.especial && <span className="ml-1.5 text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>}
+                                                        {e.quitado === 'QUITADO' && <span className="ml-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">QUITADO</span>}
+                                                        {e.quitado === 'PARCIAL' && <span className="ml-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">PARCIAL</span>}
                                                     </p>
                                                     <p className="text-xs text-gray-500">{e.condicaoPagamento}</p>
                                                     <div className="flex flex-wrap gap-1 mt-1">

@@ -150,7 +150,8 @@ router.get('/resumo', async (req, res) => {
                 embarque: { select: { numero: true } },
                 itens: { include: { produto: { select: { nome: true, unidade: true } } } },
                 pagamentosReais: true,
-                itensDevolvidos: { include: { produto: { select: { nome: true } } } }
+                itensDevolvidos: { include: { produto: { select: { nome: true } } } },
+                contaReceber: { select: { status: true } }
             },
             orderBy: { dataEntrega: 'asc' }
         });
@@ -266,7 +267,8 @@ router.get('/resumo', async (req, res) => {
                     quantidade: Number(i.quantidade)
                 })),
                 conferido: conferencia?.conferido || false,
-                conferenciaId: conferencia?.id || null
+                conferenciaId: conferencia?.id || null,
+                quitado: e.contaReceber?.status === 'QUITADO' || e.contaReceber?.status === 'PARCIAL' ? e.contaReceber.status : null
             };
         });
 
