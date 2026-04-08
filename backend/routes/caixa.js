@@ -268,7 +268,9 @@ router.get('/resumo', async (req, res) => {
                 })),
                 conferido: conferencia?.conferido || false,
                 conferenciaId: conferencia?.id || null,
-                quitado: e.contaReceber?.status === 'QUITADO' || e.contaReceber?.status === 'PARCIAL' ? e.contaReceber.status : null
+                quitado: e.contaReceber?.status === 'QUITADO' || e.contaReceber?.status === 'PARCIAL' ? e.contaReceber.status : null,
+                devolucaoFinalizada: e.devolucaoFinalizada || false,
+                idVendaContaAzul: e.idVendaContaAzul || null
             };
         });
 
@@ -920,9 +922,40 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
         const dataPgto = dataPagamento || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
         const resultados = [];
 
+        // Helper: calcula valor em dinheiro de um pedido (somente pagamentos reais em "Dinheiro")
+        const calcValorDinheiro = (pedido) => {
+            return pedido.pagamentosReais
+                .filter(p =>
+                    !p.escritorioResponsavel &&
+                    !p.vendedorResponsavelId &&
+                    p.formaPagamentoNome?.toLowerCase().includes('dinheiro')
+                )
+                .reduce((s, p) => s + Number(p.valor), 0);
+        };
+
+        // Validar elegibilidade: só aceita pedidos com pagamento real em dinheiro
+        const pedidosElegiveis = [];
+        for (const pedido of pedidos) {
+            const clienteNome = pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'N/A';
+            const valorDinheiro = calcValorDinheiro(pedido);
+            if (valorDinheiro <= 0) {
+                resultados.push({
+                    pedidoId: pedido.id,
+                    numero: pedido.numero,
+                    cliente: clienteNome,
+                    tipo: pedido.especial ? 'ESPECIAL' : 'CA',
+                    status: 'ERRO',
+                    erro: 'Nenhum pagamento em dinheiro encontrado neste pedido'
+                });
+                continue;
+            }
+            pedido._valorDinheiro = Math.round(valorDinheiro * 100) / 100;
+            pedidosElegiveis.push(pedido);
+        }
+
         // Separar especiais (baixa local) de normais (baixa CA)
-        const especiais = pedidos.filter(p => p.especial);
-        const normais = pedidos.filter(p => !p.especial);
+        const especiais = pedidosElegiveis.filter(p => p.especial);
+        const normais = pedidosElegiveis.filter(p => !p.especial);
 
         // ═══ ESPECIAIS → Baixa local no app ═══
         for (const pedido of especiais) {
@@ -1002,7 +1035,7 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
                     await tx.atendimento.create({
                         data: {
                             tipo: 'FINANCEIRO',
-                            observacao: `Baixa caixa (especial) - ${parcelasElegiveis.length} parcela(s) - R$ ${Number(contaReceber.valorTotal).toFixed(2)} | ${obs}`,
+                            observacao: `Baixa caixa (especial) - ${parcelasElegiveis.length} parcela(s) - R$ ${pedido._valorDinheiro.toFixed(2)} (dinheiro) | ${obs}`,
                             clienteId: pedido.cliente.UUID,
                             idVendedor: req.user.id,
                             pedidoId: pedido.id
@@ -1071,8 +1104,6 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
                         continue;
                     }
 
-                    const valorTotal = pedido.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0);
-
                     const dataVendaStr = pedido.dataVenda
                         ? new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
                         : dataPgto;
@@ -1107,9 +1138,10 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
                         continue;
                     }
 
+                    // Usar valor da parcela CA para quitação total, ou o valor pago em dinheiro como fallback
                     const valorBruto = parcela.valor_composicao?.valor_bruto
                         || parcela.valor_composicao?.valor_liquido
-                        || Number(valorTotal);
+                        || pedido._valorDinheiro;
 
                     const obs = `Motorista: ${motorista} | Caixa: ${dataPgto} | Solicitante: ${solicitante?.nome || req.user.id}`;
 

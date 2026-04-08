@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import caixaService from '../../services/caixaService';
 import vendedorService from '../../services/vendedorService';
+import devolucaoService from '../../services/devolucaoService';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     Wallet, Truck, Fuel, Package, CheckCircle, AlertTriangle,
-    Lock, Printer, ClipboardCheck, ChevronDown, ChevronUp, ReceiptText, Plus, Undo2, FlaskConical, Edit3, RotateCcw, Home, MapPin, DollarSign, Loader2
+    Lock, Printer, ClipboardCheck, ChevronDown, ChevronUp, ReceiptText, Plus, Undo2, FlaskConical, Edit3, RotateCcw, Home, MapPin, DollarSign, Loader2, RefreshCcw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -68,6 +69,9 @@ const CaixaDiarioPage = () => {
     // Baixa CA
     const [selectedBaixa, setSelectedBaixa] = useState(new Set());
     const [quitandoCA, setQuitandoCA] = useState(false);
+    // Devolução
+    const podeFazerDevolucao = user?.permissoes?.admin || user?.permissoes?.Pode_Fazer_Devolucao;
+    const [modalDevolucao, setModalDevolucao] = useState(null); // { pedidoId, ... }
 
     // Persistir filtros na sessão sempre que mudarem
     useEffect(() => {
@@ -164,6 +168,19 @@ const CaixaDiarioPage = () => {
         }
     };
 
+    // Verifica se uma entrega é elegível para baixa: tem pagamento REAL em dinheiro
+    // (não Pix, não Boleto, não fiado/vendedor responsável, não escritório responsável)
+    const isElegivelBaixa = (entrega) => {
+        if (entrega.statusEntrega === 'DEVOLVIDO') return false;
+        if (entrega.quitado === 'QUITADO') return false;
+        return entrega.pagamentos?.some(p =>
+            p.debitaCaixa &&
+            !p.vendedorResponsavelId &&
+            !p.escritorioResponsavel &&
+            p.formaNome?.toLowerCase().includes('dinheiro')
+        );
+    };
+
     const handleToggleBaixa = (pedidoId) => {
         setSelectedBaixa(prev => {
             const next = new Set(prev);
@@ -175,11 +192,9 @@ const CaixaDiarioPage = () => {
 
     const handleSelectAllDinheiro = () => {
         if (!resumo?.entregas) return;
-        const dinheiroIds = resumo.entregas
-            .filter(e => e.statusEntrega !== 'DEVOLVIDO' && e.pagamentos?.some(p => p.debitaCaixa && p.formaNome?.toLowerCase().includes('dinheiro')))
-            .map(e => e.pedidoId);
+        const dinheiroIds = resumo.entregas.filter(isElegivelBaixa).map(e => e.pedidoId);
         setSelectedBaixa(prev => {
-            const allSelected = dinheiroIds.every(id => prev.has(id));
+            const allSelected = dinheiroIds.length > 0 && dinheiroIds.every(id => prev.has(id));
             if (allSelected) return new Set();
             return new Set(dinheiroIds);
         });
@@ -541,7 +556,7 @@ const CaixaDiarioPage = () => {
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
                                             {resumo.entregas.map((e) => {
-                                                const isDinheiro = e.pagamentos?.some(p => p.debitaCaixa && p.formaNome?.toLowerCase().includes('dinheiro'));
+                                                const elegivel = isElegivelBaixa(e);
                                                 return (
                                                 <tr key={e.pedidoId} className={`hover:bg-gray-50 ${selectedBaixa.has(e.pedidoId) ? 'bg-indigo-50' : ''}`}>
                                                     {isAdmin && (
@@ -556,13 +571,13 @@ const CaixaDiarioPage = () => {
                                                     )}
                                                     {isAdmin && (
                                                         <td className="py-2 px-2 text-center">
-                                                            {e.statusEntrega !== 'DEVOLVIDO' && (
+                                                            {elegivel && (
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={selectedBaixa.has(e.pedidoId)}
                                                                     onChange={() => handleToggleBaixa(e.pedidoId)}
-                                                                    className={`h-4 w-4 rounded ${isDinheiro ? 'text-indigo-600' : 'text-gray-400'}`}
-                                                                    title={isDinheiro ? 'Selecionar para baixa no CA' : 'Selecionar para baixa no CA (sem pgto dinheiro)'}
+                                                                    className="h-4 w-4 rounded text-indigo-600"
+                                                                    title="Selecionar para baixa (dinheiro)"
                                                                 />
                                                             )}
                                                         </td>
@@ -572,6 +587,7 @@ const CaixaDiarioPage = () => {
                                                         {e.especial && <span className="ml-1.5 text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>}
                                                         {e.quitado === 'QUITADO' && <span className="ml-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">QUITADO</span>}
                                                         {e.quitado === 'PARCIAL' && <span className="ml-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">PARCIAL</span>}
+                                                        {e.devolucaoFinalizada && <span className="ml-1.5 text-[10px] font-bold text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">DEV. FEITA</span>}
                                                     </td>
                                                     <td className="py-2 px-2 text-gray-500">{e.condicaoPagamento}</td>
                                                     <td className="py-2 px-2 text-right font-medium">
@@ -591,6 +607,14 @@ const CaixaDiarioPage = () => {
                                                                 {p.formaNome}: R$ {Number(p.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                             </span>
                                                         ))}
+                                                        {podeFazerDevolucao && ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada && (
+                                                            <button
+                                                                onClick={() => setModalDevolucao(e)}
+                                                                className="ml-1 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-1.5 py-0.5 rounded border border-red-200"
+                                                            >
+                                                                Fazer Devolução
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                                 );
@@ -610,6 +634,7 @@ const CaixaDiarioPage = () => {
                                                         {e.especial && <span className="ml-1.5 text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>}
                                                         {e.quitado === 'QUITADO' && <span className="ml-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">QUITADO</span>}
                                                         {e.quitado === 'PARCIAL' && <span className="ml-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">PARCIAL</span>}
+                                                        {e.devolucaoFinalizada && <span className="ml-1.5 text-[10px] font-bold text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">DEV. FEITA</span>}
                                                     </p>
                                                     <p className="text-xs text-gray-500">{e.condicaoPagamento}</p>
                                                     <div className="flex flex-wrap gap-1 mt-1">
@@ -639,16 +664,24 @@ const CaixaDiarioPage = () => {
                                                                 className="h-4 w-4 text-green-600 rounded"
                                                                 title="Conferir"
                                                             />
-                                                            {e.statusEntrega !== 'DEVOLVIDO' && (
+                                                            {isElegivelBaixa(e) && (
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={selectedBaixa.has(e.pedidoId)}
                                                                     onChange={() => handleToggleBaixa(e.pedidoId)}
                                                                     className="h-4 w-4 text-indigo-600 rounded"
-                                                                    title="Selecionar para baixa CA"
+                                                                    title="Baixa (dinheiro)"
                                                                 />
                                                             )}
                                                         </div>
+                                                    )}
+                                                    {podeFazerDevolucao && ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada && (
+                                                        <button
+                                                            onClick={() => setModalDevolucao(e)}
+                                                            className="mt-2 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded border border-red-200"
+                                                        >
+                                                            Fazer Devolução
+                                                        </button>
                                                     )}
                                                 </div>
                                             </div>
@@ -841,6 +874,8 @@ const CaixaDiarioPage = () => {
                     allowedTabs={['resumo', 'documentos', 'manutencao']}
                 />
             )}
+
+            {/* ModalDevolucao — será adicionado quando o componente estiver pronto */}
         </div>
     );
 };
