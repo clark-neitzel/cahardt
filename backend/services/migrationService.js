@@ -739,7 +739,10 @@ const migrationService = {
             `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "whatsapp_erro" TEXT`,
 
             // Update 53: Flag "permite pedido" padrão em tabela_precos
-            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "permite_pedido" BOOLEAN NOT NULL DEFAULT TRUE`
+            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "permite_pedido" BOOLEAN NOT NULL DEFAULT TRUE`,
+
+            // Update 54: Migrar leads com etapa AMOSTRA para VISITA
+            `UPDATE "leads" SET "etapa" = 'VISITA' WHERE "etapa" = 'AMOSTRA'`
         ];
 
         for (const [index, cmd] of commands.entries()) {

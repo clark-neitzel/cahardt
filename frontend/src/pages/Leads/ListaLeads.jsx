@@ -12,14 +12,13 @@ import ModalEditarLead from './ModalEditarLead';
 
 const ETAPA_COLORS = {
     NOVO: 'bg-blue-100 text-blue-700',
-    AMOSTRA: 'bg-yellow-100 text-yellow-700',
     VISITA: 'bg-purple-100 text-purple-700',
     PEDIDO: 'bg-green-100 text-green-700',
     CONVERTIDO: 'bg-emerald-100 text-emerald-700',
     FINALIZADO: 'bg-gray-100 text-gray-500',
 };
 
-const ETAPAS = ['', 'NOVO', 'AMOSTRA', 'VISITA', 'PEDIDO', 'CONVERTIDO', 'FINALIZADO'];
+const ETAPAS = ['', 'NOVO', 'VISITA', 'PEDIDO', 'CONVERTIDO', 'FINALIZADO'];
 const LIMITS = [12, 25, 50, 100];
 const LS_KEY = 'leads_filters';
 

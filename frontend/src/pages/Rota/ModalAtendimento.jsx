@@ -31,7 +31,7 @@ const ACOES_PADRAO_LEAD = [
     { value: 'SEM_POTENCIAL', label: 'Sem potencial' },
 ];
 
-const ETAPAS = ['NOVO', 'AMOSTRA', 'VISITA', 'PEDIDO', 'FINALIZADO'];
+const ETAPAS = ['NOVO', 'VISITA', 'PEDIDO', 'FINALIZADO'];
 
 const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra }) => {
     const { tipo, item } = dados; // tipo: 'lead' | 'cliente'
