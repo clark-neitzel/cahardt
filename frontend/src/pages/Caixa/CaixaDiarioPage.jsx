@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import caixaService from '../../services/caixaService';
 import vendedorService from '../../services/vendedorService';
-import devolucaoService from '../../services/devolucaoService';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     Wallet, Truck, Fuel, Package, CheckCircle, AlertTriangle,
