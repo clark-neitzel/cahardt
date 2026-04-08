@@ -98,42 +98,20 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
 
     const handlePrint = () => {
         const content = printRef.current;
-        // Clonar o conteúdo e copiar os estilos computados inline
-        const clone = content.cloneNode(true);
 
-        // Remover elementos que não devem aparecer na impressão (indicadores de página da preview)
-        clone.querySelectorAll('.print\\:hidden').forEach(el => el.remove());
-
-        // Copiar estilos computados para inline em todos os elementos
-        const applyComputedStyles = (source, target) => {
-            const sourceChildren = source.children;
-            const targetChildren = target.children;
-            for (let i = 0; i < sourceChildren.length; i++) {
-                const computed = window.getComputedStyle(sourceChildren[i]);
-                const important = [
-                    'font-size', 'font-weight', 'font-family', 'font-style',
-                    'text-align', 'color', 'background-color',
-                    'border', 'border-top', 'border-bottom', 'border-left', 'border-right',
-                    'border-collapse', 'border-color', 'border-width', 'border-style',
-                    'padding', 'padding-top', 'padding-bottom', 'padding-left', 'padding-right',
-                    'margin', 'margin-top', 'margin-bottom', 'margin-left', 'margin-right',
-                    'width', 'max-width', 'min-width', 'height',
-                    'display', 'flex-direction', 'justify-content', 'align-items', 'gap',
-                    'line-height', 'white-space', 'word-wrap', 'overflow-wrap',
-                    'text-transform', 'letter-spacing', 'vertical-align'
-                ];
-                let style = '';
-                important.forEach(prop => {
-                    const val = computed.getPropertyValue(prop);
-                    if (val) style += `${prop}:${val};`;
+        // Extrair TODO o CSS compilado da página (inclui Tailwind)
+        let allCSS = '';
+        Array.from(document.styleSheets).forEach(sheet => {
+            try {
+                Array.from(sheet.cssRules).forEach(rule => {
+                    allCSS += rule.cssText + '\n';
                 });
-                targetChildren[i].setAttribute('style', (targetChildren[i].getAttribute('style') || '') + style);
-                if (sourceChildren[i].children.length > 0) {
-                    applyComputedStyles(sourceChildren[i], targetChildren[i]);
-                }
-            }
-        };
-        applyComputedStyles(content, clone);
+            } catch (e) { /* ignora cross-origin */ }
+        });
+        // Extrair estilos inline do <style> dentro do printRef
+        content.querySelectorAll('style').forEach(s => {
+            allCSS += s.innerHTML + '\n';
+        });
 
         const printWindow = window.open('', '', 'height=800,width=800');
         printWindow.document.write(`
@@ -141,17 +119,21 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                 <head>
                     <title>Romaneio de Carga #${embarque?.numero}</title>
                     <style>
+                        ${allCSS}
                         @page { size: A4 portrait; margin: 8mm 5mm 5mm 5mm; }
-                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
+                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #000 !important; box-sizing: border-box; }
                         body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; color: #000; }
-                        table { width: 100%; border-collapse: collapse; }
-                        th, td { border: 1px solid #000 !important; }
-                        .print-page { page-break-after: always; padding: 0 3mm !important; }
+                        .print-container { transform: none !important; gap: 0 !important; }
+                        .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 0 5mm !important; page-break-after: always; }
                         .print-page:last-child { page-break-after: auto; }
+                        .print-container table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+                        .print-container th, .print-container td { border: 1px solid #000 !important; padding: 2px 4px; text-align: left; font-size: 8px; line-height: 1.1; color: #000; }
+                        .print-container th { background-color: #f3f4f6 !important; font-weight: bold; }
+                        .print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; color: #000; }
                     </style>
                 </head>
                 <body>
-                    ${clone.innerHTML}
+                    ${content.innerHTML}
                 </body>
             </html>
         `);
