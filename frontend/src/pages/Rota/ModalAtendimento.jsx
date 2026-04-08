@@ -12,12 +12,21 @@ const TIPOS_PADRAO = [
     { value: 'OUTROS', label: 'Outros' },
 ];
 
-const ACOES_PADRAO = [
+const ACOES_PADRAO_CLIENTE = [
+    { value: 'ATENDIDO_SEM_PEDIDO', label: 'Atendido sem pedido' },
+    { value: 'SEM_RESPOSTA', label: 'Sem resposta / Ausente' },
+    { value: 'REAGENDADO', label: 'Reagendado' },
+    { value: 'PENDENCIA', label: 'Pendencia / Problema' },
+    { value: 'MANDA_WHATSAPP', label: 'Manda para WhatsApp' },
+    { value: 'AGUARDO_RETORNO', label: 'Amostra pedido', abrePedidoAmostra: true },
+    { value: 'ENVIAR_VENDEDOR', label: 'Enviar vendedor' },
+];
+
+const ACOES_PADRAO_LEAD = [
     { value: 'NOVO', label: 'Novo' },
     { value: 'VISITAR', label: 'Visitar' },
     { value: 'MANDAR_WHATSAPP', label: 'Mandar WhatsApp' },
     { value: 'LIGAR', label: 'Ligar' },
-    { value: 'LEVAR_AMOSTRA', label: 'Levar amostra' },
     { value: 'AGUARDO_RETORNO', label: 'Aguardo retorno' },
     { value: 'SEM_POTENCIAL', label: 'Sem potencial' },
 ];
@@ -29,7 +38,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
     const isLead = tipo === 'lead';
 
     const [tipos, setTipos] = useState(TIPOS_PADRAO);
-    const [acoes, setAcoes] = useState(ACOES_PADRAO);
+    const [acoes, setAcoes] = useState(isLead ? ACOES_PADRAO_LEAD : ACOES_PADRAO_CLIENTE);
     const [vendedores, setVendedores] = useState([]);
     const [form, setForm] = useState({
         tipoAtendimento: '',
