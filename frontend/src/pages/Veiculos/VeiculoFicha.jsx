@@ -146,7 +146,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
     // Carrega lista de vendedores para o select de motorista
     useEffect(() => {
         if (!readOnly) {
-            vendedorService.listar().then(setVendedores).catch(() => {});
+            vendedorService.listarAtivos().then(setVendedores).catch(() => {});
         }
     }, [readOnly]);
 

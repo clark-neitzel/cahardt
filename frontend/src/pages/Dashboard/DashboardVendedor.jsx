@@ -24,7 +24,7 @@ const DashboardVendedor = () => {
 
     useEffect(() => {
         if (isAdmin) {
-            api.get('/vendedores').then(res => {
+            api.get('/vendedores', { params: { ativo: 'true' } }).then(res => {
                 setVendedores(Array.isArray(res.data) ? res.data : []);
             }).catch(() => { });
         }

@@ -104,7 +104,7 @@ const DetalheCliente = () => {
                 clienteService.detalhar(uuid),
                 tabelaPrecoService.listar(true),
                 condicaoPagamentoService.listar(),
-                vendedorService.listar(),
+                vendedorService.listarAtivos(),
                 categoriaClienteService.listar().catch(() => [])
             ]);
 

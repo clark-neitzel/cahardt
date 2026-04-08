@@ -51,7 +51,7 @@ const ListaEntregasGerencial = () => {
     useEffect(() => {
         const fetchVendedores = async () => {
             try {
-                const dados = await vendedorService.listar();
+                const dados = await vendedorService.listarAtivos();
                 setVendedores(dados);
                 // Temporário: Usar os mesmos na lista de entregadores caso haja coincidencia,
                 // Idealmente teríamos usuarioService.listarEntregadores()

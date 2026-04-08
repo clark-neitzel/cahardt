@@ -68,7 +68,7 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, user }) => {
             configService.get('origens_lead').catch(() => []),
             configService.get('acoes_lead').catch(() => []),
             api.get('/categorias-cliente').then(r => r.data).catch(() => []),
-            podeEscolherVendedor ? vendedorService.listar().catch(() => []) : Promise.resolve([])
+            podeEscolherVendedor ? vendedorService.listarAtivos().catch(() => []) : Promise.resolve([])
         ]).then(([orig, act, cats, vends]) => {
             setOrigens(Array.isArray(orig) && orig.length > 0 ? orig : ORIGENS_PADRAO);
             setAcoes(Array.isArray(act) && act.length > 0 ? act : ACOES_PADRAO);

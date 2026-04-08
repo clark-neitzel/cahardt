@@ -72,7 +72,7 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
 
     React.useEffect(() => {
         if (podeEscolherVendedor && (!propVendedores || propVendedores.length === 0)) {
-            vendedorService.listar().then(setVendedores).catch(console.error);
+            vendedorService.listarAtivos().then(setVendedores).catch(console.error);
         }
     }, [podeEscolherVendedor, propVendedores]);
 

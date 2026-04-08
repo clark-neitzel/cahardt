@@ -6,6 +6,11 @@ const vendedorService = {
         return response.data;
     },
 
+    listarAtivos: async () => {
+        const response = await api.get('/vendedores', { params: { ativo: 'true' } });
+        return response.data;
+    },
+
     obter: async (id) => {
         const response = await api.get(`/vendedores/${id}`);
         return response.data;

@@ -193,7 +193,7 @@ const ListaPedidos = () => {
         if (podeVerTodosVendedores) {
             vendedorService.listar().then(v => {
                 const list = Array.isArray(v) ? v : (v?.vendedores || []);
-                setTodosVendedores(list.filter(v => v.ativo !== false));
+                setTodosVendedores(list);
             }).catch(() => {});
         }
     }, [podeVerTodosVendedores]);

@@ -61,7 +61,7 @@ const ListaLeads = () => {
     // Carregar vendedores para o filtro
     useEffect(() => {
         if (podeEscolherVendedor) {
-            vendedorService.listar().then(setVendedores).catch(() => { });
+            vendedorService.listarAtivos().then(setVendedores).catch(() => { });
         }
     }, [podeEscolherVendedor]);
 

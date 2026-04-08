@@ -62,7 +62,7 @@ const ListaClientes = () => {
     useEffect(() => {
         const loadVendedores = async () => {
             try {
-                const data = await vendedorService.listar();
+                const data = await vendedorService.listarAtivos();
                 setVendedores(data);
             } catch (error) {
                 console.error("Erro ao carregar vendedores", error);

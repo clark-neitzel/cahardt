@@ -5,7 +5,12 @@ const vendedorController = {
     // Listar todos os vendedores
     listar: async (req, res) => {
         try {
+            const where = {};
+            if (req.query.ativo === 'true') where.ativo = true;
+            if (req.query.ativo === 'false') where.ativo = false;
+
             const vendedores = await prisma.vendedor.findMany({
+                where,
                 orderBy: { nome: 'asc' }
             });
             res.json(vendedores);
