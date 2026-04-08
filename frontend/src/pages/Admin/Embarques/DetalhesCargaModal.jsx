@@ -97,53 +97,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
     };
 
     const handlePrint = () => {
-        const content = printRef.current;
-
-        // Extrair TODO o CSS compilado da página (inclui Tailwind)
-        let allCSS = '';
-        Array.from(document.styleSheets).forEach(sheet => {
-            try {
-                Array.from(sheet.cssRules).forEach(rule => {
-                    allCSS += rule.cssText + '\n';
-                });
-            } catch (e) { /* ignora cross-origin */ }
-        });
-        // Extrair estilos inline do <style> dentro do printRef
-        content.querySelectorAll('style').forEach(s => {
-            allCSS += s.innerHTML + '\n';
-        });
-
-        const printWindow = window.open('', '', 'height=800,width=800');
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>Romaneio de Carga #${embarque?.numero}</title>
-                    <style>
-                        ${allCSS}
-                        @page { size: A4 portrait; margin: 8mm 5mm 5mm 5mm; }
-                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #000 !important; box-sizing: border-box; }
-                        body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; color: #000; }
-                        .print-container { transform: none !important; gap: 0 !important; }
-                        .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 0 5mm !important; page-break-after: always; }
-                        .print-page:last-child { page-break-after: auto; }
-                        .print-container table { width: 100%; border-collapse: collapse; margin-top: 5px; }
-                        .print-container th, .print-container td { border: 1px solid #000 !important; padding: 2px 4px; text-align: left; font-size: 8px; line-height: 1.1; color: #000; }
-                        .print-container th { background-color: #f3f4f6 !important; font-weight: bold; }
-                        .print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; color: #000; }
-                    </style>
-                </head>
-                <body>
-                    ${content.innerHTML}
-                </body>
-            </html>
-        `);
-
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-        }, 500);
+        window.print();
     };
 
     // Calculate Consolidado de Produtos (com rastreio de pedidos)
@@ -185,7 +139,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
         let globalPageCount = 1;
 
         return (
-            <div className="fixed inset-0 z-[9999] bg-gray-800 overflow-y-auto flex flex-col print:bg-white print:overflow-visible text-gray-900 font-sans">
+            <div id="print-root-overlay" className="fixed inset-0 z-[9999] bg-gray-800 overflow-y-auto flex flex-col print:bg-white print:overflow-visible text-gray-900 font-sans">
                 {/* ActionBar Fixa */}
                 <div className="sticky top-0 z-10 w-full bg-gray-900 border-b border-gray-700 px-6 py-4 flex items-center justify-between shadow-2xl print:hidden flex-shrink-0">
                     <h3 className="text-white font-bold flex items-center">
@@ -201,7 +155,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                 </div>
 
                 {/* Área Scrollável (Fundo Escuro) */}
-                <div className="flex-1 w-full flex flex-col items-center py-8 print:py-0 print:block">
+                <div className="print-scroll-area flex-1 w-full flex flex-col items-center py-8 print:py-0 print:block">
                     {/* Container de Impressão com Zoom out no Mobile p/ caber na tela */}
                     <div ref={printRef} className="print-container flex flex-col gap-10 print:gap-0 print:block transform scale-[0.45] sm:scale-75 md:scale-100 origin-top transition-transform">
                         <style>
@@ -212,15 +166,18 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             .print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; color: #000; text-transform: uppercase; }
                             .print-container h2 { font-size: 11px; font-weight: bold; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px; color: #000; }
                             @media print {
-                                @page { size: A4 portrait; margin: 8mm 3mm 3mm 3mm; }
+                                @page { size: A4 portrait; margin: 8mm 5mm 5mm 5mm; }
+                                /* Esconde TUDO da página exceto o conteúdo de impressão */
+                                body * { visibility: hidden; }
+                                #print-root-overlay, #print-root-overlay .print-scroll-area, #print-root-overlay .print-scroll-area * { visibility: visible; }
+                                #print-root-overlay { position: absolute !important; top: 0; left: 0; width: 100% !important; background: white !important; overflow: visible !important; }
+                                .print-scroll-area { padding: 0 !important; margin: 0 !important; display: block !important; }
                                 * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #000 !important; }
-                                .print-container th, .print-container td { font-size: 8px !important; padding: 2px 3px !important; line-height: 1 !important; white-space: nowrap !important; color: #000 !important; border-color: #000 !important; }
+                                .print-container { transform: scale(1) !important; margin: 0 !important; gap: 0 !important; display: block !important; }
+                                .print-container th, .print-container td { font-size: 8px !important; padding: 2px 3px !important; line-height: 1.1 !important; color: #000 !important; border: 1px solid #000 !important; }
                                 .print-container td.wrap-text { white-space: normal !important; word-wrap: break-word !important; }
-                                .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 0 !important; page-break-after: always; }
-                                /* Evita página em branco extra no final do documento */
+                                .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 0 5mm !important; page-break-after: always; }
                                 .print-page:last-child { page-break-after: auto; }
-                                .page-break { page-break-before: always; }
-                                .print-container { transform: scale(1) !important; margin: 0 !important; }
                             }
                             `}
                         </style>
