@@ -19,6 +19,39 @@ const formatDate = (d) => {
     return new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
 };
 
+const MovimentacaoCard = ({ item, compact }) => (
+    <div className={`bg-white border border-gray-200 rounded-xl ${compact ? 'p-2.5' : 'p-3.5'} flex items-start gap-2.5`}>
+        {item.tipo === 'ENTRADA'
+            ? <ArrowUpCircle className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+            : <ArrowDownCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+        }
+        <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+                <p className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-900 truncate`}>{item.produto?.nome || '—'}</p>
+                <span className={`${compact ? 'text-xs' : 'text-sm'} font-bold shrink-0 ${item.tipo === 'ENTRADA' ? 'text-green-600' : 'text-red-600'}`}>
+                    {item.tipo === 'ENTRADA' ? '+' : '-'}{Number(item.quantidade).toFixed(0)}
+                </span>
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                <span className="text-[11px] text-gray-500">{MOTIVO_LABEL[item.motivo] || item.motivo}</span>
+                {item.vendedor && <span className="text-[11px] text-gray-400">· {item.vendedor.nome}</span>}
+                <span className="text-[11px] text-gray-400">· {formatDate(item.createdAt)}</span>
+            </div>
+            <div className="flex items-center gap-3 mt-0.5">
+                <span className="text-[11px] text-gray-400">
+                    {Number(item.estoqueAntes).toFixed(0)} → <span className="font-medium text-gray-700">{Number(item.estoqueDepois).toFixed(0)}</span>
+                </span>
+                {item.sincCA
+                    ? <span className="text-[10px] bg-green-100 text-green-700 rounded-full px-1.5 py-0.5 font-medium">CA ✓</span>
+                    : <span className="text-[10px] bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5 font-medium">CA pendente</span>
+                }
+            </div>
+            {item.observacao && <p className="text-[11px] text-gray-500 mt-0.5 italic">{item.observacao}</p>}
+            {item.erroCA && <p className="text-[11px] text-red-500 mt-0.5">Erro CA: {item.erroCA}</p>}
+        </div>
+    </div>
+);
+
 export default function HistoricoEstoque() {
     const navigate = useNavigate();
     const [items, setItems] = useState([]);
@@ -36,7 +69,7 @@ export default function HistoricoEstoque() {
     });
     const [filtrosAplicados, setFiltrosAplicados] = useState({});
 
-    const tamanhoPagina = 30;
+    const tamanhoPagina = 60;
 
     const carregar = useCallback(async (pg = 1, filtrosAtivos = {}) => {
         setLoading(true);
@@ -91,8 +124,11 @@ export default function HistoricoEstoque() {
     const temMais = items.length < total;
     const temFiltros = Object.keys(filtrosAplicados).length > 0;
 
+    const entradas = items.filter(i => i.tipo === 'ENTRADA');
+    const saidas = items.filter(i => i.tipo === 'SAIDA');
+
     return (
-        <div className="max-w-lg mx-auto px-4 py-6">
+        <div className="max-w-7xl mx-auto px-4 py-6">
             {/* Header */}
             <div className="flex items-center gap-3 mb-5">
                 <button onClick={() => navigate('/estoque')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">
@@ -113,7 +149,7 @@ export default function HistoricoEstoque() {
 
             {/* Painel de filtros */}
             {showFiltros && (
-                <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 space-y-3 shadow-sm">
+                <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 space-y-3 shadow-sm max-w-xl">
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
@@ -160,7 +196,7 @@ export default function HistoricoEstoque() {
                 </div>
             )}
 
-            {/* Lista */}
+            {/* Erro */}
             {erro && (
                 <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm mb-4">
                     <AlertCircle className="h-4 w-4 shrink-0" />
@@ -168,50 +204,61 @@ export default function HistoricoEstoque() {
                 </div>
             )}
 
+            {/* Loading */}
             {loading && items.length === 0 && (
                 <div className="flex justify-center py-16">
                     <Loader2 className="h-7 w-7 text-blue-500 animate-spin" />
                 </div>
             )}
 
+            {/* Vazio */}
             {!loading && items.length === 0 && !erro && (
                 <div className="text-center py-16 text-gray-400 text-sm">
                     Nenhuma movimentação encontrada.
                 </div>
             )}
 
-            <div className="space-y-2">
-                {items.map(item => (
-                    <div key={item.id} className="bg-white border border-gray-200 rounded-xl p-3.5 flex items-start gap-3">
-                        {item.tipo === 'ENTRADA'
-                            ? <ArrowUpCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                            : <ArrowDownCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-                        }
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                                <p className="text-sm font-medium text-gray-900 truncate">{item.produto?.nome || '—'}</p>
-                                <span className={`text-sm font-bold shrink-0 ${item.tipo === 'ENTRADA' ? 'text-green-600' : 'text-red-600'}`}>
-                                    {item.tipo === 'ENTRADA' ? '+' : '-'}{Number(item.quantidade).toFixed(0)}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                <span className="text-xs text-gray-500">{MOTIVO_LABEL[item.motivo] || item.motivo}</span>
-                                {item.vendedor && <span className="text-xs text-gray-400">· {item.vendedor.nome}</span>}
-                                <span className="text-xs text-gray-400">· {formatDate(item.createdAt)}</span>
-                            </div>
-                            <div className="flex items-center gap-3 mt-1">
-                                <span className="text-xs text-gray-400">
-                                    {Number(item.estoqueAntes).toFixed(0)} → <span className="font-medium text-gray-700">{Number(item.estoqueDepois).toFixed(0)}</span>
-                                </span>
-                                {item.sincCA
-                                    ? <span className="text-[10px] bg-green-100 text-green-700 rounded-full px-1.5 py-0.5 font-medium">CA ✓</span>
-                                    : <span className="text-[10px] bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5 font-medium">CA pendente</span>
-                                }
-                            </div>
-                            {item.observacao && <p className="text-xs text-gray-500 mt-1 italic">{item.observacao}</p>}
-                            {item.erroCA && <p className="text-xs text-red-500 mt-1">Erro CA: {item.erroCA}</p>}
-                        </div>
+            {/* ── Desktop: duas colunas (Entradas | Saídas) ── */}
+            <div className="hidden md:grid md:grid-cols-2 md:gap-5">
+                {/* Coluna Entradas */}
+                <div>
+                    <div className="flex items-center gap-2 mb-3 px-1">
+                        <ArrowUpCircle className="h-5 w-5 text-green-500" />
+                        <h2 className="text-sm font-bold text-green-700 uppercase tracking-wide">Entradas</h2>
+                        <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">{entradas.length}</span>
                     </div>
+                    <div className="space-y-1.5">
+                        {entradas.length === 0 && !loading && (
+                            <p className="text-xs text-gray-400 text-center py-8">Nenhuma entrada no período</p>
+                        )}
+                        {entradas.map(item => (
+                            <MovimentacaoCard key={item.id} item={item} compact />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Coluna Saídas */}
+                <div>
+                    <div className="flex items-center gap-2 mb-3 px-1">
+                        <ArrowDownCircle className="h-5 w-5 text-red-500" />
+                        <h2 className="text-sm font-bold text-red-700 uppercase tracking-wide">Saídas</h2>
+                        <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full font-medium">{saidas.length}</span>
+                    </div>
+                    <div className="space-y-1.5">
+                        {saidas.length === 0 && !loading && (
+                            <p className="text-xs text-gray-400 text-center py-8">Nenhuma saída no período</p>
+                        )}
+                        {saidas.map(item => (
+                            <MovimentacaoCard key={item.id} item={item} compact />
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Mobile: lista única ── */}
+            <div className="md:hidden space-y-2">
+                {items.map(item => (
+                    <MovimentacaoCard key={item.id} item={item} />
                 ))}
             </div>
 
