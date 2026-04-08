@@ -547,6 +547,7 @@ const CaixaDiarioPage = () => {
                                             <tr className="text-xs text-gray-500 uppercase border-b">
                                                 {isAdmin && <th className="py-2 px-2 text-center w-10">✓</th>}
                                                 {isAdmin && <th className="py-2 px-2 text-center w-10" title="Selecionar para baixa CA">CA</th>}
+                                                <th className="py-2 px-2 text-left">Nº</th>
                                                 <th className="py-2 px-2 text-left">Cliente</th>
                                                 <th className="py-2 px-2 text-left">Cond. Pgto</th>
                                                 <th className="py-2 px-2 text-right">Valor</th>
@@ -582,6 +583,7 @@ const CaixaDiarioPage = () => {
                                                             )}
                                                         </td>
                                                     )}
+                                                    <td className="py-2 px-2 text-gray-500 text-sm">{e.numero}</td>
                                                     <td className="py-2 px-2 font-medium text-gray-900">
                                                         {e.clienteNome}
                                                         {e.especial && <span className="ml-1.5 text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>}
@@ -630,6 +632,7 @@ const CaixaDiarioPage = () => {
                                             <div className="flex items-start justify-between">
                                                 <div className="flex-1">
                                                     <p className="font-medium text-gray-900 text-sm">
+                                                        <span className="text-gray-500 mr-1">#{e.numero}</span>
                                                         {e.clienteNome}
                                                         {e.especial && <span className="ml-1.5 text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>}
                                                         {e.quitado === 'QUITADO' && <span className="ml-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">QUITADO</span>}
