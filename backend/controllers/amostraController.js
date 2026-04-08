@@ -77,7 +77,7 @@ const amostraController = {
     enviarWhatsapp: async (req, res) => {
         try {
             const webhookService = require('../services/webhookService');
-            const result = await webhookService.notificarAmostra(req.params.id);
+            const result = await webhookService.notificarAmostra(req.params.id, { forceManual: true });
             if (result.ok) {
                 res.json({ ok: true });
             } else {

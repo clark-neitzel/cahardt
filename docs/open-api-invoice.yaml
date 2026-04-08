@@ -1,0 +1,626 @@
+openapi: 3.0.0
+info:
+  description: >-
+    A API de Notas Fiscais (v1) tem como objetivo permitir a consulta de
+    documentos fiscais de forma programática. No momento, o suporte disponível é
+    apenas para consulta de notas de produto NF-e emitidas no ERP, permitindo
+    que sistemas externos recuperem informações fiscais, validem dados e
+    integrem essas notas aos seus próprios fluxos.
+
+
+    Essa API possibilita acessar detalhes das notas já emitidas, acompanhar
+    informações essenciais para controle fiscal e garantir maior eficiência na
+    integração entre sistemas.
+
+
+    Se desejar aprofundar o entendimento das regras de negócio aplicadas pelo
+    ERP, recomendamos, de forma opcional a consulta à nossa Central de Ajuda:
+
+
+    [https://ajuda.contaazul.com/hc/pt-br/articles/4424707438605-Como-acessar-notas-fiscais-emitidas-na-Conta-Azul](https://ajuda.contaazul.com/hc/pt-br/articles/4424707438605-Como-acessar-notas-fiscais-emitidas-na-Conta-Azul) 
+  title: Notas fiscais
+  contact: {}
+  version: v1
+paths:
+  /v1/notas-fiscais:
+    get:
+      security:
+        - BearerAuth: []
+      description: >-
+        Permite consultar todas as notas fiscais de produto (NFe) já emitidas no
+        ERP, com suporte a filtros como data, número da nota, id da venda.. Este
+        endpoint retorna somente NFe com status EMITIDA e CORRIGIDA COM SUCESSO
+        (outros status em construção). Essa funcionalidade facilita o
+        monitoramento fiscal, exportação para relatórios ou integração com
+        contabilidade.
+      tags:
+        - v1
+      summary: Retornar as notas fiscais por filtro
+      operationId: obterNotasFiscaisPorFiltro
+      parameters:
+        - description: Data inicial no formato YYYY-MM-DD
+          name: data_inicial
+          in: query
+          required: true
+          schema:
+            type: string
+        - description: Data final no formato YYYY-MM-DD
+          name: data_final
+          in: query
+          required: true
+          schema:
+            type: string
+        - description: Página
+          name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - description: Tamanho da página
+          name: tamanho_pagina
+          in: query
+          schema:
+            type: integer
+            enum:
+              - 10
+              - 20
+              - 50
+              - 100
+            default: 10
+        - example: '12345678900'
+          description: Documento do tomador
+          name: documento_tomador
+          in: query
+          schema:
+            type: string
+        - example: '1234'
+          description: Número da nota fiscal
+          name: numero_nota
+          in: query
+          schema:
+            type: string
+        - example: 550e8400-e29b-41d4-a716-446655440000
+          description: ID da venda
+          name: id_venda
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotaFiscalPorFiltro'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+  /v1/notas-fiscais-servico:
+    get:
+      security:
+        - BearerAuth: []
+      description: >-
+        Permite consultar todas as notas fiscais de serviço (NFS-e) já emitidas
+        no ERP, com uso de filtros como data, número da nota, id da venda.. Este
+        endpoint retorna NFS-e com todos os status possíveis a partir da
+        emissão. Essa funcionalidade facilita o monitoramento fiscal, exportação
+        para relatórios ou integração com contabilidade.
+      tags:
+        - v1
+      summary: Retornar notas fiscais de serviço por filtros
+      operationId: obterNotasFiscaisServicoPorFiltro
+      parameters:
+        - description: Número da página
+          name: pagina
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - description: 'Tamanho da página (valores válidos: 10, 20, 50, 100)'
+          name: tamanho_pagina
+          in: query
+          schema:
+            type: integer
+            enum:
+              - 10
+              - 20
+              - 50
+              - 100
+            default: 10
+        - example: '2024-01-01'
+          description: >-
+            Data de emissão inicial no formato YYYY-MM-DD (range máximo: 15
+            dias)
+          name: data_competencia_de
+          in: query
+          required: true
+          schema:
+            type: string
+        - example: '2024-01-15'
+          description: 'Data de emissão final no formato YYYY-MM-DD (range máximo: 15 dias)'
+          name: data_competencia_ate
+          in: query
+          required: true
+          schema:
+            type: string
+        - description: Lista de UUIDs das notas fiscais de serviço
+          name: ids
+          in: query
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+        - description: Lista de IDs de clientes (UUIDs)
+          name: id_cliente
+          in: query
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+        - example: 1001
+          description: Número da venda
+          name: numero_venda
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - example: 100
+          description: Número inicial da NFS-e
+          name: numero_nfse_inicial
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - example: 200
+          description: Número final da NFS-e
+          name: numero_nfse_final
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - example: 1000
+          description: Número inicial do RPS
+          name: numero_rps_inicial
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - example: 2000
+          description: Número final do RPS
+          name: numero_rps_final
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - description: Status da nota fiscal
+          name: status
+          in: query
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              enum:
+                - PENDENTE
+                - PRONTA_ENVIO
+                - AGUARDANDO_RETORNO
+                - EM_ESPERA
+                - EMITINDO
+                - EMITIDA
+                - CANCELADA
+                - FALHA
+                - FALHA_CANCELAMENTO
+                - CORRIGIDA_SUCESSO
+                - AGUARDANDO_CORRECAO
+                - FALHA_CORRECAO
+                - DENEGADA
+                - CANCELAMENTO_MANUAL
+              type: string
+        - description: Tipo de negociação
+          name: tipo_negociacao
+          in: query
+          schema:
+            type: string
+            enum:
+              - VENDA
+              - CONTRATO
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotaFiscalServicoPorFiltro'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+  /v1/notas-fiscais/vinculo-mdfe:
+    post:
+      security:
+        - BearerAuth: []
+      description: >-
+        Permite associar uma ou mais notas fiscais (identificadas pelas chaves
+        de acesso) a um MDF-e (Manifesto Eletrônico de Documento Fiscal). É
+        possível também informar o status do vínculo (ex: "AUTORIZADO",
+        "ENCERRADO", "CANCELADO"). Apoio no controle logístico e fiscal.
+      tags:
+        - v1
+      summary: Vincular nota fiscal a mdfe
+      operationId: vincularNotaFiscalMdfe
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkNotaFiscalMdfe'
+        description: Dados para vincular nota fiscal a mdfe
+        required: true
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+  /v1/notas-fiscais/{chave}:
+    get:
+      security:
+        - BearerAuth: []
+      description: >-
+        Permite consultar dados de uma nota fiscal específica, buscando pela sua
+        chave de acesso
+      tags:
+        - v1
+      summary: Retornar a nota fiscal por chave
+      operationId: obterNotaFiscalPorChave
+      parameters:
+        - description: Chave da nota fiscal
+          name: chave
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/xml:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '404':
+          description: Not Found
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+tags:
+  - description: Operações relacionadas a notas fiscais
+    name: v1
+servers:
+  - url: https://api-v2.contaazul.com
+components:
+  securitySchemes:
+    BearerAuth:
+      description: >-
+        Digite **'Bearer &lt;JWT&gt;'**, onde JWT é o access_token recebido no
+        login (passo 2 do fluxo de autenticação).
+      type: apiKey
+      name: Authorization
+      in: header
+  schemas:
+    CidadeEmissaoNotaFiscalServico:
+      description: Cidade de emissão da nota fiscal de serviço
+      type: object
+      properties:
+        estado:
+          description: Estado (UF)
+          type: string
+          example: SC
+        nome:
+          description: Nome da cidade
+          type: string
+          example: Joinville
+    ErroAPI:
+      description: Modelo de resposta para erros da API
+      type: object
+      properties:
+        error:
+          description: Mensagem de erro
+          type: string
+          example: Mensagem de erro detalhada
+    InformacaoTransmissaoNotaFiscalServico:
+      description: Informações de transmissão da nota fiscal de serviço
+      type: object
+      properties:
+        data_inicio_cancelamento:
+          description: Data de início do cancelamento
+          type: string
+          example: '2024-01-16T14:20:00'
+        data_inicio_emissao:
+          description: Data de início da emissão
+          type: string
+          example: '2024-01-15T10:30:00'
+    InformacoesCancelamentoNotaFiscalServico:
+      description: Informações de cancelamento da nota fiscal de serviço
+      type: object
+      properties:
+        motivo:
+          description: Motivo do cancelamento
+          type: string
+          example: Erro na alíquota de ISS informada
+        usuario:
+          description: Usuário que cancelou
+          type: string
+          example: Empresa Teste
+    LinkNotaFiscalMdfe:
+      description: Modelo de link de chaves de notas fiscais para MDF-e
+      type: object
+      required:
+        - chaves_acesso
+        - identificador
+      properties:
+        chaves_acesso:
+          description: Chaves de acesso das notas fiscais vinculadas ao MDF-e
+          type: array
+          items:
+            type: string
+          example:
+            - '42250323643586000108550010000001151606401726'
+            - '42250323643586000108550010000001141054498495'
+        identificador:
+          description: Identificador do MDF-e
+          type: string
+          example: '345345'
+        status:
+          description: Status do MDF-e
+          allOf:
+            - $ref: '#/components/schemas/StatusDoMDFE'
+          example: ENCERRADO
+    NotaFiscal:
+      description: >-
+        Modelo de resposta para as notas fiscais contendo todas as informações
+        necessárias
+      type: object
+      properties:
+        chave_acesso:
+          description: Chave de acesso da nota fiscal
+          type: string
+          example: '42250323643586000108550010000001151606401726'
+        data_emissao:
+          description: Data de emissão da nota fiscal
+          type: string
+          example: '2025-01-15T10:30:00Z'
+        nome_destinatario:
+          description: Nome do destinatário
+          type: string
+          example: EMPRESA EXEMPLO LTDA
+        numero_nota:
+          description: Número da nota fiscal
+          type: integer
+          example: 123456
+        status:
+          description: Status da nota fiscal
+          allOf:
+            - $ref: '#/components/schemas/StatusDaNotaFiscal'
+          example: EMITIDA
+    NotaFiscalPorFiltro:
+      description: >-
+        Modelo de resposta para as notas fiscais contendo todas as informações
+        necessárias
+      type: object
+      properties:
+        itens:
+          description: Lista de notas fiscais
+          type: array
+          items:
+            $ref: '#/components/schemas/NotaFiscal'
+        paginacao:
+          description: Paginação
+          allOf:
+            - $ref: '#/components/schemas/Pagina_o'
+    NotaFiscalServico:
+      description: Nota fiscal de serviço
+      type: object
+      properties:
+        cidade_emissao:
+          description: Cidade de emissão
+          allOf:
+            - $ref: '#/components/schemas/CidadeEmissaoNotaFiscalServico'
+        codigo_cnae:
+          description: Código CNAE
+          type: string
+          example: 6201-5/00
+        data_competencia:
+          description: Data de competência
+          type: string
+          example: '2024-01-15'
+        documento_cliente:
+          description: Documento do cliente
+          type: string
+          example: '12345678000190'
+        escriturado_manualmente:
+          description: Indica se foi escriturado manualmente
+          type: boolean
+          example: false
+        id:
+          description: UUID da nota fiscal de serviço
+          type: string
+          example: 550e8400-e29b-41d4-a716-446655440099
+        id_contrato:
+          description: UUID do contrato
+          type: string
+          example: 550e8400-e29b-41d4-a716-446655440001
+        id_venda:
+          description: UUID da venda
+          type: string
+          example: 550e8400-e29b-41d4-a716-446655440000
+        informacao_transmissao:
+          description: Informações de transmissão
+          allOf:
+            - $ref: '#/components/schemas/InformacaoTransmissaoNotaFiscalServico'
+        informacoes_cancelamento:
+          description: Informações de cancelamento
+          allOf:
+            - $ref: '#/components/schemas/InformacoesCancelamentoNotaFiscalServico'
+        nome_cliente:
+          description: Nome do cliente
+          type: string
+          example: EMPRESA EXEMPLO LTDA
+        numero_nfse:
+          description: Número da NFS-e
+          type: integer
+          example: 123
+        numero_rps:
+          description: Número do RPS
+          type: integer
+          example: 67890
+        numero_venda:
+          description: Número da venda
+          type: string
+          example: '1001'
+        status:
+          description: Status da nota fiscal
+          allOf:
+            - $ref: '#/components/schemas/StatusNotaFiscalServico'
+          example: EMITIDA
+        valor_total_nfse:
+          description: Valor total da NFS-e
+          type: number
+          example: 1500.5
+    NotaFiscalServicoPorFiltro:
+      description: Modelo de resposta paginada para notas fiscais de serviço
+      type: object
+      properties:
+        itens:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotaFiscalServico'
+        paginacao:
+          $ref: '#/components/schemas/Pagina_o'
+    StatusDaNotaFiscal:
+      description: Enum de status da nota fiscal
+      type: string
+      enum:
+        - EMITIDA
+        - CORRIGIDA_SUCESSO
+      x-enum-varnames:
+        - EMITTED
+        - SUCCESS_CORRECTION
+    StatusDoMDFE:
+      description: Enum de status do MDF-e (Manifesto Eletrônico de Documentos Fiscais)
+      type: string
+      enum:
+        - AUTORIZADO
+        - ENCERRADO
+        - CANCELADO
+      x-enum-varnames:
+        - AUTHORIZED
+        - CLOSED
+        - CANCELED
+    StatusNotaFiscalServico:
+      description: Enum de status da nota fiscal de serviço
+      type: string
+      enum:
+        - PENDENTE
+        - PRONTA_ENVIO
+        - AGUARDANDO_RETORNO
+        - EM_ESPERA
+        - EMITINDO
+        - EMITIDA
+        - CANCELADA
+        - FALHA
+        - FALHA_CANCELAMENTO
+        - CORRIGIDA_SUCESSO
+        - AGUARDANDO_CORRECAO
+        - FALHA_CORRECAO
+        - DENEGADA
+        - CANCELAMENTO_MANUAL
+      x-enum-varnames:
+        - SERVICE_INVOICE_PENDING
+        - SERVICE_INVOICE_READY_TO_SEND
+        - SERVICE_INVOICE_WAITING_RETURN
+        - SERVICE_INVOICE_ON_HOLD
+        - SERVICE_INVOICE_EMITTING
+        - SERVICE_INVOICE_EMITTED
+        - SERVICE_INVOICE_CANCELED
+        - SERVICE_INVOICE_FAILURE
+        - SERVICE_INVOICE_CANCELLATION_FAILURE
+        - SERVICE_INVOICE_SUCCESS_CORRECTION
+        - SERVICE_INVOICE_WAITING_CORRECTION
+        - SERVICE_INVOICE_CORRECTION_FAILURE
+        - SERVICE_INVOICE_DENIED
+        - SERVICE_INVOICE_MANUAL_CANCELLATION
+    Pagina_o:
+      description: Modelo de resposta para paginação dos resultados
+      type: object
+      properties:
+        pagina_atual:
+          description: Página atual
+          type: integer
+          example: 1
+        tamanho_pagina:
+          description: Tamanho da página
+          type: integer
+          example: 10
+        total_itens:
+          description: Total de itens
+          type: integer
+          example: 50
+        total_paginas:
+          description: Total de páginas
+          type: integer
+          example: 5

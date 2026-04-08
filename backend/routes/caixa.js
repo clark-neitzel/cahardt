@@ -881,4 +881,165 @@ router.get('/audit-logs', async (req, res) => {
     }
 });
 
+// ── POST /quitar-ca — Dar baixa de entregas à vista (dinheiro) no Conta Azul ──
+router.post('/quitar-ca', checkEditor, async (req, res) => {
+    const contaAzulService = require('../services/contaAzulService');
+
+    try {
+        const { pedidoIds, dataPagamento } = req.body;
+
+        if (!Array.isArray(pedidoIds) || pedidoIds.length === 0) {
+            return res.status(400).json({ error: 'Selecione ao menos uma entrega.' });
+        }
+
+        // Buscar pedidos com dados necessários
+        const pedidos = await prisma.pedido.findMany({
+            where: { id: { in: pedidoIds } },
+            include: {
+                cliente: { select: { UUID: true, NomeFantasia: true, Nome: true } },
+                embarque: { include: { responsavel: { select: { nome: true } } } },
+                itens: true,
+                pagamentosReais: true
+            }
+        });
+
+        if (pedidos.length === 0) {
+            return res.status(400).json({ error: 'Nenhum pedido encontrado.' });
+        }
+
+        // Buscar nome do usuário solicitante
+        const solicitante = await prisma.vendedor.findUnique({
+            where: { id: req.user.id },
+            select: { nome: true }
+        });
+
+        // Buscar conta caixinha no CA
+        let contaCaixinha;
+        try {
+            contaCaixinha = await contaAzulService.buscarContaCaixinha();
+        } catch (err) {
+            return res.status(400).json({ error: `Erro ao buscar conta Caixinha no CA: ${err.message}` });
+        }
+
+        const dataPgto = dataPagamento || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const resultados = [];
+
+        for (const pedido of pedidos) {
+            const clienteNome = pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'N/A';
+            const motorista = pedido.embarque?.responsavel?.nome || 'N/I';
+
+            try {
+                // Verificar se tem idVendaContaAzul
+                if (!pedido.idVendaContaAzul) {
+                    resultados.push({
+                        pedidoId: pedido.id,
+                        numero: pedido.numero,
+                        cliente: clienteNome,
+                        status: 'ERRO',
+                        erro: 'Pedido sem venda no Conta Azul (idVendaContaAzul ausente)'
+                    });
+                    continue;
+                }
+
+                // Calcular valor total dos pagamentos em dinheiro (à vista) que debitam caixa
+                const valorTotal = pedido.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0);
+
+                // Encontrar a parcela correspondente no CA
+                const dataVendaStr = pedido.dataVenda
+                    ? new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+                    : dataPgto;
+
+                const parcela = await contaAzulService.encontrarParcelaDeVenda(
+                    pedido.cliente.UUID,
+                    pedido.idVendaContaAzul,
+                    dataVendaStr
+                );
+
+                if (!parcela) {
+                    resultados.push({
+                        pedidoId: pedido.id,
+                        numero: pedido.numero,
+                        cliente: clienteNome,
+                        status: 'ERRO',
+                        erro: `Parcela não encontrada no CA para venda ${pedido.idVendaContaAzul}`
+                    });
+                    continue;
+                }
+
+                // Verificar se já está quitada
+                if (parcela.status === 'QUITADO' || parcela.status === 'RECEBIDO') {
+                    resultados.push({
+                        pedidoId: pedido.id,
+                        numero: pedido.numero,
+                        cliente: clienteNome,
+                        status: 'JA_QUITADO',
+                        erro: 'Parcela já quitada no CA'
+                    });
+                    continue;
+                }
+
+                // Valor da baixa = valor bruto da parcela (quitação total)
+                const valorBruto = parcela.valor_composicao?.valor_bruto
+                    || parcela.valor_composicao?.valor_liquido
+                    || Number(valorTotal);
+
+                // Observação com informações do caixa
+                const obs = `Motorista: ${motorista} | Caixa: ${dataPgto} | Solicitante: ${solicitante?.nome || req.user.id}`;
+
+                // Criar baixa no CA
+                const baixaPayload = {
+                    data_pagamento: dataPgto,
+                    composicao_valor: {
+                        valor_bruto: Math.round(valorBruto * 100) / 100,
+                        multa: 0,
+                        juros: 0,
+                        desconto: 0,
+                        taxa: 0
+                    },
+                    conta_financeira: contaCaixinha.id,
+                    metodo_pagamento: 'DINHEIRO',
+                    observacao: obs
+                };
+
+                const baixaCA = await contaAzulService.criarBaixa(parcela.id, baixaPayload);
+
+                resultados.push({
+                    pedidoId: pedido.id,
+                    numero: pedido.numero,
+                    cliente: clienteNome,
+                    status: 'OK',
+                    baixaId: baixaCA?.id || null,
+                    valor: valorBruto
+                });
+
+            } catch (err) {
+                const errMsg = err.response?.data?.message || err.response?.data
+                    ? JSON.stringify(err.response?.data)
+                    : err.message;
+                resultados.push({
+                    pedidoId: pedido.id,
+                    numero: pedido.numero,
+                    cliente: clienteNome,
+                    status: 'ERRO',
+                    erro: errMsg
+                });
+            }
+        }
+
+        const ok = resultados.filter(r => r.status === 'OK').length;
+        const erros = resultados.filter(r => r.status === 'ERRO').length;
+        const jaQuitados = resultados.filter(r => r.status === 'JA_QUITADO').length;
+
+        res.json({
+            message: `Baixa: ${ok} OK, ${erros} erro(s), ${jaQuitados} já quitado(s)`,
+            resultados,
+            contaCaixinha: { id: contaCaixinha.id, nome: contaCaixinha.nome }
+        });
+
+    } catch (error) {
+        console.error('Erro ao quitar no CA:', error);
+        res.status(500).json({ error: 'Erro ao processar quitação no Conta Azul.' });
+    }
+});
+
 module.exports = router;

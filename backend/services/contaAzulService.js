@@ -1599,6 +1599,128 @@ const contaAzulService = {
         });
 
         return { estoqueDisponivel, contaAzulId: p.id };
+    },
+
+    // === BAIXAS (Acquittance) ===
+
+    /**
+     * Wrapper genérico para POST/PATCH na API do CA com retry em 401.
+     */
+    _axiosRequest: async (method, url, data, resourceType = 'API') => {
+        const start = Date.now();
+        let token = await contaAzulService.getAccessToken();
+        let attempts = 0;
+
+        const execute = async (tokenToUse) => {
+            return await axios({ method, url, data, headers: {
+                'Authorization': `Bearer ${tokenToUse}`,
+                'Content-Type': 'application/json'
+            }});
+        };
+
+        try {
+            const response = await execute(token);
+            return response;
+        } catch (error) {
+            if (error.response?.status === 401 && attempts === 0) {
+                attempts++;
+                token = await contaAzulService.getAccessToken(true);
+                try {
+                    return await execute(token);
+                } catch (retryError) {
+                    await contaAzulService._logStep(resourceType, 'ERRO', `Falha 401 persistente: ${url}`, {
+                        url, method, status: retryError.response?.status,
+                        body: retryError.response?.data, duration: Date.now() - start
+                    });
+                    throw retryError;
+                }
+            }
+            await contaAzulService._logStep(resourceType, 'ERRO', `Falha ${method} ${url}`, {
+                url, method, status: error.response?.status,
+                body: error.response?.data || error.message, duration: Date.now() - start
+            });
+            throw error;
+        }
+    },
+
+    /**
+     * Buscar a conta financeira do tipo CAIXINHA no Conta Azul.
+     */
+    buscarContaCaixinha: async () => {
+        const url = 'https://api-v2.contaazul.com/v1/conta-financeira?tipos=CAIXINHA&mostrar_caixinha=true&apenas_ativo=true&tamanho_pagina=10';
+        const response = await contaAzulService._axiosGet(url, 'CONTA_FINANCEIRA');
+        const contas = response.data?.itens || [];
+        if (contas.length === 0) {
+            throw new Error('Nenhuma conta CAIXINHA encontrada no Conta Azul.');
+        }
+        return contas[0]; // Primeira caixinha ativa
+    },
+
+    /**
+     * Buscar parcelas de contas a receber por cliente e range de vencimento.
+     */
+    buscarParcelasContaAReceber: async (clienteCAId, dataVencDe, dataVencAte, status = ['EM_ABERTO', 'ATRASADO']) => {
+        const statusParams = status.map(s => `&status=${s}`).join('');
+        const url = `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/contas-a-receber/buscar?pagina=1&tamanho_pagina=200&data_vencimento_de=${dataVencDe}&data_vencimento_ate=${dataVencAte}&ids_clientes=${clienteCAId}${statusParams}`;
+        const response = await contaAzulService._axiosGet(url, 'PARCELAS_RECEBER');
+        return response.data?.itens || [];
+    },
+
+    /**
+     * Buscar detalhes completos de uma parcela (inclui evento.referencia).
+     */
+    buscarParcelaDetalhe: async (parcelaId) => {
+        const url = `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}`;
+        const response = await contaAzulService._axiosGet(url, 'PARCELA_DETALHE');
+        return response.data;
+    },
+
+    /**
+     * Criar baixa (quitação) em uma parcela no Conta Azul.
+     * @param {string} parcelaId - UUID da parcela no CA
+     * @param {object} payload - { data_pagamento, composicao_valor, conta_financeira, metodo_pagamento, observacao }
+     */
+    criarBaixa: async (parcelaId, payload) => {
+        const url = `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}/baixa`;
+        const response = await contaAzulService._axiosRequest('post', url, payload, 'BAIXA_CRIAR');
+        await contaAzulService._logStep('BAIXA_CRIAR', 'SUCESSO', `Baixa criada para parcela ${parcelaId}`, {
+            url, method: 'POST', status: response.status,
+            body: { parcela_id: parcelaId, valor: payload.composicao_valor?.valor_bruto },
+        });
+        return response.data;
+    },
+
+    /**
+     * Encontrar a parcela CA correspondente a uma venda (pedido).
+     * Busca parcelas do cliente → detalha cada uma → match por evento.referencia.id === idVenda.
+     */
+    encontrarParcelaDeVenda: async (clienteCAId, idVendaCA, dataVendaStr) => {
+        // Buscar num range amplo (60 dias antes e depois da venda)
+        const dataVenda = new Date(dataVendaStr + 'T12:00:00-03:00');
+        const de = new Date(dataVenda); de.setDate(de.getDate() - 60);
+        const ate = new Date(dataVenda); ate.setDate(ate.getDate() + 60);
+        const fmtDate = (d) => d.toISOString().split('T')[0];
+
+        const parcelas = await contaAzulService.buscarParcelasContaAReceber(
+            clienteCAId, fmtDate(de), fmtDate(ate)
+        );
+
+        if (parcelas.length === 0) return null;
+
+        // Buscar detalhes de cada parcela para encontrar a que referencia a venda
+        for (const p of parcelas) {
+            try {
+                const detalhe = await contaAzulService.buscarParcelaDetalhe(p.id);
+                if (detalhe?.evento?.referencia?.id === idVendaCA &&
+                    detalhe?.evento?.referencia?.origem === 'VENDA') {
+                    return detalhe;
+                }
+            } catch (err) {
+                console.warn(`Falha ao buscar detalhe parcela ${p.id}: ${err.message}`);
+            }
+        }
+
+        return null;
     }
 };
 

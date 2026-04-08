@@ -45,7 +45,7 @@ const webhookService = {
      * Envia notificação de pedido para o BotConversa via webhook.
      * Retorna { ok: true } ou { ok: false, motivo: '...' }
      */
-    notificarPedido: async (pedidoId) => {
+    notificarPedido: async (pedidoId, { forceManual = false } = {}) => {
         const salvarStatus = async (ok, motivo) => {
             try {
                 await prisma.pedido.update({
@@ -56,12 +56,14 @@ const webhookService = {
         };
 
         try {
-            // Verificar se WhatsApp está ativo
-            const whatsappConfig = await prisma.appConfig.findUnique({ where: { key: 'whatsapp_ativo' } });
-            const whatsappValue = whatsappConfig?.value;
-            const isDesativado = whatsappValue === false || (typeof whatsappValue === 'object' && whatsappValue?.value === false);
-            if (whatsappConfig && isDesativado) {
-                return { ok: false, motivo: 'WhatsApp pausado pelo administrador' };
+            // Verificar se WhatsApp está ativo (pula verificação em envio manual pelo botão)
+            if (!forceManual) {
+                const whatsappConfig = await prisma.appConfig.findUnique({ where: { key: 'whatsapp_ativo' } });
+                const whatsappValue = whatsappConfig?.value;
+                const isDesativado = whatsappValue === false || (typeof whatsappValue === 'object' && whatsappValue?.value === false);
+                if (whatsappConfig && isDesativado) {
+                    return { ok: false, motivo: 'WhatsApp pausado pelo administrador' };
+                }
             }
 
             const webhookUrl = await getWebhookUrl();
@@ -138,14 +140,16 @@ const webhookService = {
      * Envia notificação de amostra para o BotConversa via webhook.
      * Retorna { ok: true } ou { ok: false, motivo: '...' }
      */
-    notificarAmostra: async (amostraId) => {
+    notificarAmostra: async (amostraId, { forceManual = false } = {}) => {
         try {
-            // Verificar se WhatsApp está ativo
-            const whatsappConfig = await prisma.appConfig.findUnique({ where: { key: 'whatsapp_ativo' } });
-            const whatsappValue = whatsappConfig?.value;
-            const isDesativado = whatsappValue === false || (typeof whatsappValue === 'object' && whatsappValue?.value === false);
-            if (whatsappConfig && isDesativado) {
-                return { ok: false, motivo: 'WhatsApp pausado pelo administrador' };
+            // Verificar se WhatsApp está ativo (pula verificação em envio manual pelo botão)
+            if (!forceManual) {
+                const whatsappConfig = await prisma.appConfig.findUnique({ where: { key: 'whatsapp_ativo' } });
+                const whatsappValue = whatsappConfig?.value;
+                const isDesativado = whatsappValue === false || (typeof whatsappValue === 'object' && whatsappValue?.value === false);
+                if (whatsappConfig && isDesativado) {
+                    return { ok: false, motivo: 'WhatsApp pausado pelo administrador' };
+                }
             }
 
             const webhookUrl = await getWebhookUrl();

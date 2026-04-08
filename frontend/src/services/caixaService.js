@@ -54,6 +54,11 @@ const caixaService = {
         if (vendedorId) params.vendedorId = vendedorId;
         const response = await api.get('/caixa/relatorio', { params });
         return response.data;
+    },
+
+    quitarCA: async (pedidoIds, dataPagamento) => {
+        const response = await api.post('/caixa/quitar-ca', { pedidoIds, dataPagamento });
+        return response.data;
     }
 };
 

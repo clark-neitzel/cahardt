@@ -1,0 +1,4091 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Financeiro",
+    "version": "v1",
+    "description": "A API de Financeiro tem como objetivo oferecer um conjunto de recursos para gerenciar de forma programática os principais aspectos financeiros de uma empresa, desde a criação de eventos de contas a receber ou pagar, passando pela gestão de contas financeiras, centros de custo, categorias, até a consulta de saldos. Com esta API, sistemas podem integrar de forma fluida com o módulo financeiro da Conta Azul, garantindo que lançamentos, saldos, classificações e relatórios estejam sempre sincronizados.\n\nSe desejar aprofundar o entendimento das regras de negócio aplicadas pelo ERP, recomendamos, de forma opcional a consulta à nossa Central de Ajuda:\n\n**Contas a pagar e receber:**  \n[https://ajuda.contaazul.com/hc/pt-br/sections/20564397198989-Lan%C3%A7amentos-financeiros-contas-a-receber-e-a-pagar](https://ajuda.contaazul.com/hc/pt-br/sections/20564397198989-Lan%C3%A7amentos-financeiros-contas-a-receber-e-a-pagar)\n\n**Cadastro e gestão de contas financeiras:**  \n[https://ajuda.contaazul.com/hc/pt-br/sections/20546846147981-Cadastro-e-gest%C3%A3o-de-contas-financeiras](https://ajuda.contaazul.com/hc/pt-br/sections/20546846147981-Cadastro-e-gest%C3%A3o-de-contas-financeiras)\n\n**Categorias financeiras e centro de custos:**  \n[https://ajuda.contaazul.com/hc/pt-br/sections/28553633338765-Categorias-financeiras-e-centros-de-custo](https://ajuda.contaazul.com/hc/pt-br/sections/28553633338765-Categorias-financeiras-e-centros-de-custo)\n"
+  },
+  "servers": [
+    {
+      "url": "https://api-v2.contaazul.com",
+      "description": "Servidor de produção"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "v1",
+      "description": "Conjunto de recursos para acompanhar e administrar as finanças da empresa -  esses recursos incluem centros de custo, parcelas, categorias, categorias dre,  contas financeiras e movimentações (contas a pagar e a receber)"
+    }
+  ],
+  "paths": {
+    "/v1/centro-de-custo": {
+      "summary": "Endpoint de Centros de Custo",
+      "get": {
+        "summary": "Retornar os centros de custo por filtro",
+        "operationId": "searchCostCenters",
+        "tags": [
+          "v1"
+        ],
+        "description": "Permite consultar os centros de custo cadastrados. Suporta filtros como página, tamanho de página, busca por texto, status (ativo/inativo/todos) e ordenação. Utilizado para consultar lançamentos financeiros e facilitar análise orçamentária.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "pagina",
+            "description": "Página",
+            "example": 1,
+            "schema": {
+              "type": "number"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "tamanho_pagina",
+            "description": "Tamanho da página",
+            "example": 10,
+            "schema": {
+              "enum": [
+                10,
+                20,
+                50,
+                100,
+                200,
+                500,
+                1000
+              ],
+              "type": "number"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "busca",
+            "description": "Busca textual por nome ou código",
+            "example": "010",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "filtro_rapido",
+            "description": "Filtro rápido para itens ativos, inativos ou todos",
+            "example": "ATIVO",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ATIVO",
+                "INATIVO",
+                "TODOS"
+              ]
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "campo_ordenado_ascendente",
+            "description": "Campo para ordenação ascendente. Se informado ele desconsidera o valor do campo_ordenado_descendente. É possível ordenar por nome ou por código",
+            "example": "nome",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "campo_ordenado_descendente",
+            "description": "Campo para ordenação descendente. Se este campo for utilizado, o campo campo_ordenado_ascendente  não deverá ser informado. É possível ordenar por nome ou por código",
+            "example": "nome",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CentroDeCustoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Criar um novo centro de custo",
+        "operationId": "createCostCenter",
+        "tags": [
+          "v1"
+        ],
+        "description": "Permite criar um novo centro de custo, definindo campos como código, nome, parâmetros que ajudam a organizar os custos da empresa de forma estruturada.",
+        "requestBody": {
+          "description": "Dados do centro de custo a ser criado",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CriacaoCentroDeCustoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CentroDeCusto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/v1/financeiro/eventos-financeiros/{id_evento}/parcelas": {
+      "summary": "Endpoint de parcelas por evento financeiro",
+      "get": {
+        "summary": "Retornar as parcelas pelo id do evento financeiro",
+        "operationId": "getInstallmentsByEventId",
+        "description": "Permite listar as parcelas vinculadas a um evento financeiro específico (id_evento). Útil para acompanhar cada parcela de um lançamento de contas a pagar ou receber, com seus valores, vencimentos e status e outras informações pertinentes.",
+        "tags": [
+          "v1"
+        ],
+        "parameters": [
+          {
+            "name": "id_evento",
+            "in": "path",
+            "description": "uuid ou id legado do evento",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Parcela"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/v1/categorias": {
+      "summary": "Endpoint de Categorias",
+      "get": {
+        "summary": "Retornar as categorias por filtro",
+        "operationId": "searchCategories",
+        "tags": [
+          "v1"
+        ],
+        "description": "Permite listar as categorias utilizadas para classificação de receitas ou despesas. Auxilia no controle, agrupamento e geração de relatórios financeiros baseados em categorias.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "pagina",
+            "description": "Página",
+            "example": 1,
+            "schema": {
+              "type": "number"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "tamanho_pagina",
+            "description": "Tamanho da página",
+            "example": 10,
+            "schema": {
+              "enum": [
+                10,
+                20,
+                50,
+                100,
+                200,
+                500,
+                1000
+              ],
+              "type": "number"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "campo_ordenado_ascendente",
+            "description": "Campo para ordenação ascendente. Se informado ele desconsidera o valor do  campo_ordenado_descendente. É possível ordenar por 'NOME' ou 'TIPO'",
+            "example": "NOME",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NOME",
+                "TIPO"
+              ]
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "campo_ordenado_descendente",
+            "description": "Campo para ordenação descendente. Se este campo for utilizado, o campo campo_ordenado_ascendente não  deverá ser informado. É possível ordenar por 'NOME' ou 'TIPO'",
+            "example": "TIPO",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NOME",
+                "TIPO"
+              ]
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "busca",
+            "description": "Busca textual por nome ou código",
+            "example": "010",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "tipo",
+            "description": "Tipo da categoria",
+            "example": "RECEITA",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "RECEITA",
+                "DESPESA"
+              ]
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "apenas_filhos",
+            "description": "Filtrar apenas categorias filhas",
+            "example": true,
+            "schema": {
+              "type": "boolean"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "nome",
+            "description": "Nome da categoria",
+            "example": "Eletrônicos",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "permite_apenas_filhos",
+            "description": "Permite apenas categorias filhas",
+            "example": true,
+            "schema": {
+              "type": "boolean"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "itens_totais": {
+                      "type": "integer",
+                      "example": 6
+                    },
+                    "itens": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Categoria"
+                      }
+                    },
+                    "totais": {
+                      "$ref": "#/components/schemas/Totais"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/v1/financeiro/categorias-dre": {
+      "get": {
+        "summary": "Retornar as categorias DRE",
+        "operationId": "searchDreCategories",
+        "description": "Permite listar as categorias de DRE (Demonstração do Resultado do Exercício) usadas para a estrutura contábil-financeira da empresa, facilitando o fechamento financeiro e contábil.",
+        "tags": [
+          "v1"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstruturaDRE"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/v1/conta-financeira": {
+      "summary": "Endpoint de Contas Financeiras",
+      "get": {
+        "summary": "Retornar as contas financeiras por filtro",
+        "operationId": "searchFinancialAccounts",
+        "tags": [
+          "v1"
+        ],
+        "description": "Permite consultar as contas financeiras existentes no sistema (contas bancárias, cartões, poupança, etc.). Suporta filtros como tipo de conta, nome, se estão ativas, entre outros.",
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "description": "Página",
+            "required": false,
+            "example": 1,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "tamanho_pagina",
+            "in": "query",
+            "description": "Tamanho da página",
+            "example": 10,
+            "schema": {
+              "enum": [
+                10,
+                20,
+                50,
+                100,
+                200,
+                500,
+                1000
+              ],
+              "type": "integer"
+            },
+            "required": false
+          },
+          {
+            "name": "tipos",
+            "in": "query",
+            "description": "Lista de tipos de conta",
+            "example": "APLICACAO",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "APLICACAO",
+                  "CAIXINHA",
+                  "CONTA_CORRENTE",
+                  "CARTAO_CREDITO",
+                  "INVESTIMENTO",
+                  "OUTROS",
+                  "MEIOS_RECEBIMENTO",
+                  "POUPANCA",
+                  "COBRANCAS_CONTA_AZUL",
+                  "RECEBA_FACIL_CARTAO"
+                ]
+              }
+            }
+          },
+          {
+            "name": "nome",
+            "in": "query",
+            "description": "Nome da conta",
+            "example": "Conta corrente",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apenas_ativo",
+            "in": "query",
+            "description": "Filtrar apenas contas ativas",
+            "example": true,
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "esconde_conta_digital",
+            "in": "query",
+            "description": "Esconder contas digitais",
+            "example": true,
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "mostrar_caixinha",
+            "in": "query",
+            "description": "Mostrar contas de caixinha",
+            "example": true,
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "itens_totais": {
+                      "type": "integer",
+                      "example": 6
+                    },
+                    "itens": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContaFinanceira"
+                      }
+                    },
+                    "totais": {
+                      "$ref": "#/components/schemas/Totais"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/v1/conta-financeira/{id_conta_financeira}/saldo-atual": {
+      "summary": "Endpoint de saldo atual da conta financeira",
+      "get": {
+        "summary": "Retornar o saldo atual pelo id da conta financeira",
+        "operationId": "searchBalanceByFinancialAccountId",
+        "tags": [
+          "v1"
+        ],
+        "description": "Permite obter o saldo atual de uma conta financeira específica identificada por id_conta_financeira. Útil para monitoramento em tempo real de saldos das contas da empresa.",
+        "parameters": [
+          {
+            "name": "id_conta_financeira",
+            "in": "path",
+            "description": "uuid da conta financeira",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaldoAtualResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 400
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "O valor 'fbbccb85-a71a-4dfdb699-56ac1b5f1115' fornecido no parâmetro 'id_conta_financeira' não é um identificador (uuid) válido."
+                    }
+                  }
+                },
+                "example": {
+                  "code": 400,
+                  "message": "O valor 'fbbccb85-a71a-4dfdb699-56ac1b5f1115' fornecido no parâmetro 'id_conta_financeira' não é um identificador (uuid) válido."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 401
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "The Token has expired."
+                    }
+                  }
+                },
+                "example": {
+                  "code": 401,
+                  "message": "The Token has expired."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 500
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Ocorreu um erro inesperado no servidor. Tente novamente mais tarde."
+                    }
+                  }
+                },
+                "example": {
+                  "code": 500,
+                  "message": "Ocorreu um erro inesperado no servidor. Tente novamente mais tarde."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/financeiro/transferencias": {
+      "summary": "Endpoint de Transferências entre Contas Financeiras",
+      "get": {
+        "summary": "Retornar as transferências entre contas financeiras por filtro",
+        "operationId": "searchAccountingExportTransfers",
+        "tags": [
+          "v1"
+        ],
+        "description": "Permite consultar as transferências realizadas entre contas financeiras mediante filtros como período de datas e contas financeiras específicas. Para viabilizar a conciliação financeira automática e sincronizar corretamente as movimentações no meu sistema.",
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "description": "Número da página para paginação dos resultados",
+            "example": 1,
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "tamanho_pagina",
+            "in": "query",
+            "description": "Quantidade de itens por página",
+            "example": 10,
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "enum": [
+                10,
+                20,
+                50,
+                100,
+                200,
+                500,
+                1000
+              ]
+            }
+          },
+          {
+            "name": "ids_conta_financeira",
+            "in": "query",
+            "description": "Lista de identificadores (UUIDs) das contas financeiras para filtrar as transferências. Retorna transferências onde as contas especificadas sejam origem ou destino.",
+            "example": [
+              "35473eec-4e74-11ee-b500-9f61de8a8b8b",
+              "8f2a3e45-1c9d-4b3a-a7f1-9e8d7c6b5a4f"
+            ],
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "data_inicio",
+            "in": "query",
+            "description": "Data inicial do período para filtrar as transferências (formato ISO date)",
+            "example": "2026-01-01",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_fim",
+            "in": "query",
+            "description": "Data final do período para filtrar as transferências (formato ISO date)",
+            "example": "2026-12-31",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK - Retorna a lista paginada de transferências entre contas financeiras",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferenciaContaFinanceiraResponse"
+                },
+                "examples": {
+                  "exemplo_sucesso": {
+                    "summary": "Exemplo de resposta com transferências",
+                    "value": {
+                      "itens_totais": 2,
+                      "itens": [
+                        {
+                          "id": "35473eec-4e74-11ee-b500-9f61de8a8b8b",
+                          "descricao": "Transferência para conta poupança",
+                          "valor": 1500.5,
+                          "data": "2026-02-15",
+                          "origem": {
+                            "data": "2026-02-15",
+                            "composicao_valor": {
+                              "valor_bruto": 1500.5,
+                              "juros": 0,
+                              "multa": 0,
+                              "valor_liquido": 1500.5,
+                              "desconto": 0,
+                              "taxa": 0
+                            },
+                            "conta_financeira": {
+                              "id": "8f2a3e45-1c9d-4b3a-a7f1-9e8d7c6b5a4f",
+                              "nome": "Conta Corrente Principal",
+                              "instituicao_bancaria": {
+                                "codigo": 1,
+                                "nome": "Banco do Brasil"
+                              }
+                            }
+                          },
+                          "destino": {
+                            "data": "2026-02-15",
+                            "composicao_valor": {
+                              "valor_bruto": 1500.5,
+                              "juros": 0,
+                              "multa": 0,
+                              "valor_liquido": 1500.5,
+                              "desconto": 0,
+                              "taxa": 0
+                            },
+                            "conta_financeira": {
+                              "id": "7d1b2c34-8a5e-4f6d-b9c2-3e4f5a6b7c8d",
+                              "nome": "Conta Poupança",
+                              "instituicao_bancaria": {
+                                "codigo": 1,
+                                "nome": "Banco do Brasil"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "id": "9a8b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d",
+                          "descricao": "Transferência para investimento",
+                          "valor": 5000,
+                          "data": "2026-02-20",
+                          "origem": {
+                            "data": "2026-02-20",
+                            "composicao_valor": {
+                              "valor_bruto": 5000,
+                              "juros": 0,
+                              "multa": 0,
+                              "valor_liquido": 5000,
+                              "desconto": 0,
+                              "taxa": 0
+                            },
+                            "conta_financeira": {
+                              "id": "8f2a3e45-1c9d-4b3a-a7f1-9e8d7c6b5a4f",
+                              "nome": "Conta Corrente Principal",
+                              "instituicao_bancaria": {
+                                "codigo": 341,
+                                "nome": "Itaú"
+                              }
+                            }
+                          },
+                          "destino": {
+                            "data": "2026-02-20",
+                            "composicao_valor": {
+                              "valor_bruto": 5000,
+                              "juros": 0,
+                              "multa": 0,
+                              "valor_liquido": 5000,
+                              "desconto": 0,
+                              "taxa": 0
+                            },
+                            "conta_financeira": {
+                              "id": "6c5d4e3f-2a1b-9c8d-7e6f-5a4b3c2d1e0f",
+                              "nome": "Conta Investimento",
+                              "instituicao_bancaria": {
+                                "codigo": 341,
+                                "nome": "Itaú"
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "exemplo_vazio": {
+                    "summary": "Exemplo de resposta sem transferências",
+                    "value": {
+                      "itens_totais": 0,
+                      "itens": []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Parâmetros inválidos na requisição",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 400
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "A data de início não pode ser posterior à data de fim."
+                    }
+                  }
+                },
+                "examples": {
+                  "data_invalida": {
+                    "summary": "Erro de validação de datas",
+                    "value": {
+                      "code": 400,
+                      "message": "A data de início não pode ser posterior à data de fim."
+                    }
+                  },
+                  "uuid_invalido": {
+                    "summary": "Erro de UUID inválido",
+                    "value": {
+                      "code": 400,
+                      "message": "O valor fornecido no parâmetro 'ids_conta_financeira' não é um identificador (uuid) válido."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token de autenticação inválido ou expirado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 401
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "The Token has expired."
+                    }
+                  }
+                },
+                "example": {
+                  "code": 401,
+                  "message": "The Token has expired."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Limite de requisições excedido"
+          },
+          "500": {
+            "description": "Internal Server Error - Erro interno no servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 500
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Ocorreu um erro inesperado no servidor. Tente novamente mais tarde."
+                    }
+                  }
+                },
+                "example": {
+                  "code": 500,
+                  "message": "Ocorreu um erro inesperado no servidor. Tente novamente mais tarde."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/financeiro/eventos-financeiros/contas-a-receber": {
+      "post": {
+        "summary": "Criar um novo evento financeiro de contas a receber",
+        "operationId": "createReceivableFinancialEvent",
+        "description": "Permite criar um novo evento financeiro de contas a receber, passando dados como data de competência, valor, descrição, conta financeira, condições de pagamento, entre outros. Facilita o registro de receitas previstas ou realizadas.",
+        "tags": [
+          "v1"
+        ],
+        "requestBody": {
+          "description": "Dados do evento financeiro de contas a receber",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventoFinanceiroRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Evento financeiro de contas a receber criado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProtocolResponseDTO"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/v1/financeiro/eventos-financeiros/contas-a-receber/buscar": {
+      "summary": "Endpoint de Contas a Receber",
+      "get": {
+        "summary": "Retornar as receitas por filtro",
+        "operationId": "searchInstallmentsToReceiveByFilter",
+        "description": "Permite consultar as parcelas de receitas (contas a receber) mediante filtros como data de vencimento, data de competência, data de pagamento, data de alteração, valor, status, dentre outros. Essa funcionalidade ajuda no controle e análise de entradas financeiras com base nas condições definidas.",
+        "tags": [
+          "v1"
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "description": "Página",
+            "example": 1,
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "tamanho_pagina",
+            "in": "query",
+            "description": "Tamanho da página",
+            "example": 10,
+            "schema": {
+              "enum": [
+                10,
+                20,
+                50,
+                100,
+                200,
+                500,
+                1000
+              ],
+              "type": "integer",
+              "minimum": 1
+            },
+            "required": true
+          },
+          {
+            "name": "campo_ordenado_ascendente",
+            "in": "query",
+            "description": "Campo para ordenação ascendente. Se informado ele desconsidera o valor do campo_ordenado_descendente. É possível ordenar por nome",
+            "required": false,
+            "example": "nome",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "campo_ordenado_descendente",
+            "in": "query",
+            "description": "Campo para ordenação descendente. Se este campo for utilizado, o campo campo_ordenado_ascendente não deverá ser informado. É possível ordenar por nome",
+            "example": "nome",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "descricao",
+            "in": "query",
+            "description": "Descrição da conta",
+            "example": "Conta Corrente",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "data_vencimento_de",
+            "in": "query",
+            "description": "Data de vencimento de (ISO date format)",
+            "example": "2027-08-15",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_vencimento_ate",
+            "in": "query",
+            "description": "Data de vencimento até (ISO date format)",
+            "example": "2027-08-20",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_competencia_de",
+            "in": "query",
+            "description": "Data de competência de (ISO date format)",
+            "example": "2025-08-15",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_competencia_ate",
+            "in": "query",
+            "description": "Data de competência até (ISO date format)",
+            "example": "2025-08-20",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_pagamento_de",
+            "in": "query",
+            "description": "Data de pagamento de (ISO date format)",
+            "example": "2025-08-15",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_pagamento_ate",
+            "in": "query",
+            "description": "Data de pagamento até (ISO date format)",
+            "example": "2025-08-20",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_alteracao_de",
+            "in": "query",
+            "description": "Data de alteração de (ISO 8601, São Paulo/GMT-3)",
+            "example": "2025-10-20T07:00:00",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "data_alteracao_ate",
+            "in": "query",
+            "description": "Data de alteração até (ISO 8601, São Paulo/GMT-3)",
+            "example": "2025-10-20T07:59:59",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "valor_de",
+            "in": "query",
+            "description": "Valor de",
+            "example": "100",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]{1,2})?$",
+              "example": "999.99"
+            }
+          },
+          {
+            "name": "valor_ate",
+            "in": "query",
+            "description": "Valor até",
+            "example": "500",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]{1,2})?$",
+              "example": "999.99"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Status da conta",
+            "example": "ATRASADO",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "PERDIDO",
+                  "RECEBIDO",
+                  "EM_ABERTO",
+                  "RENEGOCIADO",
+                  "RECEBIDO_PARCIAL",
+                  "ATRASADO"
+                ]
+              }
+            }
+          },
+          {
+            "name": "ids_contas_financeiras",
+            "in": "query",
+            "description": "Lista de IDs de contas financeiras",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "ids_categorias",
+            "in": "query",
+            "description": "Lista de IDs de categorias",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "ids_centros_de_custo",
+            "in": "query",
+            "description": "Lista de IDs de centros de custo",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "ids_clientes",
+            "in": "query",
+            "description": "Lista de IDs de clientes",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContasAReceberResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/v1/financeiro/eventos-financeiros/contas-a-pagar": {
+      "post": {
+        "summary": "Criar um novo evento financeiro de contas a pagar",
+        "operationId": "createPayableFinancialEvent",
+        "description": "Permite criar um novo evento financeiro de contas a pagar, informando dados como valor, condições de pagamento, descrição, conta financeira, entre outros. Esse endpoint facilita o registro das obrigações financeiras da empresa.",
+        "tags": [
+          "v1"
+        ],
+        "requestBody": {
+          "description": "Dados do evento financeiro de contas a pagar",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventoFinanceiroRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Evento financeiro de conta a pagar criado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProtocolResponseDTO"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar": {
+      "get": {
+        "summary": "Retornar as despesas por filtro",
+        "operationId": "searchInstallmentsToPayByFilter",
+        "description": "Permite consultar as parcelas de despesas (contas a pagar) conforme filtros como data de vencimento, data competência, data de alteração, valor, status, conta financeira, etc. Essa consulta possibilita monitorar as obrigações financeiras pendentes ou pagas, favorecendo a gestão e o planejamento.",
+        "tags": [
+          "v1"
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "description": "Página",
+            "example": 1,
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "tamanho_pagina",
+            "in": "query",
+            "description": "Tamanho da página",
+            "example": 10,
+            "required": true,
+            "schema": {
+              "enum": [
+                10,
+                20,
+                50,
+                100,
+                200,
+                500,
+                1000
+              ],
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "campo_ordenado_ascendente",
+            "in": "query",
+            "required": false,
+            "description": "Campo para ordenação ascendente. Se informado ele desconsidera o valor do campo_ordenado_descendente. É possível ordenar por id do centro de custo (id),  pelo código (CODIGO), pelo nome (NOME) e por ativo (ATIVO)",
+            "example": "nome",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ID",
+                "CODIGO",
+                "NOME",
+                "ATIVO"
+              ]
+            }
+          },
+          {
+            "name": "campo_ordenado_descendente",
+            "in": "query",
+            "required": false,
+            "description": "Campo para ordenação descendente. Se este campo for utilizado, o campo campo_ordenado_ascendente não  deverá ser informado. É possível ordenar por id do centro de custo (id), pelo código (CODIGO), pelo  nome (NOME) ou por ativo (ATIVO)",
+            "example": "nome",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ID",
+                "CODIGO",
+                "NOME",
+                "ATIVO"
+              ]
+            }
+          },
+          {
+            "name": "descricao",
+            "in": "query",
+            "description": "Descrição da conta",
+            "example": "Pagamento do salário",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "data_vencimento_de",
+            "in": "query",
+            "description": "Date de vencimento de (ISO date format)",
+            "example": "2027-08-15",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_vencimento_ate",
+            "in": "query",
+            "description": "Data de vencimento até (ISO date format)",
+            "example": "2027-08-20",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_competencia_de",
+            "in": "query",
+            "description": "Data de competência de (ISO date format)",
+            "example": "2025-08-15",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_competencia_ate",
+            "in": "query",
+            "description": "Data de competência até (ISO date format)",
+            "example": "2025-08-20",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_pagamento_de",
+            "in": "query",
+            "description": "Data de pagamento de (ISO date format)",
+            "example": "2025-08-15",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_pagamento_ate",
+            "in": "query",
+            "description": "Data de pagamento até (ISO date format)",
+            "example": "2025-08-20",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "data_alteracao_de",
+            "in": "query",
+            "description": "Data de alteração de (ISO 8601, São Paulo/GMT-3)",
+            "example": "2025-10-20T07:00:00",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "data_alteracao_ate",
+            "in": "query",
+            "description": "Data de alteração até (ISO 8601, São Paulo/GMT-3)",
+            "example": "2025-10-20T07:59:59",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "valor_de",
+            "in": "query",
+            "description": "Valor de",
+            "example": "100",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]{1,2})?$",
+              "example": "110.10"
+            }
+          },
+          {
+            "name": "valor_ate",
+            "in": "query",
+            "description": "Valor até",
+            "example": "500",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+(\\.[0-9]{1,2})?$",
+              "example": "110.10"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Lista de status da conta",
+            "example": "ATRASADO",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "PERDIDO",
+                  "RECEBIDO",
+                  "EM_ABERTO",
+                  "RENEGOCIADO",
+                  "RECEBIDO_PARCIAL",
+                  "ATRASADO"
+                ]
+              }
+            }
+          },
+          {
+            "name": "ids_contas_financeiras",
+            "in": "query",
+            "description": "Lista de IDs de contas financeiras",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "ids_categorias",
+            "in": "query",
+            "description": "Lista de IDs de categorias",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "ids_centros_de_custo",
+            "in": "query",
+            "description": "Lista de IDs de centros de custo",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "itens_totais": {
+                      "type": "integer",
+                      "example": 6
+                    },
+                    "itens": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ContaAPagar"
+                      }
+                    },
+                    "totais": {
+                      "type": "object",
+                      "properties": {
+                        "ativo": {
+                          "type": "integer",
+                          "example": 6
+                        },
+                        "inativo": {
+                          "type": "integer",
+                          "example": 0
+                        },
+                        "todos": {
+                          "type": "integer",
+                          "example": 6
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/v1/financeiro/eventos-financeiros/parcelas/{id}": {
+      "summary": "Endpoint de busca de parcelas por id",
+      "get": {
+        "summary": "Retornar a parcela por id",
+        "operationId": "getInstallmentById",
+        "description": "Permite consultar os detalhes de uma parcela específica (de conta a receber ou a pagar) identificada pelo seu id. A resposta traz campos como data de vencimento, valor, status, conta financeira, entre outros.",
+        "tags": [
+          "v1"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "9986f173-f531-4660-96ae-04b71c879264"
+            },
+            "description": "Identificador único da parcela"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Informações da parcela retornadas com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Parcela"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Atualizar parcialmente uma parcela por id",
+        "operationId": "updateInstallment",
+        "description": "Permite atualizar parcialmente uma parcela existente identificada pelo id, alterando campos como data de vencimento, valor, observações, conta financeira e outros campos permitidos. Essa operação ajuda a ajustar lançamentos financeiros sem a necessidade de recriá-los.",
+        "tags": [
+          "v1"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "9986f173-f531-4660-96ae-04b71c879264"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Campos aceitos para atualização da parcela",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParcelaAtualizacaoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParcelaAtualizacaoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/v1/financeiro/eventos-financeiros/alteracoes": {
+      "summary": "Endpoint de busca de IDs dos eventos financeiros alterados",
+      "get": {
+        "summary": "Retornar os IDs dos eventos financeiros alterados em um período",
+        "operationId": "getAlteredFinancialEvents",
+        "description": "Permite consultar os IDs dos eventos financeiros (contas a pagar e a receber) que foram alterados em um período  definido por data de ínico e fim. Essa funcionalidade é útil para identificar quais eventos sofreram modificações  recentes, facilitando a sincronização e o monitoramento de mudanças nos dados financeiros. Importante: As informações disponíveis indicam a data e hora em que o evento foi salvo, sem detalhar quais campos  foram modificados em cada operação. Salvar um recurso sem alterações reais pode gerar uma entrada no histórico e  atualizar a data do último registro.",
+        "tags": [
+          "v1"
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "description": "Página",
+            "required": false,
+            "example": 1,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "tamanho_pagina",
+            "in": "query",
+            "description": "Tamanho da página",
+            "required": false,
+            "example": 10,
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "data_inicio",
+            "in": "query",
+            "description": "Data inicial do período para filtrar os eventos financeiros alterados (ISO 8601, São Paulo/GMT-3)",
+            "example": "2026-01-01T23:59:59",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "data_fim",
+            "in": "query",
+            "description": "Data final do período para filtrar os eventos financeiros alterados (ISO 8601, São Paulo/GMT-3)",
+            "example": "2026-03-12T23:59:59",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "itens_totais": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "itens": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/EventoFinanceiro"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/v1/financeiro/eventos-financeiros/saldo-inicial": {
+      "summary": "Endpoint de busca dos saldos iniciais das contas financeiras",
+      "get": {
+        "summary": "Retornar os saldos iniciais das contas financeiras",
+        "operationId": "getInitialBalancesOfFinancialAccounts",
+        "description": "Permite consultar os saldos iniciais das contas financeiras em um período definido por data de início e fim.",
+        "tags": [
+          "v1"
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "description": "Página",
+            "required": false,
+            "example": 1,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "tamanho_pagina",
+            "in": "query",
+            "description": "Tamanho da página",
+            "required": false,
+            "example": 10,
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "data_inicio",
+            "in": "query",
+            "description": "Data inicial do período para filtrar os saldos iniciais (ISO 8601, São Paulo/GMT-3)",
+            "example": "2026-01-01T23:59:59",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "data_fim",
+            "in": "query",
+            "description": "Data final do período para filtrar os saldos iniciais (ISO 8601, São Paulo/GMT-3)",
+            "example": "2026-03-12T23:59:59",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "itens_totais": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "itens": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SaldoInicialContaFinanceira"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token de autorização Bearer JWT"
+      }
+    },
+    "schemas": {
+      "CentroDeCusto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identificador único do centro de custo",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "codigo": {
+            "type": "string",
+            "nullable": true,
+            "description": "Código do centro de custo",
+            "example": "1040"
+          },
+          "nome": {
+            "type": "string",
+            "description": "Nome do centro de custo",
+            "example": "Contabilidade"
+          },
+          "ativo": {
+            "type": "boolean",
+            "description": "Indica se o centro de custo está ativo",
+            "example": true
+          }
+        }
+      },
+      "CriacaoCentroDeCustoRequest": {
+        "type": "object",
+        "required": [
+          "nome"
+        ],
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "nullable": true,
+            "description": "Código do centro de custo",
+            "example": "1040"
+          },
+          "nome": {
+            "type": "string",
+            "description": "Nome do centro de custo",
+            "example": "Contabilidade"
+          }
+        }
+      },
+      "Totais": {
+        "type": "object",
+        "properties": {
+          "ativo": {
+            "type": "integer",
+            "description": "Total de centros de custo ativos",
+            "example": 6
+          },
+          "inativo": {
+            "type": "integer",
+            "description": "Total de centros de custo inativos",
+            "example": 0
+          },
+          "todos": {
+            "type": "integer",
+            "description": "Total de centros de custo",
+            "example": 6
+          }
+        }
+      },
+      "CentroDeCustoResponse": {
+        "type": "object",
+        "properties": {
+          "itens_totais": {
+            "type": "integer",
+            "example": 6
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CentroDeCusto"
+            }
+          },
+          "totais": {
+            "$ref": "#/components/schemas/Totais"
+          }
+        }
+      },
+      "ContasAReceberResponse": {
+        "type": "object",
+        "properties": {
+          "itens_totais": {
+            "type": "integer",
+            "example": 6
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContaAReceber"
+            }
+          },
+          "totais": {
+            "$ref": "#/components/schemas/Totais"
+          }
+        }
+      },
+      "NegociadorContaAPagarOuReceber": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "nome": {
+            "type": "string",
+            "example": "Maria da Silva"
+          }
+        }
+      },
+      "CategoriaParcela": {
+        "type": "object",
+        "description": "Estrutura resumida de categoria enviada em itens de parcela",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identificador único da categoria",
+            "example": "b134ec6b-30f8-4edc-9a8f-4787fd3381ac"
+          },
+          "nome": {
+            "description": "Nome da categoria",
+            "type": "string",
+            "example": "Adiantamento Salarial"
+          }
+        }
+      },
+      "CentroCustoParcela": {
+        "type": "object",
+        "description": "Estrutura resumida de centro de custo enviada em itens de parcela",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "428389c6-4e74-11ee-a3eb-9b5f0f22a7c1",
+            "description": "Identificador único do centro de custo"
+          },
+          "nome": {
+            "type": "string",
+            "example": "Centro de custo de Teste",
+            "description": "Nome do centro de custo"
+          }
+        }
+      },
+      "ContaAReceber": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "c6a28b6e-efe4-11ee-8ef8-8b86c5251537"
+          },
+          "descricao": {
+            "type": "string",
+            "example": "Venda de Produtos"
+          },
+          "data_vencimento": {
+            "type": "string",
+            "example": "2027-08-15"
+          },
+          "status": {
+            "type": "string",
+            "example": "OVERDUE"
+          },
+          "status_traduzido": {
+            "example": "ATRASADO",
+            "type": "string",
+            "enum": [
+              "PERDIDO",
+              "RECEBIDO",
+              "EM_ABERTO",
+              "RENEGOCIADO",
+              "RECEBIDO_PARCIAL",
+              "ATRASADO"
+            ]
+          },
+          "total": {
+            "type": "number",
+            "example": 781201.79
+          },
+          "nao_pago": {
+            "type": "number",
+            "example": 213023.79
+          },
+          "pago": {
+            "type": "number",
+            "example": 0
+          },
+          "data_criacao": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2027-08-15T14:30:00Z"
+          },
+          "data_alteracao": {
+            "type": "string",
+            "description": "Data de alteração da conta a receber (ISO 8601, São Paulo/GMT-3)",
+            "format": "date-time",
+            "example": "2027-08-15T14:30:00Z"
+          },
+          "data_competencia": {
+            "type": "string",
+            "format": "date",
+            "description": "Data de competência da parcela (campo data_competencia)",
+            "example": "2018-03-16"
+          },
+          "categorias": {
+            "type": "array",
+            "description": "Lista de categorias associadas à parcela (id e nome)",
+            "items": {
+              "$ref": "#/components/schemas/CategoriaParcela"
+            }
+          },
+          "centros_custo": {
+            "type": "array",
+            "description": "Lista de centros de custo associados à parcela (id e nome)",
+            "items": {
+              "$ref": "#/components/schemas/CentroCustoParcela"
+            }
+          },
+          "cliente": {
+            "$ref": "#/components/schemas/NegociadorContaAPagarOuReceber"
+          },
+          "renegociacao": {
+            "$ref": "#/components/schemas/RenegociacaoContaAReceber"
+          }
+        }
+      },
+      "ContaAPagar": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "c6a28b6e-efe4-11ee-8ef8-8b86c5251537"
+          },
+          "descricao": {
+            "type": "string",
+            "example": "Aluguel do escritório"
+          },
+          "data_vencimento": {
+            "type": "string",
+            "example": "2027-08-15"
+          },
+          "status": {
+            "type": "string",
+            "example": "OVERDUE"
+          },
+          "status_traduzido": {
+            "example": "ATRASADO",
+            "type": "string",
+            "enum": [
+              "PERDIDO",
+              "RECEBIDO",
+              "EM_ABERTO",
+              "RENEGOCIADO",
+              "RECEBIDO_PARCIAL",
+              "ATRASADO"
+            ]
+          },
+          "total": {
+            "type": "number",
+            "example": 781201.79
+          },
+          "nao_pago": {
+            "type": "number",
+            "example": 213023.79
+          },
+          "pago": {
+            "type": "number",
+            "example": 0
+          },
+          "data_criacao": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2027-08-15T14:30:00Z"
+          },
+          "data_alteracao": {
+            "type": "string",
+            "description": "Data de alteração da conta a pagar (ISO 8601, São Paulo/GMT-3)",
+            "format": "date-time",
+            "example": "2027-08-15T14:30:00Z"
+          },
+          "data_competencia": {
+            "type": "string",
+            "format": "date",
+            "description": "Data de competência da parcela (campo data_competencia)",
+            "example": "2018-03-16"
+          },
+          "categorias": {
+            "type": "array",
+            "description": "Lista de categorias associadas à parcela (id e nome)",
+            "items": {
+              "$ref": "#/components/schemas/CategoriaParcela"
+            }
+          },
+          "centros_custo": {
+            "type": "array",
+            "description": "Lista de centros de custo associados à parcela (id e nome)",
+            "items": {
+              "$ref": "#/components/schemas/CentroCustoParcela"
+            }
+          },
+          "fornecedor": {
+            "$ref": "#/components/schemas/NegociadorContaAPagarOuReceber"
+          }
+        }
+      },
+      "Categoria": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "versao": {
+            "type": "integer",
+            "example": 0
+          },
+          "nome": {
+            "type": "string",
+            "example": "Eletrônicos"
+          },
+          "categoria_pai": {
+            "type": "string",
+            "nullable": true,
+            "example": "3d39b8d2-8b16-42d6-abd8-6cfd9d2e06c4"
+          },
+          "tipo": {
+            "type": "string",
+            "example": "RECEITA"
+          },
+          "entrada_dre": {
+            "type": "string",
+            "example": "DESPESAS_ADMINISTRATIVAS"
+          },
+          "considera_custo_dre": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "ContaFinanceira": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b",
+            "description": "Identificador único da conta financeira"
+          },
+          "banco": {
+            "type": "string",
+            "description": "Instituição bancária",
+            "example": "BANCO_BRASIL",
+            "enum": [
+              "BANCO_BRASIL",
+              "BRADESCO",
+              "CAIXA_ECONOMICA",
+              "HSBC",
+              "ITAU",
+              "INTER",
+              "ORIGINAL",
+              "SANTANDER",
+              "BANCOOB",
+              "BANESTES",
+              "BANPARA",
+              "BANRISUL",
+              "BCN",
+              "BANK_BOSTON",
+              "BANCO_BRASILIA",
+              "BANCO_NORDESTE",
+              "CITIBANK",
+              "CREDISAN",
+              "NOSSA_CAIXA",
+              "MERCANTIL",
+              "REAL",
+              "SAFRA",
+              "SICREDI",
+              "SUDAMERIS",
+              "UNIBANCO",
+              "SICOOB",
+              "AILOS",
+              "BS2",
+              "NUBANK",
+              "UNICRED",
+              "NEON",
+              "C6",
+              "CORA",
+              "ACESSO",
+              "STONE",
+              "AGIBANK",
+              "ASAAS",
+              "TOPAZIO",
+              "DAYCOVAL",
+              "BANCO_AMAZONIA",
+              "BANESE",
+              "BTG_PACTUAL",
+              "OMNI",
+              "GENIAL",
+              "CAPITAL",
+              "RIBEIRAO_PRETO",
+              "PAN",
+              "BMG",
+              "BNP_PARIBAS_BRASIL",
+              "CCR_SAO_MIGUEL_OESTE",
+              "CREDISIS",
+              "CRESOL",
+              "FITBANK",
+              "GERENCIANET",
+              "GLOBAL_SCM",
+              "JP_MORGAN",
+              "JUNO",
+              "MERCADO_PAGO",
+              "MODAL",
+              "MONEY_PLUS",
+              "NEXT",
+              "OTIMO",
+              "PAGSEGURO",
+              "PICPAY",
+              "PJBANK",
+              "POLOCRED",
+              "RENDIMENTO",
+              "UNIPRIME",
+              "UNIPRIME_NORTE_PARANA",
+              "VORTX_DTVM",
+              "BRL_TRUST",
+              "IUGU",
+              "OUTROS",
+              "NAO_BANCO"
+            ]
+          },
+          "codigo_banco": {
+            "type": "integer",
+            "example": 1,
+            "description": "Código da instituição bancária"
+          },
+          "nome": {
+            "type": "string",
+            "example": "Conta Corrente",
+            "description": "Nome da conta financeira"
+          },
+          "ativo": {
+            "type": "boolean",
+            "example": true,
+            "description": "Indica se a conta está ativa"
+          },
+          "tipo": {
+            "type": "string",
+            "description": "Tipo da conta",
+            "example": "APLICACAO",
+            "enum": [
+              "APLICACAO",
+              "CAIXINHA",
+              "CONTA_CORRENTE",
+              "CARTAO_CREDITO",
+              "INVESTIMENTO",
+              "OUTROS",
+              "MEIOS_RECEBIMENTO",
+              "POUPANCA",
+              "COBRANCAS_CONTA_AZUL",
+              "RECEBA_FACIL_CARTAO"
+            ]
+          },
+          "conta_padrao": {
+            "type": "boolean",
+            "example": true,
+            "description": "Indica se é a conta padrão"
+          },
+          "possui_config_boleto_bancario": {
+            "type": "boolean",
+            "example": false,
+            "description": "Indica se a conta possui configuração de boleto bancário"
+          },
+          "agencia": {
+            "type": "string",
+            "example": "001",
+            "description": "Agência da conta"
+          },
+          "numero": {
+            "type": "string",
+            "example": "31",
+            "description": "Número da conta"
+          }
+        }
+      },
+      "SaldoAtualResponse": {
+        "type": "object",
+        "description": "Saldo atual da conta financeira",
+        "properties": {
+          "saldo_atual": {
+            "type": "number",
+            "format": "double",
+            "example": 1000.36
+          }
+        }
+      },
+      "EstruturaDRE": {
+        "type": "object",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "description": "Lista principal de itens da DRE",
+            "items": {
+              "$ref": "#/components/schemas/CategoriaDRE"
+            }
+          }
+        }
+      },
+      "CategoriaDRE": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "id do item da categoria DRE",
+            "example": "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+          },
+          "descricao": {
+            "type": "string",
+            "description": "Descrição do item",
+            "example": "Receita Operacional Bruta"
+          },
+          "codigo": {
+            "type": "string",
+            "description": "Código de identificação do item",
+            "example": "01"
+          },
+          "posicao": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Ordem de posicionamento do item na estrutura",
+            "example": 1
+          },
+          "indica_totalizador": {
+            "type": "boolean",
+            "description": "Indica se o item é um totalizador de subitens",
+            "example": true
+          },
+          "representa_soma_custo_medio": {
+            "type": "boolean",
+            "description": "Indica se o item representa a soma do custo médio do produto",
+            "example": false
+          },
+          "subitens": {
+            "type": "array",
+            "description": "Lista de subitens aninhados",
+            "items": {
+              "$ref": "#/components/schemas/CategoriaDRE"
+            }
+          },
+          "categorias_financeiras": {
+            "type": "array",
+            "description": "Categorias financeiras associadas a este item da DRE",
+            "items": {
+              "$ref": "#/components/schemas/CategoriaFinanceira"
+            }
+          }
+        }
+      },
+      "CategoriaFinanceira": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "id da categoria financeira",
+            "example": "f0e9d8c7-b6a5-4321-fedc-ba9876543210"
+          },
+          "codigo": {
+            "type": "string",
+            "description": "Código da categoria financeira",
+            "example": "1"
+          },
+          "nome": {
+            "type": "string",
+            "description": "Nome da categoria financeira",
+            "example": "Venda de Produtos"
+          },
+          "ativo": {
+            "type": "boolean",
+            "description": "Indica se a categoria financeira está ativa",
+            "example": true
+          }
+        }
+      },
+      "ParcelaAtualizacaoRequest": {
+        "type": "object",
+        "required": [
+          "versao"
+        ],
+        "properties": {
+          "nota": {
+            "type": "string",
+            "description": "Nota da parcela",
+            "example": "Pgto 3/5"
+          },
+          "descricao": {
+            "type": "string",
+            "description": "Descrição da parcela",
+            "example": "Valor líquido referente ao serviço prestado"
+          },
+          "vencimento": {
+            "type": "string",
+            "format": "date",
+            "example": "2024-07-15"
+          },
+          "composicao_valor": {
+            "$ref": "#/components/schemas/ComposicaoValor"
+          },
+          "versao": {
+            "type": "integer",
+            "example": 1,
+            "description": "Sempre enviar o valor atual da versão"
+          },
+          "data_pagamento_esperado": {
+            "type": "string",
+            "format": "date",
+            "example": "2024-07-15"
+          },
+          "metodo_pagamento": {
+            "type": "string",
+            "example": "CARTAO_CREDITO",
+            "enum": [
+              "DINHEIRO",
+              "CARTAO_CREDITO",
+              "BOLETO_BANCARIO",
+              "CARTAO_CREDITO_VIA_LINK",
+              "CHEQUE",
+              "CARTAO_DEBITO",
+              "TRANSFERENCIA_BANCARIA",
+              "OUTRO",
+              "CARTEIRA_DIGITAL",
+              "CASHBACK",
+              "CREDITO_LOJA",
+              "CREDITO_VIRTUA",
+              "DEPOSITO_BANCARIO",
+              "PIX_PAGAMENTO_INSTANTANEO",
+              "PROGRAMA_FIDELIDADE",
+              "SEM_PAGAMENTO",
+              "VALE_ALIMENTACAO",
+              "VALE_COMBUSTIVEL",
+              "VALE_PRESENTE",
+              "VALE_REFEICAO",
+              "PIX_COBRANCA",
+              "DEBITO_AUTOMATICO"
+            ]
+          },
+          "perda": {
+            "$ref": "#/components/schemas/PerdaFinanceira"
+          },
+          "nsu": {
+            "type": "string",
+            "example": "1029384756"
+          },
+          "pagamento_agendado": {
+            "type": "boolean",
+            "example": false
+          },
+          "id_conta_financeira": {
+            "type": "string",
+            "format": "uuid",
+            "example": "e12a84ed-fb5c-4b8c-af56-4448b947337c"
+          }
+        }
+      },
+      "ParcelaAtualizacaoResponse": {
+        "type": "object",
+        "properties": {
+          "nota": {
+            "type": "string",
+            "description": "Nota da parcela",
+            "example": "Pgto 3/5"
+          },
+          "descricao": {
+            "type": "string",
+            "description": "Descrição da parcela",
+            "example": "Valor líquido referente ao serviço prestado"
+          },
+          "vencimento": {
+            "type": "string",
+            "format": "date",
+            "example": "2024-07-15"
+          },
+          "composicao_valor": {
+            "$ref": "#/components/schemas/ComposicaoValor"
+          },
+          "versao": {
+            "type": "integer",
+            "example": 1,
+            "description": "Nova versão da parcela após salvar as alterações"
+          },
+          "data_pagamento_esperado": {
+            "type": "string",
+            "format": "date",
+            "example": "2024-07-15"
+          },
+          "metodo_pagamento": {
+            "type": "string",
+            "example": "CARTAO_CREDITO",
+            "enum": [
+              "DINHEIRO",
+              "CARTAO_CREDITO",
+              "BOLETO_BANCARIO",
+              "CARTAO_CREDITO_VIA_LINK",
+              "CHEQUE",
+              "CARTAO_DEBITO",
+              "TRANSFERENCIA_BANCARIA",
+              "OUTRO",
+              "CARTEIRA_DIGITAL",
+              "CASHBACK",
+              "CREDITO_LOJA",
+              "CREDITO_VIRTUA",
+              "DEPOSITO_BANCARIO",
+              "PIX_PAGAMENTO_INSTANTANEO",
+              "PROGRAMA_FIDELIDADE",
+              "SEM_PAGAMENTO",
+              "VALE_ALIMENTACAO",
+              "VALE_COMBUSTIVEL",
+              "VALE_PRESENTE",
+              "VALE_REFEICAO",
+              "PIX_COBRANCA",
+              "DEBITO_AUTOMATICO"
+            ]
+          },
+          "perda": {
+            "$ref": "#/components/schemas/PerdaFinanceira"
+          },
+          "nsu": {
+            "type": "string",
+            "example": "1029384756"
+          },
+          "pagamento_agendado": {
+            "type": "boolean",
+            "example": false
+          },
+          "conta_financeira": {
+            "$ref": "#/components/schemas/ParcelaContaFinanceira"
+          }
+        }
+      },
+      "ParcelaContaFinanceira": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "6bac0a7f-0422-48a9-86ea-0b1f0a6f9db9"
+          },
+          "versao": {
+            "type": "integer",
+            "example": 1
+          },
+          "nome": {
+            "type": "string",
+            "description": "Nome do banco",
+            "example": "Conta Corrente"
+          },
+          "agencia": {
+            "type": "string",
+            "example": "001"
+          },
+          "numero": {
+            "type": "string",
+            "example": "123"
+          },
+          "tipo": {
+            "type": "string",
+            "example": "OUTROS",
+            "enum": [
+              "APLICACAO",
+              "CAIXINHA",
+              "CONTA_CORRENTE",
+              "CARTAO_CREDITO",
+              "INVESTIMENTO",
+              "OUTROS",
+              "MEIOS_RECEBIMENTO",
+              "POUPANCA",
+              "COBRANCAS_CONTA_AZUL",
+              "RECEBA_FACIL_CARTAO"
+            ]
+          },
+          "banco": {
+            "type": "string",
+            "example": "OUTROS",
+            "enum": [
+              "BANCO_BRASIL",
+              "BRADESCO",
+              "CAIXA_ECONOMICA",
+              "HSBC",
+              "ITAU",
+              "INTER",
+              "ORIGINAL",
+              "SANTANDER",
+              "BANCOOB",
+              "BANESTES",
+              "BANPARA",
+              "BANRISUL",
+              "BCN",
+              "BANK_BOSTON",
+              "BANCO_BRASILIA",
+              "BANCO_NORDESTE",
+              "CITIBANK",
+              "CREDISAN",
+              "NOSSA_CAIXA",
+              "MERCANTIL",
+              "REAL",
+              "SAFRA",
+              "SICREDI",
+              "SUDAMERIS",
+              "UNIBANCO",
+              "SICOOB",
+              "AILOS",
+              "BS2",
+              "NUBANK",
+              "UNICRED",
+              "NEON",
+              "C6",
+              "CORA",
+              "ACESSO",
+              "STONE",
+              "AGIBANK",
+              "ASAAS",
+              "TOPAZIO",
+              "DAYCOVAL",
+              "BANCO_AMAZONIA",
+              "BANESE",
+              "BTG_PACTUAL",
+              "OMNI",
+              "GENIAL",
+              "CAPITAL",
+              "RIBEIRAO_PRETO",
+              "PAN",
+              "BMG",
+              "BNP_PARIBAS_BRASIL",
+              "CCR_SAO_MIGUEL_OESTE",
+              "CREDISIS",
+              "CRESOL",
+              "FITBANK",
+              "GERENCIANET",
+              "GLOBAL_SCM",
+              "JP_MORGAN",
+              "JUNO",
+              "MERCADO_PAGO",
+              "MODAL",
+              "MONEY_PLUS",
+              "NEXT",
+              "OTIMO",
+              "PAGSEGURO",
+              "PICPAY",
+              "PJBANK",
+              "POLOCRED",
+              "RENDIMENTO",
+              "UNIPRIME",
+              "UNIPRIME_NORTE_PARANA",
+              "VORTX_DTVM",
+              "BRL_TRUST",
+              "IUGU",
+              "OUTROS",
+              "NAO_BANCO"
+            ]
+          }
+        }
+      },
+      "PerdaFinanceira": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string",
+            "format": "date",
+            "example": "2024-07-15"
+          },
+          "valor": {
+            "type": "number",
+            "example": 1.99
+          }
+        }
+      },
+      "ComposicaoValor": {
+        "type": "object",
+        "required": [
+          "valor_bruto"
+        ],
+        "properties": {
+          "multa": {
+            "type": "number",
+            "example": 100.25,
+            "description": "Valor da multa"
+          },
+          "juros": {
+            "type": "number",
+            "example": 1.5,
+            "description": "Valor dos juros"
+          },
+          "valor_bruto": {
+            "type": "number",
+            "example": 275.99,
+            "description": "Valor bruto da parcela"
+          },
+          "valor_liquido": {
+            "type": "number",
+            "example": 250.33,
+            "description": "Valor líquido da parcela"
+          },
+          "desconto": {
+            "type": "number",
+            "example": 2.1,
+            "description": "Valor do desconto"
+          },
+          "taxa": {
+            "type": "number",
+            "example": 4.4,
+            "description": "Valor da taxa"
+          }
+        }
+      },
+      "EventoFinanceiroRequest": {
+        "type": "object",
+        "required": [
+          "data_competencia",
+          "valor",
+          "observacao",
+          "descricao",
+          "contato",
+          "conta_financeira",
+          "condicao_pagamento"
+        ],
+        "properties": {
+          "data_competencia": {
+            "type": "string",
+            "format": "date",
+            "example": "2024-07-15",
+            "description": "Data da competência do evento financeiro"
+          },
+          "valor": {
+            "type": "number",
+            "format": "decimal",
+            "example": 100,
+            "description": "Valor do evento financeiro"
+          },
+          "observacao": {
+            "type": "string",
+            "example": "Evento financeiro no valor de R$100,00",
+            "description": "Observação do evento financeiro"
+          },
+          "descricao": {
+            "type": "string",
+            "example": "Prestação de serviço",
+            "description": "Descrição do evento financeiro"
+          },
+          "contato": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b",
+            "description": "Identificador do negociador"
+          },
+          "conta_financeira": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b",
+            "description": "Identificador da Conta Financeira"
+          },
+          "rateio": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoriaRateio"
+            }
+          },
+          "condicao_pagamento": {
+            "$ref": "#/components/schemas/ListaCondicaoPagamento"
+          }
+        }
+      },
+      "ProtocolResponseDTO": {
+        "type": "object",
+        "properties": {
+          "protocolId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b",
+            "description": "Identificador do protocolo"
+          },
+          "status": {
+            "type": "string",
+            "description": "Status do protocolo",
+            "example": "SUCCESS",
+            "enum": [
+              "PENDING",
+              "SUCCESS",
+              "ERROR"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-10-22T14:30:00Z",
+            "description": "Data de criação do protocolo"
+          }
+        }
+      },
+      "CategoriaRateio": {
+        "type": "object",
+        "required": [
+          "id_categoria",
+          "valor"
+        ],
+        "properties": {
+          "id_categoria": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b",
+            "description": "Identificador único da categoria"
+          },
+          "valor": {
+            "type": "number",
+            "format": "decimal",
+            "example": 100,
+            "description": "Valor atribuído à categoria no rateio"
+          },
+          "rateio_centro_custo": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CentroCustoRateio"
+            },
+            "description": "Lista de rateios por centro de custo"
+          }
+        }
+      },
+      "CentroCustoRateio": {
+        "type": "object",
+        "properties": {
+          "id_centro_custo": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b",
+            "description": "Identificador único do centro de custo"
+          },
+          "valor": {
+            "type": "number",
+            "format": "decimal",
+            "example": 100,
+            "description": "Valor atribuído ao centro de custo no rateio"
+          }
+        }
+      },
+      "ListaCondicaoPagamento": {
+        "type": "object",
+        "required": [
+          "parcelas"
+        ],
+        "properties": {
+          "parcelas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParcelaCondicaoPagamento"
+            },
+            "description": "Lista de parcelas da condição de pagamento"
+          }
+        }
+      },
+      "ParcelaCondicaoPagamento": {
+        "type": "object",
+        "required": [
+          "descricao",
+          "data_vencimento",
+          "nota",
+          "conta_financeira",
+          "detalhe_valor"
+        ],
+        "properties": {
+          "descricao": {
+            "type": "string",
+            "example": "Mensalidade (2/6)",
+            "description": "Descrição da parcela"
+          },
+          "data_vencimento": {
+            "type": "string",
+            "format": "date",
+            "example": "2024-07-15",
+            "description": "Data de vencimento da parcela"
+          },
+          "nota": {
+            "type": "string",
+            "example": "Pagamento realizado via PIX",
+            "description": "Nota adicional sobre a parcela"
+          },
+          "conta_financeira": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b",
+            "description": "Identificador da conta financeira associada à parcela"
+          },
+          "detalhe_valor": {
+            "$ref": "#/components/schemas/ComposicaoValor"
+          }
+        }
+      },
+      "Parcela": {
+        "type": "object",
+        "properties": {
+          "evento": {
+            "$ref": "#/components/schemas/Evento"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "versao": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "referencia": {
+            "type": "string",
+            "example": "5b04139f-fcca-4c64-8d01-1dd568eb420e"
+          },
+          "indice": {
+            "type": "integer",
+            "format": "int32",
+            "example": 1
+          },
+          "conciliado": {
+            "type": "boolean",
+            "example": true
+          },
+          "status": {
+            "description": "PENDENTE é o mesmo que EM_ABERTO. QUITADO é mesmo que RECEBIDO",
+            "type": "string",
+            "example": "PENDENTE",
+            "enum": [
+              "PENDENTE",
+              "QUITADO",
+              "CANCELADO",
+              "RENEGOCIADO",
+              "RECEBIDO_PARCIAL",
+              "ATRASADO",
+              "PERDIDO"
+            ]
+          },
+          "valor_pago": {
+            "type": "number",
+            "format": "double",
+            "example": 10
+          },
+          "perda": {
+            "$ref": "#/components/schemas/PerdaFinanceira"
+          },
+          "nao_pago": {
+            "type": "number",
+            "format": "double",
+            "example": 5
+          },
+          "data_vencimento": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-09-05"
+          },
+          "data_pagamento_previsto": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-09-05"
+          },
+          "descricao": {
+            "type": "string",
+            "example": "Parcela do evento financeiro de contas a pagar"
+          },
+          "nota": {
+            "type": "string",
+            "example": "A data de pagamento prevista é para 01/01/2030"
+          },
+          "conta_financeira": {
+            "$ref": "#/components/schemas/ContaFinanceira"
+          },
+          "id_conta_financeira": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "valor_composicao": {
+            "$ref": "#/components/schemas/ValorComposicao"
+          },
+          "metodo_pagamento": {
+            "type": "string",
+            "example": "DEPOSITO_BANCARIO",
+            "enum": [
+              "DINHEIRO",
+              "CARTAO_CREDITO",
+              "BOLETO_BANCARIO",
+              "CARTAO_CREDITO_VIA_LINK",
+              "CHEQUE",
+              "CARTAO_DEBITO",
+              "TRANSFERENCIA_BANCARIA",
+              "OUTRO",
+              "CARTEIRA_DIGITAL",
+              "CASHBACK",
+              "CREDITO_LOJA",
+              "CREDITO_VIRTUA",
+              "DEPOSITO_BANCARIO",
+              "PIX_PAGAMENTO_INSTANTANEO",
+              "PROGRAMA_FIDELIDADE",
+              "SEM_PAGAMENTO",
+              "VALE_ALIMENTACAO",
+              "VALE_COMBUSTIVEL",
+              "VALE_PRESENTE",
+              "VALE_REFEICAO",
+              "PIX_COBRANCA",
+              "DEBITO_AUTOMATICO"
+            ]
+          },
+          "nsu": {
+            "type": "string",
+            "example": "000215783210"
+          },
+          "baixa_agendada": {
+            "type": "boolean",
+            "example": false
+          },
+          "baixas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Baixa"
+            }
+          },
+          "anexos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnexoParcela"
+            }
+          },
+          "solicitacoes_cobrancas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolicitacaoCobranca"
+            }
+          },
+          "id_ultima_solicitacao_pagamento": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "id_boleto_bancario_autorizado": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "fatura": {
+            "$ref": "#/components/schemas/Fatura"
+          },
+          "data_alteracao": {
+            "type": "string",
+            "description": "Data de alteração da parcela (ISO 8601, São Paulo/GMT-3)",
+            "format": "date-time",
+            "example": "2025-10-22T08:37:05"
+          },
+          "valor_total_liquido": {
+            "type": "number",
+            "format": "double",
+            "example": 10
+          },
+          "id_ultimo_solicitacao_cobranca": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "renegociacao": {
+            "$ref": "#/components/schemas/Renegociacao"
+          }
+        }
+      },
+      "Evento": {
+        "type": "object",
+        "properties": {
+          "data_competencia": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-06-11"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "condicao_pagamento": {
+            "$ref": "#/components/schemas/CondicaoPagamento"
+          },
+          "referencia": {
+            "$ref": "#/components/schemas/Referencia"
+          },
+          "agendado": {
+            "type": "boolean",
+            "example": true
+          },
+          "tipo": {
+            "type": "string",
+            "example": "RECEITA",
+            "enum": [
+              "RECEITA",
+              "DESPESA"
+            ]
+          },
+          "rateio": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Rateio"
+            }
+          }
+        }
+      },
+      "Rateio": {
+        "type": "object",
+        "properties": {
+          "id_categoria": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "nome_categoria": {
+            "type": "string",
+            "example": "Eletrônicos"
+          },
+          "valor": {
+            "type": "number",
+            "format": "double",
+            "example": 20.5
+          },
+          "valor_bruto": {
+            "type": "number",
+            "format": "double",
+            "example": 20.5
+          },
+          "rateio_centro_custo": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RateioCentroCusto"
+            }
+          }
+        }
+      },
+      "RateioCentroCusto": {
+        "type": "object",
+        "properties": {
+          "id_centro_custo": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "nome_centro_custo": {
+            "type": "string",
+            "example": "Contabilidade"
+          },
+          "valor": {
+            "type": "number",
+            "format": "double",
+            "example": 30.5
+          }
+        }
+      },
+      "CondicaoPagamento": {
+        "type": "object",
+        "properties": {
+          "quantidade_parcelas": {
+            "type": "integer",
+            "example": 10
+          },
+          "montante_fixo": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "Referencia": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "revisao": {
+            "type": "string",
+            "example": "1"
+          },
+          "origem": {
+            "type": "string",
+            "example": "LANCAMENTO_FINANCEIRO",
+            "enum": [
+              "LANCAMENTO_FINANCEIRO",
+              "DAS",
+              "FOLHA",
+              "TRANSFERENCIA",
+              "SALDO_CONTA_BANCARIA",
+              "VENDA",
+              "COMPRA",
+              "VENDA_AGENDADA",
+              "COMPRA_AGENDADA",
+              "IMPORTACAO_DOCUMENTO",
+              "IMPOSTO_RETIDO",
+              "SIC",
+              "NOTA_COMPRA",
+              "ANTECIPACAO",
+              "RENEGOCIACAO",
+              "HONORARIOS_CONTABEIS"
+            ]
+          }
+        }
+      },
+      "ValorComposicao": {
+        "type": "object",
+        "properties": {
+          "multa": {
+            "type": "number",
+            "format": "double",
+            "example": 10
+          },
+          "juros": {
+            "type": "number",
+            "format": "double",
+            "example": 1
+          },
+          "valor_bruto": {
+            "type": "number",
+            "format": "double",
+            "example": 20
+          },
+          "desconto": {
+            "type": "number",
+            "format": "double",
+            "example": 0.1
+          },
+          "taxa": {
+            "type": "number",
+            "format": "double",
+            "example": 0.03
+          },
+          "valor_liquido": {
+            "type": "number",
+            "format": "double",
+            "example": 9
+          }
+        }
+      },
+      "Baixa": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "versao": {
+            "type": "integer",
+            "example": 1
+          },
+          "data_pagamento": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-05-20"
+          },
+          "valor_composicao": {
+            "$ref": "#/components/schemas/ValorComposicao"
+          },
+          "conta_financeira": {
+            "$ref": "#/components/schemas/ContaFinanceira"
+          },
+          "id_reconciliacao": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "id_parcela": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "id_solicitacao_cobranca": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "observacao": {
+            "type": "string",
+            "example": "Pgto 03/05 - Nota Fiscal 4567"
+          },
+          "metodo_pagamento": {
+            "type": "string",
+            "example": "DEPOSITO_BANCARIO",
+            "enum": [
+              "DINHEIRO",
+              "CARTAO_CREDITO",
+              "BOLETO_BANCARIO",
+              "CARTAO_CREDITO_VIA_LINK",
+              "CHEQUE",
+              "CARTAO_DEBITO",
+              "TRANSFERENCIA_BANCARIA",
+              "OUTRO",
+              "CARTEIRA_DIGITAL",
+              "CASHBACK",
+              "CREDITO_LOJA",
+              "CREDITO_VIRTUA",
+              "DEPOSITO_BANCARIO",
+              "PIX_PAGAMENTO_INSTANTANEO",
+              "PROGRAMA_FIDELIDADE",
+              "SEM_PAGAMENTO",
+              "VALE_ALIMENTACAO",
+              "VALE_COMBUSTIVEL",
+              "VALE_PRESENTE",
+              "VALE_REFEICAO",
+              "PIX_COBRANCA",
+              "DEBITO_AUTOMATICO"
+            ]
+          },
+          "origem": {
+            "type": "string",
+            "example": "LANCAMENTO_FINANCEIRO",
+            "enum": [
+              "LANCAMENTO_FINANCEIRO",
+              "DAS",
+              "FOLHA",
+              "TRANSFERENCIA",
+              "SALDO_CONTA_BANCARIA",
+              "VENDA",
+              "COMPRA",
+              "VENDA_AGENDADA",
+              "COMPRA_AGENDADA",
+              "IMPORTACAO_DOCUMENTO",
+              "IMPOSTO_RETIDO",
+              "SIC",
+              "NOTA_COMPRA",
+              "ANTECIPACAO",
+              "RENEGOCIACAO",
+              "HONORARIOS_CONTABEIS"
+            ]
+          },
+          "id_recibo_digital": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "tipo_evento_financeiro": {
+            "type": "string",
+            "example": "RECEITA",
+            "enum": [
+              "RECEITA",
+              "DESPESA"
+            ]
+          },
+          "nsu": {
+            "type": "string",
+            "example": "000215783210"
+          },
+          "id_referencia": {
+            "type": "string",
+            "example": "5b04139f-fcca-4c64-8d01-1dd568eb420e"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-08-05T08:37:05"
+          },
+          "anexos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnexoBaixa"
+            }
+          }
+        }
+      },
+      "AnexoBaixa": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "referencia": {
+            "type": "string",
+            "example": "5b04139f-fcca-4c64-8d01-1dd568eb420e"
+          },
+          "nome": {
+            "type": "string",
+            "example": "baixa_03_05.pdf"
+          },
+          "descricao": {
+            "type": "string",
+            "example": "Pgto 03/05 - Nota Fiscal 4567"
+          },
+          "tipo": {
+            "type": "string",
+            "example": "RECIBO_DIGITAL",
+            "enum": [
+              "RECIBO_DIGITAL",
+              "RECIBO"
+            ]
+          },
+          "tipo_conteudo": {
+            "type": "string",
+            "example": "FILE",
+            "enum": [
+              "FILE",
+              "URL"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "example": "www.example.com"
+          }
+        }
+      },
+      "AnexoParcela": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "versao": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "descricao": {
+            "type": "string",
+            "example": "Boleto de cobrança"
+          },
+          "nome": {
+            "type": "string",
+            "example": "boleto_03_05.pdf"
+          },
+          "url": {
+            "type": "string",
+            "example": "www.exemplo.com"
+          },
+          "tipo_conteudo": {
+            "type": "string",
+            "example": "URL",
+            "enum": [
+              "FILE",
+              "URL"
+            ]
+          },
+          "referencia": {
+            "type": "string",
+            "example": "5b04139f-fcca-4c64-8d01-1dd568eb420e"
+          },
+          "tipo_anexo": {
+            "type": "string",
+            "example": "BOLETO_BANCARIO",
+            "enum": [
+              "BOLETO_BANCARIO_RFB",
+              "BOLETO_BANCARIO",
+              "RECIBO",
+              "FATURA",
+              "OUTROS",
+              "RECIBO_DIGITAL"
+            ]
+          },
+          "id_parcela": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          }
+        }
+      },
+      "SolicitacaoCobranca": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "versao": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "status_solicitacao_cobranca": {
+            "type": "string",
+            "example": "AGUARDANDO_CONFIRMACAO",
+            "enum": [
+              "AGUARDANDO_CONFIRMACAO",
+              "EM_CANCELAMENTO",
+              "REGISTRADO",
+              "QUITADO",
+              "CANCELADO",
+              "INVALIDO",
+              "EXPIRADO",
+              "FALHA_EMISSAO",
+              "FALHA_CANCELAR",
+              "REMESSA_GERADO",
+              "REMESSA_PENDENTE",
+              "PAGO",
+              "EXTORNADO"
+            ]
+          },
+          "valor_composicao": {
+            "$ref": "#/components/schemas/ValorComposicao"
+          },
+          "data_vencimento": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-09-05"
+          },
+          "data_quitacao": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-09-05"
+          },
+          "tipo_solicitacao_cobranca": {
+            "type": "string",
+            "example": "BOLETO",
+            "enum": [
+              "BOLETO",
+              "LINK_PAGAMENTO",
+              "BOLETO_REGISTRADO",
+              "PIX_COBRANCA"
+            ]
+          },
+          "id_cliente": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "id_referencia": {
+            "type": "string",
+            "example": "5b04139f-fcca-4c64-8d01-1dd568eb420e"
+          },
+          "url": {
+            "type": "string",
+            "example": "www.exemplo.com"
+          },
+          "detalhe_erro": {
+            "type": "string",
+            "example": "Erro de valor..."
+          },
+          "conta_financeira": {
+            "$ref": "#/components/schemas/ContaFinanceira"
+          },
+          "notificacao_cobranca": {
+            "$ref": "#/components/schemas/NotificacaoCobranca"
+          },
+          "confirmado_em": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-09-05"
+          },
+          "descricao": {
+            "type": "string",
+            "example": "Reembolso de Despesas"
+          },
+          "referencia_externa": {
+            "type": "string",
+            "example": "5b04139f-fcca-4c64-8d01-1dd568eb420e"
+          },
+          "recuperado": {
+            "type": "boolean",
+            "example": false
+          },
+          "combinado": {
+            "type": "boolean",
+            "example": false
+          },
+          "atributos_personalizados": {
+            "type": "string",
+            "example": "atributos"
+          }
+        }
+      },
+      "NotificacaoCobranca": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "solicitacao_cobranca_ids": {
+            "type": "array",
+            "example": [
+              "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "versao": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "enviado_em": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-09-05"
+          },
+          "aberto_em": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-09-05"
+          },
+          "itens_notificacao_cobranca": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemNotificacaoCobranca"
+            }
+          },
+          "assunto": {
+            "type": "string",
+            "example": "Fatura Vencida"
+          },
+          "corpo": {
+            "type": "string",
+            "example": "Verificamos que o prazo de vencimento era [X] dias atrás..."
+          },
+          "respondido_para": {
+            "type": "string",
+            "example": "exemplo@email.com"
+          },
+          "agendado": {
+            "type": "boolean",
+            "example": false
+          },
+          "auto_notificacao": {
+            "type": "boolean",
+            "example": false
+          },
+          "envio_instantaneo": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "ItemNotificacaoCobranca": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "versao": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "email": {
+            "type": "string",
+            "example": "exemplo@email.com"
+          },
+          "sms": {
+            "type": "string",
+            "example": "SMS"
+          },
+          "whatsapp": {
+            "type": "string",
+            "example": "whatsapp"
+          },
+          "status_entrega": {
+            "type": "string",
+            "example": "ENVIADO",
+            "enum": [
+              "ENVIADO",
+              "INVALIDO"
+            ]
+          }
+        }
+      },
+      "Fatura": {
+        "type": "object",
+        "properties": {
+          "numero": {
+            "type": "integer",
+            "format": "int64",
+            "example": 123
+          },
+          "rps": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "tipo_fatura": {
+            "type": "string",
+            "example": "NFE",
+            "enum": [
+              "NFE",
+              "NFSE",
+              "NFCE"
+            ]
+          }
+        }
+      },
+      "Renegociacao": {
+        "type": "object",
+        "description": "Informações de renegociação.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identificador único da renegociação.",
+            "example": "43adf4e9-203c-4f7e-a0f6-08abf3f8a583"
+          },
+          "valor": {
+            "type": "number",
+            "format": "double",
+            "description": "Valor da renegociação.",
+            "example": 25
+          }
+        }
+      },
+      "RenegociacaoContaAReceber": {
+        "type": "object",
+        "description": "Informações de renegociação.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identificador único da renegociação.",
+            "example": "43adf4e9-203c-4f7e-a0f6-08abf3f8a583"
+          },
+          "valor": {
+            "type": "number",
+            "format": "double",
+            "description": "Valor da renegociação.",
+            "example": 25
+          },
+          "id_evento": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identificador único do evento relacionado à renegociação.",
+            "example": "6460daeb-6db1-4a50-a15d-b9dfb54200ca"
+          }
+        }
+      },
+      "TransferenciaContaFinanceiraResponse": {
+        "type": "object",
+        "description": "Resposta paginada contendo a lista de transferências entre contas financeiras",
+        "properties": {
+          "itens_totais": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Número total de transferências encontradas",
+            "example": 50
+          },
+          "itens": {
+            "type": "array",
+            "description": "Lista de transferências entre contas financeiras",
+            "items": {
+              "$ref": "#/components/schemas/TransferenciaContaFinanceira"
+            }
+          }
+        }
+      },
+      "TransferenciaContaFinanceira": {
+        "type": "object",
+        "description": "Representa uma transferência entre contas financeiras da empresa",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identificador único da transferência",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "descricao": {
+            "type": "string",
+            "description": "Descrição ou motivo da transferência",
+            "example": "Transferência para conta poupança"
+          },
+          "valor": {
+            "type": "number",
+            "format": "decimal",
+            "description": "Valor da transferência",
+            "example": 1500.5
+          },
+          "data": {
+            "type": "string",
+            "format": "date",
+            "description": "Data em que a transferência foi realizada (formato ISO date)",
+            "example": "2026-02-15"
+          },
+          "origem": {
+            "$ref": "#/components/schemas/Quitacao",
+            "description": "Informações da conta financeira de origem da transferência"
+          },
+          "destino": {
+            "$ref": "#/components/schemas/Quitacao",
+            "description": "Informações da conta financeira de destino da transferência"
+          }
+        }
+      },
+      "Quitacao": {
+        "type": "object",
+        "description": "Informações de quitação de uma conta financeira incluindo data, composição de valores e detalhes da conta",
+        "properties": {
+          "data": {
+            "type": "string",
+            "format": "date",
+            "description": "Data da quitação (formato ISO date)",
+            "example": "2026-02-15"
+          },
+          "composicao_valor": {
+            "$ref": "#/components/schemas/ComposicaoValorTransferencia",
+            "description": "Detalhamento da composição do valor da transação"
+          },
+          "conta_financeira": {
+            "$ref": "#/components/schemas/ContaFinanceiraDetalhes",
+            "description": "Informações da conta financeira envolvida"
+          }
+        }
+      },
+      "ComposicaoValorTransferencia": {
+        "type": "object",
+        "description": "Composição detalhada do valor de uma transação financeira",
+        "properties": {
+          "valor_bruto": {
+            "type": "number",
+            "format": "decimal",
+            "description": "Valor bruto da transação antes de qualquer ajuste",
+            "example": 1500.5
+          },
+          "juros": {
+            "type": "number",
+            "format": "decimal",
+            "description": "Valor de juros aplicado",
+            "example": 0
+          },
+          "multa": {
+            "type": "number",
+            "format": "decimal",
+            "description": "Valor de multa aplicado",
+            "example": 0
+          },
+          "valor_liquido": {
+            "type": "number",
+            "format": "decimal",
+            "description": "Valor líquido após todos os ajustes (valor_bruto + juros + multa - desconto - taxa)",
+            "example": 1500.5
+          },
+          "desconto": {
+            "type": "number",
+            "format": "decimal",
+            "description": "Valor de desconto aplicado",
+            "example": 0
+          },
+          "taxa": {
+            "type": "number",
+            "format": "decimal",
+            "description": "Valor de taxa aplicado",
+            "example": 0
+          }
+        }
+      },
+      "ContaFinanceiraDetalhes": {
+        "type": "object",
+        "description": "Detalhes de uma conta financeira",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identificador único da conta financeira",
+            "example": "8f2a3e45-1c9d-4b3a-a7f1-9e8d7c6b5a4f"
+          },
+          "nome": {
+            "type": "string",
+            "description": "Nome da conta financeira",
+            "example": "Conta Corrente Principal"
+          },
+          "instituicao_bancaria": {
+            "$ref": "#/components/schemas/InstituicaoBancaria",
+            "description": "Informações da instituição bancária"
+          }
+        }
+      },
+      "InstituicaoBancaria": {
+        "type": "object",
+        "description": "Informações da instituição bancária",
+        "properties": {
+          "codigo": {
+            "type": "integer",
+            "description": "Código da instituição bancária",
+            "example": 1
+          },
+          "nome": {
+            "type": "string",
+            "description": "Nome da instituição bancária",
+            "example": "Banco do Brasil"
+          }
+        }
+      },
+      "EventoFinanceiro": {
+        "type": "object",
+        "description": "IDs dos eventos financeiros alterados",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identificador único do evento financeiro",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          }
+        }
+      },
+      "SaldoInicialContaFinanceira": {
+        "type": "object",
+        "description": "Informações sobre o saldo inicial de uma conta financeira, incluindo o valor e a data de competência",
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "example": "RECEITA",
+            "enum": [
+              "RECEITA",
+              "DESPESA"
+            ]
+          },
+          "id_conta_financeira": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identificador único da conta financeira",
+            "example": "35473eec-4e74-11ee-b500-9f61de8a8b8b"
+          },
+          "data_competencia": {
+            "type": "string",
+            "format": "date",
+            "description": "Data de competência da conta financeira (formato ISO date)",
+            "example": "2018-03-16"
+          },
+          "saldo_inicial": {
+            "type": "number",
+            "description": "Saldo inicial da conta financeira na data de competência. Se o saldo for negativo, o tipo deve ser \"DESPESA\", caso contrário, \"RECEITA\".",
+            "format": "decimal",
+            "example": 2500
+          }
+        }
+      }
+    }
+  }
+}

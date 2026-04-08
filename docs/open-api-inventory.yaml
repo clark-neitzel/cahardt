@@ -1,0 +1,2084 @@
+openapi: 3.0.0
+info:
+  description: >
+    A API de Produtos (Inventário) da Conta Azul tem como objetivo permitir que
+    sistemas externos gerenciem o catálogo de produtos de forma automatizada,
+    desde a criação ou alteração dos itens, até sua listagem, detalhamento e
+    desativação. Isso facilita a integração com e-commerce, ERPs, marketplaces e
+    outros sistemas de vendas.
+
+
+    Se desejar aprofundar o entendimento das regras de negócio aplicadas pelo
+    ERP, recomendamos, de forma opcional a consulta à nossa Central de Ajuda:
+
+
+    Produtos:
+    [https://ajuda.contaazul.com/hc/pt-br/sections/19716513113997-Cadastro-de-produtos](https://ajuda.contaazul.com/hc/pt-br/sections/19716513113997-Cadastro-de-produtos)
+  title: Produtos
+  contact: {}
+  version: v1
+paths:
+  /v1/produtos:
+    get:
+      security:
+        - BearerAuth: []
+      description: >-
+        Permite listar os produtos cadastrados, com suporte a filtros como
+        página, tamanho, busca por nome, sku ou ean, status ("ativo", "inativo")
+        e ordenação.
+      tags:
+        - v1
+      summary: Retornar os produtos por filtro
+      operationId: retornarListagemDeProdutos
+      parameters:
+        - description: Página
+          name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - description: Tamanho da página
+          name: tamanho_pagina
+          in: query
+          schema:
+            type: integer
+            enum:
+              - 10
+              - 20
+              - 50
+              - 100
+              - 200
+              - 500
+              - 1000
+            default: 10
+        - description: Campos de ordenação
+          name: campo_ordenacao
+          in: query
+          schema:
+            type: string
+            enum:
+              - NOME
+              - CODIGO
+              - VALOR_VENDA
+            default: NOME
+        - description: Direção de ordenação
+          name: direcao_ordenacao
+          in: query
+          schema:
+            type: string
+            enum:
+              - ASC
+              - DESC
+            default: ASC
+        - description: Busca textual pelo nome, ean ou sku do produto
+          name: busca
+          in: query
+          schema:
+            type: string
+        - description: Status do produto
+          name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - ATIVO
+              - INATIVO
+            default: ATIVO
+        - description: Produtos com integração ativa
+          name: integracao_ecommerce_ativo
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - description: Filtrar com kits de produto
+          name: produtos_kit_ativo
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - description: Intervalo inicial do valor de venda
+          name: valor_venda_inicial
+          in: query
+          schema:
+            type: number
+            format: float64
+        - description: Intervalo final do valor de venda
+          name: valor_venda_final
+          in: query
+          schema:
+            type: number
+            format: float64
+        - description: SKU do produto para filtro exato
+          name: sku
+          in: query
+          schema:
+            type: string
+        - description: Data de alteração de (ISO 8601, São Paulo/GMT-3)
+          name: data_alteracao_de
+          in: query
+          schema:
+            type: string
+        - description: Data de alteração até (ISO 8601, São Paulo/GMT-3)
+          name: data_alteracao_ate
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumoDeProdutos'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+    post:
+      security:
+        - BearerAuth: []
+      description: >-
+        Permite criar um novo produto, informando dados como nome, código
+        interno, unidade de medida, categoria, preço, estoque inicial, entre
+        outros parâmetros. Ideal para automatizar o cadastro de itens novos no
+        sistema.
+      tags:
+        - v1
+      summary: Criar um novo produto
+      operationId: criarProduto
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriacaoProduto'
+        description: Dados do produto a ser criado
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Produto'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+  /v1/produtos/categorias:
+    get:
+      security:
+        - BearerAuth: []
+      description: >-
+        Permite listar categorias de produtos cadastradas na Conta Azul, com
+        paginação e filtro por texto. Útil para validar categoria na criação de
+        produtos.
+      tags:
+        - v1
+      summary: Retornar as categorias por filtro
+      operationId: retornarCategoriasDeProdutos
+      parameters:
+        - description: Página
+          name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - description: Tamanho da página
+          name: tamanho_pagina
+          in: query
+          schema:
+            type: integer
+            enum:
+              - 10
+              - 20
+              - 50
+              - 100
+              - 200
+              - 500
+              - 1000
+            default: 10
+        - description: Busca textual pela descrição da categoria
+          name: busca_textual
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoriasDeProduto'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+  /v1/produtos/cest:
+    get:
+      security:
+        - BearerAuth: []
+      description: >-
+        Retorna códigos CEST (Código Especificador da Substituição Tributária)
+        usados para questões fiscais, com filtro por texto e paginação.
+        Importante para definir a tributação correta de produtos no ERP.
+      tags:
+        - v1
+      summary: Retornar os cests por filtro
+      operationId: retornarCests
+      parameters:
+        - description: Página
+          name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - description: Tamanho da página
+          name: tamanho_pagina
+          in: query
+          schema:
+            type: integer
+            enum:
+              - 10
+              - 20
+              - 50
+              - 100
+              - 200
+              - 500
+              - 1000
+            default: 10
+        - description: Busca textual pela descrição ou código do CEST
+          name: busca_textual
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CESTsDeProduto'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+  /v1/produtos/ecommerce-categorias:
+    get:
+      security:
+        - BearerAuth: []
+      description: >-
+        Retorna categorias específicas para e-commerce (não necessariamente as
+        mesmas categorias internas), permite filtro por descrição. Útil para
+        integrar categorização de produtos entre seu sistema e Conta Azul.
+      tags:
+        - v1
+      summary: Retornar as categorias de e-commerce por filtro
+      operationId: retornarCategoriasDeEcommerceDeProdutos
+      parameters:
+        - description: Busca textual pela descrição da categoria
+          name: busca_textual
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProdutoEcommerceCategoria'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+  /v1/produtos/ecommerce-marcas:
+    get:
+      security:
+        - BearerAuth: []
+      description: >-
+        Busca marcas usadas no contexto de e-commerce, com paginação, ordenação
+        e filtro por nome. Permite sincronizar marcas entre sistema de vendas
+        online e Conta Azul.
+      tags:
+        - v1
+      summary: Retornar as marcas de ecommerce por filtro
+      operationId: retornarMarcasEcommerce
+      parameters:
+        - description: Página
+          name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - description: Tamanho da página
+          name: tamanho_pagina
+          in: query
+          schema:
+            type: integer
+            enum:
+              - 10
+              - 20
+              - 50
+              - 100
+              - 200
+              - 500
+              - 1000
+            default: 10
+        - description: Direção de ordenação
+          name: direcao
+          in: query
+          schema:
+            type: string
+            enum:
+              - ASC
+              - DESC
+            default: ASC
+        - description: Busca textual pelo nome da marca
+          name: busca_textual
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarcaDeEcommerce'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+  /v1/produtos/ncm:
+    get:
+      security:
+        - BearerAuth: []
+      description: >-
+        Retorna códigos NCM (Nomenclatura Comum do Mercosul), com filtro por
+        texto e paginação. Necessário para classificação fiscal de produtos.
+      tags:
+        - v1
+      summary: Retornar os ncms por filtro
+      operationId: retornarNcms
+      parameters:
+        - description: Página
+          name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - description: Tamanho da página
+          name: tamanho_pagina
+          in: query
+          schema:
+            type: integer
+            enum:
+              - 10
+              - 20
+              - 50
+              - 100
+              - 200
+              - 500
+              - 1000
+            default: 10
+        - description: Busca textual pela descrição ou código do NCM
+          name: busca_textual
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NCMsDeProduto'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+  /v1/produtos/unidades-medida:
+    get:
+      security:
+        - BearerAuth: []
+      description: >-
+        Retorna as unidades de medida possíveis para produtos, com paginação e
+        busca por descrição. Essencial para definir medidas fiscais (peso,
+        volume, etc.) ou unidades de estoque.
+      tags:
+        - v1
+      summary: Retornar as unidades de medida por filtro
+      operationId: retornarUnidadesDeMedida
+      parameters:
+        - description: Página
+          name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - description: Tamanho da página
+          name: tamanho_pagina
+          in: query
+          schema:
+            type: integer
+            enum:
+              - 10
+              - 20
+              - 50
+              - 100
+              - 200
+              - 500
+              - 1000
+            default: 10
+        - description: Busca textual pela descrição da unidade de medida
+          name: busca_textual
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnidadesDeMedidaDeProduto'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+  /v1/produtos/{id}:
+    get:
+      security:
+        - BearerAuth: []
+      description: >-
+        Traz todos os detalhes de um produto específico (estoque, fiscal,
+        e-commerce, variações, pesos, unidades, etc.). Ideal para consultar
+        dados completos antes de exibir para usuário ou para sincronização.
+      tags:
+        - v1
+      summary: Retornar o produto por id
+      operationId: retornarProdutoPorId
+      parameters:
+        - description: id do produto
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Produto'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+    delete:
+      security:
+        - BearerAuth: []
+      description: >-
+        Remove o produto correspondente ao Id. Use para excluir produtos que não
+        são mais necessários ou foram removidos do catálogo.
+      tags:
+        - v1
+      summary: Deletar produto por id
+      operationId: deletarProdutoPorId
+      parameters:
+        - description: id do produto
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+    patch:
+      security:
+        - BearerAuth: []
+      description: >-
+        Permite atualizar apenas alguns campos de um produto (nome, EAN, SKU,
+        NCM, peso, valor de venda, unidade de medida, etc.). É útil para ajustes
+        pontuais sem precisar reenviar o objeto completo do produto.
+      tags:
+        - v1
+      summary: Atualizar parcialmente um produto por id
+      operationId: atualizarProdutoParcialmente
+      parameters:
+        - description: ID do produto a ser atualizado
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtualizacaoParcialProduto'
+        description: Dados do produto a ser atualizado
+        required: true
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroAPI'
+tags:
+  - description: Operações relacionadas a produtos
+    name: v1
+servers:
+  - url: https://api-v2.contaazul.com
+components:
+  securitySchemes:
+    BearerAuth:
+      description: >-
+        Digite **'Bearer &lt;JWT&gt;'**, onde JWT é o access_token recebido no
+        login (passo 2 do fluxo de autenticação).
+      type: apiKey
+      name: Authorization
+      in: header
+  schemas:
+    AtualizacaoParcialProduto:
+      description: Modelo de atualização parcial de produto
+      type: object
+      properties:
+        cest:
+          description: ID do Código CEST do produto
+          type: integer
+          example: 1
+        codigo_ean:
+          description: Código EAN do produto
+          type: string
+          example: EAN123
+        codigo_sku:
+          description: Código do produto
+          type: string
+          example: codigo do produto
+        ncm:
+          description: ID do Código NCM do produto
+          type: integer
+          example: 1
+        nome:
+          description: Nome do produto
+          type: string
+          example: nome do produto
+        peso_bruto:
+          description: Peso bruto do produto
+          type: number
+          example: 10
+        peso_liquido:
+          description: Peso líquido do produto
+          type: number
+          minimum: 0
+          example: 10
+        unidade_medida:
+          description: ID da unidade de medida do produto
+          type: integer
+          example: 1
+        valor_venda:
+          description: Valor de venda do produto
+          type: number
+          minimum: 0
+          example: 99.9
+    CEST:
+      description: Modelo de resposta para um CEST de produto
+      type: object
+      properties:
+        codigo:
+          description: código do CEST
+          type: string
+          example: '0100100'
+        descricao:
+          description: descrição do CEST
+          type: string
+          example: Molduras e acabamentos
+        id:
+          description: id do CEST
+          type: integer
+          example: 1
+    CESTsDeProduto:
+      description: Modelo de resposta para a lista de CESTs de produtos
+      type: object
+      properties:
+        items:
+          description: lista de CEST
+          type: array
+          items:
+            $ref: '#/components/schemas/CEST'
+        total_items:
+          description: total de itens
+          type: integer
+          example: 10
+    CategoriaDeProduto:
+      description: Modelo de resposta para uma categoria de produto
+      type: object
+      properties:
+        descricao:
+          description: Descrição da categoria
+          type: string
+          example: Eletrônicos
+        id:
+          description: id da categoria
+          type: integer
+          example: 1
+        uuid:
+          description: uuid da categoria
+          type: string
+          example: 550e8400-e29b-41d4-a716-446655440000
+    CategoriaDoProduto:
+      description: Modelo de resposta para o grupo ou categoria do produto
+      type: object
+      properties:
+        descricao:
+          description: Descrição do grupo ou categoria do produto
+          type: string
+          example: Categoria do produto
+        id:
+          description: ID do grupo ou categoria do produto
+          type: integer
+          example: 1
+        uuid:
+          description: UUID do grupo ou categoria do produto
+          type: string
+          example: 9aa9af47-a539-40fc-9005-85c70e757fcf
+    CategoriaDoProdutoNoEcommerce:
+      description: Modelo de resposta para a categoria do produto no e-commerce
+      type: object
+      properties:
+        descricao:
+          description: Descrição da categoria do produto no e-commerce
+          type: string
+          example: Descrição da categoria do produto
+        id:
+          description: ID da categoria do produto no e-commerce
+          type: string
+          example: 9aa9af47-a539-40fc-9005-85c70e757fcf
+    CategoriasDeProduto:
+      description: Modelo de resposta para a lista de categorias de produtos
+      type: object
+      properties:
+        items:
+          description: lista de categorias de produtos
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoriaDeProduto'
+        total_items:
+          description: total de itens
+          type: integer
+          example: 10
+    CondicaoDoProdutoNoEcommerce:
+      description: Enum de condição do produto no e-commerce
+      type: string
+      enum:
+        - NOVO
+        - USADO
+      x-enum-varnames:
+        - NEW
+        - USED
+    ConversaoDeUnidadeDeMedidaDoProduto:
+      description: Modelo de resposta para a conversão de unidade de medida do produto
+      type: object
+      properties:
+        fator:
+          description: Fator de conversão entre unidades
+          type: number
+          example: 1000
+        id_fornecedor:
+          description: Lista de IDs de fornecedores associados à conversão
+          type: array
+          items:
+            type: string
+        id_unidade_conversao:
+          description: ID da conversão de unidade de medida
+          type: string
+          example: 9aa9af47-a539-40fc-9005-85c70e757fcf
+        unidade_medida:
+          description: Unidade de medida de entrada
+          allOf:
+            - $ref: '#/components/schemas/UnidadeDeMedidaDeEntradaNaConversao'
+    CriacaoCategoriaEcommerceProduto:
+      description: Modelo de criação de categoria do produto para e-commerce
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          description: ID da categoria do produto no e-commerce
+          type: string
+          example: 0e9b442a-3af0-45f1-9c5c-415473084092
+    CriacaoCestFiscalProduto:
+      description: >-
+        Modelo de criação de CEST (Código Especificador da Substituição
+        Tributária) para informações fiscais
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          description: ID do CEST
+          type: integer
+          example: 1
+    CriacaoConversaoUnidadeMedidaProduto:
+      description: Modelo de criação de conversão de unidade de medida do produto
+      type: object
+      required:
+        - fator
+        - unidade_medida
+      properties:
+        fator:
+          description: Fator de conversão entre unidades de medida
+          type: number
+          example: 1000
+        id_fornecedor:
+          description: List de IDs de fornecedores associados à conversão
+          type: array
+          items:
+            type: string
+        unidade_medida:
+          description: Unidade de medida de entrada para conversão
+          allOf:
+            - $ref: >-
+                #/components/schemas/CriacaoUnidadeMedidaEmConversaoUnidadeMedidaProduto
+    CriacaoDetalheKitProduto:
+      description: Modelo de criação de detalhes do kit de produto
+      type: object
+      required:
+        - itens
+        - valor_venda
+      properties:
+        itens:
+          description: Lista de itens do kit de produto
+          type: array
+          items:
+            $ref: '#/components/schemas/CriacaoItemDetalheKitProduto'
+        valor_venda:
+          description: Valor de venda do kit de produto
+          type: number
+          example: 100
+    CriacaoDimensoesPesosProduto:
+      description: Modelo de criação de dimensões e pesos do produto
+      type: object
+      properties:
+        altura:
+          description: Altura do produto em centímetros
+          type: number
+          example: 10
+        largura:
+          description: Largura do produto em centímetros
+          type: number
+          example: 10
+        peso_bruto:
+          description: Peso bruto do produto em quilogramas
+          type: number
+          example: 10
+        peso_liquido:
+          description: Peso líquido do produto em quilogramas
+          type: number
+          example: 10
+        profundidade:
+          description: Profundidade do produto em centímetros
+          type: number
+          example: 10
+        volumes:
+          description: Número de volumes do produto
+          type: integer
+          example: 10
+    CriacaoEcommerceProduto:
+      description: Modelo de criação de informações de e-commerce do produto
+      type: object
+      properties:
+        categoria_ecommerce:
+          description: Categoria do produto no e-commerce
+          allOf:
+            - $ref: '#/components/schemas/CriacaoCategoriaEcommerceProduto'
+        condicao:
+          description: Condição do produto para e-commerce (NOVO ou USADO)
+          allOf:
+            - $ref: '#/components/schemas/CondicaoDoProdutoNoEcommerce'
+        descricao_adicional:
+          description: Descrição adicional do produto para e-commerce
+          type: string
+          example: Descrição adicional do produto
+        descricao_seo:
+          description: Descrição SEO do produto
+          type: string
+          example: Descrição SEO do produto
+        integracao_ativa:
+          description: Indica se a integração de e-commerce está ativa
+          type: boolean
+          example: true
+        marca:
+          description: Marca do produto
+          allOf:
+            - $ref: '#/components/schemas/CriacaoMarcaEcommerceProduto'
+        titulo_seo:
+          description: Título SEO do produto
+          type: string
+          example: Título SEO do produto
+        url_seo:
+          description: URL SEO do produto
+          type: string
+          example: https://www.exemplo.com/produto
+    CriacaoEstoqueProduto:
+      description: Modelo de criação de informações de estoque do produto
+      type: object
+      properties:
+        custo_medio:
+          description: Custo médio do produto
+          type: number
+          example: 80
+        estoque_disponivel:
+          description: Estoque disponível do produto
+          type: number
+          example: 50
+        estoque_maximo:
+          description: Estoque máximo do produto
+          type: number
+          example: 100
+        estoque_minimo:
+          description: Estoque mínimo do produto
+          type: number
+          example: 10
+        valor_venda:
+          description: Valor de venda do produto
+          type: number
+          example: 100
+    CriacaoFiscalProduto:
+      description: Modelo de criação de informações fiscais do produto
+      type: object
+      properties:
+        cest:
+          description: CEST (Código Especificador da Substituição Tributária) do produto
+          allOf:
+            - $ref: '#/components/schemas/CriacaoCestFiscalProduto'
+        ncm:
+          description: NCM (Nomenclatura Comum do Mercosul) do produto
+          allOf:
+            - $ref: '#/components/schemas/CriacaoNcmFiscalProduto'
+        origem:
+          description: Origem do produto
+          allOf:
+            - $ref: '#/components/schemas/OrigemDoProduto'
+        tipo_produto:
+          description: Tipo do produto
+          allOf:
+            - $ref: '#/components/schemas/TipoDoProduto'
+        unidade_medida:
+          description: Unidade de medida fiscal do produto
+          allOf:
+            - $ref: '#/components/schemas/CriacaoUnidadeMedidaFiscalProduto'
+    CriacaoGrupoProduto:
+      description: Modelo de criação do grupo de produto
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          description: ID do grupo ou categoria do produto
+          type: integer
+          example: 1
+    CriacaoItemDetalheKitProduto:
+      description: Modelo de criação de item do detalhe do kit de produto
+      type: object
+      required:
+        - id_produto
+        - quantidade
+        - valor_total
+        - valor_unitario
+      properties:
+        id_produto:
+          description: ID do produto associado ao item no kit
+          type: string
+          example: 0e9b442a-3af0-45f1-9c5c-415473084092
+        quantidade:
+          description: Quantidade do produto associado ao item no kit
+          type: number
+          example: 1
+        valor_total:
+          description: Valor total do produto associado ao item no kit
+          type: number
+          example: 100
+        valor_unitario:
+          description: Valor unitário do produto associado ao item no kit
+          type: number
+          example: 100
+    CriacaoMarcaEcommerceProduto:
+      description: Modelo de criação de marca do produto para e-commerce
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          description: ID da marca do produto
+          type: string
+          example: 0e9b442a-3af0-45f1-9c5c-415473084092
+    CriacaoNcmFiscalProduto:
+      description: >-
+        Modelo de criação de NCM (Nomenclatura Comum do Mercosul) para
+        informações fiscais
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          description: ID do NCM
+          type: integer
+          example: 1
+    CriacaoOpcaoProdutoVariacaoProduto:
+      description: Modelo de criação de opção de variação do produto associado à variação
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          description: ID da opção de variação do produto associado à variação
+          type: string
+          example: 0e9b442a-3af0-45f1-9c5c-415473084092
+    CriacaoOpcaoTipoVariacaoProduto:
+      description: Modelo de criação de opção do tipo de variação do produto
+      type: object
+      required:
+        - descricao
+        - id
+      properties:
+        descricao:
+          description: Descrição da opção de variação do tipo de variação
+          type: string
+          example: 5kg
+        id:
+          description: ID da opção de variação do tipo de variação
+          type: string
+          example: 0e9b442a-3af0-45f1-9c5c-415473084092
+    CriacaoProduto:
+      description: Modelo de criação de produto
+      type: object
+      required:
+        - nome
+      properties:
+        ativo:
+          description: Indica se o produto está ativo
+          type: boolean
+          example: true
+        categoria:
+          description: Grupo ou categoria do produto
+          allOf:
+            - $ref: '#/components/schemas/CriacaoGrupoProduto'
+        codigo_ean:
+          description: Código EAN do produto
+          type: string
+          example: EAN123
+        codigo_sku:
+          description: Código SKU do produto
+          type: string
+          maxLength: 20
+          example: SKU123
+        conversoes_unidade_medida:
+          description: >-
+            Conversões de unidade de medida do produto, depende da unidade de
+            medida das informações fiscais
+          type: array
+          items:
+            $ref: '#/components/schemas/CriacaoConversaoUnidadeMedidaProduto'
+        descricao:
+          description: Descrição do produto
+          type: string
+          example: Descrição do produto
+        detalhe_kit:
+          description: Detalhes do kit de produto
+          allOf:
+            - $ref: '#/components/schemas/CriacaoDetalheKitProduto'
+        ecommerce:
+          description: Informações de e-commerce do produto
+          allOf:
+            - $ref: '#/components/schemas/CriacaoEcommerceProduto'
+        estoque:
+          description: Informações de estoque do produto
+          allOf:
+            - $ref: '#/components/schemas/CriacaoEstoqueProduto'
+        fiscal:
+          description: Informações fiscais do produto
+          allOf:
+            - $ref: '#/components/schemas/CriacaoFiscalProduto'
+        formato:
+          description: Formato do produto (SIMPLES ou VARIACAO)
+          allOf:
+            - $ref: '#/components/schemas/FormatoDoProduto'
+        id_centro_custo:
+          description: ID do centro de custo associado ao produto
+          type: string
+          example: 9aa9af47-a539-40fc-9005-85c70e757fcf
+        nome:
+          description: Nome do produto
+          type: string
+          example: nome do produto
+        pesos_dimensoes:
+          description: Dimensões e pesos do produto
+          allOf:
+            - $ref: '#/components/schemas/CriacaoDimensoesPesosProduto'
+        status:
+          description: Status do produto (ATIVO ou INATIVO)
+          allOf:
+            - $ref: '#/components/schemas/StatusDoProduto'
+        unidade_medida:
+          description: Unidade de medida fiscal do kit de produto
+          allOf:
+            - $ref: '#/components/schemas/CriacaoUnidadeMedidaFiscalProduto'
+        variacao:
+          description: Informações de variação do produto
+          allOf:
+            - $ref: '#/components/schemas/CriacaoVariacaoProduto'
+    CriacaoProdutoVariacaoProduto:
+      description: Modelo de criação de produto associado à variação do produto
+      type: object
+      required:
+        - codigo_ean
+        - codigo_sku
+        - nome
+        - opcoes
+        - saldo
+        - valor_venda
+      properties:
+        codigo_ean:
+          description: Código ean do produto associado à variação
+          type: string
+          example: EAN123
+        codigo_sku:
+          description: Código sku do produto associado à variação
+          type: string
+          maxLength: 20
+          example: SKU123
+        nome:
+          description: Nome do produto associado à variação
+          type: string
+          example: pacote 5kg
+        opcoes:
+          description: Lista de opções de variação do produto associado
+          type: array
+          items:
+            $ref: '#/components/schemas/CriacaoOpcaoProdutoVariacaoProduto'
+        saldo:
+          description: Saldo do produto associado à variação
+          type: number
+          example: 10
+        valor_venda:
+          description: Valor de venda do produto associado à variação
+          type: number
+          example: 99.99
+    CriacaoTipoVariacaoProduto:
+      description: Modelo de criação de tipo de variação do produto
+      type: object
+      required:
+        - descricao
+        - opcoes
+      properties:
+        descricao:
+          description: Descrição do tipo de variação
+          type: string
+          example: pacote 5kg
+        opcoes:
+          description: Lista de opções do tipo de variação
+          type: array
+          items:
+            $ref: '#/components/schemas/CriacaoOpcaoTipoVariacaoProduto'
+    CriacaoUnidadeMedidaEmConversaoUnidadeMedidaProduto:
+      description: Modelo de criação de unidade de medida para conversão
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          description: ID da unidade de medida de entrada
+          type: integer
+          example: 1
+    CriacaoUnidadeMedidaFiscalProduto:
+      description: Modelo de criação de unidade de medida fiscal para informações fiscais
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          description: ID da unidade de medida fiscal
+          type: integer
+          example: 1
+    CriacaoVariacaoProduto:
+      description: Modelo de criação de informações de variação do produto
+      type: object
+      required:
+        - produtos
+        - tipos
+      properties:
+        produtos:
+          description: Lista de produtos associados à variação
+          type: array
+          items:
+            $ref: '#/components/schemas/CriacaoProdutoVariacaoProduto'
+        tipos:
+          description: Lista de tipos de variação do produto
+          type: array
+          items:
+            $ref: '#/components/schemas/CriacaoTipoVariacaoProduto'
+    DetalheDoKitDeProdutos:
+      description: Modelo de resposta para o detalhe do kit de produtos
+      type: object
+      properties:
+        items:
+          description: Lista de itens que compõem o kit
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemDoKitDeProdutos'
+        valor_venda_kit:
+          description: Valor de venda do kit
+          type: number
+          example: 40
+    DimensoesDoProduto:
+      description: Modelo de resposta para as dimensões e pesos do produto
+      type: object
+      properties:
+        altura:
+          description: Altura do produto em centímetros
+          type: number
+          example: 10
+        largura:
+          description: Largura do produto em centímetros
+          type: number
+          example: 15
+        peso_bruto:
+          description: Peso bruto do produto em quilogramas
+          type: number
+          example: 1.5
+        peso_liquido:
+          description: Peso líquido do produto em quilogramas
+          type: number
+          example: 1
+        profundidade:
+          description: Profundidade do produto em centímetros
+          type: number
+          example: 5
+        volumes:
+          description: Número de volumes do produto
+          type: integer
+          example: 10
+    EcommerceDoProduto:
+      description: Modelo de resposta para as informações de e-commerce do produto
+      type: object
+      properties:
+        categoria_ecommerce:
+          description: Categoria do produto no e-commerce
+          allOf:
+            - $ref: '#/components/schemas/CategoriaDoProdutoNoEcommerce'
+        condicao:
+          description: Condição do produto
+          allOf:
+            - $ref: '#/components/schemas/CondicaoDoProdutoNoEcommerce'
+          example: NOVO
+        descricao_adicional:
+          description: Descrição adicional do produto para e-commerce
+          type: string
+          example: Descrição adicional do produto
+        descricao_seo:
+          description: Descrição SEO do produto
+          type: string
+          example: Descrição SEO do produto
+        integracao_ativa:
+          description: Indica se a integração de e-commerce está ativa
+          type: boolean
+          example: true
+        marca:
+          description: Marca do produto
+          allOf:
+            - $ref: '#/components/schemas/MarcaDoProdutoNoEcommerce'
+        titulo_seo:
+          description: Título SEO do produto
+          type: string
+          example: Título SEO do produto
+        url_seo:
+          description: URL SEO do produto
+          type: string
+          example: https://www.exemplo.com/produto
+    ErroAPI:
+      description: Modelo de resposta para erros da API
+      type: object
+      properties:
+        error:
+          description: Mensagem de erro
+          type: string
+          example: Mensagem de erro detalhada
+    EstoqueDoProduto:
+      description: Modelo de resposta para as informações de estoque do produto
+      type: object
+      properties:
+        custo_medio:
+          description: Custo médio do produto
+          type: number
+          example: 10
+        maximumStock:
+          description: Estoque máximo do produto
+          type: number
+          example: 10
+        minimumStock:
+          description: Estoque mínimo do produto
+          type: number
+          example: 10
+        quantidade_disponivel:
+          description: Saldo disponível do produto
+          type: number
+          example: 10
+        quantidade_reservada:
+          description: Saldo reservado do produto
+          type: number
+          example: 10
+        quantidade_total:
+          description: Saldo total do estoque do produto
+          type: number
+          example: 10
+        valor_venda:
+          description: Valor de venda do produto
+          type: number
+          example: 10
+    FiscalCestDoProduto:
+      description: Modelo de resposta para o CEST do produto
+      type: object
+      properties:
+        codigo:
+          description: Código do CEST
+          type: string
+          example: '1234'
+        descricao:
+          description: Descrição do CEST
+          type: string
+          example: Descrição do CEST
+        id:
+          description: ID do CEST
+          type: integer
+          example: 1
+    FiscalDoProduto:
+      description: Modelo de resposta para as informações fiscais do produto
+      type: object
+      properties:
+        cest:
+          description: CEST (Código Especificador da Substituição Tributária) do produto
+          allOf:
+            - $ref: '#/components/schemas/FiscalCestDoProduto'
+        ncm:
+          description: NCM (Nomenclatura Comum do Mercosul) do produto
+          allOf:
+            - $ref: '#/components/schemas/FiscalNcmDoProduto'
+        origem:
+          description: Origem do produto
+          allOf:
+            - $ref: '#/components/schemas/OrigemDoProduto'
+          example: NACIONAL
+        tipo_produto:
+          description: Tipo do produto
+          allOf:
+            - $ref: '#/components/schemas/TipoDoProduto'
+          example: EMBALAGEM
+        unidade_medida:
+          description: Unidade de medida do produto
+          allOf:
+            - $ref: '#/components/schemas/FiscalUnidadeDeMedidaDoProduto'
+    FiscalNcmDoProduto:
+      description: Modelo de resposta para as informações fiscais do produto
+      type: object
+      properties:
+        codigo:
+          description: Código do NCM
+          type: string
+          example: '1234'
+        descricao:
+          description: Descrição do NCM
+          type: string
+          example: Descrição do NCM
+        id:
+          description: ID do NCM
+          type: integer
+          example: 1
+    FiscalUnidadeDeMedidaDoProduto:
+      description: Modelo de resposta para a unidade de medida fiscal do produto
+      type: object
+      properties:
+        descricao:
+          description: Descrição da unidade de medida fiscal
+          type: string
+          example: Descrição da unidade de medida fiscal
+        id:
+          description: ID da unidade de medida fiscal
+          type: integer
+          example: 1
+    FormatoDoProduto:
+      description: Enum de formato do produto
+      type: string
+      enum:
+        - SIMPLES
+        - VARIACAO
+      x-enum-varnames:
+        - SIMPLE
+        - VARIATION
+    ImagemDoProduto:
+      description: Modelo de resposta para a imagem do produto
+      type: object
+      properties:
+        descricao:
+          description: Descrição da imagem do produto
+          type: string
+          example: Descrição da imagem do produto
+        id:
+          description: ID da imagem do produto
+          type: string
+          example: 9aa9af47-a539-40fc-9005-85c70e757fcf
+        nome:
+          description: Nome da imagem do produto
+          type: string
+          example: imagem do produto
+        tamanho:
+          description: Tamanho da imagem do produto em bytes
+          type: integer
+          example: 1024
+        url_imagem:
+          description: URL temporária da imagem do produto
+          type: string
+          example: https://example.com/image.jpg
+    ItemDoKitDeProdutos:
+      description: Modelo de resposta para os itens do kit de produtos
+      type: object
+      properties:
+        codigo:
+          description: Código do produto associado ao item
+          type: string
+          example: SKU123
+        costCenterId:
+          description: ID do centro de custo associado ao item
+          type: string
+          example: 9aa9af47-a539-40fc-9005-85c70e757fcf
+        id_item:
+          description: ID do item no kit
+          type: string
+          example: 9aa9af47-a539-40fc-9005-85c70e757fcf
+        id_produto:
+          description: ID do produto associado ao item
+          type: string
+          example: 0e9b442a-3af0-45f1-9c5c-415473084092
+        nome:
+          description: Nome do produto associado ao item
+          type: string
+          example: item do kit
+        quantidade:
+          description: Quantidade do produto no kit
+          type: number
+          example: 2
+        valor_total:
+          description: Valor total do item no kit
+          type: number
+          example: 40
+        valor_unitario:
+          description: Valor unitário do produto no kit
+          type: number
+          example: 20
+        versao:
+          description: Versão do item no kit
+          type: integer
+          example: 1
+    ItemResumoDeProdutos:
+      description: Item do resumo de produtos
+      type: object
+      properties:
+        codigo:
+          description: Código do produto
+          type: string
+          example: PROD01
+        contagem_agregacao:
+          description: Contagem de agregação do produto
+          type: integer
+          example: 1
+        custo_medio:
+          description: Custo médio do produto
+          type: number
+          example: 50
+        ean:
+          description: EAN do produto
+          type: string
+          example: '7891234567893'
+        estoque_maximo:
+          description: Estoque máximo do produto
+          type: number
+          example: 1000
+        estoque_minimo:
+          description: Estoque mínimo do produto
+          type: number
+          example: 10
+        id:
+          description: Id do produto
+          type: string
+          example: 0d4d34e3-5a1e-4d8b-8ed6-e0874ef1ccb8
+        id_legado:
+          description: Id legado do produto
+          type: integer
+          example: 37561
+        integracao_ecommerce_ativada:
+          description: Indica se a integração com ecommerce está ativada
+          type: boolean
+          example: false
+        movido:
+          description: Indica se o produto foi movido
+          type: boolean
+          example: true
+        nivel_estoque:
+          description: Nível de estoque do produto
+          allOf:
+            - $ref: '#/components/schemas/NivelDeEstoqueDoProduto'
+          example: PADRAO
+        nome:
+          description: Nome do produto
+          type: string
+          example: Produto 01
+        produtos_variacao:
+          description: Lista de variações do produto
+          type: array
+          items:
+            $ref: '#/components/schemas/ProdutoNaVariacao'
+        saldo:
+          description: Saldo do produto
+          type: number
+          example: 1000
+        status:
+          description: Status do produto
+          allOf:
+            - $ref: '#/components/schemas/StatusDoProduto'
+          example: ATIVO
+        tipo:
+          description: Tipo do produto
+          type: string
+          example: PRODUTO
+        ultima_atualizacao:
+          description: Data da última atualização do produto
+          type: string
+          example: '2025-07-10T15:05:08.433885Z'
+        valor_venda:
+          description: Valor de venda do produto
+          type: number
+          example: 150
+    MarcaDeEcommerce:
+      description: modelo de resposta padrão para a lista de marcas de ecommerce
+      type: object
+      properties:
+        items:
+          description: lista de marcas de ecommerce
+          type: array
+          items:
+            $ref: '#/components/schemas/MarcaDeEcommerceItem'
+        total_items:
+          description: total de itens
+          type: integer
+          example: 10
+    MarcaDeEcommerceItem:
+      description: modelo de resposta para uma marca de ecommerce
+      type: object
+      properties:
+        id:
+          description: ID da marca
+          type: string
+          example: 0e9b442a-3af0-45f1-9c5c-415473084092
+        nome:
+          description: nome do item marca
+          type: string
+          example: adidas
+    MarcaDoProdutoNoEcommerce:
+      description: Modelo de resposta para a marca do produto no e-commerce
+      type: object
+      properties:
+        id:
+          description: ID da marca do produto
+          type: string
+          example: 9aa9af47-a539-40fc-9005-85c70e757fcf
+        nome:
+          description: Nome da marca do produto
+          type: string
+          example: Marca do Produto
+    NCMsDeProduto:
+      description: Modelo de resposta para a lista de NCMs de produtos
+      type: object
+      properties:
+        items:
+          description: lista de NCM
+          type: array
+          items:
+            $ref: '#/components/schemas/Ncm'
+        total_items:
+          description: total de itens
+          type: integer
+          example: 10
+    Ncm:
+      description: Modelo de resposta para um NCM de produto
+      type: object
+      properties:
+        codigo:
+          description: código do NCM
+          type: string
+          example: '0100400'
+        descricao:
+          description: descrição do NCM
+          type: string
+          example: Livros de registro e de contabilidade
+        id:
+          description: id do NCM
+          type: integer
+          example: 1
+    NivelDeEstoqueDoProduto:
+      description: Enum do nivel de estoque do produto
+      type: string
+      enum:
+        - MINIMO
+        - MAXIMO
+        - PADRAO
+      x-enum-varnames:
+        - MINIMUM
+        - MAXIMUM
+        - DEFAULT
+    OpcoesDoProdutoComVariacao:
+      description: Modelo de resposta para as opções do produto com variação
+      type: object
+      properties:
+        descricao:
+          description: Descrição da opção de variação do produto
+          type: string
+          example: Descrição da opção de variação do produto
+        id:
+          description: ID da opção de variação do produto
+          type: string
+          example: 9aa9af47-a539-40fc-9005-85c70e757fcf
+    OpcoesDoTipoDeVariacaoDoProduto:
+      description: Modelo de resposta para as opções do tipo de variação do produto
+      type: object
+      properties:
+        descricao:
+          description: Descrição da opção de variação
+          type: string
+          example: Descrição da opção de variação
+        id:
+          description: ID da opção de variação
+          type: string
+          example: 9aa9af47-a539-40fc-9005-85c70e757fcf
+    OrigemDoProduto:
+      description: Enum de origem do produto
+      type: string
+      enum:
+        - NACIONAL
+        - ESTRANGEIRA_IMPORTACAO_DIRETA
+        - ESTRANGEIRA_ADQUIRIDA_INTERNAMENTE
+        - NACIONAL_IMPORTACAO_SUPERIOR_40
+        - NACIONAL_PRODUCAO_CONFORMIDADE
+        - NACIONAL_IMPORTACAO_INFERIOR_40
+        - ESTRANGEIRA_IMPORTACAO_DIRETA_CAMEX
+        - ESTRANGEIRA_ADQUIRIDA_INTERNAMENTE_CAMEX
+        - NACIONAL_MERCDORIA_BEM_IMPORTACAO_SUPERIOR_70
+      x-enum-varnames:
+        - NACIONAL
+        - ESTRANGEIRA_IMPORTACAO_DIRETA
+        - ESTRANGEIRA_ADQUIRIDA_INTERNAMENTE
+        - NACIONAL_IMPORTACAO_SUPERIOR_40
+        - NACIONAL_PRODUCAO_CONFORMIDADE
+        - NACIONAL_IMPORTACAO_INFERIOR_40
+        - ESTRANGEIRA_IMPORTACAO_DIRETA_CAMEX
+        - ESTRANGEIRA_ADQUIRIDA_INTERNAMENTE_CAMEX
+        - NACIONAL_MERCDORIA_BEM_IMPORTACAO_SUPERIOR_70
+    Produto:
+      description: >-
+        Modelo de resposta para o produto contendo todas as informações
+        necessárias
+      type: object
+      properties:
+        ativo:
+          description: Indica se o produto está ativo
+          type: boolean
+          example: true
+        categoria:
+          description: Grupo ou categoria do produto
+          allOf:
+            - $ref: '#/components/schemas/CategoriaDoProduto'
+        codigo_ean:
+          description: Código de barras do produto
+          type: string
+          example: EAN123
+        codigo_sku:
+          description: Código interno do produto
+          type: string
+          example: SKU123
+        conversao_unidade_medida:
+          description: Conversões de unidade de medida do produto
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversaoDeUnidadeDeMedidaDoProduto'
+        descricao:
+          description: Descrição detalhada do produto
+          type: string
+          example: Descrição do produto
+        detalhe_kit:
+          description: Detalhes do kit de produtos
+          allOf:
+            - $ref: '#/components/schemas/DetalheDoKitDeProdutos'
+        ecommerce:
+          description: Informações de e-commerce do produto
+          allOf:
+            - $ref: '#/components/schemas/EcommerceDoProduto'
+        estoque:
+          description: Informações de estoque do produto
+          allOf:
+            - $ref: '#/components/schemas/EstoqueDoProduto'
+        fiscal:
+          description: Informações fiscais do produto
+          allOf:
+            - $ref: '#/components/schemas/FiscalDoProduto'
+        formato:
+          description: Formato do produto
+          allOf:
+            - $ref: '#/components/schemas/FormatoDoProduto'
+          example: SIMPLES
+        id:
+          description: ID do produto no sistema legado
+          type: string
+          example: 9aa9af47-a539-40fc-9005-85c70e757fcf
+        id_centro_custo:
+          description: ID do centro de custo associado ao produto
+          type: string
+          example: 9aa9af47-a539-40fc-9005-85c70e757fcf
+        id_legado:
+          description: ID do produto no sistema legado
+          type: integer
+          example: 78305
+        imagens:
+          description: Lista de imagens do produto
+          type: array
+          items:
+            $ref: '#/components/schemas/ImagemDoProduto'
+        nome:
+          description: Nome do produto
+          type: string
+          example: nome do produto
+        pesos_dimensoes:
+          description: Dimensões e pesos do produto
+          allOf:
+            - $ref: '#/components/schemas/DimensoesDoProduto'
+        status:
+          description: Status atual do produto
+          allOf:
+            - $ref: '#/components/schemas/StatusDoProduto'
+          example: ATIVO
+        ultima_atualizacao:
+          description: Data da última atualização do produto
+          type: string
+          example: '2025-07-22T17:47:35.825004839Z'
+        unidade_medida:
+          description: Unidade de medida fiscal do produto
+          allOf:
+            - $ref: '#/components/schemas/FiscalUnidadeDeMedidaDoProduto'
+        variacao:
+          description: Informações de variação do produto
+          allOf:
+            - $ref: '#/components/schemas/VariacaoDoProduto'
+        versao:
+          description: Versão do produto
+          type: integer
+          example: 1
+    ProdutoEcommerceCategoria:
+      description: Modelo de resposta para a lista de categorias de e-commerce
+      type: object
+      properties:
+        id:
+          type: string
+          example: b9ec512f-98a5-44b2-b65f-b378a1db3ce5
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProdutoEcommerceCategoriaItem'
+        versao:
+          type: integer
+          example: 1
+    ProdutoEcommerceCategoriaItem:
+      description: modelo de categoria de e-commerce
+      type: object
+      properties:
+        descricao:
+          type: string
+          example: Eletrônicos
+        id:
+          type: string
+          example: 847f77c6-8f70-466e-ae29-1bc91bca696e
+        subcategorias:
+          type: array
+          items:
+            type: object
+    ProdutoNaVariacao:
+      description: Produto na lista de variação
+      type: object
+      properties:
+        aggregationCount:
+          description: Contagem de agregação do produto na variação
+          type: integer
+          example: 1
+        codigo:
+          description: Código do produto na variação
+          type: string
+          example: PRODV01
+        custo_medio:
+          description: Custo médio do produto na variação
+          type: number
+          example: 50
+        ean:
+          description: EAN do produto na variação
+          type: string
+          example: '7891234567893'
+        estoque_maximo:
+          description: Estoque máximo do produto na variação
+          type: number
+          example: 100
+        estoque_minimo:
+          description: Estoque mínimo do produto na variação
+          type: number
+          example: 10
+        id:
+          description: Id do produto na variação
+          type: string
+          example: 4680e564-b995-4e05-8fec-b8f181497e93
+        id_legado:
+          description: Id legado do produto na variação
+          type: integer
+          example: 76956
+        id_produto_pai_variacao:
+          description: Id do produto pai da variação
+          type: string
+          example: 9947a369-096e-4332-8e67-0a9765959e50
+        integracao_ecommerce_ativada:
+          description: >-
+            Indica se a integração com ecommerce está ativada para o produto na
+            variação
+          type: boolean
+          example: true
+        movido:
+          description: Indica se o produto na variação foi movido
+          type: boolean
+          example: false
+        nivel_estoque:
+          description: Nível de estoque do produto na variação
+          allOf:
+            - $ref: '#/components/schemas/NivelDeEstoqueDoProduto'
+          example: PADRAO
+        nome:
+          description: Nome do produto na variação
+          type: string
+          example: Produto 01 com variação
+        saldo:
+          description: Saldo do produto na variação
+          type: number
+          example: 100
+        status:
+          description: Status do produto na variação
+          allOf:
+            - $ref: '#/components/schemas/StatusDoProduto'
+          example: ATIVO
+        tipo:
+          description: Tipo do produto na variação
+          allOf:
+            - $ref: '#/components/schemas/TipoDoProdutoResumo'
+          example: PRODUTO
+        valor_venda:
+          description: Valor de venda do produto na variação
+          type: number
+          example: 150
+    ProdutosComVariacao:
+      description: Modelo de resposta para os produtos com variação
+      type: object
+      properties:
+        codigo_ean:
+          description: Código ean do produto com variação
+          type: string
+          example: Código EAN do produto com variação
+        codigo_sku:
+          description: Código sku do produto com variação
+          type: string
+          example: Código SKU do produto com variação
+        id:
+          description: ID do produto com variação
+          type: string
+          example: 9aa9af47-a539-40fc-9005-85c70e757fcf
+        movido:
+          description: Indica se o produto com variação foi movido
+          type: boolean
+          example: false
+        nome:
+          description: Nome do produto com variação
+          type: string
+          example: Nome do produto com variação
+        opcoes:
+          description: Lista de opções do produto com variação
+          type: array
+          items:
+            $ref: '#/components/schemas/OpcoesDoProdutoComVariacao'
+        relacionado_manualmente:
+          description: Indica se o produto com variação está relacionado manualmente
+          type: boolean
+          example: true
+        saldo:
+          description: Saldo do produto com variação
+          type: number
+          example: 10
+        valor_venda:
+          description: Valor de venda do produto com variação
+          type: number
+          example: 100
+        versao:
+          description: Versão do produto com variação
+          type: integer
+          example: 1
+    ResumoDeProdutos:
+      description: Resumo de produtos
+      type: object
+      properties:
+        items:
+          description: Lista de itens do resumo de produtos
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemResumoDeProdutos'
+        totalItems:
+          description: Total de itens encontrados
+          type: integer
+          example: 10
+    StatusDoProduto:
+      description: Enum de status do produto
+      type: string
+      enum:
+        - ATIVO
+        - INATIVO
+      x-enum-varnames:
+        - ENABLED
+        - DISABLED
+    TipoDeVariacaoDoProduto:
+      description: Modelo de resposta para o tipo de variação do produto
+      type: object
+      properties:
+        descricao:
+          description: Descrição do tipo de variação
+          type: string
+          example: Descrição do tipo de variação
+        id:
+          description: ID do tipo de variação
+          type: string
+          example: 9aa9af47-a539-40fc-9005-85c70e757fcf
+        opcoes:
+          description: Lista de opções do tipo de variação
+          type: array
+          items:
+            $ref: '#/components/schemas/OpcoesDoTipoDeVariacaoDoProduto'
+    TipoDoProduto:
+      description: Enum de tipo do produto
+      type: string
+      enum:
+        - MERCADORIA_PARA_REVENDA
+        - MATERIA_PRIMA
+        - EMBALAGEM
+        - PRODUTO_EM_PROCESSO
+        - PRODUTO_ACABADO
+        - SUBPRODUTO
+        - PRODUTO_INTERMEDIARIO
+        - MATERIAL_DE_USO_E_CONSUMO
+        - ATIVO_IMOBILIZADO
+        - SERVICOS
+        - OUTROS_INSUMOS
+        - OUTRAS
+      x-enum-varnames:
+        - MERCADORIA_PARA_REVENDA
+        - MATERIA_PRIMA
+        - EMBALAGEM
+        - PRODUTO_EM_PROCESSO
+        - PRODUTO_ACABADO
+        - SUBPRODUTO
+        - PRODUTO_INTERMEDIARIO
+        - MATERIAL_DE_USO_E_CONSUMO
+        - ATIVO_IMOBILIZADO
+        - SERVICOS
+        - OUTROS_INSUMOS
+        - OUTRAS
+    TipoDoProdutoResumo:
+      description: Enum de tipo do produto no resumo
+      type: string
+      enum:
+        - PRODUTO
+        - KIT_PRODUTO
+        - VARIACAO_PRODUTO
+      x-enum-varnames:
+        - PRODUCT
+        - PRODUCT_KIT
+        - PRODUCT_VARIATION
+    UnidadeDeMedidaDeEntradaNaConversao:
+      description: Modelo de resposta para a unidade de medida de entrada na conversão
+      type: object
+      properties:
+        descricao:
+          description: Descrição da unidade de medida
+          type: string
+          example: Unidade de Medida
+        id:
+          description: ID da unidade de medida
+          type: integer
+          example: 1
+    UnidadeDeMedidaDeProduto:
+      description: Modelo de unidade de medida de produto
+      type: object
+      properties:
+        abreviacao:
+          description: abreviacao da unidade de medida
+          type: string
+          example: Kg
+        descricao:
+          description: descricao da unidade de medida
+          type: string
+          example: Kilograma
+        em_uso:
+          description: indica se a unidade de medida está em uso
+          type: boolean
+          example: true
+        id:
+          description: id da unidade de medida
+          type: integer
+          example: 10801
+    UnidadesDeMedidaDeProduto:
+      description: Modelo de resposta para a lista de unidades de medida de produto
+      type: object
+      properties:
+        items:
+          description: lista de unidades de medida de produto
+          type: array
+          items:
+            $ref: '#/components/schemas/UnidadeDeMedidaDeProduto'
+        total_items:
+          description: total de itens
+          type: integer
+          example: 10
+    VariacaoDoProduto:
+      description: Modelo de resposta para as variações do produto
+      type: object
+      properties:
+        produtos:
+          description: Lista de produtos com variações
+          type: array
+          items:
+            $ref: '#/components/schemas/ProdutosComVariacao'
+        tipos:
+          description: Lista de tipos de variação do produto
+          type: array
+          items:
+            $ref: '#/components/schemas/TipoDeVariacaoDoProduto'

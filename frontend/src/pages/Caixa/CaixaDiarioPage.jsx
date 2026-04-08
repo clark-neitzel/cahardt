@@ -5,7 +5,7 @@ import vendedorService from '../../services/vendedorService';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     Wallet, Truck, Fuel, Package, CheckCircle, AlertTriangle,
-    Lock, Printer, ClipboardCheck, ChevronDown, ChevronUp, ReceiptText, Plus, Undo2, FlaskConical, Edit3, RotateCcw, Home, MapPin
+    Lock, Printer, ClipboardCheck, ChevronDown, ChevronUp, ReceiptText, Plus, Undo2, FlaskConical, Edit3, RotateCcw, Home, MapPin, DollarSign, Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -65,6 +65,9 @@ const CaixaDiarioPage = () => {
     const [veiculoFichaId, setVeiculoFichaId] = useState(null);
     const [editandoKm, setEditandoKm] = useState(false);
     const [kmInicialEdit, setKmInicialEdit] = useState('');
+    // Baixa CA
+    const [selectedBaixa, setSelectedBaixa] = useState(new Set());
+    const [quitandoCA, setQuitandoCA] = useState(false);
 
     // Persistir filtros na sessão sempre que mudarem
     useEffect(() => {
@@ -158,6 +161,58 @@ const CaixaDiarioPage = () => {
             fetchResumo();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao reabrir caixa.');
+        }
+    };
+
+    const handleToggleBaixa = (pedidoId) => {
+        setSelectedBaixa(prev => {
+            const next = new Set(prev);
+            if (next.has(pedidoId)) next.delete(pedidoId);
+            else next.add(pedidoId);
+            return next;
+        });
+    };
+
+    const handleSelectAllDinheiro = () => {
+        if (!resumo?.entregas) return;
+        const dinheiroIds = resumo.entregas
+            .filter(e => e.statusEntrega !== 'DEVOLVIDO' && e.pagamentos?.some(p => p.debitaCaixa && p.formaNome?.toLowerCase().includes('dinheiro')))
+            .map(e => e.pedidoId);
+        setSelectedBaixa(prev => {
+            const allSelected = dinheiroIds.every(id => prev.has(id));
+            if (allSelected) return new Set();
+            return new Set(dinheiroIds);
+        });
+    };
+
+    const handleQuitarCA = async () => {
+        if (selectedBaixa.size === 0) {
+            toast.error('Selecione ao menos uma entrega para quitar.');
+            return;
+        }
+        const ids = Array.from(selectedBaixa);
+        const nomes = resumo.entregas?.filter(e => ids.includes(e.pedidoId)).map(e => e.clienteNome).join(', ');
+        if (!confirm(`Quitar ${ids.length} entrega(s) no Conta Azul (caixinha)?\n\n${nomes}`)) return;
+
+        try {
+            setQuitandoCA(true);
+            const result = await caixaService.quitarCA(ids, data);
+            const ok = result.resultados?.filter(r => r.status === 'OK') || [];
+            const erros = result.resultados?.filter(r => r.status === 'ERRO') || [];
+            const jaQuitados = result.resultados?.filter(r => r.status === 'JA_QUITADO') || [];
+
+            if (ok.length > 0) toast.success(`${ok.length} baixa(s) criada(s) no CA!`);
+            if (jaQuitados.length > 0) toast.success(`${jaQuitados.length} já quitada(s).`);
+            if (erros.length > 0) {
+                erros.forEach(e => toast.error(`${e.cliente}: ${e.erro}`, { duration: 6000 }));
+            }
+
+            setSelectedBaixa(new Set());
+            fetchResumo();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao quitar no CA.');
+        } finally {
+            setQuitandoCA(false);
         }
     };
 
@@ -443,12 +498,40 @@ const CaixaDiarioPage = () => {
                         {/* Lista de Entregas Expandida */}
                         {expandedEntregas && resumo.entregas && (
                             <div className="border-t border-gray-200 pt-4">
+                                {/* Barra de seleção para baixa CA */}
+                                {isAdmin && (
+                                    <div className="flex flex-wrap items-center gap-2 mb-3 p-2 bg-indigo-50 rounded-lg border border-indigo-200">
+                                        <DollarSign className="h-4 w-4 text-indigo-600" />
+                                        <span className="text-xs font-medium text-indigo-700">Baixa CA:</span>
+                                        <button
+                                            onClick={handleSelectAllDinheiro}
+                                            className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 font-medium"
+                                        >
+                                            {selectedBaixa.size > 0 ? 'Limpar Seleção' : 'Selecionar Dinheiro'}
+                                        </button>
+                                        {selectedBaixa.size > 0 && (
+                                            <button
+                                                onClick={handleQuitarCA}
+                                                disabled={quitandoCA}
+                                                className="text-xs px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 font-medium disabled:opacity-50 flex items-center gap-1"
+                                            >
+                                                {quitandoCA ? <Loader2 className="h-3 w-3 animate-spin" /> : <DollarSign className="h-3 w-3" />}
+                                                Quitar {selectedBaixa.size} no CA
+                                            </button>
+                                        )}
+                                        {selectedBaixa.size > 0 && (
+                                            <span className="text-xs text-indigo-500">{selectedBaixa.size} selecionada(s)</span>
+                                        )}
+                                    </div>
+                                )}
+
                                 {/* Desktop */}
                                 <div className="hidden md:block overflow-x-auto">
                                     <table className="min-w-full text-sm">
                                         <thead>
                                             <tr className="text-xs text-gray-500 uppercase border-b">
                                                 {isAdmin && <th className="py-2 px-2 text-center w-10">✓</th>}
+                                                {isAdmin && <th className="py-2 px-2 text-center w-10" title="Selecionar para baixa CA">CA</th>}
                                                 <th className="py-2 px-2 text-left">Cliente</th>
                                                 <th className="py-2 px-2 text-left">Cond. Pgto</th>
                                                 <th className="py-2 px-2 text-right">Valor</th>
@@ -457,8 +540,10 @@ const CaixaDiarioPage = () => {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
-                                            {resumo.entregas.map((e) => (
-                                                <tr key={e.pedidoId} className="hover:bg-gray-50">
+                                            {resumo.entregas.map((e) => {
+                                                const isDinheiro = e.pagamentos?.some(p => p.debitaCaixa && p.formaNome?.toLowerCase().includes('dinheiro'));
+                                                return (
+                                                <tr key={e.pedidoId} className={`hover:bg-gray-50 ${selectedBaixa.has(e.pedidoId) ? 'bg-indigo-50' : ''}`}>
                                                     {isAdmin && (
                                                         <td className="py-2 px-2 text-center">
                                                             <input
@@ -467,6 +552,19 @@ const CaixaDiarioPage = () => {
                                                                 onChange={(ev) => handleToggleEntregaConferida(e.pedidoId, ev.target.checked)}
                                                                 className="h-4 w-4 text-green-600 rounded"
                                                             />
+                                                        </td>
+                                                    )}
+                                                    {isAdmin && (
+                                                        <td className="py-2 px-2 text-center">
+                                                            {e.statusEntrega !== 'DEVOLVIDO' && (
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedBaixa.has(e.pedidoId)}
+                                                                    onChange={() => handleToggleBaixa(e.pedidoId)}
+                                                                    className={`h-4 w-4 rounded ${isDinheiro ? 'text-indigo-600' : 'text-gray-400'}`}
+                                                                    title={isDinheiro ? 'Selecionar para baixa no CA' : 'Selecionar para baixa no CA (sem pgto dinheiro)'}
+                                                                />
+                                                            )}
                                                         </td>
                                                     )}
                                                     <td className="py-2 px-2 font-medium text-gray-900">
@@ -493,7 +591,8 @@ const CaixaDiarioPage = () => {
                                                         ))}
                                                     </td>
                                                 </tr>
-                                            ))}
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
@@ -501,7 +600,7 @@ const CaixaDiarioPage = () => {
                                 {/* Mobile */}
                                 <div className="md:hidden space-y-3">
                                     {resumo.entregas.map((e) => (
-                                        <div key={e.pedidoId} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                        <div key={e.pedidoId} className={`rounded-lg p-3 border ${selectedBaixa.has(e.pedidoId) ? 'bg-indigo-50 border-indigo-300' : 'bg-gray-50 border-gray-200'}`}>
                                             <div className="flex items-start justify-between">
                                                 <div className="flex-1">
                                                     <p className="font-medium text-gray-900 text-sm">
@@ -528,13 +627,23 @@ const CaixaDiarioPage = () => {
                                                         {e.statusEntrega}
                                                     </span>
                                                     {isAdmin && (
-                                                        <div className="mt-2">
+                                                        <div className="mt-2 flex items-center gap-2">
                                                             <input
                                                                 type="checkbox"
                                                                 checked={!!e.conferida}
                                                                 onChange={(ev) => handleToggleEntregaConferida(e.pedidoId, ev.target.checked)}
                                                                 className="h-4 w-4 text-green-600 rounded"
+                                                                title="Conferir"
                                                             />
+                                                            {e.statusEntrega !== 'DEVOLVIDO' && (
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedBaixa.has(e.pedidoId)}
+                                                                    onChange={() => handleToggleBaixa(e.pedidoId)}
+                                                                    className="h-4 w-4 text-indigo-600 rounded"
+                                                                    title="Selecionar para baixa CA"
+                                                                />
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
