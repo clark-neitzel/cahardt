@@ -391,11 +391,19 @@ router.delete('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) =
 router.patch('/:id/cancelar', verificarAuth, checkBaixa, async (req, res) => {
     try {
         const conta = await prisma.contaReceber.findUnique({
-            where: { id: req.params.id }
+            where: { id: req.params.id },
+            include: { pedido: { select: { embarqueId: true, statusEntrega: true } } }
         });
 
         if (!conta) return res.status(404).json({ error: 'Conta não encontrada.' });
         if (conta.status === 'QUITADO') return res.status(400).json({ error: 'Conta já quitada, não pode cancelar.' });
+
+        // Trava: não pode cancelar se o pedido está em uma carga (embarque)
+        if (conta.pedido?.embarqueId) {
+            return res.status(400).json({
+                error: 'Este pedido está em uma carga. Remova da carga primeiro ou aguarde a quitação/devolução pela carga.'
+            });
+        }
 
         await prisma.$transaction([
             prisma.parcela.updateMany({
@@ -412,6 +420,55 @@ router.patch('/:id/cancelar', verificarAuth, checkBaixa, async (req, res) => {
     } catch (error) {
         console.error('Erro ao cancelar conta:', error);
         res.status(500).json({ error: 'Erro ao cancelar conta.' });
+    }
+});
+
+// ── PATCH /:id/reverter-cancelamento — Reverter cancelamento de conta ──
+router.patch('/:id/reverter-cancelamento', verificarAuth, async (req, res) => {
+    try {
+        const perms = req._perms || await getPerms(req.user.id);
+        req._perms = perms;
+        if (!perms.admin && !perms.Pode_Reverter_Cancelamento_CR) {
+            return res.status(403).json({ error: 'Sem permissão para reverter cancelamento.' });
+        }
+
+        const conta = await prisma.contaReceber.findUnique({
+            where: { id: req.params.id },
+            include: { parcelas: true }
+        });
+
+        if (!conta) return res.status(404).json({ error: 'Conta não encontrada.' });
+        if (conta.status !== 'CANCELADO') return res.status(400).json({ error: 'Conta não está cancelada.' });
+
+        // Reverter parcelas canceladas para PENDENTE
+        const parcelasCanceladas = conta.parcelas.filter(p => p.status === 'CANCELADO');
+        const parcelasPagas = conta.parcelas.filter(p => p.status === 'PAGO');
+
+        await prisma.$transaction([
+            prisma.parcela.updateMany({
+                where: { contaReceberId: conta.id, status: 'CANCELADO' },
+                data: { status: 'PENDENTE' }
+            }),
+            prisma.contaReceber.update({
+                where: { id: conta.id },
+                data: { status: parcelasPagas.length > 0 ? 'PARCIAL' : 'ABERTO' }
+            }),
+            prisma.auditLog.create({
+                data: {
+                    acao: 'REVERTER_CANCELAMENTO',
+                    entidade: 'ContaReceber',
+                    entidadeId: conta.id,
+                    detalhes: `Cancelamento revertido por ${req.user.nome || req.user.login}. ${parcelasCanceladas.length} parcela(s) voltaram para PENDENTE.`,
+                    usuarioId: req.user.id,
+                    usuarioNome: req.user.nome || req.user.login || '-'
+                }
+            })
+        ]);
+
+        res.json({ message: 'Cancelamento revertido! Parcelas voltaram para PENDENTE.' });
+    } catch (error) {
+        console.error('Erro ao reverter cancelamento:', error);
+        res.status(500).json({ error: 'Erro ao reverter cancelamento.' });
     }
 });
 

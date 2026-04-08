@@ -28,6 +28,10 @@ const contasReceberService = {
     reverterQuitacao: async (id) => {
         const response = await api.put(`/contas-receber/${id}/reverter-quitacao`);
         return response.data;
+    },
+    reverterCancelamento: async (id) => {
+        const response = await api.patch(`/contas-receber/${id}/reverter-cancelamento`);
+        return response.data;
     }
 };
 
