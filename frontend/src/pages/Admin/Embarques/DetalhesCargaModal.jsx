@@ -162,6 +162,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             {`
                             .print-container table { width: 100%; border-collapse: collapse; margin-top: 5px; }
                             .print-container th, .print-container td { border: 1px solid #000; padding: 2px 4px; text-align: left; font-size: 8px; line-height: 1.1; color: #000; }
+                            .print-container .page-produtos th, .print-container .page-produtos td { font-size: 10px; line-height: 1.2; padding: 3px 5px; }
                             .print-container th { background-color: #f3f4f6; color: #000; font-weight: bold; }
                             .print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; color: #000; text-transform: uppercase; }
                             .print-container h2 { font-size: 11px; font-weight: bold; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px; color: #000; }
@@ -175,6 +176,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                 * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #000 !important; }
                                 .print-container { transform: scale(1) !important; margin: 0 !important; gap: 0 !important; display: block !important; }
                                 .print-container th, .print-container td { font-size: 8px !important; padding: 2px 3px !important; line-height: 1.1 !important; color: #000 !important; border: 1px solid #000 !important; }
+                                .print-container .page-produtos th, .print-container .page-produtos td { font-size: 10px !important; padding: 3px 5px !important; line-height: 1.2 !important; }
                                 .print-container td.wrap-text { white-space: normal !important; word-wrap: break-word !important; }
                                 .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 0 5mm !important; page-break-after: always; }
                                 .print-page:last-child { page-break-after: auto; }
@@ -302,7 +304,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             const thisPage = globalPageCount++;
                             return (
                                 <React.Fragment key={`separacao-${idx}`}>
-                                    <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '0mm 6mm' }}>
+                                    <div className="print-page page-produtos bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '0mm 6mm' }}>
                                         <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">
                                             Página {thisPage} de {totalPages}
                                         </div>
@@ -347,7 +349,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             const thisPage = globalPageCount++;
                             return (
                                 <React.Fragment key={`rastreio-${idx}`}>
-                                    <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '0mm 6mm' }}>
+                                    <div className="print-page page-produtos bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '0mm 6mm' }}>
                                         <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">
                                             Página {thisPage} de {totalPages}
                                         </div>
