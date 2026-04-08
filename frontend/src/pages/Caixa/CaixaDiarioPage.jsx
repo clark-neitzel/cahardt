@@ -5,7 +5,7 @@ import vendedorService from '../../services/vendedorService';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     Wallet, Truck, Fuel, Package, CheckCircle, AlertTriangle,
-    Lock, Printer, ClipboardCheck, ChevronDown, ChevronUp, ReceiptText, Plus, Undo2, FlaskConical, Edit3
+    Lock, Printer, ClipboardCheck, ChevronDown, ChevronUp, ReceiptText, Plus, Undo2, FlaskConical, Edit3, RotateCcw, Home, MapPin
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -224,50 +224,93 @@ const CaixaDiarioPage = () => {
                 <div className="space-y-6">
                     {/* Card Header: Veículo + Adiantamento + Média */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Veículo */}
+                        {/* Veículo / Diário */}
                         <div
                             className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 ${resumo.diario?.veiculoId ? 'cursor-pointer hover:border-sky-300 hover:bg-sky-50/40' : ''}`}
                             onClick={() => resumo.diario?.veiculoId && setVeiculoFichaId(resumo.diario.veiculoId)}
                             title={resumo.diario?.veiculoId ? 'Abrir resumo do veículo' : ''}
                         >
-                            <div className="flex items-center space-x-2 mb-2">
-                                <Truck className="h-5 w-5 text-sky-600" />
-                                <h3 className="text-sm font-semibold text-gray-700">Veículo do Dia</h3>
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center space-x-2">
+                                    <Truck className="h-5 w-5 text-sky-600" />
+                                    <h3 className="text-sm font-semibold text-gray-700">Diário do Dia</h3>
+                                </div>
+                                {resumo.diario?.modo && (
+                                    <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${
+                                        resumo.diario.modo === 'PRESENCIAL'
+                                            ? 'bg-green-100 text-green-700'
+                                            : 'bg-blue-100 text-blue-700'
+                                    }`}>
+                                        {resumo.diario.modo === 'PRESENCIAL'
+                                            ? <><MapPin className="h-3 w-3" /> Presencial</>
+                                            : <><Home className="h-3 w-3" /> Home Office</>
+                                        }
+                                    </span>
+                                )}
                             </div>
                             {resumo.diario ? (
                                 <div className="text-sm text-gray-600">
-                                    <p className="font-medium text-gray-900">{resumo.diario.placa} — {resumo.diario.modelo}</p>
-                                    {editandoKm ? (
-                                        <div className="flex items-center gap-2 mt-1" onClick={e => e.stopPropagation()}>
-                                            <input type="number" className="w-24 border border-gray-300 rounded px-2 py-1 text-xs font-mono"
-                                                value={kmInicialEdit} onChange={e => setKmInicialEdit(e.target.value)} autoFocus />
-                                            <button className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
-                                                onClick={async () => {
-                                                    try {
-                                                        await api.put(`/diarios/${resumo.diario.id}/km`, { kmInicial: parseInt(kmInicialEdit) });
-                                                        toast.success('KM inicial atualizado!');
-                                                        setEditandoKm(false);
-                                                        fetchResumo();
-                                                    } catch (e) { toast.error(e.response?.data?.error || 'Erro ao salvar KM.'); }
-                                                }}>OK</button>
-                                            <button className="text-xs text-gray-500 hover:text-gray-700" onClick={() => setEditandoKm(false)}>✕</button>
-                                        </div>
+                                    {resumo.diario.placa ? (
+                                        <p className="font-medium text-gray-900">{resumo.diario.placa} — {resumo.diario.modelo}</p>
                                     ) : (
-                                        <p className="text-xs mt-1">
-                                            KM: {resumo.diario.kmInicial || '—'} → {resumo.diario.kmFinal || '—'}
-                                            {resumo.diario.totalKm > 0 && <span className="ml-1 font-medium">({resumo.diario.totalKm} km)</span>}
-                                            {isAdmin && resumo.diario.id && (
-                                                <button className="ml-2 text-indigo-500 hover:text-indigo-700" title="Editar KM inicial"
-                                                    onClick={(e) => { e.stopPropagation(); setKmInicialEdit(String(resumo.diario.kmInicial || '')); setEditandoKm(true); }}>
-                                                    <Edit3 className="h-3 w-3 inline" />
-                                                </button>
-                                            )}
-                                        </p>
+                                        <p className="text-gray-400 italic text-xs">Sem veículo (Home Office)</p>
                                     )}
-                                    <p className="text-[11px] text-sky-700 mt-2">Clique para ver Resumo, Documentos e Manutenção</p>
+                                    {resumo.diario.modo === 'PRESENCIAL' && (
+                                        <>
+                                            {editandoKm ? (
+                                                <div className="flex items-center gap-2 mt-1" onClick={e => e.stopPropagation()}>
+                                                    <input type="number" className="w-24 border border-gray-300 rounded px-2 py-1 text-xs font-mono"
+                                                        value={kmInicialEdit} onChange={e => setKmInicialEdit(e.target.value)} autoFocus />
+                                                    <button className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
+                                                        onClick={async () => {
+                                                            try {
+                                                                await api.put(`/diarios/${resumo.diario.id}/km`, { kmInicial: parseInt(kmInicialEdit) });
+                                                                toast.success('KM inicial atualizado!');
+                                                                setEditandoKm(false);
+                                                                fetchResumo();
+                                                            } catch (e) { toast.error(e.response?.data?.error || 'Erro ao salvar KM.'); }
+                                                        }}>OK</button>
+                                                    <button className="text-xs text-gray-500 hover:text-gray-700" onClick={() => setEditandoKm(false)}>✕</button>
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs mt-1">
+                                                    KM: {resumo.diario.kmInicial || '—'} → {resumo.diario.kmFinal || '—'}
+                                                    {resumo.diario.totalKm > 0 && <span className="ml-1 font-medium">({resumo.diario.totalKm} km)</span>}
+                                                    {isAdmin && resumo.diario.id && (
+                                                        <button className="ml-2 text-indigo-500 hover:text-indigo-700" title="Editar KM inicial"
+                                                            onClick={(e) => { e.stopPropagation(); setKmInicialEdit(String(resumo.diario.kmInicial || '')); setEditandoKm(true); }}>
+                                                            <Edit3 className="h-3 w-3 inline" />
+                                                        </button>
+                                                    )}
+                                                </p>
+                                            )}
+                                        </>
+                                    )}
+                                    {resumo.diario.veiculoId && (
+                                        <p className="text-[11px] text-sky-700 mt-2">Clique para ver Resumo, Documentos e Manutenção</p>
+                                    )}
+                                    {isAdmin && resumo.diario.id && (
+                                        <button
+                                            className="mt-2 inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium"
+                                            title="Apagar diário para que o vendedor possa iniciar novamente"
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if (!confirm('Reiniciar o diário deste vendedor? Ele precisará escolher o modo novamente (Home Office / Presencial).')) return;
+                                                try {
+                                                    await api.delete(`/diarios/${resumo.diario.id}`);
+                                                    toast.success('Diário reiniciado! O vendedor poderá escolher o modo novamente.');
+                                                    fetchResumo();
+                                                } catch (err) {
+                                                    toast.error(err.response?.data?.error || 'Erro ao reiniciar diário.');
+                                                }
+                                            }}
+                                        >
+                                            <RotateCcw className="h-3 w-3" /> Reiniciar Diário
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
-                                <p className="text-sm text-gray-400">Sem diário/veículo no dia</p>
+                                <p className="text-sm text-gray-400">Sem diário iniciado no dia</p>
                             )}
                         </div>
 

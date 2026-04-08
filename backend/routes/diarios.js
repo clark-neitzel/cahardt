@@ -40,7 +40,8 @@ router.post('/encerrar', diarioController.encerrar);
 // Admin: editar KM inicial de um diário (sem exigir KM final)
 router.put('/:id/km', async (req, res) => {
     try {
-        if (!req._perms?.admin) {
+        const perms = req.user?.permissoes || {};
+        if (!perms.admin) {
             return res.status(403).json({ error: 'Apenas administradores podem ajustar KM.' });
         }
 
@@ -61,6 +62,26 @@ router.put('/:id/km', async (req, res) => {
     } catch (error) {
         console.error('Erro ao editar KM:', error);
         res.status(500).json({ error: 'Erro ao editar KM.' });
+    }
+});
+
+// Admin: deletar diário do dia para permitir re-inicio (ex: motorista escolheu modo errado)
+router.delete('/:id', async (req, res) => {
+    try {
+        const perms = req.user?.permissoes || {};
+        if (!perms.admin) {
+            return res.status(403).json({ error: 'Apenas administradores podem reiniciar o diário.' });
+        }
+
+        const diario = await prisma.diarioVendedor.findUnique({ where: { id: req.params.id } });
+        if (!diario) return res.status(404).json({ error: 'Diário não encontrado.' });
+
+        await prisma.diarioVendedor.delete({ where: { id: req.params.id } });
+
+        res.json({ ok: true, message: 'Diário removido. O vendedor poderá iniciar novamente.' });
+    } catch (error) {
+        console.error('Erro ao deletar diário:', error);
+        res.status(500).json({ error: 'Erro ao reiniciar diário.' });
     }
 });
 
