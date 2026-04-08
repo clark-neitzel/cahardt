@@ -100,35 +100,39 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
         const content = printRef.current;
         const printWindow = window.open('', '', 'height=800,width=800');
 
-        // Tailwind forms a basic CSS string for print
-        const tailwindCSS = Array.from(document.styleSheets)
-            .flatMap(sheet => {
-                try {
-                    return Array.from(sheet.cssRules).map(rule => rule.cssText);
-                } catch (e) { return []; }
-            })
-            .join('\n');
-
         printWindow.document.write(`
             <html>
                 <head>
                     <title>Romaneio de Carga #${embarque?.numero}</title>
                     <style>
-                        ${tailwindCSS}
-                        @media print {
-                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 20mm; font-family: sans-serif; }
-                            .page-break { page-break-before: always; }
-                            * { color: #000 !important; }
-                        }
-                        body { color: #000; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-                        th, td { border: 1px solid #000; padding: 8px; text-align: left; font-size: 12px; color: #000; }
-                        th { background-color: #f3f4f6; color: #000; }
-                        h1 { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #000; }
-                        h2 { font-size: 16px; font-weight: bold; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #000; padding-bottom: 5px; color: #000; }
-                        .text-sm { font-size: 12px; color: #000; }
-                        .text-xs { font-size: 10px; color: #000; }
-                        div, span, p, strong { color: #000; }
+                        @page { size: A4 portrait; margin: 8mm 3mm 3mm 3mm; }
+                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #000 !important; box-sizing: border-box; }
+                        body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; color: #000; }
+                        .print-container { transform: none !important; }
+                        .print-container table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+                        .print-container th, .print-container td { border: 1px solid #000; padding: 2px 4px; text-align: left; font-size: 8px; line-height: 1.1; color: #000; }
+                        .print-container th { background-color: #f3f4f6; font-weight: bold; }
+                        .print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; }
+                        .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 0 5mm !important; page-break-after: always; }
+                        .print-page:last-child { page-break-after: auto; }
+                        .wrap-text { white-space: normal !important; word-wrap: break-word !important; }
+                        .font-bold { font-weight: bold; }
+                        .font-mono { font-family: monospace; }
+                        .text-center { text-align: center; }
+                        .text-right { text-align: right; }
+                        .text-\\[7px\\] { font-size: 7px; }
+                        .text-\\[8px\\] { font-size: 8px; }
+                        .text-\\[9px\\] { font-size: 9px; }
+                        .whitespace-nowrap { white-space: nowrap; }
+                        .italic { font-style: italic; }
+                        .pt-4 { padding-top: 10px; }
+                        .pb-2 { padding-bottom: 4px; }
+                        .mb-2 { margin-bottom: 4px; }
+                        .border-b { border-bottom: 1px solid #000; }
+                        .border-black { border-color: #000; }
+                        .flex { display: flex; }
+                        .justify-between { justify-content: space-between; }
+                        .leading-tight { line-height: 1.1; }
                     </style>
                 </head>
                 <body>
@@ -142,17 +146,22 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
         setTimeout(() => {
             printWindow.print();
             printWindow.close();
-        }, 500); // Wait for styles to inject
+        }, 500);
     };
 
-    // Calculate Consolidado de Produtos
+    // Calculate Consolidado de Produtos (com rastreio de pedidos)
     const consolidado = {};
     if (embarque && embarque.pedidos) {
         embarque.pedidos.forEach(p => {
+            const prefixoImp = p.bonificacao ? 'BN#' : p.especial ? 'ZZ#' : '';
+            const numPedido = prefixoImp ? `${prefixoImp}${p.numero}` : (p.numero || 'N/A');
             p.itens.forEach(i => {
                 const nome = i.produto?.nome || 'Produto Removido';
-                if (!consolidado[nome]) consolidado[nome] = { qtde: 0, und: i.produto?.unidade || 'UN' };
+                if (!consolidado[nome]) consolidado[nome] = { qtde: 0, und: i.produto?.unidade || 'UN', pedidos: [] };
                 consolidado[nome].qtde += Number(i.quantidade);
+                if (!consolidado[nome].pedidos.includes(numPedido)) {
+                    consolidado[nome].pedidos.push(numPedido);
+                }
             });
         });
     }
@@ -169,9 +178,13 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
         const produtosPaginados = chunkArray(arrConsolidado, CHUNK_SIZE);
         if (produtosPaginados.length === 0) produtosPaginados.push([]);
 
+        // Rastreabilidade: produto -> qtde -> pedidos vinculados
+        const rastreabilidadePaginada = chunkArray(arrConsolidado, 35);
+        if (rastreabilidadePaginada.length === 0) rastreabilidadePaginada.push([]);
+
         const amostrasEmbarque = embarque?.amostras || [];
         const hasAmostras = amostrasEmbarque.length > 0;
-        const totalPages = pedidosPaginados.length + produtosPaginados.length + (hasAmostras ? 1 : 0);
+        const totalPages = pedidosPaginados.length + produtosPaginados.length + rastreabilidadePaginada.length + (hasAmostras ? 1 : 0);
         let globalPageCount = 1;
 
         return (
@@ -335,12 +348,12 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             const thisPage = globalPageCount++;
                             return (
                                 <React.Fragment key={`separacao-${idx}`}>
-                                    <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '10mm 15mm' }}>
+                                    <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '0mm 6mm' }}>
                                         <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">
                                             Página {thisPage} de {totalPages}
                                         </div>
 
-                                        <h1>Separação Produtos - Carga #{embarque?.numero || '000'} {produtosPaginados.length > 1 ? `(Pt. ${idx + 1})` : ''}</h1>
+                                        <h1 className="pt-4">Separação Produtos - Carga #{embarque?.numero || '000'} {produtosPaginados.length > 1 ? `(Pt. ${idx + 1})` : ''}</h1>
                                         <div className="text-[9px] flex justify-between border-b border-black pb-2 mb-2 text-black font-semibold">
                                             <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
                                             <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
@@ -370,8 +383,50 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                             </tbody>
                                         </table>
                                     </div>
-                                    {/* Adiciona separador web a menos que seja a ultima pagina gerada */}
-                                    {idx < produtosPaginados.length - 1 && (
+                                    <div className="w-full border-b-2 border-dashed border-gray-600 print:hidden relative h-4"></div>
+                                </React.Fragment>
+                            );
+                        })}
+
+                        {/* Paginação da Rastreabilidade (Produto x Pedidos) */}
+                        {rastreabilidadePaginada.map((chunkRastreio, idx) => {
+                            const thisPage = globalPageCount++;
+                            return (
+                                <React.Fragment key={`rastreio-${idx}`}>
+                                    <div className="print-page bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '0mm 6mm' }}>
+                                        <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">
+                                            Página {thisPage} de {totalPages}
+                                        </div>
+
+                                        <h1 className="pt-4">Conferência por Produto - Carga #{embarque?.numero || '000'} {rastreabilidadePaginada.length > 1 ? `(Pt. ${idx + 1})` : ''}</h1>
+                                        <div className="text-[9px] flex justify-between border-b border-black pb-2 mb-2 text-black font-semibold">
+                                            <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
+                                            <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
+                                        </div>
+
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th style={{ width: '40%' }}>Produto</th>
+                                                    <th style={{ width: '8%', textAlign: 'center' }}>Qtde</th>
+                                                    <th style={{ width: '52%' }}>Pedidos Vinculados</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {chunkRastreio.map(([nome, info]) => (
+                                                    <tr key={nome}>
+                                                        <td className="font-bold">{nome}</td>
+                                                        <td className="text-center font-bold">{Number(info.qtde).toFixed(0)}</td>
+                                                        <td className="wrap-text text-[7px]">{info.pedidos.join(', ')}</td>
+                                                    </tr>
+                                                ))}
+                                                {chunkRastreio.length === 0 && (
+                                                    <tr><td colSpan="3" style={{ textAlign: 'center' }}>Nenhum produto atrelado.</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {idx < rastreabilidadePaginada.length - 1 && (
                                         <div className="w-full border-b-2 border-dashed border-gray-600 print:hidden relative h-4"></div>
                                     )}
                                 </React.Fragment>
