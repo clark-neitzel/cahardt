@@ -7,6 +7,9 @@ const MOTIVO_LABEL = {
     AJUSTE_MANUAL: 'Ajuste Manual',
     PEDIDO_ESPECIAL: 'Pedido Especial',
     PEDIDO_BONIFICACAO: 'Bonificação',
+    FATURAMENTO: 'Faturamento',
+    DEVOLUCAO: 'Devolução',
+    REVERSAO_DEVOLUCAO: 'Reversão Devolução',
     CANCELAMENTO: 'Cancelamento',
     EXCLUSAO: 'Exclusão',
 };

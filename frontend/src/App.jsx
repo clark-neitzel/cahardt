@@ -55,7 +55,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, History
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -213,6 +213,7 @@ const Layout = ({ children }) => {
           {showEstoque && <SidebarSection label="Produção" />}
           {showEstoque && <SidebarItem to="/estoque/posicao" icon={Warehouse} label="Posição" />}
           {showEstoque && <SidebarItem to="/estoque" icon={Warehouse} label="Ajuste" />}
+          {showEstoque && <SidebarItem to="/estoque/historico" icon={History} label="Histórico" />}
 
           {/* Configurações */}
           {showConfig && <SidebarSection label="Configurações" />}
