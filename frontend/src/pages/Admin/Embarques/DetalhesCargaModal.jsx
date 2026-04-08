@@ -98,45 +98,60 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
 
     const handlePrint = () => {
         const content = printRef.current;
-        const printWindow = window.open('', '', 'height=800,width=800');
+        // Clonar o conteúdo e copiar os estilos computados inline
+        const clone = content.cloneNode(true);
 
+        // Remover elementos que não devem aparecer na impressão (indicadores de página da preview)
+        clone.querySelectorAll('.print\\:hidden').forEach(el => el.remove());
+
+        // Copiar estilos computados para inline em todos os elementos
+        const applyComputedStyles = (source, target) => {
+            const sourceChildren = source.children;
+            const targetChildren = target.children;
+            for (let i = 0; i < sourceChildren.length; i++) {
+                const computed = window.getComputedStyle(sourceChildren[i]);
+                const important = [
+                    'font-size', 'font-weight', 'font-family', 'font-style',
+                    'text-align', 'color', 'background-color',
+                    'border', 'border-top', 'border-bottom', 'border-left', 'border-right',
+                    'border-collapse', 'border-color', 'border-width', 'border-style',
+                    'padding', 'padding-top', 'padding-bottom', 'padding-left', 'padding-right',
+                    'margin', 'margin-top', 'margin-bottom', 'margin-left', 'margin-right',
+                    'width', 'max-width', 'min-width', 'height',
+                    'display', 'flex-direction', 'justify-content', 'align-items', 'gap',
+                    'line-height', 'white-space', 'word-wrap', 'overflow-wrap',
+                    'text-transform', 'letter-spacing', 'vertical-align'
+                ];
+                let style = '';
+                important.forEach(prop => {
+                    const val = computed.getPropertyValue(prop);
+                    if (val) style += `${prop}:${val};`;
+                });
+                targetChildren[i].setAttribute('style', (targetChildren[i].getAttribute('style') || '') + style);
+                if (sourceChildren[i].children.length > 0) {
+                    applyComputedStyles(sourceChildren[i], targetChildren[i]);
+                }
+            }
+        };
+        applyComputedStyles(content, clone);
+
+        const printWindow = window.open('', '', 'height=800,width=800');
         printWindow.document.write(`
             <html>
                 <head>
                     <title>Romaneio de Carga #${embarque?.numero}</title>
                     <style>
-                        @page { size: A4 portrait; margin: 8mm 3mm 3mm 3mm; }
-                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #000 !important; box-sizing: border-box; }
+                        @page { size: A4 portrait; margin: 8mm 5mm 5mm 5mm; }
+                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
                         body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; color: #000; }
-                        .print-container { transform: none !important; }
-                        .print-container table { width: 100%; border-collapse: collapse; margin-top: 5px; }
-                        .print-container th, .print-container td { border: 1px solid #000; padding: 2px 4px; text-align: left; font-size: 8px; line-height: 1.1; color: #000; }
-                        .print-container th { background-color: #f3f4f6; font-weight: bold; }
-                        .print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; }
-                        .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 0 5mm !important; page-break-after: always; }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { border: 1px solid #000 !important; }
+                        .print-page { page-break-after: always; padding: 0 3mm !important; }
                         .print-page:last-child { page-break-after: auto; }
-                        .wrap-text { white-space: normal !important; word-wrap: break-word !important; }
-                        .font-bold { font-weight: bold; }
-                        .font-mono { font-family: monospace; }
-                        .text-center { text-align: center; }
-                        .text-right { text-align: right; }
-                        .text-\\[7px\\] { font-size: 7px; }
-                        .text-\\[8px\\] { font-size: 8px; }
-                        .text-\\[9px\\] { font-size: 9px; }
-                        .whitespace-nowrap { white-space: nowrap; }
-                        .italic { font-style: italic; }
-                        .pt-4 { padding-top: 10px; }
-                        .pb-2 { padding-bottom: 4px; }
-                        .mb-2 { margin-bottom: 4px; }
-                        .border-b { border-bottom: 1px solid #000; }
-                        .border-black { border-color: #000; }
-                        .flex { display: flex; }
-                        .justify-between { justify-content: space-between; }
-                        .leading-tight { line-height: 1.1; }
                     </style>
                 </head>
                 <body>
-                    ${content.innerHTML}
+                    ${clone.innerHTML}
                 </body>
             </html>
         `);
