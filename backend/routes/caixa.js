@@ -881,7 +881,9 @@ router.get('/audit-logs', async (req, res) => {
     }
 });
 
-// ── POST /quitar-ca — Dar baixa de entregas à vista (dinheiro) no Conta Azul ──
+// ── POST /quitar-ca — Dar baixa de entregas à vista (dinheiro) ──
+// ESPECIAL → baixa LOCAL (ContaReceber/Parcela no app)
+// Normal  → baixa no CONTA AZUL via API (conta caixinha)
 router.post('/quitar-ca', checkEditor, async (req, res) => {
     const contaAzulService = require('../services/contaAzulService');
 
@@ -913,116 +915,241 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
             select: { nome: true }
         });
 
-        // Buscar conta caixinha no CA
-        let contaCaixinha;
-        try {
-            contaCaixinha = await contaAzulService.buscarContaCaixinha();
-        } catch (err) {
-            return res.status(400).json({ error: `Erro ao buscar conta Caixinha no CA: ${err.message}` });
-        }
-
         const dataPgto = dataPagamento || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
         const resultados = [];
 
-        for (const pedido of pedidos) {
+        // Separar especiais (baixa local) de normais (baixa CA)
+        const especiais = pedidos.filter(p => p.especial);
+        const normais = pedidos.filter(p => !p.especial);
+
+        // ═══ ESPECIAIS → Baixa local no app ═══
+        for (const pedido of especiais) {
             const clienteNome = pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'N/A';
             const motorista = pedido.embarque?.responsavel?.nome || 'N/I';
 
             try {
-                // Verificar se tem idVendaContaAzul
-                if (!pedido.idVendaContaAzul) {
+                // Buscar ContaReceber + Parcelas locais
+                const contaReceber = await prisma.contaReceber.findUnique({
+                    where: { pedidoId: pedido.id },
+                    include: { parcelas: true }
+                });
+
+                if (!contaReceber) {
                     resultados.push({
                         pedidoId: pedido.id,
                         numero: pedido.numero,
                         cliente: clienteNome,
+                        tipo: 'ESPECIAL',
                         status: 'ERRO',
-                        erro: 'Pedido sem venda no Conta Azul (idVendaContaAzul ausente)'
+                        erro: 'Conta a receber local não encontrada para este pedido especial'
                     });
                     continue;
                 }
 
-                // Calcular valor total dos pagamentos em dinheiro (à vista) que debitam caixa
-                const valorTotal = pedido.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0);
+                const parcelasElegiveis = contaReceber.parcelas.filter(p => p.status === 'PENDENTE' || p.status === 'VENCIDO');
 
-                // Encontrar a parcela correspondente no CA
-                const dataVendaStr = pedido.dataVenda
-                    ? new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
-                    : dataPgto;
-
-                const parcela = await contaAzulService.encontrarParcelaDeVenda(
-                    pedido.cliente.UUID,
-                    pedido.idVendaContaAzul,
-                    dataVendaStr
-                );
-
-                if (!parcela) {
+                if (parcelasElegiveis.length === 0) {
                     resultados.push({
                         pedidoId: pedido.id,
                         numero: pedido.numero,
                         cliente: clienteNome,
-                        status: 'ERRO',
-                        erro: `Parcela não encontrada no CA para venda ${pedido.idVendaContaAzul}`
-                    });
-                    continue;
-                }
-
-                // Verificar se já está quitada
-                if (parcela.status === 'QUITADO' || parcela.status === 'RECEBIDO') {
-                    resultados.push({
-                        pedidoId: pedido.id,
-                        numero: pedido.numero,
-                        cliente: clienteNome,
+                        tipo: 'ESPECIAL',
                         status: 'JA_QUITADO',
-                        erro: 'Parcela já quitada no CA'
+                        erro: 'Todas as parcelas já estão pagas'
                     });
                     continue;
                 }
 
-                // Valor da baixa = valor bruto da parcela (quitação total)
-                const valorBruto = parcela.valor_composicao?.valor_bruto
-                    || parcela.valor_composicao?.valor_liquido
-                    || Number(valorTotal);
-
-                // Observação com informações do caixa
                 const obs = `Motorista: ${motorista} | Caixa: ${dataPgto} | Solicitante: ${solicitante?.nome || req.user.id}`;
 
-                // Criar baixa no CA
-                const baixaPayload = {
-                    data_pagamento: dataPgto,
-                    composicao_valor: {
-                        valor_bruto: Math.round(valorBruto * 100) / 100,
-                        multa: 0,
-                        juros: 0,
-                        desconto: 0,
-                        taxa: 0
-                    },
-                    conta_financeira: contaCaixinha.id,
-                    metodo_pagamento: 'DINHEIRO',
-                    observacao: obs
-                };
+                // Dar baixa em todas as parcelas pendentes
+                await prisma.$transaction(async (tx) => {
+                    for (const parcela of parcelasElegiveis) {
+                        await tx.parcela.update({
+                            where: { id: parcela.id },
+                            data: {
+                                status: 'PAGO',
+                                valorPago: parcela.valor,
+                                formaPagamento: 'À vista - Dinheiro',
+                                dataPagamento: new Date(dataPgto + 'T12:00:00-03:00'),
+                                baixadoPorId: req.user.id,
+                                observacao: obs
+                            }
+                        });
+                    }
 
-                const baixaCA = await contaAzulService.criarBaixa(parcela.id, baixaPayload);
+                    // Recalcular status da conta
+                    const todasParcelas = await tx.parcela.findMany({
+                        where: { contaReceberId: contaReceber.id }
+                    });
+                    const pagas = todasParcelas.filter(p => p.status === 'PAGO').length;
+                    const canceladas = todasParcelas.filter(p => p.status === 'CANCELADO').length;
+                    const total = todasParcelas.length;
 
+                    let novoStatus;
+                    if (pagas + canceladas >= total) novoStatus = 'QUITADO';
+                    else if (pagas > 0) novoStatus = 'PARCIAL';
+                    else novoStatus = 'ABERTO';
+
+                    await tx.contaReceber.update({
+                        where: { id: contaReceber.id },
+                        data: { status: novoStatus }
+                    });
+
+                    // Registrar no histórico
+                    await tx.atendimento.create({
+                        data: {
+                            tipo: 'FINANCEIRO',
+                            observacao: `Baixa caixa (especial) - ${parcelasElegiveis.length} parcela(s) - R$ ${Number(contaReceber.valorTotal).toFixed(2)} | ${obs}`,
+                            clienteId: pedido.cliente.UUID,
+                            idVendedor: req.user.id,
+                            pedidoId: pedido.id
+                        }
+                    });
+                });
+
+                const valorTotal = parcelasElegiveis.reduce((s, p) => s + Number(p.valor), 0);
                 resultados.push({
                     pedidoId: pedido.id,
                     numero: pedido.numero,
                     cliente: clienteNome,
+                    tipo: 'ESPECIAL',
                     status: 'OK',
-                    baixaId: baixaCA?.id || null,
-                    valor: valorBruto
+                    valor: Math.round(valorTotal * 100) / 100,
+                    parcelas: parcelasElegiveis.length
                 });
 
             } catch (err) {
-                const errMsg = err.response?.data?.message || err.response?.data
-                    ? JSON.stringify(err.response?.data)
-                    : err.message;
                 resultados.push({
                     pedidoId: pedido.id,
                     numero: pedido.numero,
                     cliente: clienteNome,
+                    tipo: 'ESPECIAL',
                     status: 'ERRO',
-                    erro: errMsg
+                    erro: err.message
                 });
+            }
+        }
+
+        // ═══ NORMAIS → Baixa no Conta Azul via API ═══
+        let contaCaixinha = null;
+        if (normais.length > 0) {
+            try {
+                contaCaixinha = await contaAzulService.buscarContaCaixinha();
+            } catch (err) {
+                // Marcar todos os normais como erro
+                for (const pedido of normais) {
+                    resultados.push({
+                        pedidoId: pedido.id,
+                        numero: pedido.numero,
+                        cliente: pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'N/A',
+                        tipo: 'CA',
+                        status: 'ERRO',
+                        erro: `Erro ao buscar conta Caixinha no CA: ${err.message}`
+                    });
+                }
+            }
+        }
+
+        if (contaCaixinha && normais.length > 0) {
+            for (const pedido of normais) {
+                const clienteNome = pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'N/A';
+                const motorista = pedido.embarque?.responsavel?.nome || 'N/I';
+
+                try {
+                    if (!pedido.idVendaContaAzul) {
+                        resultados.push({
+                            pedidoId: pedido.id,
+                            numero: pedido.numero,
+                            cliente: clienteNome,
+                            tipo: 'CA',
+                            status: 'ERRO',
+                            erro: 'Pedido sem venda no Conta Azul (idVendaContaAzul ausente)'
+                        });
+                        continue;
+                    }
+
+                    const valorTotal = pedido.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0);
+
+                    const dataVendaStr = pedido.dataVenda
+                        ? new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+                        : dataPgto;
+
+                    const parcela = await contaAzulService.encontrarParcelaDeVenda(
+                        pedido.cliente.UUID,
+                        pedido.idVendaContaAzul,
+                        dataVendaStr
+                    );
+
+                    if (!parcela) {
+                        resultados.push({
+                            pedidoId: pedido.id,
+                            numero: pedido.numero,
+                            cliente: clienteNome,
+                            tipo: 'CA',
+                            status: 'ERRO',
+                            erro: `Parcela não encontrada no CA para venda ${pedido.idVendaContaAzul}`
+                        });
+                        continue;
+                    }
+
+                    if (parcela.status === 'QUITADO' || parcela.status === 'RECEBIDO') {
+                        resultados.push({
+                            pedidoId: pedido.id,
+                            numero: pedido.numero,
+                            cliente: clienteNome,
+                            tipo: 'CA',
+                            status: 'JA_QUITADO',
+                            erro: 'Parcela já quitada no CA'
+                        });
+                        continue;
+                    }
+
+                    const valorBruto = parcela.valor_composicao?.valor_bruto
+                        || parcela.valor_composicao?.valor_liquido
+                        || Number(valorTotal);
+
+                    const obs = `Motorista: ${motorista} | Caixa: ${dataPgto} | Solicitante: ${solicitante?.nome || req.user.id}`;
+
+                    const baixaPayload = {
+                        data_pagamento: dataPgto,
+                        composicao_valor: {
+                            valor_bruto: Math.round(valorBruto * 100) / 100,
+                            multa: 0,
+                            juros: 0,
+                            desconto: 0,
+                            taxa: 0
+                        },
+                        conta_financeira: contaCaixinha.id,
+                        metodo_pagamento: 'DINHEIRO',
+                        observacao: obs
+                    };
+
+                    const baixaCA = await contaAzulService.criarBaixa(parcela.id, baixaPayload);
+
+                    resultados.push({
+                        pedidoId: pedido.id,
+                        numero: pedido.numero,
+                        cliente: clienteNome,
+                        tipo: 'CA',
+                        status: 'OK',
+                        baixaId: baixaCA?.id || null,
+                        valor: valorBruto
+                    });
+
+                } catch (err) {
+                    const errMsg = err.response?.data?.message || err.response?.data
+                        ? JSON.stringify(err.response?.data)
+                        : err.message;
+                    resultados.push({
+                        pedidoId: pedido.id,
+                        numero: pedido.numero,
+                        cliente: clienteNome,
+                        tipo: 'CA',
+                        status: 'ERRO',
+                        erro: errMsg
+                    });
+                }
             }
         }
 
@@ -1033,12 +1160,12 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
         res.json({
             message: `Baixa: ${ok} OK, ${erros} erro(s), ${jaQuitados} já quitado(s)`,
             resultados,
-            contaCaixinha: { id: contaCaixinha.id, nome: contaCaixinha.nome }
+            contaCaixinha: contaCaixinha ? { id: contaCaixinha.id, nome: contaCaixinha.nome } : null
         });
 
     } catch (error) {
-        console.error('Erro ao quitar no CA:', error);
-        res.status(500).json({ error: 'Erro ao processar quitação no Conta Azul.' });
+        console.error('Erro ao quitar:', error);
+        res.status(500).json({ error: 'Erro ao processar quitação.' });
     }
 });
 
