@@ -68,7 +68,17 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             where,
             include: {
                 cliente: { select: { UUID: true, NomeFantasia: true, Nome: true } },
-                pedido: { select: { id: true, numero: true, especial: true, nomeCondicaoPagamento: true } },
+                pedido: {
+                    select: {
+                        id: true, numero: true, especial: true, nomeCondicaoPagamento: true,
+                        statusEntrega: true, devolucaoFinalizada: true,
+                        itensDevolvidos: { select: { valorBaseItem: true, quantidade: true } },
+                        devolucoes: {
+                            where: { status: 'ATIVA' },
+                            select: { valorTotal: true, escopo: true, dataDevolucao: true }
+                        }
+                    }
+                },
                 parcelas: {
                     orderBy: { numeroParcela: 'asc' }
                 }
@@ -116,6 +126,12 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                 .filter(p => p.status === 'PENDENTE' || p.status === 'VENCIDO')
                 .sort((a, b) => new Date(a.dataVencimento) - new Date(b.dataVencimento))[0];
 
+            // Calcular valor devolvido
+            const valorDevolvido = (c.pedido?.itensDevolvidos || []).reduce(
+                (s, i) => s + Number(i.valorBaseItem) * Number(i.quantidade), 0
+            );
+            const devolucaoAtiva = c.pedido?.devolucoes?.[0] || null;
+
             return {
                 id: c.id,
                 clienteNome: c.cliente?.NomeFantasia || c.cliente?.Nome || '-',
@@ -123,6 +139,10 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                 pedidoNumero: c.pedido?.numero || null,
                 pedidoEspecial: c.pedido?.especial || false,
                 condicaoPagamento: c.pedido?.nomeCondicaoPagamento || null,
+                statusEntrega: c.pedido?.statusEntrega || null,
+                devolucaoFinalizada: c.pedido?.devolucaoFinalizada || false,
+                valorDevolvido: valorDevolvido > 0 ? Math.round(valorDevolvido * 100) / 100 : null,
+                devolucaoEscopo: devolucaoAtiva?.escopo || null,
                 origem: c.origem,
                 valorTotal: Number(c.valorTotal),
                 status: c.status,

@@ -519,6 +519,11 @@ const ContasReceberPage = () => {
                                                     <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${conta.origem === 'ESPECIAL' ? 'bg-purple-100 text-purple-700' : 'bg-sky-100 text-sky-700'}`}>
                                                         {conta.origem === 'ESPECIAL' ? 'ESP' : 'FAT'}
                                                     </span>
+                                                    {conta.devolucaoFinalizada && (
+                                                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-gray-200 text-gray-600">
+                                                            DEV. {conta.devolucaoEscopo === 'TOTAL' ? 'TOTAL' : 'PARCIAL'}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -528,12 +533,19 @@ const ContasReceberPage = () => {
                                         </div>
                                         <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-500">
                                             <span>{conta.parcelasPagas}/{conta.parcelasTotal} parc.</span>
+                                            {conta.condicaoPagamento && <span>{conta.condicaoPagamento}</span>}
                                             {conta.proximoVencimento && (
                                                 <span>
                                                     Venc.: {new Date(conta.proximoVencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                                                 </span>
                                             )}
                                         </div>
+                                        {conta.valorDevolvido > 0 && (
+                                            <div className="mt-1 text-[11px] text-gray-500">
+                                                <span className="text-red-600 font-medium">Devolvido: R$ {fmt(conta.valorDevolvido)}</span>
+                                                {conta.status === 'QUITADO' && <span className="ml-1">— Pago: R$ {fmt(conta.parcelas.reduce((s, p) => s + (p.valorPago || 0), 0))}</span>}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Desktop layout */}
@@ -564,6 +576,11 @@ const ContasReceberPage = () => {
                                                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${conta.origem === 'ESPECIAL' ? 'bg-purple-100 text-purple-700' : 'bg-sky-100 text-sky-700'}`}>
                                                     {conta.origem === 'ESPECIAL' ? 'ESPECIAL' : 'FATURADO'}
                                                 </span>
+                                                {conta.devolucaoFinalizada && (
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-gray-200 text-gray-600">
+                                                        DEV. {conta.devolucaoEscopo === 'TOTAL' ? 'TOTAL' : 'PARCIAL'}
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
                                                 <span>Parcelas: {conta.parcelasPagas}/{conta.parcelasTotal}</span>
@@ -571,6 +588,12 @@ const ContasReceberPage = () => {
                                                 {conta.proximoVencimento && (
                                                     <span>
                                                         Próx. venc.: {new Date(conta.proximoVencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                                                    </span>
+                                                )}
+                                                {conta.valorDevolvido > 0 && (
+                                                    <span className="text-red-600 font-medium">
+                                                        Devolvido: R$ {fmt(conta.valorDevolvido)}
+                                                        {conta.status === 'QUITADO' && <span className="text-gray-500 font-normal ml-1">— Pago: R$ {fmt(conta.parcelas.reduce((s, p) => s + (p.valorPago || 0), 0))}</span>}
                                                     </span>
                                                 )}
                                             </div>
@@ -634,7 +657,10 @@ const ContasReceberPage = () => {
                                                                         </span>
                                                                     )}
                                                                     {p.valorPago && p.valorPago !== p.valor && (
-                                                                        <span className="ml-1 text-green-600">(R$ {fmt(p.valorPago)})</span>
+                                                                        <span className="ml-1 text-green-600">(pago: R$ {fmt(p.valorPago)})</span>
+                                                                    )}
+                                                                    {p.status === 'PAGO' && conta.valorDevolvido > 0 && (
+                                                                        <span className="ml-1 text-red-500">(dev: R$ {fmt(conta.valorDevolvido)})</span>
                                                                     )}
                                                                     {p.formaPagamento && <span className="ml-1">({p.formaPagamento})</span>}
                                                                 </div>
@@ -681,6 +707,9 @@ const ContasReceberPage = () => {
                                                                         R$ {fmt(p.valor)}
                                                                         {p.valorPago && p.valorPago !== p.valor && (
                                                                             <span className="text-xs text-green-600 ml-2">(pago: R$ {fmt(p.valorPago)})</span>
+                                                                        )}
+                                                                        {p.status === 'PAGO' && conta.valorDevolvido > 0 && (
+                                                                            <span className="text-xs text-red-500 ml-1">(devolvido: R$ {fmt(conta.valorDevolvido)})</span>
                                                                         )}
                                                                     </p>
                                                                     <p className="text-xs text-gray-500">

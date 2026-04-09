@@ -631,6 +631,11 @@ const CaixaDiarioPage = () => {
                                                                 {p.formaNome}: R$ {Number(p.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                             </span>
                                                         ))}
+                                                        {e.valorDevolvido > 0 && (
+                                                            <span className="mr-2 text-red-500 font-medium">
+                                                                Devolvido: R$ {Number(e.valorDevolvido).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            </span>
+                                                        )}
                                                         {podeFazerDevolucao && ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada && (
                                                             <button
                                                                 onClick={() => setModalDevolucao(e)}
@@ -669,6 +674,11 @@ const CaixaDiarioPage = () => {
                                                                 {p.formaNome}: R$ {Number(p.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                             </span>
                                                         ))}
+                                                        {e.valorDevolvido > 0 && (
+                                                            <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium">
+                                                                Devolvido: R$ {Number(e.valorDevolvido).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="text-right ml-3">
