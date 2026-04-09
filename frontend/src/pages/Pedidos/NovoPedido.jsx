@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
     ArrowLeft, Save, User, ChevronDown, ChevronUp, Calendar,
     FileText, AlertCircle, X, CheckCircle, Minus, Plus, Clock,
-    ShoppingBag, Search, Trash2, Package, Tag, Phone
+    ShoppingBag, Search, Trash2, Package, Tag, Phone, Mic, MicOff
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clienteService from '../../services/clienteService';
@@ -120,6 +120,11 @@ const NovoPedido = () => {
     const [tipoPedido, setTipoPedido] = useState(null); // 'PEDIDO' | 'ESPECIAL' | 'BONIFICACAO' | null
     const [showClientePopup, setShowClientePopup] = useState(false);
 
+    // Speech recognition para observações
+    const [isListening, setIsListening] = useState(false);
+    const recognitionRef = useRef(null);
+    const originalTextRef = useRef('');
+
     // Core Data
     const [clientes, setClientes] = useState([]);
     const [produtos, setProdutos] = useState([]);
@@ -130,7 +135,8 @@ const NovoPedido = () => {
     const [clienteId, setClienteId] = useState('');
     const [vendedorId, setVendedorId] = useState(null);
     const [condicaoPagamentoId, setCondicaoPagamentoId] = useState('');
-    const [dataEntrega, setDataEntrega] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }));
+    const [dataEntrega, setDataEntrega] = useState('');
+    const [dataSugerida, setDataSugerida] = useState('');
     const [isEncaixe, setIsEncaixe] = useState(false);
     const [observacoes, setObservacoes] = useState('');
     const [canalOrigem, setCanalOrigem] = useState('');
@@ -292,7 +298,7 @@ const NovoPedido = () => {
                         setTimeout(() => setClienteId(clienteIdFromUrl), 100);
                         const pCliente = clientesList.find(c => c.UUID === clienteIdFromUrl);
                         if (pCliente && pCliente.Dia_de_entrega) {
-                            setDataEntrega(calcularProximaData(pCliente.Dia_de_entrega));
+                            setDataSugerida(calcularProximaData(pCliente.Dia_de_entrega));
                         }
                     }
                 } catch (e) { }
@@ -326,7 +332,7 @@ const NovoPedido = () => {
 
     // Auto-recolher formulário quando todas as etapas estão preenchidas (edição / draft restaurado)
     useEffect(() => {
-        if (!loading && tipoPedido && condicaoPagamentoId && canalOrigem && clienteId) {
+        if (!loading && tipoPedido && condicaoPagamentoId && dataEntrega && canalOrigem && clienteId) {
             setMostrarFormulario(false);
         }
     }, [loading]);
@@ -366,12 +372,12 @@ const NovoPedido = () => {
             setVendedorSelecionado(vendedorDoCliente || null);
             setClienteSearchText(cliente.NomeFantasia || cliente.Nome);
 
-            // Calcular automaticamente a próxima data de entrega do cliente (apenas em novo pedido)
+            // Calcular sugestão de data de entrega do cliente (apenas em novo pedido)
             if (!editId && !isRestoringDraftRef.current && cliente.Dia_de_entrega) {
                 const proximaData = calcularProximaData(cliente.Dia_de_entrega);
-                setDataEntrega(proximaData);
-                verificarDataEntrega(proximaData, cliente);
-            } else {
+                setDataSugerida(proximaData);
+                // Não preenche dataEntrega — vendedor deve escolher obrigatoriamente
+            } else if (dataEntrega) {
                 verificarDataEntrega(dataEntrega, cliente);
             }
 
@@ -712,6 +718,7 @@ const NovoPedido = () => {
         if (!clienteId || itensMap.size === 0) { toast.error("Preencha cliente e adicione itens.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (!tipoPedido) { toast.error("Selecione o tipo de pedido (Pedido, Especial ou Bonificação).", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (!condicaoPagamentoId) { toast.error("Selecione uma condição de pagamento.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
+        if (!dataEntrega) { toast.error("Selecione a data de entrega.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (statusEnvio === 'ENVIAR' && !canalOrigem) { toast.error("Informe o Tipo de Atendimento que resultou nesta venda.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
 
         // Bloqueio de valor mínimo
@@ -863,6 +870,51 @@ const NovoPedido = () => {
     const vTotal = Array.from(itensMap.values()).reduce(
         (acc, i) => acc + (Number(i.valorUnitario) * Number(i.quantidade)), 0
     );
+
+    // Speech recognition para observações
+    const toggleMicrophone = () => {
+        if (isListening) {
+            if (recognitionRef.current) recognitionRef.current.stop();
+            recognitionRef.current = null;
+            setIsListening(false);
+            return;
+        }
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            toast.error('Reconhecimento de voz não suportado neste navegador/dispositivo.');
+            return;
+        }
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'pt-BR';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        originalTextRef.current = observacoes;
+        recognition.onstart = () => setIsListening(true);
+        recognition.onresult = (event) => {
+            let finalTranscript = '';
+            let interimTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript + ' ';
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+            const updatedBase = (originalTextRef.current + ' ' + finalTranscript).replace(/\s+/g, ' ').trim();
+            setObservacoes((updatedBase + ' ' + interimTranscript).trim());
+            if (finalTranscript !== '') {
+                originalTextRef.current = updatedBase;
+            }
+        };
+        recognition.onerror = (event) => {
+            if (event.error !== 'aborted') toast.error('Grave de mais perto ou verifique sua conexão.');
+            setIsListening(false);
+        };
+        recognition.onend = () => { recognitionRef.current = null; setIsListening(false); };
+        recognitionRef.current = recognition;
+        try { recognition.start(); } catch (e) { console.error(e); }
+    };
 
     const renderProdutoRow = (produto) => {
         const item = itensMap.get(produto.id);
@@ -1350,10 +1402,22 @@ const NovoPedido = () => {
                                 {tipoPedido && condicaoPagamentoId && (
                                     <div className="pt-2 border-t border-gray-100">
                                         <label className="text-xs text-gray-500 font-medium">Data de Entrega *</label>
+                                        {dataSugerida && !dataEntrega && (
+                                            <p className="text-xs text-blue-500 mt-0.5 font-medium">
+                                                Sugestão: <b>{dataSugerida.split('-').reverse().join('/')}</b>
+                                                <button
+                                                    type="button"
+                                                    className="ml-2 text-blue-600 underline font-bold"
+                                                    onClick={() => setDataEntrega(dataSugerida)}
+                                                >
+                                                    Usar esta data
+                                                </button>
+                                            </p>
+                                        )}
                                         <div className="relative mt-0.5">
                                             <input
                                                 type="date"
-                                                className="w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                className={`w-full border rounded-md p-2 bg-white text-sm focus:ring-blue-500 focus:border-blue-500 ${dataEntrega ? 'border-gray-300 text-gray-900' : 'border-blue-300 text-gray-400'}`}
                                                 value={dataEntrega}
                                                 onChange={e => setDataEntrega(e.target.value)}
                                                 onClick={e => { try { if (e.target.showPicker) e.target.showPicker(); } catch (err) { } }}
@@ -1398,22 +1462,33 @@ const NovoPedido = () => {
                                 {/* ── ETAPA 5: Observações (só após qualidade, NÃO obrigatória) ── */}
                                 {tipoPedido && condicaoPagamentoId && dataEntrega && canalOrigem && (
                                     <div className="pt-2 border-t border-gray-100">
-                                        <button
-                                            onClick={() => setObsAberta(!obsAberta)}
-                                            className="text-xs text-gray-500 flex items-center gap-1"
-                                        >
-                                            <FileText className="h-3.5 w-3.5" />
-                                            {obsAberta ? 'Fechar observações' : 'Adicionar observações'}
-                                        </button>
-                                        {obsAberta && (
-                                            <textarea
-                                                className="w-full mt-1.5 border border-gray-300 rounded-md p-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                                                rows="2"
-                                                placeholder="Restrições de doca, horários..."
-                                                value={observacoes}
-                                                onChange={e => setObservacoes(e.target.value)}
-                                            />
-                                        )}
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <label className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                                                <FileText className="h-3.5 w-3.5" />
+                                                Observações <span className="text-gray-400">(opcional)</span>
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={toggleMicrophone}
+                                                className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border transition-colors ${isListening
+                                                    ? 'bg-red-50 text-red-600 border-red-200 animate-pulse'
+                                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                {isListening ? (
+                                                    <><MicOff className="h-3 w-3" /> Ouvindo...</>
+                                                ) : (
+                                                    <><Mic className="h-3 w-3" /> Ditar</>
+                                                )}
+                                            </button>
+                                        </div>
+                                        <textarea
+                                            className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                                            rows="3"
+                                            placeholder="Restrições de doca, horários, observações gerais..."
+                                            value={observacoes}
+                                            onChange={e => setObservacoes(e.target.value)}
+                                        />
 
                                         {/* Botão para recolher e ir para itens */}
                                         <button
