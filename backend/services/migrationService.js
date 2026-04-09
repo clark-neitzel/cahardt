@@ -835,7 +835,10 @@ const migrationService = {
             `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "baixa_ca_em" TIMESTAMP(3)`,
 
             // Fix: Reverter baixa indevida do pedido 212
-            `UPDATE "pedidos" SET "baixa_ca_realizada" = FALSE, "baixa_ca_valor" = NULL, "baixa_ca_em" = NULL WHERE "numero" = 212`
+            `UPDATE "pedidos" SET "baixa_ca_realizada" = FALSE, "baixa_ca_valor" = NULL, "baixa_ca_em" = NULL WHERE "numero" = 212`,
+
+            // Fix: Marcar pedidos já quitados no CA antes do campo existir (200, 211 e outros)
+            `UPDATE "pedidos" SET "baixa_ca_realizada" = TRUE WHERE "numero" IN (200, 211)`
         ];
 
         for (const [index, cmd] of commands.entries()) {
