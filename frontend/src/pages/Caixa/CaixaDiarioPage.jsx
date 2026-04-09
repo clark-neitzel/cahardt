@@ -173,16 +173,16 @@ const CaixaDiarioPage = () => {
         }
     };
 
-    // Verifica se uma entrega é elegível para baixa: tem pagamento REAL em dinheiro
-    // (não Pix, não Boleto, não fiado/vendedor responsável, não escritório responsável)
+    // Verifica se uma entrega é elegível para baixa: tem pagamento REAL em dinheiro ou pix
+    // (não Boleto, não fiado/vendedor responsável, não escritório responsável)
     const isElegivelBaixa = (entrega) => {
         if (entrega.statusEntrega === 'DEVOLVIDO') return false;
         if (entrega.quitado === 'QUITADO') return false;
+        const nome = (p) => p.formaNome?.toLowerCase() || '';
         return entrega.pagamentos?.some(p =>
-            p.debitaCaixa &&
             !p.vendedorResponsavelId &&
             !p.escritorioResponsavel &&
-            p.formaNome?.toLowerCase().includes('dinheiro')
+            (nome(p).includes('dinheiro') || nome(p).includes('pix'))
         );
     };
 
@@ -527,7 +527,7 @@ const CaixaDiarioPage = () => {
                                             onClick={handleSelectAllDinheiro}
                                             className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 font-medium"
                                         >
-                                            {selectedBaixa.size > 0 ? 'Limpar Seleção' : 'Selecionar Dinheiro'}
+                                            {selectedBaixa.size > 0 ? 'Limpar Seleção' : 'Selecionar À Vista'}
                                         </button>
                                         {selectedBaixa.size > 0 && (
                                             <button
