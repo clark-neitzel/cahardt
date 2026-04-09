@@ -1119,22 +1119,57 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
                     continue;
                 }
 
-                const obs = `Motorista: ${motorista} | Caixa: ${dataPgto} | Solicitante: ${solicitante?.nome || req.user.id}`;
+                // Verificar se baixa é parcial (valor dinheiro < total das parcelas)
+                const totalParcelas = parcelasElegiveis.reduce((s, p) => s + Number(p.valor), 0);
+                const isParcial = pedido._valorDinheiro < totalParcelas;
 
-                // Dar baixa em todas as parcelas pendentes
+                let obsComplemento = '';
+                if (isParcial) {
+                    const outrasFormas = pedido.pagamentosReais
+                        .filter(p => !p.formaPagamentoNome?.toLowerCase().includes('dinheiro') || p.escritorioResponsavel || p.vendedorResponsavelId)
+                        .map(p => `${p.formaPagamentoNome}: R$ ${Number(p.valor).toFixed(2)}${p.vendedorResponsavelId ? ' (vendedor)' : ''}${p.escritorioResponsavel ? ' (escritório)' : ''}`)
+                        .join(', ');
+                    obsComplemento = ` | Baixa parcial (dinheiro: R$ ${pedido._valorDinheiro.toFixed(2)} de R$ ${totalParcelas.toFixed(2)})${outrasFormas ? ` | Restante: ${outrasFormas}` : ''}`;
+                }
+
+                const obs = `Motorista: ${motorista} | Caixa: ${dataPgto} | Solicitante: ${solicitante?.nome || req.user.id}${obsComplemento}`;
+
+                // Dar baixa nas parcelas — somente o valor em dinheiro
                 await prisma.$transaction(async (tx) => {
+                    let restante = pedido._valorDinheiro;
                     for (const parcela of parcelasElegiveis) {
-                        await tx.parcela.update({
-                            where: { id: parcela.id },
-                            data: {
-                                status: 'PAGO',
-                                valorPago: parcela.valor,
-                                formaPagamento: 'À vista - Dinheiro',
-                                dataPagamento: new Date(dataPgto + 'T12:00:00-03:00'),
-                                baixadoPorId: req.user.id,
-                                observacao: obs
-                            }
-                        });
+                        const valParcela = Number(parcela.valor);
+                        if (restante <= 0) break;
+
+                        if (restante >= valParcela) {
+                            // Quitar parcela inteira
+                            await tx.parcela.update({
+                                where: { id: parcela.id },
+                                data: {
+                                    status: 'PAGO',
+                                    valorPago: parcela.valor,
+                                    formaPagamento: 'À vista - Dinheiro',
+                                    dataPagamento: new Date(dataPgto + 'T12:00:00-03:00'),
+                                    baixadoPorId: req.user.id,
+                                    observacao: obs
+                                }
+                            });
+                            restante -= valParcela;
+                        } else {
+                            // Baixa parcial na parcela (paga o que tem de dinheiro)
+                            await tx.parcela.update({
+                                where: { id: parcela.id },
+                                data: {
+                                    status: 'PAGO',
+                                    valorPago: Math.round(restante * 100) / 100,
+                                    formaPagamento: 'À vista - Dinheiro (parcial)',
+                                    dataPagamento: new Date(dataPgto + 'T12:00:00-03:00'),
+                                    baixadoPorId: req.user.id,
+                                    observacao: obs
+                                }
+                            });
+                            restante = 0;
+                        }
                     }
 
                     // Recalcular status da conta
@@ -1159,7 +1194,7 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
                     await tx.atendimento.create({
                         data: {
                             tipo: 'FINANCEIRO',
-                            observacao: `Baixa caixa (especial) - ${parcelasElegiveis.length} parcela(s) - R$ ${pedido._valorDinheiro.toFixed(2)} (dinheiro) | ${obs}`,
+                            observacao: `Baixa caixa (especial) - R$ ${pedido._valorDinheiro.toFixed(2)} (dinheiro)${isParcial ? ' — PARCIAL' : ''} | ${obs}`,
                             clienteId: pedido.cliente.UUID,
                             idVendedor: req.user.id,
                             pedidoId: pedido.id
@@ -1262,12 +1297,22 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
                         continue;
                     }
 
-                    // Usar valor da parcela CA para quitação total, ou o valor pago em dinheiro como fallback
-                    const valorBruto = parcela.valor_composicao?.valor_bruto
-                        || parcela.valor_composicao?.valor_liquido
-                        || pedido._valorDinheiro;
+                    // Usar somente o valor pago em dinheiro (pode ser menor que o total da parcela)
+                    const valorParcela = Number(parcela.valor_composicao?.valor_bruto || parcela.valor_composicao?.valor_liquido || 0);
+                    const valorBruto = pedido._valorDinheiro;
+                    const isParcial = valorBruto < valorParcela;
 
-                    const obs = `Motorista: ${motorista} | Caixa: ${dataPgto} | Solicitante: ${solicitante?.nome || req.user.id}`;
+                    // Detalhar outras formas de pagamento quando baixa é parcial
+                    let obsComplemento = '';
+                    if (isParcial) {
+                        const outrasFormas = pedido.pagamentosReais
+                            .filter(p => !p.formaPagamentoNome?.toLowerCase().includes('dinheiro') || p.escritorioResponsavel || p.vendedorResponsavelId)
+                            .map(p => `${p.formaPagamentoNome}: R$ ${Number(p.valor).toFixed(2)}${p.vendedorResponsavelId ? ' (vendedor)' : ''}${p.escritorioResponsavel ? ' (escritório)' : ''}`)
+                            .join(', ');
+                        obsComplemento = ` | Baixa parcial (dinheiro: R$ ${valorBruto.toFixed(2)} de R$ ${valorParcela.toFixed(2)})${outrasFormas ? ` | Restante: ${outrasFormas}` : ''}`;
+                    }
+
+                    const obs = `Motorista: ${motorista} | Caixa: ${dataPgto} | Solicitante: ${solicitante?.nome || req.user.id}${obsComplemento}`;
 
                     const baixaPayload = {
                         data_pagamento: dataPgto,
