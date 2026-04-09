@@ -1062,13 +1062,18 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
             return 'OUTRO';
         };
 
-        // Agrupa pagamentos elegíveis por tipo (dinheiro, pix, etc) — exclui vendedor/escritório
+        // Formas que são elegíveis para processamento no caixa
+        const isFormaElegivel = (formaNome) => {
+            const nome = (formaNome || '').toLowerCase();
+            return nome.includes('dinheiro') || nome.includes('pix') || nome.includes('cartão') || nome.includes('cartao');
+        };
+
+        // Agrupa pagamentos elegíveis por tipo — exclui vendedor/escritório e boleto
         const agruparPagamentos = (pedido) => {
             const grupos = {};
             for (const p of pedido.pagamentosReais) {
                 if (p.escritorioResponsavel || p.vendedorResponsavelId) continue;
-                const nome = (p.formaPagamentoNome || '').toLowerCase();
-                if (!nome.includes('dinheiro') && !nome.includes('pix')) continue;
+                if (!isFormaElegivel(p.formaPagamentoNome)) continue;
                 const metodo = mapMetodoPagamentoCA(p.formaPagamentoNome);
                 if (!grupos[metodo]) grupos[metodo] = { valor: 0, formaNome: p.formaPagamentoNome };
                 grupos[metodo].valor += Number(p.valor);
@@ -1076,13 +1081,13 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
             return grupos;
         };
 
-        // Valor total elegível (dinheiro + pix)
+        // Valor total elegível (dinheiro + pix + cartão)
         const calcValorElegivel = (pedido) => {
             const grupos = agruparPagamentos(pedido);
             return Object.values(grupos).reduce((s, g) => s + g.valor, 0);
         };
 
-        // Validar elegibilidade: aceita pedidos com pagamento real em dinheiro ou pix
+        // Validar elegibilidade: aceita pedidos com pagamento real em dinheiro, pix ou cartão
         const pedidosElegiveis = [];
         for (const pedido of pedidos) {
             const clienteNome = pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'N/A';
@@ -1355,17 +1360,19 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
                         valorBaixado = valorDinheiro;
                     }
 
-                    // 2. PIX → alterar metodo_pagamento da parcela para PIX (sem baixar)
-                    if (grupos['PIX_PAGAMENTO_INSTANTANEO']) {
-                        const valorPix = Math.round(grupos['PIX_PAGAMENTO_INSTANTANEO'].valor * 100) / 100;
-                        // Buscar versão atualizada da parcela (pode ter mudado após a baixa parcial)
+                    // 2. Formas não-dinheiro (PIX, Cartão) → alterar metodo_pagamento na parcela (sem baixar)
+                    const formasCondição = Object.entries(grupos).filter(([m]) => m !== 'DINHEIRO');
+                    if (formasCondição.length > 0) {
+                        // Usar a forma de maior valor como condição principal da parcela
+                        const [metodoMaior, grupoMaior] = formasCondição.reduce((a, b) => b[1].valor > a[1].valor ? b : a);
+                        const detalheFormas = formasCondição.map(([m, g]) => `${g.formaNome}: R$ ${g.valor.toFixed(2)}`).join(', ');
                         const parcelaAtual = await contaAzulService.buscarParcelaDetalhe(parcela.id);
                         await contaAzulService.atualizarParcela(parcela.id, {
                             versao: parcelaAtual.versao,
-                            metodo_pagamento: 'PIX_PAGAMENTO_INSTANTANEO',
-                            nota: `Pix: R$ ${valorPix.toFixed(2)} | ${obsBase}`
+                            metodo_pagamento: metodoMaior,
+                            nota: `${detalheFormas} | ${obsBase}`
                         });
-                        acoes.push(`Condição alterada para PIX: R$ ${valorPix.toFixed(2)}`);
+                        acoes.push(`Condição alterada para ${grupoMaior.formaNome}: ${detalheFormas}`);
                     }
 
                     // Marcar localmente que a baixa foi realizada

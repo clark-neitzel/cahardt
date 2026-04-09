@@ -173,16 +173,16 @@ const CaixaDiarioPage = () => {
         }
     };
 
-    // Verifica se uma entrega é elegível para baixa: tem pagamento REAL em dinheiro ou pix
+    // Verifica se uma entrega é elegível para baixa/condição: dinheiro, pix ou cartão
     // (não Boleto, não fiado/vendedor responsável, não escritório responsável)
     const isElegivelBaixa = (entrega) => {
         if (entrega.statusEntrega === 'DEVOLVIDO') return false;
         if (entrega.quitado === 'QUITADO') return false;
-        const nome = (p) => p.formaNome?.toLowerCase() || '';
+        const n = (p) => (p.formaNome || '').toLowerCase();
         return entrega.pagamentos?.some(p =>
             !p.vendedorResponsavelId &&
             !p.escritorioResponsavel &&
-            (nome(p).includes('dinheiro') || nome(p).includes('pix'))
+            (n(p).includes('dinheiro') || n(p).includes('pix') || n(p).includes('cartão') || n(p).includes('cartao'))
         );
     };
 
