@@ -572,6 +572,9 @@ const pedidoService = {
                 usuarioLancamento: true,
                 itens: {
                     include: { produto: true }
+                },
+                itensDevolvidos: {
+                    include: { produto: { select: { id: true, nome: true } } }
                 }
             }
         });
