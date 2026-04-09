@@ -33,7 +33,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     const [divergencia, setDivergencia] = useState(false);
 
     // Regras da condição de pagamento do pedido
-    const [regrasCondicao, setRegrasCondicao] = useState({ permiteDevolucaoTotal: true, permiteDevolucaoParcial: true, formasRecebimentoPermitidas: [] });
+    const [regrasCondicao, setRegrasCondicao] = useState({ permiteDevolucaoTotal: true, permiteDevolucaoParcial: true, formasRecebimentoPermitidas: [], debitaCaixa: true });
 
     useEffect(() => {
         const fetchF = async () => {
@@ -61,6 +61,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                         _selectId: 'tabela_' + t.idCondicao,
                         nome: t.nomeCondicao,
                         descricao: t.tipoPagamento || '',
+                        debitaCaixa: !!t.debitaCaixa,
                         formaPagamentoEntregaId: null,
                         permiteVendedorResponsavel: false,
                         permiteEscritorioResponsavel: false,
@@ -74,13 +75,21 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                         setRegrasCondicao({
                             permiteDevolucaoTotal: condicaoPedido.permiteDevolucaoTotal !== false,
                             permiteDevolucaoParcial: condicaoPedido.permiteDevolucaoParcial !== false,
-                            formasRecebimentoPermitidas: condicaoPedido.formasRecebimentoPermitidas || []
+                            formasRecebimentoPermitidas: condicaoPedido.formasRecebimentoPermitidas || [],
+                            debitaCaixa: condicaoPedido.debitaCaixa !== false ? true : false
                         });
-                        // Filtrar formas disponíveis se há restrição
+                        // Filtrar formas disponíveis se há restrição explícita
                         if (condicaoPedido.formasRecebimentoPermitidas?.length > 0) {
                             const permitidas = condicaoPedido.formasRecebimentoPermitidas;
                             todasFormas = todasFormas.filter(f => permitidas.includes(f._selectId));
                         }
+                        // Filtro automático: à vista só mostra opções à vista (nunca Boleto)
+                        // Boleto só mostra Boleto (condições que não debitam caixa)
+                        // Formas de Entrega (Escritório, Vendedor) são mantidas sempre
+                        todasFormas = todasFormas.filter(f =>
+                            f._grupo !== 'Condições de Pagamento' ||
+                            f.debitaCaixa === !!condicaoPedido.debitaCaixa
+                        );
                     }
                 }
                 setFormasDisp(todasFormas);
@@ -135,13 +144,21 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
         }
     }, [formasDisp, valorAlvoCaixa, step]);
 
+    // Verifica se a condição de pagamento é fixa (Boleto) e não precisa de seleção manual
+    const isCondicaoFixa = () => !regrasCondicao.debitaCaixa;
+
     // Navegação Status Físico
     const handleSelectStatus = (s) => {
         setStatusFinal(s);
         if (s === 'ENTREGUE') {
             setItensDevolvidos(itensDevolvidos.map(i => ({ ...i, quantidadeDevolvida: 0 })));
             autoPopularPagamento(totalBrutoOriginal);
-            setStep(3);
+            // Boleto e condições que não debitam caixa: pula direto pro GPS (Step 4)
+            if (isCondicaoFixa()) {
+                setStep(4);
+            } else {
+                setStep(3);
+            }
         } else if (s === 'DEVOLVIDO') {
             setItensDevolvidos(itensDevolvidos.map(i => ({ ...i, quantidadeDevolvida: i.maximo })));
             setStep(5); // Step 5 = Motivo obrigatório
@@ -177,7 +194,12 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
         }
         const saldoPos = Number((totalBrutoOriginal - itensDevolvidos.reduce((a, i) => a + (i.quantidadeDevolvida * i.valorBaseItem), 0)).toFixed(2));
         autoPopularPagamento(saldoPos);
-        setStep(3);
+        // Boleto e condições fixas: pula direto pro GPS
+        if (isCondicaoFixa()) {
+            setStep(4);
+        } else {
+            setStep(3);
+        }
     };
 
     // Bloco Financeiro (Caixa)
@@ -622,7 +644,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                             </div>
                             <div className="p-4 bg-gray-50 border-t border-gray-200">
                                 <div className="flex space-x-3">
-                                    <button onClick={() => statusFinal === 'DEVOLVIDO' ? setStep(5) : setStep(3)} className="w-1/3 py-4 text-sm font-bold text-gray-600 bg-white border border-gray-300 rounded-xl active:bg-gray-100">Voltar</button>
+                                    <button onClick={() => statusFinal === 'DEVOLVIDO' ? setStep(5) : isCondicaoFixa() ? (statusFinal === 'ENTREGUE_PARCIAL' ? setStep(2) : setStep(1)) : setStep(3)} className="w-1/3 py-4 text-sm font-bold text-gray-600 bg-white border border-gray-300 rounded-xl active:bg-gray-100">Voltar</button>
                                     <button onClick={handleFinalizar} disabled={submitting || !gpsCoords} className="w-2/3 py-4 text-lg font-black text-white bg-green-500 rounded-xl flex items-center justify-center active:bg-green-600 shadow-xl disabled:opacity-50 disabled:bg-gray-400 disabled:shadow-none transition-all">
                                         {submitting ? 'Transmitindo...' : '2. FINALIZAR Rota'}
                                     </button>
