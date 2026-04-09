@@ -1079,7 +1079,7 @@ const ListaPedidos = () => {
                                             </div>
                                             {dev.itens?.map((item, i) => (
                                                 <div key={i} className="flex justify-between text-xs text-red-800 py-0.5 pl-2">
-                                                    <span>{item.nomeProduto}</span>
+                                                    <span>{item.produto?.nome || 'Produto'}</span>
                                                     <span>{Number(item.quantidade)} x R$ {Number(item.valorUnitario).toFixed(2).replace('.', ',')} = <b>R$ {(Number(item.quantidade) * Number(item.valorUnitario)).toFixed(2).replace('.', ',')}</b></span>
                                                 </div>
                                             ))}
