@@ -238,6 +238,9 @@ model Pedido {
   movimentacoesEstoque MovimentacaoEstoque[]
   devolucoes           Devolucao[]
   devolucaoFinalizada  Boolean   @default(false) @map("devolucao_finalizada")
+  baixaCaRealizada     Boolean   @default(false) @map("baixa_ca_realizada") // Baixa no CA já foi feita via caixa
+  baixaCaValor         Decimal?  @db.Decimal(12, 2) @map("baixa_ca_valor")  // Valor da baixa realizada
+  baixaCaEm            DateTime? @map("baixa_ca_em")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

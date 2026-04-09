@@ -268,7 +268,9 @@ router.get('/resumo', async (req, res) => {
                 })),
                 conferido: conferencia?.conferido || false,
                 conferenciaId: conferencia?.id || null,
-                quitado: e.contaReceber?.status === 'QUITADO' || e.contaReceber?.status === 'PARCIAL' ? e.contaReceber.status : null,
+                quitado: e.contaReceber?.status === 'QUITADO' || e.contaReceber?.status === 'PARCIAL'
+                    ? e.contaReceber.status
+                    : e.baixaCaRealizada ? 'QUITADO' : null,
                 devolucaoFinalizada: e.devolucaoFinalizada || false,
                 idVendaContaAzul: e.idVendaContaAzul || null
             };
@@ -1073,6 +1075,18 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
                 });
                 continue;
             }
+            // Impedir baixa duplicada no CA
+            if (!pedido.especial && pedido.baixaCaRealizada) {
+                resultados.push({
+                    pedidoId: pedido.id,
+                    numero: pedido.numero,
+                    cliente: clienteNome,
+                    tipo: 'CA',
+                    status: 'JA_QUITADO',
+                    erro: `Baixa já realizada no CA em ${pedido.baixaCaEm ? new Date(pedido.baixaCaEm).toLocaleDateString('pt-BR') : '?'} — R$ ${Number(pedido.baixaCaValor || 0).toFixed(2)}`
+                });
+                continue;
+            }
             pedido._valorDinheiro = Math.round(valorDinheiro * 100) / 100;
             pedidosElegiveis.push(pedido);
         }
@@ -1329,6 +1343,16 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
                     };
 
                     const baixaCA = await contaAzulService.criarBaixa(parcela.id, baixaPayload);
+
+                    // Marcar localmente que a baixa foi realizada
+                    await prisma.pedido.update({
+                        where: { id: pedido.id },
+                        data: {
+                            baixaCaRealizada: true,
+                            baixaCaValor: Math.round(valorBruto * 100) / 100,
+                            baixaCaEm: new Date()
+                        }
+                    });
 
                     resultados.push({
                         pedidoId: pedido.id,
