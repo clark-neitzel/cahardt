@@ -3,9 +3,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import contasReceberService from '../../services/contasReceberService';
 import {
     DollarSign, ChevronDown, ChevronUp, Search, Filter, X,
-    CheckCircle, AlertTriangle, Clock, Ban, Undo2, ArrowUpDown, CheckSquare, Square
+    CheckCircle, AlertTriangle, Clock, Ban, Undo2, ArrowUpDown, CheckSquare, Square, FileText, ExternalLink
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { API_URL } from '../../services/api';
 
 const LS_KEY = 'contasReceber_filters';
 
@@ -544,6 +545,11 @@ const ContasReceberPage = () => {
                                             <div className="mt-1 text-[11px] text-gray-500">
                                                 <span className="text-red-600 font-medium">Devolvido: R$ {fmt(conta.valorDevolvido)}</span>
                                                 {conta.status === 'QUITADO' && <span className="ml-1">— Pago: R$ {fmt(conta.parcelas.reduce((s, p) => s + (p.valorPago || 0), 0))}</span>}
+                                                {conta.pdfBoletoUrl && (
+                                                    <a href={`${API_URL}${conta.pdfBoletoUrl}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="ml-2 inline-flex items-center gap-0.5 text-green-600 hover:underline font-medium">
+                                                        <FileText className="h-3 w-3" /> Boleto
+                                                    </a>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -595,6 +601,11 @@ const ContasReceberPage = () => {
                                                         Devolvido: R$ {fmt(conta.valorDevolvido)}
                                                         {conta.status === 'QUITADO' && <span className="text-gray-500 font-normal ml-1">— Pago: R$ {fmt(conta.parcelas.reduce((s, p) => s + (p.valorPago || 0), 0))}</span>}
                                                     </span>
+                                                )}
+                                                {conta.pdfBoletoUrl && (
+                                                    <a href={`${API_URL}${conta.pdfBoletoUrl}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-0.5 text-green-600 hover:underline font-medium">
+                                                        <FileText className="h-3 w-3" /> Boleto <ExternalLink className="h-3 w-3" />
+                                                    </a>
                                                 )}
                                             </div>
                                         </div>

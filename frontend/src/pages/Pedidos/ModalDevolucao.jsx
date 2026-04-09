@@ -3,6 +3,7 @@ import { X, Loader, Package, Upload, FileText } from 'lucide-react';
 import devolucaoService from '../../services/devolucaoService';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import WizardProcessarCA from './WizardProcessarCA';
 
 const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
     // entrega: { pedidoId, clienteNome, numero, especial, statusEntrega, valorPedido, itensDevolvidos, idVendaContaAzul }
@@ -14,8 +15,10 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
     const [observacao, setObservacao] = useState('');
     // Campos CA
     const isCA = !!entrega.idVendaContaAzul && !entrega.especial;
+    const isBoleto = isCA && (entrega.condicaoPagamento || '').toLowerCase().includes('boleto');
     const [notaDevolucaoCA, setNotaDevolucaoCA] = useState('');
     const [pdfFile, setPdfFile] = useState(null);
+    const [wizardDevolucao, setWizardDevolucao] = useState(null); // devolução criada, abre wizard
 
     useEffect(() => {
         carregarPedido();
@@ -92,7 +95,14 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                 formData.append('notaDevolucaoCA', notaDevolucaoCA.trim());
                 if (pdfFile) formData.append('pdf', pdfFile);
 
-                await devolucaoService.criarContaAzul(formData);
+                const devCriada = await devolucaoService.criarContaAzul(formData);
+
+                if (isBoleto) {
+                    // Abrir wizard para processar boleto no CA
+                    setWizardDevolucao(devCriada);
+                    setSaving(false);
+                    return;
+                }
             } else {
                 await devolucaoService.criarEspecial({
                     pedidoId: entrega.pedidoId,
@@ -266,6 +276,14 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                             </div>
                         )}
 
+                        {/* Aviso boleto */}
+                        {isBoleto && itensParaDevolver.length > 0 && (
+                            <div className="p-2.5 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-800">
+                                <p className="font-bold">Pedido com boleto detectado</p>
+                                <p>Apos registrar a devolucao, um assistente guiado ajudara a processar no Conta Azul (cancelar cobranca, aplicar desconto, gerar novo boleto).</p>
+                            </div>
+                        )}
+
                         {/* Botão confirmar */}
                         <button
                             onClick={handleSalvar}
@@ -273,11 +291,29 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                             className="w-full bg-red-600 text-white font-bold py-3.5 rounded-xl text-[15px] flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-red-700 transition"
                         >
                             {saving ? <Loader className="h-5 w-5 animate-spin" /> : null}
-                            {saving ? 'Registrando...' : `Confirmar Devolução · R$ ${valorTotalDevolucao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                            {saving ? 'Registrando...' : isBoleto
+                                ? `Registrar e Processar no CA · R$ ${valorTotalDevolucao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                                : `Confirmar Devolução · R$ ${valorTotalDevolucao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                            }
                         </button>
 
                         <div className="h-4" />
                     </div>
+                )}
+
+                {/* Wizard Processar CA (boleto) */}
+                {wizardDevolucao && (
+                    <WizardProcessarCA
+                        devolucao={wizardDevolucao}
+                        onClose={() => {
+                            setWizardDevolucao(null);
+                            onSalvo(); // Fechar tudo — devolução já foi criada
+                        }}
+                        onConcluido={() => {
+                            setWizardDevolucao(null);
+                            onSalvo();
+                        }}
+                    />
                 )}
             </div>
         </div>

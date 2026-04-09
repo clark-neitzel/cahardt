@@ -1087,11 +1087,16 @@ const ListaPedidos = () => {
                                                 <span className="font-medium">Motivo:</span> {dev.motivo}
                                             </div>
                                             {dev.tipo === 'CONTA_AZUL' && dev.notaDevolucaoCA && (
-                                                <div className="flex items-center gap-2 text-xs">
+                                                <div className="flex items-center gap-2 flex-wrap text-xs">
                                                     <span className="font-medium text-blue-700">Nota: {dev.notaDevolucaoCA}</span>
                                                     {dev.pdfDevolucaoUrl && (
                                                         <a href={`${API_URL}${dev.pdfDevolucaoUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline font-medium">
-                                                            <FileText className="h-3 w-3" /> Ver PDF <ExternalLink className="h-3 w-3" />
+                                                            <FileText className="h-3 w-3" /> PDF Nota <ExternalLink className="h-3 w-3" />
+                                                        </a>
+                                                    )}
+                                                    {dev.pdfBoletoUrl && (
+                                                        <a href={`${API_URL}${dev.pdfBoletoUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-green-600 hover:underline font-medium">
+                                                            <FileText className="h-3 w-3" /> Boleto <ExternalLink className="h-3 w-3" />
                                                         </a>
                                                     )}
                                                 </div>

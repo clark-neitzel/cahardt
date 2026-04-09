@@ -1306,6 +1306,12 @@ model Devolucao {
   revertidoEm         DateTime? @map("revertido_em")
   motivoReversao      String?  @map("motivo_reversao") @db.Text
 
+  // Processamento Conta Azul (wizard boleto)
+  processadoCA        Boolean  @default(false) @map("processado_ca")
+  parcelaCAId         String?  @map("parcela_ca_id")     // UUID da parcela no CA
+  pdfBoletoUrl        String?  @map("pdf_boleto_url")    // PDF do novo boleto (parcial)
+  wizardEtapa         String?  @map("wizard_etapa")      // Etapa atual do wizard (para retomar)
+
   // Financeiro
   valorTotal          Decimal  @map("valor_total") @db.Decimal(12, 2)
   snapshotParcelas    Json?    @map("snapshot_parcelas") // Snapshot das parcelas antes do ajuste

@@ -164,8 +164,16 @@ const ListaDevolucoes = ({ filtros }) => {
                                             <div><span className="font-bold text-blue-700">Nota Devolução:</span> {dev.notaDevolucaoCA || '-'}</div>
                                             {dev.pdfDevolucaoUrl && (
                                                 <a href={`${API_URL}${dev.pdfDevolucaoUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline">
-                                                    <FileText className="h-3 w-3" /> Ver PDF <ExternalLink className="h-3 w-3" />
+                                                    <FileText className="h-3 w-3" /> PDF Nota Devolução <ExternalLink className="h-3 w-3" />
                                                 </a>
+                                            )}
+                                            {dev.pdfBoletoUrl && (
+                                                <a href={`${API_URL}${dev.pdfBoletoUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-green-600 hover:underline">
+                                                    <FileText className="h-3 w-3" /> PDF Novo Boleto <ExternalLink className="h-3 w-3" />
+                                                </a>
+                                            )}
+                                            {dev.processadoCA && (
+                                                <div className="text-green-700 font-medium">Processado no CA</div>
                                             )}
                                         </div>
                                     )}

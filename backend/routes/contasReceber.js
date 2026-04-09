@@ -75,7 +75,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                         itensDevolvidos: { select: { valorBaseItem: true, quantidade: true } },
                         devolucoes: {
                             where: { status: 'ATIVA' },
-                            select: { valorTotal: true, escopo: true, dataDevolucao: true }
+                            select: { valorTotal: true, escopo: true, dataDevolucao: true, pdfBoletoUrl: true }
                         }
                     }
                 },
@@ -143,6 +143,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                 devolucaoFinalizada: c.pedido?.devolucaoFinalizada || false,
                 valorDevolvido: valorDevolvido > 0 ? Math.round(valorDevolvido * 100) / 100 : null,
                 devolucaoEscopo: devolucaoAtiva?.escopo || null,
+                pdfBoletoUrl: devolucaoAtiva?.pdfBoletoUrl || null,
                 origem: c.origem,
                 valorTotal: Number(c.valorTotal),
                 status: c.status,

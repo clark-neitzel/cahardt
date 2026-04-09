@@ -27,6 +27,20 @@ const devolucaoService = {
         const response = await api.post(`/devolucoes/${id}/reverter`, data);
         return response.data;
     },
+
+    processarCA: async (id, etapa) => {
+        const response = await api.post(`/devolucoes/${id}/processar-ca`, { etapa });
+        return response.data;
+    },
+
+    uploadBoleto: async (id, file) => {
+        const formData = new FormData();
+        formData.append('pdfBoleto', file);
+        const response = await api.post(`/devolucoes/${id}/upload-boleto`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
 };
 
 export default devolucaoService;

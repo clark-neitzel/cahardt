@@ -120,7 +120,7 @@ const pedidoService = {
                     select: {
                         id: true, numero: true, tipo: true, escopo: true,
                         valorTotal: true, dataDevolucao: true, motivo: true,
-                        notaDevolucaoCA: true, pdfDevolucaoUrl: true,
+                        notaDevolucaoCA: true, pdfDevolucaoUrl: true, pdfBoletoUrl: true, processadoCA: true,
                         itens: { select: { quantidade: true, valorUnitario: true, produto: { select: { nome: true } } } }
                     }
                 }
