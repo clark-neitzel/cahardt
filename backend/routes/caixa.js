@@ -314,6 +314,21 @@ router.get('/resumo', async (req, res) => {
 
         const valorAPrestar = Math.round((Number(caixa.adiantamento) + totalRecebidoCaixa - totalDespesas) * 100) / 100;
 
+        // Pendências para fechar caixa
+        const devolucoesNaoFeitas = entregasFormatadas.filter(e =>
+            ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada
+        ).length;
+        const quitacoesNaoFeitas = entregasFormatadas.filter(e => {
+            if (e.statusEntrega === 'DEVOLVIDO') return false;
+            if (e.quitado === 'QUITADO') return false;
+            return e.pagamentos?.some(p =>
+                p.debitaCaixa &&
+                !p.vendedorResponsavelId &&
+                !p.escritorioResponsavel &&
+                p.formaNome?.toLowerCase().includes('dinheiro')
+            );
+        }).length;
+
         res.json({
             caixa: {
                 id: caixa.id,
@@ -341,7 +356,12 @@ router.get('/resumo', async (req, res) => {
             detalhamentoCaixa,
             valorAPrestar,
             amostras: amostrasFormatadas,
-            amostrasCount: amostrasFormatadas.length
+            amostrasCount: amostrasFormatadas.length,
+            pendencias: {
+                devolucoesNaoFeitas,
+                quitacoesNaoFeitas,
+                podeFechar: devolucoesNaoFeitas === 0 && quitacoesNaoFeitas === 0
+            }
         });
     } catch (error) {
         console.error('Erro ao buscar resumo do caixa:', error);
@@ -416,8 +436,48 @@ router.post('/fechar', async (req, res) => {
                 statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL', 'DEVOLVIDO'] },
                 embarque: { responsavelId: targetVendedor }
             },
-            include: { pagamentosReais: true }
+            include: {
+                pagamentosReais: true,
+                contaReceber: { select: { status: true } },
+                cliente: { select: { NomeFantasia: true, Nome: true } }
+            }
         });
+
+        // ── Validações pré-fechamento ──
+        const pendencias = [];
+
+        // 1. Devoluções pendentes: entregas parciais/devolvidas sem devolução formalizada
+        const devPendentes = entregas.filter(e =>
+            ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada
+        );
+        if (devPendentes.length > 0) {
+            const nomes = devPendentes.map(e => `#${e.numero || '?'} ${e.cliente?.NomeFantasia || e.cliente?.Nome || ''}`).join(', ');
+            pendencias.push(`${devPendentes.length} devolução(ões) pendente(s): ${nomes}`);
+        }
+
+        // 2. Quitações pendentes: entregas com pagamento real em dinheiro não quitadas
+        const quitPendentes = entregas.filter(e => {
+            if (e.statusEntrega === 'DEVOLVIDO') return false;
+            if (e.contaReceber?.status === 'QUITADO') return false;
+            return e.pagamentosReais.some(p =>
+                !p.vendedorResponsavelId &&
+                !p.escritorioResponsavel &&
+                p.formaPagamentoNome?.toLowerCase().includes('dinheiro')
+            );
+        });
+        if (quitPendentes.length > 0) {
+            const nomes = quitPendentes.map(e => `#${e.numero || '?'} ${e.cliente?.NomeFantasia || e.cliente?.Nome || ''}`).join(', ');
+            pendencias.push(`${quitPendentes.length} baixa(s) de dinheiro pendente(s): ${nomes}`);
+        }
+
+        if (pendencias.length > 0) {
+            return res.status(400).json({
+                error: `Não é possível fechar o caixa. Pendências:\n${pendencias.join('\n')}`,
+                pendencias,
+                devolucoesIds: devPendentes.map(e => e.id),
+                quitacoesIds: quitPendentes.map(e => e.id)
+            });
+        }
 
         // Buscar TODAS as condições da TabelaPreco (sem distinct)
         const todasCondicoesFechar = await prisma.tabelaPreco.findMany({
@@ -608,6 +668,70 @@ router.post('/reabrir', async (req, res) => {
     } catch (error) {
         console.error('Erro ao reabrir caixa:', error);
         res.status(500).json({ error: 'Erro ao reabrir caixa.' });
+    }
+});
+
+// ── POST /reabrir-pendentes — Reabre caixas FECHADOS que têm pendências ──
+router.post('/reabrir-pendentes', async (req, res) => {
+    try {
+        const perms = req._perms || await getPerms(req.user.id);
+        if (!perms.admin) return res.status(403).json({ error: 'Apenas admin.' });
+
+        // Buscar caixas FECHADOS (não CONFERIDO, pois esse já foi validado)
+        const caixasFechados = await prisma.caixaDiario.findMany({
+            where: { status: 'FECHADO' },
+            include: { vendedor: { select: { id: true, nome: true } } }
+        });
+
+        const reabertos = [];
+
+        for (const cx of caixasFechados) {
+            const inicioDia = new Date(cx.dataReferencia + 'T00:00:00.000Z');
+            const fimDia = new Date(cx.dataReferencia + 'T23:59:59.999Z');
+
+            const entregas = await prisma.pedido.findMany({
+                where: {
+                    dataEntrega: { gte: inicioDia, lte: fimDia },
+                    statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL', 'DEVOLVIDO'] },
+                    embarque: { responsavelId: cx.vendedorId }
+                },
+                include: {
+                    pagamentosReais: true,
+                    contaReceber: { select: { status: true } }
+                }
+            });
+
+            const devPendentes = entregas.filter(e =>
+                ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada
+            );
+            const quitPendentes = entregas.filter(e => {
+                if (e.statusEntrega === 'DEVOLVIDO') return false;
+                if (e.contaReceber?.status === 'QUITADO') return false;
+                return e.pagamentosReais.some(p =>
+                    !p.vendedorResponsavelId &&
+                    !p.escritorioResponsavel &&
+                    p.formaPagamentoNome?.toLowerCase().includes('dinheiro')
+                );
+            });
+
+            if (devPendentes.length > 0 || quitPendentes.length > 0) {
+                await prisma.caixaDiario.update({
+                    where: { id: cx.id },
+                    data: { status: 'ABERTO' }
+                });
+                reabertos.push({
+                    data: cx.dataReferencia,
+                    vendedor: cx.vendedor?.nome,
+                    devolucoesP: devPendentes.length,
+                    quitacoesP: quitPendentes.length
+                });
+            }
+        }
+
+        res.json({ reabertos: reabertos.length, detalhes: reabertos });
+    } catch (error) {
+        console.error('Erro ao reabrir caixas pendentes:', error);
+        res.status(500).json({ error: 'Erro ao verificar caixas.' });
     }
 });
 

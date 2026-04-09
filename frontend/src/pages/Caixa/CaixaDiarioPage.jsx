@@ -122,7 +122,12 @@ const CaixaDiarioPage = () => {
             toast.success('Caixa fechado!');
             fetchResumo();
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erro ao fechar caixa.');
+            const resp = error.response?.data;
+            if (resp?.pendencias?.length > 0) {
+                toast.error(resp.pendencias.join('\n'), { duration: 8000 });
+            } else {
+                toast.error(resp?.error || 'Erro ao fechar caixa.');
+            }
         }
     };
 
@@ -804,12 +809,33 @@ const CaixaDiarioPage = () => {
                         </div>
                     </div>
 
+                    {/* Pendências para fechar */}
+                    {isAberto && resumo?.pendencias && !resumo.pendencias.podeFechar && (
+                        <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 mb-2">
+                            <p className="text-sm font-bold text-amber-800 mb-1">Pendências para fechar o caixa:</p>
+                            <ul className="text-xs text-amber-700 space-y-0.5">
+                                {resumo.pendencias.devolucoesNaoFeitas > 0 && (
+                                    <li>• {resumo.pendencias.devolucoesNaoFeitas} devolução(ões) não registrada(s)</li>
+                                )}
+                                {resumo.pendencias.quitacoesNaoFeitas > 0 && (
+                                    <li>• {resumo.pendencias.quitacoesNaoFeitas} baixa(s) de dinheiro não quitada(s)</li>
+                                )}
+                            </ul>
+                        </div>
+                    )}
+
                     {/* Ações */}
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         {isAberto && (
                             <button
                                 onClick={handleFechar}
-                                className="inline-flex items-center justify-center px-6 py-3 bg-yellow-600 text-white rounded-md font-medium hover:bg-yellow-700"
+                                disabled={resumo?.pendencias && !resumo.pendencias.podeFechar}
+                                className={`inline-flex items-center justify-center px-6 py-3 rounded-md font-medium ${
+                                    resumo?.pendencias && !resumo.pendencias.podeFechar
+                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        : 'bg-yellow-600 text-white hover:bg-yellow-700'
+                                }`}
+                                title={resumo?.pendencias && !resumo.pendencias.podeFechar ? 'Resolva as pendências antes de fechar' : ''}
                             >
                                 <Lock className="h-5 w-5 mr-2" /> Fechar Caixa
                             </button>
