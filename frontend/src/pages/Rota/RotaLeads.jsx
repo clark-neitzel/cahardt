@@ -59,7 +59,7 @@ const itemTemND = (diasStr) => {
 const getAtendimentoHoje = (atendimentos) => {
     if (!atendimentos || atendimentos.length === 0) return null;
     const hoje = new Date().toDateString();
-    return atendimentos.find(a => new Date(a.criadoEm).toDateString() === hoje);
+    return atendimentos.find(a => new Date(a.criadoEm).toDateString() === hoje && a.tipo !== 'FINANCEIRO');
 };
 
 const getPedidoHoje = (pedidos) => {
@@ -1321,7 +1321,7 @@ const RotaLeads = () => {
         const atendimentos = item._atendimentos || item.atendimentos || [];
         const hoje = new Date().toDateString();
         return atendimentos.some(a =>
-            new Date(a.criadoEm).toDateString() === hoje && a.idVendedor === vendedorId
+            new Date(a.criadoEm).toDateString() === hoje && a.idVendedor === vendedorId && a.tipo !== 'FINANCEIRO'
         );
     }, [vendedorId]);
 
