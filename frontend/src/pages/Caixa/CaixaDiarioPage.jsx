@@ -885,7 +885,7 @@ const CaixaDiarioPage = () => {
                     onSalvo={() => {
                         setModalDevolucao(null);
                         toast.success('Devolução registrada!');
-                        carregarResumo();
+                        fetchResumo();
                     }}
                 />
             )}
