@@ -116,7 +116,23 @@ const CaixaDiarioPage = () => {
     };
 
     const handleFechar = async () => {
-        if (!confirm('Fechar o caixa do dia? Isso salvará os totais atuais.')) return;
+        // Verificar entregas pendentes de baixa/alteração no CA
+        const pendentes = resumo?.entregas?.filter(isElegivelBaixa) || [];
+        if (pendentes.length > 0) {
+            const lista = pendentes.map(e => `#${e.numero} ${e.clienteNome}`).join(', ');
+            toast.error(`${pendentes.length} baixa(s) de dinheiro pendente(s):\n${lista}`, { duration: 8000 });
+            return;
+        }
+
+        // Alerta (não bloqueante) sobre assinaturas não conferidas
+        const naoConferidas = resumo?.entregas?.filter(e => !e.conferido) || [];
+        if (naoConferidas.length > 0) {
+            const msg = `${naoConferidas.length} entrega(s) sem conferência de assinatura. Deseja fechar mesmo assim?`;
+            if (!confirm(msg)) return;
+        } else {
+            if (!confirm('Fechar o caixa do dia? Isso salvará os totais atuais.')) return;
+        }
+
         try {
             await caixaService.fecharCaixa({ vendedorId, data });
             toast.success('Caixa fechado!');
@@ -177,7 +193,7 @@ const CaixaDiarioPage = () => {
     // (não Boleto, não fiado/vendedor responsável, não escritório responsável)
     const isElegivelBaixa = (entrega) => {
         if (entrega.statusEntrega === 'DEVOLVIDO') return false;
-        if (entrega.quitado === 'QUITADO') return false;
+        if (entrega.quitado === 'QUITADO' || entrega.quitado === 'ALTERADO') return false;
         const n = (p) => (p.formaNome || '').toLowerCase();
         return entrega.pagamentos?.some(p =>
             !p.vendedorResponsavelId &&
@@ -594,6 +610,7 @@ const CaixaDiarioPage = () => {
                                                         {e.especial && <span className="ml-1.5 text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>}
                                                         {e.quitado === 'QUITADO' && <span className="ml-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">QUITADO</span>}
                                                         {e.quitado === 'PARCIAL' && <span className="ml-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">PARCIAL</span>}
+                                                        {e.quitado === 'ALTERADO' && <span className="ml-1.5 text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">ALTERADO</span>}
                                                         {e.devolucaoFinalizada && <span className="ml-1.5 text-[10px] font-bold text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">DEV. FEITA</span>}
                                                     </td>
                                                     <td className="py-2 px-2 text-gray-500">{e.condicaoPagamento}</td>
@@ -642,6 +659,7 @@ const CaixaDiarioPage = () => {
                                                         {e.especial && <span className="ml-1.5 text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>}
                                                         {e.quitado === 'QUITADO' && <span className="ml-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">QUITADO</span>}
                                                         {e.quitado === 'PARCIAL' && <span className="ml-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">PARCIAL</span>}
+                                                        {e.quitado === 'ALTERADO' && <span className="ml-1.5 text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">ALTERADO</span>}
                                                         {e.devolucaoFinalizada && <span className="ml-1.5 text-[10px] font-bold text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">DEV. FEITA</span>}
                                                     </p>
                                                     <p className="text-xs text-gray-500">{e.condicaoPagamento}</p>

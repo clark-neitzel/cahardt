@@ -268,9 +268,18 @@ router.get('/resumo', async (req, res) => {
                 })),
                 conferido: conferencia?.conferido || false,
                 conferenciaId: conferencia?.id || null,
-                quitado: e.contaReceber?.status === 'QUITADO' || e.contaReceber?.status === 'PARCIAL'
-                    ? e.contaReceber.status
-                    : e.baixaCaRealizada ? 'QUITADO' : null,
+                quitado: (() => {
+                    // Especial: usa status da ContaReceber local
+                    if (e.contaReceber?.status === 'QUITADO' || e.contaReceber?.status === 'PARCIAL') return e.contaReceber.status;
+                    // Normal (CA): verifica baixaCaRealizada
+                    if (!e.baixaCaRealizada) return null;
+                    // Checar se teve dinheiro (baixa real) ou só alteração de condição
+                    const temDinheiro = pagamentos.some(p => !p.vendedorResponsavelId && !p.escritorioResponsavel && p.formaNome?.toLowerCase().includes('dinheiro'));
+                    const temOutraForma = pagamentos.some(p => !p.vendedorResponsavelId && !p.escritorioResponsavel && (p.formaNome?.toLowerCase().includes('pix') || p.formaNome?.toLowerCase().includes('cart')));
+                    if (temDinheiro && temOutraForma) return 'QUITADO'; // misto: baixou dinheiro + alterou condição
+                    if (temDinheiro) return 'QUITADO'; // só dinheiro
+                    return 'ALTERADO'; // só pix/cartão: condição alterada
+                })(),
                 devolucaoFinalizada: e.devolucaoFinalizada || false,
                 idVendaContaAzul: e.idVendaContaAzul || null
             };
