@@ -15,6 +15,7 @@ import promocaoService from '../../services/promocaoService';
 import vendedorService from '../../services/vendedorService';
 import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import ClientePopup from '../Rota/ClientePopup';
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
@@ -116,6 +117,8 @@ const NovoPedido = () => {
     const [saving, setSaving] = useState(false);
     const [especial, setEspecial] = useState(false);
     const [bonificacao, setBonificacao] = useState(false);
+    const [tipoPedido, setTipoPedido] = useState(null); // 'PEDIDO' | 'ESPECIAL' | 'BONIFICACAO' | null
+    const [showClientePopup, setShowClientePopup] = useState(false);
 
     // Core Data
     const [clientes, setClientes] = useState([]);
@@ -217,9 +220,12 @@ const NovoPedido = () => {
                         // Restaurar flag especial/bonificacao — produtos serão carregados quando a condição for selecionada (via useEffect)
                         if (pd.especial) {
                             setEspecial(true);
-                        }
-                        if (pd.bonificacao) {
+                            setTipoPedido('ESPECIAL');
+                        } else if (pd.bonificacao) {
                             setBonificacao(true);
+                            setTipoPedido('BONIFICACAO');
+                        } else {
+                            setTipoPedido('PEDIDO');
                         }
 
                         setClienteId(pd.clienteId);
@@ -266,6 +272,11 @@ const NovoPedido = () => {
                         if (pd.isEncaixe !== undefined) setIsEncaixe(pd.isEncaixe);
                         if (pd.observacoes && mesmoCLiente) setObservacoes(pd.observacoes);
                         if (pd.canalOrigem && mesmoCLiente) setCanalOrigem(pd.canalOrigem);
+                        if (pd.tipoPedido && mesmoCLiente) {
+                            setTipoPedido(pd.tipoPedido);
+                            if (pd.tipoPedido === 'ESPECIAL') setEspecial(true);
+                            else if (pd.tipoPedido === 'BONIFICACAO') setBonificacao(true);
+                        }
 
                         if (mesmoCLiente) {
                             isRestoringDraftRef.current = true;
@@ -304,13 +315,21 @@ const NovoPedido = () => {
                 isEncaixe,
                 observacoes,
                 canalOrigem,
+                tipoPedido,
                 itensMap: Array.from(itensMap.entries())
             };
             try {
                 localStorage.setItem('@CAHardt:NovoPedido_Draft', JSON.stringify(dataToSave));
             } catch (e) { }
         }
-    }, [clienteId, clienteSearchText, dataEntrega, condicaoPagamentoId, isEncaixe, observacoes, canalOrigem, itensMap, loading, editId]);
+    }, [clienteId, clienteSearchText, dataEntrega, condicaoPagamentoId, isEncaixe, observacoes, canalOrigem, tipoPedido, itensMap, loading, editId]);
+
+    // Auto-recolher formulário quando todas as etapas estão preenchidas (edição / draft restaurado)
+    useEffect(() => {
+        if (!loading && tipoPedido && condicaoPagamentoId && canalOrigem && clienteId) {
+            setMostrarFormulario(false);
+        }
+    }, [loading]);
 
     // Recalcular flex sempre que itensMap mudar
     useEffect(() => {
@@ -378,7 +397,7 @@ const NovoPedido = () => {
                 const condicoesDoCliente = idsArray.length > 0
                     ? todasCondicoes.filter(c => idsArray.includes(c.idCondicao) || idsArray.includes(c.id))
                     : (cliente.Condicao_de_pagamento ? [todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento)].filter(Boolean) : []);
-                permitidas = condicoesDoCliente.filter(c => c.ativo !== false && c.permitePedido !== false);
+                permitidas = condicoesDoCliente.filter(c => c.ativo !== false && c.permitePedido !== false && c.permiteBonificacao !== true);
             }
 
             setCondicoesPermitidas(permitidas);
@@ -691,6 +710,7 @@ const NovoPedido = () => {
 
     const handleSalvar = (statusEnvio) => {
         if (!clienteId || itensMap.size === 0) { toast.error("Preencha cliente e adicione itens.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
+        if (!tipoPedido) { toast.error("Selecione o tipo de pedido (Pedido, Especial ou Bonificação).", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (!condicaoPagamentoId) { toast.error("Selecione uma condição de pagamento.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (statusEnvio === 'ENVIAR' && !canalOrigem) { toast.error("Informe o Tipo de Atendimento que resultou nesta venda.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
 
@@ -1167,134 +1187,132 @@ const NovoPedido = () => {
                 </div>
             </div>
 
-            {/* ===== FORMULÁRIO (cliente + data + condição) ===== */}
+            {/* ===== FORMULÁRIO (cliente + etapas sequenciais) ===== */}
             <div className="bg-white shadow-sm">
-                {/* Campo cliente (agora um gatilho de modal) */}
+                {/* Campo cliente — abre info (read-only) se já selecionado, busca se não */}
                 <div className="px-3 py-3 border-b border-gray-100 bg-white">
                     <button
                         className="w-full relative flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 active:bg-gray-100 transition-colors text-left"
-                        onClick={() => setShowClienteModal(true)}
+                        onClick={() => {
+                            if (clienteId && clienteSelecionado) {
+                                setShowClientePopup(true);
+                            } else {
+                                setShowClienteModal(true);
+                            }
+                        }}
                     >
-                        <div className="flex items-center gap-2 overflow-hidden items-center">
+                        <div className="flex items-center gap-2 overflow-hidden">
                             <User className="h-5 w-5 text-gray-500 shrink-0" />
                             {clienteId && clienteSelecionado ? (
-                                <span className="text-[14px] font-bold text-gray-900 truncate tracking-tight leading-tight pt-0.5">
-                                    {clienteSelecionado.NomeFantasia || clienteSelecionado.Nome || clienteSearchText}
-                                </span>
+                                <>
+                                    <span className="text-[14px] font-bold text-gray-900 truncate tracking-tight leading-tight pt-0.5">
+                                        {clienteSelecionado.Documento ? `${clienteSelecionado.Documento.replace(/\D/g, '').slice(-6)} ` : ''}
+                                        {clienteSelecionado.NomeFantasia || clienteSelecionado.Nome || clienteSearchText}
+                                    </span>
+                                </>
                             ) : (
                                 <span className="text-[14px] font-semibold text-gray-400 tracking-tight leading-tight pt-0.5">
                                     Toque p/ buscar cliente...
                                 </span>
                             )}
                         </div>
-                        {clienteId && (
-                            <div
-                                className="text-gray-400 p-0.5 shrink-0 bg-white rounded-full border border-gray-200 ml-2 shadow-sm"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setClienteId('');
-                                    setClienteSearchText('');
-                                    setClienteSelecionado(null);
-                                }}
-                            >
-                                <X className="h-4 w-4 text-red-500" />
-                            </div>
-                        )}
                     </button>
                 </div>
 
-                {/* Data + Condição compactas (collapsível) */}
+                {/* Etapas sequenciais — cada uma só aparece após a anterior estar preenchida */}
                 {clienteId && (
                     <>
-                        <button
-                            className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50"
-                            onClick={() => setMostrarFormulario(!mostrarFormulario)}
-                        >
-                            <span className="flex items-center gap-2">
-                                <Calendar className="h-3.5 w-3.5" />
-                                <span>{dataEntrega.split('-').reverse().join('/')}</span>
-                                <span className="text-gray-300">·</span>
-                                <span className="font-semibold text-gray-700 truncate max-w-[150px]">
-                                    {condicaoSelecionada?.nomeCondicao || 'Sem condição'}
+                        {/* Resumo compacto (quando formulário recolhido e tudo preenchido) */}
+                        {!mostrarFormulario && tipoPedido && condicaoPagamentoId && canalOrigem && (
+                            <button
+                                className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50"
+                                onClick={() => setMostrarFormulario(true)}
+                            >
+                                <span className="flex items-center gap-2">
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    <span>{dataEntrega.split('-').reverse().join('/')}</span>
+                                    <span className="text-gray-300">·</span>
+                                    <span className="font-semibold text-gray-700 truncate max-w-[150px]">
+                                        {condicaoSelecionada?.nomeCondicao || 'Sem condição'}
+                                    </span>
+                                    {condicaoSelecionada && <span className="text-gray-400">({condicaoSelecionada.acrescimoPreco}%)</span>}
+                                    <span className="text-gray-300">·</span>
+                                    <span className="text-gray-600">{TIPOS_ATENDIMENTO.find(t => t.value === canalOrigem)?.label}</span>
                                 </span>
-                                {condicaoSelecionada && <span className="text-gray-400">({condicaoSelecionada.acrescimoPreco}%)</span>}
-                            </span>
-                            {mostrarFormulario ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                        </button>
+                                <ChevronDown className="h-3.5 w-3.5" />
+                            </button>
+                        )}
 
+                        {/* Formulário expandido com etapas */}
                         {mostrarFormulario && (
-                            <div className="px-3 pb-3 pt-1 space-y-2 border-t border-gray-100">
-                                {/* Data */}
-                                <div>
-                                    <label className="text-xs text-gray-500 font-medium">Data de Entrega</label>
-                                    <input
-                                        type="date"
-                                        className="w-full mt-0.5 border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500"
-                                        value={dataEntrega}
-                                        onChange={e => setDataEntrega(e.target.value)}
-                                        onClick={e => { try { if (e.target.showPicker) e.target.showPicker(); } catch (err) { } }}
-                                    />
-                                    {isEncaixe && (
-                                        <div className="mt-1 flex">
-                                            <span className="text-xs text-amber-600 font-bold bg-amber-50 rounded px-2 py-1 border border-amber-200 shadow-sm uppercase tracking-wide">
-                                                Encaixe
-                                            </span>
-                                        </div>
-                                    )}
-                                    {clienteSelecionado?.Dia_de_entrega && (
-                                        <p className="text-xs text-gray-400 mt-1">Dias do cliente: <b>{clienteSelecionado.Dia_de_entrega}</b></p>
-                                    )}
-                                </div>
+                            <div className="px-3 pb-3 pt-1 space-y-3 border-t border-gray-100">
 
-                                {/* Botões Especial / Bonificação */}
-                                {(user?.permissoes?.Pode_Criar_Especial || user?.permissoes?.Pode_Criar_Bonificacao || user?.permissoes?.admin) && (
+                                {/* ── ETAPA 1: Tipo de Pedido ── */}
+                                <div className="pt-2">
+                                    <label className="text-xs text-gray-500 font-medium mb-1.5 block">Tipo de Pedido *</label>
                                     <div className="flex gap-2">
+                                        {/* Pedido Normal — sempre visível */}
+                                        <button
+                                            type="button"
+                                            className={`flex-1 px-3 py-2.5 rounded-md text-xs font-bold border transition-colors ${tipoPedido === 'PEDIDO' ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'}`}
+                                            onClick={async () => {
+                                                setTipoPedido('PEDIDO');
+                                                setEspecial(false);
+                                                setBonificacao(false);
+                                                setCondicaoPagamentoId('');
+                                                setCondicaoSelecionada(null);
+                                                await recarregarProdutos(categoriasNormalRef.current);
+                                            }}
+                                        >
+                                            Pedido
+                                        </button>
+
+                                        {/* Especial — só se tem permissão */}
                                         {(user?.permissoes?.Pode_Criar_Especial || user?.permissoes?.admin) && (
                                             <button
                                                 type="button"
-                                                className={`flex-1 px-3 py-2 rounded-md text-xs font-bold border transition-colors ${especial ? 'bg-purple-600 text-white border-purple-600' : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'}`}
+                                                className={`flex-1 px-3 py-2.5 rounded-md text-xs font-bold border transition-colors ${tipoPedido === 'ESPECIAL' ? 'bg-purple-600 text-white border-purple-600 shadow-sm' : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'}`}
                                                 onClick={async () => {
-                                                    const novo = !especial;
-                                                    setEspecial(novo);
-                                                    if (novo) setBonificacao(false);
+                                                    setTipoPedido('ESPECIAL');
+                                                    setEspecial(true);
+                                                    setBonificacao(false);
                                                     setCondicaoPagamentoId('');
                                                     setCondicaoSelecionada(null);
-                                                    if (!novo && !bonificacao) {
-                                                        await recarregarProdutos(categoriasNormalRef.current);
-                                                    } else if (novo) {
-                                                        setProdutos([]);
-                                                    }
+                                                    setProdutos([]);
                                                 }}
                                             >
                                                 Especial
                                             </button>
                                         )}
+
+                                        {/* Bonificação — só se tem permissão */}
                                         {(user?.permissoes?.Pode_Criar_Bonificacao || user?.permissoes?.admin) && (
                                             <button
                                                 type="button"
-                                                className={`flex-1 px-3 py-2 rounded-md text-xs font-bold border transition-colors ${bonificacao ? 'bg-green-600 text-white border-green-600' : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'}`}
+                                                className={`flex-1 px-3 py-2.5 rounded-md text-xs font-bold border transition-colors ${tipoPedido === 'BONIFICACAO' ? 'bg-green-600 text-white border-green-600 shadow-sm' : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'}`}
                                                 onClick={async () => {
-                                                    const novo = !bonificacao;
-                                                    setBonificacao(novo);
-                                                    if (novo) setEspecial(false);
+                                                    setTipoPedido('BONIFICACAO');
+                                                    setBonificacao(true);
+                                                    setEspecial(false);
                                                     setCondicaoPagamentoId('');
                                                     setCondicaoSelecionada(null);
-                                                    if (!novo && !especial) {
-                                                        await recarregarProdutos(categoriasNormalRef.current);
-                                                    } else if (novo) {
-                                                        await recarregarProdutos(categoriasNormalRef.current);
-                                                    }
+                                                    await recarregarProdutos(categoriasNormalRef.current);
                                                 }}
                                             >
                                                 Bonificação
                                             </button>
                                         )}
                                     </div>
-                                )}
+                                </div>
 
-                                {/* Condição de pagamento */}
-                                <div className="relative">
-                                    <label className="text-xs text-gray-500 font-medium">Condição de Pagamento {especial && <span className="text-purple-600">(Especial)</span>}{bonificacao && <span className="text-green-600">(Bonificação)</span>}</label>
+                                {/* ── ETAPA 2: Condição de Pagamento (só após tipo escolhido) ── */}
+                                {tipoPedido && (
+                                    <div className="relative pt-2 border-t border-gray-100">
+                                        <label className="text-xs text-gray-500 font-medium">
+                                            Condição de Pagamento *
+                                            {especial && <span className="text-purple-600 ml-1">(Especial)</span>}
+                                            {bonificacao && <span className="text-green-600 ml-1">(Bonificação)</span>}
+                                        </label>
                                         <div
                                             className="mt-0.5 w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm font-semibold flex justify-between items-center cursor-pointer"
                                             onClick={() => setMostrarCondicoesDropdown(!mostrarCondicoesDropdown)}
@@ -1309,7 +1327,7 @@ const NovoPedido = () => {
                                                 {condicoesPermitidas.map(c => (
                                                     <li key={c.idCondicao}
                                                         className={`py-2.5 px-3 text-sm font-semibold cursor-pointer hover:bg-gray-50 border-b border-gray-50 flex justify-between ${condicaoPagamentoId === c.idCondicao ? 'bg-blue-50 text-blue-800' : 'text-gray-900'}`}
-                                                        onClick={() => { setCondicaoPagamentoId(c.idCondicao); setMostrarCondicoesDropdown(false); setMostrarFormulario(false); }}>
+                                                        onClick={() => { setCondicaoPagamentoId(c.idCondicao); setMostrarCondicoesDropdown(false); }}>
                                                         {c.nomeCondicao}
                                                         {condicaoPagamentoId === c.idCondicao && <CheckCircle className="h-4 w-4 text-blue-600" />}
                                                     </li>
@@ -1325,49 +1343,88 @@ const NovoPedido = () => {
                                                     : 'Nenhuma tabela de preço habilitada para este cliente.'}
                                             </p>
                                         )}
-                                </div>
-
-                                {/* Observações */}
-                                <div>
-                                    <button
-                                        onClick={() => setObsAberta(!obsAberta)}
-                                        className="text-xs text-gray-500 flex items-center gap-1"
-                                    >
-                                        <FileText className="h-3.5 w-3.5" />
-                                        {obsAberta ? 'Fechar observações' : 'Adicionar observações'}
-                                    </button>
-                                    {obsAberta && (
-                                        <textarea
-                                            className="w-full mt-1.5 border border-gray-300 rounded-md p-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
-                                            rows="2"
-                                            placeholder="Restrições de doca, horários..."
-                                            value={observacoes}
-                                            onChange={e => setObservacoes(e.target.value)}
-                                        />
-                                    )}
-                                </div>
-
-                                {/* Tipo de Atendimento Escolha */}
-                                <div className="pt-2 border-t border-gray-100 mt-2">
-                                    <label className="text-xs text-gray-500 font-medium mb-1.5 flex items-center gap-1.5">
-                                        <Phone className="h-3.5 w-3.5" />
-                                        Qualidade do Atendimento *
-                                    </label>
-                                    <div className="flex flex-wrap gap-1.5 mt-1">
-                                        {TIPOS_ATENDIMENTO.map(t => (
-                                            <button
-                                                key={t.value}
-                                                onClick={() => {
-                                                    setCanalOrigem(t.value);
-                                                    setMostrarFormulario(false);
-                                                }}
-                                                className={`px-2.5 py-1.5 rounded text-[12px] font-semibold border transition-colors ${canalOrigem === t.value ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-                                            >
-                                                {t.label}
-                                            </button>
-                                        ))}
                                     </div>
-                                </div>
+                                )}
+
+                                {/* ── ETAPA 3: Data de Entrega (só após condição selecionada) ── */}
+                                {tipoPedido && condicaoPagamentoId && (
+                                    <div className="pt-2 border-t border-gray-100">
+                                        <label className="text-xs text-gray-500 font-medium">Data de Entrega *</label>
+                                        <div className="relative mt-0.5">
+                                            <input
+                                                type="date"
+                                                className="w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                value={dataEntrega}
+                                                onChange={e => setDataEntrega(e.target.value)}
+                                                onClick={e => { try { if (e.target.showPicker) e.target.showPicker(); } catch (err) { } }}
+                                            />
+                                        </div>
+                                        {isEncaixe && (
+                                            <div className="mt-1 flex">
+                                                <span className="text-xs text-amber-600 font-bold bg-amber-50 rounded px-2 py-1 border border-amber-200 shadow-sm uppercase tracking-wide">
+                                                    Encaixe
+                                                </span>
+                                            </div>
+                                        )}
+                                        {clienteSelecionado?.Dia_de_entrega && (
+                                            <p className="text-xs text-gray-400 mt-1">Dias do cliente: <b>{clienteSelecionado.Dia_de_entrega}</b></p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* ── ETAPA 4: Qualidade do Atendimento (só após data) ── */}
+                                {tipoPedido && condicaoPagamentoId && dataEntrega && (
+                                    <div className="pt-2 border-t border-gray-100">
+                                        <label className="text-xs text-gray-500 font-medium mb-1.5 flex items-center gap-1.5">
+                                            <Phone className="h-3.5 w-3.5" />
+                                            Qualidade do Atendimento *
+                                        </label>
+                                        <div className="flex flex-wrap gap-1.5 mt-1">
+                                            {TIPOS_ATENDIMENTO.map(t => (
+                                                <button
+                                                    key={t.value}
+                                                    onClick={() => {
+                                                        setCanalOrigem(t.value);
+                                                    }}
+                                                    className={`px-2.5 py-1.5 rounded text-[12px] font-semibold border transition-colors ${canalOrigem === t.value ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                                                >
+                                                    {t.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ── ETAPA 5: Observações (só após qualidade, NÃO obrigatória) ── */}
+                                {tipoPedido && condicaoPagamentoId && dataEntrega && canalOrigem && (
+                                    <div className="pt-2 border-t border-gray-100">
+                                        <button
+                                            onClick={() => setObsAberta(!obsAberta)}
+                                            className="text-xs text-gray-500 flex items-center gap-1"
+                                        >
+                                            <FileText className="h-3.5 w-3.5" />
+                                            {obsAberta ? 'Fechar observações' : 'Adicionar observações'}
+                                        </button>
+                                        {obsAberta && (
+                                            <textarea
+                                                className="w-full mt-1.5 border border-gray-300 rounded-md p-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                                                rows="2"
+                                                placeholder="Restrições de doca, horários..."
+                                                value={observacoes}
+                                                onChange={e => setObservacoes(e.target.value)}
+                                            />
+                                        )}
+
+                                        {/* Botão para recolher e ir para itens */}
+                                        <button
+                                            onClick={() => setMostrarFormulario(false)}
+                                            className="w-full mt-3 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-md active:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            <ShoppingBag className="h-4 w-4" />
+                                            Escolher Itens
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </>
@@ -1375,7 +1432,7 @@ const NovoPedido = () => {
             </div>
 
             {/* ===== LISTA DE PRODUTOS ===== */}
-            {clienteId && condicaoPagamentoId && canalOrigem && (
+            {clienteId && tipoPedido && condicaoPagamentoId && canalOrigem && !mostrarFormulario && (
                 <div className="flex-1">
                     {/* Campo de busca de produto fixo */}
                     <div className="bg-gray-100 px-3 py-2 sticky top-[72px] z-10 border-b border-gray-200">
@@ -1441,21 +1498,27 @@ const NovoPedido = () => {
                 </div>
             )}
 
-            {/* Placeholder quando sem condição/qualidade */}
-            {clienteId && (!condicaoPagamentoId || !canalOrigem) && (
+            {/* Placeholder quando etapas incompletas */}
+            {clienteId && mostrarFormulario && (!tipoPedido || !condicaoPagamentoId || !canalOrigem) && (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gray-50 bg-opacity-70">
                     <div className="max-w-xs space-y-6">
-                        {!condicaoPagamentoId ? (
+                        {!tipoPedido ? (
+                            <div>
+                                <Package className="h-10 w-10 text-blue-400 mx-auto mb-3" />
+                                <p className="text-sm text-gray-900 font-bold">Escolha o Tipo de Pedido</p>
+                                <p className="text-xs text-gray-500 mt-1 font-medium">Selecione acima se é Pedido, Especial ou Bonificação.</p>
+                            </div>
+                        ) : !condicaoPagamentoId ? (
                             <div>
                                 <AlertCircle className="h-10 w-10 text-amber-400 mx-auto mb-3" />
                                 <p className="text-sm text-gray-900 font-bold">Selecione a Condição de Pagamento</p>
-                                <p className="text-xs text-gray-500 mt-1 font-medium">{especial ? 'As categorias de produtos serão definidas pela condição selecionada.' : bonificacao ? 'Selecione a condição de pagamento para o pedido bonificação.' : 'Você precisa definir a tabela e juros base no topo.'}</p>
+                                <p className="text-xs text-gray-500 mt-1 font-medium">{especial ? 'As categorias de produtos serão definidas pela condição selecionada.' : bonificacao ? 'Selecione a condição de pagamento para o pedido bonificação.' : 'Você precisa definir a tabela e juros base.'}</p>
                             </div>
                         ) : (
                             <div>
                                 <Phone className="h-10 w-10 text-blue-500 mx-auto mb-3" />
                                 <p className="text-sm text-gray-900 font-bold">Qualidade do Atendimento Pendente</p>
-                                <p className="text-xs text-gray-500 mt-1 font-medium">Escolha no topo se foi visita, WhatsApp, ligação, etc para liberar os produtos.</p>
+                                <p className="text-xs text-gray-500 mt-1 font-medium">Escolha acima se foi visita, WhatsApp, ligação, etc para liberar os produtos.</p>
                             </div>
                         )}
                     </div>
@@ -1509,6 +1572,14 @@ const NovoPedido = () => {
                     })()}
                 </div>
             )}
+            {/* Popup de info do cliente (read-only) */}
+            {showClientePopup && clienteSelecionado && (
+                <ClientePopup
+                    cliente={clienteSelecionado}
+                    onClose={() => setShowClientePopup(false)}
+                />
+            )}
+
             {/* Modal de Busca de Cliente (Tela Cheia) */}
             {showClienteModal && (
                 <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col">
