@@ -69,29 +69,37 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                     }));
                 // Extrair regras da condição do pedido
                 let todasFormas = [...tabelas, ...ativas];
+                // Determinar se o pedido é "à vista" (debitaCaixa=true) ou "prazo/boleto" (debitaCaixa=false)
+                let pedidoDebitaCaixa = true; // default: à vista
                 if (pedido.idCondicaoResolvido) {
                     const condicaoPedido = tabelaForms.find(t => t.idCondicao === pedido.idCondicaoResolvido);
                     if (condicaoPedido) {
+                        pedidoDebitaCaixa = condicaoPedido.debitaCaixa !== false;
                         setRegrasCondicao({
                             permiteDevolucaoTotal: condicaoPedido.permiteDevolucaoTotal !== false,
                             permiteDevolucaoParcial: condicaoPedido.permiteDevolucaoParcial !== false,
                             formasRecebimentoPermitidas: condicaoPedido.formasRecebimentoPermitidas || [],
-                            debitaCaixa: condicaoPedido.debitaCaixa !== false ? true : false
+                            debitaCaixa: pedidoDebitaCaixa
                         });
                         // Filtrar formas disponíveis se há restrição explícita
                         if (condicaoPedido.formasRecebimentoPermitidas?.length > 0) {
                             const permitidas = condicaoPedido.formasRecebimentoPermitidas;
                             todasFormas = todasFormas.filter(f => permitidas.includes(f._selectId));
                         }
-                        // Filtro automático: à vista só mostra opções à vista (nunca Boleto)
-                        // Boleto só mostra Boleto (condições que não debitam caixa)
-                        // Formas de Entrega (Escritório, Vendedor) são mantidas sempre
-                        todasFormas = todasFormas.filter(f =>
-                            f._grupo !== 'Condições de Pagamento' ||
-                            f.debitaCaixa === !!condicaoPedido.debitaCaixa
-                        );
                     }
+                } else if (pedido.tipoPagamento) {
+                    // Fallback: sem idCondicaoResolvido (ex: "Funcionário"), usa tipoPagamento do pedido
+                    const tipoLower = pedido.tipoPagamento.toLowerCase();
+                    pedidoDebitaCaixa = tipoLower.includes('vista');
+                    setRegrasCondicao(prev => ({ ...prev, debitaCaixa: pedidoDebitaCaixa }));
                 }
+                // Filtro automático: à vista só mostra opções à vista (nunca Boleto)
+                // Boleto/prazo só mostra condições que não debitam caixa
+                // Formas de Entrega (Escritório, Vendedor) são mantidas sempre
+                todasFormas = todasFormas.filter(f =>
+                    f._grupo !== 'Condições de Pagamento' ||
+                    f.debitaCaixa === pedidoDebitaCaixa
+                );
                 setFormasDisp(todasFormas);
             } catch (error) {
                 toast.error('Erro ao buscar Formas de Pagamento.');
@@ -132,9 +140,10 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
 
     // Helper: pré-popula o primeiro pagamento com a forma prevista no pedido
     const autoPopularPagamento = (valorInicial) => {
-        setValorAlvoCaixa(valorInicial);
+        const valorArredondado = Number(Number(valorInicial).toFixed(2));
+        setValorAlvoCaixa(valorArredondado);
         if (formasDisp.length === 0) return; // useEffect abaixo cuidará quando carregar
-        setPagamentos([{ idLocal: Date.now(), _selectId: getDefaultSelectId(), valor: valorInicial }]);
+        setPagamentos([{ idLocal: Date.now(), _selectId: getDefaultSelectId(), valor: valorArredondado }]);
     };
 
     // Quando formasDisp carregar e já tem valor-alvo pendente, auto-popula
