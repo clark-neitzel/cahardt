@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, RotateCcw, Loader2, FileText, ExternalLink } from 'lucide-react';
 import devolucaoService from '../../services/devolucaoService';
+import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -162,7 +163,7 @@ const ListaDevolucoes = ({ filtros }) => {
                                         <div className="p-2 bg-blue-50 rounded border border-blue-200 text-xs space-y-1">
                                             <div><span className="font-bold text-blue-700">Nota Devolução:</span> {dev.notaDevolucaoCA || '-'}</div>
                                             {dev.pdfDevolucaoUrl && (
-                                                <a href={dev.pdfDevolucaoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline">
+                                                <a href={`${API_URL}${dev.pdfDevolucaoUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline">
                                                     <FileText className="h-3 w-3" /> Ver PDF <ExternalLink className="h-3 w-3" />
                                                 </a>
                                             )}

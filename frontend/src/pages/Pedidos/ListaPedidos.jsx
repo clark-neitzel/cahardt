@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell } from 'lucide-react';
+import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
+import { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
 import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -1060,6 +1061,43 @@ const ListaPedidos = () => {
                                 <div className="bg-yellow-50/50 p-3 rounded border border-yellow-100">
                                     <p className="text-[10px] uppercase font-bold text-yellow-600 mb-1">Observações</p>
                                     <p className="text-sm italic text-gray-700">{selectedPedido.observacoes}</p>
+                                </div>
+                            )}
+                            {/* Devoluções */}
+                            {selectedPedido.devolucoes?.length > 0 && (
+                                <div className="bg-red-50 p-3 rounded-lg border border-red-200 space-y-2">
+                                    <p className="text-[10px] uppercase font-bold text-red-600">Devoluções</p>
+                                    {selectedPedido.devolucoes.map(dev => (
+                                        <div key={dev.id} className="text-sm space-y-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-xs font-bold text-red-700 bg-red-100 px-1.5 py-0.5 rounded">DEV#{dev.numero}</span>
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${dev.tipo === 'CONTA_AZUL' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'}`}>
+                                                    {dev.tipo === 'CONTA_AZUL' ? 'CA' : 'ESPECIAL'}
+                                                </span>
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-gray-200 text-gray-600">{dev.escopo}</span>
+                                                <span className="text-sm font-bold text-red-700">R$ {Number(dev.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                            </div>
+                                            {dev.itens?.map((item, i) => (
+                                                <div key={i} className="flex justify-between text-xs text-red-800 py-0.5 pl-2">
+                                                    <span>{item.nomeProduto}</span>
+                                                    <span>{Number(item.quantidade)} x R$ {Number(item.valorUnitario).toFixed(2).replace('.', ',')} = <b>R$ {(Number(item.quantidade) * Number(item.valorUnitario)).toFixed(2).replace('.', ',')}</b></span>
+                                                </div>
+                                            ))}
+                                            <div className="text-xs text-gray-600">
+                                                <span className="font-medium">Motivo:</span> {dev.motivo}
+                                            </div>
+                                            {dev.tipo === 'CONTA_AZUL' && dev.notaDevolucaoCA && (
+                                                <div className="flex items-center gap-2 text-xs">
+                                                    <span className="font-medium text-blue-700">Nota: {dev.notaDevolucaoCA}</span>
+                                                    {dev.pdfDevolucaoUrl && (
+                                                        <a href={`${API_URL}${dev.pdfDevolucaoUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:underline font-medium">
+                                                            <FileText className="h-3 w-3" /> Ver PDF <ExternalLink className="h-3 w-3" />
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>

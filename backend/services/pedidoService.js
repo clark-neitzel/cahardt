@@ -114,6 +114,15 @@ const pedidoService = {
                 },
                 pagamentosReais: {
                     select: { formaPagamentoNome: true, valor: true }
+                },
+                devolucoes: {
+                    where: { status: 'ATIVA' },
+                    select: {
+                        id: true, numero: true, tipo: true, escopo: true,
+                        valorTotal: true, dataDevolucao: true, motivo: true,
+                        notaDevolucaoCA: true, pdfDevolucaoUrl: true,
+                        itens: { select: { nomeProduto: true, quantidade: true, valorUnitario: true } }
+                    }
                 }
             },
             orderBy: { createdAt: 'desc' }
