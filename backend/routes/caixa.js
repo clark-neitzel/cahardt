@@ -466,14 +466,18 @@ router.post('/fechar', async (req, res) => {
             pendencias.push(`${devPendentes.length} devolução(ões) pendente(s): ${nomes}`);
         }
 
-        // 2. Quitações pendentes: entregas com pagamento real em dinheiro não quitadas
+        // 2. Quitações pendentes: entregas com pagamento real em dinheiro/pix/cartão não quitadas
         const quitPendentes = entregas.filter(e => {
             if (e.statusEntrega === 'DEVOLVIDO') return false;
-            if (e.contaReceber?.status === 'QUITADO') return false;
+            // Especial: já quitado via ContaReceber local
+            if (e.contaReceber?.status === 'QUITADO' || e.contaReceber?.status === 'PARCIAL') return false;
+            // Normal (CA): já processado via quitar-ca (baixa ou alteração de condição)
+            if (e.baixaCaRealizada) return false;
+            const n = (p) => (p.formaPagamentoNome || '').toLowerCase();
             return e.pagamentosReais.some(p =>
                 !p.vendedorResponsavelId &&
                 !p.escritorioResponsavel &&
-                p.formaPagamentoNome?.toLowerCase().includes('dinheiro')
+                (n(p).includes('dinheiro') || n(p).includes('pix') || n(p).includes('cartão') || n(p).includes('cartao'))
             );
         });
         if (quitPendentes.length > 0) {
@@ -717,11 +721,13 @@ router.post('/reabrir-pendentes', async (req, res) => {
             );
             const quitPendentes = entregas.filter(e => {
                 if (e.statusEntrega === 'DEVOLVIDO') return false;
-                if (e.contaReceber?.status === 'QUITADO') return false;
+                if (e.contaReceber?.status === 'QUITADO' || e.contaReceber?.status === 'PARCIAL') return false;
+                if (e.baixaCaRealizada) return false;
+                const n = (p) => (p.formaPagamentoNome || '').toLowerCase();
                 return e.pagamentosReais.some(p =>
                     !p.vendedorResponsavelId &&
                     !p.escritorioResponsavel &&
-                    p.formaPagamentoNome?.toLowerCase().includes('dinheiro')
+                    (n(p).includes('dinheiro') || n(p).includes('pix') || n(p).includes('cartão') || n(p).includes('cartao'))
                 );
             });
 
