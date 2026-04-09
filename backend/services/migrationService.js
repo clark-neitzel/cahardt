@@ -827,7 +827,15 @@ const migrationService = {
             END $$;`,
 
             // Update 58: Campo devolucao_finalizada no pedido
-            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "devolucao_finalizada" BOOLEAN NOT NULL DEFAULT FALSE`
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "devolucao_finalizada" BOOLEAN NOT NULL DEFAULT FALSE`,
+
+            // Update 59: Campos baixa CA no pedido
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "baixa_ca_realizada" BOOLEAN NOT NULL DEFAULT FALSE`,
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "baixa_ca_valor" DECIMAL(12,2)`,
+            `ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "baixa_ca_em" TIMESTAMP(3)`,
+
+            // Fix: Reverter baixa indevida do pedido 212
+            `UPDATE "pedidos" SET "baixa_ca_realizada" = FALSE, "baixa_ca_valor" = NULL, "baixa_ca_em" = NULL WHERE "numero" = 212`
         ];
 
         for (const [index, cmd] of commands.entries()) {

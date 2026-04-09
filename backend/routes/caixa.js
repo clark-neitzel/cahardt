@@ -1327,35 +1327,45 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
                         continue;
                     }
 
-                    // Criar baixas separadas por tipo de pagamento (dinheiro, pix, etc)
+                    // Separar: DINHEIRO → baixa (caixinha), PIX → alterar condição na parcela
                     const grupos = pedido._gruposPagamento;
                     const detalhePgtos = Object.entries(grupos)
                         .map(([metodo, g]) => `${g.formaNome}: R$ ${g.valor.toFixed(2)}`)
                         .join(', ');
                     const obsBase = `Motorista: ${motorista} | Caixa: ${dataPgto} | Solicitante: ${solicitante?.nome || req.user.id} | Pgto: ${detalhePgtos}`;
 
-                    const baixasIds = [];
-                    let valorTotalBaixado = 0;
+                    const acoes = [];
+                    let valorBaixado = 0;
 
-                    for (const [metodoCA, grupo] of Object.entries(grupos)) {
-                        const valorBaixa = Math.round(grupo.valor * 100) / 100;
+                    // 1. DINHEIRO → criar baixa no CA (caixinha)
+                    if (grupos['DINHEIRO']) {
+                        const valorDinheiro = Math.round(grupos['DINHEIRO'].valor * 100) / 100;
                         const baixaPayload = {
                             data_pagamento: dataPgto,
                             composicao_valor: {
-                                valor_bruto: valorBaixa,
-                                multa: 0,
-                                juros: 0,
-                                desconto: 0,
-                                taxa: 0
+                                valor_bruto: valorDinheiro,
+                                multa: 0, juros: 0, desconto: 0, taxa: 0
                             },
                             conta_financeira: contaCaixinha.id,
-                            metodo_pagamento: metodoCA,
+                            metodo_pagamento: 'DINHEIRO',
                             observacao: obsBase
                         };
-
                         const baixaCA = await contaAzulService.criarBaixa(parcela.id, baixaPayload);
-                        baixasIds.push(baixaCA?.id || null);
-                        valorTotalBaixado += valorBaixa;
+                        acoes.push(`Baixa dinheiro: R$ ${valorDinheiro.toFixed(2)}`);
+                        valorBaixado = valorDinheiro;
+                    }
+
+                    // 2. PIX → alterar metodo_pagamento da parcela para PIX (sem baixar)
+                    if (grupos['PIX_PAGAMENTO_INSTANTANEO']) {
+                        const valorPix = Math.round(grupos['PIX_PAGAMENTO_INSTANTANEO'].valor * 100) / 100;
+                        // Buscar versão atualizada da parcela (pode ter mudado após a baixa parcial)
+                        const parcelaAtual = await contaAzulService.buscarParcelaDetalhe(parcela.id);
+                        await contaAzulService.atualizarParcela(parcela.id, {
+                            versao: parcelaAtual.versao,
+                            metodo_pagamento: 'PIX_PAGAMENTO_INSTANTANEO',
+                            nota: `Pix: R$ ${valorPix.toFixed(2)} | ${obsBase}`
+                        });
+                        acoes.push(`Condição alterada para PIX: R$ ${valorPix.toFixed(2)}`);
                     }
 
                     // Marcar localmente que a baixa foi realizada
@@ -1363,7 +1373,7 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
                         where: { id: pedido.id },
                         data: {
                             baixaCaRealizada: true,
-                            baixaCaValor: Math.round(valorTotalBaixado * 100) / 100,
+                            baixaCaValor: Math.round(pedido._valorElegivel * 100) / 100,
                             baixaCaEm: new Date()
                         }
                     });
@@ -1374,8 +1384,8 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
                         cliente: clienteNome,
                         tipo: 'CA',
                         status: 'OK',
-                        baixaId: baixasIds.join(', '),
-                        valor: valorTotalBaixado
+                        valor: pedido._valorElegivel,
+                        detalhe: acoes.join(' | ')
                     });
 
                 } catch (err) {

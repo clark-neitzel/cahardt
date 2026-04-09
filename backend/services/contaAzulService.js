@@ -1690,6 +1690,16 @@ const contaAzulService = {
         return response.data;
     },
 
+    atualizarParcela: async (parcelaId, payload) => {
+        const url = `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}`;
+        const response = await contaAzulService._axiosRequest('patch', url, payload, 'PARCELA_ATUALIZAR');
+        await contaAzulService._logStep('PARCELA_ATUALIZAR', 'SUCESSO', `Parcela ${parcelaId} atualizada`, {
+            url, method: 'PATCH', status: response.status,
+            body: payload,
+        });
+        return response.data;
+    },
+
     /**
      * Encontrar a parcela CA correspondente a uma venda (pedido).
      * Busca parcelas do cliente → detalha cada uma → match por evento.referencia.id === idVenda.
