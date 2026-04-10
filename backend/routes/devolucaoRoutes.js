@@ -190,7 +190,7 @@ router.post('/:id/processar-ca', checkPermissao('Pode_Fazer_Devolucao'), async (
                 await new Promise(r => setTimeout(r, 1500));
 
                 // 3. Criar baixa com o valor total e desconto = tudo menos 0,01
-                const hoje = new Date().toISOString().split('T')[0];
+                const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
                 console.log('[Wizard CA] Criando baixa:', {
                     parcelaId: devolucao.parcelaCAId,
                     valorBruto, desconto, caixinhaId: caixinha.id
@@ -264,7 +264,7 @@ router.post('/:id/processar-ca', checkPermissao('Pode_Fazer_Devolucao'), async (
             const parcela = await contaAzulService.buscarParcelaDetalhe(devolucao.parcelaCAId);
             const valorBruto = parseFloat(parcela?.valor_composicao?.valor_bruto || 0);
             const caixinha = await contaAzulService.buscarContaCaixinha();
-            const hoje = new Date().toISOString().split('T')[0];
+            const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
 
             await contaAzulService.criarBaixa(devolucao.parcelaCAId, {
                 data_pagamento: hoje,
