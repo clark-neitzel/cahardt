@@ -1667,6 +1667,19 @@ const contaAzulService = {
     },
 
     /**
+     * Excluir uma baixa existente. Usado quando precisamos reabrir uma parcela
+     * já paga para aplicar desconto (devolução parcial de pedido à vista).
+     */
+    excluirBaixa: async (baixaId) => {
+        const url = `https://api-v2.contaazul.com/v1/financeiro/baixas/${baixaId}`;
+        const response = await contaAzulService._axiosRequest('delete', url, null, 'BAIXA_EXCLUIR');
+        await contaAzulService._logStep('BAIXA_EXCLUIR', 'SUCESSO', `Baixa ${baixaId} excluída`, {
+            url, method: 'DELETE', status: response.status
+        });
+        return response.data;
+    },
+
+    /**
      * Buscar detalhes completos de uma parcela (inclui evento.referencia).
      */
     buscarParcelaDetalhe: async (parcelaId) => {
@@ -1703,8 +1716,10 @@ const contaAzulService = {
     /**
      * Encontrar a parcela CA correspondente a uma venda (pedido).
      * Busca parcelas do cliente → detalha cada uma → match por evento.referencia.id === idVenda.
+     * Por padrão inclui parcelas pagas (RECEBIDO/RECEBIDO_PARCIAL) — necessário p/
+     * devoluções de pedidos à vista que já foram quitados via Baixa CA.
      */
-    encontrarParcelaDeVenda: async (clienteCAId, idVendaCA, dataVendaStr) => {
+    encontrarParcelaDeVenda: async (clienteCAId, idVendaCA, dataVendaStr, statusBusca = ['EM_ABERTO', 'ATRASADO', 'RECEBIDO', 'RECEBIDO_PARCIAL']) => {
         // Buscar num range amplo (60 dias antes e depois da venda)
         const dataVenda = new Date(dataVendaStr + 'T12:00:00-03:00');
         const de = new Date(dataVenda); de.setDate(de.getDate() - 60);
@@ -1712,7 +1727,7 @@ const contaAzulService = {
         const fmtDate = (d) => d.toISOString().split('T')[0];
 
         const parcelas = await contaAzulService.buscarParcelasContaAReceber(
-            clienteCAId, fmtDate(de), fmtDate(ate)
+            clienteCAId, fmtDate(de), fmtDate(ate), statusBusca
         );
 
         if (parcelas.length === 0) return null;

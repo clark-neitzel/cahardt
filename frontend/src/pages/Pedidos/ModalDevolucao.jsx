@@ -103,6 +103,24 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                     setSaving(false);
                     return;
                 }
+
+                // Não-boleto: backend tenta auto-processar no CA. Avisar resultado.
+                if (devCriada?.processadoCA) {
+                    toast.success('Devolução registrada e processada no Conta Azul.');
+                } else if (devCriada?.avisoCA) {
+                    const { status, mensagem, sugestao } = devCriada.avisoCA;
+                    const titulo = status === 'PARCELA_PAGA'
+                        ? '⚠️ Parcela já estava paga no CA'
+                        : status === 'PARCELA_NAO_ENCONTRADA'
+                            ? '⚠️ Parcela não encontrada no CA'
+                            : '⚠️ Auto-processamento no CA falhou';
+                    toast(
+                        `${titulo}\n\n${mensagem}${sugestao ? `\n\n${sugestao}` : ''}`,
+                        { icon: '⚠️', duration: 12000, style: { maxWidth: '480px', whiteSpace: 'pre-line' } }
+                    );
+                } else {
+                    toast('Devolução registrada. Verifique manualmente no CA.', { icon: '⚠️' });
+                }
             } else {
                 await devolucaoService.criarEspecial({
                     pedidoId: entrega.pedidoId,
