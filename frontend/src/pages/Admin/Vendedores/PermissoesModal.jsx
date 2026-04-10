@@ -33,6 +33,8 @@ const DEFAULT_PERMISSIONS = {
     // Módulo Caixa Diário e Despesas
     Pode_Acessar_Caixa: false,
     Pode_Editar_Caixa: false,
+    Pode_Baixar_Caixa: false,
+    Pode_Fechar_Caixa: false,
     Pode_Definir_Adiantamento: false,
     Pode_Ver_Historico_Caixa: false,
     Pode_Reverter_Caixa: false,
@@ -593,6 +595,10 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Permissões do Caixa</p>
                                 <Toggle checked={!!permissoes.Pode_Editar_Caixa} onChange={() => toggleBool('Pode_Editar_Caixa')}
                                     label="Auditor Financeiro do Caixa" sublabel="Confere caixas de outros usuários, edita despesas alheias" danger />
+                                <Toggle checked={!!permissoes.Pode_Baixar_Caixa} onChange={() => toggleBool('Pode_Baixar_Caixa')}
+                                    label="Baixar no Caixa (Quitar CA)" sublabel="Dar baixa de entregas à vista (dinheiro/pix/cartão) no Conta Azul" />
+                                <Toggle checked={!!permissoes.Pode_Fechar_Caixa} onChange={() => toggleBool('Pode_Fechar_Caixa')}
+                                    label="Fechar Caixa" sublabel="Fechar o caixa do dia com snapshot dos totais" />
                                 <Toggle checked={!!permissoes.Pode_Definir_Adiantamento} onChange={() => toggleBool('Pode_Definir_Adiantamento')}
                                     label="Definir Adiantamento" sublabel="Editar o valor de adiantamento do caixa diário" />
                                 <Toggle checked={!!permissoes.Pode_Ver_Historico_Caixa} onChange={() => toggleBool('Pode_Ver_Historico_Caixa')}
