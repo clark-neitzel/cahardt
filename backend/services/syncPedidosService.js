@@ -230,14 +230,31 @@ const syncPedidosService = {
             const linhaPromo = itensEmPromocao.length > 0
                 ? `PROMO - ${itensEmPromocao.map(item => item.produto?.nome || '').filter(Boolean).join('; ')}`
                 : null;
-            const observacoesFinal = [pedido.observacoes, linhaPromo].filter(Boolean).join('\n') || undefined;
+
+            // Condições "Vendedor responsável" / "Escritório responsável" não existem nativamente
+            // no CA: enviamos como tipo_pagamento OUTRO e marcamos na observação para filtragem.
+            const nomeCondNorm = (pedido.nomeCondicaoPagamento || '').toLowerCase();
+            const ehVendResp = nomeCondNorm.includes('vendedor respons');
+            const ehEscrResp = nomeCondNorm.includes('escrit') && nomeCondNorm.includes('respons');
+            const linhaCobrancaEspecial = ehVendResp
+                ? 'Cobrança: Vendedor responsável'
+                : ehEscrResp
+                    ? 'Cobrança: Escritório responsável'
+                    : null;
+
+            const observacoesFinal = [pedido.observacoes, linhaPromo, linhaCobrancaEspecial].filter(Boolean).join('\n') || undefined;
 
             // Mapear tipos de pagamento internos para os valores aceitos pela API do CA
             const tipoPagamentoMap = {
                 'PIX': 'PIX_PAGAMENTO_INSTANTANEO',
                 'CARTAO': 'CARTAO_CREDITO',
             };
-            const tipoPagamentoCA = tipoPagamentoMap[pedido.tipoPagamento] || pedido.tipoPagamento || "A_PRAZO";
+            let tipoPagamentoCA = tipoPagamentoMap[pedido.tipoPagamento] || pedido.tipoPagamento || "A_PRAZO";
+
+            // Vend-Resp / Escr-Resp: força OUTRO no CA (não existe opção equivalente)
+            if (ehVendResp || ehEscrResp) {
+                tipoPagamentoCA = 'OUTRO';
+            }
 
             const payload = {
                 id_cliente: pedido.cliente.contaAzulId || pedido.cliente.UUID,
