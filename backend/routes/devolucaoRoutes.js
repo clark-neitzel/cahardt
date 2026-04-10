@@ -174,19 +174,27 @@ router.post('/:id/processar-ca', checkPermissao('Pode_Fazer_Devolucao'), async (
 
             if (devolucao.escopo === 'TOTAL') {
                 // TOTAL: mudar método para OUTRO + criar baixa com desconto embutido
-                // Isso quita a parcela inteira, com R$ 0,01 real na caixinha
                 const desconto = Math.round((valorBruto - 0.01) * 100) / 100;
 
-                // 1. Mudar método de pagamento para OUTRO
-                await contaAzulService.atualizarParcela(devolucao.parcelaCAId, {
-                    versao: parcela.versao,
-                    metodo_pagamento: 'OUTRO',
-                    nota: `Devolução TOTAL #${devolucao.numero} - ${devolucao.motivo?.substring(0, 100)}`
-                });
+                // 1. Mudar método de pagamento para OUTRO e buscar caixinha em paralelo
+                const [, caixinha] = await Promise.all([
+                    contaAzulService.atualizarParcela(devolucao.parcelaCAId, {
+                        versao: parcela.versao,
+                        metodo_pagamento: 'OUTRO',
+                        nota: `Devolução TOTAL #${devolucao.numero} - ${devolucao.motivo?.substring(0, 100)}`
+                    }),
+                    contaAzulService.buscarContaCaixinha()
+                ]);
 
-                // 2. Criar baixa com o valor total e desconto = tudo menos 0,01
-                const caixinha = await contaAzulService.buscarContaCaixinha();
+                // 2. Pequena pausa para o CA processar a alteração
+                await new Promise(r => setTimeout(r, 1500));
+
+                // 3. Criar baixa com o valor total e desconto = tudo menos 0,01
                 const hoje = new Date().toISOString().split('T')[0];
+                console.log('[Wizard CA] Criando baixa:', {
+                    parcelaId: devolucao.parcelaCAId,
+                    valorBruto, desconto, caixinhaId: caixinha.id
+                });
 
                 await contaAzulService.criarBaixa(devolucao.parcelaCAId, {
                     data_pagamento: hoje,
@@ -310,10 +318,20 @@ router.post('/:id/processar-ca', checkPermissao('Pode_Fazer_Devolucao'), async (
 
         return res.status(400).json({ error: `Etapa desconhecida: ${etapa}` });
     } catch (error) {
-        console.error('Erro processar-ca:', error.response?.data || error.message);
+        const caData = error.response?.data;
+        const caStatus = error.response?.status;
+        console.error('Erro processar-ca:', { status: caStatus, data: caData, message: error.message });
+        // Extrair mensagem útil do CA (pode vir como string, .message, .error, ou .errors[])
+        let detalhe = error.message;
+        if (caData) {
+            if (typeof caData === 'string') detalhe = caData;
+            else if (caData.message) detalhe = caData.message;
+            else if (caData.error) detalhe = caData.error;
+            else if (caData.errors) detalhe = JSON.stringify(caData.errors);
+            else detalhe = JSON.stringify(caData);
+        }
         res.status(500).json({
-            error: 'Erro ao processar no Conta Azul.',
-            detalhe: error.response?.data?.message || error.message
+            error: `Erro CA (${caStatus || 'sem status'}): ${detalhe}`
         });
     }
 });
