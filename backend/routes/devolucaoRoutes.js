@@ -165,7 +165,6 @@ router.post('/:id/processar-ca', checkPermissao('Pode_Fazer_Devolucao'), async (
         if (etapa === 'aplicar-desconto') {
             if (!devolucao.parcelaCAId) return res.status(400).json({ error: 'Busque a parcela primeiro.' });
 
-            // Buscar detalhe atualizado da parcela (para versão atual)
             const parcela = await contaAzulService.buscarParcelaDetalhe(devolucao.parcelaCAId);
             if (!parcela) return res.status(404).json({ error: 'Parcela não encontrada no CA.' });
 
@@ -173,62 +172,99 @@ router.post('/:id/processar-ca', checkPermissao('Pode_Fazer_Devolucao'), async (
             const descontoExistente = parseFloat(parcela.valor_composicao?.desconto || 0);
             const valorDevolucao = parseFloat(devolucao.valorTotal);
 
-            let desconto, novoLiquido, metodoPagamento;
-
             if (devolucao.escopo === 'TOTAL') {
-                // Total: desconto = tudo menos 0.01, muda para OUTRO
-                desconto = Math.round((valorBruto - 0.01) * 100) / 100;
-                novoLiquido = 0.01;
-                metodoPagamento = 'OUTRO';
+                // TOTAL: mudar método para OUTRO + criar baixa com desconto embutido
+                // Isso quita a parcela inteira, com R$ 0,01 real na caixinha
+                const desconto = Math.round((valorBruto - 0.01) * 100) / 100;
+
+                // 1. Mudar método de pagamento para OUTRO
+                await contaAzulService.atualizarParcela(devolucao.parcelaCAId, {
+                    versao: parcela.versao,
+                    metodo_pagamento: 'OUTRO',
+                    nota: `Devolução TOTAL #${devolucao.numero} - ${devolucao.motivo?.substring(0, 100)}`
+                });
+
+                // 2. Criar baixa com o valor total e desconto = tudo menos 0,01
+                const caixinha = await contaAzulService.buscarContaCaixinha();
+                const hoje = new Date().toISOString().split('T')[0];
+
+                await contaAzulService.criarBaixa(devolucao.parcelaCAId, {
+                    data_pagamento: hoje,
+                    composicao_valor: {
+                        valor_bruto: valorBruto,
+                        desconto: desconto,
+                        multa: 0, juros: 0, taxa: 0
+                    },
+                    conta_financeira: caixinha.id,
+                    metodo_pagamento: 'OUTRO',
+                    observacao: `Devolução TOTAL #${devolucao.numero} - Desconto R$ ${desconto.toFixed(2)} + Baixa R$ 0,01 caixinha`
+                });
+
+                await prisma.devolucao.update({
+                    where: { id: devolucao.id },
+                    data: { wizardEtapa: 'desconto-aplicado' }
+                });
+
+                return res.json({
+                    etapa: 'desconto-aplicado',
+                    resultado: {
+                        valorBruto,
+                        desconto,
+                        novoLiquido: 0.01,
+                        metodoPagamento: 'OUTRO',
+                        baixaRealizada: true
+                    }
+                });
             } else {
-                // Parcial: desconto = valor devolvido
-                desconto = Math.round((descontoExistente + valorDevolucao) * 100) / 100;
-                novoLiquido = Math.round((valorBruto - desconto) * 100) / 100;
-                metodoPagamento = undefined; // Manter método atual
+                // PARCIAL: aplicar desconto na parcela via PATCH composicao_valor
+                // O desconto no PATCH não reduz valor, então usamos valor_bruto reduzido
+                const novoValorBruto = Math.round((valorBruto - valorDevolucao) * 100) / 100;
+
+                await contaAzulService.atualizarParcela(devolucao.parcelaCAId, {
+                    versao: parcela.versao,
+                    composicao_valor: {
+                        valor_bruto: novoValorBruto,
+                        desconto: descontoExistente,
+                    },
+                    nota: `Devolução PARCIAL #${devolucao.numero} - valor reduzido de R$ ${valorBruto.toFixed(2)} para R$ ${novoValorBruto.toFixed(2)}`
+                });
+
+                await prisma.devolucao.update({
+                    where: { id: devolucao.id },
+                    data: { wizardEtapa: 'desconto-aplicado' }
+                });
+
+                return res.json({
+                    etapa: 'desconto-aplicado',
+                    resultado: {
+                        valorBruto: novoValorBruto,
+                        desconto: valorDevolucao,
+                        novoLiquido: novoValorBruto,
+                        metodoPagamento: parcela.metodo_pagamento,
+                        baixaRealizada: false
+                    }
+                });
             }
-
-            const payload = {
-                versao: parcela.versao,
-                composicao_valor: {
-                    valor_bruto: valorBruto,
-                    desconto,
-                },
-                nota: `Devolução ${devolucao.escopo} #${devolucao.numero} - ${devolucao.motivo?.substring(0, 100)}`
-            };
-            if (metodoPagamento) payload.metodo_pagamento = metodoPagamento;
-
-            const resultado = await contaAzulService.atualizarParcela(devolucao.parcelaCAId, payload);
-
-            await prisma.devolucao.update({
-                where: { id: devolucao.id },
-                data: { wizardEtapa: 'desconto-aplicado' }
-            });
-
-            return res.json({
-                etapa: 'desconto-aplicado',
-                resultado: {
-                    valorBruto,
-                    desconto,
-                    novoLiquido,
-                    metodoPagamento: metodoPagamento || parcela.metodo_pagamento,
-                    versaoAtualizada: resultado.versao
-                }
-            });
         }
 
-        // ── Etapa: baixa-caixinha (só para TOTAL) ──
+        // ── Etapa: baixa-caixinha (legado, mantido por compatibilidade) ──
         if (etapa === 'baixa-caixinha') {
-            if (devolucao.escopo !== 'TOTAL') {
-                return res.status(400).json({ error: 'Baixa na caixinha é só para devolução TOTAL.' });
-            }
+            // Para TOTAL, a baixa já é feita na etapa aplicar-desconto
+            // Este endpoint só existe caso precise ser chamado separadamente
             if (!devolucao.parcelaCAId) return res.status(400).json({ error: 'Busque a parcela primeiro.' });
 
+            const parcela = await contaAzulService.buscarParcelaDetalhe(devolucao.parcelaCAId);
+            const valorBruto = parseFloat(parcela?.valor_composicao?.valor_bruto || 0);
             const caixinha = await contaAzulService.buscarContaCaixinha();
             const hoje = new Date().toISOString().split('T')[0];
 
             await contaAzulService.criarBaixa(devolucao.parcelaCAId, {
                 data_pagamento: hoje,
-                composicao_valor: { valor_bruto: 0.01, multa: 0, juros: 0, desconto: 0, taxa: 0 },
+                composicao_valor: {
+                    valor_bruto: valorBruto,
+                    desconto: Math.round((valorBruto - 0.01) * 100) / 100,
+                    multa: 0, juros: 0, taxa: 0
+                },
                 conta_financeira: caixinha.id,
                 metodo_pagamento: 'OUTRO',
                 observacao: `Baixa automática - Devolução TOTAL #${devolucao.numero}`

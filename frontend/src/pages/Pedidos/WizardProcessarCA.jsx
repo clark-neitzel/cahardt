@@ -19,11 +19,9 @@ const WizardProcessarCA = ({ devolucao, onClose, onConcluido }) => {
         const steps = [
             { key: 'buscar-parcela', label: 'Buscar parcela no CA', tipo: 'auto' },
             { key: 'cancelar-cobranca', label: 'Cancelar cobranca/boleto no CA', tipo: 'manual' },
-            { key: 'aplicar-desconto', label: isTotal ? 'Aplicar desconto (R$ 0,01)' : `Aplicar desconto de R$ ${Number(devolucao.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, tipo: 'auto' },
+            { key: 'aplicar-desconto', label: isTotal ? 'Aplicar desconto + quitar R$ 0,01 na Caixinha' : `Reduzir valor da parcela (- R$ ${Number(devolucao.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`, tipo: 'auto' },
         ];
-        if (isTotal) {
-            steps.push({ key: 'baixa-caixinha', label: 'Quitar R$ 0,01 na Caixinha', tipo: 'auto' });
-        } else {
+        if (!isTotal) {
             steps.push({ key: 'gerar-cobranca', label: 'Gerar nova cobranca no CA', tipo: 'manual' });
             steps.push({ key: 'upload-boleto', label: 'Anexar PDF do novo boleto', tipo: 'manual-upload' });
         }
@@ -206,13 +204,9 @@ const WizardProcessarCA = ({ devolucao, onClose, onConcluido }) => {
                                                 <div><span className="text-gray-500">Desconto aplicado:</span> <span className="font-bold text-green-700">R$ {Number(descontoData.desconto).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>
                                                 <div><span className="text-gray-500">Novo valor liquido:</span> <span className="font-bold">R$ {Number(descontoData.novoLiquido).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>
                                                 <div><span className="text-gray-500">Metodo:</span> <span className="font-medium">{descontoData.metodoPagamento}</span></div>
-                                            </div>
-                                        )}
-
-                                        {/* Auto step: baixa-caixinha done */}
-                                        {step.key === 'baixa-caixinha' && status === 'done' && (
-                                            <div className="text-xs text-green-700 bg-white p-2 rounded border">
-                                                Baixa de R$ 0,01 realizada na Caixinha com sucesso.
+                                                {descontoData.baixaRealizada && (
+                                                    <div className="text-green-700 font-medium mt-1">Baixa de R$ 0,01 realizada na Caixinha</div>
+                                                )}
                                             </div>
                                         )}
 
