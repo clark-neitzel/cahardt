@@ -149,7 +149,8 @@ router.get('/resumo', async (req, res) => {
                 vendedor: { select: { nome: true } },
                 embarque: { select: { numero: true } },
                 itens: { include: { produto: { select: { nome: true, unidade: true } } } },
-                pagamentosReais: true,
+                // Ignora pagamentos com valor 0 (gerados por cliques duplicados de motorista)
+                pagamentosReais: { where: { valor: { gt: 0 } } },
                 itensDevolvidos: { include: { produto: { select: { nome: true } } } },
                 contaReceber: { select: { status: true } }
             },
@@ -426,6 +427,11 @@ router.patch('/adiantamento', async (req, res) => {
 // ── POST /fechar — Fechar caixa do dia (snapshot) ──
 router.post('/fechar', async (req, res) => {
     try {
+        const perms = req._perms || await getPerms(req.user.id);
+        if (!perms.admin && !perms.Pode_Editar_Caixa && !perms.Pode_Fechar_Caixa) {
+            return res.status(403).json({ error: 'Sem permissão para fechar o caixa.' });
+        }
+
         const { vendedorId, data } = req.body;
         if (!data) return res.status(400).json({ error: 'Campo "data" obrigatório.' });
 
@@ -448,7 +454,7 @@ router.post('/fechar', async (req, res) => {
                 embarque: { responsavelId: targetVendedor }
             },
             include: {
-                pagamentosReais: true,
+                pagamentosReais: { where: { valor: { gt: 0 } } },
                 contaReceber: { select: { status: true } },
                 cliente: { select: { NomeFantasia: true, Nome: true } }
             }
@@ -711,7 +717,7 @@ router.post('/reabrir-pendentes', async (req, res) => {
                     embarque: { responsavelId: cx.vendedorId }
                 },
                 include: {
-                    pagamentosReais: true,
+                    pagamentosReais: { where: { valor: { gt: 0 } } },
                     contaReceber: { select: { status: true } }
                 }
             });
@@ -831,7 +837,7 @@ router.get('/relatorio', async (req, res) => {
             include: {
                 cliente: { select: { NomeFantasia: true, Nome: true } },
                 itens: true,
-                pagamentosReais: true,
+                pagamentosReais: { where: { valor: { gt: 0 } } },
                 itensDevolvidos: true
             },
             orderBy: { dataEntrega: 'asc' }
@@ -1029,7 +1035,11 @@ router.get('/audit-logs', async (req, res) => {
 // ── POST /quitar-ca — Dar baixa de entregas à vista (dinheiro) ──
 // ESPECIAL → baixa LOCAL (ContaReceber/Parcela no app)
 // Normal  → baixa no CONTA AZUL via API (conta caixinha)
-router.post('/quitar-ca', checkEditor, async (req, res) => {
+router.post('/quitar-ca', async (req, res) => {
+    const perms = req._perms || await getPerms(req.user.id);
+    if (!perms.admin && !perms.Pode_Editar_Caixa && !perms.Pode_Baixar_Caixa) {
+        return res.status(403).json({ error: 'Sem permissão para dar baixa no caixa.' });
+    }
     const contaAzulService = require('../services/contaAzulService');
 
     try {
@@ -1046,7 +1056,7 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
                 cliente: { select: { UUID: true, NomeFantasia: true, Nome: true } },
                 embarque: { include: { responsavel: { select: { nome: true } } } },
                 itens: true,
-                pagamentosReais: true
+                pagamentosReais: { where: { valor: { gt: 0 } } }
             }
         });
 
@@ -1083,11 +1093,22 @@ router.post('/quitar-ca', checkEditor, async (req, res) => {
             return nome.includes('dinheiro') || nome.includes('pix') || nome.includes('cartão') || nome.includes('cartao');
         };
 
-        // Agrupa pagamentos elegíveis por tipo — exclui vendedor/escritório e boleto
+        // Agrupa pagamentos elegíveis por tipo. Para pedidos CA (não-especiais),
+        // Vendedor/Escritório responsável vão como grupo OUTRO (apenas alteram a
+        // forma no CA, sem criar baixa). Pedidos especiais ignoram esses pagamentos.
         const agruparPagamentos = (pedido) => {
             const grupos = {};
             for (const p of pedido.pagamentosReais) {
-                if (p.escritorioResponsavel || p.vendedorResponsavelId) continue;
+                if (Number(p.valor) <= 0) continue;
+                if (p.escritorioResponsavel || p.vendedorResponsavelId) {
+                    if (pedido.especial) continue; // especial: fiado local, sem ação no CA
+                    const rotulo = p.vendedorResponsavelId
+                        ? 'Vendedor responsável'
+                        : 'Escritório responsável';
+                    if (!grupos['OUTRO']) grupos['OUTRO'] = { valor: 0, formaNome: rotulo };
+                    grupos['OUTRO'].valor += Number(p.valor);
+                    continue;
+                }
                 if (!isFormaElegivel(p.formaPagamentoNome)) continue;
                 const metodo = mapMetodoPagamentoCA(p.formaPagamentoNome);
                 if (!grupos[metodo]) grupos[metodo] = { valor: 0, formaNome: p.formaPagamentoNome };

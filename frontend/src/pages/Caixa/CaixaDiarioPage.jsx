@@ -67,8 +67,11 @@ const CaixaDiarioPage = () => {
     const [editandoKm, setEditandoKm] = useState(false);
     const [kmInicialEdit, setKmInicialEdit] = useState('');
     // Baixa CA
+    const podeBaixarCaixa = user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Caixa || user?.permissoes?.Pode_Baixar_Caixa;
     const [selectedBaixa, setSelectedBaixa] = useState(new Set());
     const [quitandoCA, setQuitandoCA] = useState(false);
+    // Fechar Caixa
+    const podeFecharCaixa = user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Caixa || user?.permissoes?.Pode_Fechar_Caixa;
     // Devolução
     const podeFazerDevolucao = user?.permissoes?.admin || user?.permissoes?.Pode_Fazer_Devolucao;
     const [modalDevolucao, setModalDevolucao] = useState(null); // { pedidoId, ... }
@@ -189,17 +192,20 @@ const CaixaDiarioPage = () => {
         }
     };
 
-    // Verifica se uma entrega é elegível para baixa/condição: dinheiro, pix ou cartão
-    // (não Boleto, não fiado/vendedor responsável, não escritório responsável)
+    // Verifica se uma entrega é elegível para baixa/condição no CA:
+    // - dinheiro/pix/cartão → cria baixa ou altera condição
+    // - vendedor/escritório responsável (só para pedidos CA) → altera forma para OUTRO
+    // Pedidos especiais com Vend/Escr Resp não aparecem (não estão no CA, é fiado local)
     const isElegivelBaixa = (entrega) => {
         if (entrega.statusEntrega === 'DEVOLVIDO') return false;
         if (entrega.quitado === 'QUITADO' || entrega.quitado === 'ALTERADO') return false;
         const n = (p) => (p.formaNome || '').toLowerCase();
-        return entrega.pagamentos?.some(p =>
-            !p.vendedorResponsavelId &&
-            !p.escritorioResponsavel &&
-            (n(p).includes('dinheiro') || n(p).includes('pix') || n(p).includes('cartão') || n(p).includes('cartao'))
-        );
+        return entrega.pagamentos?.some(p => {
+            if (p.vendedorResponsavelId || p.escritorioResponsavel) {
+                return !entrega.especial; // só CA precisa de alteração
+            }
+            return n(p).includes('dinheiro') || n(p).includes('pix') || n(p).includes('cartão') || n(p).includes('cartao');
+        });
     };
 
     const handleToggleBaixa = (pedidoId) => {
@@ -535,7 +541,7 @@ const CaixaDiarioPage = () => {
                         {expandedEntregas && resumo.entregas && (
                             <div className="border-t border-gray-200 pt-4">
                                 {/* Barra de seleção para baixa CA */}
-                                {isAdmin && (
+                                {podeBaixarCaixa && (
                                     <div className="flex flex-wrap items-center gap-2 mb-3 p-2 bg-indigo-50 rounded-lg border border-indigo-200">
                                         <DollarSign className="h-4 w-4 text-indigo-600" />
                                         <span className="text-xs font-medium text-indigo-700">Baixa CA:</span>
@@ -567,7 +573,7 @@ const CaixaDiarioPage = () => {
                                         <thead>
                                             <tr className="text-xs text-gray-500 uppercase border-b">
                                                 {isAdmin && <th className="py-2 px-2 text-center w-10">✓</th>}
-                                                {isAdmin && <th className="py-2 px-2 text-center w-10" title="Selecionar para baixa CA">CA</th>}
+                                                {podeBaixarCaixa && <th className="py-2 px-2 text-center w-10" title="Selecionar para baixa CA">CA</th>}
                                                 <th className="py-2 px-2 text-left">Nº</th>
                                                 <th className="py-2 px-2 text-left">Cliente</th>
                                                 <th className="py-2 px-2 text-left">Cond. Pgto</th>
@@ -591,7 +597,7 @@ const CaixaDiarioPage = () => {
                                                             />
                                                         </td>
                                                     )}
-                                                    {isAdmin && (
+                                                    {podeBaixarCaixa && (
                                                         <td className="py-2 px-2 text-center">
                                                             {elegivel && (
                                                                 <input
@@ -691,16 +697,18 @@ const CaixaDiarioPage = () => {
                                                         }`}>
                                                         {e.statusEntrega}
                                                     </span>
-                                                    {isAdmin && (
+                                                    {(isAdmin || podeBaixarCaixa) && (
                                                         <div className="mt-2 flex items-center gap-2">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={!!e.conferida}
-                                                                onChange={(ev) => handleToggleEntregaConferida(e.pedidoId, ev.target.checked)}
-                                                                className="h-4 w-4 text-green-600 rounded"
-                                                                title="Conferir"
-                                                            />
-                                                            {isElegivelBaixa(e) && (
+                                                            {isAdmin && (
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={!!e.conferida}
+                                                                    onChange={(ev) => handleToggleEntregaConferida(e.pedidoId, ev.target.checked)}
+                                                                    className="h-4 w-4 text-green-600 rounded"
+                                                                    title="Conferir"
+                                                                />
+                                                            )}
+                                                            {podeBaixarCaixa && isElegivelBaixa(e) && (
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={selectedBaixa.has(e.pedidoId)}
@@ -854,7 +862,7 @@ const CaixaDiarioPage = () => {
 
                     {/* Ações */}
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                        {isAberto && (
+                        {isAberto && podeFecharCaixa && (
                             <button
                                 onClick={handleFechar}
                                 disabled={resumo?.pendencias && !resumo.pendencias.podeFechar}
