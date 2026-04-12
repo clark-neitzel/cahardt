@@ -93,6 +93,24 @@ router.post('/:id/nova-versao', async (req, res) => {
     }
 });
 
+// POST /api/pcp/receitas/:id/clonar — cria nova receita + novo SUB copiando ingredientes
+router.post('/:id/clonar', async (req, res) => {
+    try {
+        const permissoes = await getPermsFromDB(req.user.id);
+        if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
+
+        const { novoNome } = req.body;
+        if (!novoNome?.trim()) return res.status(400).json({ error: 'novoNome é obrigatório.' });
+
+        const nova = await pcpReceitaService.clonar(req.params.id, { novoNome });
+        return res.status(201).json(nova);
+    } catch (err) {
+        if (err.code === 'P2002') return res.status(409).json({ error: 'Código já existe.' });
+        console.error('[PCP Receitas] Erro clonar:', err.message);
+        return res.status(400).json({ error: err.message });
+    }
+});
+
 // POST /api/pcp/receitas/:id/escalonar — simulador de escalonamento
 router.post('/:id/escalonar', async (req, res) => {
     try {

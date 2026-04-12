@@ -107,6 +107,66 @@ const pcpReceitaService = {
         });
     },
 
+    clonar: async (receitaId, { novoNome }) => {
+        if (!novoNome?.trim()) throw new Error('novoNome é obrigatório');
+        const original = await prisma.receita.findUnique({
+            where: { id: receitaId },
+            include: { itens: true, itemPcp: true }
+        });
+        if (!original) throw new Error('Receita não encontrada');
+
+        const ultimos = await prisma.itemPcp.findMany({
+            where: { tipo: 'SUB', codigo: { startsWith: 'SUB-' } },
+            select: { codigo: true }
+        });
+        let maior = 0;
+        for (const it of ultimos) {
+            const m = /^SUB-(\d+)$/.exec(it.codigo);
+            if (m) { const n = parseInt(m[1], 10); if (n > maior) maior = n; }
+        }
+        const novoCodigo = `SUB-${String(maior + 1).padStart(4, '0')}`;
+
+        return prisma.$transaction(async (tx) => {
+            const novoItem = await tx.itemPcp.create({
+                data: {
+                    codigo: novoCodigo,
+                    nome: novoNome.trim(),
+                    tipo: 'SUB',
+                    unidade: original.itemPcp.unidade,
+                    descricao: original.itemPcp.descricao,
+                    estoqueMinimo: 0,
+                    custoUnitario: original.itemPcp.custoUnitario
+                }
+            });
+
+            return tx.receita.create({
+                data: {
+                    itemPcpId: novoItem.id,
+                    versao: 1,
+                    nome: novoNome.trim(),
+                    rendimentoBase: original.rendimentoBase,
+                    perdaPercentual: original.perdaPercentual,
+                    status: 'ativa',
+                    dataInicioVigencia: new Date(),
+                    observacoes: original.observacoes,
+                    itens: {
+                        create: original.itens.map(item => ({
+                            itemPcpId: item.itemPcpId,
+                            quantidade: item.quantidade,
+                            tipo: item.tipo,
+                            ordemEtapa: item.ordemEtapa,
+                            observacao: item.observacao
+                        }))
+                    }
+                },
+                include: {
+                    itemPcp: { select: { id: true, nome: true, codigo: true, tipo: true, unidade: true } },
+                    itens: { include: { itemPcp: { select: { id: true, nome: true, codigo: true, tipo: true, unidade: true } } } }
+                }
+            });
+        });
+    },
+
     novaVersao: async (receitaId) => {
         const original = await prisma.receita.findUnique({
             where: { id: receitaId },

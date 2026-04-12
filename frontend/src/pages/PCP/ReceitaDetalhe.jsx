@@ -43,6 +43,18 @@ export default function ReceitaDetalhe() {
         }
     };
 
+    const clonarReceita = async () => {
+        const nome = prompt('Nome da nova receita (será criado um novo subproduto):', receita?.nome ? `${receita.nome} - copia` : '');
+        if (!nome?.trim()) return;
+        try {
+            const nova = await pcpReceitaService.clonar(id, nome.trim());
+            toast.success('Receita clonada');
+            navigate(`/pcp/receitas/${nova.id}/editar`);
+        } catch (err) {
+            toast.error(err.response?.data?.error || err.message);
+        }
+    };
+
     const criarNovaVersao = async () => {
         try {
             const nova = await pcpReceitaService.novaVersao(id);
@@ -120,6 +132,12 @@ export default function ReceitaDetalhe() {
                         className="flex items-center gap-1 px-3 py-1.5 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200"
                     >
                         <Copy className="h-3.5 w-3.5" /> Nova Versao
+                    </button>
+                    <button
+                        onClick={clonarReceita}
+                        className="flex items-center gap-1 px-3 py-1.5 text-sm bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200"
+                    >
+                        <Copy className="h-3.5 w-3.5" /> Clonar Receita
                     </button>
                     <button
                         onClick={() => setShowSimulador(!showSimulador)}
