@@ -3,6 +3,7 @@ import { Play, CheckCircle, XCircle, ClipboardList, Loader2, X, ChevronDown, Che
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import pcpOrdemService from '../../services/pcpOrdemService';
+import { useAuth } from '../../contexts/AuthContext';
 
 const STATUS_CORES = {
     PLANEJADA: 'border-blue-300 bg-blue-50',
@@ -20,6 +21,8 @@ const STATUS_BADGE = {
 
 export default function PainelOperacional() {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const podeCancelar = !!(user?.permissoes?.admin || user?.permissoes?.pcp?.cancelarOrdens);
     const [ordens, setOrdens] = useState([]);
     const [loading, setLoading] = useState(true);
     const [expandido, setExpandido] = useState({});
@@ -179,7 +182,7 @@ export default function PainelOperacional() {
                                 onToggleExpand={() => carregarDetalhe(ordem.id)}
                                 onSalvarConsumos={() => salvarConsumos(ordem.id)}
                                 onFinalizar={() => abrirFinalizar(ordem)}
-                                onCancelar={() => cancelarOrdem(ordem.id)}
+                                onCancelar={podeCancelar ? () => cancelarOrdem(ordem.id) : null}
                                 processando={processando === ordem.id}
                             />
                         ))}
@@ -203,7 +206,7 @@ export default function PainelOperacional() {
                                 }
                                 onToggleExpand={() => carregarDetalhe(ordem.id)}
                                 onIniciar={() => iniciarOrdem(ordem.id)}
-                                onCancelar={() => cancelarOrdem(ordem.id)}
+                                onCancelar={podeCancelar ? () => cancelarOrdem(ordem.id) : null}
                                 processando={processando === ordem.id}
                             />
                         ))}

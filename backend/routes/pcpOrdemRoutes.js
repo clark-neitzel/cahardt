@@ -12,6 +12,10 @@ function temPermissaoPcp(permissoes) {
     return permissoes.admin || !!permissoes.pcp?.ordens;
 }
 
+function podeCancelarOrdem(permissoes) {
+    return permissoes.admin || !!permissoes.pcp?.cancelarOrdens;
+}
+
 // GET /api/pcp/ordens — listar ordens
 router.get('/', async (req, res) => {
     try {
@@ -127,7 +131,7 @@ router.patch('/:id/finalizar', async (req, res) => {
 router.patch('/:id/cancelar', async (req, res) => {
     try {
         const permissoes = await getPermsFromDB(req.user.id);
-        if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
+        if (!podeCancelarOrdem(permissoes)) return res.status(403).json({ error: 'Sem permissão para cancelar ordens.' });
 
         const ordem = await pcpOrdemService.cancelar(req.params.id);
         return res.json(ordem);

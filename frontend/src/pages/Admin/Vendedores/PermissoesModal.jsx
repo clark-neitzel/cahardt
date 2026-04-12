@@ -77,6 +77,7 @@ const DEFAULT_PERMISSIONS = {
         itens: false,
         receitas: false,
         ordens: false,
+        cancelarOrdens: false,
         agenda: false,
         estoque: false,
         sugestoes: false,
@@ -253,7 +254,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     const togglePcpAll = (val) => {
         setPermissoes(prev => ({
             ...prev,
-            pcp: { itens: val, receitas: val, ordens: val, agenda: val, estoque: val, sugestoes: val }
+            pcp: { itens: val, receitas: val, ordens: val, cancelarOrdens: val, agenda: val, estoque: val, sugestoes: val }
         }));
     };
     const changeClientesScope = (val) => {
@@ -293,7 +294,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     ].filter(Boolean).length;
     const countEstoque = (permissoes.estoque || []).length;
     const pcpPerms = permissoes.pcp || {};
-    const countPcp = [pcpPerms.itens, pcpPerms.receitas, pcpPerms.ordens, pcpPerms.agenda, pcpPerms.estoque, pcpPerms.sugestoes].filter(Boolean).length;
+    const countPcp = [pcpPerms.itens, pcpPerms.receitas, pcpPerms.ordens, pcpPerms.cancelarOrdens, pcpPerms.agenda, pcpPerms.estoque, pcpPerms.sugestoes].filter(Boolean).length;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-black bg-opacity-50">
@@ -729,6 +730,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         <MenuToggle icon={Package} label="Subprodutos" checked={!!pcpPerms.itens} onChange={() => togglePcp('itens')} />
                         <MenuToggle icon={BookOpenIcon} label="Receitas" checked={!!pcpPerms.receitas} onChange={() => togglePcp('receitas')} />
                         <MenuToggle icon={ClipboardList} label="Ordens de Producao" checked={!!pcpPerms.ordens} onChange={() => togglePcp('ordens')} />
+                        <MenuToggle icon={ClipboardList} label="Cancelar Ordens" checked={!!pcpPerms.cancelarOrdens} onChange={() => togglePcp('cancelarOrdens')} />
                         <MenuToggle icon={Play} label="Painel Operacional" checked={!!pcpPerms.ordens} onChange={() => togglePcp('ordens')} />
                         <MenuToggle icon={Calendar} label="Calendario" checked={!!pcpPerms.agenda} onChange={() => togglePcp('agenda')} />
                         <MenuToggle icon={Warehouse} label="Estoque PCP" checked={!!pcpPerms.estoque} onChange={() => togglePcp('estoque')} />
