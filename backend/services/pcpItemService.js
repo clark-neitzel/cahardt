@@ -32,14 +32,34 @@ const pcpItemService = {
         });
     },
 
+    proximoCodigoSub: async () => {
+        const ultimos = await prisma.itemPcp.findMany({
+            where: { tipo: 'SUB', codigo: { startsWith: 'SUB-' } },
+            select: { codigo: true }
+        });
+        let maior = 0;
+        for (const it of ultimos) {
+            const m = /^SUB-(\d+)$/.exec(it.codigo);
+            if (m) {
+                const n = parseInt(m[1], 10);
+                if (n > maior) maior = n;
+            }
+        }
+        return `SUB-${String(maior + 1).padStart(4, '0')}`;
+    },
+
     // Criar apenas SUB (subproduto) — MP, PA e EMB vem do cadastro de Produtos via importar
     criar: async (data) => {
         if (data.tipo !== 'SUB') {
             throw new Error('Apenas subprodutos (SUB) podem ser criados manualmente. MP, PA e EMB devem ser importados do cadastro de Produtos.');
         }
+        let codigo = data.codigo?.trim();
+        if (!codigo) {
+            codigo = await pcpItemService.proximoCodigoSub();
+        }
         return prisma.itemPcp.create({
             data: {
-                codigo: data.codigo,
+                codigo,
                 nome: data.nome,
                 tipo: 'SUB',
                 unidade: data.unidade,

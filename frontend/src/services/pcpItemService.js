@@ -8,6 +8,7 @@ const pcpItemService = {
     importarLote: (itens) => api.post('/pcp/itens/importar-lote', { itens }).then(r => r.data),
     atualizar: (id, dados) => api.put(`/pcp/itens/${id}`, dados).then(r => r.data),
     toggleAtivo: (id) => api.patch(`/pcp/itens/${id}/ativo`).then(r => r.data),
+    proximoCodigo: () => api.get('/pcp/itens/proximo-codigo').then(r => r.data),
 };
 
 export default pcpItemService;

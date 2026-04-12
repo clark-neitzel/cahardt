@@ -27,6 +27,19 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET /api/pcp/itens/proximo-codigo — sugere próximo código SUB
+router.get('/proximo-codigo', async (req, res) => {
+    try {
+        const permissoes = await getPermsFromDB(req.user.id);
+        if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
+        const codigo = await pcpItemService.proximoCodigoSub();
+        return res.json({ codigo });
+    } catch (err) {
+        console.error('[PCP Itens] Erro proximo-codigo:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/pcp/itens/:id — detalhe
 router.get('/:id', async (req, res) => {
     try {
@@ -48,9 +61,9 @@ router.post('/', async (req, res) => {
         const permissoes = await getPermsFromDB(req.user.id);
         if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
 
-        const { codigo, nome, unidade } = req.body;
-        if (!codigo || !nome || !unidade) {
-            return res.status(400).json({ error: 'codigo, nome e unidade são obrigatórios.' });
+        const { nome, unidade } = req.body;
+        if (!nome || !unidade) {
+            return res.status(400).json({ error: 'nome e unidade são obrigatórios.' });
         }
 
         const item = await pcpItemService.criar({ ...req.body, tipo: 'SUB' });

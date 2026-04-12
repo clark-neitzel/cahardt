@@ -42,6 +42,10 @@ export default function ItemPcpForm() {
                 })
                 .catch(() => toast.error('Erro ao carregar item'))
                 .finally(() => setLoading(false));
+        } else {
+            pcpItemService.proximoCodigo()
+                .then(({ codigo }) => setForm(prev => ({ ...prev, codigo })))
+                .catch(() => {});
         }
     }, [id, isEdicao]);
 
