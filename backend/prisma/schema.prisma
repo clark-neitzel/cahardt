@@ -1151,10 +1151,27 @@ model Receita {
   itemPcp        ItemPcp        @relation(fields: [itemPcpId], references: [id])
   itens          ReceitaItem[]
   ordensProducao OrdemProducao[]
+  logs           ReceitaVersaoLog[]
 
   @@unique([itemPcpId, versao])
   @@index([status])
   @@map("receitas")
+}
+
+model ReceitaVersaoLog {
+  id            String   @id @default(uuid())
+  receitaId     String   @map("receita_id")
+  versao        Int
+  motivo        String   @db.Text
+  alteracoes    Json
+  alteradoPorId String?  @map("alterado_por_id")
+  alteradoPorNome String? @map("alterado_por_nome")
+  alteradoEm    DateTime @default(now()) @map("alterado_em")
+
+  receita Receita @relation(fields: [receitaId], references: [id], onDelete: Cascade)
+
+  @@index([receitaId])
+  @@map("receita_versao_log")
 }
 
 model ReceitaItem {

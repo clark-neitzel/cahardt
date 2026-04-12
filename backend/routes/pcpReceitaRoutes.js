@@ -27,6 +27,32 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET /api/pcp/receitas/historico/:itemPcpId — todas as versões de um item
+router.get('/historico/:itemPcpId', async (req, res) => {
+    try {
+        const permissoes = await getPermsFromDB(req.user.id);
+        if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
+        const versoes = await pcpReceitaService.historicoPorItem(req.params.itemPcpId);
+        return res.json(versoes);
+    } catch (err) {
+        console.error('[PCP Receitas] Erro historico:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/pcp/receitas/:id/logs — logs de uma versão específica
+router.get('/:id/logs', async (req, res) => {
+    try {
+        const permissoes = await getPermsFromDB(req.user.id);
+        if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
+        const logs = await pcpReceitaService.logsDaReceita(req.params.id);
+        return res.json(logs);
+    } catch (err) {
+        console.error('[PCP Receitas] Erro logs:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/pcp/receitas/:id — detalhe com itens
 router.get('/:id', async (req, res) => {
     try {
@@ -71,7 +97,11 @@ router.put('/:id', async (req, res) => {
         const permissoes = await getPermsFromDB(req.user.id);
         if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
 
-        const receita = await pcpReceitaService.atualizar(req.params.id, req.body);
+        const vendedor = await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } });
+        const receita = await pcpReceitaService.atualizar(req.params.id, req.body, {
+            userId: req.user.id,
+            userNome: vendedor?.nome
+        });
         return res.json(receita);
     } catch (err) {
         console.error('[PCP Receitas] Erro atualizar:', err.message);

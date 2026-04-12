@@ -247,6 +247,15 @@ export default function ReceitaForm() {
             return;
         }
 
+        let motivo = null;
+        if (isEdicao) {
+            motivo = prompt('Motivo da alteração (será registrada nova versão):');
+            if (!motivo?.trim()) {
+                toast.error('É necessário informar o motivo para editar a receita.');
+                return;
+            }
+        }
+
         setSalvando(true);
         try {
             // Resolver item produzido
@@ -285,8 +294,10 @@ export default function ReceitaForm() {
             };
 
             if (isEdicao) {
-                await pcpReceitaService.atualizar(id, dados);
-                toast.success('Receita atualizada');
+                const atualizada = await pcpReceitaService.atualizar(id, { ...dados, motivo: motivo.trim() });
+                toast.success(`Nova versão v${atualizada.versao} criada`);
+                navigate(`/pcp/receitas/${atualizada.id}`);
+                return;
             } else {
                 await pcpReceitaService.criar(dados);
                 toast.success('Receita criada');

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pencil, Copy, Calculator, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Copy, Calculator, Trash2, History, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpReceitaService from '../../services/pcpReceitaService';
 import SimuladorEscalonamento from './SimuladorEscalonamento';
@@ -24,10 +24,26 @@ export default function ReceitaDetalhe() {
     const [receita, setReceita] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showSimulador, setShowSimulador] = useState(false);
+    const [historico, setHistorico] = useState([]);
+    const [logs, setLogs] = useState([]);
+    const [showHistorico, setShowHistorico] = useState(false);
 
     useEffect(() => {
+        setLoading(true);
         pcpReceitaService.buscarPorId(id)
-            .then(setReceita)
+            .then(async (r) => {
+                setReceita(r);
+                if (r?.itemPcpId) {
+                    try {
+                        const [h, l] = await Promise.all([
+                            pcpReceitaService.historico(r.itemPcpId),
+                            pcpReceitaService.logs(id)
+                        ]);
+                        setHistorico(h);
+                        setLogs(l);
+                    } catch { /* silencioso */ }
+                }
+            })
             .catch(() => toast.error('Erro ao carregar receita'))
             .finally(() => setLoading(false));
     }, [id]);
@@ -50,16 +66,6 @@ export default function ReceitaDetalhe() {
             const nova = await pcpReceitaService.clonar(id, nome.trim());
             toast.success('Receita clonada');
             navigate(`/pcp/receitas/${nova.id}/editar`);
-        } catch (err) {
-            toast.error(err.response?.data?.error || err.message);
-        }
-    };
-
-    const criarNovaVersao = async () => {
-        try {
-            const nova = await pcpReceitaService.novaVersao(id);
-            toast.success(`Nova versao v${nova.versao} criada`);
-            navigate(`/pcp/receitas/${nova.id}`);
         } catch (err) {
             toast.error(err.response?.data?.error || err.message);
         }
@@ -128,10 +134,10 @@ export default function ReceitaDetalhe() {
                         </button>
                     )}
                     <button
-                        onClick={criarNovaVersao}
+                        onClick={() => setShowHistorico(!showHistorico)}
                         className="flex items-center gap-1 px-3 py-1.5 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200"
                     >
-                        <Copy className="h-3.5 w-3.5" /> Nova Versao
+                        <History className="h-3.5 w-3.5" /> Histórico ({historico.length})
                     </button>
                     <button
                         onClick={clonarReceita}
@@ -153,6 +159,88 @@ export default function ReceitaDetalhe() {
                     </button>
                 </div>
             </div>
+
+            {/* Histórico de versões */}
+            {showHistorico && (
+                <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+                    <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Versões desta receita</h2>
+                    <div className="space-y-2">
+                        {historico.map(v => (
+                            <button
+                                key={v.id}
+                                onClick={() => navigate(`/pcp/receitas/${v.id}`)}
+                                className={`w-full flex items-center justify-between px-3 py-2 rounded border text-sm text-left transition-colors ${v.id === id ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="font-semibold text-gray-700">v{v.versao}</span>
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${STATUS_CORES[v.status]}`}>{v.status}</span>
+                                    {v.logs?.[0] && (
+                                        <span className="text-xs text-gray-500 truncate max-w-sm">
+                                            {v.logs[0].alteradoPorNome || 'sistema'} · {new Date(v.logs[0].alteradoEm).toLocaleDateString('pt-BR')} · {v.logs[0].motivo}
+                                        </span>
+                                    )}
+                                    {!v.logs?.[0] && (
+                                        <span className="text-xs text-gray-400">
+                                            {v.dataInicioVigencia ? new Date(v.dataInicioVigencia).toLocaleDateString('pt-BR') : '—'} · versão inicial
+                                        </span>
+                                    )}
+                                </div>
+                                <ChevronRight className="h-4 w-4 text-gray-400" />
+                            </button>
+                        ))}
+                    </div>
+
+                    {logs.length > 0 && (
+                        <div className="mt-5 pt-4 border-t border-gray-100">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">Alterações nesta versão (v{receita.versao})</h3>
+                            {logs.map(log => (
+                                <div key={log.id} className="bg-gray-50 rounded p-3 text-sm">
+                                    <div className="flex justify-between text-xs text-gray-500 mb-2">
+                                        <span><strong>{log.alteradoPorNome || 'sistema'}</strong> em {new Date(log.alteradoEm).toLocaleString('pt-BR')}</span>
+                                    </div>
+                                    <p className="text-gray-800 mb-2"><strong>Motivo:</strong> {log.motivo}</p>
+                                    {log.alteracoes?.campos && Object.keys(log.alteracoes.campos).length > 0 && (
+                                        <div className="mb-2">
+                                            <p className="text-xs font-medium text-gray-600">Campos alterados:</p>
+                                            <ul className="text-xs text-gray-700 ml-4 list-disc">
+                                                {Object.entries(log.alteracoes.campos).map(([k, v]) => (
+                                                    <li key={k}>{k}: <span className="line-through text-gray-400">{String(v.de ?? '—')}</span> → <span className="text-gray-800 font-medium">{String(v.para ?? '—')}</span></li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {log.alteracoes?.ingredientes?.adicionados?.length > 0 && (
+                                        <div className="mb-1">
+                                            <p className="text-xs font-medium text-green-700">+ Adicionados:</p>
+                                            <ul className="text-xs text-gray-700 ml-4 list-disc">
+                                                {log.alteracoes.ingredientes.adicionados.map((i, idx) => <li key={idx}>{i.nome || i.itemPcpId} — {i.quantidade} ({i.tipo})</li>)}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {log.alteracoes?.ingredientes?.removidos?.length > 0 && (
+                                        <div className="mb-1">
+                                            <p className="text-xs font-medium text-red-700">− Removidos:</p>
+                                            <ul className="text-xs text-gray-700 ml-4 list-disc">
+                                                {log.alteracoes.ingredientes.removidos.map((i, idx) => <li key={idx}>{i.nome || i.itemPcpId} — {i.quantidade} ({i.tipo})</li>)}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {log.alteracoes?.ingredientes?.alterados?.length > 0 && (
+                                        <div className="mb-1">
+                                            <p className="text-xs font-medium text-amber-700">~ Alterados:</p>
+                                            <ul className="text-xs text-gray-700 ml-4 list-disc">
+                                                {log.alteracoes.ingredientes.alterados.map((i, idx) => (
+                                                    <li key={idx}>{i.nome || i.itemPcpId}: qtd {i.quantidade.de} → {i.quantidade.para}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Simulador */}
             {showSimulador && (

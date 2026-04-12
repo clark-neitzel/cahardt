@@ -10,6 +10,8 @@ const pcpReceitaService = {
     escalonar: (id, dados) => api.post(`/pcp/receitas/${id}/escalonar`, dados).then(r => r.data),
     alterarStatus: (id, status) => api.patch(`/pcp/receitas/${id}/status`, { status }).then(r => r.data),
     excluir: (id) => api.delete(`/pcp/receitas/${id}`).then(r => r.data),
+    historico: (itemPcpId) => api.get(`/pcp/receitas/historico/${itemPcpId}`).then(r => r.data),
+    logs: (id) => api.get(`/pcp/receitas/${id}/logs`).then(r => r.data),
 };
 
 export default pcpReceitaService;

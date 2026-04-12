@@ -64,46 +64,119 @@ const pcpReceitaService = {
         });
     },
 
-    atualizar: async (id, data) => {
-        const receita = await prisma.receita.findUnique({ where: { id }, select: { status: true } });
-        if (!receita) throw new Error('Receita não encontrada');
-        if (receita.status === 'inativa') throw new Error('Receitas inativas não podem ser editadas. Crie uma nova versão.');
+    atualizar: async (id, data, { userId, userNome } = {}) => {
+        const original = await prisma.receita.findUnique({
+            where: { id },
+            include: { itens: { include: { itemPcp: { select: { id: true, nome: true, codigo: true, unidade: true } } } } }
+        });
+        if (!original) throw new Error('Receita não encontrada');
+        if (original.status === 'inativa') throw new Error('Receitas inativas não podem ser editadas.');
+        if (!data.motivo?.trim()) throw new Error('Motivo da alteração é obrigatório.');
 
-        return prisma.$transaction(async (tx) => {
-            if (data.itens) {
-                await tx.receitaItem.deleteMany({ where: { receitaId: id } });
-                for (const item of data.itens) {
-                    await tx.receitaItem.create({
-                        data: {
-                            receitaId: id,
-                            itemPcpId: item.itemPcpId,
-                            quantidade: parseFloat(item.quantidade),
-                            tipo: item.tipo,
-                            ordemEtapa: item.ordemEtapa || null,
-                            observacao: item.observacao || null
-                        }
-                    });
-                }
+        const novosItens = (data.itens || []).map(i => ({
+            itemPcpId: i.itemPcpId,
+            quantidade: parseFloat(i.quantidade),
+            tipo: i.tipo,
+            ordemEtapa: i.ordemEtapa || null,
+            observacao: i.observacao || null
+        }));
+
+        // Computar diff
+        const alteracoes = { campos: {}, ingredientes: { adicionados: [], removidos: [], alterados: [] } };
+        const cmpNum = (a, b) => parseFloat(a || 0) === parseFloat(b || 0);
+        if (data.nome !== undefined && data.nome !== original.nome) alteracoes.campos.nome = { de: original.nome, para: data.nome };
+        if (data.rendimentoBase !== undefined && !cmpNum(data.rendimentoBase, original.rendimentoBase)) alteracoes.campos.rendimentoBase = { de: parseFloat(original.rendimentoBase), para: parseFloat(data.rendimentoBase) };
+        if (data.perdaPercentual !== undefined && !cmpNum(data.perdaPercentual, original.perdaPercentual)) alteracoes.campos.perdaPercentual = { de: original.perdaPercentual ? parseFloat(original.perdaPercentual) : null, para: data.perdaPercentual ? parseFloat(data.perdaPercentual) : null };
+        if (data.observacoes !== undefined && (data.observacoes || '') !== (original.observacoes || '')) alteracoes.campos.observacoes = { de: original.observacoes, para: data.observacoes };
+
+        const origMap = new Map(original.itens.map(i => [i.itemPcpId, i]));
+        const novoMap = new Map(novosItens.map(i => [i.itemPcpId, i]));
+        for (const novo of novosItens) {
+            const antigo = origMap.get(novo.itemPcpId);
+            if (!antigo) {
+                alteracoes.ingredientes.adicionados.push({ itemPcpId: novo.itemPcpId, quantidade: novo.quantidade, tipo: novo.tipo });
+            } else if (!cmpNum(antigo.quantidade, novo.quantidade) || antigo.tipo !== novo.tipo || (antigo.ordemEtapa || null) !== (novo.ordemEtapa || null)) {
+                alteracoes.ingredientes.alterados.push({
+                    itemPcpId: novo.itemPcpId,
+                    nome: antigo.itemPcp?.nome,
+                    quantidade: { de: parseFloat(antigo.quantidade), para: novo.quantidade },
+                    tipo: { de: antigo.tipo, para: novo.tipo },
+                    etapa: { de: antigo.ordemEtapa, para: novo.ordemEtapa }
+                });
             }
+        }
+        for (const antigo of original.itens) {
+            if (!novoMap.has(antigo.itemPcpId)) {
+                alteracoes.ingredientes.removidos.push({ itemPcpId: antigo.itemPcpId, nome: antigo.itemPcp?.nome, quantidade: parseFloat(antigo.quantidade), tipo: antigo.tipo });
+            }
+        }
 
-            const updateData = {};
-            if (data.nome !== undefined) updateData.nome = data.nome;
-            if (data.rendimentoBase !== undefined) updateData.rendimentoBase = parseFloat(data.rendimentoBase);
-            if (data.perdaPercentual !== undefined) updateData.perdaPercentual = data.perdaPercentual ? parseFloat(data.perdaPercentual) : null;
-            if (data.observacoes !== undefined) updateData.observacoes = data.observacoes;
+        const houveMudanca = Object.keys(alteracoes.campos).length > 0
+            || alteracoes.ingredientes.adicionados.length > 0
+            || alteracoes.ingredientes.removidos.length > 0
+            || alteracoes.ingredientes.alterados.length > 0;
 
-            return tx.receita.update({
+        if (!houveMudanca) {
+            throw new Error('Nenhuma alteração detectada.');
+        }
+
+        // Cria nova versão; inativa a anterior; grava log
+        return prisma.$transaction(async (tx) => {
+            await tx.receita.update({
                 where: { id },
-                data: updateData,
+                data: { status: 'inativa', dataFimVigencia: new Date() }
+            });
+
+            const nova = await tx.receita.create({
+                data: {
+                    itemPcpId: original.itemPcpId,
+                    versao: original.versao + 1,
+                    nome: data.nome ?? original.nome,
+                    rendimentoBase: data.rendimentoBase !== undefined ? parseFloat(data.rendimentoBase) : original.rendimentoBase,
+                    perdaPercentual: data.perdaPercentual !== undefined ? (data.perdaPercentual ? parseFloat(data.perdaPercentual) : null) : original.perdaPercentual,
+                    status: 'ativa',
+                    dataInicioVigencia: new Date(),
+                    observacoes: data.observacoes !== undefined ? data.observacoes : original.observacoes,
+                    itens: { create: novosItens }
+                },
                 include: {
                     itemPcp: { select: { id: true, nome: true, codigo: true, tipo: true, unidade: true } },
-                    itens: {
-                        include: {
-                            itemPcp: { select: { id: true, nome: true, codigo: true, tipo: true, unidade: true } }
-                        }
-                    }
+                    itens: { include: { itemPcp: { select: { id: true, nome: true, codigo: true, tipo: true, unidade: true } } } }
                 }
             });
+
+            await tx.receitaVersaoLog.create({
+                data: {
+                    receitaId: nova.id,
+                    versao: nova.versao,
+                    motivo: data.motivo.trim(),
+                    alteracoes,
+                    alteradoPorId: userId || null,
+                    alteradoPorNome: userNome || null
+                }
+            });
+
+            return nova;
+        });
+    },
+
+    historicoPorItem: async (itemPcpId) => {
+        const versoes = await prisma.receita.findMany({
+            where: { itemPcpId },
+            select: {
+                id: true, versao: true, status: true, nome: true,
+                dataInicioVigencia: true, dataFimVigencia: true,
+                logs: { orderBy: { alteradoEm: 'desc' }, take: 1 }
+            },
+            orderBy: { versao: 'desc' }
+        });
+        return versoes;
+    },
+
+    logsDaReceita: async (receitaId) => {
+        return prisma.receitaVersaoLog.findMany({
+            where: { receitaId },
+            orderBy: { alteradoEm: 'desc' }
         });
     },
 
