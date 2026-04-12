@@ -124,6 +124,7 @@ export default function ReceitaForm() {
     const [salvando, setSalvando] = useState(false);
 
     const [subprodutos, setSubprodutos] = useState([]);
+    const [itensImportados, setItensImportados] = useState([]); // MP/EMB/PA ja existentes no PCP
     const [produtos, setProdutos] = useState([]);
 
     const [form, setForm] = useState({
@@ -141,8 +142,10 @@ export default function ReceitaForm() {
     useEffect(() => {
         const carregarDados = async () => {
             try {
-                const subs = await pcpItemService.listar({ ativo: 'true', tipo: 'SUB' });
-                setSubprodutos(Array.isArray(subs) ? subs : []);
+                const todos = await pcpItemService.listar({ ativo: 'true' });
+                const lista = Array.isArray(todos) ? todos : [];
+                setSubprodutos(lista.filter(x => x.tipo === 'SUB'));
+                setItensImportados(lista.filter(x => x.tipo !== 'SUB'));
 
                 const resProd = await api.get('/produtos', { params: { limit: 500 } });
                 const prodList = resProd.data?.data || resProd.data || [];
@@ -180,14 +183,23 @@ export default function ReceitaForm() {
         }
     }, [id, isEdicao]);
 
+    const produtoIdsJaImportados = new Set(itensImportados.map(i => i.produtoId).filter(Boolean));
+    const pasImportados = itensImportados.filter(i => i.tipo === 'PA');
+    const mpEmbImportados = itensImportados.filter(i => i.tipo === 'MP' || i.tipo === 'EMB');
+    const produtosNaoImportados = produtos.filter(p => !produtoIdsJaImportados.has(p.id));
+
     // Opcoes para "Item Produzido" (PA ou SUB)
     const opcoesResultado = [
         ...(subprodutos.length > 0 ? [
             { id: '__g_sub', tipo: 'grupo', label: 'Subprodutos (PCP)' },
             ...subprodutos.map(s => ({ id: s.id, label: `[SUB] ${s.codigo} - ${s.nome}`, tipo: 'SUB' })),
         ] : []),
-        { id: '__g_pa', tipo: 'grupo', label: 'Produtos do Sistema (PA)' },
-        ...produtos.map(p => ({ id: 'produto:' + p.id, label: `${p.codigo} - ${p.nome}`, tipo: 'PA' })),
+        ...(pasImportados.length > 0 ? [
+            { id: '__g_pa_imp', tipo: 'grupo', label: 'Produtos Acabados (ja no PCP)' },
+            ...pasImportados.map(i => ({ id: i.id, label: `[PA] ${i.codigo} - ${i.nome}`, tipo: 'PA' })),
+        ] : []),
+        { id: '__g_pa', tipo: 'grupo', label: 'Produtos do Sistema (importar como PA)' },
+        ...produtosNaoImportados.map(p => ({ id: 'produto:' + p.id, label: `${p.codigo} - ${p.nome}`, tipo: 'PA' })),
     ];
 
     // Opcoes para ingredientes (MP/EMB + SUB)
@@ -196,8 +208,12 @@ export default function ReceitaForm() {
             { id: '__g_sub', tipo: 'grupo', label: 'Subprodutos (PCP)' },
             ...subprodutos.map(s => ({ id: s.id, label: `[SUB] ${s.codigo} - ${s.nome}`, tipo: 'SUB' })),
         ] : []),
-        { id: '__g_prod', tipo: 'grupo', label: 'Produtos do Sistema (MP / EMB)' },
-        ...produtos.map(p => ({ id: 'produto:' + p.id, label: `${p.codigo} - ${p.nome} (${p.unidade})`, tipo: 'MP' })),
+        ...(mpEmbImportados.length > 0 ? [
+            { id: '__g_imp', tipo: 'grupo', label: 'MP / EMB (ja no PCP)' },
+            ...mpEmbImportados.map(i => ({ id: i.id, label: `[${i.tipo}] ${i.codigo} - ${i.nome} (${i.unidade})`, tipo: i.tipo })),
+        ] : []),
+        { id: '__g_prod', tipo: 'grupo', label: 'Produtos do Sistema (importar)' },
+        ...produtosNaoImportados.map(p => ({ id: 'produto:' + p.id, label: `${p.codigo} - ${p.nome} (${p.unidade})`, tipo: 'MP' })),
     ];
 
     const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
