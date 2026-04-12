@@ -257,6 +257,20 @@ const pcpOrdemService = {
             where: { id },
             data: { status: 'CANCELADA' }
         });
+    },
+
+    excluir: async (id) => {
+        const ordem = await prisma.ordemProducao.findUnique({ where: { id }, select: { status: true } });
+        if (!ordem) throw new Error('Ordem não encontrada');
+        if (!['CANCELADA', 'PLANEJADA'].includes(ordem.status)) {
+            throw new Error('Somente ordens canceladas ou planejadas podem ser excluídas');
+        }
+
+        return prisma.$transaction(async (tx) => {
+            await tx.ordemConsumo.deleteMany({ where: { ordemProducaoId: id } });
+            await tx.ordemProducao.delete({ where: { id } });
+            return { ok: true };
+        });
     }
 };
 

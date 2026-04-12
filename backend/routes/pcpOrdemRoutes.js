@@ -141,4 +141,18 @@ router.patch('/:id/cancelar', async (req, res) => {
     }
 });
 
+// DELETE /api/pcp/ordens/:id — excluir ordem (somente CANCELADA ou PLANEJADA)
+router.delete('/:id', async (req, res) => {
+    try {
+        const permissoes = await getPermsFromDB(req.user.id);
+        if (!podeCancelarOrdem(permissoes)) return res.status(403).json({ error: 'Sem permissão para excluir ordens.' });
+
+        const result = await pcpOrdemService.excluir(req.params.id);
+        return res.json(result);
+    } catch (err) {
+        console.error('[PCP Ordens] Erro excluir:', err.message);
+        return res.status(400).json({ error: err.message });
+    }
+});
+
 module.exports = router;

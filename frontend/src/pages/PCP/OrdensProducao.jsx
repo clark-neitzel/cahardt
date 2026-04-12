@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, ClipboardList, Filter } from 'lucide-react';
+import { Plus, ClipboardList, XCircle, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import pcpOrdemService from '../../services/pcpOrdemService';
+import { useAuth } from '../../contexts/AuthContext';
 
 const STATUS_CORES = {
     PLANEJADA: 'bg-blue-100 text-blue-800',
@@ -20,6 +21,8 @@ const STATUS_LABELS = {
 
 export default function OrdensProducao() {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const podeCancelar = !!(user?.permissoes?.admin || user?.permissoes?.pcp?.cancelarOrdens);
     const [ordens, setOrdens] = useState([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -42,6 +45,28 @@ export default function OrdensProducao() {
     }, [statusFiltro, pagina]);
 
     useEffect(() => { carregar(); }, [carregar]);
+
+    const cancelar = async (id) => {
+        if (!confirm('Cancelar esta ordem?')) return;
+        try {
+            await pcpOrdemService.cancelar(id);
+            toast.success('Ordem cancelada');
+            carregar();
+        } catch (err) {
+            toast.error(err.response?.data?.error || err.message);
+        }
+    };
+
+    const excluir = async (id) => {
+        if (!confirm('Excluir esta ordem definitivamente? Esta ação não pode ser desfeita.')) return;
+        try {
+            await pcpOrdemService.excluir(id);
+            toast.success('Ordem excluída');
+            carregar();
+        } catch (err) {
+            toast.error(err.response?.data?.error || err.message);
+        }
+    };
 
     return (
         <div className="max-w-6xl mx-auto px-4 py-6">
@@ -103,6 +128,7 @@ export default function OrdensProducao() {
                                 <th className="text-right px-4 py-3 font-medium text-gray-600">Produzida</th>
                                 <th className="text-right px-4 py-3 font-medium text-gray-600">Fator</th>
                                 <th className="text-center px-4 py-3 font-medium text-gray-600">Data</th>
+                                {podeCancelar && <th className="text-center px-4 py-3 font-medium text-gray-600">Ações</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -136,6 +162,30 @@ export default function OrdensProducao() {
                                     <td className="px-4 py-3 text-center text-xs text-gray-500">
                                         {new Date(ordem.dataPlanejada).toLocaleDateString('pt-BR')}
                                     </td>
+                                    {podeCancelar && (
+                                        <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center justify-center gap-2">
+                                                {['PLANEJADA', 'EM_PRODUCAO'].includes(ordem.status) && (
+                                                    <button
+                                                        onClick={() => cancelar(ordem.id)}
+                                                        title="Cancelar ordem"
+                                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                                                    >
+                                                        <XCircle className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                                {['CANCELADA', 'PLANEJADA'].includes(ordem.status) && (
+                                                    <button
+                                                        onClick={() => excluir(ordem.id)}
+                                                        title="Excluir ordem"
+                                                        className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
