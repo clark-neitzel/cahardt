@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, MapPin, Loader, Mic, MicOff, Camera } from 'lucide-react';
+import { X, MapPin, Loader, Mic, MicOff, Camera, Upload } from 'lucide-react';
 import leadService from '../../services/leadService';
 import vendedorService from '../../services/vendedorService';
 import configService from '../../services/configService';
@@ -49,6 +49,7 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
     const originalTextRef = useRef('');
     const stoppedRef = useRef(false);
     const fotoInputRef = useRef(null);
+    const fotoGaleriaInputRef = useRef(null);
 
     const podeEscolherVendedor = propPodeEscolher ?? (user?.permissoes?.pedidos?.clientes === 'todos');
 
@@ -374,24 +375,48 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                             onChange={handleFotoChange}
                             className="hidden"
                         />
+                        <input
+                            ref={fotoGaleriaInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFotoChange}
+                            className="hidden"
+                        />
                         {fotoPreviewUrl ? (
                             <div className="relative">
                                 <img src={fotoPreviewUrl} alt="Fachada" className="w-full h-40 object-cover rounded-lg border border-gray-200" />
-                                <button
-                                    onClick={() => fotoInputRef.current?.click()}
-                                    className="absolute bottom-2 right-2 bg-white/90 text-gray-700 px-3 py-1.5 rounded-lg text-[12px] font-semibold border border-gray-200 flex items-center gap-1"
-                                >
-                                    <Camera className="h-3.5 w-3.5" /> Trocar
-                                </button>
+                                <div className="absolute bottom-2 right-2 flex gap-2">
+                                    <button
+                                        onClick={() => fotoGaleriaInputRef.current?.click()}
+                                        className="bg-white/90 text-gray-700 px-3 py-1.5 rounded-lg text-[12px] font-semibold border border-gray-200 flex items-center gap-1"
+                                    >
+                                        <Upload className="h-3.5 w-3.5" /> Galeria
+                                    </button>
+                                    <button
+                                        onClick={() => fotoInputRef.current?.click()}
+                                        className="bg-white/90 text-gray-700 px-3 py-1.5 rounded-lg text-[12px] font-semibold border border-gray-200 flex items-center gap-1"
+                                    >
+                                        <Camera className="h-3.5 w-3.5" /> Câmera
+                                    </button>
+                                </div>
                             </div>
                         ) : (
-                            <button
-                                onClick={() => fotoInputRef.current?.click()}
-                                className="w-full h-32 border-2 border-dashed border-orange-300 rounded-lg bg-orange-50/50 flex flex-col items-center justify-center gap-1.5 text-orange-500 hover:bg-orange-50 transition-colors"
-                            >
-                                <Camera className="h-6 w-6" />
-                                <span className="text-[13px] font-semibold">Tirar Foto da Fachada</span>
-                            </button>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={() => fotoInputRef.current?.click()}
+                                    className="h-32 border-2 border-dashed border-orange-300 rounded-lg bg-orange-50/50 flex flex-col items-center justify-center gap-1.5 text-orange-500 hover:bg-orange-50 transition-colors"
+                                >
+                                    <Camera className="h-6 w-6" />
+                                    <span className="text-[13px] font-semibold">Tirar Foto</span>
+                                </button>
+                                <button
+                                    onClick={() => fotoGaleriaInputRef.current?.click()}
+                                    className="h-32 border-2 border-dashed border-blue-300 rounded-lg bg-blue-50/50 flex flex-col items-center justify-center gap-1.5 text-blue-500 hover:bg-blue-50 transition-colors"
+                                >
+                                    <Upload className="h-6 w-6" />
+                                    <span className="text-[13px] font-semibold">Escolher da Galeria</span>
+                                </button>
+                            </div>
                         )}
                     </div>
 

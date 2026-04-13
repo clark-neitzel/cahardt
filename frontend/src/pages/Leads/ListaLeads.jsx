@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Plus, UserCheck, Phone, Image, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, MapPin, Clock, Calendar, MessageSquare, Loader2, X, Camera } from 'lucide-react';
+import { Search, Plus, UserCheck, Phone, Image, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, MapPin, Clock, Calendar, MessageSquare, Loader2, X, Camera, Upload } from 'lucide-react';
 import leadService from '../../services/leadService';
 import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -148,6 +148,7 @@ const ListaLeads = () => {
     // Componente de detalhes expandido
     const LeadDetail = ({ lead, onRefresh }) => {
         const fotoInputRef = useRef(null);
+        const fotoGaleriaInputRef = useRef(null);
         const [uploadingFoto, setUploadingFoto] = useState(false);
 
         const handleFotoChange = async (e) => {
@@ -185,6 +186,13 @@ const ListaLeads = () => {
                             className="hidden"
                             onChange={handleFotoChange}
                         />
+                        <input
+                            ref={fotoGaleriaInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleFotoChange}
+                        />
                         {lead.fotoFachada ? (
                             <div className="relative">
                                 <img
@@ -193,24 +201,44 @@ const ListaLeads = () => {
                                     className="h-40 md:h-52 rounded-xl object-cover cursor-pointer border border-gray-200 shadow-sm"
                                     onClick={(e) => { e.stopPropagation(); setFotoPreview(`${API_URL}${lead.fotoFachada}`); }}
                                 />
+                                <div className="absolute bottom-2 right-2 flex gap-1.5">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); fotoGaleriaInputRef.current?.click(); }}
+                                        disabled={uploadingFoto}
+                                        className="p-1.5 bg-black/60 rounded-full text-white hover:bg-black/80"
+                                        title="Enviar da galeria"
+                                    >
+                                        <Upload className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); fotoInputRef.current?.click(); }}
+                                        disabled={uploadingFoto}
+                                        className="p-1.5 bg-black/60 rounded-full text-white hover:bg-black/80"
+                                        title="Tirar foto"
+                                    >
+                                        {uploadingFoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex gap-2">
                                 <button
                                     onClick={(e) => { e.stopPropagation(); fotoInputRef.current?.click(); }}
                                     disabled={uploadingFoto}
-                                    className="absolute bottom-2 right-2 p-1.5 bg-black/60 rounded-full text-white hover:bg-black/80"
-                                    title="Trocar foto"
+                                    className="flex flex-col items-center gap-1.5 px-6 py-4 border-2 border-dashed border-orange-300 rounded-xl text-orange-500 hover:bg-orange-50 transition-colors"
                                 >
-                                    {uploadingFoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                                    {uploadingFoto ? <Loader2 className="h-6 w-6 animate-spin" /> : <Camera className="h-6 w-6" />}
+                                    <span className="text-xs font-medium">{uploadingFoto ? 'Salvando...' : 'Tirar Foto'}</span>
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); fotoGaleriaInputRef.current?.click(); }}
+                                    disabled={uploadingFoto}
+                                    className="flex flex-col items-center gap-1.5 px-6 py-4 border-2 border-dashed border-blue-300 rounded-xl text-blue-500 hover:bg-blue-50 transition-colors"
+                                >
+                                    <Upload className="h-6 w-6" />
+                                    <span className="text-xs font-medium">Galeria</span>
                                 </button>
                             </div>
-                        ) : (
-                            <button
-                                onClick={(e) => { e.stopPropagation(); fotoInputRef.current?.click(); }}
-                                disabled={uploadingFoto}
-                                className="flex flex-col items-center gap-1.5 px-6 py-4 border-2 border-dashed border-orange-300 rounded-xl text-orange-500 hover:bg-orange-50 transition-colors"
-                            >
-                                {uploadingFoto ? <Loader2 className="h-6 w-6 animate-spin" /> : <Camera className="h-6 w-6" />}
-                                <span className="text-xs font-medium">{uploadingFoto ? 'Salvando...' : 'Tirar Foto da Fachada'}</span>
-                            </button>
                         )}
                     </div>
 
