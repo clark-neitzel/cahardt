@@ -3,7 +3,10 @@ const atendimentoService = require('../services/atendimentoService');
 const atendimentoController = {
     registrar: async (req, res) => {
         try {
-            const atendimento = await atendimentoService.registrar(req.body);
+            const atendimento = await atendimentoService.registrar({
+                ...req.body,
+                usuarioRegistroId: req.user?.id || null
+            });
             res.status(201).json(atendimento);
         } catch (error) {
             console.error('[atendimentoController.registrar]', error);

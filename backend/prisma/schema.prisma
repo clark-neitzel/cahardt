@@ -332,6 +332,7 @@ model Vendedor {
   leads                Lead[]
   atendimentos             Atendimento[]
   atendimentosTransferidos Atendimento[] @relation("AtendimentoTransferido")
+  atendimentosRegistrados  Atendimento[] @relation("AtendimentoRegistro")
   diarios              DiarioVendedor[]
   amostrasSolicitadas  Amostra[]        @relation("AmostrasSolicitadas")
 
@@ -566,6 +567,10 @@ model Atendimento {
 
   idVendedor String   @map("id_vendedor")
   vendedor   Vendedor @relation(fields: [idVendedor], references: [id])
+
+  // Usuário real que registrou o atendimento (pode ser diferente do vendedor responsável pelo cliente)
+  usuarioRegistroId String?   @map("usuario_registro_id")
+  usuarioRegistro   Vendedor? @relation("AtendimentoRegistro", fields: [usuarioRegistroId], references: [id])
 
   criadoEm DateTime @default(now()) @map("criado_em")
 

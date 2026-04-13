@@ -339,7 +339,8 @@ router.get('/resumo', async (req, res) => {
             },
             include: {
                 lead: { select: { nomeEstabelecimento: true, origemLead: true } },
-                vendedor: { select: { nome: true } }
+                vendedor: { select: { nome: true } },
+                usuarioRegistro: { select: { id: true, nome: true } }
             },
             orderBy: { criadoEm: 'asc' }
         });
@@ -409,7 +410,8 @@ router.get('/resumo', async (req, res) => {
                 canal: a.lead?.origemLead || null,
                 pedidoId: a.pedidoId,
                 observacao: a.observacao || null,
-                vendedorNome: a.vendedor?.nome || null,
+                vendedorNome: a.usuarioRegistro?.nome || a.vendedor?.nome || null,
+                registradoPeloCaixaOwner: a.usuarioRegistro ? a.usuarioRegistro.id === targetVendedor : (a.idVendedor === targetVendedor),
                 hora: a.criadoEm
             })),
             pedidosVendedor: pedidosDoVendedorDia.map(p => ({

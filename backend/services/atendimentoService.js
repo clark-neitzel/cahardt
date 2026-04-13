@@ -10,7 +10,7 @@ const atendimentoService = {
             acaoKey, acaoLabel, transferidoParaId,
             assuntoRetorno, dataRetorno,
             alertaVisualAtivo, alertaVisualCor,
-            amostraId } = data;
+            amostraId, usuarioRegistroId } = data;
 
         // Se for lead, atualizar a etapa e próxima visita
         if (leadId && etapaNova) {
@@ -40,6 +40,7 @@ const atendimentoService = {
                 leadId: leadId || null,
                 clienteId: clienteId || null,
                 idVendedor,
+                usuarioRegistroId: usuarioRegistroId || null,
                 acaoKey: acaoKey || null,
                 acaoLabel: acaoLabel || null,
                 transferidoParaId: transferidoParaId || null,

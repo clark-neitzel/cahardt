@@ -869,7 +869,7 @@ const CaixaDiarioPage = () => {
                                                             {l.canal && (
                                                                 <span className="text-xs text-gray-500">Canal: {l.canal}</span>
                                                             )}
-                                                            {l.vendedorNome && (
+                                                            {l.vendedorNome && !l.registradoPeloCaixaOwner && (
                                                                 <span className="text-[10px] font-semibold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">por {l.vendedorNome}</span>
                                                             )}
                                                         </div>
