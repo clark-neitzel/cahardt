@@ -117,9 +117,7 @@ router.get('/', verificarAuth, async (req, res) => {
             where: { criadoEm: { gte: startOfDay, lte: endOfDay } },
             select: { clienteId: true, leadId: true, pedidoId: true, transferidoParaId: true, transferenciaFinalizada: true },
         });
-        const totalAtendimentos = atendimentosHoje.length;
-
-        // Pedidos lançados hoje (createdAt) - usado p/ cross-check com atendimentos
+        // Pedidos lançados hoje (createdAt) - cada pedido conta como 1 atendimento com venda
         const pedidosCriadosHoje = await prisma.pedido.findMany({
             where: { ...baseWherePedido, createdAt: { gte: startOfDay, lte: endOfDay } },
             select: { clienteId: true },
@@ -127,12 +125,13 @@ router.get('/', verificarAuth, async (req, res) => {
         const clientesComPedidoHoje = new Set(pedidosCriadosHoje.map(p => p.clienteId));
         const pedidosHojeCount = pedidosCriadosHoje.length;
 
-        // Atendimentos com / sem venda - cruza por clienteId (atendimento.pedidoId raramente é setado)
-        let atendimentosComPedido = 0, atendimentosSemPedido = 0;
-        for (const a of atendimentosHoje) {
-            if (a.pedidoId || (a.clienteId && clientesComPedidoHoje.has(a.clienteId))) atendimentosComPedido++;
-            else atendimentosSemPedido++;
-        }
+        // Atend. com venda = total de pedidos criados hoje (cada pedido = 1 atendimento com venda)
+        // Atend. sem venda = atendimentos cujo cliente NÃO tem pedido hoje (e sem pedidoId)
+        const atendimentosComPedido = pedidosHojeCount;
+        const atendimentosSemPedido = atendimentosHoje.filter(a =>
+            !a.pedidoId && !(a.clienteId && clientesComPedidoHoje.has(a.clienteId))
+        ).length;
+        const totalAtendimentos = atendimentosComPedido + atendimentosSemPedido;
         const transferenciasPendentes = atendimentosHoje.filter(a => a.transferidoParaId && !a.transferenciaFinalizada).length;
 
         // Clientes ativos com Dia_de_venda hoje que NÃO foram atendidos (atend, pedido ou entrega)
@@ -159,8 +158,12 @@ router.get('/', verificarAuth, async (req, res) => {
             .filter(c => !atendidosHojeIds.has(c.UUID))
             .length;
 
-        // Distinct clientes atendidos hoje (apenas via Atendimento)
-        const clientesAtendidos = new Set(atendimentosHoje.map(a => a.clienteId).filter(Boolean)).size;
+        // Distinct clientes atendidos hoje (união de Atendimento + Pedido + Entrega)
+        const clientesAtendidos = new Set([
+            ...atendimentosHoje.map(a => a.clienteId).filter(Boolean),
+            ...pedidosCriadosHoje.map(p => p.clienteId).filter(Boolean),
+            ...entregasHojeClienteIds.map(p => p.clienteId).filter(Boolean),
+        ]).size;
 
         // ============ LEADS ============
         const [leadsNovosHoje, leadsAtivos] = await Promise.all([

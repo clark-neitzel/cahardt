@@ -491,12 +491,17 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                             </div>
                         )}
 
+                        {/* Ajustes de pedidos */}
+                        <div className="border-t mt-3 pt-3">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Ajustes em Pedidos</p>
+                            <Toggle checked={!!permissoes.Pode_Reatribuir_Vendedor} onChange={() => toggleBool('Pode_Reatribuir_Vendedor')}
+                                label="Reatribuir Vendedor em Pedidos" sublabel="Trocar o vendedor de pedidos existentes (ajuste apenas no app, não afeta o Conta Azul)" />
+                        </div>
+
                         {/* Exclusão de pedidos */}
                         {permissoes.pedidos?.view && (
                             <div className="border-t mt-3 pt-3">
                                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Exclusão de registros</p>
-                                <Toggle checked={!!permissoes.Pode_Reatribuir_Vendedor} onChange={() => toggleBool('Pode_Reatribuir_Vendedor')}
-                                    label="Reatribuir Vendedor em Pedidos" sublabel="Trocar o vendedor de pedidos existentes (ajuste apenas no app, não afeta o Conta Azul)" />
                                 <Toggle checked={!!permissoes.Pode_Excluir_Pedido} onChange={() => toggleBool('Pode_Excluir_Pedido')}
                                     label="Excluir Pedidos" sublabel="Pedidos em status ABERTO ou ERRO" danger />
                                 <Toggle checked={!!permissoes.Pode_Excluir_Especial} onChange={() => toggleBool('Pode_Excluir_Especial')}
