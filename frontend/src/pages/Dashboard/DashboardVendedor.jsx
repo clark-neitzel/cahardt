@@ -22,6 +22,11 @@ const DashboardVendedor = () => {
         user?.login?.toLowerCase().includes('clark') ||
         user?.email === 'clarksonneitzel@gmail.com';
 
+    const podeVerDashboardAdmin = !!user?.permissoes?.admin
+        || !!user?.permissoes?.Pode_Ver_Dashboard_Admin
+        || user?.login?.toLowerCase().includes('clark')
+        || user?.email === 'clarksonneitzel@gmail.com';
+
     useEffect(() => {
         if (isAdmin) {
             api.get('/vendedores', { params: { ativo: 'true' } }).then(res => {
@@ -114,8 +119,8 @@ const DashboardVendedor = () => {
                 </div>
             </div>
 
-            {/* Seção Administrador */}
-            {isAdmin && <DashboardAdminSection />}
+            {/* Seção Administrador (gated por permissão) */}
+            {podeVerDashboardAdmin && <DashboardAdminSection />}
 
             {/* Atalhos Rápidos */}
             <h2 className="text-sm uppercase font-bold text-gray-500 tracking-wider mb-3">Ações Rápidas</h2>

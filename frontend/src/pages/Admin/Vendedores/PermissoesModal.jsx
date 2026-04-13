@@ -23,6 +23,7 @@ const DEFAULT_PERMISSIONS = {
     configuracoes: { view: false, edit: false },
     // Dashboard
     Pode_Ver_Dashboard_Vendas: false,
+    Pode_Ver_Dashboard_Admin: false,
     // Módulo de Expedição e Logística
     Pode_Acessar_Embarque: false,
     Pode_Editar_Embarque: false,
@@ -415,6 +416,13 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                             onChange={() => toggleBool('Pode_Ver_Dashboard_Vendas')}
                             label="Ver dados de vendas"
                             sublabel="Exibe o card 'Vendas (Hoje)' e outros valores financeiros no painel do admin"
+                            colorClass="bg-blue-600"
+                        />
+                        <Toggle
+                            checked={!!permissoes.Pode_Ver_Dashboard_Admin}
+                            onChange={() => toggleBool('Pode_Ver_Dashboard_Admin')}
+                            label="Ver Painel Administrativo (master)"
+                            sublabel="Libera o painel completo: vendas/projeção/top10/inadimplência/inativos/ruptura. Dado financeiro sensível."
                             colorClass="bg-blue-600"
                         />
                     </DeptSection>
