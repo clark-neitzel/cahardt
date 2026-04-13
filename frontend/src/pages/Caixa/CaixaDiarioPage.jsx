@@ -802,6 +802,7 @@ const CaixaDiarioPage = () => {
                                 clienteNome: p.clienteNome,
                                 observacao: p.observacao,
                                 detalhe: p.bonificacao ? `BN#${p.numero || '—'}` : p.especial ? `ZZ#${p.numero || '—'}` : `#${p.numero || '—'}`,
+                                cancelado: p.cancelado,
                                 hora: p.createdAt,
                                 _origem: 'pedido'
                             }))
@@ -860,10 +861,16 @@ const CaixaDiarioPage = () => {
                                                                 {l.clienteNome || l.leadNome || '—'}
                                                             </span>
                                                             {l.detalhe && (
-                                                                <span className="text-xs font-semibold text-blue-700">{l.detalhe}</span>
+                                                                <span className={`text-xs font-semibold ${l.cancelado ? 'line-through text-gray-400' : 'text-blue-700'}`}>{l.detalhe}</span>
+                                                            )}
+                                                            {l.cancelado && (
+                                                                <span className="text-[10px] font-bold text-red-700 bg-red-100 px-1.5 py-0.5 rounded">CANCELADO</span>
                                                             )}
                                                             {l.canal && (
                                                                 <span className="text-xs text-gray-500">Canal: {l.canal}</span>
+                                                            )}
+                                                            {l.vendedorNome && (
+                                                                <span className="text-[10px] font-semibold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">por {l.vendedorNome}</span>
                                                             )}
                                                         </div>
                                                         {l.observacao && (

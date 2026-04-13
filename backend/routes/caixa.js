@@ -337,7 +337,10 @@ router.get('/resumo', async (req, res) => {
                     ...(clienteIdsEntreguesRes.length > 0 ? [{ clienteId: { in: clienteIdsEntreguesRes } }] : [])
                 ]
             },
-            include: { lead: { select: { nomeEstabelecimento: true, origemLead: true } } },
+            include: {
+                lead: { select: { nomeEstabelecimento: true, origemLead: true } },
+                vendedor: { select: { nome: true } }
+            },
             orderBy: { criadoEm: 'asc' }
         });
         const clienteIdsAtend = atendimentosDia.filter(a => a.clienteId).map(a => a.clienteId);
@@ -406,12 +409,14 @@ router.get('/resumo', async (req, res) => {
                 canal: a.lead?.origemLead || null,
                 pedidoId: a.pedidoId,
                 observacao: a.observacao || null,
+                vendedorNome: a.vendedor?.nome || null,
                 hora: a.criadoEm
             })),
             pedidosVendedor: pedidosDoVendedorDia.map(p => ({
                 numero: p.numero,
                 especial: p.especial || false,
                 bonificacao: p.bonificacao || false,
+                cancelado: p.statusEnvio === 'EXCLUIDO',
                 clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome || 'N/A',
                 createdAt: p.createdAt,
                 observacao: p.observacoes || null
