@@ -366,10 +366,9 @@ router.get('/resumo', async (req, res) => {
         const clientesDoDia = await prisma.cliente.findMany({
             where: {
                 idVendedor: targetVendedor,
-                Ativo: true,
-                Dia_de_venda: { contains: siglaDoDia }
+                Dia_de_venda: { contains: siglaDoDia, mode: 'insensitive' }
             },
-            select: { UUID: true, NomeFantasia: true, Nome: true, Dia_de_venda: true }
+            select: { UUID: true, NomeFantasia: true, Nome: true, Dia_de_venda: true, Ativo: true }
         });
         const atendidosIds = new Set([
             ...atendimentosDia.filter(a => a.clienteId).map(a => a.clienteId),
@@ -377,6 +376,7 @@ router.get('/resumo', async (req, res) => {
             ...entregas.filter(e => e.clienteId).map(e => e.clienteId)
         ]);
         const clientesNaoAtendidos = clientesDoDia
+            .filter(c => c.Ativo !== false)
             .filter(c => !atendidosIds.has(c.UUID))
             // Dia_de_venda é "SEG,QUA" — validar match exato para evitar falso-positivo (ex: "DOMINGO")
             .filter(c => (c.Dia_de_venda || '').toUpperCase().split(',').map(s => s.trim()).includes(siglaDoDia))
