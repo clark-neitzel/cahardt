@@ -360,6 +360,32 @@ router.get('/resumo', async (req, res) => {
             orderBy: { createdAt: 'asc' }
         });
 
+        // Clientes do dia da rota do vendedor que NÃO foram atendidos/pedidos/entregues
+        const DIAS_SIGLA_BE = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+        const siglaDoDia = DIAS_SIGLA_BE[new Date(data + 'T12:00:00').getDay()];
+        const clientesDoDia = await prisma.cliente.findMany({
+            where: {
+                idVendedor: targetVendedor,
+                Ativo: true,
+                Dia_de_venda: { contains: siglaDoDia }
+            },
+            select: { UUID: true, NomeFantasia: true, Nome: true, Dia_de_venda: true }
+        });
+        const atendidosIds = new Set([
+            ...atendimentosDia.filter(a => a.clienteId).map(a => a.clienteId),
+            ...pedidosDoVendedorDia.map(p => p.clienteId),
+            ...entregas.filter(e => e.clienteId).map(e => e.clienteId)
+        ]);
+        const clientesNaoAtendidos = clientesDoDia
+            .filter(c => !atendidosIds.has(c.UUID))
+            // Dia_de_venda é "SEG,QUA" — validar match exato para evitar falso-positivo (ex: "DOMINGO")
+            .filter(c => (c.Dia_de_venda || '').toUpperCase().split(',').map(s => s.trim()).includes(siglaDoDia))
+            .map(c => ({
+                clienteId: c.UUID,
+                clienteNome: c.NomeFantasia || c.Nome,
+                diaVenda: c.Dia_de_venda
+            }));
+
         // Pendências para fechar caixa
         const devolucoesNaoFeitas = entregasFormatadas.filter(e =>
             ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada
@@ -414,6 +440,7 @@ router.get('/resumo', async (req, res) => {
                 registradoPeloCaixaOwner: a.usuarioRegistro ? a.usuarioRegistro.id === targetVendedor : (a.idVendedor === targetVendedor),
                 hora: a.criadoEm
             })),
+            clientesNaoAtendidos,
             pedidosVendedor: pedidosDoVendedorDia.map(p => ({
                 numero: p.numero,
                 especial: p.especial || false,

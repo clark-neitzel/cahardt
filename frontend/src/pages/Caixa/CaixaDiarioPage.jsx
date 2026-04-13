@@ -827,7 +827,7 @@ const CaixaDiarioPage = () => {
                                     </button>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-3 gap-3">
                                     <div className="text-center p-2 bg-indigo-50 rounded">
                                         <p className="text-lg font-bold text-indigo-700">{ats.length}</p>
                                         <p className="text-xs text-indigo-600">Atendimentos</p>
@@ -835,6 +835,10 @@ const CaixaDiarioPage = () => {
                                     <div className="text-center p-2 bg-blue-50 rounded">
                                         <p className="text-lg font-bold text-blue-700">{peds.length}</p>
                                         <p className="text-xs text-blue-600">Pedidos</p>
+                                    </div>
+                                    <div className="text-center p-2 bg-red-50 rounded">
+                                        <p className="text-lg font-bold text-red-700">{(resumo.clientesNaoAtendidos || []).length}</p>
+                                        <p className="text-xs text-red-600">Não atendidos</p>
                                     </div>
                                 </div>
 
@@ -889,6 +893,22 @@ const CaixaDiarioPage = () => {
                                 {expandedAtendimentos && linhas.length === 0 && (
                                     <div className="border-t border-gray-200 pt-3 mt-3 text-center text-xs text-gray-400 italic">
                                         Nenhum atendimento registrado no dia.
+                                    </div>
+                                )}
+
+                                {expandedAtendimentos && (resumo.clientesNaoAtendidos || []).length > 0 && (
+                                    <div className="border-t border-gray-200 pt-3 mt-3">
+                                        <p className="text-xs font-semibold text-red-700 mb-2">
+                                            Clientes do dia NÃO atendidos ({resumo.clientesNaoAtendidos.length})
+                                        </p>
+                                        <div className="space-y-1.5">
+                                            {resumo.clientesNaoAtendidos.map((c) => (
+                                                <div key={c.clienteId} className="flex items-center justify-between bg-red-50 border border-red-200 rounded px-2.5 py-1.5">
+                                                    <span className="text-sm font-medium text-gray-900 truncate">{c.clienteNome}</span>
+                                                    <span className="text-[10px] text-red-600 font-semibold whitespace-nowrap ml-2">{c.diaVenda}</span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </div>
