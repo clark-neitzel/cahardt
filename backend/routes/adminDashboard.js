@@ -306,6 +306,70 @@ router.get('/', verificarAuth, async (req, res) => {
         emQueda.sort((a, b) => a.variacaoPct - b.variacaoPct);
         const produtosEmQueda = emQueda.slice(0, 5);
 
+        // ============ METAS POR VENDEDOR ============
+        const mesRefStr = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+        const metasMes = await prisma.metaMensalVendedor.findMany({
+            where: { mesReferencia: mesRefStr },
+            include: { vendedor: { select: { id: true, nome: true } } },
+        });
+
+        // Realizado por vendedor (soma itens dos pedidos do mês corrente, exclui cancelados/bonificação)
+        const realizadoPorVendedor = new Map();
+        for (const p of pedidosMesAtual) {
+            if (!p.vendedorId) continue;
+            realizadoPorVendedor.set(p.vendedorId, (realizadoPorVendedor.get(p.vendedorId) || 0) + valorPedido(p));
+        }
+
+        // Vendedores que venderam mas não têm meta no mês
+        const vendedoresComMetaIds = new Set(metasMes.map(m => m.vendedorId));
+        const vendedoresSemMetaIds = [...realizadoPorVendedor.keys()].filter(id => !vendedoresComMetaIds.has(id));
+        const vendedoresSemMeta = vendedoresSemMetaIds.length > 0
+            ? await prisma.vendedor.findMany({
+                where: { id: { in: vendedoresSemMetaIds } },
+                select: { id: true, nome: true },
+            })
+            : [];
+
+        const buildLinha = (vendId, vendNome, valorMeta, diasTrab) => {
+            const realizado = realizadoPorVendedor.get(vendId) || 0;
+            const totalDias = Array.isArray(diasTrab) ? diasTrab.length : null;
+            // Conta dias úteis decorridos (incluindo hoje)
+            let diasDecorridos = null, projecao = null;
+            if (totalDias && totalDias > 0) {
+                const hojeStr = agora.toISOString().slice(0, 10);
+                diasDecorridos = diasTrab.filter(d => d <= hojeStr).length;
+                if (diasDecorridos > 0) projecao = (realizado / diasDecorridos) * totalDias;
+            }
+            const pctMeta = valorMeta > 0 ? (realizado / valorMeta) * 100 : null;
+            const pctProjecao = valorMeta > 0 && projecao != null ? (projecao / valorMeta) * 100 : null;
+            return {
+                vendedorId: vendId,
+                nome: vendNome,
+                meta: valorMeta,
+                realizado,
+                pctMeta,
+                projecao,
+                pctProjecao,
+                diasDecorridos,
+                totalDias,
+            };
+        };
+
+        const linhasMeta = [];
+        for (const m of metasMes) {
+            let dias = m.diasTrabalho;
+            if (typeof dias === 'string') { try { dias = JSON.parse(dias); } catch { dias = []; } }
+            linhasMeta.push(buildLinha(m.vendedorId, m.vendedor?.nome, num(m.valorMensal), dias));
+        }
+        for (const v of vendedoresSemMeta) {
+            linhasMeta.push(buildLinha(v.id, v.nome, 0, null));
+        }
+        linhasMeta.sort((a, b) => (b.pctMeta ?? -1) - (a.pctMeta ?? -1) || b.realizado - a.realizado);
+
+        const metaTotalMes = linhasMeta.reduce((s, l) => s + l.meta, 0);
+        const realizadoTotalVendedores = linhasMeta.reduce((s, l) => s + l.realizado, 0);
+        const projecaoTotalVendedores = linhasMeta.reduce((s, l) => s + (l.projecao || l.realizado), 0);
+
         // ============ ENTREGAS HOJE (mantido) ============
         const entregasHoje = await prisma.pedido.findMany({
             where: { dataEntrega: { gte: startOfDay, lte: endOfDay }, statusEntrega: { not: 'PENDENTE' } },
@@ -350,6 +414,14 @@ router.get('/', verificarAuth, async (req, res) => {
             clientesInativos: { total: clientesInativosCount, top: clientesInativosTop },
             inadimplencia: { total: num(inadimplencia._sum.valor), parcelas: inadimplencia._count._all },
             produtosEmQueda,
+            metas: {
+                metaTotalMes,
+                realizadoTotal: realizadoTotalVendedores,
+                projecaoTotal: projecaoTotalVendedores,
+                pctTotal: metaTotalMes > 0 ? (realizadoTotalVendedores / metaTotalMes) * 100 : null,
+                pctProjecao: metaTotalMes > 0 ? (projecaoTotalVendedores / metaTotalMes) * 100 : null,
+                vendedores: linhasMeta,
+            },
         });
     } catch (error) {
         console.error('Erro no admin dashboard:', error);

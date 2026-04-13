@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
     AlertCircle, AlertTriangle, CheckSquare, TrendingUp, TrendingDown,
     Lock, Users, ShoppingCart, Package, UserX, Wallet, ArrowDownRight,
-    Target, Activity, ArrowUpRight, Crown, Zap, Flame
+    Target, Activity, ArrowUpRight, Crown, Zap, Flame, Trophy
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -207,6 +207,103 @@ const DashboardAdminSection = () => {
                     </div>
                 </div>
             )}
+
+            {/* ═══════════ METAS ═══════════ */}
+            {podeVerVendas && d.metas && (d.metas.vendedores?.length > 0 || d.metas.metaTotalMes > 0) && (() => {
+                const m = d.metas;
+                const vendedores = m.vendedores || [];
+                const maxRealizado = Math.max(1, ...vendedores.map(v => Math.max(v.meta || 0, v.realizado || 0)));
+                const corPct = (pct) => {
+                    if (pct == null) return 'bg-gray-300';
+                    if (pct >= 100) return 'bg-emerald-500';
+                    if (pct >= 80) return 'bg-emerald-400';
+                    if (pct >= 60) return 'bg-amber-400';
+                    return 'bg-red-400';
+                };
+                const corText = (pct) => {
+                    if (pct == null) return 'text-gray-500';
+                    if (pct >= 100) return 'text-emerald-700';
+                    if (pct >= 80) return 'text-emerald-600';
+                    if (pct >= 60) return 'text-amber-600';
+                    return 'text-red-600';
+                };
+                return (
+                    <>
+                        <SectionTitle icon={Trophy} right={<span className="text-[11px] text-gray-400">mês corrente</span>}>
+                            Metas — Equipe vs Individual
+                        </SectionTitle>
+
+                        {/* Total da equipe */}
+                        {m.metaTotalMes > 0 && (
+                            <div className="bg-gradient-to-r from-indigo-50 to-white border rounded-xl p-5 mb-3">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
+                                    <StatPill label="Meta Total" value={fmtBRL(m.metaTotalMes)} color="indigo" />
+                                    <StatPill label="Realizado" value={fmtBRL(m.realizadoTotal)} sub={fmtPct(m.pctTotal, false) + ' da meta'} color={m.pctTotal >= 80 ? 'emerald' : 'amber'} />
+                                    <StatPill label="Projeção" value={fmtBRL(m.projecaoTotal)} sub={fmtPct(m.pctProjecao, false) + ' da meta'} color={m.pctProjecao >= 100 ? 'emerald' : 'red'} />
+                                    <StatPill label="Vendedores com meta" value={`${vendedores.filter(v => v.meta > 0).length}/${vendedores.length}`} color="gray" />
+                                </div>
+                                <div className="flex justify-between text-[11px] text-gray-500 mb-1">
+                                    <span>Atingimento da meta total</span>
+                                    <span className={`font-bold ${corText(m.pctTotal)}`}>{fmtPct(m.pctTotal, false)}</span>
+                                </div>
+                                <div className="h-3 bg-gray-200 rounded-full overflow-hidden relative">
+                                    <div className={`h-full ${corPct(m.pctTotal)} rounded-full transition-all`} style={{ width: `${Math.min(100, m.pctTotal || 0)}%` }} />
+                                    {m.pctProjecao != null && (
+                                        <div className="absolute top-0 h-full w-px bg-indigo-700" style={{ left: `${Math.min(100, m.pctProjecao)}%` }} title={`Projeção: ${fmtPct(m.pctProjecao, false)}`} />
+                                    )}
+                                </div>
+                                <div className="text-[10px] text-gray-400 mt-1">linha vertical = projeção do mês</div>
+                            </div>
+                        )}
+
+                        {/* Por vendedor */}
+                        <div className="bg-white border rounded-xl overflow-hidden mb-2">
+                            <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-[10px] uppercase tracking-wider font-bold text-gray-500">
+                                <div className="col-span-4">Vendedor</div>
+                                <div className="col-span-2 text-right">Meta</div>
+                                <div className="col-span-2 text-right">Realizado</div>
+                                <div className="col-span-3">Atingimento</div>
+                                <div className="col-span-1 text-right">Proj.</div>
+                            </div>
+                            {vendedores.map(v => {
+                                const widthBar = v.meta > 0 ? Math.min(100, v.pctMeta || 0) : (v.realizado / maxRealizado) * 100;
+                                return (
+                                    <div key={v.vendedorId} className="grid grid-cols-12 gap-3 px-4 py-3 border-t items-center hover:bg-gray-50">
+                                        <div className="col-span-4">
+                                            <div className="font-semibold text-gray-900 text-sm truncate">{v.nome}</div>
+                                            {v.totalDias && (
+                                                <div className="text-[11px] text-gray-500">{v.diasDecorridos}/{v.totalDias} dias úteis</div>
+                                            )}
+                                        </div>
+                                        <div className="col-span-2 text-right text-sm">
+                                            {v.meta > 0 ? fmtBRL(v.meta) : <span className="text-gray-400 text-xs italic">sem meta</span>}
+                                        </div>
+                                        <div className="col-span-2 text-right text-sm font-semibold text-gray-900">{fmtBRL(v.realizado)}</div>
+                                        <div className="col-span-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                    <div className={`h-full ${corPct(v.pctMeta)} rounded-full`} style={{ width: `${widthBar}%` }} />
+                                                </div>
+                                                <span className={`text-xs font-bold w-12 text-right ${corText(v.pctMeta)}`}>
+                                                    {v.pctMeta != null ? `${v.pctMeta.toFixed(0)}%` : '—'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="col-span-1 text-right text-xs">
+                                            {v.pctProjecao != null ? (
+                                                <span className={`font-semibold ${corText(v.pctProjecao)}`}>{v.pctProjecao.toFixed(0)}%</span>
+                                            ) : '—'}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {vendedores.length === 0 && (
+                                <div className="p-6 text-center text-sm text-gray-400">Nenhum vendedor com meta ou venda no mês.</div>
+                            )}
+                        </div>
+                    </>
+                );
+            })()}
 
             {/* ═══════════ STRIP DE ALERTAS ═══════════ */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-2">
