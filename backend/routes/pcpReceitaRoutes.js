@@ -18,8 +18,8 @@ router.get('/', async (req, res) => {
         const permissoes = await getPermsFromDB(req.user.id);
         if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
 
-        const { itemPcpId, status } = req.query;
-        const receitas = await pcpReceitaService.listar({ itemPcpId, status });
+        const { itemPcpId, status, incluirTodas } = req.query;
+        const receitas = await pcpReceitaService.listar({ itemPcpId, status, incluirTodas: incluirTodas === 'true' });
         return res.json(receitas);
     } catch (err) {
         console.error('[PCP Receitas] Erro listar:', err.message);

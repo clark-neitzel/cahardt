@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Pencil, Copy, Calculator, Trash2, History, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpReceitaService from '../../services/pcpReceitaService';
+import pcpItemService from '../../services/pcpItemService';
 import SimuladorEscalonamento from './SimuladorEscalonamento';
 
 const STATUS_CORES = {
@@ -27,6 +28,7 @@ export default function ReceitaDetalhe() {
     const [historico, setHistorico] = useState([]);
     const [logs, setLogs] = useState([]);
     const [showHistorico, setShowHistorico] = useState(false);
+    const [itensMap, setItensMap] = useState({});
 
     useEffect(() => {
         setLoading(true);
@@ -35,12 +37,16 @@ export default function ReceitaDetalhe() {
                 setReceita(r);
                 if (r?.itemPcpId) {
                     try {
-                        const [h, l] = await Promise.all([
+                        const [h, l, itens] = await Promise.all([
                             pcpReceitaService.historico(r.itemPcpId),
-                            pcpReceitaService.logs(id)
+                            pcpReceitaService.logs(id),
+                            pcpItemService.listar({})
                         ]);
                         setHistorico(h);
                         setLogs(l);
+                        const map = {};
+                        (Array.isArray(itens) ? itens : []).forEach(i => { map[i.id] = i; });
+                        setItensMap(map);
                     } catch { /* silencioso */ }
                 }
             })
@@ -162,79 +168,146 @@ export default function ReceitaDetalhe() {
 
             {/* Histórico de versões */}
             {showHistorico && (
-                <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-                    <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Versões desta receita</h2>
-                    <div className="space-y-2">
-                        {historico.map(v => (
-                            <button
-                                key={v.id}
-                                onClick={() => navigate(`/pcp/receitas/${v.id}`)}
-                                className={`w-full flex items-center justify-between px-3 py-2 rounded border text-sm text-left transition-colors ${v.id === id ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <span className="font-semibold text-gray-700">v{v.versao}</span>
-                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${STATUS_CORES[v.status]}`}>{v.status}</span>
-                                    {v.logs?.[0] && (
-                                        <span className="text-xs text-gray-500 truncate max-w-sm">
-                                            {v.logs[0].alteradoPorNome || 'sistema'} · {new Date(v.logs[0].alteradoEm).toLocaleDateString('pt-BR')} · {v.logs[0].motivo}
-                                        </span>
-                                    )}
-                                    {!v.logs?.[0] && (
-                                        <span className="text-xs text-gray-400">
-                                            {v.dataInicioVigencia ? new Date(v.dataInicioVigencia).toLocaleDateString('pt-BR') : '—'} · versão inicial
-                                        </span>
-                                    )}
-                                </div>
-                                <ChevronRight className="h-4 w-4 text-gray-400" />
-                            </button>
-                        ))}
+                <div className="bg-white rounded-lg border border-gray-200 mb-4 overflow-hidden">
+                    <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                        <h2 className="text-sm font-semibold text-gray-700">Histórico de versões</h2>
+                    </div>
+                    <div className="p-5">
+                        <ol className="relative border-l-2 border-gray-200 ml-2 space-y-4">
+                            {historico.map(v => {
+                                const ativa = v.id === id;
+                                const log = v.logs?.[0];
+                                return (
+                                    <li key={v.id} className="ml-5">
+                                        <span className={`absolute -left-[9px] flex h-4 w-4 items-center justify-center rounded-full border-2 ${ativa ? 'bg-blue-600 border-blue-600' : v.status === 'ativa' ? 'bg-green-500 border-green-500' : 'bg-gray-300 border-gray-300'}`}></span>
+                                        <button
+                                            onClick={() => navigate(`/pcp/receitas/${v.id}`)}
+                                            className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${ativa ? 'border-blue-300 bg-blue-50 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-base font-bold text-gray-800">v{v.versao}</span>
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${STATUS_CORES[v.status]}`}>{v.status}</span>
+                                                    {ativa && <span className="text-[10px] text-blue-600 font-medium">(visualizando)</span>}
+                                                </div>
+                                                <ChevronRight className="h-4 w-4 text-gray-400" />
+                                            </div>
+                                            {log ? (
+                                                <div className="mt-1.5 text-xs text-gray-600">
+                                                    <span className="font-medium text-gray-700">{log.alteradoPorNome || 'Sistema'}</span>
+                                                    <span className="text-gray-400"> · {new Date(log.alteradoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                                    <div className="mt-0.5 italic text-gray-600 truncate">"{log.motivo}"</div>
+                                                </div>
+                                            ) : (
+                                                <div className="mt-1.5 text-xs text-gray-400">
+                                                    Versão inicial · {v.dataInicioVigencia ? new Date(v.dataInicioVigencia).toLocaleDateString('pt-BR') : '—'}
+                                                </div>
+                                            )}
+                                        </button>
+                                    </li>
+                                );
+                            })}
+                        </ol>
                     </div>
 
                     {logs.length > 0 && (
-                        <div className="mt-5 pt-4 border-t border-gray-100">
-                            <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">Alterações nesta versão (v{receita.versao})</h3>
+                        <div className="border-t border-gray-100 bg-gray-50 px-5 py-4">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Detalhes da alteração</h3>
                             {logs.map(log => (
-                                <div key={log.id} className="bg-gray-50 rounded p-3 text-sm">
-                                    <div className="flex justify-between text-xs text-gray-500 mb-2">
-                                        <span><strong>{log.alteradoPorNome || 'sistema'}</strong> em {new Date(log.alteradoEm).toLocaleString('pt-BR')}</span>
+                                <div key={log.id} className="bg-white rounded-lg border border-gray-200 p-4 mb-3 last:mb-0">
+                                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                                        <div>
+                                            <div className="text-sm font-semibold text-gray-800">{log.alteradoPorNome || 'Sistema'}</div>
+                                            <div className="text-xs text-gray-500">{new Date(log.alteradoEm).toLocaleString('pt-BR')}</div>
+                                        </div>
+                                        <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs font-medium">v{log.versao}</span>
                                     </div>
-                                    <p className="text-gray-800 mb-2"><strong>Motivo:</strong> {log.motivo}</p>
-                                    {log.alteracoes?.campos && Object.keys(log.alteracoes.campos).length > 0 && (
-                                        <div className="mb-2">
-                                            <p className="text-xs font-medium text-gray-600">Campos alterados:</p>
-                                            <ul className="text-xs text-gray-700 ml-4 list-disc">
-                                                {Object.entries(log.alteracoes.campos).map(([k, v]) => (
-                                                    <li key={k}>{k}: <span className="line-through text-gray-400">{String(v.de ?? '—')}</span> → <span className="text-gray-800 font-medium">{String(v.para ?? '—')}</span></li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
-                                    {log.alteracoes?.ingredientes?.adicionados?.length > 0 && (
-                                        <div className="mb-1">
-                                            <p className="text-xs font-medium text-green-700">+ Adicionados:</p>
-                                            <ul className="text-xs text-gray-700 ml-4 list-disc">
-                                                {log.alteracoes.ingredientes.adicionados.map((i, idx) => <li key={idx}>{i.nome || i.itemPcpId} — {i.quantidade} ({i.tipo})</li>)}
-                                            </ul>
-                                        </div>
-                                    )}
-                                    {log.alteracoes?.ingredientes?.removidos?.length > 0 && (
-                                        <div className="mb-1">
-                                            <p className="text-xs font-medium text-red-700">− Removidos:</p>
-                                            <ul className="text-xs text-gray-700 ml-4 list-disc">
-                                                {log.alteracoes.ingredientes.removidos.map((i, idx) => <li key={idx}>{i.nome || i.itemPcpId} — {i.quantidade} ({i.tipo})</li>)}
-                                            </ul>
-                                        </div>
-                                    )}
-                                    {log.alteracoes?.ingredientes?.alterados?.length > 0 && (
-                                        <div className="mb-1">
-                                            <p className="text-xs font-medium text-amber-700">~ Alterados:</p>
-                                            <ul className="text-xs text-gray-700 ml-4 list-disc">
-                                                {log.alteracoes.ingredientes.alterados.map((i, idx) => (
-                                                    <li key={idx}>{i.nome || i.itemPcpId}: qtd {i.quantidade.de} → {i.quantidade.para}</li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
+                                    <div className="py-3 border-b border-gray-100">
+                                        <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Motivo</div>
+                                        <p className="text-sm text-gray-800">{log.motivo}</p>
+                                    </div>
+
+                                    <div className="pt-3 space-y-3">
+                                        {log.alteracoes?.campos && Object.keys(log.alteracoes.campos).length > 0 && (
+                                            <div>
+                                                <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Dados da receita</div>
+                                                <div className="space-y-1">
+                                                    {Object.entries(log.alteracoes.campos).map(([k, v]) => {
+                                                        const labels = { nome: 'Nome', rendimentoBase: 'Rendimento base', perdaPercentual: 'Perda (%)', observacoes: 'Observações' };
+                                                        return (
+                                                            <div key={k} className="flex items-center gap-2 text-sm">
+                                                                <span className="text-gray-600 min-w-[120px]">{labels[k] || k}:</span>
+                                                                <span className="line-through text-gray-400 text-xs">{String(v.de ?? '—')}</span>
+                                                                <ChevronRight className="h-3 w-3 text-gray-400" />
+                                                                <span className="text-gray-900 font-medium">{String(v.para ?? '—')}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {log.alteracoes?.ingredientes?.adicionados?.length > 0 && (
+                                            <div>
+                                                <div className="text-[11px] font-semibold text-green-700 uppercase tracking-wider mb-1.5">+ Ingredientes adicionados</div>
+                                                <ul className="space-y-1">
+                                                    {log.alteracoes.ingredientes.adicionados.map((i, idx) => {
+                                                        const info = itensMap[i.itemPcpId];
+                                                        const nome = i.nome || info?.nome || 'Item removido';
+                                                        const unid = i.unidade || info?.unidade || '';
+                                                        return (
+                                                            <li key={idx} className="flex items-center justify-between text-sm bg-green-50 border border-green-100 rounded px-3 py-1.5">
+                                                                <span className="text-gray-800 font-medium">{nome}</span>
+                                                                <span className="text-xs text-gray-600">{i.quantidade} {unid} <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold ${TIPO_CORES[i.tipo]}`}>{i.tipo}</span></span>
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {log.alteracoes?.ingredientes?.removidos?.length > 0 && (
+                                            <div>
+                                                <div className="text-[11px] font-semibold text-red-700 uppercase tracking-wider mb-1.5">− Ingredientes removidos</div>
+                                                <ul className="space-y-1">
+                                                    {log.alteracoes.ingredientes.removidos.map((i, idx) => {
+                                                        const info = itensMap[i.itemPcpId];
+                                                        const nome = i.nome || info?.nome || 'Item removido';
+                                                        const unid = i.unidade || info?.unidade || '';
+                                                        return (
+                                                            <li key={idx} className="flex items-center justify-between text-sm bg-red-50 border border-red-100 rounded px-3 py-1.5">
+                                                                <span className="text-gray-800 font-medium line-through">{nome}</span>
+                                                                <span className="text-xs text-gray-600">{i.quantidade} {unid} <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold ${TIPO_CORES[i.tipo]}`}>{i.tipo}</span></span>
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {log.alteracoes?.ingredientes?.alterados?.length > 0 && (
+                                            <div>
+                                                <div className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider mb-1.5">~ Quantidades alteradas</div>
+                                                <ul className="space-y-1">
+                                                    {log.alteracoes.ingredientes.alterados.map((i, idx) => {
+                                                        const info = itensMap[i.itemPcpId];
+                                                        const nome = i.nome || info?.nome || 'Item';
+                                                        const unid = i.unidade || info?.unidade || '';
+                                                        return (
+                                                            <li key={idx} className="flex items-center justify-between text-sm bg-amber-50 border border-amber-100 rounded px-3 py-1.5">
+                                                                <span className="text-gray-800 font-medium">{nome}</span>
+                                                                <span className="text-xs text-gray-600 flex items-center gap-1.5">
+                                                                    <span className="line-through text-gray-400">{i.quantidade.de} {unid}</span>
+                                                                    <ChevronRight className="h-3 w-3 text-gray-400" />
+                                                                    <span className="text-gray-900 font-semibold">{i.quantidade.para} {unid}</span>
+                                                                </span>
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>

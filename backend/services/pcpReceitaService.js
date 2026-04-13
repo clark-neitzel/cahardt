@@ -2,11 +2,11 @@ const prisma = require('../config/database');
 
 const pcpReceitaService = {
 
-    listar: async ({ itemPcpId, status }) => {
+    listar: async ({ itemPcpId, status, incluirTodas }) => {
         const where = {};
         if (itemPcpId) where.itemPcpId = itemPcpId;
         if (status) where.status = status;
-        return prisma.receita.findMany({
+        const receitas = await prisma.receita.findMany({
             where,
             include: {
                 itemPcp: { select: { id: true, nome: true, codigo: true, tipo: true, unidade: true } },
@@ -14,6 +14,17 @@ const pcpReceitaService = {
             },
             orderBy: [{ itemPcpId: 'asc' }, { versao: 'desc' }]
         });
+
+        if (incluirTodas || itemPcpId || status) return receitas;
+
+        // Padrão: apenas a versão "principal" por itemPcpId (ativa, ou mais recente se nenhuma ativa)
+        const porItem = new Map();
+        for (const r of receitas) {
+            const atual = porItem.get(r.itemPcpId);
+            if (!atual) { porItem.set(r.itemPcpId, r); continue; }
+            if (atual.status !== 'ativa' && r.status === 'ativa') porItem.set(r.itemPcpId, r);
+        }
+        return Array.from(porItem.values());
     },
 
     buscarPorId: async (id) => {
@@ -91,14 +102,30 @@ const pcpReceitaService = {
 
         const origMap = new Map(original.itens.map(i => [i.itemPcpId, i]));
         const novoMap = new Map(novosItens.map(i => [i.itemPcpId, i]));
+        const idsParaBuscar = novosItens.filter(n => !origMap.has(n.itemPcpId)).map(n => n.itemPcpId);
+        const itensInfo = idsParaBuscar.length
+            ? await prisma.itemPcp.findMany({ where: { id: { in: idsParaBuscar } }, select: { id: true, nome: true, codigo: true, unidade: true } })
+            : [];
+        const nomesNovos = new Map(itensInfo.map(i => [i.id, i]));
+
         for (const novo of novosItens) {
             const antigo = origMap.get(novo.itemPcpId);
             if (!antigo) {
-                alteracoes.ingredientes.adicionados.push({ itemPcpId: novo.itemPcpId, quantidade: novo.quantidade, tipo: novo.tipo });
+                const info = nomesNovos.get(novo.itemPcpId);
+                alteracoes.ingredientes.adicionados.push({
+                    itemPcpId: novo.itemPcpId,
+                    nome: info?.nome,
+                    codigo: info?.codigo,
+                    unidade: info?.unidade,
+                    quantidade: novo.quantidade,
+                    tipo: novo.tipo
+                });
             } else if (!cmpNum(antigo.quantidade, novo.quantidade) || antigo.tipo !== novo.tipo || (antigo.ordemEtapa || null) !== (novo.ordemEtapa || null)) {
                 alteracoes.ingredientes.alterados.push({
                     itemPcpId: novo.itemPcpId,
                     nome: antigo.itemPcp?.nome,
+                    codigo: antigo.itemPcp?.codigo,
+                    unidade: antigo.itemPcp?.unidade,
                     quantidade: { de: parseFloat(antigo.quantidade), para: novo.quantidade },
                     tipo: { de: antigo.tipo, para: novo.tipo },
                     etapa: { de: antigo.ordemEtapa, para: novo.ordemEtapa }
@@ -107,7 +134,14 @@ const pcpReceitaService = {
         }
         for (const antigo of original.itens) {
             if (!novoMap.has(antigo.itemPcpId)) {
-                alteracoes.ingredientes.removidos.push({ itemPcpId: antigo.itemPcpId, nome: antigo.itemPcp?.nome, quantidade: parseFloat(antigo.quantidade), tipo: antigo.tipo });
+                alteracoes.ingredientes.removidos.push({
+                    itemPcpId: antigo.itemPcpId,
+                    nome: antigo.itemPcp?.nome,
+                    codigo: antigo.itemPcp?.codigo,
+                    unidade: antigo.itemPcp?.unidade,
+                    quantidade: parseFloat(antigo.quantidade),
+                    tipo: antigo.tipo
+                });
             }
         }
 
