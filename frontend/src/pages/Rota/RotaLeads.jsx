@@ -56,6 +56,28 @@ const itemTemND = (diasStr) => {
     return diasStr.toUpperCase().split(',').map(d => d.trim()).includes('N/D');
 };
 
+// Retorna sigla do dia atual (DOM..SAB) — usado como default do filtro
+const getDiaSiglaHoje = () => DIAS_SIGLA[new Date().getDay()];
+
+// Matches exatos (filtros do usuário na rota)
+const itemMatchDia = (diasStr, sigla) => {
+    if (!sigla) return true;
+    if (!diasStr) return false;
+    return diasStr.toUpperCase().split(',').map(d => d.trim()).includes(sigla);
+};
+const itemMatchForma = (formasArray, forma) => {
+    if (!forma || forma === 'TODOS') return true;
+    if (!formasArray || !Array.isArray(formasArray) || formasArray.length === 0) return false;
+    return formasArray.some(f => String(f).toUpperCase() === forma);
+};
+
+const FORMAS_ATEND = [
+    { value: 'TODOS', label: 'Todas as formas' },
+    { value: 'PRESENCIAL', label: 'Presencial' },
+    { value: 'WHATSAPP', label: 'WhatsApp' },
+    { value: 'TELEFONE', label: 'Telefone' },
+];
+
 const getAtendimentoHoje = (atendimentos) => {
     if (!atendimentos || atendimentos.length === 0) return null;
     const hoje = new Date().toDateString();
@@ -86,7 +108,7 @@ const abrirMapa = (gps) => {
 // ================================================
 // Card de Cliente
 // ================================================
-const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista }) => {
+const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado }) => {
     const atendHoje = getAtendimentoHoje(cliente._atendimentos);
     const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
     const vendedorNome = cliente.vendedor?.nome || cliente.Vendedor?.nome;
@@ -224,19 +246,37 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                     </div>
                 )}
 
+                {/* Alerta fora do filtro / outro vendedor */}
+                {foraFiltro && (foraFiltro.outroDia || foraFiltro.outraForma || foraFiltro.outroVendedor) && (
+                    <div className="mt-2 rounded-lg px-2.5 py-1.5 border border-amber-300 bg-amber-50 text-[11px] text-amber-800 flex items-center gap-1.5">
+                        <Bell className="h-3 w-3 shrink-0" />
+                        <span>
+                            {foraFiltro.outroVendedor && `Cliente de ${cliente.vendedor?.nome?.split(' ')[0] || 'outro vendedor'}`}
+                            {foraFiltro.outroVendedor && (foraFiltro.outroDia || foraFiltro.outraForma) && ' · '}
+                            {foraFiltro.outroDia && 'Outro dia'}
+                            {foraFiltro.outroDia && foraFiltro.outraForma && ' · '}
+                            {foraFiltro.outraForma && 'Outra forma de atendimento'}
+                        </span>
+                    </div>
+                )}
+
                 {/* Ações */}
                 <div className="flex gap-1.5 mt-2 pt-2 border-t border-gray-100">
                     {mostrarAcoes && (
                         <button
-                            onClick={() => onAtendimento({ tipo: 'cliente', item: cliente })}
-                            className="flex-1 bg-blue-600 text-white text-[12px] font-semibold py-1.5 rounded flex items-center justify-center gap-1 active:opacity-80"
+                            onClick={() => !bloqueado && onAtendimento({ tipo: 'cliente', item: cliente })}
+                            disabled={bloqueado}
+                            title={bloqueado ? 'Cliente de outro vendedor — peça transferência' : ''}
+                            className={`flex-1 text-[12px] font-semibold py-1.5 rounded flex items-center justify-center gap-1 ${bloqueado ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white active:opacity-80'}`}
                         >
                             <ClipboardList className="h-3.5 w-3.5" /> Atender
                         </button>
                     )}
                     <button
-                        onClick={() => onNovoPedido(cliente.UUID)}
-                        className={`${mostrarAcoes ? 'bg-gray-100 text-gray-700 w-auto' : 'bg-gray-100 text-gray-700 w-full justify-center'} text-[12px] font-semibold px-2 cursor-pointer py-1.5 rounded flex items-center gap-1 active:opacity-80 hover:bg-gray-200 transition-colors`}
+                        onClick={() => !bloqueado && onNovoPedido(cliente.UUID)}
+                        disabled={bloqueado}
+                        title={bloqueado ? 'Cliente de outro vendedor — peça transferência' : ''}
+                        className={`${mostrarAcoes ? 'w-auto' : 'w-full justify-center'} text-[12px] font-semibold px-2 py-1.5 rounded flex items-center gap-1 ${bloqueado ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-100 text-gray-700 cursor-pointer active:opacity-80 hover:bg-gray-200 transition-colors'}`}
                     >
                         <Package className="h-3.5 w-3.5" /> Pedido
                     </button>
@@ -249,7 +289,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
 // ================================================
 // Card de Lead
 // ================================================
-const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista }) => {
+const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado }) => {
     const atendHoje = getAtendimentoHoje(lead.atendimentos);
     const proxHoje = isProximaVisitaHoje(lead.proximaVisita);
     const vendedorNome = lead.vendedor?.nome;
@@ -387,11 +427,27 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
                     </div>
                 )}
 
+                {/* Alerta fora do filtro / outro vendedor */}
+                {foraFiltro && (foraFiltro.outroDia || foraFiltro.outraForma || foraFiltro.outroVendedor) && (
+                    <div className="mt-2 rounded-lg px-2.5 py-1.5 border border-amber-300 bg-amber-50 text-[11px] text-amber-800 flex items-center gap-1.5">
+                        <Bell className="h-3 w-3 shrink-0" />
+                        <span>
+                            {foraFiltro.outroVendedor && `Lead de ${lead.vendedor?.nome?.split(' ')[0] || 'outro vendedor'}`}
+                            {foraFiltro.outroVendedor && (foraFiltro.outroDia || foraFiltro.outraForma) && ' · '}
+                            {foraFiltro.outroDia && 'Outro dia'}
+                            {foraFiltro.outroDia && foraFiltro.outraForma && ' · '}
+                            {foraFiltro.outraForma && 'Outra forma de atendimento'}
+                        </span>
+                    </div>
+                )}
+
                 {mostrarAcoes && (
                     <div className="flex gap-1.5 mt-2 pt-2 border-t border-gray-100">
                         <button
-                            onClick={() => onAtendimento({ tipo: 'lead', item: lead })}
-                            className="flex-1 bg-orange-500 text-white text-[12px] font-semibold py-1.5 rounded flex items-center justify-center gap-1 active:opacity-80"
+                            onClick={() => !bloqueado && onAtendimento({ tipo: 'lead', item: lead })}
+                            disabled={bloqueado}
+                            title={bloqueado ? 'Lead de outro vendedor — peça transferência' : ''}
+                            className={`flex-1 text-[12px] font-semibold py-1.5 rounded flex items-center justify-center gap-1 ${bloqueado ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-orange-500 text-white active:opacity-80'}`}
                         >
                             <ClipboardList className="h-3.5 w-3.5" /> Atender
                         </button>
@@ -953,6 +1009,13 @@ const RotaLeads = () => {
     const [clientes, setClientes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [busca, setBusca] = useState('');
+    // Filtro de dia da semana (default hoje, reseta a cada dia, não persiste)
+    const [diaSemanaFiltro, setDiaSemanaFiltro] = useState(() => getDiaSiglaHoje());
+    // Filtro de forma de atendimento (persistido por usuário)
+    const [formaFiltro, setFormaFiltro] = useState(() => localStorage.getItem('rota_formaFiltro') || 'TODOS');
+    const [formaOpen, setFormaOpen] = useState(false);
+    // Resultados de busca global (clientes fora da carteira do vendedor)
+    const [resultadosGlobais, setResultadosGlobais] = useState([]);
     const [clientePopupItem, setClientePopupItem] = useState(null); // popup de dados
 
     // Modais
@@ -1030,6 +1093,24 @@ const RotaLeads = () => {
 
 
     useEffect(() => { refreshUser(); }, []); // garante permissões frescas do banco
+
+    // Persiste filtro de forma de atendimento por usuário
+    useEffect(() => {
+        localStorage.setItem('rota_formaFiltro', formaFiltro);
+    }, [formaFiltro]);
+
+    // Busca global de clientes (debounced) — só dispara com 2+ caracteres
+    useEffect(() => {
+        const termo = busca.trim();
+        if (termo.length < 2) { setResultadosGlobais([]); return; }
+        const t = setTimeout(async () => {
+            try {
+                const r = await clienteService.buscarGlobal(termo, 20);
+                setResultadosGlobais(r?.data || []);
+            } catch { setResultadosGlobais([]); }
+        }, 350);
+        return () => clearTimeout(t);
+    }, [busca]);
 
     const vendedorId = user?.id;
     const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
@@ -1325,9 +1406,28 @@ const RotaLeads = () => {
         );
     }, [vendedorId]);
 
+    // Helper: aplica filtros de dia/forma e retorna flags foraFiltro
+    // Quando há busca: não elimina; marca flags. Sem busca: elimina quem não bate.
+    const aplicarFiltrosDiaForma = useCallback((item) => {
+        const dias = item._tipo === 'cliente' ? item.Dia_de_venda : item.diasVisita;
+        const formas = item._tipo === 'cliente' ? item.Formas_Atendimento : item.formasAtendimento;
+        const okDia = itemMatchDia(dias, diaSemanaFiltro);
+        const okForma = itemMatchForma(formas, formaFiltro);
+        const temBusca = busca.trim().length > 0;
+        if (!temBusca) {
+            return okDia && okForma ? { passa: true, flags: null } : { passa: false, flags: null };
+        }
+        // Com busca: sempre passa, mas marca o que está fora
+        const flags = {
+            outroDia: !okDia,
+            outraForma: !okForma,
+        };
+        return { passa: true, flags: (flags.outroDia || flags.outraForma) ? flags : null };
+    }, [diaSemanaFiltro, formaFiltro, busca]);
+
     // Ordenar itens da aba "Atendimento" (não atendidos hoje OU com transferência ativa não atendida pelo receptor)
     const itensParaAtender = useMemo(() => {
-        const todos = [
+        const locais = [
             ...clientesComAtendimento.map(c => ({ _tipo: 'cliente', ...c })),
             ...leads.map(l => ({ _tipo: 'lead', ...l }))
         ].filter(i => {
@@ -1341,6 +1441,39 @@ const RotaLeads = () => {
             matchBusca(i._tipo === 'cliente' ? (i.NomeFantasia || i.Nome) : i.nomeEstabelecimento)
         );
 
+        // Aplica filtros dia/forma (sem busca: elimina; com busca: marca)
+        const todos = locais
+            .map(i => {
+                const key = i._tipo === 'cliente' ? i.UUID : i.id;
+                // Transferências ativas ignoram filtro (sempre aparecem)
+                if (alertasPorItem[key]?.isTransferenciaAtiva) return { ...i, _foraFiltro: null };
+                const { passa, flags } = aplicarFiltrosDiaForma(i);
+                return passa ? { ...i, _foraFiltro: flags } : null;
+            })
+            .filter(Boolean);
+
+        // Injeta resultados globais (clientes de outros vendedores) quando há busca
+        const termo = busca.trim();
+        if (termo.length >= 2 && resultadosGlobais.length > 0) {
+            const uuidsLocais = new Set(clientesComAtendimento.map(c => c.UUID));
+            resultadosGlobais.forEach(c => {
+                if (uuidsLocais.has(c.UUID)) return; // já está na lista local
+                if (vendedorId && c.idVendedor === vendedorId) return; // é do próprio, mas não veio na lista de rota
+                const okDia = itemMatchDia(c.Dia_de_venda, diaSemanaFiltro);
+                const okForma = itemMatchForma(c.Formas_Atendimento, formaFiltro);
+                todos.push({
+                    _tipo: 'cliente',
+                    ...c,
+                    _foraFiltro: {
+                        outroVendedor: true,
+                        outroDia: !okDia,
+                        outraForma: !okForma,
+                    },
+                    _bloqueado: !podeEscolherVendedor,
+                });
+            });
+        }
+
         // Transferências ativas para mim ficam no topo absoluto
         const transferidos = todos.filter(i => {
             const key = i._tipo === 'cliente' ? i.UUID : i.id;
@@ -1351,18 +1484,18 @@ const RotaLeads = () => {
         const prioridade1 = resto.filter(i => i._tipo === 'cliente' && itemTemDiaBase(i.Dia_de_venda));
         const prioridade2 = resto.filter(i => i._tipo === 'lead' && itemTemDiaBase(i.diasVisita) && !isProximaVisitaHoje(i.proximaVisita));
         const prioridade3 = resto.filter(i => i._tipo === 'lead' && isProximaVisitaHoje(i.proximaVisita));
-        
+
         const sobra1 = resto.filter(i => !prioridade1.includes(i) && !prioridade2.includes(i) && !prioridade3.includes(i));
-        
+
         const prioridadeND = sobra1.filter(i => {
             const dias = i._tipo === 'cliente' ? i.Dia_de_venda : i.diasVisita;
             return itemTemND(dias);
         });
-        
+
         const demais = sobra1.filter(i => !prioridadeND.includes(i));
 
         return [...transferidos, ...prioridade1, ...prioridade2, ...prioridade3, ...prioridadeND, ...demais];
-    }, [clientesComAtendimento, leads, matchBusca, alertasPorItem]);
+    }, [clientesComAtendimento, leads, matchBusca, alertasPorItem, receptorAtendeuHoje, aplicarFiltrosDiaForma, busca, resultadosGlobais, vendedorId, podeEscolherVendedor, diaSemanaFiltro, formaFiltro]);
 
     // Itens atendidos hoje (transferências ativas só aparecem aqui se o receptor já atendeu)
     const itensAtendidos = useMemo(() => {
@@ -1379,8 +1512,13 @@ const RotaLeads = () => {
             return isAtendidoHoje(i);
         }).filter(i =>
             matchBusca(i._tipo === 'cliente' ? (i.NomeFantasia || i.Nome) : i.nomeEstabelecimento)
-        );
-    }, [clientesComAtendimento, leads, matchBusca, alertasPorItem, receptorAtendeuHoje]);
+        ).map(i => {
+            const key = i._tipo === 'cliente' ? i.UUID : i.id;
+            if (alertasPorItem[key]?.isTransferenciaAtiva) return { ...i, _foraFiltro: null };
+            const { passa, flags } = aplicarFiltrosDiaForma(i);
+            return passa ? { ...i, _foraFiltro: flags } : null;
+        }).filter(Boolean);
+    }, [clientesComAtendimento, leads, matchBusca, alertasPorItem, receptorAtendeuHoje, aplicarFiltrosDiaForma]);
 
     // Entregas filtradas por busca
     const entregasPendentesFiltradas = useMemo(() =>
@@ -1520,9 +1658,9 @@ const RotaLeads = () => {
         const mostrarAcoes = aba === 'atendimento';
 
         if (item._tipo === 'cliente') {
-            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} alerta={alertasPorItem[item.UUID]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} />;
+            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} alerta={alertasPorItem[item.UUID]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} />;
         }
-        return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} alerta={alertasPorItem[item.id]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} />;
+        return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} alerta={alertasPorItem[item.id]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} />;
     };
 
     const diaBase = getDiaSigla(getDiaBase());
@@ -1577,6 +1715,49 @@ const RotaLeads = () => {
                         )}
                     </div>
                 </div>
+
+                {/* Filtros: dia da semana + forma de atendimento */}
+                {(aba === 'atendimento' || aba === 'atendidos') && (
+                    <div className="px-3 md:px-4 pb-2 flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1 overflow-x-auto">
+                            {['DOM','SEG','TER','QUA','QUI','SEX','SAB'].map(s => {
+                                const ativo = diaSemanaFiltro === s;
+                                return (
+                                    <button
+                                        key={s}
+                                        onClick={() => setDiaSemanaFiltro(ativo ? '' : s)}
+                                        className={`px-2 py-1 text-[11px] font-bold rounded border transition-colors ${ativo ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}
+                                        title={ativo ? 'Clique para remover o filtro de dia' : `Mostrar ${s}`}
+                                    >
+                                        {s}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <div className="relative ml-auto" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setFormaOpen(false); }}>
+                            <button
+                                onClick={() => setFormaOpen(v => !v)}
+                                className={`px-2.5 py-1 text-[11px] font-semibold rounded border transition-colors flex items-center gap-1 ${formaFiltro !== 'TODOS' ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white text-gray-700 border-gray-200'}`}
+                            >
+                                {FORMAS_ATEND.find(f => f.value === formaFiltro)?.label || 'Forma'}
+                                <ChevronDown className="h-3 w-3" />
+                            </button>
+                            {formaOpen && (
+                                <div className="absolute right-0 top-full mt-1 z-30 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[160px] py-1">
+                                    {FORMAS_ATEND.map(f => (
+                                        <button
+                                            key={f.value}
+                                            onClick={() => { setFormaFiltro(f.value); setFormaOpen(false); }}
+                                            className={`w-full text-left px-3 py-1.5 text-[12px] hover:bg-gray-50 ${formaFiltro === f.value ? 'font-bold text-blue-700' : 'text-gray-700'}`}
+                                        >
+                                            {f.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Abas com ícones responsivos */}
                 <div className="flex border-t border-gray-100">

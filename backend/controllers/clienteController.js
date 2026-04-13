@@ -90,6 +90,61 @@ const clienteController = {
         }
     },
 
+    // Busca global leve para "encontrar cliente que pode estar em outra carteira".
+    // Retorna apenas campos necessários pra exibição e regras de UI (bloqueio de atendimento).
+    // NÃO aplica filtro por idVendedor: qualquer usuário autenticado pode pesquisar,
+    // mas o front bloqueia atender/pedido quando o cliente não é dele.
+    buscarGlobal: async (req, res) => {
+        try {
+            const { q = '', limit = 20 } = req.query;
+            const termo = String(q).trim();
+            if (termo.length < 2) return res.json({ data: [] });
+
+            const clientes = await prisma.cliente.findMany({
+                where: {
+                    Ativo: true,
+                    OR: [
+                        { Nome: { contains: termo, mode: 'insensitive' } },
+                        { NomeFantasia: { contains: termo, mode: 'insensitive' } },
+                        { Documento: { contains: termo, mode: 'insensitive' } },
+                        { Codigo: { contains: termo, mode: 'insensitive' } }
+                    ]
+                },
+                take: Math.min(Number(limit) || 20, 50),
+                orderBy: { Nome: 'asc' },
+                select: {
+                    UUID: true,
+                    Codigo: true,
+                    Nome: true,
+                    NomeFantasia: true,
+                    Documento: true,
+                    Telefone: true,
+                    Telefone_Celular: true,
+                    Email: true,
+                    End_Logradouro: true,
+                    End_Numero: true,
+                    End_Complemento: true,
+                    End_Bairro: true,
+                    End_Cidade: true,
+                    End_Estado: true,
+                    End_CEP: true,
+                    Ponto_GPS: true,
+                    Dia_de_venda: true,
+                    Dia_de_entrega: true,
+                    Formas_Atendimento: true,
+                    Observacoes_Gerais: true,
+                    Situacao_serasa: true,
+                    idVendedor: true,
+                    vendedor: { select: { id: true, nome: true } }
+                }
+            });
+            res.json({ data: clientes });
+        } catch (error) {
+            console.error('Erro na busca global de clientes:', error);
+            res.status(500).json({ error: 'Erro ao buscar clientes' });
+        }
+    },
+
     // Buscar detalhe de um cliente
     detalhar: async (req, res) => {
         try {

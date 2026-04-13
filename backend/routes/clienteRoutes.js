@@ -5,6 +5,7 @@ const condicaoPagamentoController = require('../controllers/condicaoPagamentoCon
 
 // Rotas para Clientes
 router.get('/', clienteController.listar);
+router.get('/buscar-global', clienteController.buscarGlobal); // Busca global (ignora filtro por vendedor)
 router.post('/sync', clienteController.sincronizar); // POST para ações de sync
 router.put('/lote', clienteController.atualizarLote); // Atualização em lote
 router.get('/condicoes-pagamento', condicaoPagamentoController.listar); // Nova rota

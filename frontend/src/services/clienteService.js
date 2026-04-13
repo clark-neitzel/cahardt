@@ -6,6 +6,11 @@ const clienteService = {
         return response.data;
     },
 
+    buscarGlobal: async (q, limit = 20) => {
+        const response = await api.get('/clientes/buscar-global', { params: { q, limit } });
+        return response.data;
+    },
+
     detalhar: async (uuid) => {
         const response = await api.get(`/clientes/${uuid}`);
         return response.data;
