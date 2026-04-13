@@ -244,18 +244,38 @@ const DashboardAdminSection = () => {
 
             {/* ═══════════ OPERACIONAL ═══════════ */}
             <SectionTitle icon={Activity}>Operação de Hoje</SectionTitle>
-            <div className="bg-white border rounded-xl p-5">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    <StatPill label="Clientes atendidos" value={fmtNum(op.clientesAtendidos)} sub={`${op.totalAtendimentos} atendimentos`} color="blue" />
-                    <StatPill label="Atend. com pedido" value={fmtNum(op.atendimentosComPedido)} color="emerald" />
-                    <StatPill label="Atend. sem pedido" value={fmtNum(op.atendimentosSemPedido)} color="amber" />
-                    <StatPill label="Transf. pendentes" value={fmtNum(op.transferenciasPendentes)} sub="não finalizadas" color="red" />
-                    <StatPill label="Pedidos lançados" value={fmtNum(op.pedidosHoje)} color="indigo" />
-                    <Link to="/caixa" className="flex flex-col items-start gap-0.5 hover:opacity-80">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-gray-500 flex items-center gap-1"><CheckSquare size={11} /> Caixas a conferir</span>
-                        <span className={`text-xl font-bold ${d.caixasAConferir > 0 ? 'text-indigo-700' : 'text-gray-900'}`}>{fmtNum(d.caixasAConferir)}</span>
-                        <span className="text-[11px] text-gray-500">recebido hoje {fmtBRLcompact(d.valorEntregueHoje)}</span>
-                    </Link>
+            <div className="bg-white border rounded-xl p-5 space-y-5">
+                {/* Atendimentos / Clientes */}
+                <div>
+                    <div className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-2">Atendimentos & Clientes</div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <StatPill label="Atend. com venda" value={fmtNum(op.atendimentosComPedido)} color="emerald" />
+                        <StatPill label="Atend. sem venda" value={fmtNum(op.atendimentosSemPedido)} color="amber" />
+                        <StatPill label="Clientes atendidos" value={fmtNum(op.clientesAtendidos)} sub={`${op.totalAtendimentos} atendimentos`} color="blue" />
+                        <StatPill label="Clientes não atendidos" value={fmtNum(op.clientesNaoAtendidos)} sub="da rota do dia" color={op.clientesNaoAtendidos > 0 ? 'red' : 'gray'} />
+                    </div>
+                </div>
+                {/* Leads */}
+                <div className="border-t pt-4">
+                    <div className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-2">Leads</div>
+                    <div className="grid grid-cols-3 gap-4">
+                        <StatPill label="Novos hoje" value={fmtNum(op.leadsNovosHoje)} color="indigo" />
+                        <StatPill label="Atendidos hoje" value={fmtNum(op.leadsAtendidosHoje)} color="emerald" />
+                        <StatPill label="Não atendidos" value={fmtNum(op.leadsNaoAtendidos)} sub="visita vencida" color={op.leadsNaoAtendidos > 0 ? 'red' : 'gray'} />
+                    </div>
+                </div>
+                {/* Caixa */}
+                <div className="border-t pt-4">
+                    <div className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-2">Caixa & Operacional</div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <StatPill label="Dinheiro no caixa" value={fmtBRL(op.dinheiroRecebidoHoje)} sub="recebido hoje" color="emerald" />
+                        <StatPill label="Total recebido (entregas)" value={fmtBRL(d.valorEntregueHoje)} color="blue" />
+                        <StatPill label="Pedidos lançados" value={fmtNum(op.pedidosHoje)} color="indigo" />
+                        <Link to="/caixa" className="flex flex-col items-start gap-0.5 hover:opacity-80">
+                            <span className="text-[11px] uppercase tracking-wider font-semibold text-gray-500 flex items-center gap-1"><CheckSquare size={11} /> Caixas a conferir</span>
+                            <span className={`text-xl font-bold ${d.caixasAConferir > 0 ? 'text-indigo-700' : 'text-gray-900'}`}>{fmtNum(d.caixasAConferir)}</span>
+                        </Link>
+                    </div>
                 </div>
             </div>
 

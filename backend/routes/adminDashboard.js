@@ -118,14 +118,72 @@ router.get('/', verificarAuth, async (req, res) => {
             select: { clienteId: true, leadId: true, pedidoId: true, transferidoParaId: true, transferenciaFinalizada: true },
         });
         const totalAtendimentos = atendimentosHoje.length;
-        const clientesAtendidos = new Set(atendimentosHoje.map(a => a.clienteId).filter(Boolean)).size;
-        const atendimentosComPedido = atendimentosHoje.filter(a => a.pedidoId).length;
-        const atendimentosSemPedido = totalAtendimentos - atendimentosComPedido;
+
+        // Pedidos lançados hoje (createdAt) - usado p/ cross-check com atendimentos
+        const pedidosCriadosHoje = await prisma.pedido.findMany({
+            where: { ...baseWherePedido, createdAt: { gte: startOfDay, lte: endOfDay } },
+            select: { clienteId: true },
+        });
+        const clientesComPedidoHoje = new Set(pedidosCriadosHoje.map(p => p.clienteId));
+        const pedidosHojeCount = pedidosCriadosHoje.length;
+
+        // Atendimentos com / sem venda - cruza por clienteId (atendimento.pedidoId raramente é setado)
+        let atendimentosComPedido = 0, atendimentosSemPedido = 0;
+        for (const a of atendimentosHoje) {
+            if (a.pedidoId || (a.clienteId && clientesComPedidoHoje.has(a.clienteId))) atendimentosComPedido++;
+            else atendimentosSemPedido++;
+        }
         const transferenciasPendentes = atendimentosHoje.filter(a => a.transferidoParaId && !a.transferenciaFinalizada).length;
 
-        const pedidosHojeCount = await prisma.pedido.count({
-            where: { ...baseWherePedido, dataVenda: { gte: startOfDay, lte: endOfDay } },
+        // Clientes ativos com Dia_de_venda hoje que NÃO foram atendidos (atend, pedido ou entrega)
+        const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+        const siglaDoDia = DIAS_SIGLA[agora.getDay()];
+        const clientesDoDia = await prisma.cliente.findMany({
+            where: {
+                Ativo: true,
+                Dia_de_venda: { contains: siglaDoDia, mode: 'insensitive' },
+            },
+            select: { UUID: true, Dia_de_venda: true },
         });
+        const entregasHojeClienteIds = await prisma.pedido.findMany({
+            where: { dataEntrega: { gte: startOfDay, lte: endOfDay }, statusEntrega: { not: 'PENDENTE' } },
+            select: { clienteId: true },
+        });
+        const atendidosHojeIds = new Set([
+            ...atendimentosHoje.map(a => a.clienteId).filter(Boolean),
+            ...pedidosCriadosHoje.map(p => p.clienteId),
+            ...entregasHojeClienteIds.map(p => p.clienteId).filter(Boolean),
+        ]);
+        const clientesNaoAtendidos = clientesDoDia
+            .filter(c => (c.Dia_de_venda || '').toUpperCase().split(',').map(s => s.trim()).includes(siglaDoDia))
+            .filter(c => !atendidosHojeIds.has(c.UUID))
+            .length;
+
+        // Distinct clientes atendidos hoje (apenas via Atendimento)
+        const clientesAtendidos = new Set(atendimentosHoje.map(a => a.clienteId).filter(Boolean)).size;
+
+        // ============ LEADS ============
+        const [leadsNovosHoje, leadsAtivos] = await Promise.all([
+            prisma.lead.count({ where: { createdAt: { gte: startOfDay, lte: endOfDay } } }),
+            prisma.lead.findMany({
+                where: { etapa: { notIn: ['CONVERTIDO', 'PERDIDO'] } },
+                select: { id: true, proximaVisita: true },
+            }),
+        ]);
+        const leadsAtendidosIds = new Set(atendimentosHoje.map(a => a.leadId).filter(Boolean));
+        const leadsAtendidosHoje = leadsAtendidosIds.size;
+        const leadsNaoAtendidos = leadsAtivos.filter(l =>
+            l.proximaVisita && l.proximaVisita <= endOfDay && !leadsAtendidosIds.has(l.id)
+        ).length;
+
+        // ============ DINHEIRO RECEBIDO NO CAIXA HOJE ============
+        const pagamentosHoje = await prisma.pedidoPagamentoReal.findMany({
+            where: { createdAt: { gte: startOfDay, lte: endOfDay } },
+            select: { valor: true, formaPagamentoNome: true },
+        });
+        const dinheiroRecebidoHoje = pagamentosHoje
+            .filter(p => (p.formaPagamentoNome || '').toLowerCase().includes('dinheiro'))
+            .reduce((s, p) => s + num(p.valor), 0);
 
         // ============ TOP 10 PRODUTOS (30d, líquido) ============
         const itensUltimos30 = await prisma.pedidoItem.findMany({
@@ -281,6 +339,11 @@ router.get('/', verificarAuth, async (req, res) => {
                 atendimentosSemPedido,
                 transferenciasPendentes,
                 pedidosHoje: pedidosHojeCount,
+                clientesNaoAtendidos,
+                leadsNovosHoje,
+                leadsAtendidosHoje,
+                leadsNaoAtendidos,
+                dinheiroRecebidoHoje,
             },
             topProdutos,
             topClientes,
