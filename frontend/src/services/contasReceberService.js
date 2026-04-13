@@ -32,6 +32,10 @@ const contasReceberService = {
     reverterCancelamento: async (id) => {
         const response = await api.patch(`/contas-receber/${id}/reverter-cancelamento`);
         return response.data;
+    },
+    syncCA: async (id) => {
+        const response = await api.post(`/contas-receber/${id}/sync-ca`);
+        return response.data;
     }
 };
 

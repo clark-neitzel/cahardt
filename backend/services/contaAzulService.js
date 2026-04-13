@@ -1746,6 +1746,35 @@ const contaAzulService = {
         }
 
         return null;
+    },
+
+    /**
+     * Encontrar TODAS as parcelas CA correspondentes a uma venda (pedido).
+     * Retorna lista de parcelas detalhadas cujo evento.referencia.id === idVenda.
+     */
+    encontrarParcelasDeVenda: async (clienteCAId, idVendaCA, dataVendaStr, statusBusca = ['EM_ABERTO', 'ATRASADO', 'RECEBIDO', 'RECEBIDO_PARCIAL']) => {
+        const dataVenda = new Date(dataVendaStr + 'T12:00:00-03:00');
+        const de = new Date(dataVenda); de.setDate(de.getDate() - 60);
+        const ate = new Date(dataVenda); ate.setDate(ate.getDate() + 365);
+        const fmtDate = (d) => d.toISOString().split('T')[0];
+
+        const parcelas = await contaAzulService.buscarParcelasContaAReceber(
+            clienteCAId, fmtDate(de), fmtDate(ate), statusBusca
+        );
+
+        const encontradas = [];
+        for (const p of parcelas) {
+            try {
+                const detalhe = await contaAzulService.buscarParcelaDetalhe(p.id);
+                if (detalhe?.evento?.referencia?.id === idVendaCA &&
+                    detalhe?.evento?.referencia?.origem === 'VENDA') {
+                    encontradas.push(detalhe);
+                }
+            } catch (err) {
+                console.warn(`Falha ao buscar detalhe parcela ${p.id}: ${err.message}`);
+            }
+        }
+        return encontradas;
     }
 };
 
