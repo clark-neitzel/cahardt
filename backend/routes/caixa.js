@@ -331,6 +331,7 @@ router.get('/resumo', async (req, res) => {
         const atendimentosDia = await prisma.atendimento.findMany({
             where: {
                 criadoEm: { gte: inicioDia, lte: fimDia },
+                tipo: { not: 'FINANCEIRO' },
                 OR: [
                     { idVendedor: targetVendedor },
                     ...(clienteIdsEntreguesRes.length > 0 ? [{ clienteId: { in: clienteIdsEntreguesRes } }] : [])
