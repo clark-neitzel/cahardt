@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, AlertTriangle, CheckCircle, Package, X, ChevronDown, Pencil, Check, Loader2 } from 'lucide-react';
+import { Search, AlertTriangle, CheckCircle, Package, X, ChevronDown, Pencil, Check, Loader2, TrendingDown, PackageX } from 'lucide-react';
 import toast from 'react-hot-toast';
 import estoqueService from '../../services/estoqueService';
 import categoriaProdutoService from '../../services/categoriaProdutoService';
@@ -301,15 +301,27 @@ export default function PosicaoEstoque() {
     const [filtros, setFiltros] = useLocalStorage(STORAGE_KEY, {
         search: '',
         categorias: [],        // categorias de estoque (produto.categoria)
-        categoriasComerciais: [] // IDs de CategoriaProduto
+        categoriasComerciais: [], // IDs de CategoriaProduto
+        atalho: null             // null | 'abaixo' | 'zero'
     });
 
     const [produtos, setProdutos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [categoriasEstoque, setCategoriasEstoque] = useState([]);
     const [categoriasComerciais, setCategoriasComerciais] = useState([]);
-    const [filtrosAbertos, setFiltrosAbertos] = useState(true);
+    const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+    const filtrosRef = useRef(null);
     const searchTimeout = useRef(null);
+
+    // Fecha painel de filtros ao clicar fora
+    useEffect(() => {
+        if (!filtrosAbertos) return;
+        const handler = (e) => {
+            if (filtrosRef.current && !filtrosRef.current.contains(e.target)) setFiltrosAbertos(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [filtrosAbertos]);
 
     // Carrega listas de opções de filtro
     useEffect(() => {
@@ -354,14 +366,27 @@ export default function PosicaoEstoque() {
         ));
     };
 
-    const limparFiltros = () => setFiltros({ search: '', categorias: [], categoriasComerciais: [] });
-    const temFiltro = filtros.search || filtros.categorias?.length > 0 || filtros.categoriasComerciais?.length > 0;
+    const limparFiltros = () => setFiltros({ search: '', categorias: [], categoriasComerciais: [], atalho: null });
+    const temFiltroCategoria = filtros.categorias?.length > 0 || filtros.categoriasComerciais?.length > 0;
+    const temFiltro = filtros.search || temFiltroCategoria || filtros.atalho;
+
+    const produtosFiltrados = produtos.filter(p => {
+        if (!filtros.atalho) return true;
+        const disp = parseFloat(p.estoqueDisponivel || 0);
+        const min = parseFloat(p.estoqueMinimo || 0);
+        if (filtros.atalho === 'abaixo') return min > 0 && disp < min;
+        if (filtros.atalho === 'zero') return disp <= 0;
+        return true;
+    });
 
     const abaixoMinimo = produtos.filter(p => {
         const disp = parseFloat(p.estoqueDisponivel || 0);
         const min = parseFloat(p.estoqueMinimo || 0);
         return min > 0 && disp < min;
     }).length;
+    const zeroOuNegativo = produtos.filter(p => parseFloat(p.estoqueDisponivel || 0) <= 0).length;
+
+    const toggleAtalho = (a) => setFiltros({ ...filtros, atalho: filtros.atalho === a ? null : a });
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -380,75 +405,98 @@ export default function PosicaoEstoque() {
                     )}
                 </div>
 
-                {/* Filtros */}
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-5">
-                    {/* Cabeçalho do painel — sempre visível, clicável no mobile */}
+                {/* Barra fixa: busca + atalhos */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-3 p-3 space-y-3">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                        <input
+                            type="text"
+                            value={filtros.search}
+                            onChange={e => setFiltros({ ...filtros, search: e.target.value })}
+                            placeholder="Buscar por nome ou código..."
+                            className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        {filtros.search && (
+                            <button onClick={() => setFiltros({ ...filtros, search: '' })} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Atalhos em forma de chip */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => toggleAtalho('abaixo')}
+                            title="Abaixo do mínimo"
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtros.atalho === 'abaixo' ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-white border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600'}`}
+                        >
+                            <TrendingDown className="h-3.5 w-3.5" />
+                            <span>Abaixo do mínimo</span>
+                            <span className={`tabular-nums ${filtros.atalho === 'abaixo' ? 'text-amber-700' : 'text-gray-400'}`}>({abaixoMinimo})</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => toggleAtalho('zero')}
+                            title="Estoque zero ou negativo"
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtros.atalho === 'zero' ? 'bg-red-100 border-red-300 text-red-700' : 'bg-white border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-600'}`}
+                        >
+                            <PackageX className="h-3.5 w-3.5" />
+                            <span>Estoque zero ou negativo</span>
+                            <span className={`tabular-nums ${filtros.atalho === 'zero' ? 'text-red-700' : 'text-gray-400'}`}>({zeroOuNegativo})</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Filtros de categoria — colapsável, fecha ao clicar fora */}
+                <div ref={filtrosRef} className="bg-white rounded-xl border border-gray-200 shadow-sm mb-5">
                     <button
                         type="button"
                         onClick={() => setFiltrosAbertos(o => !o)}
-                        className="w-full flex items-center justify-between px-4 py-3 sm:cursor-default"
+                        className="w-full flex items-center justify-between px-4 py-3"
                     >
                         <div className="flex items-center gap-2">
                             <Search className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm font-medium text-gray-700">Filtros</span>
-                            {temFiltro && (
+                            <span className="text-sm font-medium text-gray-700">Filtros por categoria</span>
+                            {temFiltroCategoria && (
                                 <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">
-                                    {[filtros.search ? 1 : 0, filtros.categorias?.length || 0, filtros.categoriasComerciais?.length || 0].reduce((a, b) => a + b, 0)} ativo{[filtros.search ? 1 : 0, filtros.categorias?.length || 0, filtros.categoriasComerciais?.length || 0].reduce((a, b) => a + b, 0) !== 1 ? 's' : ''}
+                                    {(filtros.categorias?.length || 0) + (filtros.categoriasComerciais?.length || 0)} ativo{((filtros.categorias?.length || 0) + (filtros.categoriasComerciais?.length || 0)) !== 1 ? 's' : ''}
                                 </span>
                             )}
                         </div>
-                        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform sm:hidden ${filtrosAbertos ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`} />
                     </button>
 
-                    {/* Corpo dos filtros — colapsa no mobile */}
-                    <div className={`${filtrosAbertos ? 'block' : 'hidden'} sm:block px-4 pb-4 border-t border-gray-100`}>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3">
-                            {/* Search */}
-                            <div className="sm:col-span-2 lg:col-span-2">
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Nome do produto</label>
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                                    <input
-                                        type="text"
-                                        value={filtros.search}
-                                        onChange={e => setFiltros({ ...filtros, search: e.target.value })}
-                                        placeholder="Buscar por nome ou código..."
-                                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                    {filtros.search && (
-                                        <button onClick={() => setFiltros({ ...filtros, search: '' })} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                            <X className="h-3.5 w-3.5" />
-                                        </button>
-                                    )}
+                    {filtrosAbertos && (
+                        <div className="px-4 pb-4 border-t border-gray-100">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
+                                <MultiSelect
+                                    label="Categoria de estoque"
+                                    options={categoriasEstoque}
+                                    selected={filtros.categorias || []}
+                                    onChange={v => setFiltros({ ...filtros, categorias: v })}
+                                    placeholder="Todas"
+                                />
+
+                                <MultiSelect
+                                    label="Categoria comercial"
+                                    options={categoriasComerciais}
+                                    selected={filtros.categoriasComerciais || []}
+                                    onChange={v => setFiltros({ ...filtros, categoriasComerciais: v })}
+                                    placeholder="Todas"
+                                />
+                            </div>
+
+                            {temFiltro && (
+                                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                                    <p className="text-xs text-gray-500">{produtosFiltrados.length} produto{produtosFiltrados.length !== 1 ? 's' : ''} encontrado{produtosFiltrados.length !== 1 ? 's' : ''}</p>
+                                    <button onClick={limparFiltros} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
+                                        <X className="h-3 w-3" /> Limpar filtros
+                                    </button>
                                 </div>
-                            </div>
-
-                            <MultiSelect
-                                label="Categoria de estoque"
-                                options={categoriasEstoque}
-                                selected={filtros.categorias || []}
-                                onChange={v => { setFiltros({ ...filtros, categorias: v }); setFiltrosAbertos(false); }}
-                                placeholder="Todas"
-                            />
-
-                            <MultiSelect
-                                label="Categoria comercial"
-                                options={categoriasComerciais}
-                                selected={filtros.categoriasComerciais || []}
-                                onChange={v => { setFiltros({ ...filtros, categoriasComerciais: v }); setFiltrosAbertos(false); }}
-                                placeholder="Todas"
-                            />
+                            )}
                         </div>
-
-                        {temFiltro && (
-                            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                                <p className="text-xs text-gray-500">{produtos.length} produto{produtos.length !== 1 ? 's' : ''} encontrado{produtos.length !== 1 ? 's' : ''}</p>
-                                <button onClick={limparFiltros} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
-                                    <X className="h-3 w-3" /> Limpar filtros
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    )}
                 </div>
 
                 {/* Conteúdo */}
@@ -456,7 +504,7 @@ export default function PosicaoEstoque() {
                     <div className="flex items-center justify-center py-20">
                         <Loader2 className="h-7 w-7 text-blue-500 animate-spin" />
                     </div>
-                ) : produtos.length === 0 ? (
+                ) : produtosFiltrados.length === 0 ? (
                     <div className="text-center py-20 text-gray-400">
                         <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
                         <p className="text-sm">{temFiltro ? 'Nenhum produto para os filtros selecionados.' : 'Nenhum produto cadastrado.'}</p>
@@ -479,7 +527,7 @@ export default function PosicaoEstoque() {
                                     </tr>
                                 </thead>
                                 <tbody className="group">
-                                    {produtos.map(p => (
+                                    {produtosFiltrados.map(p => (
                                         <ProdutoRow key={p.id} produto={p} isAdmin={isAdmin} onMinimoSalvo={handleMinimoSalvo} />
                                     ))}
                                 </tbody>
@@ -488,12 +536,12 @@ export default function PosicaoEstoque() {
 
                         {/* Cards — mobile */}
                         <div className="md:hidden space-y-3">
-                            {produtos.map(p => (
+                            {produtosFiltrados.map(p => (
                                 <ProdutoCard key={p.id} produto={p} isAdmin={isAdmin} onMinimoSalvo={handleMinimoSalvo} />
                             ))}
                         </div>
 
-                        <p className="text-xs text-center text-gray-400 mt-4">{produtos.length} produto{produtos.length !== 1 ? 's' : ''}</p>
+                        <p className="text-xs text-center text-gray-400 mt-4">{produtosFiltrados.length} produto{produtosFiltrados.length !== 1 ? 's' : ''}</p>
                     </>
                 )}
             </div>
