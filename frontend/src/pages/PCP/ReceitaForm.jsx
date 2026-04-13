@@ -210,10 +210,10 @@ export default function ReceitaForm() {
         ] : []),
         ...(mpEmbImportados.length > 0 ? [
             { id: '__g_imp', tipo: 'grupo', label: 'MP / EMB (ja no PCP)' },
-            ...mpEmbImportados.map(i => ({ id: i.id, label: `[${i.tipo}] ${i.codigo} - ${i.nome} (${i.unidade})`, tipo: i.tipo })),
+            ...mpEmbImportados.map(i => ({ id: i.id, label: i.nome, tipo: i.tipo })),
         ] : []),
         { id: '__g_prod', tipo: 'grupo', label: 'Produtos do Sistema (importar)' },
-        ...produtosNaoImportados.map(p => ({ id: 'produto:' + p.id, label: `${p.codigo} - ${p.nome} (${p.unidade})`, tipo: 'MP' })),
+        ...produtosNaoImportados.map(p => ({ id: 'produto:' + p.id, label: p.nome, tipo: 'MP' })),
     ];
 
     const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
