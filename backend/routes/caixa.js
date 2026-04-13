@@ -336,7 +336,7 @@ router.get('/resumo', async (req, res) => {
                     ...(clienteIdsEntreguesRes.length > 0 ? [{ clienteId: { in: clienteIdsEntreguesRes } }] : [])
                 ]
             },
-            include: { lead: { select: { nomeEstabelecimento: true, canalOrigem: true } } },
+            include: { lead: { select: { nomeEstabelecimento: true, origemLead: true } } },
             orderBy: { criadoEm: 'asc' }
         });
         const clienteIdsAtend = atendimentosDia.filter(a => a.clienteId).map(a => a.clienteId);
@@ -402,7 +402,7 @@ router.get('/resumo', async (req, res) => {
                 tipo: a.tipo,
                 clienteNome: a.clienteId ? (mapaClientesAtend[a.clienteId] || 'Cliente') : (a.lead?.nomeEstabelecimento || 'Lead'),
                 leadNome: a.lead?.nomeEstabelecimento || null,
-                canal: a.lead?.canalOrigem || null,
+                canal: a.lead?.origemLead || null,
                 pedidoId: a.pedidoId,
                 observacao: a.observacao || null,
                 hora: a.criadoEm
