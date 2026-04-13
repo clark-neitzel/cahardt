@@ -57,7 +57,7 @@ router.get('/', verificarAuth, async (req, res) => {
         const [caixasAConferir, pedidosComErro, pedidosEspeciais] = await Promise.all([
             prisma.caixaDiario.count({ where: { status: 'CONFERIDO' } }),
             prisma.pedido.count({ where: { statusEnvio: 'ERRO' } }),
-            prisma.pedido.count({ where: { especial: true, statusEnvio: { not: 'CONCLUIDO' } } }),
+            prisma.pedido.count({ where: { especial: true, statusEnvio: { in: ['ABERTO', 'ENVIAR'] } } }),
         ]);
 
         // ============ VENDAS POR PERÍODO ============
