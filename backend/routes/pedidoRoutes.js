@@ -47,6 +47,9 @@ router.delete('/:id', pedidoController.excluir);
 // Enviar pedido via WhatsApp (BotConversa)
 router.post('/:id/enviar-whatsapp', pedidoController.enviarWhatsapp);
 
+// Reatribuir vendedor de um pedido (ajuste somente no app, não envia ao CA)
+router.put('/:id/reatribuir-vendedor', pedidoController.reatribuirVendedor);
+
 // Registrar Impressão de Pedido ou Especial
 router.put('/:id/impresso', pedidoController.registrarImpressao);
 

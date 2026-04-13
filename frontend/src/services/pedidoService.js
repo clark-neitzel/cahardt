@@ -91,6 +91,12 @@ const pedidoService = {
         return response.data;
     },
 
+    // Reatribuir vendedor de um pedido (ajuste somente no app)
+    reatribuirVendedor: async (id, vendedorId) => {
+        const response = await api.put(`/pedidos/${id}/reatribuir-vendedor`, { vendedorId });
+        return response.data;
+    },
+
     // Registrar data e hora de impressão
     registrarImpressao: async (id) => {
         const response = await api.put(`/pedidos/${id}/impresso`);

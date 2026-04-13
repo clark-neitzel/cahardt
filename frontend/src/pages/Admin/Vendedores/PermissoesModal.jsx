@@ -44,6 +44,8 @@ const DEFAULT_PERMISSIONS = {
     Pode_Editar_Veiculos: false,
     // CRM / Leads
     Pode_Editar_Lead: false,
+    // Reatribuição de vendedor em pedidos
+    Pode_Reatribuir_Vendedor: false,
     // Exclusão de Registros
     Pode_Excluir_Pedido: false,
     Pode_Excluir_Especial: false,
@@ -493,6 +495,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         {permissoes.pedidos?.view && (
                             <div className="border-t mt-3 pt-3">
                                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Exclusão de registros</p>
+                                <Toggle checked={!!permissoes.Pode_Reatribuir_Vendedor} onChange={() => toggleBool('Pode_Reatribuir_Vendedor')}
+                                    label="Reatribuir Vendedor em Pedidos" sublabel="Trocar o vendedor de pedidos existentes (ajuste apenas no app, não afeta o Conta Azul)" />
                                 <Toggle checked={!!permissoes.Pode_Excluir_Pedido} onChange={() => toggleBool('Pode_Excluir_Pedido')}
                                     label="Excluir Pedidos" sublabel="Pedidos em status ABERTO ou ERRO" danger />
                                 <Toggle checked={!!permissoes.Pode_Excluir_Especial} onChange={() => toggleBool('Pode_Excluir_Especial')}

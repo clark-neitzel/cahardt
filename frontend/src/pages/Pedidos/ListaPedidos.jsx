@@ -75,6 +75,9 @@ const ListaPedidos = () => {
     const podeExcluirBonificacao = user?.permissoes?.Pode_Excluir_Bonificacao || user?.permissoes?.admin;
     const podeExcluirAmostra = user?.permissoes?.Pode_Excluir_Amostra || user?.permissoes?.admin;
     const podeVerTodosVendedores = user?.permissoes?.admin || user?.permissoes?.pedidos?.clientes === 'todos';
+    const podeReatribuirVendedor = user?.permissoes?.admin || user?.permissoes?.Pode_Reatribuir_Vendedor;
+    const [reatribuindo, setReatribuindo] = useState(false);
+    const [novoVendedorId, setNovoVendedorId] = useState('');
     
     const [revertendo, setRevertendo] = useState(null);
     const [selecionados, setSelecionados] = useState(new Set());
@@ -192,13 +195,33 @@ const ListaPedidos = () => {
     }, [carregarDados]);
 
     useEffect(() => {
-        if (podeVerTodosVendedores) {
+        if (podeVerTodosVendedores || podeReatribuirVendedor) {
             vendedorService.listar().then(v => {
                 const list = Array.isArray(v) ? v : (v?.vendedores || []);
                 setTodosVendedores(list);
             }).catch(() => {});
         }
-    }, [podeVerTodosVendedores]);
+    }, [podeVerTodosVendedores, podeReatribuirVendedor]);
+
+    const handleReatribuirVendedor = async () => {
+        if (!selectedPedido || !novoVendedorId) return;
+        if (novoVendedorId === selectedPedido.vendedorId) {
+            toast.error('Selecione um vendedor diferente do atual.');
+            return;
+        }
+        setReatribuindo(true);
+        try {
+            const { pedido } = await pedidoService.reatribuirVendedor(selectedPedido.id, novoVendedorId);
+            toast.success('Vendedor reatribuído.');
+            setSelectedPedido(prev => prev ? { ...prev, vendedorId: pedido.vendedorId, vendedor: pedido.vendedor } : prev);
+            setPedidos(prev => prev.map(p => p.id === pedido.id ? { ...p, vendedorId: pedido.vendedorId, vendedor: pedido.vendedor } : p));
+            setNovoVendedorId('');
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao reatribuir vendedor.');
+        } finally {
+            setReatribuindo(false);
+        }
+    };
 
     const handleAprovarEspecial = async (pedidoId) => {
         if (!podeAprovar) return;
@@ -1038,6 +1061,36 @@ const ListaPedidos = () => {
                                 </div>
                             )}
                             
+                            {/* Vendedor + reatribuição */}
+                            <div className="bg-indigo-50/60 p-3 rounded border border-indigo-100">
+                                <p className="text-[10px] uppercase font-bold text-indigo-700 mb-1">Vendedor</p>
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="text-sm font-bold text-gray-800">{selectedPedido.vendedor?.nome || '—'}</p>
+                                </div>
+                                {podeReatribuirVendedor && (
+                                    <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                                        <select
+                                            value={novoVendedorId}
+                                            onChange={e => setNovoVendedorId(e.target.value)}
+                                            className="flex-1 text-sm border border-gray-300 rounded px-2 py-1.5 bg-white"
+                                        >
+                                            <option value="">Selecionar novo vendedor…</option>
+                                            {todosVendedores.filter(v => v.id !== selectedPedido.vendedorId).map(v => (
+                                                <option key={v.id} value={v.id}>{v.nome}</option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            onClick={handleReatribuirVendedor}
+                                            disabled={!novoVendedorId || reatribuindo}
+                                            className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-bold rounded shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                                        >
+                                            {reatribuindo ? 'Salvando…' : 'Reatribuir'}
+                                        </button>
+                                    </div>
+                                )}
+                                <p className="text-[10px] text-gray-500 mt-1">Ajuste apenas no app — não altera o pedido no Conta Azul.</p>
+                            </div>
+
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                                 <div><p className="text-[10px] uppercase font-bold text-gray-400">Entrega</p><p className="font-bold">{new Date(selectedPedido.dataVenda).toLocaleDateString('pt-BR')}</p></div>
                                 <div><p className="text-[10px] uppercase font-bold text-gray-400">Emissão</p><p className="font-medium">{new Date(selectedPedido.createdAt).toLocaleDateString('pt-BR')}</p></div>

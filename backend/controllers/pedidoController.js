@@ -487,6 +487,41 @@ const pedidoController = {
         }
     },
 
+    reatribuirVendedor: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const { vendedorId } = req.body;
+
+            const permissoes = req.user?.permissoes || {};
+            if (!permissoes.admin && !permissoes.Pode_Reatribuir_Vendedor) {
+                return res.status(403).json({ error: 'Você não tem permissão para reatribuir vendedor de pedidos.' });
+            }
+
+            if (!vendedorId || typeof vendedorId !== 'string') {
+                return res.status(400).json({ error: 'vendedorId é obrigatório.' });
+            }
+
+            const pedido = await prisma.pedido.findUnique({ where: { id }, select: { id: true, vendedorId: true } });
+            if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+
+            const novoVendedor = await prisma.vendedor.findUnique({ where: { id: vendedorId }, select: { id: true, nome: true } });
+            if (!novoVendedor) return res.status(400).json({ error: 'Vendedor destino inválido.' });
+
+            const atualizado = await prisma.pedido.update({
+                where: { id },
+                data: { vendedorId },
+                include: { vendedor: { select: { id: true, nome: true } } }
+            });
+
+            console.log(`[Pedido ${id}] Vendedor reatribuído de ${pedido.vendedorId || 'NULL'} → ${vendedorId} por ${req.user?.id} (${req.user?.nome || ''})`);
+
+            res.json({ message: 'Vendedor reatribuído com sucesso.', pedido: atualizado });
+        } catch (error) {
+            console.error('Erro ao reatribuir vendedor:', error);
+            res.status(500).json({ error: 'Erro ao reatribuir vendedor.' });
+        }
+    },
+
     registrarImpressao: async (req, res) => {
         try {
             const id = req.params.id;
