@@ -97,8 +97,11 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                 // À vista/Dinheiro/Pix/Cartão → remove condições com "boleto" no nome
                 // Boleto → remove condições sem "boleto" no nome
                 // Formas de Entrega (Escritório, Vendedor) são mantidas sempre
+                // A condição do próprio pedido é SEMPRE preservada (fonte de verdade, ignora filtro por nome)
+                const selectIdPedido = pedido.idCondicaoResolvido ? 'tabela_' + pedido.idCondicaoResolvido : null;
                 todasFormas = todasFormas.filter(f => {
                     if (f._grupo !== 'Condições de Pagamento') return true;
+                    if (selectIdPedido && f._selectId === selectIdPedido) return true;
                     const nomeLower = f.nome.toLowerCase();
                     if (pedidoEhBoleto) return nomeLower.includes('boleto');
                     return !nomeLower.includes('boleto');
@@ -151,7 +154,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
 
     // Quando formasDisp carregar e já tem valor-alvo pendente, auto-popula
     useEffect(() => {
-        if (formasDisp.length > 0 && valorAlvoCaixa !== null && pagamentos.length === 0 && step === 3) {
+        if (formasDisp.length > 0 && valorAlvoCaixa !== null && pagamentos.length === 0 && (step === 3 || step === 4)) {
             setPagamentos([{ idLocal: Date.now(), _selectId: getDefaultSelectId(), valor: valorAlvoCaixa }]);
         }
     }, [formasDisp, valorAlvoCaixa, step]);
