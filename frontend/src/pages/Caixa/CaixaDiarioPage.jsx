@@ -61,6 +61,7 @@ const CaixaDiarioPage = () => {
     const [savingAdiantamento, setSavingAdiantamento] = useState(false);
     const [expandedEntregas, setExpandedEntregas] = useState(false);
     const [expandedAmostras, setExpandedAmostras] = useState(false);
+    const [expandedAtendimentos, setExpandedAtendimentos] = useState(false);
     const [obsAdmin, setObsAdmin] = useState('');
     const [showDespesaModal, setShowDespesaModal] = useState(false);
     const [veiculoFichaId, setVeiculoFichaId] = useState(null);
@@ -789,6 +790,103 @@ const CaixaDiarioPage = () => {
                             )}
                         </div>
                     )}
+
+                    {/* Card Atendimentos + Pedidos do Vendedor */}
+                    {(() => {
+                        const ats = resumo.atendimentos || [];
+                        const peds = resumo.pedidosVendedor || [];
+                        const linhas = [
+                            ...ats.map(a => ({ ...a, _origem: 'atendimento' })),
+                            ...peds.map(p => ({
+                                tipo: 'PEDIDO',
+                                clienteNome: p.clienteNome,
+                                observacao: p.observacao,
+                                detalhe: p.bonificacao ? `BN#${p.numero || '—'}` : p.especial ? `ZZ#${p.numero || '—'}` : `#${p.numero || '—'}`,
+                                hora: p.createdAt,
+                                _origem: 'pedido'
+                            }))
+                        ].sort((a, b) => new Date(a.hora) - new Date(b.hora));
+
+                        return (
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center space-x-2">
+                                        <ClipboardCheck className="h-5 w-5 text-indigo-600" />
+                                        <h3 className="text-sm font-semibold text-gray-700">Atendimentos do Dia</h3>
+                                        <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
+                                            {linhas.length}
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={() => setExpandedAtendimentos(!expandedAtendimentos)}
+                                        className="text-xs text-gray-500 flex items-center hover:text-gray-700"
+                                    >
+                                        {expandedAtendimentos ? 'Recolher' : 'Expandir'}
+                                        {expandedAtendimentos ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="text-center p-2 bg-indigo-50 rounded">
+                                        <p className="text-lg font-bold text-indigo-700">{ats.length}</p>
+                                        <p className="text-xs text-indigo-600">Atendimentos</p>
+                                    </div>
+                                    <div className="text-center p-2 bg-blue-50 rounded">
+                                        <p className="text-lg font-bold text-blue-700">{peds.length}</p>
+                                        <p className="text-xs text-blue-600">Pedidos</p>
+                                    </div>
+                                </div>
+
+                                {expandedAtendimentos && linhas.length > 0 && (
+                                    <div className="border-t border-gray-200 pt-3 mt-3 space-y-2">
+                                        {linhas.map((l, i) => (
+                                            <div
+                                                key={i}
+                                                className={`rounded-lg p-2.5 border text-sm ${
+                                                    l._origem === 'pedido'
+                                                        ? 'bg-blue-50 border-blue-200'
+                                                        : (l.tipo === 'LEAD_NOVO' || l.leadNome)
+                                                            ? 'bg-yellow-50 border-yellow-200'
+                                                            : 'bg-gray-50 border-gray-200'
+                                                }`}
+                                            >
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="text-[10px] font-bold bg-white px-1.5 py-0.5 rounded border">
+                                                                {l.tipo}
+                                                            </span>
+                                                            <span className="font-medium text-gray-900 truncate">
+                                                                {l.clienteNome || l.leadNome || '—'}
+                                                            </span>
+                                                            {l.detalhe && (
+                                                                <span className="text-xs font-semibold text-blue-700">{l.detalhe}</span>
+                                                            )}
+                                                            {l.canal && (
+                                                                <span className="text-xs text-gray-500">Canal: {l.canal}</span>
+                                                            )}
+                                                        </div>
+                                                        {l.observacao && (
+                                                            <p className="text-xs text-gray-600 mt-1">{l.observacao}</p>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500 whitespace-nowrap">
+                                                        {l.hora ? new Date(l.hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {expandedAtendimentos && linhas.length === 0 && (
+                                    <div className="border-t border-gray-200 pt-3 mt-3 text-center text-xs text-gray-400 italic">
+                                        Nenhum atendimento registrado no dia.
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
 
                     {/* VALOR A PRESTAR */}
                     <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-6">

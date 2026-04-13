@@ -326,6 +326,35 @@ router.get('/resumo', async (req, res) => {
 
         const valorAPrestar = Math.round((Number(caixa.adiantamento) + totalRecebidoCaixa - totalDespesas) * 100) / 100;
 
+        // Atendimentos do dia: registrados pelo vendedor OU em clientes que foram entregues na rota
+        const clienteIdsEntreguesRes = [...new Set(entregas.filter(e => e.clienteId).map(e => e.clienteId))];
+        const atendimentosDia = await prisma.atendimento.findMany({
+            where: {
+                criadoEm: { gte: inicioDia, lte: fimDia },
+                OR: [
+                    { idVendedor: targetVendedor },
+                    ...(clienteIdsEntreguesRes.length > 0 ? [{ clienteId: { in: clienteIdsEntreguesRes } }] : [])
+                ]
+            },
+            include: { lead: { select: { nomeEstabelecimento: true, canalOrigem: true } } },
+            orderBy: { criadoEm: 'asc' }
+        });
+        const clienteIdsAtend = atendimentosDia.filter(a => a.clienteId).map(a => a.clienteId);
+        let mapaClientesAtend = {};
+        if (clienteIdsAtend.length > 0) {
+            const cs = await prisma.cliente.findMany({
+                where: { UUID: { in: clienteIdsAtend } },
+                select: { UUID: true, NomeFantasia: true, Nome: true }
+            });
+            mapaClientesAtend = Object.fromEntries(cs.map(c => [c.UUID, c.NomeFantasia || c.Nome]));
+        }
+        // Pedidos criados pelo vendedor no dia (createdAt no dia)
+        const pedidosDoVendedorDia = await prisma.pedido.findMany({
+            where: { vendedorId: targetVendedor, createdAt: { gte: inicioDia, lte: fimDia } },
+            include: { cliente: { select: { NomeFantasia: true, Nome: true } } },
+            orderBy: { createdAt: 'asc' }
+        });
+
         // Pendências para fechar caixa
         const devolucoesNaoFeitas = entregasFormatadas.filter(e =>
             ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada
@@ -369,6 +398,23 @@ router.get('/resumo', async (req, res) => {
             valorAPrestar,
             amostras: amostrasFormatadas,
             amostrasCount: amostrasFormatadas.length,
+            atendimentos: atendimentosDia.map(a => ({
+                tipo: a.tipo,
+                clienteNome: a.clienteId ? (mapaClientesAtend[a.clienteId] || 'Cliente') : (a.lead?.nomeEstabelecimento || 'Lead'),
+                leadNome: a.lead?.nomeEstabelecimento || null,
+                canal: a.lead?.canalOrigem || null,
+                pedidoId: a.pedidoId,
+                observacao: a.observacao || null,
+                hora: a.criadoEm
+            })),
+            pedidosVendedor: pedidosDoVendedorDia.map(p => ({
+                numero: p.numero,
+                especial: p.especial || false,
+                bonificacao: p.bonificacao || false,
+                clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome || 'N/A',
+                createdAt: p.createdAt,
+                observacao: p.observacoes || null
+            })),
             pendencias: {
                 devolucoesNaoFeitas,
                 quitacoesNaoFeitas,
