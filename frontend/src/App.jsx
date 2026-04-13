@@ -148,7 +148,10 @@ const Layout = ({ children }) => {
   const showFinanceiro = hasPermission('Pode_Acessar_Caixa') || hasPermission('Pode_Ver_Todas_Entregas') || hasPermission('Pode_Acessar_Contas_Receber');
   const showAdmin = hasPermission('produtos') || hasPermission('vendedores') || hasPermission('sync') || user?.permissoes?.admin;
   const showEstoque = user?.permissoes?.admin || (Array.isArray(user?.permissoes?.estoque) && user.permissoes.estoque.length > 0);
-  const showPcp = user?.permissoes?.admin || !!user?.permissoes?.pcp;
+  const pcpPerms = user?.permissoes?.pcp || {};
+  const isAdmin = !!user?.permissoes?.admin;
+  const showPcp = isAdmin || Object.values(pcpPerms).some(Boolean);
+  const canPcp = (key) => isAdmin || !!pcpPerms[key];
   const showConfig = hasPermission('configuracoes');
 
   return (
@@ -200,14 +203,14 @@ const Layout = ({ children }) => {
 
           {/* PCP */}
           {showPcp && <SidebarSection label="PCP" />}
-          {showPcp && <SidebarItem to="/pcp/itens" icon={Package} label="Itens" />}
-          {showPcp && <SidebarItem to="/pcp/receitas" icon={BookOpenIcon} label="Receitas" />}
-          {showPcp && <SidebarItem to="/pcp/ordens" icon={ClipboardListIcon} label="Ordens" />}
-          {showPcp && <SidebarItem to="/pcp/painel" icon={Play} label="Painel" />}
-          {showPcp && <SidebarItem to="/pcp/calendario" icon={CalendarIcon} label="Calendário" />}
-          {showPcp && <SidebarItem to="/pcp/estoque" icon={Factory} label="Estoque PCP" />}
-          {showPcp && <SidebarItem to="/pcp/sugestoes" icon={Lightbulb} label="Sugestoes" />}
-          {showPcp && <SidebarItem to="/pcp/dashboard" icon={BarChart3} label="Dashboard" />}
+          {canPcp('itens') && <SidebarItem to="/pcp/itens" icon={Package} label="Itens" />}
+          {canPcp('receitas') && <SidebarItem to="/pcp/receitas" icon={BookOpenIcon} label="Receitas" />}
+          {canPcp('ordens') && <SidebarItem to="/pcp/ordens" icon={ClipboardListIcon} label="Ordens" />}
+          {canPcp('ordens') && <SidebarItem to="/pcp/painel" icon={Play} label="Painel" />}
+          {canPcp('agenda') && <SidebarItem to="/pcp/calendario" icon={CalendarIcon} label="Calendário" />}
+          {canPcp('estoque') && <SidebarItem to="/pcp/estoque" icon={Factory} label="Estoque PCP" />}
+          {canPcp('sugestoes') && <SidebarItem to="/pcp/sugestoes" icon={Lightbulb} label="Sugestoes" />}
+          {canPcp('sugestoes') && <SidebarItem to="/pcp/dashboard" icon={BarChart3} label="Dashboard" />}
 
           {/* Produção / Estoque */}
           {showEstoque && <SidebarSection label="Produção" />}
@@ -333,14 +336,14 @@ const Layout = ({ children }) => {
             {/* PCP */}
             {showPcp && (
               <MobileMenuSection label="PCP" icon={Factory}>
-                <NavLink to="/pcp/itens" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Itens</NavLink>
-                <NavLink to="/pcp/receitas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Receitas</NavLink>
-                <NavLink to="/pcp/ordens" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Ordens</NavLink>
-                <NavLink to="/pcp/painel" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Painel</NavLink>
-                <NavLink to="/pcp/calendario" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Calendário</NavLink>
-                <NavLink to="/pcp/estoque" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Estoque PCP</NavLink>
-                <NavLink to="/pcp/sugestoes" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Sugestoes</NavLink>
-                <NavLink to="/pcp/dashboard" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Dashboard</NavLink>
+                {canPcp('itens') && <NavLink to="/pcp/itens" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Itens</NavLink>}
+                {canPcp('receitas') && <NavLink to="/pcp/receitas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Receitas</NavLink>}
+                {canPcp('ordens') && <NavLink to="/pcp/ordens" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Ordens</NavLink>}
+                {canPcp('ordens') && <NavLink to="/pcp/painel" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Painel</NavLink>}
+                {canPcp('agenda') && <NavLink to="/pcp/calendario" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Calendário</NavLink>}
+                {canPcp('estoque') && <NavLink to="/pcp/estoque" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Estoque PCP</NavLink>}
+                {canPcp('sugestoes') && <NavLink to="/pcp/sugestoes" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Sugestoes</NavLink>}
+                {canPcp('sugestoes') && <NavLink to="/pcp/dashboard" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Dashboard</NavLink>}
               </MobileMenuSection>
             )}
 
