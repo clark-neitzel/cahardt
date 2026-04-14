@@ -569,7 +569,7 @@ const TabelaPrecos = () => {
                                     <div className="mt-3 pt-3 border-t border-violet-200">
                                         <label className="block text-sm font-semibold text-violet-800 mb-1">Categorias de Produto Visíveis</label>
                                         <p className="text-[11px] text-violet-600 mb-2">
-                                            Selecione quais categorias de produto aparecem ao criar um pedido especial com esta condição.
+                                            Selecione categorias extras que aparecem ao usar esta condição (em pedido especial são as únicas; em pedido normal somam-se às categorias padrão de venda).
                                         </p>
                                         <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto">
                                             {categoriasCA.map(cat => (

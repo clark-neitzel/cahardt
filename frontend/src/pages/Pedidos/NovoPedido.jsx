@@ -454,16 +454,27 @@ const NovoPedido = () => {
         const cond = todasCondicoes.find(c => c.idCondicao === condicaoPagamentoId);
         setCondicaoSelecionada(cond || null);
         if (cond) {
-            // Em modo especial: recarregar produtos com categorias definidas na condição
             const catsEspecial = Array.isArray(cond.categoriasEspecial) ? cond.categoriasEspecial : [];
             if (especial && catsEspecial.length > 0) {
+                // Especial: usa exclusivamente as categorias definidas na condição
                 const cats = catsEspecial;
                 (async () => {
                     const paramsProd = { limit: 1000, ativo: true, categorias: cats.join(',') };
                     const produtosData = await produtoService.listar(paramsProd);
                     const listaProdutos = produtosData.data || produtosData || [];
                     setProdutos(listaProdutos);
-                    // Recalcular itens com os novos produtos
+                    setItensMap(prev => reavaliarMapaItens(prev, cond, promocoesMap, listaProdutos));
+                })();
+            } else if (!especial && !bonificacao && catsEspecial.length > 0) {
+                // Pedido comum: expande categorias padrão com as extras definidas na condição
+                const catsPadrao = categoriasNormalRef.current || [];
+                const cats = Array.from(new Set([...catsPadrao, ...catsEspecial]));
+                (async () => {
+                    const paramsProd = { limit: 1000, ativo: true };
+                    if (cats.length > 0) paramsProd.categorias = cats.join(',');
+                    const produtosData = await produtoService.listar(paramsProd);
+                    const listaProdutos = produtosData.data || produtosData || [];
+                    setProdutos(listaProdutos);
                     setItensMap(prev => reavaliarMapaItens(prev, cond, promocoesMap, listaProdutos));
                 })();
             } else {
