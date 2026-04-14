@@ -99,17 +99,45 @@ const deliveryService = {
         return cats.map(c => c.nome);
     },
 
+    // Backfill: cria delivery_status em PEDIDO para todos os pedidos elegiveis
+    // (item de categoria ativa) que ainda não têm registro.
+    backfillStatus: async () => {
+        const categoriasAtivas = await deliveryService._categoriasAtivasNomes();
+        if (!categoriasAtivas.length) return 0;
+
+        const [elegiveis, comStatus] = await Promise.all([
+            prisma.pedido.findMany({
+                where: { itens: { some: { produto: { categoria: { in: categoriasAtivas } } } } },
+                select: { id: true }
+            }),
+            prisma.deliveryStatus.findMany({ select: { pedidoId: true } })
+        ]);
+        const jaTem = new Set(comStatus.map(s => s.pedidoId));
+        const faltantes = elegiveis.filter(p => !jaTem.has(p.id));
+        if (!faltantes.length) return 0;
+
+        await prisma.deliveryStatus.createMany({
+            data: faltantes.map(p => ({ pedidoId: p.id, etapa: 'PEDIDO' })),
+            skipDuplicates: true
+        });
+        return faltantes.length;
+    },
+
     // ── Kanban: listar pedidos de delivery ──
     // Regras de ordenação:
     //   - etapa ENTREGUE: mais recentes primeiro (scroll, limitado a 10)
     //   - demais: data do pedido (dataVenda) — atrasados/hoje primeiro, futuros crescentes
     listarPedidos: async () => {
-        const [categoriasAtivas, statusTodos] = await Promise.all([
-            deliveryService._categoriasAtivasNomes(),
-            prisma.deliveryStatus.findMany()
-        ]);
+        const categoriasAtivas = await deliveryService._categoriasAtivasNomes();
+        if (!categoriasAtivas.length) {
+            return { PEDIDO: [], PRODUCAO: [], SAINDO: [], ENTREGUE: [] };
+        }
 
-        if (!categoriasAtivas.length || !statusTodos.length) {
+        // Garante que pedidos antigos com item de categoria ativa entrem no fluxo
+        await deliveryService.backfillStatus();
+
+        const statusTodos = await prisma.deliveryStatus.findMany();
+        if (!statusTodos.length) {
             return { PEDIDO: [], PRODUCAO: [], SAINDO: [], ENTREGUE: [] };
         }
 
