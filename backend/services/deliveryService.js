@@ -107,7 +107,10 @@ const deliveryService = {
 
         const [elegiveis, comStatus] = await Promise.all([
             prisma.pedido.findMany({
-                where: { itens: { some: { produto: { categoria: { in: categoriasAtivas } } } } },
+                where: {
+                    situacaoCA: 'FATURADO',
+                    itens: { some: { produto: { categoria: { in: categoriasAtivas } } } }
+                },
                 select: { id: true }
             }),
             prisma.deliveryStatus.findMany({ select: { pedidoId: true } })
@@ -146,6 +149,7 @@ const deliveryService = {
         const pedidos = await prisma.pedido.findMany({
             where: {
                 id: { in: pedidoIds },
+                situacaoCA: 'FATURADO',
                 itens: { some: { produto: { categoria: { in: categoriasAtivas } } } }
             },
             include: {
