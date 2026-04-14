@@ -295,6 +295,14 @@ const pedidoService = {
                 );
             }, 0);
 
+            // Delivery (Kit Festa): cria delivery_status se houver item de categoria ativa
+            setTimeout(() => {
+                const deliveryService = require('./deliveryService');
+                deliveryService.garantirStatusParaPedido(novoPedido.id).catch(err =>
+                    console.error(`[Delivery] Falha ao criar status do pedido ${novoPedido.id}:`, err.message)
+                );
+            }, 0);
+
             // Gerar Conta a Receber para todos os pedidos enviados (exceto bonificação)
             if (statusEnvio === 'ENVIAR' && !bonificacao) {
                 const valorTotal = itensData.reduce((s, i) => s + (i.valor * i.quantidade), 0);

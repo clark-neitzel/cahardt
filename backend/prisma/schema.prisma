@@ -1038,6 +1038,54 @@ model CategoriaEstoque {
   @@map("categorias_estoque")
 }
 
+// ── Delivery (Kit Festa) ──
+// Módulo isolado: pedidos que tenham item em categoria marcada aparecem no Kanban.
+
+model DeliveryCategoria {
+  id        String   @id @default(uuid())
+  nome      String   @unique
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("delivery_categorias")
+}
+
+model DeliveryStatus {
+  id         String   @id @default(uuid())
+  pedidoId   String   @unique @map("pedido_id")
+  etapa      String   @default("PEDIDO") // PEDIDO | PRODUCAO | SAINDO | ENTREGUE
+  etapaAt    DateTime @default(now()) @map("etapa_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([etapa])
+  @@map("delivery_status")
+}
+
+model DeliveryPermissao {
+  id               String   @id @default(uuid())
+  vendedorId       String   @unique @map("vendedor_id")
+  podeVer          Boolean  @default(false) @map("pode_ver")
+  etapasPermitidas String[] @default([]) @map("etapas_permitidas")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("delivery_permissoes")
+}
+
+model DeliveryWebhookLog {
+  id        String   @id @default(uuid())
+  pedidoId  String   @map("pedido_id")
+  etapa     String
+  destino   String   // BOT | WHATSAPP
+  status    String   // OK | ERRO
+  mensagem  String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([pedidoId])
+  @@map("delivery_webhook_logs")
+}
+
 model CategoriaCliente {
   id               String   @id @default(uuid())
   nome             String   @unique

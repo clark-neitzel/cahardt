@@ -49,6 +49,7 @@ import PainelOperacional from './pages/PCP/PainelOperacional';
 import CalendarioProducao from './pages/PCP/CalendarioProducao';
 import SugestoesProducao from './pages/PCP/SugestoesProducao';
 import DashboardPcp from './pages/PCP/DashboardPcp';
+import DeliveryKanban from './pages/Delivery/DeliveryKanban';
 
 import {
   Menu, X, LogOut, ChevronDown,
@@ -179,6 +180,7 @@ const Layout = ({ children }) => {
           {hasPermission('catalogo') && <SidebarItem to="/catalogo" icon={BookOpen} label="Catálogo" />}
           {hasPermission('pedidos') && <SidebarItem to="/pedidos" icon={ClipboardList} label="Pedidos" />}
           {hasPermission('pedidos') && <SidebarItem to="/relatorios/pedidos" icon={FileText} label="Relatórios" />}
+          {hasPermission('delivery') && <SidebarItem to="/delivery" icon={Truck} label="Delivery" />}
           {hasPermission('pedidos') && <SidebarItem to="/rota" icon={Map} label="Rota" />}
           {hasPermission('rota') && <SidebarItem to="/leads" icon={Target} label="Leads" />}
           {hasPermission('clientes') && <SidebarItem to="/clientes" icon={Users} label="Clientes" />}
@@ -302,6 +304,7 @@ const Layout = ({ children }) => {
               {hasPermission('catalogo') && <NavLink to="/catalogo" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Catálogo</NavLink>}
               {hasPermission('pedidos') && <NavLink to="/pedidos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Pedidos</NavLink>}
               {hasPermission('pedidos') && <NavLink to="/relatorios/pedidos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Relatórios</NavLink>}
+              {hasPermission('delivery') && <NavLink to="/delivery" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Delivery</NavLink>}
               {hasPermission('pedidos') && <NavLink to="/rota" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rota</NavLink>}
               {hasPermission('rota') && <NavLink to="/leads" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Leads</NavLink>}
               {hasPermission('clientes') && <NavLink to="/clientes" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Clientes</NavLink>}
@@ -429,6 +432,9 @@ function App() {
 
               {/* Relatórios */}
               <Route path="/relatorios/pedidos" element={<PrivateRoute tab="pedidos"><RelatorioPedidos /></PrivateRoute>} />
+
+              {/* Delivery (Kit Festa) */}
+              <Route path="/delivery" element={<PrivateRoute tab="delivery"><DeliveryKanban /></PrivateRoute>} />
 
               {/* Rota / Leads (CRM) */}
               <Route path="/rota" element={<PrivateRoute tab="pedidos"><RotaLeads /></PrivateRoute>} />

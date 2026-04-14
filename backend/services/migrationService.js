@@ -838,7 +838,52 @@ const migrationService = {
             `UPDATE "pedidos" SET "baixa_ca_realizada" = FALSE, "baixa_ca_valor" = NULL, "baixa_ca_em" = NULL WHERE "numero" = 212`,
 
             // Fix: Marcar pedidos já quitados no CA antes do campo existir (200, 211 e outros)
-            `UPDATE "pedidos" SET "baixa_ca_realizada" = TRUE WHERE "numero" IN (200, 211)`
+            `UPDATE "pedidos" SET "baixa_ca_realizada" = TRUE WHERE "numero" IN (200, 211)`,
+
+            // Update 60: Módulo Delivery (Kit Festa)
+            `CREATE TABLE IF NOT EXISTS "delivery_categorias" (
+                "id" TEXT NOT NULL,
+                "nome" TEXT NOT NULL,
+                "ativo" BOOLEAN NOT NULL DEFAULT true,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "delivery_categorias_pkey" PRIMARY KEY ("id")
+            )`,
+            `CREATE UNIQUE INDEX IF NOT EXISTS "delivery_categorias_nome_key" ON "delivery_categorias"("nome")`,
+
+            `CREATE TABLE IF NOT EXISTS "delivery_status" (
+                "id" TEXT NOT NULL,
+                "pedido_id" TEXT NOT NULL,
+                "etapa" TEXT NOT NULL DEFAULT 'PEDIDO',
+                "etapa_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "delivery_status_pkey" PRIMARY KEY ("id")
+            )`,
+            `CREATE UNIQUE INDEX IF NOT EXISTS "delivery_status_pedido_id_key" ON "delivery_status"("pedido_id")`,
+            `CREATE INDEX IF NOT EXISTS "delivery_status_etapa_idx" ON "delivery_status"("etapa")`,
+
+            `CREATE TABLE IF NOT EXISTS "delivery_permissoes" (
+                "id" TEXT NOT NULL,
+                "vendedor_id" TEXT NOT NULL,
+                "pode_ver" BOOLEAN NOT NULL DEFAULT false,
+                "etapas_permitidas" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "delivery_permissoes_pkey" PRIMARY KEY ("id")
+            )`,
+            `CREATE UNIQUE INDEX IF NOT EXISTS "delivery_permissoes_vendedor_id_key" ON "delivery_permissoes"("vendedor_id")`,
+
+            `CREATE TABLE IF NOT EXISTS "delivery_webhook_logs" (
+                "id" TEXT NOT NULL,
+                "pedido_id" TEXT NOT NULL,
+                "etapa" TEXT NOT NULL,
+                "destino" TEXT NOT NULL,
+                "status" TEXT NOT NULL,
+                "mensagem" TEXT,
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "delivery_webhook_logs_pkey" PRIMARY KEY ("id")
+            )`,
+            `CREATE INDEX IF NOT EXISTS "delivery_webhook_logs_pedido_id_idx" ON "delivery_webhook_logs"("pedido_id")`
         ];
 
         for (const [index, cmd] of commands.entries()) {
