@@ -1002,6 +1002,7 @@ const contaAzulService = {
                         // sem situacao = pedido excluído do CA via interface (soft-delete: API retorna 200 mas sem status)
                         // CANCELADO = cancelado explicitamente no CA
                         const motivoExclusao = situacaoNome === 'CANCELADO' ? 'CANCELADO no CA' : 'excluído do CA (sem situação)';
+                        const eraRecebido = local.statusEnvio === 'RECEBIDO';
                         await prisma.pedido.update({
                             where: { id: local.id },
                             data: {
@@ -1011,6 +1012,15 @@ const contaAzulService = {
                                 contaAzulUpdatedAt: new Date()
                             }
                         });
+                        if (eraRecebido) {
+                            try {
+                                const estoqueService = require('./estoqueService');
+                                await estoqueService.cancelarPedido(local.id);
+                                console.log(`📦 [GARBAGE COLLECTOR] Estoque estornado para pedido #${local.numero}`);
+                            } catch (eCan) {
+                                console.error(`[GARBAGE COLLECTOR] Erro ao estornar estoque pedido #${local.numero}:`, eCan.message);
+                            }
+                        }
                         console.log(`🗑️ Pedido #${local.numero} marcado como EXCLUIDO (${motivoExclusao})`);
                         deletadosCount++;
                     } else if (situacaoNome !== local.situacaoCA) {
@@ -1063,6 +1073,7 @@ const contaAzulService = {
                     // 404 = Excluído definitivamente | 400 = ID V1 legado rejeitado (também trata como excluído)
                     if (statusCA === 404 || statusCA === 400) {
                         try {
+                            const eraRecebido = local.statusEnvio === 'RECEBIDO';
                             await prisma.pedido.update({
                                 where: { id: local.id },
                                 data: {
@@ -1072,6 +1083,14 @@ const contaAzulService = {
                                     contaAzulUpdatedAt: new Date()
                                 }
                             });
+                            if (eraRecebido) {
+                                try {
+                                    const estoqueService = require('./estoqueService');
+                                    await estoqueService.cancelarPedido(local.id);
+                                } catch (eCan) {
+                                    console.error(`[GARBAGE COLLECTOR] Erro ao estornar estoque pedido #${local.numero}:`, eCan.message);
+                                }
+                            }
                             console.log(`🗑️ Pedido #${local.numero} marcado como EXCLUIDO (${statusCA} no CA)`);
                             deletadosCount++;
                         } catch (updateErr) {
@@ -1197,6 +1216,7 @@ const contaAzulService = {
 
                     if (isCanceladoV2) {
                         if (pedidoLocal.statusEnvio !== 'EXCLUIDO') {
+                            const eraRecebido = pedidoLocal.statusEnvio === 'RECEBIDO';
                             await prisma.pedido.update({
                                 where: { id: pedidoLocal.id },
                                 data: {
@@ -1205,6 +1225,14 @@ const contaAzulService = {
                                     contaAzulUpdatedAt: dataAtualizacaoCA
                                 }
                             });
+                            if (eraRecebido) {
+                                try {
+                                    const estoqueService = require('./estoqueService');
+                                    await estoqueService.cancelarPedido(pedidoLocal.id);
+                                } catch (eCan) {
+                                    console.error(`[Sync CA] Erro ao estornar estoque pedido #${pedidoLocal.numero}:`, eCan.message);
+                                }
+                            }
                             console.log(`🗑️ Pedido Local ${pedidoLocal.id} marcado como EXCLUIDO (Refletindo CA)`);
                             count++;
                         }

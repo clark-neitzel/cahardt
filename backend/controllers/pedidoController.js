@@ -561,6 +561,11 @@ const pedidoController = {
                     console.error(`[consultarCA] Erro ao faturar estoque pedido ${id}:`, e.message);
                 }
             }
+            if (statusEnvioFinal === 'EXCLUIDO' && pedido.statusEnvio === 'RECEBIDO') {
+                try { await estoqueService.cancelarPedido(id); } catch (e) {
+                    console.error(`[consultarCA] Erro ao estornar estoque pedido ${id}:`, e.message);
+                }
+            }
 
             res.json({
                 message: `Situação atualizada: ${situacaoNome || 'EXCLUIDO'}`,
@@ -571,10 +576,16 @@ const pedidoController = {
             const status = error.response?.status;
             if (status === 404) {
                 try {
+                    const pedidoAtual = await prisma.pedido.findUnique({ where: { id: req.params.id }, select: { statusEnvio: true } });
                     await prisma.pedido.update({
                         where: { id: req.params.id },
                         data: { statusEnvio: 'EXCLUIDO', situacaoCA: 'EXCLUIDO', revisaoPendente: true, contaAzulUpdatedAt: new Date() }
                     });
+                    if (pedidoAtual?.statusEnvio === 'RECEBIDO') {
+                        try { await estoqueService.cancelarPedido(req.params.id); } catch (e) {
+                            console.error('[consultarCA 404] Erro estorno:', e.message);
+                        }
+                    }
                 } catch (_) { }
                 return res.json({ message: 'Pedido não existe mais no CA — marcado como EXCLUIDO.', situacaoCA: 'EXCLUIDO', statusEnvio: 'EXCLUIDO' });
             }

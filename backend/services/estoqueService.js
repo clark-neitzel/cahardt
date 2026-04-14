@@ -172,6 +172,68 @@ const estoqueService = {
         return resultados;
     },
 
+    // Credita estoque de volta quando um pedido faturado é cancelado/excluído no CA.
+    // Idempotente: se já existe movimentação CANCELAMENTO_CA para este pedido, ignora.
+    cancelarPedido: async (pedidoId) => {
+        const jaCreditado = await prisma.movimentacaoEstoque.findFirst({
+            where: { pedidoId, motivo: 'CANCELAMENTO_CA' },
+            select: { id: true }
+        });
+        if (jaCreditado) return [];
+
+        const pedido = await prisma.pedido.findUnique({
+            where: { id: pedidoId },
+            include: {
+                itens: { include: { produto: { select: { id: true, nome: true, estoqueTotal: true, categoria: true } } } }
+            }
+        });
+        if (!pedido) return [];
+
+        const produtosAfetados = new Set();
+        const resultados = [];
+
+        await prisma.$transaction(async (tx) => {
+            for (const item of pedido.itens) {
+                if (!item.produto) continue;
+                const controla = await categoriaControlaEstoque(item.produto.categoria, tx);
+                if (!controla) continue;
+
+                const qtd = parseFloat(item.quantidade || 0);
+                const totalAntes = parseFloat(item.produto.estoqueTotal || 0);
+                const totalDepois = totalAntes + qtd;
+
+                await tx.produto.update({
+                    where: { id: item.produtoId },
+                    data: { estoqueTotal: totalDepois }
+                });
+
+                await tx.movimentacaoEstoque.create({
+                    data: {
+                        produtoId: item.produtoId,
+                        pedidoId,
+                        tipo: 'ENTRADA',
+                        quantidade: qtd,
+                        motivo: 'CANCELAMENTO_CA',
+                        observacao: `Estorno por cancelamento pedido #${pedido.numero || pedidoId}`,
+                        estoqueAntes: totalAntes,
+                        estoqueDepois: totalDepois,
+                        sincCA: false,
+                        erroCA: null
+                    }
+                });
+
+                produtosAfetados.add(item.produtoId);
+                resultados.push({ produtoId: item.produtoId, nome: item.produto.nome, totalAntes, totalDepois });
+            }
+
+            for (const pid of produtosAfetados) {
+                await recalcularEstoqueProduto(pid, tx);
+            }
+        });
+
+        return resultados;
+    },
+
     // Credita itens devolvidos de volta ao estoque (ENTRADA com motivo DEVOLUCAO).
     // itens: [{ produtoId, quantidade }]
     creditarDevolucao: async (pedidoId, itens, vendedorId = null) => {
