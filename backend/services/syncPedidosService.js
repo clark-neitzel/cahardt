@@ -273,7 +273,19 @@ const syncPedidosService = {
                 condicao_pagamento: {
                     tipo_pagamento: tipoPagamentoCA,
                     id_conta_financeira: contaFinId,
-                    opcao_condicao_pagamento: pedido.opcaoCondicaoPagamento || "Personalizado",
+                    opcao_condicao_pagamento: (() => {
+                        // CA aceita apenas: "À vista", "Nx" (ex: 1x, 12x) ou dias (ex: "30", "30,60").
+                        const opc = (pedido.opcaoCondicaoPagamento || '').trim();
+                        const jaValido = /^À vista$/i.test(opc)
+                            || /^\d+x$/i.test(opc)
+                            || /^\d+(\s*,\s*\d+)*$/.test(opc);
+                        if (jaValido) return opc;
+                        if (qtdParcelas === 1 && intervaloDias === 0) return 'À vista';
+                        if (intervaloDias > 0) {
+                            return dueDayOffsets.filter(n => n > 0).join(',') || `${qtdParcelas}x`;
+                        }
+                        return `${qtdParcelas}x`;
+                    })(),
                     pagamento_a_vista: false, // Pode ser dinâmico em futuras issues
                     parcelas: []
                 }
