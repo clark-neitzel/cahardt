@@ -193,8 +193,12 @@ const syncPedidosService = {
                 ? offsetsFromOption
                 : Array.from({ length: qtdParcelas }, (_, index) => Math.max(0, intervaloDias) * (index + 1));
 
+            // Frete opcional — precisa somar ao total das parcelas (CA valida isso)
+            const valorFrete = Number(pedido.valorFrete || 0);
+            const totalComFrete = Number(totalPedido) + (valorFrete > 0 ? valorFrete : 0);
+
             // Divide o total em centavos para evitar drift de ponto flutuante.
-            const totalCentavos = Math.round(Number(totalPedido.toFixed(2)) * 100);
+            const totalCentavos = Math.round(Number(totalComFrete.toFixed(2)) * 100);
             const baseParcelaCentavos = Math.floor(totalCentavos / qtdParcelas);
             const remainderCentavos = totalCentavos - (baseParcelaCentavos * qtdParcelas);
 
@@ -291,8 +295,7 @@ const syncPedidosService = {
                 }
             };
 
-            // Frete opcional
-            const valorFrete = Number(pedido.valorFrete || 0);
+            // Frete opcional — envia ao CA (já foi incluído no total das parcelas acima)
             if (valorFrete > 0) {
                 payload.composicao_de_valor = { frete: Number(valorFrete.toFixed(2)) };
             }
