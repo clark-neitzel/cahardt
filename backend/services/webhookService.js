@@ -301,19 +301,28 @@ const webhookService = {
                 }
             }
 
-            // ── CLIENTE ── envia resumo + data em todas etapas pós-PEDIDO
+            // ── CLIENTE ──
+            // PRODUCAO: mensagem com resumo + data entrega
+            // SAINDO / ENTREGUE: só numero do pedido + etapa
             if (novaEtapa !== 'PEDIDO') {
                 const phone = formatPhone(pedido.cliente);
                 if (phone && pedido.cliente.recebeAvisoPedido !== false) {
-                    const mensagemCliente = [
-                        `Olá, *${nome}*! \uD83D\uDC4B`,
-                        '',
-                        `Seu pedido está *${etapaLabel}* \u2728`,
-                        '',
-                        resumo,
-                        '',
-                        'Obrigado pela preferência! \uD83D\uDE4F'
-                    ].join('\n');
+                    const numeroPedido = pedido.numero || pedidoId.slice(0, 8);
+                    const mensagemCliente = novaEtapa === 'PRODUCAO'
+                        ? [
+                            `Olá, *${nome}*! \uD83D\uDC4B`,
+                            '',
+                            `Seu pedido *#${numeroPedido}* está *${etapaLabel}* \u2728`,
+                            '',
+                            resumo,
+                            '',
+                            'Obrigado pela preferência! \uD83D\uDE4F'
+                        ].join('\n')
+                        : [
+                            `Olá, *${nome}*! \uD83D\uDC4B`,
+                            '',
+                            `Seu pedido *#${numeroPedido}* — *${etapaLabel}* \u2728`
+                        ].join('\n');
                     try {
                         await enviarWebhook(webhookUrl, {
                             phone, nome,
