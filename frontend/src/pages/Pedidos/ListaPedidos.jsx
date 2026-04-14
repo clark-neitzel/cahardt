@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import { API_URL } from '../../services/api';
@@ -13,7 +13,9 @@ const fmtNumero = (pedido) => pedido.bonificacao ? `BN#${pedido.numero}` : pedid
 
 const ListaPedidos = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { user } = useAuth();
+    const [highlightId, setHighlightId] = useState(null);
     
     // Filtros persistentes
     const [filtros, setFiltros] = useState(() => {
@@ -50,6 +52,27 @@ const ListaPedidos = () => {
     useEffect(() => {
         localStorage.setItem('pedidos_aba_ativa', abaAtiva);
     }, [abaAtiva]);
+
+    // Se chegou vindo de um novo pedido salvo, abre a aba correta e destaca
+    useEffect(() => {
+        const st = location.state;
+        if (!st || !st.highlightId) return;
+        const abaAlvo = st.bonificacao ? 'bonificacao' : st.especial ? 'especiais' : 'pedidos';
+        setAbaAtiva(abaAlvo);
+        setFiltroStatus('TODOS');
+        setHighlightId(st.highlightId);
+        navigate(location.pathname, { replace: true, state: null });
+    }, [location, navigate]);
+
+    useEffect(() => {
+        if (!highlightId || loading) return;
+        const el = document.getElementById(`pedido-row-${highlightId}`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        const t = setTimeout(() => setHighlightId(null), 4000);
+        return () => clearTimeout(t);
+    }, [highlightId, loading, pedidos]);
     const [aprovando, setAprovando] = useState(null);
     const [amostras, setAmostras] = useState([]);
     const [loadingAmostras, setLoadingAmostras] = useState(false);
@@ -354,7 +377,7 @@ const ListaPedidos = () => {
         'CANCELADA': 'bg-red-100 text-red-700',
     };
 
-    const StatusBadge = ({ status }) => {
+    const StatusBadge = ({ status, title }) => {
         const colors = {
             'ABERTO': 'bg-gray-100 text-gray-800',
             'ENVIAR': 'bg-blue-100 text-blue-800',
@@ -365,7 +388,10 @@ const ListaPedidos = () => {
         };
         const colorClass = colors[status] || 'bg-gray-100 text-gray-800';
         return (
-            <span className={`px-2 py-1 flex-shrink-0 inline-flex text-[10px] leading-tight font-semibold rounded-full ${colorClass}`}>
+            <span
+                className={`px-2 py-1 flex-shrink-0 inline-flex text-[10px] leading-tight font-semibold rounded-full ${colorClass} ${title ? 'cursor-help' : ''}`}
+                title={title || undefined}
+            >
                 {status}
             </span>
         );
@@ -876,7 +902,7 @@ const ListaPedidos = () => {
                                 if (filtroStatus === 'APROVADO') return p.situacaoCA === 'APROVADO' && p.situacaoCA !== 'FATURADO';
                                 return p.statusEnvio === filtroStatus && p.situacaoCA !== 'FATURADO' && p.situacaoCA !== 'APROVADO';
                             }).map((pedido) => (
-                                <div key={pedido.id} className="px-3 pt-3 pb-2 hover:bg-gray-50 transition-colors border-b border-gray-100 overflow-hidden">
+                                <div key={pedido.id} id={`pedido-row-${pedido.id}`} className={`px-3 pt-3 pb-2 hover:bg-gray-50 transition-colors border-b border-gray-100 overflow-hidden ${highlightId === pedido.id ? 'ring-2 ring-primary bg-yellow-50 animate-pulse' : ''}`}>
                                     {/* Linha 1: checkbox + número + cliente + valor */}
                                     <div className="flex items-start gap-2 mb-1">
                                         {pedido.situacaoCA === 'FATURADO' && (
@@ -914,7 +940,12 @@ const ListaPedidos = () => {
                                     {/* Linha 3: badges de status + botões de ação */}
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="flex flex-wrap items-center gap-1 min-w-0">
-                                            <StatusBadge status={pedido.statusEnvio} />
+                                            <StatusBadge status={pedido.statusEnvio} title={pedido.statusEnvio === 'ERRO' ? (pedido.erroEnvio || 'Sem detalhes do erro') : undefined} />
+                                            {pedido.statusEnvio === 'ERRO' && pedido.erroEnvio && (
+                                                <span className="text-[9px] text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded max-w-[220px] truncate" title={pedido.erroEnvio}>
+                                                    {pedido.erroEnvio}
+                                                </span>
+                                            )}
                                             {pedido.situacaoCA && (
                                                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border shadow-sm ${pedido.situacaoCA === 'FATURADO' ? 'text-green-700 bg-green-50 border-green-200' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
                                                     {pedido.especial ? '' : 'CA: '}{pedido.situacaoCA}
