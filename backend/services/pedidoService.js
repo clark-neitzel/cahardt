@@ -150,7 +150,8 @@ const pedidoService = {
             especial, // Pedido especial (sem nota)
             bonificacao, // Pedido bonificação (não vai pro CA, valor 0)
             itens, // array de objetos
-            statusEnvio // ABERTO ou ENVIAR
+            statusEnvio, // ABERTO ou ENVIAR
+            valorFrete
         } = dadosPedido;
 
         if (!clienteId || !itens || itens.length === 0) {
@@ -234,6 +235,7 @@ const pedidoService = {
                     canalOrigem,
                     usuarioLancamentoId: usuarioLancamentoId || undefined,
                     statusEnvio: statusEnvio || 'ABERTO',
+                    valorFrete: valorFrete != null && valorFrete !== '' ? Number(valorFrete) : null,
                     itens: {
                         create: itensData
                     }
@@ -315,7 +317,7 @@ const pedidoService = {
     },
 
     editar: async (id, dadosPedido) => {
-        const { clienteId, vendedorId, itens, statusEnvio, observacoes, dataVenda, opcaoCondicaoPagamento, nomeCondicaoPagamento, tipoPagamento, especial, bonificacao } = dadosPedido;
+        const { clienteId, vendedorId, itens, statusEnvio, observacoes, dataVenda, opcaoCondicaoPagamento, nomeCondicaoPagamento, tipoPagamento, especial, bonificacao, valorFrete } = dadosPedido;
 
         return await prisma.$transaction(async (tx) => {
             const pedidoAntigo = await tx.pedido.findUnique({
@@ -411,6 +413,7 @@ const pedidoService = {
                     erroEnvio: statusEnvio === 'ENVIAR' ? null : undefined,
                     dataVenda: dataVenda ? new Date(dataVenda) : new Date(),
                     usuarioLancamentoId: dadosPedido.usuarioLancamentoId || undefined,
+                    ...(valorFrete !== undefined ? { valorFrete: valorFrete != null && valorFrete !== '' ? Number(valorFrete) : null } : {}),
                     itens: {
                         create: novosItens
                     }

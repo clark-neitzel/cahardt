@@ -291,6 +291,12 @@ const syncPedidosService = {
                 }
             };
 
+            // Frete opcional
+            const valorFrete = Number(pedido.valorFrete || 0);
+            if (valorFrete > 0) {
+                payload.composicao_de_valor = { frete: Number(valorFrete.toFixed(2)) };
+            }
+
             // Adiciona Id de Vendedor se for um UUID valido (O CA rejeita se for null ou string aleatoria)
             const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
             if (vendedorIdCA && uuidRegex.test(vendedorIdCA)) {

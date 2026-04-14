@@ -136,6 +136,7 @@ const NovoPedido = () => {
     const [vendedorId, setVendedorId] = useState(null);
     const [condicaoPagamentoId, setCondicaoPagamentoId] = useState('');
     const [dataEntrega, setDataEntrega] = useState('');
+    const [valorFrete, setValorFrete] = useState('');
     const [dataSugerida, setDataSugerida] = useState('');
     const [isEncaixe, setIsEncaixe] = useState(false);
     const [observacoes, setObservacoes] = useState('');
@@ -237,6 +238,7 @@ const NovoPedido = () => {
                         setClienteId(pd.clienteId);
                         setObservacoes(pd.observacoes || '');
                         if (pd.dataVenda) setDataEntrega(pd.dataVenda.split('T')[0]);
+                        if (pd.valorFrete != null) setValorFrete(String(pd.valorFrete));
                         if (pd.canalOrigem) setCanalOrigem(pd.canalOrigem);
                         const cond = condicoesData.find(c => c.tipoPagamento === pd.tipoPagamento && c.opcaoCondicao === pd.opcaoCondicaoPagamento);
                         if (cond) setTimeout(() => setCondicaoPagamentoId(cond.idCondicao), 500);
@@ -782,6 +784,7 @@ const NovoPedido = () => {
             canalOrigem: canalOrigem || null,
             especial: !!especial,
             bonificacao: !!bonificacao,
+            valorFrete: valorFrete !== '' && Number(valorFrete) > 0 ? Number(valorFrete) : null,
             itens: itensLimpos
         };
 
@@ -1452,6 +1455,23 @@ const NovoPedido = () => {
                                         {clienteSelecionado?.Dia_de_entrega && (
                                             <p className="text-xs text-gray-400 mt-1">Dias do cliente: <b>{clienteSelecionado.Dia_de_entrega}</b></p>
                                         )}
+
+                                        <div className="mt-3">
+                                            <label className="text-xs text-gray-500 font-medium">Frete <span className="text-gray-400">(opcional)</span></label>
+                                            <div className="relative mt-0.5">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">R$</span>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    placeholder="0,00"
+                                                    className="w-full border border-gray-300 rounded-md p-2 pl-9 bg-white text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                    value={valorFrete}
+                                                    onChange={e => setValorFrete(e.target.value)}
+                                                />
+                                            </div>
+                                            <p className="text-[11px] text-gray-400 mt-0.5">Se informado, será enviado ao Conta Azul como frete da venda.</p>
+                                        </div>
                                     </div>
                                 )}
 
