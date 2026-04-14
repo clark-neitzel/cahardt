@@ -375,7 +375,9 @@ const DetalheCliente = () => {
                                 }
                                 if (item._tipo === 'PEDIDO') {
                                     const pedido = item;
-                                    const totalPedido = pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0;
+                                    const totalItens = pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0;
+                                    const freteValor = Number(pedido.valorFrete || 0);
+                                    const totalPedido = totalItens + freteValor;
 
                                     const fmtCanal = (c) => {
                                         switch (c) {
@@ -503,13 +505,23 @@ const DetalheCliente = () => {
                                                 </div>
                                             )}
 
+                                            {/* Frete */}
+                                            {freteValor > 0 && (
+                                                <div className="flex items-center justify-between text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded mt-1">
+                                                    <span className="flex items-center gap-1 font-semibold">
+                                                        <Package className="h-3 w-3 text-gray-400" /> Frete
+                                                    </span>
+                                                    <span className="font-semibold text-gray-800">R$ {freteValor.toFixed(2).replace('.', ',')}</span>
+                                                </div>
+                                            )}
+
                                             {/* Total e observações */}
                                             <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
                                                 {pedido.observacoes ? (
                                                     <p className="text-xs text-gray-500 italic flex-1 mr-3">{pedido.observacoes}</p>
                                                 ) : <span />}
                                                 <span className="text-sm font-bold text-blue-700 shrink-0">
-                                                    Total: R$ {totalPedido.toFixed(2).replace('.', ',')}
+                                                    Total: R$ {totalPedido.toFixed(2).replace('.', ',')}{freteValor > 0 ? ` (itens R$ ${totalItens.toFixed(2).replace('.', ',')} + frete R$ ${freteValor.toFixed(2).replace('.', ',')})` : ''}
                                                 </span>
                                             </div>
                                         </div>

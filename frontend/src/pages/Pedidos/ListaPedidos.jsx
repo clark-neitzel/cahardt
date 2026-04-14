@@ -943,7 +943,7 @@ const ListaPedidos = () => {
                                             {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'Cliente Desconhecido'}
                                         </h3>
                                         <span className="text-[13px] font-black text-gray-900 whitespace-nowrap shrink-0 ml-1">
-                                            R$ {Number(pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            R$ {Number((pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0) + Number(pedido.valorFrete || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
                                     </div>
 
@@ -1172,6 +1172,12 @@ const ListaPedidos = () => {
                                         <span className="font-bold whitespace-nowrap">R$ {(Number(item.quantidade) * Number(item.valor)).toFixed(2).replace('.', ',')}</span>
                                     </div>
                                 ))}
+                                {Number(selectedPedido.valorFrete) > 0 && (
+                                    <div className="flex justify-between text-sm py-1 border-t border-gray-200 mt-1 pt-2">
+                                        <span className="font-bold text-gray-700">Frete</span>
+                                        <span className="font-bold whitespace-nowrap text-gray-800">R$ {Number(selectedPedido.valorFrete).toFixed(2).replace('.', ',')}</span>
+                                    </div>
+                                )}
                             </div>
 
                             {selectedPedido.observacoes && (
@@ -1226,7 +1232,7 @@ const ListaPedidos = () => {
                         <div className="p-3 sm:p-4 border-t bg-gray-50 flex justify-between items-center gap-2">
                             <div className="min-w-0">
                                 <p className="text-[10px] uppercase font-bold text-gray-400 leading-none">Total Geral</p>
-                                <p className="text-xl sm:text-2xl font-black text-primary whitespace-nowrap">R$ {Number(selectedPedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                <p className="text-xl sm:text-2xl font-black text-primary whitespace-nowrap">R$ {Number((selectedPedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0) + Number(selectedPedido.valorFrete || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                             </div>
                             <div className="flex gap-2">
                                 <button
