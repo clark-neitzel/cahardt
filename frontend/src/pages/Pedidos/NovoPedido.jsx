@@ -775,11 +775,19 @@ const NovoPedido = () => {
         };
 
         try {
-            if (editId) await pedidoService.atualizar(editId, payload);
-            else await pedidoService.criar(payload);
+            let pedidoResult;
+            if (editId) pedidoResult = await pedidoService.atualizar(editId, payload);
+            else pedidoResult = await pedidoService.criar(payload);
 
             localStorage.removeItem('@CAHardt:NovoPedido_Draft');
-            navigate('/rotas');
+            const highlightId = pedidoResult?.id || (editId ? Number(editId) : null);
+            navigate('/pedidos', {
+                state: {
+                    highlightId,
+                    especial: !!especial,
+                    bonificacao: !!bonificacao,
+                }
+            });
         } catch (error) {
             toast.error(error.response?.data?.error || "Erro ao salvar pedido.", { duration: 6000, style: { maxWidth: "600px" } });
         } finally {
