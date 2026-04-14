@@ -221,6 +221,83 @@ router.post('/produto/:produtoId/recalcular', async (req, res) => {
     }
 });
 
+// POST /api/estoque/retroagir-capado — corrige movimentacoes que ficaram 0->0 pelo Math.max antigo
+router.post('/retroagir-capado', async (req, res) => {
+    try {
+        const permissoes = await getPermsFromDB(req.user.id);
+        if (!permissoes.admin) return res.status(403).json({ error: 'Apenas administradores.' });
+
+        const dry = req.query.dry === '1' || req.body?.dry === true;
+
+        const suspeitas = await prisma.movimentacaoEstoque.findMany({
+            where: { tipo: 'SAIDA', estoqueDepois: 0 },
+            select: { produtoId: true, estoqueAntes: true, quantidade: true }
+        });
+
+        const produtosAfetados = new Set();
+        for (const m of suspeitas) {
+            if (parseFloat(m.estoqueAntes) < parseFloat(m.quantidade)) {
+                produtosAfetados.add(m.produtoId);
+            }
+        }
+
+        let fixedMov = 0;
+        let fixedProd = 0;
+        const detalhes = [];
+
+        for (const produtoId of produtosAfetados) {
+            const movs = await prisma.movimentacaoEstoque.findMany({
+                where: { produtoId },
+                orderBy: { createdAt: 'asc' }
+            });
+
+            let saldo = 0;
+            for (const m of movs) {
+                const qtd = parseFloat(m.quantidade);
+                const antes = saldo;
+                const depois = m.tipo === 'ENTRADA' ? antes + qtd : antes - qtd;
+                if (parseFloat(m.estoqueAntes) !== antes || parseFloat(m.estoqueDepois) !== depois) {
+                    if (!dry) {
+                        await prisma.movimentacaoEstoque.update({
+                            where: { id: m.id },
+                            data: { estoqueAntes: antes, estoqueDepois: depois }
+                        });
+                    }
+                    fixedMov++;
+                }
+                saldo = depois;
+            }
+
+            const produto = await prisma.produto.findUnique({
+                where: { id: produtoId },
+                select: { id: true, nome: true, estoqueTotal: true }
+            });
+            const totalAtual = parseFloat(produto.estoqueTotal || 0);
+            if (totalAtual !== saldo) {
+                detalhes.push({ produto: produto.nome, de: totalAtual, para: saldo });
+                if (!dry) {
+                    await prisma.produto.update({
+                        where: { id: produtoId },
+                        data: { estoqueTotal: saldo }
+                    });
+                }
+                fixedProd++;
+            }
+        }
+
+        if (!dry) {
+            for (const produtoId of produtosAfetados) {
+                await estoqueService.recalcularEstoqueProduto(produtoId);
+            }
+        }
+
+        return res.json({ dry, produtosAfetados: produtosAfetados.size, fixedMov, fixedProd, detalhes });
+    } catch (err) {
+        console.error('[Estoque] Erro ao retroagir:', err);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/estoque/permissoes — retorna o que o usuário logado pode fazer
 router.get('/permissoes', async (req, res) => {
     const permissoes = await getPermsFromDB(req.user.id);
