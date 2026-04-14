@@ -50,6 +50,7 @@ import CalendarioProducao from './pages/PCP/CalendarioProducao';
 import SugestoesProducao from './pages/PCP/SugestoesProducao';
 import DashboardPcp from './pages/PCP/DashboardPcp';
 import DeliveryKanban from './pages/Delivery/DeliveryKanban';
+import DeliveryConfig from './pages/Delivery/DeliveryConfig';
 
 import {
   Menu, X, LogOut, ChevronDown,
@@ -435,6 +436,7 @@ function App() {
 
               {/* Delivery (Kit Festa) */}
               <Route path="/delivery" element={<PrivateRoute tab="delivery"><DeliveryKanban /></PrivateRoute>} />
+              <Route path="/delivery/config" element={<PrivateRoute><DeliveryConfig /></PrivateRoute>} />
 
               {/* Rota / Leads (CRM) */}
               <Route path="/rota" element={<PrivateRoute tab="pedidos"><RotaLeads /></PrivateRoute>} />

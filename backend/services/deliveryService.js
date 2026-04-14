@@ -58,11 +58,21 @@ const deliveryService = {
         const etapas = Array.isArray(etapasPermitidas)
             ? etapasPermitidas.filter(e => ETAPAS.includes(e))
             : [];
-        return await prisma.deliveryPermissao.upsert({
+        const salvo = await prisma.deliveryPermissao.upsert({
             where: { vendedorId },
             update: { podeVer: !!podeVer, etapasPermitidas: etapas },
             create: { vendedorId, podeVer: !!podeVer, etapasPermitidas: etapas }
         });
+
+        // Propaga pro vendedor.permissoes.delivery para o menu lateral aparecer
+        const vendedor = await prisma.vendedor.findUnique({ where: { id: vendedorId }, select: { permissoes: true } });
+        const permissoesAtuais = (vendedor?.permissoes && typeof vendedor.permissoes === 'object') ? vendedor.permissoes : {};
+        await prisma.vendedor.update({
+            where: { id: vendedorId },
+            data: { permissoes: { ...permissoesAtuais, delivery: !!podeVer } }
+        });
+
+        return salvo;
     },
 
     // Retorna a permissão efetiva do usuário (admin vê tudo).
