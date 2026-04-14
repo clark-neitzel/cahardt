@@ -76,6 +76,15 @@ module.exports = {
         }
     },
 
+    reenviar: async (req, res) => {
+        try {
+            const out = await deliveryService.reenviarNotificacao({ pedidoId: req.params.pedidoId, user: req.user });
+            res.json(out);
+        } catch (err) {
+            res.status(400).json({ error: err.message });
+        }
+    },
+
     diagnosticar: async (req, res) => {
         try {
             const out = await deliveryService.diagnosticar(req.params.numeroOuId);

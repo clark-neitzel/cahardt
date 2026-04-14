@@ -150,7 +150,10 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                             <DataRow label="Telefone" value={isLead ? cliente.whatsapp : cliente.Telefone} icon={Phone} />
                             <DataRow label="Celular" value={!isLead ? cliente.Telefone_Celular : null} icon={Phone} />
                             <DataRow label="WhatsApp" value={!isLead ? cliente.Telefone_Celular || cliente.Telefone : null} icon={Phone} />
-                            <DataRow label="E-mail" value={!isLead ? cliente.Email : cliente.contato} icon={Mail} />
+                            {isLead
+                                ? <DataRow label="Responsável" value={cliente.contato} icon={Mail} />
+                                : <DataRow label="E-mail" value={cliente.Email} icon={Mail} />
+                            }
                         </div>
                     </div>
 

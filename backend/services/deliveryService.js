@@ -235,6 +235,7 @@ const deliveryService = {
     },
 
     // ── Movimentar etapa ──
+    // Permite avançar e retroceder. Admin sempre pode; vendedor precisa ter a etapa destino permitida.
     moverEtapa: async ({ pedidoId, novaEtapa, user }) => {
         if (!ETAPAS.includes(novaEtapa)) {
             throw new Error('Etapa inválida.');
@@ -248,17 +249,31 @@ const deliveryService = {
 
         const atual = await prisma.deliveryStatus.findUnique({ where: { pedidoId } });
         if (!atual) throw new Error('Pedido não está no fluxo de Delivery.');
-        if (atual.etapa === 'ENTREGUE') {
-            throw new Error('Pedido já entregue — card bloqueado.');
-        }
+        if (atual.etapa === novaEtapa) return atual;
 
         const atualizado = await prisma.deliveryStatus.update({
             where: { pedidoId },
             data: { etapa: novaEtapa, etapaAt: new Date() }
         });
 
-        // Notificações ficam para a Entrega 3 (webhook bot + whatsapp)
+        // Dispara webhook bot + WhatsApp cliente (detached, não trava a resposta)
+        setTimeout(() => {
+            const webhookService = require('./webhookService');
+            webhookService.notificarDelivery(pedidoId, novaEtapa)
+                .catch(err => console.error('[Delivery] webhook falhou:', err.message));
+        }, 0);
+
         return atualizado;
+    },
+
+    // Reenvia a notificação da etapa atual (bot + whatsapp cliente)
+    reenviarNotificacao: async ({ pedidoId, user }) => {
+        const perm = await deliveryService.permissaoDoUsuario(user);
+        if (!perm.podeVer) throw new Error('Sem permissão para Delivery.');
+        const status = await prisma.deliveryStatus.findUnique({ where: { pedidoId } });
+        if (!status) throw new Error('Pedido não está no fluxo.');
+        const webhookService = require('./webhookService');
+        return await webhookService.notificarDelivery(pedidoId, status.etapa);
     },
 
     // Diagnóstico: por que esse pedido aparece (ou não) no Kanban?

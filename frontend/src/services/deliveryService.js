@@ -21,7 +21,9 @@ const deliveryService = {
 
     listarPedidos: async () => (await api.get('/delivery/pedidos')).data,
     moverEtapa: async (pedidoId, novaEtapa) =>
-        (await api.patch(`/delivery/pedidos/${pedidoId}/etapa`, { novaEtapa })).data
+        (await api.patch(`/delivery/pedidos/${pedidoId}/etapa`, { novaEtapa })).data,
+    reenviar: async (pedidoId) =>
+        (await api.post(`/delivery/pedidos/${pedidoId}/reenviar`)).data
 };
 
 export default deliveryService;

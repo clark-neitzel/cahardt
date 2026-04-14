@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { MessageCircle, ArrowRight, Settings, Lock, RefreshCw } from 'lucide-react';
+import { MessageCircle, ArrowRight, ArrowLeft, Settings, RefreshCw, Send } from 'lucide-react';
 import deliveryService from '../../services/deliveryService';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -26,6 +26,10 @@ const whatsappLink = (telefone) => {
 const proximaEtapa = (etapa) => {
     const idx = ETAPAS.indexOf(etapa);
     return idx >= 0 && idx < ETAPAS.length - 1 ? ETAPAS[idx + 1] : null;
+};
+const etapaAnterior = (etapa) => {
+    const idx = ETAPAS.indexOf(etapa);
+    return idx > 0 ? ETAPAS[idx - 1] : null;
 };
 
 export default function DeliveryKanban() {
@@ -66,6 +70,19 @@ export default function DeliveryKanban() {
             await carregar();
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao mover.');
+        } finally {
+            setMoving(null);
+        }
+    };
+
+    const reenviar = async (card) => {
+        setMoving(card.id);
+        try {
+            const r = await deliveryService.reenviar(card.id);
+            if (r.ok) toast.success('Mensagem reenviada');
+            else toast.error(r.motivo || 'Falha ao reenviar.');
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao reenviar.');
         } finally {
             setMoving(null);
         }
@@ -112,6 +129,7 @@ export default function DeliveryKanban() {
                                         perm={perm}
                                         moving={moving === card.id}
                                         onMover={mover}
+                                        onReenviar={reenviar}
                                     />
                                 ))}
                                 {!(buckets[etapa] || []).length && (
@@ -126,7 +144,7 @@ export default function DeliveryKanban() {
     );
 }
 
-function Card({ card, perm, moving, onMover }) {
+function Card({ card, perm, moving, onMover, onReenviar }) {
     const tel = card.cliente?.Telefone_Celular || card.cliente?.Telefone;
     const wa = whatsappLink(tel);
     const end = [
@@ -137,8 +155,9 @@ function Card({ card, perm, moving, onMover }) {
     ].filter(Boolean).join(', ');
 
     const prox = proximaEtapa(card.etapa);
-    const podeMover = prox && (perm.admin || perm.etapasPermitidas?.includes(prox));
-    const bloqueado = card.etapa === 'ENTREGUE';
+    const ant = etapaAnterior(card.etapa);
+    const podeAvancar = prox && (perm.admin || perm.etapasPermitidas?.includes(prox));
+    const podeVoltar = ant && (perm.admin || perm.etapasPermitidas?.includes(ant));
 
     const dataVenda = card.dataVenda ? new Date(card.dataVenda) : null;
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
@@ -159,11 +178,21 @@ function Card({ card, perm, moving, onMover }) {
                     </div>
                     {card.numero && <div className="text-[10px] text-gray-400">Pedido #{card.numero}</div>}
                 </div>
-                {wa && (
-                    <a href={wa} target="_blank" rel="noreferrer" className="text-green-600 hover:text-green-700 shrink-0">
-                        <MessageCircle className="h-4 w-4" />
-                    </a>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                    <button
+                        onClick={() => onReenviar(card)}
+                        disabled={moving}
+                        title="Reenviar mensagem da etapa atual"
+                        className="text-blue-600 hover:text-blue-700 disabled:opacity-40"
+                    >
+                        <Send className="h-4 w-4" />
+                    </button>
+                    {wa && (
+                        <a href={wa} target="_blank" rel="noreferrer" className="text-green-600 hover:text-green-700">
+                            <MessageCircle className="h-4 w-4" />
+                        </a>
+                    )}
+                </div>
             </div>
 
             {end && <div className="text-gray-600 text-[11px] leading-tight">{end}</div>}
@@ -198,21 +227,33 @@ function Card({ card, perm, moving, onMover }) {
                 {atrasado && <span className="text-[10px] font-bold text-red-600">ATRASADO</span>}
             </div>
 
-            {bloqueado ? (
-                <div className="flex items-center justify-center gap-1 text-[11px] text-gray-400 pt-1 border-t">
-                    <Lock className="h-3 w-3" /> Entregue — bloqueado
-                </div>
-            ) : prox && (
-                <button
-                    onClick={() => onMover(card, prox)}
-                    disabled={!podeMover || moving}
-                    className={`w-full flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                        podeMover ? 'bg-primary text-white hover:opacity-90' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    }`}
-                >
-                    {moving ? '...' : <>→ {LABELS[prox]} <ArrowRight className="h-3 w-3" /></>}
-                </button>
-            )}
+            <div className="flex gap-1 pt-1 border-t">
+                {ant && (
+                    <button
+                        onClick={() => onMover(card, ant)}
+                        disabled={!podeVoltar || moving}
+                        title={`Voltar para ${LABELS[ant]}`}
+                        className={`px-2 py-1.5 rounded-md text-xs transition-colors ${
+                            podeVoltar ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                        }`}
+                    >
+                        <ArrowLeft className="h-3 w-3" />
+                    </button>
+                )}
+                {prox ? (
+                    <button
+                        onClick={() => onMover(card, prox)}
+                        disabled={!podeAvancar || moving}
+                        className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                            podeAvancar ? 'bg-primary text-white hover:opacity-90' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        }`}
+                    >
+                        {moving ? '...' : <>→ {LABELS[prox]} <ArrowRight className="h-3 w-3" /></>}
+                    </button>
+                ) : (
+                    <div className="flex-1 text-center text-[11px] text-green-700 font-semibold py-1.5">Entregue ✓</div>
+                )}
+            </div>
         </div>
     );
 }

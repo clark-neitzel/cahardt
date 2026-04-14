@@ -17,5 +17,6 @@ router.get('/debug/:numeroOuId', ctrl.diagnosticar);
 // Kanban
 router.get('/pedidos', ctrl.listarPedidos);
 router.patch('/pedidos/:pedidoId/etapa', ctrl.moverEtapa);
+router.post('/pedidos/:pedidoId/reenviar', ctrl.reenviar);
 
 module.exports = router;

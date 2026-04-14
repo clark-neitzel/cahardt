@@ -216,6 +216,124 @@ const webhookService = {
             console.error('[Webhook] Erro amostra:', error.message);
             return { ok: false, motivo: error.message };
         }
+    },
+
+    /**
+     * Notifica movimentação de etapa no Delivery (Kit Festa).
+     * Envia pro Bot interno (se configurado em delivery_bot_phone)
+     * e pro cliente via WhatsApp. Log salvo em delivery_webhook_logs.
+     */
+    notificarDelivery: async (pedidoId, novaEtapa) => {
+        const ETAPAS_LABEL = {
+            PEDIDO: 'Pedido Criado',
+            PRODUCAO: 'Em Produção',
+            SAINDO: 'Saindo para Entrega',
+            ENTREGUE: 'Entregue'
+        };
+
+        const registrarLog = async (destino, status, mensagem) => {
+            try {
+                await prisma.deliveryWebhookLog.create({
+                    data: { pedidoId, etapa: novaEtapa, destino, status, mensagem: (mensagem || '').slice(0, 500) }
+                });
+            } catch (e) { console.error('[Delivery-Webhook] log fail:', e.message); }
+        };
+
+        try {
+            const webhookUrl = await getWebhookUrl();
+            if (!webhookUrl) return { ok: false, motivo: 'Webhook não configurado' };
+
+            const pedido = await prisma.pedido.findUnique({
+                where: { id: pedidoId },
+                include: {
+                    cliente: true,
+                    itens: { include: { produto: { select: { nome: true } } } }
+                }
+            });
+            if (!pedido || !pedido.cliente) return { ok: false, motivo: 'Pedido/cliente não encontrado' };
+
+            const nome = pedido.cliente.NomeFantasia || pedido.cliente.Nome;
+            const etapaLabel = ETAPAS_LABEL[novaEtapa] || novaEtapa;
+
+            const linhasItens = pedido.itens.map(i => {
+                const nomeProd = i.produto?.nome || 'Produto';
+                const qtd = Number(i.quantidade);
+                const valorUn = Number(i.valor || 0).toFixed(2).replace('.', ',');
+                return `\`${nomeProd}\`\n${qtd} un x R$ ${valorUn}`;
+            }).join('\n\n');
+            const total = pedido.itens.reduce((s, i) => s + Number(i.valor || 0) * Number(i.quantidade), 0) + Number(pedido.valorFrete || 0);
+            const totalStr = total.toFixed(2).replace('.', ',');
+
+            const resumoPartes = [
+                `\uD83D\uDCC5 *Entrega:* ${formatDateMsg(pedido.dataVenda)}`,
+                '',
+                '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+                linhasItens,
+            ];
+            if (Number(pedido.valorFrete || 0) > 0) {
+                resumoPartes.push(`\n\`Frete\`\nR$ ${Number(pedido.valorFrete).toFixed(2).replace('.', ',')}`);
+            }
+            resumoPartes.push('\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+            resumoPartes.push('', `\uD83D\uDCB0 *Total: R$ ${totalStr}*`);
+            const resumo = resumoPartes.join('\n');
+
+            // ── BOT (interno) ──
+            // Resumo completo em PRODUCAO; só etapa nas demais.
+            const botConfig = await prisma.appConfig.findUnique({ where: { key: 'delivery_bot_phone' } });
+            const botPhoneRaw = botConfig?.value;
+            const botPhone = typeof botPhoneRaw === 'string' ? botPhoneRaw.replace(/\D/g, '') : null;
+
+            if (botPhone) {
+                const cabecalhoBot = `\uD83D\uDE9A *DELIVERY — ${etapaLabel}*\nPedido #${pedido.numero || pedidoId.slice(0, 8)} — ${nome}`;
+                const mensagemBot = novaEtapa === 'PRODUCAO'
+                    ? `${cabecalhoBot}\n\n${resumo}`
+                    : cabecalhoBot;
+                try {
+                    await enviarWebhook(webhookUrl, {
+                        phone: botPhone,
+                        nome: 'Bot Delivery',
+                        mensagem: mensagemBot,
+                        total: totalStr
+                    });
+                    await registrarLog('BOT', 'OK', `Etapa ${novaEtapa}`);
+                } catch (e) {
+                    await registrarLog('BOT', 'ERRO', e.message);
+                }
+            }
+
+            // ── CLIENTE ── envia resumo + data em todas etapas pós-PEDIDO
+            if (novaEtapa !== 'PEDIDO') {
+                const phone = formatPhone(pedido.cliente);
+                if (phone && pedido.cliente.recebeAvisoPedido !== false) {
+                    const mensagemCliente = [
+                        `Olá, *${nome}*! \uD83D\uDC4B`,
+                        '',
+                        `Seu pedido está *${etapaLabel}* \u2728`,
+                        '',
+                        resumo,
+                        '',
+                        'Obrigado pela preferência! \uD83D\uDE4F'
+                    ].join('\n');
+                    try {
+                        await enviarWebhook(webhookUrl, {
+                            phone, nome,
+                            mensagem: mensagemCliente,
+                            data_entrega: formatDate(pedido.dataVenda),
+                            total: totalStr
+                        });
+                        await registrarLog('WHATSAPP', 'OK', `Etapa ${novaEtapa}`);
+                        console.log(`[Delivery-Webhook] Cliente ${nome} (${phone}) - ${novaEtapa}`);
+                    } catch (e) {
+                        await registrarLog('WHATSAPP', 'ERRO', e.message);
+                    }
+                }
+            }
+
+            return { ok: true };
+        } catch (error) {
+            console.error('[Delivery-Webhook] Erro:', error.message);
+            return { ok: false, motivo: error.message };
+        }
     }
 };
 
