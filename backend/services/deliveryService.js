@@ -257,6 +257,39 @@ const deliveryService = {
         return atualizado;
     },
 
+    // Diagnóstico: por que esse pedido aparece (ou não) no Kanban?
+    diagnosticar: async (numeroOuId) => {
+        const whereId = /^[0-9a-f-]{36}$/i.test(String(numeroOuId))
+            ? { id: numeroOuId }
+            : { numero: parseInt(numeroOuId) };
+        const pedido = await prisma.pedido.findFirst({
+            where: whereId,
+            include: {
+                itens: { include: { produto: { select: { nome: true, categoria: true } } } }
+            }
+        });
+        if (!pedido) return { encontrado: false, motivo: 'Pedido não encontrado' };
+
+        const categoriasAtivas = await deliveryService._categoriasAtivasNomes();
+        const status = await prisma.deliveryStatus.findUnique({ where: { pedidoId: pedido.id } });
+        const itensCategorias = pedido.itens.map(i => ({
+            produto: i.produto?.nome,
+            categoria: i.produto?.categoria
+        }));
+        const temItemElegivel = pedido.itens.some(i => categoriasAtivas.includes(i.produto?.categoria));
+
+        return {
+            encontrado: true,
+            pedidoId: pedido.id,
+            numero: pedido.numero,
+            categoriasAtivas,
+            itensCategorias,
+            temItemElegivel,
+            deliveryStatus: status,
+            noKanban: !!status && temItemElegivel
+        };
+    },
+
     // ── Trigger: ao criar pedido, se tiver item de categoria ativa, cria delivery_status ──
     garantirStatusParaPedido: async (pedidoId) => {
         const categoriasAtivas = await deliveryService._categoriasAtivasNomes();

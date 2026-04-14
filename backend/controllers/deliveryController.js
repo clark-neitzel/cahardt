@@ -76,6 +76,15 @@ module.exports = {
         }
     },
 
+    diagnosticar: async (req, res) => {
+        try {
+            const out = await deliveryService.diagnosticar(req.params.numeroOuId);
+            res.json(out);
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    },
+
     moverEtapa: async (req, res) => {
         try {
             const { novaEtapa } = req.body;

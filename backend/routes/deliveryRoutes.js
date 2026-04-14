@@ -11,6 +11,9 @@ router.put('/config/permissoes/:vendedorId', ctrl.salvarPermissao);
 // Permissão do usuário atual
 router.get('/me', ctrl.minhaPermissao);
 
+// Diagnóstico
+router.get('/debug/:numeroOuId', ctrl.diagnosticar);
+
 // Kanban
 router.get('/pedidos', ctrl.listarPedidos);
 router.patch('/pedidos/:pedidoId/etapa', ctrl.moverEtapa);
