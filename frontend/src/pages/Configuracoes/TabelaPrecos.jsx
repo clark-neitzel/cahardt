@@ -70,11 +70,47 @@ const TabelaPrecos = () => {
         });
     };
 
+    const calcularProximoId = () => {
+        const ids = condicoes
+            .map(c => parseInt(c.id, 10))
+            .filter(n => !isNaN(n));
+        if (ids.length === 0) return '1001';
+        return String(Math.max(...ids) + 1);
+    };
+
+    const handleCopiarDe = (sourceId) => {
+        if (!sourceId) return;
+        const origem = condicoes.find(c => String(c.id) === String(sourceId));
+        if (!origem) return;
+        setEditForm(prev => ({
+            ...prev,
+            tipoPagamento: origem.tipoPagamento || '',
+            opcaoCondicao: origem.opcaoCondicao || '',
+            qtdParcelas: origem.qtdParcelas || 1,
+            parcelasDias: origem.parcelasDias || 0,
+            exigeBanco: origem.exigeBanco || false,
+            bancoPadrao: origem.bancoPadrao || '',
+            acrescimoPreco: origem.acrescimoPreco || 0,
+            valorMinimo: origem.valorMinimo || 0,
+            debitaCaixa: origem.debitaCaixa || false,
+            permiteEspecial: origem.permiteEspecial || false,
+            permiteBonificacao: origem.permiteBonificacao || false,
+            permitePedido: origem.permitePedido !== undefined ? origem.permitePedido : true,
+            categoriasEspecial: origem.categoriasEspecial || [],
+            regrasCategoria: origem.regrasCategoria || [],
+            formasRecebimentoPermitidas: origem.formasRecebimentoPermitidas || [],
+            permiteDevolucaoTotal: origem.permiteDevolucaoTotal !== undefined ? origem.permiteDevolucaoTotal : true,
+            permiteDevolucaoParcial: origem.permiteDevolucaoParcial !== undefined ? origem.permiteDevolucaoParcial : true,
+        }));
+        toast.success(`Dados copiados de "${origem.nomeCondicao}"`);
+    };
+
     const handleNewClick = () => {
         setIsCreating(true);
+        const proximoId = calcularProximoId();
         setEditingItem({ id: '', idCondicao: '' });
         setEditForm({
-            id: '',
+            id: proximoId,
             idCondicao: '',
             nomeCondicao: '',
             tipoPagamento: '',
@@ -348,6 +384,27 @@ const TabelaPrecos = () => {
 
                         {/* Body */}
                         <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+
+                            {/* Copiar de outra condição (só na criação) */}
+                            {isCreating && condicoes.length > 0 && (
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                        Copiar dados de outra condição <span className="font-normal text-gray-400">(opcional)</span>
+                                    </label>
+                                    <select
+                                        className="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 px-3 bg-white text-gray-900 font-medium"
+                                        defaultValue=""
+                                        onChange={(e) => { handleCopiarDe(e.target.value); e.target.value = ''; }}
+                                    >
+                                        <option value="">Selecione para copiar...</option>
+                                        {condicoes.map(c => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.idCondicao} — {c.nomeCondicao}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
 
                             {/* ID e Código (só na criação) */}
                             {isCreating && (
