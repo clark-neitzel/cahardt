@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, AlertTriangle, CheckCircle, Package, X, ChevronDown, Pencil, Check, Loader2, TrendingDown, PackageX, RotateCcw } from 'lucide-react';
+import { Search, AlertTriangle, CheckCircle, Package, X, ChevronDown, Pencil, Check, Loader2, TrendingDown, PackageX } from 'lucide-react';
 import toast from 'react-hot-toast';
 import estoqueService from '../../services/estoqueService';
 import categoriaProdutoService from '../../services/categoriaProdutoService';
@@ -397,34 +397,12 @@ export default function PosicaoEstoque() {
                         <h1 className="text-xl font-bold text-gray-900">Posição de Estoque</h1>
                         <p className="text-sm text-gray-500 mt-0.5">Produção / Posição</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        {isAdmin && (
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    const dryResp = await api.post('/estoque/retroagir-capado?dry=1').catch(e => ({ error: e }));
-                                    if (dryResp.error) { toast.error('Falha no dry-run: ' + (dryResp.error.response?.data?.error || dryResp.error.message)); return; }
-                                    const { produtosAfetados, fixedMov, fixedProd } = dryResp.data;
-                                    if (produtosAfetados === 0) { toast.success('Nenhuma movimentação capada encontrada.'); return; }
-                                    if (!confirm(`Retroagir ${fixedMov} movimentações em ${produtosAfetados} produto(s)? ${fixedProd} produto(s) terão estoqueTotal ajustado.`)) return;
-                                    const r = await api.post('/estoque/retroagir-capado').catch(e => ({ error: e }));
-                                    if (r.error) { toast.error('Falha: ' + (r.error.response?.data?.error || r.error.message)); return; }
-                                    toast.success(`OK: ${r.data.fixedMov} movs e ${r.data.fixedProd} produtos corrigidos.`);
-                                }}
-                                title="Retroagir movimentações antigas que foram capadas em 0"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 bg-white hover:bg-gray-50"
-                            >
-                                <RotateCcw className="h-3.5 w-3.5" />
-                                Retroagir capados
-                            </button>
-                        )}
-                        {abaixoMinimo > 0 && (
-                            <div className="flex items-center gap-1.5 bg-amber-100 text-amber-700 text-sm font-medium px-3 py-1.5 rounded-full">
-                                <AlertTriangle className="h-4 w-4" />
-                                {abaixoMinimo} abaixo do mínimo
-                            </div>
-                        )}
-                    </div>
+                    {abaixoMinimo > 0 && (
+                        <div className="flex items-center gap-1.5 bg-amber-100 text-amber-700 text-sm font-medium px-3 py-1.5 rounded-full">
+                            <AlertTriangle className="h-4 w-4" />
+                            {abaixoMinimo} abaixo do mínimo
+                        </div>
+                    )}
                 </div>
 
                 {/* Barra fixa: busca + atalhos */}
