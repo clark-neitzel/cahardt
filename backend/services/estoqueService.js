@@ -39,7 +39,7 @@ async function recalcularEstoqueProduto(produtoId, tx) {
 
     const reservado = parseFloat(reservaResult._sum.quantidade || 0);
     const total = parseFloat(produto.estoqueTotal || 0);
-    const disponivel = Math.max(0, total - reservado);
+    const disponivel = total - reservado;
 
     await db.produto.update({
         where: { id: produtoId },
@@ -137,7 +137,7 @@ const estoqueService = {
 
                 const qtd = parseFloat(item.quantidade || 0);
                 const totalAntes = parseFloat(item.produto.estoqueTotal || 0);
-                const totalDepois = Math.max(0, totalAntes - qtd);
+                const totalDepois = totalAntes - qtd;
 
                 await tx.produto.update({
                     where: { id: item.produtoId },
@@ -245,7 +245,7 @@ const estoqueService = {
 
                 const qtd = parseFloat(item.quantidade || 0);
                 const totalAntes = parseFloat(produto.estoqueTotal || 0);
-                const totalDepois = Math.max(0, totalAntes - qtd);
+                const totalDepois = totalAntes - qtd;
 
                 await tx.produto.update({
                     where: { id: item.produtoId },
