@@ -414,6 +414,29 @@ const ListaPedidos = () => {
         else setSelecionados(new Set(ids));
     };
 
+    const [consultandoCA, setConsultandoCA] = useState(new Set());
+    const handleConsultarCA = async (pedido) => {
+        if (!pedido?.idVendaContaAzul) {
+            toast.error('Pedido ainda não foi enviado ao CA.');
+            return;
+        }
+        setConsultandoCA(prev => new Set(prev).add(pedido.id));
+        try {
+            const res = await pedidoService.consultarCA(pedido.id);
+            toast.success(res.message || 'Situação atualizada');
+            setPedidos(prev => prev.map(p => p.id === pedido.id ? { ...p, situacaoCA: res.situacaoCA, statusEnvio: res.statusEnvio } : p));
+            if (selectedPedido?.id === pedido.id) {
+                setSelectedPedido(prev => ({ ...prev, situacaoCA: res.situacaoCA, statusEnvio: res.statusEnvio }));
+            }
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao consultar CA');
+        } finally {
+            setConsultandoCA(prev => {
+                const n = new Set(prev); n.delete(pedido.id); return n;
+            });
+        }
+    };
+
     const handlePrintPedido = async (pedido) => {
         try {
             await pedidoService.registrarImpressao(pedido.id);
@@ -967,6 +990,16 @@ const ListaPedidos = () => {
                                             >
                                                 {getWsStatus(pedido.id) === 'enviando' ? <Loader2 className="h-4 w-4 animate-spin" /> : getWsStatus(pedido.id) === 'ok' ? <CheckCircle className="h-4 w-4" /> : getWsStatus(pedido.id) === 'erro' ? <XCircle className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
                                             </button>
+                                            {pedido.idVendaContaAzul && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleConsultarCA(pedido); }}
+                                                    disabled={consultandoCA.has(pedido.id)}
+                                                    className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-gray-100 disabled:opacity-50"
+                                                    title="Consultar situação no Conta Azul"
+                                                >
+                                                    {consultandoCA.has(pedido.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                                </button>
+                                            )}
                                             {pedido.situacaoCA === 'FATURADO' && (
                                                 <button onClick={(e) => { e.stopPropagation(); handlePrintPedido(pedido); }} className="p-1.5 text-gray-400 hover:text-purple-600 rounded hover:bg-gray-100" title="Imprimir Pedido"><Printer className="h-4 w-4" /></button>
                                             )}

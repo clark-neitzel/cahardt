@@ -53,4 +53,7 @@ router.put('/:id/reatribuir-vendedor', pedidoController.reatribuirVendedor);
 // Registrar Impressão de Pedido ou Especial
 router.put('/:id/impresso', pedidoController.registrarImpressao);
 
+// Consultar situação atual no Conta Azul (GET /v1/venda/{id}) e atualizar local
+router.post('/:id/consultar-ca', pedidoController.consultarCA);
+
 module.exports = router;

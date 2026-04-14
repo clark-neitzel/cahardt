@@ -101,6 +101,12 @@ const pedidoService = {
     registrarImpressao: async (id) => {
         const response = await api.put(`/pedidos/${id}/impresso`);
         return response.data;
+    },
+
+    // Consultar situação atual no Conta Azul (sincroniza este pedido específico)
+    consultarCA: async (id) => {
+        const response = await api.post(`/pedidos/${id}/consultar-ca`);
+        return response.data;
     }
 };
 

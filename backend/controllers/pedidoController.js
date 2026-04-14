@@ -1,6 +1,9 @@
 const pedidoService = require('../services/pedidoService');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const axios = require('axios');
+const contaAzulService = require('../services/contaAzulService');
+const estoqueService = require('../services/estoqueService');
 
 const pedidoController = {
     resumoPendencias: async (req, res) => {
@@ -519,6 +522,64 @@ const pedidoController = {
         } catch (error) {
             console.error('Erro ao reatribuir vendedor:', error);
             res.status(500).json({ error: 'Erro ao reatribuir vendedor.' });
+        }
+    },
+
+    consultarCA: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const pedido = await prisma.pedido.findUnique({ where: { id } });
+            if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
+            if (!pedido.idVendaContaAzul) {
+                return res.status(400).json({ error: 'Pedido ainda não foi enviado ao CA (sem ID de venda).' });
+            }
+
+            const token = await contaAzulService.getAccessToken();
+            const url = `https://api-v2.contaazul.com/v1/venda/${pedido.idVendaContaAzul}`;
+            const resCA = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
+            const vendaObj = resCA.data?.venda || resCA.data;
+            const situacaoRaw = vendaObj?.situacao;
+            let situacaoNome = (typeof situacaoRaw === 'object' ? situacaoRaw?.nome : situacaoRaw) || vendaObj?.status || null;
+            const temParcelas = Array.isArray(vendaObj?.parcelas) && vendaObj.parcelas.length > 0;
+            if (situacaoNome === 'APROVADO' && temParcelas) situacaoNome = 'FATURADO';
+
+            const data = { contaAzulUpdatedAt: new Date() };
+            let statusEnvioFinal = pedido.statusEnvio;
+            if (!situacaoNome || situacaoNome === 'CANCELADO') {
+                data.statusEnvio = 'EXCLUIDO';
+                data.situacaoCA = situacaoNome || 'EXCLUIDO';
+                data.revisaoPendente = true;
+                statusEnvioFinal = 'EXCLUIDO';
+            } else if (situacaoNome !== pedido.situacaoCA) {
+                data.situacaoCA = situacaoNome;
+            }
+
+            const atualizado = await prisma.pedido.update({ where: { id }, data });
+
+            if (situacaoNome === 'FATURADO' && pedido.situacaoCA !== 'FATURADO') {
+                try { await estoqueService.faturarPedido(id); } catch (e) {
+                    console.error(`[consultarCA] Erro ao faturar estoque pedido ${id}:`, e.message);
+                }
+            }
+
+            res.json({
+                message: `Situação atualizada: ${situacaoNome || 'EXCLUIDO'}`,
+                situacaoCA: atualizado.situacaoCA,
+                statusEnvio: atualizado.statusEnvio,
+            });
+        } catch (error) {
+            const status = error.response?.status;
+            if (status === 404) {
+                try {
+                    await prisma.pedido.update({
+                        where: { id: req.params.id },
+                        data: { statusEnvio: 'EXCLUIDO', situacaoCA: 'EXCLUIDO', revisaoPendente: true, contaAzulUpdatedAt: new Date() }
+                    });
+                } catch (_) { }
+                return res.json({ message: 'Pedido não existe mais no CA — marcado como EXCLUIDO.', situacaoCA: 'EXCLUIDO', statusEnvio: 'EXCLUIDO' });
+            }
+            console.error('Erro ao consultar CA:', error.message);
+            res.status(500).json({ error: error.message || 'Erro ao consultar CA' });
         }
     },
 
