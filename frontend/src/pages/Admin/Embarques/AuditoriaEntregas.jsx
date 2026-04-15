@@ -43,7 +43,7 @@ const AuditoriaEntregas = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto py-4 md:py-8 px-3 md:px-6">
+        <div className="w-full py-4 md:py-8 px-3 md:px-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-2">
                 <div>
                     <h1 className="text-lg md:text-2xl font-bold text-gray-900 flex items-center">
@@ -79,16 +79,16 @@ const AuditoriaEntregas = () => {
             </div>
 
             {/* Desktop: Tabela */}
-            <div className="hidden md:block bg-white shadow overflow-x-auto rounded-b-lg">
-                <table className="min-w-full divide-y divide-gray-200">
+            <div className="hidden md:block bg-white shadow rounded-b-lg">
+                <table className="w-full table-fixed divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Data Fechamento</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Viagem / Resp.</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">NF / Cliente</th>
-                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Status Físico</th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Caixa Recebido / Devoluções</th>
-                            <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Ações</th>
+                            <th className="w-[11%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
+                            <th className="w-[10%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Viagem / Resp.</th>
+                            <th className="w-[22%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">NF / Cliente</th>
+                            <th className="w-[10%] px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                            <th className="w-[37%] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Caixa / Devoluções</th>
+                            <th className="w-[10%] px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Ações</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200 text-sm">
@@ -98,18 +98,18 @@ const AuditoriaEntregas = () => {
                             <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">Nenhuma viagem finalizada encontrada.</td></tr>
                         ) : entregas.map((entrega) => (
                             <tr key={entrega.id} className={entrega.divergenciaPagamento ? "bg-amber-50" : "hover:bg-gray-50"}>
-                                <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                                <td className="px-4 py-4 text-gray-500 text-xs">
                                     {new Date(entrega.dataEntrega).toLocaleString('pt-BR')}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-medium">
+                                <td className="px-4 py-4 text-gray-900 font-medium">
                                     <div className="flex flex-col">
                                         <span className="flex items-center font-mono"><Truck className="h-3 w-3 mr-1" /> #{entrega.embarque?.numero}</span>
                                         <span className="text-xs text-gray-500">{entrega.embarque?.responsavel?.nome}</span>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
+                                <td className="px-4 py-4">
                                     <div className="flex flex-col">
-                                        <span className="font-bold text-gray-900">{entrega.cliente?.NomeFantasia || entrega.cliente?.Nome || <span className="text-gray-400 italic font-normal">Sem cadastro</span>}</span>
+                                        <span className="font-bold text-gray-900 break-words">{entrega.cliente?.NomeFantasia || entrega.cliente?.Nome || <span className="text-gray-400 italic font-normal">Sem cadastro</span>}</span>
                                         <span className="text-xs text-gray-500 font-mono">Ped CA: {entrega.numero || 'S/N'}</span>
                                     </div>
                                     {entrega.gpsEntrega && (
@@ -118,12 +118,12 @@ const AuditoriaEntregas = () => {
                                         </a>
                                     )}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <td className="px-4 py-4 text-center">
                                     {entrega.statusEntrega === 'ENTREGUE' && <span className="px-2 py-1 text-xs font-bold bg-green-100 text-green-800 rounded-full">ENTREGUE</span>}
                                     {entrega.statusEntrega === 'ENTREGUE_PARCIAL' && <span className="px-2 py-1 text-xs font-bold bg-amber-100 text-amber-800 rounded-full">PARCIAL</span>}
                                     {entrega.statusEntrega === 'DEVOLVIDO' && <span className="px-2 py-1 text-xs font-bold bg-red-100 text-red-800 rounded-full">DEVOLVIDO</span>}
                                 </td>
-                                <td className="px-6 py-4 text-xs">
+                                <td className="px-4 py-4 text-xs">
                                     {entrega.divergenciaPagamento && (
                                         <div className="text-amber-700 font-bold mb-1 flex items-center">
                                             <AlertTriangle className="h-3 w-3 mr-1" /> Divergência de Pagamento
@@ -149,7 +149,7 @@ const AuditoriaEntregas = () => {
                                         </div>
                                     )}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <td className="px-4 py-4 text-right text-sm font-medium">
                                     <button
                                         onClick={() => handleEstorno(entrega.id, entrega.cliente?.NomeFantasia)}
                                         className="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded-md transition-colors"
