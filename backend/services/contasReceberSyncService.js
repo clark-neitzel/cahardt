@@ -54,7 +54,7 @@ async function sincronizarConta(contaId, opts = {}) {
 
     const parcelasTodasCliente = await contaAzulService.buscarParcelasContaAReceber(
         clienteCAId, fmtDate(de), fmtDate(ate),
-        ['EM_ABERTO', 'ATRASADO', 'RECEBIDO', 'RECEBIDO_PARCIAL']
+        ['EM_ABERTO', 'ATRASADO', 'RECEBIDO', 'RECEBIDO_PARCIAL', 'ACQUITTED', 'PENDING', 'OVERDUE']
     );
 
     const debug = {
@@ -102,7 +102,8 @@ async function sincronizarConta(contaId, opts = {}) {
         return new Date(a.data_vencimento || 0) - new Date(b.data_vencimento || 0);
     });
 
-    const pagasCA = parcelasCA.filter(p => p.status === 'RECEBIDO' || p.status === 'RECEBIDO_PARCIAL');
+    const STATUS_PAGO_CA = ['RECEBIDO', 'RECEBIDO_PARCIAL', 'QUITADO', 'QUITADO_PARCIAL', 'ACQUITTED', 'PAID'];
+    const pagasCA = parcelasCA.filter(p => STATUS_PAGO_CA.includes(p.status));
 
     let aplicadas = 0;
     const detalhes = [];
@@ -116,7 +117,7 @@ async function sincronizarConta(contaId, opts = {}) {
             let caPar = parcelasCA.find(p => (p.numero_parcela || 0) === local.numeroParcela);
             if (!caPar) caPar = parcelasCA[i];
             if (!caPar) continue;
-            if (caPar.status !== 'RECEBIDO' && caPar.status !== 'RECEBIDO_PARCIAL') continue;
+            if (!STATUS_PAGO_CA.includes(caPar.status)) continue;
 
             const baixa = (caPar.baixas || [])[0];
             const valorPago = Number(baixa?.valor_composicao?.valor_bruto || caPar.valor_composicao?.valor_bruto || local.valor);
