@@ -30,7 +30,20 @@ router.get('/', verificarAuth, async (req, res) => {
         const { isAdminMaster } = await carregarPermissoesUsuario(req.user.id);
         if (!isAdminMaster) return res.status(403).json({ error: 'Acesso negado.' });
 
-        const agora = new Date();
+        // Data de referência: aceita ?data=YYYY-MM-DD para "reviver" o dashboard de um dia passado.
+        // Se a data for hoje ou futura, usa agora real; senão usa fim do dia da data escolhida.
+        const hojeReal = new Date();
+        let agora = hojeReal;
+        let isHistorico = false;
+        if (req.query.data && /^\d{4}-\d{2}-\d{2}$/.test(req.query.data)) {
+            const [y, m, dd] = req.query.data.split('-').map(Number);
+            const ref = new Date(y, m - 1, dd, 23, 59, 59, 999);
+            const hojeStart = new Date(hojeReal); hojeStart.setHours(0, 0, 0, 0);
+            if (ref < hojeStart) {
+                agora = ref;
+                isHistorico = true;
+            }
+        }
         const startOfDay = new Date(agora); startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(agora); endOfDay.setHours(23, 59, 59, 999);
 
@@ -381,6 +394,8 @@ router.get('/', verificarAuth, async (req, res) => {
         const valorEntregueHoje = entregasHoje.reduce((s, p) => s + p.pagamentosReais.reduce((a, x) => a + num(x.valor), 0), 0);
 
         res.json({
+            dataReferencia: startOfDay.toISOString().slice(0, 10),
+            isHistorico,
             // operacional
             caixasAConferir, pedidosComErro, pedidosEspeciais, valorEntregueHoje,
             // vendas

@@ -86,20 +86,28 @@ const StatPill = ({ label, value, sub, color = 'gray' }) => {
     );
 };
 
+const hojeISO = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const DashboardAdminSection = () => {
     const { user } = useAuth();
     const [d, setD] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [dataRef, setDataRef] = useState(hojeISO());
     const podeVerVendas = !!user?.permissoes?.admin
         || !!user?.permissoes?.Pode_Ver_Dashboard_Admin
         || !!user?.permissoes?.Pode_Ver_Dashboard_Vendas;
 
     useEffect(() => {
-        api.get('/admin-dashboard')
+        setLoading(true);
+        const params = dataRef && dataRef !== hojeISO() ? { data: dataRef } : {};
+        api.get('/admin-dashboard', { params })
             .then(res => setD(res.data))
             .catch(err => console.error('Erro admin-dashboard', err))
             .finally(() => setLoading(false));
-    }, []);
+    }, [dataRef]);
 
     if (loading) {
         return (
@@ -130,9 +138,30 @@ const DashboardAdminSection = () => {
 
     return (
         <div className="mb-8">
-            <h2 className="text-sm uppercase font-bold text-gray-500 tracking-wider mb-4 flex items-center gap-2">
-                <Lock size={16} /> Painel Administrativo
-            </h2>
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+                <h2 className="text-sm uppercase font-bold text-gray-500 tracking-wider flex items-center gap-2">
+                    <Lock size={16} /> Painel Administrativo
+                    {d.isHistorico && (
+                        <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold normal-case tracking-normal">
+                            Visualizando {new Date(d.dataReferencia + 'T12:00').toLocaleDateString('pt-BR')}
+                        </span>
+                    )}
+                </h2>
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <label htmlFor="dashDataRef" className="font-semibold">Dia:</label>
+                    <input
+                        id="dashDataRef"
+                        type="date"
+                        value={dataRef}
+                        max={hojeISO()}
+                        onChange={(e) => setDataRef(e.target.value || hojeISO())}
+                        className="border rounded px-2 py-1 text-xs"
+                    />
+                    {dataRef !== hojeISO() && (
+                        <button onClick={() => setDataRef(hojeISO())} className="text-indigo-600 hover:underline font-semibold">hoje</button>
+                    )}
+                </div>
+            </div>
 
             {/* ═══════════ HERO: VENDAS DO MÊS ═══════════ */}
             {podeVerVendas && (
