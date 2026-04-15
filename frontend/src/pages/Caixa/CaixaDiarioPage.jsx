@@ -568,26 +568,28 @@ const CaixaDiarioPage = () => {
                                     </div>
                                 )}
 
-                                {/* Desktop */}
+                                {/* Desktop (>= md) */}
                                 <div className="hidden md:block overflow-x-auto">
                                     <table className="min-w-full text-sm">
                                         <thead>
-                                            <tr className="text-xs text-gray-500 uppercase border-b">
+                                            <tr className="text-xs text-gray-500 uppercase border-b bg-gray-50/50">
                                                 {isAdmin && <th className="py-2 px-2 text-center w-10">✓</th>}
                                                 {podeBaixarCaixa && <th className="py-2 px-2 text-center w-10" title="Selecionar para baixa CA">CA</th>}
-                                                <th className="py-2 px-2 text-left">Nº</th>
+                                                <th className="py-2 px-2 text-left w-14">Nº</th>
                                                 <th className="py-2 px-2 text-left">Cliente</th>
-                                                <th className="py-2 px-2 text-left">Cond. Pgto</th>
-                                                <th className="py-2 px-2 text-right">Valor</th>
-                                                <th className="py-2 px-2 text-center">Status</th>
+                                                <th className="py-2 px-2 text-left hidden lg:table-cell whitespace-nowrap">Cond. Pgto</th>
+                                                <th className="py-2 px-2 text-right whitespace-nowrap">Valor</th>
+                                                <th className="py-2 px-2 text-center w-28 whitespace-nowrap">Status</th>
                                                 <th className="py-2 px-2 text-left">Pagamentos</th>
+                                                <th className="py-2 px-2 w-10"></th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
                                             {resumo.entregas.map((e) => {
                                                 const elegivel = isElegivelBaixa(e);
+                                                const podeDev = podeFazerDevolucao && ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada;
                                                 return (
-                                                <tr key={e.pedidoId} className={`hover:bg-gray-50 ${selectedBaixa.has(e.pedidoId) ? 'bg-indigo-50' : ''}`}>
+                                                <tr key={e.pedidoId} className={`hover:bg-gray-50 align-top ${selectedBaixa.has(e.pedidoId) ? 'bg-indigo-50' : ''}`}>
                                                     {isAdmin && (
                                                         <td className="py-2 px-2 text-center">
                                                             <input
@@ -611,20 +613,23 @@ const CaixaDiarioPage = () => {
                                                             )}
                                                         </td>
                                                     )}
-                                                    <td className="py-2 px-2 text-gray-500 text-sm">{e.numero}</td>
-                                                    <td className="py-2 px-2 font-medium text-gray-900">
-                                                        {e.clienteNome}
-                                                        {e.especial && <span className="ml-1.5 text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>}
-                                                        {e.quitado === 'QUITADO' && <span className="ml-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">QUITADO</span>}
-                                                        {e.quitado === 'PARCIAL' && <span className="ml-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">PARCIAL</span>}
-                                                        {e.quitado === 'ALTERADO' && <span className="ml-1.5 text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">ALTERADO</span>}
-                                                        {e.devolucaoFinalizada && <span className="ml-1.5 text-[10px] font-bold text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">DEV. FEITA</span>}
+                                                    <td className="py-2 px-2 text-gray-500 whitespace-nowrap">{e.numero}</td>
+                                                    <td className="py-2 px-2 font-medium text-gray-900 min-w-0">
+                                                        <div className="flex flex-wrap items-center gap-1">
+                                                            <span className="truncate max-w-[180px] lg:max-w-[280px]" title={e.clienteNome}>{e.clienteNome}</span>
+                                                            {e.especial && <span className="text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESP.</span>}
+                                                            {e.quitado === 'QUITADO' && <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">QUIT.</span>}
+                                                            {e.quitado === 'PARCIAL' && <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">PARC.</span>}
+                                                            {e.quitado === 'ALTERADO' && <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">ALT.</span>}
+                                                            {e.devolucaoFinalizada && <span className="text-[10px] font-bold text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">DEV.</span>}
+                                                        </div>
+                                                        <div className="lg:hidden text-xs text-gray-400 mt-0.5 truncate" title={e.condicaoPagamento}>{e.condicaoPagamento}</div>
                                                     </td>
-                                                    <td className="py-2 px-2 text-gray-500">{e.condicaoPagamento}</td>
-                                                    <td className="py-2 px-2 text-right font-medium">
+                                                    <td className="py-2 px-2 text-gray-500 hidden lg:table-cell whitespace-nowrap">{e.condicaoPagamento}</td>
+                                                    <td className="py-2 px-2 text-right font-medium tabular-nums whitespace-nowrap">
                                                         R$ {Number(e.valorPedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                     </td>
-                                                    <td className="py-2 px-2 text-center">
+                                                    <td className="py-2 px-2 text-center whitespace-nowrap">
                                                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${e.statusEntrega === 'ENTREGUE' ? 'bg-green-100 text-green-700' :
                                                             e.statusEntrega === 'PARCIAL' ? 'bg-yellow-100 text-yellow-700' :
                                                                 'bg-red-100 text-red-700'
@@ -633,22 +638,26 @@ const CaixaDiarioPage = () => {
                                                         </span>
                                                     </td>
                                                     <td className="py-2 px-2 text-xs text-gray-500">
-                                                        {e.pagamentos?.map((p, i) => (
-                                                            <span key={i} className={`mr-2 ${p.debitaCaixa ? 'text-green-700 font-medium' : 'text-gray-400'}`}>
-                                                                {p.formaNome}: R$ {Number(p.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                            </span>
-                                                        ))}
-                                                        {e.valorDevolvido > 0 && (
-                                                            <span className="mr-2 text-red-500 font-medium">
-                                                                Devolvido: R$ {Number(e.valorDevolvido).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                            </span>
-                                                        )}
-                                                        {podeFazerDevolucao && ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada && (
+                                                        <div className="flex flex-col gap-0.5">
+                                                            {e.pagamentos?.map((p, i) => (
+                                                                <span key={i} className={`tabular-nums ${p.debitaCaixa ? 'text-green-700 font-medium' : 'text-gray-400'}`}>
+                                                                    {p.formaNome}: R$ {Number(p.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                                </span>
+                                                            ))}
+                                                            {e.valorDevolvido > 0 && (
+                                                                <span className="text-red-500 font-medium tabular-nums">
+                                                                    Devolvido: R$ {Number(e.valorDevolvido).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-2 px-2 text-right">
+                                                        {podeDev && (
                                                             <button
                                                                 onClick={() => setModalDevolucao(e)}
-                                                                className="ml-1 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-1.5 py-0.5 rounded border border-red-200"
+                                                                className="text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-1.5 py-0.5 rounded border border-red-200 whitespace-nowrap"
                                                             >
-                                                                Fazer Devolução
+                                                                Devolução
                                                             </button>
                                                         )}
                                                     </td>
@@ -659,79 +668,102 @@ const CaixaDiarioPage = () => {
                                     </table>
                                 </div>
 
-                                {/* Mobile */}
-                                <div className="md:hidden space-y-3">
-                                    {resumo.entregas.map((e) => (
-                                        <div key={e.pedidoId} className={`rounded-lg p-3 border ${selectedBaixa.has(e.pedidoId) ? 'bg-indigo-50 border-indigo-300' : 'bg-gray-50 border-gray-200'}`}>
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex-1">
-                                                    <p className="font-medium text-gray-900 text-sm">
-                                                        <span className="text-gray-500 mr-1">#{e.numero}</span>
-                                                        {e.clienteNome}
-                                                        {e.especial && <span className="ml-1.5 text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>}
-                                                        {e.quitado === 'QUITADO' && <span className="ml-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">QUITADO</span>}
-                                                        {e.quitado === 'PARCIAL' && <span className="ml-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">PARCIAL</span>}
-                                                        {e.quitado === 'ALTERADO' && <span className="ml-1.5 text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">ALTERADO</span>}
-                                                        {e.devolucaoFinalizada && <span className="ml-1.5 text-[10px] font-bold text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">DEV. FEITA</span>}
-                                                    </p>
-                                                    <p className="text-xs text-gray-500">{e.condicaoPagamento}</p>
-                                                    <div className="flex flex-wrap gap-1 mt-1">
-                                                        {e.pagamentos?.map((p, i) => (
-                                                            <span key={i} className={`text-xs px-1.5 py-0.5 rounded ${p.debitaCaixa ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
-                                                                {p.formaNome}: R$ {Number(p.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                            </span>
-                                                        ))}
-                                                        {e.valorDevolvido > 0 && (
-                                                            <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium">
-                                                                Devolvido: R$ {Number(e.valorDevolvido).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                            </span>
-                                                        )}
+                                {/* Mobile (< md) */}
+                                <div className="md:hidden space-y-2">
+                                    {resumo.entregas.map((e) => {
+                                        const podeDev = podeFazerDevolucao && ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada;
+                                        const elegivel = isElegivelBaixa(e);
+                                        return (
+                                        <div key={e.pedidoId} className={`rounded-lg p-3 border ${selectedBaixa.has(e.pedidoId) ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-gray-200'}`}>
+                                            {/* Linha 1: nº + nome + valor */}
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-1 text-sm">
+                                                        <span className="text-gray-400 font-mono">#{e.numero}</span>
+                                                        <span className="font-medium text-gray-900 truncate" title={e.clienteNome}>{e.clienteNome}</span>
                                                     </div>
+                                                    <p className="text-xs text-gray-500 mt-0.5 truncate">{e.condicaoPagamento}</p>
                                                 </div>
-                                                <div className="text-right ml-3">
-                                                    <p className="font-bold text-gray-900 text-sm">
+                                                <div className="text-right flex-shrink-0">
+                                                    <p className="font-bold text-gray-900 text-sm tabular-nums whitespace-nowrap">
                                                         R$ {Number(e.valorPedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                     </p>
-                                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${e.statusEntrega === 'ENTREGUE' ? 'bg-green-100 text-green-700' :
+                                                    <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${e.statusEntrega === 'ENTREGUE' ? 'bg-green-100 text-green-700' :
                                                         e.statusEntrega === 'PARCIAL' ? 'bg-yellow-100 text-yellow-700' :
                                                             'bg-red-100 text-red-700'
                                                         }`}>
                                                         {e.statusEntrega}
                                                     </span>
-                                                    {(isAdmin || podeBaixarCaixa) && (
-                                                        <div className="mt-2 flex items-center gap-2">
-                                                            {isAdmin && (
+                                                </div>
+                                            </div>
+
+                                            {/* Badges */}
+                                            {(e.especial || e.quitado || e.devolucaoFinalizada) && (
+                                                <div className="flex flex-wrap gap-1 mt-2">
+                                                    {e.especial && <span className="text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>}
+                                                    {e.quitado === 'QUITADO' && <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">QUITADO</span>}
+                                                    {e.quitado === 'PARCIAL' && <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">PARCIAL</span>}
+                                                    {e.quitado === 'ALTERADO' && <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">ALTERADO</span>}
+                                                    {e.devolucaoFinalizada && <span className="text-[10px] font-bold text-gray-600 bg-gray-200 px-1.5 py-0.5 rounded">DEV. FEITA</span>}
+                                                </div>
+                                            )}
+
+                                            {/* Pagamentos */}
+                                            {(e.pagamentos?.length > 0 || e.valorDevolvido > 0) && (
+                                                <div className="flex flex-wrap gap-1 mt-2">
+                                                    {e.pagamentos?.map((p, i) => (
+                                                        <span key={i} className={`text-[11px] px-1.5 py-0.5 rounded tabular-nums ${p.debitaCaixa ? 'bg-green-100 text-green-700 font-medium' : 'bg-gray-100 text-gray-500'}`}>
+                                                            {p.formaNome}: R$ {Number(p.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        </span>
+                                                    ))}
+                                                    {e.valorDevolvido > 0 && (
+                                                        <span className="text-[11px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium tabular-nums">
+                                                            Devolvido: R$ {Number(e.valorDevolvido).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Ações */}
+                                            {(isAdmin || (podeBaixarCaixa && elegivel) || podeDev) && (
+                                                <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t border-gray-100">
+                                                    <div className="flex items-center gap-3 text-xs">
+                                                        {isAdmin && (
+                                                            <label className="flex items-center gap-1 text-gray-600">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={!!e.conferida}
                                                                     onChange={(ev) => handleToggleEntregaConferida(e.pedidoId, ev.target.checked)}
                                                                     className="h-4 w-4 text-green-600 rounded"
-                                                                    title="Conferir"
                                                                 />
-                                                            )}
-                                                            {podeBaixarCaixa && isElegivelBaixa(e) && (
+                                                                Conferir
+                                                            </label>
+                                                        )}
+                                                        {podeBaixarCaixa && elegivel && (
+                                                            <label className="flex items-center gap-1 text-indigo-700">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={selectedBaixa.has(e.pedidoId)}
                                                                     onChange={() => handleToggleBaixa(e.pedidoId)}
                                                                     className="h-4 w-4 text-indigo-600 rounded"
-                                                                    title="Baixa (dinheiro)"
                                                                 />
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                    {podeFazerDevolucao && ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada && (
+                                                                Baixa CA
+                                                            </label>
+                                                        )}
+                                                    </div>
+                                                    {podeDev && (
                                                         <button
                                                             onClick={() => setModalDevolucao(e)}
-                                                            className="mt-2 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded border border-red-200"
+                                                            className="text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded border border-red-200 whitespace-nowrap"
                                                         >
                                                             Fazer Devolução
                                                         </button>
                                                     )}
                                                 </div>
-                                            </div>
+                                            )}
                                         </div>
-                                    ))}
+                                    );
+                                    })}
                                 </div>
                             </div>
                         )}
