@@ -1003,6 +1003,9 @@ const contaAzulService = {
                     const situacaoRaw = vendaObj?.situacao;
                     let situacaoNome = (typeof situacaoRaw === 'object' ? situacaoRaw?.nome : situacaoRaw) || vendaObj?.status || null;
 
+                    // CA sinaliza exclusão via venda.status (top-level) = "CANCELADO", mesmo que venda.situacao.nome continue "APROVADO"
+                    if (vendaObj?.status === 'CANCELADO') situacaoNome = 'CANCELADO';
+
                     // Detectar FATURADO: CA retorna "APROVADO" mas se tem parcelas, é faturado
                     if (situacaoNome === 'APROVADO' && vendaObj?.parcelas && vendaObj.parcelas.length > 0) {
                         situacaoNome = 'FATURADO';

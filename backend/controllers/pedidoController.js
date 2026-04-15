@@ -537,12 +537,13 @@ const pedidoController = {
             const token = await contaAzulService.getAccessToken();
             const url = `https://api-v2.contaazul.com/v1/venda/${pedido.idVendaContaAzul}`;
             const resCA = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
-            console.log(`[consultarCA DIAG] Pedido #${pedido.numero} (CA ${pedido.idVendaContaAzul}) → resposta CA bruta:`, JSON.stringify(resCA.data)?.slice(0, 2000));
             const vendaObj = resCA.data?.venda || resCA.data;
             const situacaoRaw = vendaObj?.situacao;
             let situacaoNome = (typeof situacaoRaw === 'object' ? situacaoRaw?.nome : situacaoRaw) || vendaObj?.status || null;
             const temParcelas = Array.isArray(vendaObj?.parcelas) && vendaObj.parcelas.length > 0;
             if (situacaoNome === 'APROVADO' && temParcelas) situacaoNome = 'FATURADO';
+            // CA sinaliza exclusão via venda.status (top-level) = "CANCELADO", mesmo que venda.situacao.nome continue "APROVADO"
+            if (vendaObj?.status === 'CANCELADO') situacaoNome = 'CANCELADO';
 
             const data = { contaAzulUpdatedAt: new Date() };
             let statusEnvioFinal = pedido.statusEnvio;

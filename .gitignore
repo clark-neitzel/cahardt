@@ -1,0 +1,16 @@
+# Backups e arquivos temporários de editor
+*.orig
+*.bak
+*.swp
+*~
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Dependências (caso escapem dos .gitignore por pasta)
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
