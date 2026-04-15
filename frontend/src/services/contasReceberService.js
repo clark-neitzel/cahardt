@@ -36,6 +36,10 @@ const contasReceberService = {
     syncCA: async (id) => {
         const response = await api.post(`/contas-receber/${id}/sync-ca`);
         return response.data;
+    },
+    syncCATodas: async () => {
+        const response = await api.post('/contas-receber/sync-ca/todas');
+        return response.data;
     }
 };
 

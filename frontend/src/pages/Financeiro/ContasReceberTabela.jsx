@@ -45,6 +45,7 @@ const ContasReceberTabela = () => {
     const [indicadores, setIndicadores] = useState({});
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(null);
+    const [syncingTodas, setSyncingTodas] = useState(false);
 
     const [vendedores, setVendedores] = useState([]);
     const [condicoes, setCondicoes] = useState([]);
@@ -218,6 +219,20 @@ const ContasReceberTabela = () => {
         } catch (e) { toast.error(e.response?.data?.error || 'Erro'); }
     };
 
+    const handleSyncCATodas = async () => {
+        if (!window.confirm('Verificar no Conta Azul todas as contas abertas e aplicar as baixas já pagas? Pode levar alguns minutos.')) return;
+        setSyncingTodas(true);
+        try {
+            const r = await contasReceberService.syncCATodas();
+            toast.success(r.message || `Sync concluído: ${r.totalParcelasBaixadas || 0} parcela(s) baixadas.`, { duration: 6000 });
+            fetchData();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro no sync em lote');
+        } finally {
+            setSyncingTodas(false);
+        }
+    };
+
     const handleSyncCA = async (contaId, idVendaCA) => {
         if (!idVendaCA) { toast.error('Pedido ainda não foi ao CA'); return; }
         setSyncing(contaId);
@@ -293,6 +308,17 @@ const ContasReceberTabela = () => {
                     <Link to="/financeiro/contas-receber" className="text-sm px-3 py-1.5 rounded border hover:bg-gray-50">
                         Ver resumo ↗
                     </Link>
+                    {podeBaixar && (
+                        <button
+                            onClick={handleSyncCATodas}
+                            disabled={syncingTodas}
+                            title="Verifica no Conta Azul todas as contas abertas e aplica as baixas que já foram pagas lá"
+                            className="text-sm px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 inline-flex items-center gap-1"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${syncingTodas ? 'animate-spin' : ''}`} />
+                            {syncingTodas ? 'Baixando...' : 'Baixar parcelas do CA'}
+                        </button>
+                    )}
                     <button onClick={exportarCSV} className="text-sm px-3 py-1.5 rounded border hover:bg-gray-50 inline-flex items-center gap-1">
                         <Download className="w-4 h-4" /> CSV
                     </button>
