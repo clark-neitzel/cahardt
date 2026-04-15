@@ -4,7 +4,8 @@ import contasReceberService from '../../services/contasReceberService';
 import vendedorService from '../../services/vendedorService';
 import {
     DollarSign, Search, Filter, X, RefreshCw, CheckCircle, Undo2,
-    Download, ArrowUpDown, CheckSquare, Square, Ban, Link as LinkIcon
+    Download, ArrowUpDown, CheckSquare, Square, Link as LinkIcon,
+    ChevronDown, ChevronUp, MoreVertical
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -45,6 +46,7 @@ const ContasReceberTabela = () => {
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(null);
     const [syncingTodas, setSyncingTodas] = useState(false);
+    const [syncLog, setSyncLog] = useState(null); // { progresso, total, itens: [{pedido, status, msg, aplicadas}], ativo }
 
     const [vendedores, setVendedores] = useState([]);
 
@@ -68,6 +70,10 @@ const ContasReceberTabela = () => {
 
     // Seleção
     const [sel, setSel] = useState(new Set());
+
+    // UI
+    const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+    const [detalheLinha, setDetalheLinha] = useState(null);
 
     // Modais
     const [baixaLoteOpen, setBaixaLoteOpen] = useState(false);
@@ -231,17 +237,55 @@ const ContasReceberTabela = () => {
     };
 
     const handleSyncCATodas = async () => {
-        if (!window.confirm('Verificar no Conta Azul todas as contas abertas e aplicar as baixas já pagas? Pode levar alguns minutos.')) return;
-        setSyncingTodas(true);
-        try {
-            const r = await contasReceberService.syncCATodas();
-            toast.success(r.message || `Sync concluído: ${r.totalParcelasBaixadas || 0} parcela(s) baixadas.`, { duration: 6000 });
-            fetchData();
-        } catch (e) {
-            toast.error(e.response?.data?.error || 'Erro no sync em lote');
-        } finally {
-            setSyncingTodas(false);
+        // Itera pelas contas VISÍVEIS na tela (únicas), uma por uma, com log detalhado.
+        const contasUnicas = [];
+        const seen = new Set();
+        for (const l of linhasOrdenadas) {
+            if (seen.has(l.contaId)) continue;
+            if (!l.idVendaContaAzul) continue;
+            if (l.statusConta === 'QUITADO' || l.statusConta === 'CANCELADO') continue;
+            seen.add(l.contaId);
+            contasUnicas.push(l);
         }
+        if (contasUnicas.length === 0) { toast('Nenhuma conta elegível visível na tela.'); return; }
+        if (!window.confirm(`Verificar ${contasUnicas.length} conta(s) visíveis no Conta Azul? Uma por uma, com log detalhado.`)) return;
+
+        setSyncingTodas(true);
+        setSyncLog({ progresso: 0, total: contasUnicas.length, itens: [], ativo: true, totalAplicadas: 0, erros: 0 });
+
+        let totalAplicadas = 0;
+        let erros = 0;
+        const itens = [];
+        for (let i = 0; i < contasUnicas.length; i++) {
+            const l = contasUnicas[i];
+            const label = l.pedidoNumero ? `#${l.pedidoNumero}` : l.contaId.slice(0, 8);
+            try {
+                const r = await contasReceberService.syncCA(l.contaId);
+                const aplicadas = r.aplicadas || 0;
+                totalAplicadas += aplicadas;
+                itens.push({
+                    pedido: label,
+                    cliente: l.clienteNome,
+                    status: aplicadas > 0 ? 'ok' : 'semmudanca',
+                    msg: r.message || (aplicadas > 0 ? `${aplicadas} parcela(s) baixada(s)` : 'Sem baixas novas no CA'),
+                    aplicadas
+                });
+            } catch (e) {
+                erros++;
+                itens.push({
+                    pedido: label,
+                    cliente: l.clienteNome,
+                    status: 'erro',
+                    msg: e.response?.data?.error || e.message || 'Erro desconhecido',
+                    aplicadas: 0
+                });
+            }
+            setSyncLog({ progresso: i + 1, total: contasUnicas.length, itens: [...itens], ativo: i + 1 < contasUnicas.length, totalAplicadas, erros });
+        }
+
+        toast.success(`Concluído: ${totalAplicadas} parcela(s) baixadas em ${contasUnicas.length} conta(s). ${erros} erro(s).`, { duration: 6000 });
+        fetchData();
+        setSyncingTodas(false);
     };
 
     const handleSyncCA = async (contaId, idVendaCA) => {
@@ -300,6 +344,8 @@ const ContasReceberTabela = () => {
         a.click(); URL.revokeObjectURL(url);
     };
 
+    const filtrosAtivos = useMemo(() => Object.values(filtros).filter(Boolean).length, [filtros]);
+
     const Th = ({ col, children, className = '' }) => (
         <th className={`px-2 py-2 text-left text-xs font-semibold text-gray-600 select-none ${className}`}>
             <button onClick={() => toggleSort(col)} className="inline-flex items-center gap-1 hover:text-gray-900">
@@ -357,7 +403,20 @@ const ContasReceberTabela = () => {
             </div>
 
             {/* Filtros */}
-            <div className="bg-white border rounded-lg p-3 mb-4">
+            <div className="bg-white border rounded-lg mb-4">
+                <button
+                    onClick={() => setFiltrosAbertos(v => !v)}
+                    className="w-full flex items-center justify-between p-3 lg:hidden"
+                >
+                    <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                        <Filter className="w-4 h-4" /> Filtros
+                        {filtrosAtivos > 0 && (
+                            <span className="bg-blue-600 text-white text-[10px] rounded-full px-1.5 py-0.5">{filtrosAtivos}</span>
+                        )}
+                    </span>
+                    {filtrosAbertos ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+                <div className={`p-3 ${filtrosAbertos ? 'block' : 'hidden'} lg:block`}>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
                     <div className="col-span-2">
                         <label className="text-xs text-gray-500">Cliente</label>
@@ -440,6 +499,7 @@ const ContasReceberTabela = () => {
                         <Filter className="w-4 h-4" /> Filtrar
                     </button>
                 </div>
+                </div>
             </div>
 
             {/* Barra de seleção */}
@@ -465,9 +525,91 @@ const ContasReceberTabela = () => {
                 </div>
             )}
 
-            {/* Tabela */}
-            <div className="bg-white border rounded-lg overflow-x-auto">
-                <table className="w-full text-sm">
+            {/* Cards (< xl) */}
+            <div className="xl:hidden space-y-2">
+                {loading && <div className="bg-white border rounded-lg p-6 text-center text-gray-500">Carregando...</div>}
+                {!loading && linhasOrdenadas.length === 0 && (
+                    <div className="bg-white border rounded-lg p-6 text-center text-gray-500">Nenhuma parcela encontrada.</div>
+                )}
+                {!loading && linhasOrdenadas.map(l => {
+                    const eleg = elegivel(l);
+                    const atrasada = l.statusParcela === 'VENCIDO';
+                    return (
+                        <div
+                            key={l.parcelaId}
+                            className={`bg-white border rounded-lg p-3 ${atrasada ? 'border-red-200' : 'border-gray-200'} ${sel.has(l.parcelaId) ? 'ring-2 ring-blue-300' : ''}`}
+                        >
+                            <div className="flex items-start gap-2">
+                                {eleg && (
+                                    <button onClick={(e) => { e.stopPropagation(); toggleOne(l.parcelaId); }} className="mt-1 flex-shrink-0">
+                                        {sel.has(l.parcelaId) ? <CheckSquare className="w-5 h-5 text-blue-600" /> : <Square className="w-5 h-5 text-gray-400" />}
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => setDetalheLinha(l)}
+                                    className="flex-1 min-w-0 text-left"
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-1 text-sm">
+                                                <span className="text-gray-400 font-mono">{l.pedidoNumero ? `#${l.pedidoNumero}` : (l.pedidoEspecial ? 'Esp.' : '-')}</span>
+                                                <span className="font-medium text-gray-900 truncate" title={l.clienteNome}>{l.clienteNome}</span>
+                                            </div>
+                                            <div className="text-xs text-gray-500 mt-0.5 truncate">
+                                                {l.condicaoPagamento || '-'}{l.vendedorNome ? ` · ${l.vendedorNome}` : ''}
+                                            </div>
+                                        </div>
+                                        <div className="text-right flex-shrink-0">
+                                            <div className="font-bold text-gray-900 text-sm tabular-nums whitespace-nowrap">R$ {fmt(l.valor)}</div>
+                                            <div className="text-[11px] text-gray-500 whitespace-nowrap">Parc. {l.numeroParcela}/{l.parcelasTotal}</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${STATUS_PARC[l.statusParcela] || ''}`}>{l.statusParcela}</span>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${STATUS_CONTA[l.statusConta] || ''}`}>{l.statusConta}</span>
+                                        <span className="text-[11px] text-gray-500 tabular-nums">
+                                            Venc: {fmtData(l.dataVencimento)}
+                                        </span>
+                                        {l.dataPagamento && (
+                                            <span className="text-[11px] text-green-700 tabular-nums">
+                                                Pago: {fmtData(l.dataPagamento)} {l.formaPagamento ? `(${l.formaPagamento})` : ''}
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setDetalheLinha(l); }}
+                                    className="p-1.5 rounded hover:bg-gray-100 flex-shrink-0"
+                                    title="Ver detalhes e ações"
+                                >
+                                    <MoreVertical className="w-4 h-4 text-gray-500" />
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Tabela (xl+) */}
+            <div className="hidden xl:block bg-white border rounded-lg">
+                <table className="w-full text-sm table-fixed">
+                    <colgroup>
+                        <col style={{ width: '32px' }} />
+                        <col style={{ width: '60px' }} />
+                        <col />
+                        <col style={{ width: '9%' }} />
+                        <col style={{ width: '10%' }} />
+                        <col style={{ width: '55px' }} />
+                        <col style={{ width: '70px' }} />
+                        <col style={{ width: '50px' }} />
+                        <col style={{ width: '92px' }} />
+                        <col style={{ width: '90px' }} />
+                        <col style={{ width: '80px' }} />
+                        <col style={{ width: '80px' }} />
+                        <col style={{ width: '8%' }} />
+                        <col style={{ width: '9%' }} />
+                        <col style={{ width: '110px' }} />
+                    </colgroup>
                     <thead className="bg-gray-50 border-b">
                         <tr>
                             <th className="px-2 py-2 w-8">
@@ -477,17 +619,17 @@ const ContasReceberTabela = () => {
                             </th>
                             <Th col="pedidoNumero">Pedido</Th>
                             <Th col="clienteNome">Cliente</Th>
-                            <Th col="vendedorNome" className="hidden lg:table-cell">Vendedor</Th>
-                            <Th col="condicaoPagamento" className="hidden xl:table-cell">Condição</Th>
-                            <Th col="origem" className="hidden lg:table-cell">Origem</Th>
+                            <Th col="vendedorNome">Vendedor</Th>
+                            <Th col="condicaoPagamento">Condição</Th>
+                            <Th col="origem">Origem</Th>
                             <Th col="statusConta">Conta</Th>
                             <Th col="numeroParcela">Parc.</Th>
                             <Th col="valor" className="text-right">Valor</Th>
-                            <Th col="vencimento">Vencimento</Th>
+                            <Th col="vencimento">Venc.</Th>
                             <Th col="statusParcela">Status</Th>
-                            <Th col="pagamento" className="hidden lg:table-cell">Pagamento</Th>
-                            <Th col="formaPagamento" className="hidden xl:table-cell">Forma</Th>
-                            <Th col="baixadoPorNome" className="hidden xl:table-cell">Baixado por</Th>
+                            <Th col="pagamento">Pagto.</Th>
+                            <Th col="formaPagamento">Forma</Th>
+                            <Th col="baixadoPorNome">Baixado</Th>
                             <th className="px-2 py-2 text-xs font-semibold text-gray-600">Ações</th>
                         </tr>
                     </thead>
@@ -512,22 +654,22 @@ const ContasReceberTabela = () => {
                                     <td className="px-2 py-1.5">
                                         {l.pedidoNumero ? `#${l.pedidoNumero}` : (l.pedidoEspecial ? 'Esp.' : '-')}
                                     </td>
-                                    <td className="px-2 py-1.5 max-w-[200px] xl:max-w-[280px] truncate" title={l.clienteNome}>{l.clienteNome}</td>
-                                    <td className="px-2 py-1.5 hidden lg:table-cell truncate max-w-[140px]" title={l.vendedorNome || ''}>{l.vendedorNome || '-'}</td>
-                                    <td className="px-2 py-1.5 hidden xl:table-cell truncate max-w-[160px]" title={l.condicaoPagamento || ''}>{l.condicaoPagamento || '-'}</td>
-                                    <td className="px-2 py-1.5 text-xs hidden lg:table-cell whitespace-nowrap">{l.origem === 'FATURADO_CA' ? 'CA' : 'Esp.'}</td>
+                                    <td className="px-2 py-1.5 truncate" title={l.clienteNome}>{l.clienteNome}</td>
+                                    <td className="px-2 py-1.5 truncate" title={l.vendedorNome || ''}>{l.vendedorNome || '-'}</td>
+                                    <td className="px-2 py-1.5 truncate" title={l.condicaoPagamento || ''}>{l.condicaoPagamento || '-'}</td>
+                                    <td className="px-2 py-1.5 text-xs whitespace-nowrap">{l.origem === 'FATURADO_CA' ? 'CA' : 'Esp.'}</td>
                                     <td className="px-2 py-1.5 whitespace-nowrap">
-                                        <span className={`px-2 py-0.5 rounded text-xs ${STATUS_CONTA[l.statusConta] || ''}`}>{l.statusConta}</span>
+                                        <span className={`px-1.5 py-0.5 rounded text-[11px] ${STATUS_CONTA[l.statusConta] || ''}`}>{l.statusConta}</span>
                                     </td>
                                     <td className="px-2 py-1.5 text-xs whitespace-nowrap">{l.numeroParcela}/{l.parcelasTotal}</td>
                                     <td className="px-2 py-1.5 text-right font-medium tabular-nums whitespace-nowrap">R$ {fmt(l.valor)}</td>
-                                    <td className="px-2 py-1.5 whitespace-nowrap">{fmtData(l.dataVencimento)}</td>
+                                    <td className="px-2 py-1.5 whitespace-nowrap text-xs">{fmtData(l.dataVencimento)}</td>
                                     <td className="px-2 py-1.5 whitespace-nowrap">
-                                        <span className={`px-2 py-0.5 rounded text-xs ${STATUS_PARC[l.statusParcela] || ''}`}>{l.statusParcela}</span>
+                                        <span className={`px-1.5 py-0.5 rounded text-[11px] ${STATUS_PARC[l.statusParcela] || ''}`}>{l.statusParcela}</span>
                                     </td>
-                                    <td className="px-2 py-1.5 hidden lg:table-cell whitespace-nowrap">{fmtData(l.dataPagamento)}</td>
-                                    <td className="px-2 py-1.5 text-xs hidden xl:table-cell truncate max-w-[120px]" title={l.formaPagamento || ''}>{l.formaPagamento || '-'}</td>
-                                    <td className="px-2 py-1.5 text-xs hidden xl:table-cell truncate max-w-[140px]" title={l.baixadoPorNome || ''}>{l.baixadoPorNome || '-'}</td>
+                                    <td className="px-2 py-1.5 whitespace-nowrap text-xs">{fmtData(l.dataPagamento)}</td>
+                                    <td className="px-2 py-1.5 text-xs truncate" title={l.formaPagamento || ''}>{l.formaPagamento || '-'}</td>
+                                    <td className="px-2 py-1.5 text-xs truncate" title={l.baixadoPorNome || ''}>{l.baixadoPorNome || '-'}</td>
                                     <td className="px-2 py-1.5">
                                         <div className="flex items-center gap-1">
                                             {podeBaixar && eleg && (
@@ -599,6 +741,137 @@ const ContasReceberTabela = () => {
                     </div>
                 </div>
             )}
+
+            {/* Modal log sync CA */}
+            {syncLog && (
+                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col">
+                        <div className="px-4 py-3 border-b flex items-center justify-between">
+                            <h3 className="font-bold">
+                                Sync CA — {syncLog.progresso}/{syncLog.total}
+                                {syncLog.ativo && <RefreshCw className="inline w-4 h-4 ml-2 animate-spin text-blue-600" />}
+                            </h3>
+                            {!syncLog.ativo && (
+                                <button onClick={() => setSyncLog(null)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                            )}
+                        </div>
+                        <div className="px-4 py-2 border-b bg-gray-50 text-xs text-gray-600 flex gap-4">
+                            <span>✅ Baixadas: <strong>{syncLog.totalAplicadas}</strong> parcela(s)</span>
+                            <span>⚠️ Erros: <strong className={syncLog.erros > 0 ? 'text-red-600' : ''}>{syncLog.erros}</strong></span>
+                        </div>
+                        <div className="overflow-y-auto flex-1 divide-y">
+                            {syncLog.itens.map((it, idx) => (
+                                <div key={idx} className="px-4 py-2 text-sm flex items-start gap-2">
+                                    <span className="flex-shrink-0 mt-0.5">
+                                        {it.status === 'ok' && <span className="text-green-600">✅</span>}
+                                        {it.status === 'semmudanca' && <span className="text-gray-400">➖</span>}
+                                        {it.status === 'erro' && <span className="text-red-600">❌</span>}
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-medium text-gray-900">
+                                            {it.pedido} <span className="text-gray-500 font-normal">— {it.cliente}</span>
+                                        </div>
+                                        <div className={`text-xs ${it.status === 'erro' ? 'text-red-600' : 'text-gray-600'}`}>{it.msg}</div>
+                                    </div>
+                                </div>
+                            ))}
+                            {syncLog.ativo && syncLog.itens.length < syncLog.total && (
+                                <div className="px-4 py-2 text-sm text-gray-400 italic">Processando...</div>
+                            )}
+                        </div>
+                        {!syncLog.ativo && (
+                            <div className="px-4 py-3 border-t flex justify-end">
+                                <button onClick={() => setSyncLog(null)} className="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Fechar</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Modal detalhes parcela */}
+            {detalheLinha && (() => {
+                const l = detalheLinha;
+                const eleg = elegivel(l);
+                const close = () => setDetalheLinha(null);
+                const Field = ({ label, value, valueClass = '' }) => (
+                    <div>
+                        <div className="text-[11px] text-gray-500 uppercase tracking-wide">{label}</div>
+                        <div className={`text-sm ${valueClass}`}>{value || '-'}</div>
+                    </div>
+                );
+                return (
+                    <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={close}>
+                        <div className="bg-white rounded-t-lg md:rounded-lg max-w-lg w-full max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
+                                <h3 className="font-bold text-base">
+                                    Parcela {l.numeroParcela}/{l.parcelasTotal}
+                                    <span className="ml-2 text-sm font-normal text-gray-500">
+                                        {l.pedidoNumero ? `#${l.pedidoNumero}` : (l.pedidoEspecial ? 'Especial' : '')}
+                                    </span>
+                                </h3>
+                                <button onClick={close} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                            </div>
+                            <div className="p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="text-[11px] text-gray-500 uppercase">Valor</div>
+                                        <div className="text-2xl font-bold text-gray-900">R$ {fmt(l.valor)}</div>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_PARC[l.statusParcela] || ''}`}>{l.statusParcela}</span>
+                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_CONTA[l.statusConta] || ''}`}>Conta: {l.statusConta}</span>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                                    <Field label="Cliente" value={l.clienteNome} />
+                                    <Field label="Vendedor" value={l.vendedorNome} />
+                                    <Field label="Condição" value={l.condicaoPagamento} />
+                                    <Field label="Origem" value={l.origem === 'FATURADO_CA' ? 'Faturado CA' : 'Especial'} />
+                                    <Field label="Vencimento" value={fmtData(l.dataVencimento)} valueClass={l.statusParcela === 'VENCIDO' ? 'text-red-600 font-medium' : ''} />
+                                    <Field label="Pagamento" value={fmtData(l.dataPagamento)} valueClass={l.dataPagamento ? 'text-green-700 font-medium' : ''} />
+                                    <Field label="Valor pago" value={l.valorPago ? `R$ ${fmt(l.valorPago)}` : '-'} />
+                                    <Field label="Forma" value={l.formaPagamento} />
+                                    <Field label="Baixado por" value={l.baixadoPorNome} />
+                                    <Field label="ID CA" value={l.idVendaContaAzul ? '✓ Sincronizado' : 'Não enviado'} />
+                                </div>
+                            </div>
+                            <div className="sticky bottom-0 bg-white border-t px-4 py-3 flex flex-wrap gap-2 justify-end">
+                                {l.pedidoId && (
+                                    <Link to={`/pedidos/${l.pedidoId}`} onClick={close} className="px-3 py-2 rounded border text-sm inline-flex items-center gap-1 hover:bg-gray-50">
+                                        <LinkIcon className="w-4 h-4" /> Ver pedido
+                                    </Link>
+                                )}
+                                {podeBaixar && l.idVendaContaAzul && l.statusConta !== 'QUITADO' && l.statusConta !== 'CANCELADO' && (
+                                    <button
+                                        onClick={() => { handleSyncCA(l.contaId, l.idVendaContaAzul); close(); }}
+                                        disabled={syncing === l.contaId}
+                                        className="px-3 py-2 rounded bg-blue-50 text-blue-700 text-sm inline-flex items-center gap-1 hover:bg-blue-100 disabled:opacity-50"
+                                    >
+                                        <RefreshCw className={`w-4 h-4 ${syncing === l.contaId ? 'animate-spin' : ''}`} /> Sync CA
+                                    </button>
+                                )}
+                                {podeBaixar && l.statusParcela === 'PAGO' && (
+                                    <button
+                                        onClick={() => { handleEstornar(l); close(); }}
+                                        className="px-3 py-2 rounded bg-yellow-50 text-yellow-700 text-sm inline-flex items-center gap-1 hover:bg-yellow-100"
+                                    >
+                                        <Undo2 className="w-4 h-4" /> Estornar
+                                    </button>
+                                )}
+                                {podeBaixar && eleg && (
+                                    <button
+                                        onClick={() => { handleBaixar(l); close(); }}
+                                        className="px-3 py-2 rounded bg-green-600 text-white text-sm inline-flex items-center gap-1 hover:bg-green-700"
+                                    >
+                                        <CheckCircle className="w-4 h-4" /> Baixar
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 };
