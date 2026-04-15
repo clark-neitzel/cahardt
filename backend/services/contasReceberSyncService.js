@@ -46,13 +46,53 @@ async function sincronizarConta(contaId, opts = {}) {
     const clienteCAId = conta.clienteId;
     const dataVendaStr = new Date(conta.pedido.dataVenda).toISOString().split('T')[0];
 
-    const parcelasCA = await contaAzulService.encontrarParcelasDeVenda(
-        clienteCAId, conta.pedido.idVendaContaAzul, dataVendaStr,
+    // === DEBUG: busca ampla, mostra tudo que veio, mostra o que casou ===
+    const dataVenda = new Date(dataVendaStr + 'T12:00:00-03:00');
+    const de = new Date(dataVenda); de.setDate(de.getDate() - 60);
+    const ate = new Date(dataVenda); ate.setDate(ate.getDate() + 365);
+    const fmtDate = (d) => d.toISOString().split('T')[0];
+
+    const parcelasTodasCliente = await contaAzulService.buscarParcelasContaAReceber(
+        clienteCAId, fmtDate(de), fmtDate(ate),
         ['EM_ABERTO', 'ATRASADO', 'RECEBIDO', 'RECEBIDO_PARCIAL']
     );
 
+    const debug = {
+        pedidoNumero: conta.pedido.numero,
+        idVendaCA: conta.pedido.idVendaContaAzul,
+        clienteCAId,
+        dataVenda: dataVendaStr,
+        rangeBusca: `${fmtDate(de)} → ${fmtDate(ate)}`,
+        parcelasDoCliente: parcelasTodasCliente.length,
+        amostraCliente: parcelasTodasCliente.slice(0, 5).map(p => ({
+            id: p.id, venc: p.data_vencimento, status: p.status, valor: p.valor
+        })),
+        parcelasQueCasaram: []
+    };
+
+    const parcelasCA = [];
+    for (const p of parcelasTodasCliente) {
+        try {
+            const det = await contaAzulService.buscarParcelaDetalhe(p.id);
+            const refId = det?.evento?.referencia?.id;
+            const refOrigem = det?.evento?.referencia?.origem;
+            if (refId === conta.pedido.idVendaContaAzul && refOrigem === 'VENDA') {
+                parcelasCA.push(det);
+                debug.parcelasQueCasaram.push({
+                    id: det.id, numero: det.numero_parcela, status: det.status,
+                    venc: det.data_vencimento, valor: det.valor_composicao?.valor_bruto
+                });
+            }
+        } catch (e) {
+            // skip
+        }
+    }
+
     if (parcelasCA.length === 0) {
-        return { aplicadas: 0, verificadas: 0, pagasCA: 0, detalhes: [], mensagem: 'Nenhuma parcela no CA' };
+        return {
+            aplicadas: 0, verificadas: 0, pagasCA: 0, detalhes: [], debug,
+            mensagem: `Cliente tem ${parcelasTodasCliente.length} parcela(s) no CA no range, mas NENHUMA casou com idVenda ${conta.pedido.idVendaContaAzul.slice(0, 8)}... . Pedido provavelmente não foi faturado (sem NF-e no CA).`
+        };
     }
 
     parcelasCA.sort((a, b) => {

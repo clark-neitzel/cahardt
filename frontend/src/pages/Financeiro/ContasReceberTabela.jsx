@@ -267,8 +267,10 @@ const ContasReceberTabela = () => {
                     pedido: label,
                     cliente: l.clienteNome,
                     status: aplicadas > 0 ? 'ok' : 'semmudanca',
-                    msg: r.message || (aplicadas > 0 ? `${aplicadas} parcela(s) baixada(s)` : 'Sem baixas novas no CA'),
-                    aplicadas
+                    msg: r.message || r.mensagem || (aplicadas > 0 ? `${aplicadas} parcela(s) baixada(s)` : 'Sem baixas novas no CA'),
+                    aplicadas,
+                    debug: r.debug || null,
+                    raw: r
                 });
             } catch (e) {
                 erros++;
@@ -277,7 +279,9 @@ const ContasReceberTabela = () => {
                     cliente: l.clienteNome,
                     status: 'erro',
                     msg: e.response?.data?.error || e.message || 'Erro desconhecido',
-                    aplicadas: 0
+                    aplicadas: 0,
+                    debug: e.response?.data?.detalhe || null,
+                    raw: e.response?.data || { error: e.message }
                 });
             }
             setSyncLog({ progresso: i + 1, total: contasUnicas.length, itens: [...itens], ativo: i + 1 < contasUnicas.length, totalAplicadas, erros });
@@ -745,26 +749,43 @@ const ContasReceberTabela = () => {
                         </div>
                         <div className="overflow-y-auto flex-1 divide-y">
                             {syncLog.itens.map((it, idx) => (
-                                <div key={idx} className="px-4 py-2 text-sm flex items-start gap-2">
-                                    <span className="flex-shrink-0 mt-0.5">
-                                        {it.status === 'ok' && <span className="text-green-600">✅</span>}
-                                        {it.status === 'semmudanca' && <span className="text-gray-400">➖</span>}
-                                        {it.status === 'erro' && <span className="text-red-600">❌</span>}
-                                    </span>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="font-medium text-gray-900">
-                                            {it.pedido} <span className="text-gray-500 font-normal">— {it.cliente}</span>
+                                <details key={idx} className="px-4 py-2 text-sm">
+                                    <summary className="flex items-start gap-2 cursor-pointer list-none">
+                                        <span className="flex-shrink-0 mt-0.5">
+                                            {it.status === 'ok' && <span className="text-green-600">✅</span>}
+                                            {it.status === 'semmudanca' && <span className="text-gray-400">➖</span>}
+                                            {it.status === 'erro' && <span className="text-red-600">❌</span>}
+                                        </span>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-medium text-gray-900">
+                                                {it.pedido} <span className="text-gray-500 font-normal">— {it.cliente}</span>
+                                            </div>
+                                            <div className={`text-xs ${it.status === 'erro' ? 'text-red-600' : 'text-gray-600'}`}>{it.msg}</div>
                                         </div>
-                                        <div className={`text-xs ${it.status === 'erro' ? 'text-red-600' : 'text-gray-600'}`}>{it.msg}</div>
-                                    </div>
-                                </div>
+                                        {(it.debug || it.raw) && <span className="text-[10px] text-blue-600">▸ debug</span>}
+                                    </summary>
+                                    {(it.debug || it.raw) && (
+                                        <pre className="mt-2 ml-6 p-2 bg-gray-50 border rounded text-[10px] text-gray-700 overflow-x-auto">
+{JSON.stringify(it.debug || it.raw, null, 2)}
+                                        </pre>
+                                    )}
+                                </details>
                             ))}
                             {syncLog.ativo && syncLog.itens.length < syncLog.total && (
                                 <div className="px-4 py-2 text-sm text-gray-400 italic">Processando...</div>
                             )}
                         </div>
                         {!syncLog.ativo && (
-                            <div className="px-4 py-3 border-t flex justify-end">
+                            <div className="px-4 py-3 border-t flex justify-end gap-2">
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(JSON.stringify(syncLog.itens, null, 2));
+                                        toast.success('Log copiado');
+                                    }}
+                                    className="px-3 py-2 rounded border text-sm hover:bg-gray-50"
+                                >
+                                    Copiar log
+                                </button>
                                 <button onClick={() => setSyncLog(null)} className="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Fechar</button>
                             </div>
                         )}
