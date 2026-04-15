@@ -127,7 +127,10 @@ router.get('/', verificarAuth, async (req, res) => {
 
         // ============ OPERAÇÃO DO DIA ============
         const atendimentosHoje = await prisma.atendimento.findMany({
-            where: { criadoEm: { gte: startOfDay, lte: endOfDay } },
+            where: {
+                criadoEm: { gte: startOfDay, lte: endOfDay },
+                tipo: { not: 'FINANCEIRO' },
+            },
             select: { clienteId: true, leadId: true, pedidoId: true, transferidoParaId: true, transferenciaFinalizada: true },
         });
         // Pedidos lançados hoje (createdAt) - cada pedido conta como 1 atendimento com venda
