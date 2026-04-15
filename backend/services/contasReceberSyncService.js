@@ -71,12 +71,18 @@ async function sincronizarConta(contaId, opts = {}) {
     };
 
     const parcelasCA = [];
+    debug.referenciasEncontradas = [];
     for (const p of parcelasTodasCliente) {
         await new Promise(r => setTimeout(r, 150)); // throttle 150ms p/ respeitar 10 req/s do CA
         try {
             const det = await contaAzulService.buscarParcelaDetalhe(p.id);
             const refId = det?.evento?.referencia?.id;
             const refOrigem = det?.evento?.referencia?.origem;
+            debug.referenciasEncontradas.push({
+                parcelaId: det.id, venc: det.data_vencimento, status: det.status,
+                refId, refOrigem,
+                casa: refId === conta.pedido.idVendaContaAzul
+            });
             if (refId === conta.pedido.idVendaContaAzul && refOrigem === 'VENDA') {
                 parcelasCA.push(det);
                 debug.parcelasQueCasaram.push({
