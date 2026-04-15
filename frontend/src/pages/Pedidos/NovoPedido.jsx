@@ -1547,7 +1547,7 @@ const NovoPedido = () => {
 
             {/* ===== LISTA DE PRODUTOS ===== */}
             {clienteId && tipoPedido && condicaoPagamentoId && canalOrigem && !mostrarFormulario && (
-                <div className="flex-1">
+                <div className="flex-1 pb-28">
                     {/* Campo de busca de produto fixo */}
                     <div className="bg-gray-100 px-3 py-2 sticky top-[72px] z-10 border-b border-gray-200">
                         <div className="flex items-center bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 gap-2 shadow-sm">
