@@ -571,8 +571,8 @@ const ListaPedidos = () => {
 
             {/* Painel de Filtros Avançados */}
             {showFilters && (
-                <div className="mb-3 bg-white p-3 rounded-lg border border-gray-200 shadow-sm animate-in fade-in slide-in-from-top-2">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+                <div className="mb-3 bg-white p-3 rounded-lg border border-gray-200 shadow-sm animate-in fade-in slide-in-from-top-2 space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <DateRangeField
                             icon={<Calendar className="h-3 w-3" />}
                             label="Entrega"
@@ -597,6 +597,8 @@ const ListaPedidos = () => {
                             onDe={v => setFiltros(p => ({ ...p, vencimentoDe: v }))}
                             onAte={v => setFiltros(p => ({ ...p, vencimentoAte: v }))}
                         />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
                             <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1 mb-0.5">
                                 <Truck className="h-3 w-3" /> Embarque
