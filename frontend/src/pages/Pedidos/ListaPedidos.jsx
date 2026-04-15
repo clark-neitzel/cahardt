@@ -11,6 +11,29 @@ import ListaDevolucoes from './ListaDevolucoes';
 
 const fmtNumero = (pedido) => pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
 
+const DateRangeField = ({ icon, label, de, ate, onDe, onAte }) => (
+    <div>
+        <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1 mb-0.5">
+            {icon} {label}
+        </label>
+        <div className="flex items-center gap-1">
+            <input
+                type="date"
+                value={de}
+                onChange={e => onDe(e.target.value)}
+                className="w-full min-w-0 border border-gray-200 rounded px-1.5 py-1.5 text-[11px] focus:border-primary focus:ring-0"
+            />
+            <span className="text-gray-300 text-[10px]">→</span>
+            <input
+                type="date"
+                value={ate}
+                onChange={e => onAte(e.target.value)}
+                className="w-full min-w-0 border border-gray-200 rounded px-1.5 py-1.5 text-[11px] focus:border-primary focus:ring-0"
+            />
+        </div>
+    </div>
+);
+
 const ListaPedidos = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -37,6 +60,10 @@ const ListaPedidos = () => {
             dataEntregaAte: hoje,
             dataCriacaoDe: '',
             dataCriacaoAte: '',
+            vencimentoDe: '',
+            vencimentoAte: '',
+            embarqueNumero: '',
+            motorista: '',
             vendedorId: '',
             busca: ''
         };
@@ -149,8 +176,11 @@ const ListaPedidos = () => {
             setLoading(true);
             setLoadingAmostras(true);
             
+            // Busca numérica (valor/numero) é feita client-side para permitir match por valor total
+            const buscaTrim = (filtros.busca || '').trim();
+            const buscaNumerica = /^[\d.,]+$/.test(buscaTrim);
             const params = {
-                busca: filtros.busca,
+                busca: buscaNumerica ? '' : buscaTrim,
                 vendedorId: filtros.vendedorId,
             };
 
@@ -163,6 +193,14 @@ const ListaPedidos = () => {
                 params.createdAtDe = filtros.dataCriacaoDe;
                 params.createdAtAte = filtros.dataCriacaoAte;
             }
+
+            if (filtros.vencimentoDe || filtros.vencimentoAte) {
+                if (filtros.vencimentoDe) params.vencimentoDe = filtros.vencimentoDe;
+                if (filtros.vencimentoAte) params.vencimentoAte = filtros.vencimentoAte;
+            }
+
+            if (filtros.embarqueNumero) params.embarqueNumero = filtros.embarqueNumero;
+            if (filtros.motorista) params.motorista = filtros.motorista;
 
             // Se for aba de pedidos, especiais ou bonificacao, busca da tabela de pedidos
             if (abaAtiva === 'pedidos' || abaAtiva === 'especiais' || abaAtiva === 'bonificacao') {
@@ -467,12 +505,14 @@ const ListaPedidos = () => {
     const filtrosPadrao = React.useMemo(() => {
         const hoje = new Date().toISOString().split('T')[0];
         const trintaDiasAtras = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        return { dataEntregaDe: trintaDiasAtras, dataEntregaAte: hoje, dataCriacaoDe: '', dataCriacaoAte: '', vendedorId: '', busca: '' };
+        return { dataEntregaDe: trintaDiasAtras, dataEntregaAte: hoje, dataCriacaoDe: '', dataCriacaoAte: '', vencimentoDe: '', vencimentoAte: '', embarqueNumero: '', motorista: '', vendedorId: '', busca: '' };
     }, []);
 
     const isFiltroAtivo = React.useMemo(() => {
         if (filtros.vendedorId) return true;
         if (filtros.dataCriacaoDe || filtros.dataCriacaoAte) return true;
+        if (filtros.vencimentoDe || filtros.vencimentoAte) return true;
+        if (filtros.embarqueNumero || filtros.motorista) return true;
         if (filtros.dataEntregaDe !== filtrosPadrao.dataEntregaDe || filtros.dataEntregaAte !== filtrosPadrao.dataEntregaAte) return true;
         return false;
     }, [filtros, filtrosPadrao]);
@@ -499,7 +539,7 @@ const ListaPedidos = () => {
                         <input
                             autoFocus
                             type="text"
-                            placeholder="Buscar cliente, vendedor, nº..."
+                            placeholder="Buscar cliente, cidade, vendedor, nº, valor..."
                             value={filtros.busca}
                             onChange={e => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
                             className="w-full pl-9 pr-8 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary text-sm shadow-sm"
@@ -531,72 +571,53 @@ const ListaPedidos = () => {
 
             {/* Painel de Filtros Avançados */}
             {showFilters && (
-                <div className="mb-4 bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 shadow-sm animate-in fade-in slide-in-from-top-2">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-                        {/* Data de Entrega */}
-                        <div className="space-y-2 lg:col-span-2">
-                            <label className="text-[11px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
-                                <Calendar className="h-3 w-3" /> Data de Entrega
+                <div className="mb-3 bg-white p-3 rounded-lg border border-gray-200 shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+                        <DateRangeField
+                            icon={<Calendar className="h-3 w-3" />}
+                            label="Entrega"
+                            de={filtros.dataEntregaDe}
+                            ate={filtros.dataEntregaAte}
+                            onDe={v => setFiltros(p => ({ ...p, dataEntregaDe: v }))}
+                            onAte={v => setFiltros(p => ({ ...p, dataEntregaAte: v }))}
+                        />
+                        <DateRangeField
+                            icon={<Calendar className="h-3 w-3" />}
+                            label="Criação"
+                            de={filtros.dataCriacaoDe}
+                            ate={filtros.dataCriacaoAte}
+                            onDe={v => setFiltros(p => ({ ...p, dataCriacaoDe: v }))}
+                            onAte={v => setFiltros(p => ({ ...p, dataCriacaoAte: v }))}
+                        />
+                        <DateRangeField
+                            icon={<Calendar className="h-3 w-3" />}
+                            label="Vencimento"
+                            de={filtros.vencimentoDe}
+                            ate={filtros.vencimentoAte}
+                            onDe={v => setFiltros(p => ({ ...p, vencimentoDe: v }))}
+                            onAte={v => setFiltros(p => ({ ...p, vencimentoAte: v }))}
+                        />
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1 mb-0.5">
+                                <Truck className="h-3 w-3" /> Embarque
                             </label>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <p className="text-[10px] text-gray-400 mb-0.5">De</p>
-                                    <input
-                                        type="date"
-                                        value={filtros.dataEntregaDe}
-                                        onChange={e => setFiltros(prev => ({ ...prev, dataEntregaDe: e.target.value }))}
-                                        className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
-                                    />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] text-gray-400 mb-0.5">Até</p>
-                                    <input
-                                        type="date"
-                                        value={filtros.dataEntregaAte}
-                                        onChange={e => setFiltros(prev => ({ ...prev, dataEntregaAte: e.target.value }))}
-                                        className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
-                                    />
-                                </div>
-                            </div>
+                            <input
+                                type="number"
+                                placeholder="Nº"
+                                value={filtros.embarqueNumero}
+                                onChange={e => setFiltros(prev => ({ ...prev, embarqueNumero: e.target.value }))}
+                                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
+                            />
                         </div>
-
-                        {/* Data de Criação */}
-                        <div className="space-y-2 lg:col-span-2">
-                            <label className="text-[11px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
-                                <Calendar className="h-3 w-3" /> Emissão/Criação
-                            </label>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <p className="text-[10px] text-gray-400 mb-0.5">De</p>
-                                    <input
-                                        type="date"
-                                        value={filtros.dataCriacaoDe}
-                                        onChange={e => setFiltros(prev => ({ ...prev, dataCriacaoDe: e.target.value }))}
-                                        className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
-                                    />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] text-gray-400 mb-0.5">Até</p>
-                                    <input
-                                        type="date"
-                                        value={filtros.dataCriacaoAte}
-                                        onChange={e => setFiltros(prev => ({ ...prev, dataCriacaoAte: e.target.value }))}
-                                        className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Vendedor */}
-                        <div className="space-y-2 lg:col-span-1">
-                            <label className="text-[11px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1 mb-0.5">
                                 <User className="h-3 w-3" /> Vendedor
                             </label>
                             <select
                                 value={filtros.vendedorId}
                                 disabled={!podeVerTodosVendedores}
                                 onChange={e => setFiltros(prev => ({ ...prev, vendedorId: e.target.value }))}
-                                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0 bg-white"
+                                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0 bg-white disabled:bg-gray-50"
                             >
                                 <option value="">Todos</option>
                                 {todosVendedores.map(v => (
@@ -604,103 +625,32 @@ const ListaPedidos = () => {
                                 ))}
                             </select>
                         </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1 mb-0.5">
+                                <Truck className="h-3 w-3" /> Motorista
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Nome"
+                                value={filtros.motorista}
+                                onChange={e => setFiltros(prev => ({ ...prev, motorista: e.target.value }))}
+                                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0"
+                            />
+                        </div>
                     </div>
                     {isFiltroAtivo && (
-                        <div className="mt-3 flex justify-end">
+                        <div className="mt-2 flex justify-end">
                             <button
                                 onClick={limparFiltros}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-500 hover:text-white hover:bg-red-500 border border-red-300 rounded-full transition-colors"
+                                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-red-500 hover:text-white hover:bg-red-500 border border-red-300 rounded-full transition-colors"
                             >
-                                <X className="h-3.5 w-3.5" />
-                                Limpar filtros
+                                <X className="h-3 w-3" />
+                                Limpar
                             </button>
                         </div>
                     )}
                 </div>
             )}
-
-            {/* Painel de Ações Pendentes */}
-            {pendencias && (() => {
-                const statusConfig = [
-                    { key: 'ENVIAR', label: 'Enviar', color: 'blue', icon: Send, pulse: true },
-                    { key: 'APROVADO', label: 'Aprovados', color: 'green', icon: CheckCircle, pulse: true },
-                    { key: 'ERRO', label: 'Erro', color: 'red', icon: XCircle, pulse: true },
-                    { key: 'ABERTO', label: 'Aberto', color: 'gray', icon: FileEdit, pulse: false },
-                    { key: 'SINCRONIZANDO', label: 'Sincroniz.', color: 'yellow', icon: RefreshCw, pulse: false },
-                ];
-                const tipoConfig = [
-                    { key: 'pedidos', label: 'Pedidos' },
-                    { key: 'especiais', label: 'Especiais' },
-                    { key: 'bonificacao', label: 'Bonificação' },
-                ];
-
-                // Agregar totais globais por status
-                const totais = {};
-                const detalhe = {};
-                for (const st of statusConfig) {
-                    totais[st.key] = 0;
-                    detalhe[st.key] = [];
-                    for (const tp of tipoConfig) {
-                        const cnt = pendencias[tp.key]?.[st.key] || 0;
-                        if (cnt > 0) {
-                            totais[st.key] += cnt;
-                            detalhe[st.key].push({ ...tp, count: cnt });
-                        }
-                    }
-                }
-
-                const temPendencias = totais.ENVIAR > 0 || totais.APROVADO > 0 || totais.ERRO > 0;
-                if (!temPendencias) return null;
-
-                const colorMap = {
-                    blue: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', badge: 'bg-blue-100 text-blue-800', dot: 'bg-blue-500' },
-                    green: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', badge: 'bg-green-100 text-green-800', dot: 'bg-green-500' },
-                    red: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', badge: 'bg-red-100 text-red-800', dot: 'bg-red-500' },
-                    gray: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', badge: 'bg-gray-100 text-gray-800', dot: 'bg-gray-500' },
-                    yellow: { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700', badge: 'bg-yellow-100 text-yellow-800', dot: 'bg-yellow-500' },
-                };
-
-                return (
-                    <div className="mb-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
-                        <div className="flex items-center gap-1.5 mb-2">
-                            <Bell className="h-3.5 w-3.5 text-amber-600 animate-bounce" />
-                            <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wide">Ações Pendentes</span>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                            {statusConfig.filter(st => totais[st.key] > 0).map(st => {
-                                const c = colorMap[st.color];
-                                const Icon = st.icon;
-                                const detalhes = detalhe[st.key];
-                                return (
-                                    <button
-                                        key={st.key}
-                                        onClick={() => {
-                                            // Navega para a primeira aba que tem esse status
-                                            const primeiro = detalhes[0];
-                                            if (primeiro) setAbaAtiva(primeiro.key);
-                                            setFiltroStatus(st.key);
-                                        }}
-                                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border ${c.border} ${c.bg} hover:opacity-80 transition-all cursor-pointer group`}
-                                    >
-                                        <span className="relative flex h-2 w-2">
-                                            {st.pulse && <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${c.dot} opacity-75`}></span>}
-                                            <span className={`relative inline-flex rounded-full h-2 w-2 ${c.dot}`}></span>
-                                        </span>
-                                        <Icon className={`h-3.5 w-3.5 ${c.text}`} />
-                                        <span className={`text-[12px] font-bold ${c.text}`}>{totais[st.key]}</span>
-                                        <span className={`text-[11px] ${c.text} opacity-80`}>{st.label}</span>
-                                        {detalhes.length > 1 && (
-                                            <span className={`text-[9px] ${c.text} opacity-60 hidden sm:inline`}>
-                                                ({detalhes.map(d => `${d.label}: ${d.count}`).join(', ')})
-                                            </span>
-                                        )}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                );
-            })()}
 
             {/* Abas: Pedidos | Especiais | Bonificação | Amostras */}
             <div className="mb-2">
@@ -749,6 +699,66 @@ const ListaPedidos = () => {
                     </button>
                 )}
             </div>
+
+            {/* Painel de Ações Pendentes – depois das abas */}
+            {pendencias && (() => {
+                const statusConfig = [
+                    { key: 'ENVIAR', label: 'Enviar', color: 'blue', icon: Send, pulse: true },
+                    { key: 'APROVADO', label: 'Aprovados', color: 'green', icon: CheckCircle, pulse: true },
+                    { key: 'ERRO', label: 'Erro', color: 'red', icon: XCircle, pulse: true },
+                ];
+                const tipoConfig = [
+                    { key: 'pedidos', label: 'Pedidos' },
+                    { key: 'especiais', label: 'Especiais' },
+                    { key: 'bonificacao', label: 'Bonificação' },
+                ];
+                const totais = {};
+                const detalhe = {};
+                for (const st of statusConfig) {
+                    totais[st.key] = 0;
+                    detalhe[st.key] = [];
+                    for (const tp of tipoConfig) {
+                        const cnt = pendencias[tp.key]?.[st.key] || 0;
+                        if (cnt > 0) { totais[st.key] += cnt; detalhe[st.key].push({ ...tp, count: cnt }); }
+                    }
+                }
+                const temPendencias = statusConfig.some(s => totais[s.key] > 0);
+                if (!temPendencias) return null;
+                const colorMap = {
+                    blue: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', dot: 'bg-blue-500' },
+                    green: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', dot: 'bg-green-500' },
+                    red: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', dot: 'bg-red-500' },
+                };
+                return (
+                    <div className="mb-2 flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1 text-[10px] font-bold text-amber-700 uppercase tracking-wide">
+                            <Bell className="h-3 w-3 text-amber-600" /> Pendentes:
+                        </div>
+                        {statusConfig.filter(st => totais[st.key] > 0).map(st => {
+                            const c = colorMap[st.color];
+                            const Icon = st.icon;
+                            const detalhes = detalhe[st.key];
+                            return (
+                                <button
+                                    key={st.key}
+                                    onClick={() => {
+                                        const primeiro = detalhes[0];
+                                        if (primeiro) setAbaAtiva(primeiro.key);
+                                        setFiltroStatus(st.key);
+                                    }}
+                                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full border ${c.border} ${c.bg} hover:opacity-80 transition-all`}
+                                    title={detalhes.map(d => `${d.label}: ${d.count}`).join(', ')}
+                                >
+                                    <span className={`inline-flex rounded-full h-1.5 w-1.5 ${c.dot}`}></span>
+                                    <Icon className={`h-3 w-3 ${c.text}`} />
+                                    <span className={`text-[11px] font-bold ${c.text}`}>{totais[st.key]}</span>
+                                    <span className={`text-[10px] ${c.text} opacity-80`}>{st.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                );
+            })()}
 
             {/* Filtro rápido por status */}
             {!['amostras'].includes(abaAtiva) && (
@@ -924,6 +934,16 @@ const ListaPedidos = () => {
                                 if (filtroStatus === 'FATURADO') return p.situacaoCA === 'FATURADO';
                                 if (filtroStatus === 'APROVADO') return p.situacaoCA === 'APROVADO' && p.situacaoCA !== 'FATURADO';
                                 return p.statusEnvio === filtroStatus && p.situacaoCA !== 'FATURADO' && p.situacaoCA !== 'APROVADO';
+                            }).filter(p => {
+                                const termo = (filtros.busca || '').trim();
+                                if (!termo) return true;
+                                if (!/^[\d.,]+$/.test(termo)) return true; // busca textual já filtrada no backend
+                                const num = parseInt(termo.replace(/\D/g, ''));
+                                if (!isNaN(num) && p.numero === num) return true;
+                                const total = (p.itens?.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0) || 0) + Number(p.valorFrete || 0);
+                                const totalStr = total.toFixed(2).replace('.', ',');
+                                const alvo = termo.replace(/\./g, ',');
+                                return totalStr.includes(alvo);
                             }).map((pedido) => (
                                 <div key={pedido.id} id={`pedido-row-${pedido.id}`} className={`px-3 pt-3 pb-2 hover:bg-gray-50 transition-colors border-b border-gray-100 overflow-hidden ${highlightId === pedido.id ? 'ring-2 ring-primary bg-yellow-50 animate-pulse' : ''}`}>
                                     {/* Linha 1: checkbox + número + cliente + valor */}

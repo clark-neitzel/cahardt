@@ -38,12 +38,30 @@ const pedidoService = {
 
     // 1. Listagem de pedidos com filtros (para a tela de histórico)
     listar: async (filtros) => {
-        const { statusEnvio, vendedorId, clienteId, especial, bonificacao, dataVendaDe, dataVendaAte, createdAtDe, createdAtAte, busca } = filtros;
+        const { statusEnvio, vendedorId, clienteId, especial, bonificacao, dataVendaDe, dataVendaAte, createdAtDe, createdAtAte, vencimentoDe, vencimentoAte, embarqueNumero, motorista, busca } = filtros;
 
         const where = {};
         if (statusEnvio) where.statusEnvio = statusEnvio;
         if (vendedorId) where.vendedorId = vendedorId;
         if (clienteId) where.clienteId = clienteId;
+
+        if (vencimentoDe || vencimentoAte) {
+            where.primeiroVencimento = {};
+            if (vencimentoDe) where.primeiroVencimento.gte = new Date(vencimentoDe + 'T00:00:00.000Z');
+            if (vencimentoAte) where.primeiroVencimento.lte = new Date(vencimentoAte + 'T23:59:59.999Z');
+        }
+
+        if (embarqueNumero) {
+            const num = parseInt(embarqueNumero);
+            if (!isNaN(num)) where.embarque = { ...(where.embarque || {}), numero: num };
+        }
+
+        if (motorista) {
+            where.embarque = {
+                ...(where.embarque || {}),
+                responsavel: { nome: { contains: motorista, mode: 'insensitive' } }
+            };
+        }
 
         if (bonificacao !== undefined && bonificacao !== '') {
             where.bonificacao = (bonificacao === 'true' || bonificacao === true);
