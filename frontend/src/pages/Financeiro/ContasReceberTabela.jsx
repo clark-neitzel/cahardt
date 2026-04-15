@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import contasReceberService from '../../services/contasReceberService';
 import vendedorService from '../../services/vendedorService';
-import condicaoPagamentoService from '../../services/condicaoPagamentoService';
 import {
     DollarSign, Search, Filter, X, RefreshCw, CheckCircle, Undo2,
     Download, ArrowUpDown, CheckSquare, Square, Ban, Link as LinkIcon
@@ -48,7 +47,6 @@ const ContasReceberTabela = () => {
     const [syncingTodas, setSyncingTodas] = useState(false);
 
     const [vendedores, setVendedores] = useState([]);
-    const [condicoes, setCondicoes] = useState([]);
 
     // Filtros
     const [filtros, setFiltros] = useState({
@@ -79,8 +77,21 @@ const ContasReceberTabela = () => {
     // Carrega aux
     useEffect(() => {
         vendedorService.listarAtivos().then(setVendedores).catch(() => {});
-        condicaoPagamentoService.listar().then(setCondicoes).catch(() => {});
     }, []);
+
+    // Condições distintas, derivadas das contas carregadas
+    const condicoes = useMemo(() => {
+        const set = new Set();
+        linhas.forEach(l => { if (l.condicaoPagamento) set.add(l.condicaoPagamento); });
+        return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    }, [linhas]);
+
+    // Formas de pagamento distintas (das baixas existentes)
+    const formasUsadas = useMemo(() => {
+        const set = new Set();
+        linhas.forEach(l => { if (l.formaPagamento) set.add(l.formaPagamento); });
+        return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    }, [linhas]);
 
     const saveFilters = useCallback(() => {
         localStorage.setItem(LS_KEY, JSON.stringify(filtros));
@@ -394,14 +405,14 @@ const ContasReceberTabela = () => {
                         <label className="text-xs text-gray-500">Condição Pgto</label>
                         <select value={filtros.condicaoPagamento} onChange={e => setFiltros(f => ({ ...f, condicaoPagamento: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm">
                             <option value="">Todas</option>
-                            {condicoes.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+                            {condicoes.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                     </div>
                     <div>
                         <label className="text-xs text-gray-500">Forma Pgto (baixa)</label>
                         <select value={filtros.formaPagamento} onChange={e => setFiltros(f => ({ ...f, formaPagamento: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm">
                             <option value="">Todas</option>
-                            {FORMAS.map(f => <option key={f}>{f}</option>)}
+                            {[...new Set([...FORMAS, ...formasUsadas])].map(f => <option key={f}>{f}</option>)}
                         </select>
                     </div>
                     <div>
