@@ -14,6 +14,11 @@ async function main() {
         return;
     }
 
+    if (pedido.statusEnvio === 'EXCLUIDO') {
+        console.log('Pedido #94 já está EXCLUIDO — skip.');
+        return;
+    }
+
     console.log('Estado atual:', pedido);
 
     if (pedido.statusEnvio === 'RECEBIDO') {
