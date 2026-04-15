@@ -128,6 +128,11 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                                     <CheckCircle className="h-3 w-3" /> Atendido {(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) && `por ${(atendHoje.usuario?.nome || atendHoje.vendedor?.nome).split(' ')[0]}`}
                                 </span>
                             )}
+                            {atendHoje?.gpsVendedor && (
+                                <button onClick={(e) => { e.stopPropagation(); abrirMapa(atendHoje.gpsVendedor); }} className="text-[10px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Ver onde o atendimento foi registrado">
+                                    <MapPin className="h-3 w-3" /> GPS
+                                </button>
+                            )}
                             {!atendHoje && getPedidoHoje(cliente._pedidos) && (
                                 <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome) ? `Pedido por ${getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome}` : ''}>
                                     <CheckCircle className="h-3 w-3" /> Com Pedido {(getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome) && `por ${(getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome).split(' ')[0]}`}
@@ -310,6 +315,11 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
                                 <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) ? `Atendido por ${atendHoje.usuario?.nome || atendHoje.vendedor?.nome}` : ''}>
                                     <CheckCircle className="h-3 w-3" /> Atendido {(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) && `por ${(atendHoje.usuario?.nome || atendHoje.vendedor?.nome).split(' ')[0]}`}
                                 </span>
+                            )}
+                            {atendHoje?.gpsVendedor && (
+                                <button onClick={(e) => { e.stopPropagation(); abrirMapa(atendHoje.gpsVendedor); }} className="text-[10px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Ver onde o atendimento foi registrado">
+                                    <MapPin className="h-3 w-3" /> GPS
+                                </button>
                             )}
                             {proxHoje && !atendHoje && <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><Star className="h-3 w-3" /> Visita Hoje!</span>}
                             {!atendHoje && getPedidoHoje(lead._pedidos || lead.pedidos) && (
