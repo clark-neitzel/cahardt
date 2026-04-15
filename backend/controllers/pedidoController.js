@@ -549,6 +549,9 @@ const pedidoController = {
                 data.statusEnvio = 'EXCLUIDO';
                 data.situacaoCA = situacaoNome || 'EXCLUIDO';
                 data.revisaoPendente = true;
+                data.embarqueId = null;
+                data.statusEntrega = 'PENDENTE';
+                data.dataEntrega = null;
                 statusEnvioFinal = 'EXCLUIDO';
             } else if (situacaoNome !== pedido.situacaoCA) {
                 data.situacaoCA = situacaoNome;
@@ -574,16 +577,28 @@ const pedidoController = {
             });
         } catch (error) {
             const status = error.response?.status;
-            if (status === 404) {
+            // 404 = excluído definitivamente | 400 = ID V1 legado rejeitado pelo CA (tratamos como excluído, igual garbage collector)
+            if (status === 404 || status === 400) {
                 try {
-                    const pedidoAtual = await prisma.pedido.findUnique({ where: { id: req.params.id }, select: { statusEnvio: true } });
+                    const pedidoAtual = await prisma.pedido.findUnique({
+                        where: { id: req.params.id },
+                        select: { statusEnvio: true, embarqueId: true }
+                    });
                     await prisma.pedido.update({
                         where: { id: req.params.id },
-                        data: { statusEnvio: 'EXCLUIDO', situacaoCA: 'EXCLUIDO', revisaoPendente: true, contaAzulUpdatedAt: new Date() }
+                        data: {
+                            statusEnvio: 'EXCLUIDO',
+                            situacaoCA: 'EXCLUIDO',
+                            revisaoPendente: true,
+                            embarqueId: null,
+                            statusEntrega: 'PENDENTE',
+                            dataEntrega: null,
+                            contaAzulUpdatedAt: new Date()
+                        }
                     });
                     if (pedidoAtual?.statusEnvio === 'RECEBIDO') {
                         try { await estoqueService.cancelarPedido(req.params.id); } catch (e) {
-                            console.error('[consultarCA 404] Erro estorno:', e.message);
+                            console.error(`[consultarCA ${status}] Erro estorno:`, e.message);
                         }
                     }
                 } catch (_) { }
