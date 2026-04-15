@@ -8,6 +8,10 @@ const AuditoriaEntregas = () => {
     const [loading, setLoading] = useState(true);
     const [filtroDivergente, setFiltroDivergente] = useState(false);
     const [embarqueIdFilter, setEmbarqueIdFilter] = useState('');
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    const [dataFilter, setDataFilter] = useState(hojeISO);
+    const [motoristaFilter, setMotoristaFilter] = useState('');
+    const [clienteFilter, setClienteFilter] = useState('');
 
     const fetchAuditoria = async () => {
         try {
@@ -15,6 +19,9 @@ const AuditoriaEntregas = () => {
             const params = {};
             if (filtroDivergente) params.divergente = true;
             if (embarqueIdFilter) params.embarqueId = embarqueIdFilter;
+            if (dataFilter) params.data = dataFilter;
+            if (motoristaFilter) params.motorista = motoristaFilter;
+            if (clienteFilter) params.cliente = clienteFilter;
 
             const response = await api.get('/entregas/auditoria', { params });
             setEntregas(response.data);
@@ -27,8 +34,9 @@ const AuditoriaEntregas = () => {
     };
 
     useEffect(() => {
-        fetchAuditoria();
-    }, [filtroDivergente, embarqueIdFilter]);
+        const t = setTimeout(fetchAuditoria, 300);
+        return () => clearTimeout(t);
+    }, [filtroDivergente, embarqueIdFilter, dataFilter, motoristaFilter, clienteFilter]);
 
     const handleEstorno = async (pedidoId, cliente) => {
         if (!window.confirm(`ATENÇÃO FINANCEIRO: Tem certeza que deseja estornar a baixa de entrega do cliente ${cliente}? Essa ação apagará a entrada de dinheiro do caixa do motorista e devolverá o pedido para o Caminhão.`)) return;
@@ -57,7 +65,57 @@ const AuditoriaEntregas = () => {
             </div>
 
             {/* Filtros */}
-            <div className="bg-white p-3 md:p-4 rounded-t-lg shadow-sm border-b flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4">
+            <div className="bg-white p-3 md:p-4 rounded-t-lg shadow-sm border-b space-y-3">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
+                    <div>
+                        <label className="block text-[10px] uppercase font-semibold text-gray-500 mb-1">Data</label>
+                        <input
+                            type="date"
+                            className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                            value={dataFilter}
+                            onChange={(e) => setDataFilter(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] uppercase font-semibold text-gray-500 mb-1">Embarque</label>
+                        <input
+                            type="text"
+                            placeholder="ID"
+                            className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                            value={embarqueIdFilter}
+                            onChange={(e) => setEmbarqueIdFilter(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] uppercase font-semibold text-gray-500 mb-1">Motorista</label>
+                        <input
+                            type="text"
+                            placeholder="Nome"
+                            className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                            value={motoristaFilter}
+                            onChange={(e) => setMotoristaFilter(e.target.value)}
+                        />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                        <label className="block text-[10px] uppercase font-semibold text-gray-500 mb-1">Cliente</label>
+                        <input
+                            type="text"
+                            placeholder="Nome/Fantasia"
+                            className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                            value={clienteFilter}
+                            onChange={(e) => setClienteFilter(e.target.value)}
+                        />
+                    </div>
+                    <div className="col-span-2 md:col-span-1 flex items-end">
+                        <button
+                            type="button"
+                            onClick={() => { setDataFilter(''); setEmbarqueIdFilter(''); setMotoristaFilter(''); setClienteFilter(''); setFiltroDivergente(false); }}
+                            className="w-full px-2 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md"
+                        >
+                            Limpar filtros
+                        </button>
+                    </div>
+                </div>
                 <label className="flex items-center cursor-pointer">
                     <input
                         type="checkbox"
@@ -69,13 +127,6 @@ const AuditoriaEntregas = () => {
                         Apenas Divergências
                     </span>
                 </label>
-                <input
-                    type="text"
-                    placeholder="Filtrar por ID Embarque"
-                    className="w-full md:max-w-sm px-3 py-2 border border-gray-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                    value={embarqueIdFilter}
-                    onChange={(e) => setEmbarqueIdFilter(e.target.value)}
-                />
             </div>
 
             {/* Desktop: Tabela */}

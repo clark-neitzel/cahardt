@@ -508,11 +508,34 @@ router.patch('/:id/editar', verificarAuth, checkAjustador, async (req, res) => {
 // ==========================================
 router.get('/auditoria', verificarAuth, checkAuditor, async (req, res) => {
     try {
-        const { embarqueId, divergente } = req.query;
+        const { embarqueId, divergente, data, motorista, cliente } = req.query;
         const where = { statusEntrega: { not: 'PENDENTE' } }; // Auditamos o que já foi finalizado
 
         if (embarqueId) where.embarqueId = embarqueId;
         if (divergente === 'true') where.divergenciaPagamento = true;
+
+        if (data) {
+            where.dataEntrega = {
+                gte: new Date(`${data}T00:00:00.000Z`),
+                lte: new Date(`${data}T23:59:59.999Z`)
+            };
+        }
+
+        if (motorista) {
+            where.embarque = {
+                ...(where.embarque || {}),
+                responsavel: { nome: { contains: motorista, mode: 'insensitive' } }
+            };
+        }
+
+        if (cliente) {
+            where.cliente = {
+                OR: [
+                    { NomeFantasia: { contains: cliente, mode: 'insensitive' } },
+                    { Nome: { contains: cliente, mode: 'insensitive' } }
+                ]
+            };
+        }
 
         const entregas = await prisma.pedido.findMany({
             where,
@@ -523,7 +546,7 @@ router.get('/auditoria', verificarAuth, checkAuditor, async (req, res) => {
                 itensDevolvidos: { include: { produto: { select: { nome: true } } } }
             },
             orderBy: { dataEntrega: 'desc' },
-            take: 100
+            take: 500
         });
 
         res.json(entregas);
