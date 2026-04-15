@@ -109,7 +109,7 @@ const AuditoriaEntregas = () => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex flex-col">
-                                        <span className="font-bold text-gray-900">{entrega.cliente?.NomeFantasia}</span>
+                                        <span className="font-bold text-gray-900">{entrega.cliente?.NomeFantasia || entrega.cliente?.Nome || <span className="text-gray-400 italic font-normal">Sem cadastro</span>}</span>
                                         <span className="text-xs text-gray-500 font-mono">Ped CA: {entrega.numero || 'S/N'}</span>
                                     </div>
                                     {entrega.gpsEntrega && (
@@ -180,7 +180,7 @@ const AuditoriaEntregas = () => {
                             </div>
                             <span className="text-[10px] text-gray-400">{new Date(entrega.dataEntrega).toLocaleString('pt-BR')}</span>
                         </div>
-                        <p className="font-bold text-[13px] text-gray-900">{entrega.cliente?.NomeFantasia}</p>
+                        <p className="font-bold text-[13px] text-gray-900">{entrega.cliente?.NomeFantasia || entrega.cliente?.Nome || <span className="text-gray-400 italic font-normal">Sem cadastro</span>}</p>
                         <p className="text-[11px] text-gray-500">{entrega.embarque?.responsavel?.nome}</p>
 
                         {entrega.divergenciaPagamento && (
