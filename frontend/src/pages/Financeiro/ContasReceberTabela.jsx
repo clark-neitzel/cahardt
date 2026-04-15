@@ -477,26 +477,26 @@ const ContasReceberTabela = () => {
                             </th>
                             <Th col="pedidoNumero">Pedido</Th>
                             <Th col="clienteNome">Cliente</Th>
-                            <Th col="vendedorNome">Vendedor</Th>
-                            <Th col="condicaoPagamento">Condição</Th>
-                            <Th col="origem">Origem</Th>
+                            <Th col="vendedorNome" className="hidden lg:table-cell">Vendedor</Th>
+                            <Th col="condicaoPagamento" className="hidden xl:table-cell">Condição</Th>
+                            <Th col="origem" className="hidden lg:table-cell">Origem</Th>
                             <Th col="statusConta">Conta</Th>
-                            <Th col="numeroParcela">Parcela</Th>
+                            <Th col="numeroParcela">Parc.</Th>
                             <Th col="valor" className="text-right">Valor</Th>
                             <Th col="vencimento">Vencimento</Th>
-                            <Th col="statusParcela">Parc.</Th>
-                            <Th col="pagamento">Pagamento</Th>
-                            <Th col="formaPagamento">Forma</Th>
-                            <Th col="baixadoPorNome">Baixado por</Th>
+                            <Th col="statusParcela">Status</Th>
+                            <Th col="pagamento" className="hidden lg:table-cell">Pagamento</Th>
+                            <Th col="formaPagamento" className="hidden xl:table-cell">Forma</Th>
+                            <Th col="baixadoPorNome" className="hidden xl:table-cell">Baixado por</Th>
                             <th className="px-2 py-2 text-xs font-semibold text-gray-600">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading && (
-                            <tr><td colSpan={15} className="py-8 text-center text-gray-500">Carregando...</td></tr>
+                            <tr><td colSpan={14} className="py-8 text-center text-gray-500">Carregando...</td></tr>
                         )}
                         {!loading && linhasOrdenadas.length === 0 && (
-                            <tr><td colSpan={15} className="py-8 text-center text-gray-500">Nenhuma parcela encontrada.</td></tr>
+                            <tr><td colSpan={14} className="py-8 text-center text-gray-500">Nenhuma parcela encontrada.</td></tr>
                         )}
                         {!loading && linhasOrdenadas.map(l => {
                             const eleg = elegivel(l);
@@ -512,22 +512,22 @@ const ContasReceberTabela = () => {
                                     <td className="px-2 py-1.5">
                                         {l.pedidoNumero ? `#${l.pedidoNumero}` : (l.pedidoEspecial ? 'Esp.' : '-')}
                                     </td>
-                                    <td className="px-2 py-1.5 max-w-[220px] truncate" title={l.clienteNome}>{l.clienteNome}</td>
-                                    <td className="px-2 py-1.5">{l.vendedorNome || '-'}</td>
-                                    <td className="px-2 py-1.5">{l.condicaoPagamento || '-'}</td>
-                                    <td className="px-2 py-1.5 text-xs">{l.origem === 'FATURADO_CA' ? 'CA' : 'Esp.'}</td>
-                                    <td className="px-2 py-1.5">
+                                    <td className="px-2 py-1.5 max-w-[200px] xl:max-w-[280px] truncate" title={l.clienteNome}>{l.clienteNome}</td>
+                                    <td className="px-2 py-1.5 hidden lg:table-cell truncate max-w-[140px]" title={l.vendedorNome || ''}>{l.vendedorNome || '-'}</td>
+                                    <td className="px-2 py-1.5 hidden xl:table-cell truncate max-w-[160px]" title={l.condicaoPagamento || ''}>{l.condicaoPagamento || '-'}</td>
+                                    <td className="px-2 py-1.5 text-xs hidden lg:table-cell whitespace-nowrap">{l.origem === 'FATURADO_CA' ? 'CA' : 'Esp.'}</td>
+                                    <td className="px-2 py-1.5 whitespace-nowrap">
                                         <span className={`px-2 py-0.5 rounded text-xs ${STATUS_CONTA[l.statusConta] || ''}`}>{l.statusConta}</span>
                                     </td>
-                                    <td className="px-2 py-1.5 text-xs">{l.numeroParcela}/{l.parcelasTotal}</td>
-                                    <td className="px-2 py-1.5 text-right font-medium">R$ {fmt(l.valor)}</td>
-                                    <td className="px-2 py-1.5">{fmtData(l.dataVencimento)}</td>
-                                    <td className="px-2 py-1.5">
+                                    <td className="px-2 py-1.5 text-xs whitespace-nowrap">{l.numeroParcela}/{l.parcelasTotal}</td>
+                                    <td className="px-2 py-1.5 text-right font-medium tabular-nums whitespace-nowrap">R$ {fmt(l.valor)}</td>
+                                    <td className="px-2 py-1.5 whitespace-nowrap">{fmtData(l.dataVencimento)}</td>
+                                    <td className="px-2 py-1.5 whitespace-nowrap">
                                         <span className={`px-2 py-0.5 rounded text-xs ${STATUS_PARC[l.statusParcela] || ''}`}>{l.statusParcela}</span>
                                     </td>
-                                    <td className="px-2 py-1.5">{fmtData(l.dataPagamento)}</td>
-                                    <td className="px-2 py-1.5 text-xs">{l.formaPagamento || '-'}</td>
-                                    <td className="px-2 py-1.5 text-xs">{l.baixadoPorNome || '-'}</td>
+                                    <td className="px-2 py-1.5 hidden lg:table-cell whitespace-nowrap">{fmtData(l.dataPagamento)}</td>
+                                    <td className="px-2 py-1.5 text-xs hidden xl:table-cell truncate max-w-[120px]" title={l.formaPagamento || ''}>{l.formaPagamento || '-'}</td>
+                                    <td className="px-2 py-1.5 text-xs hidden xl:table-cell truncate max-w-[140px]" title={l.baixadoPorNome || ''}>{l.baixadoPorNome || '-'}</td>
                                     <td className="px-2 py-1.5">
                                         <div className="flex items-center gap-1">
                                             {podeBaixar && eleg && (
