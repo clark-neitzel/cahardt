@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink } from 'lucide-react';
+import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
@@ -958,6 +958,23 @@ const ListaPedidos = () => {
                                             {pedido.cliente?.End_Cidade || ''}{pedido.cliente?.End_Bairro ? ` - ${pedido.cliente.End_Bairro}` : ''}
                                         </div>
                                         <div className="text-[10px] text-gray-400">Vendedor: {pedido.vendedor?.nome || '-'}</div>
+                                        {pedido.embarque && (
+                                            <div className="text-[10px] text-gray-500 flex items-center gap-1 flex-wrap">
+                                                <Truck className="h-3 w-3 text-gray-400" />
+                                                <span className="font-semibold text-gray-700">Emb. #{pedido.embarque.numero}</span>
+                                                {pedido.embarque.responsavel?.nome && (
+                                                    <>
+                                                        <span className="text-gray-300">·</span>
+                                                        <span>{pedido.embarque.responsavel.nome}</span>
+                                                    </>
+                                                )}
+                                                {pedido.statusEntrega && pedido.statusEntrega !== 'PENDENTE' && (
+                                                    <span className={`ml-1 px-1 py-0.5 rounded text-[9px] font-bold ${pedido.statusEntrega === 'ENTREGUE' ? 'bg-green-100 text-green-700' : pedido.statusEntrega === 'ENTREGUE_PARCIAL' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                                                        {pedido.statusEntrega}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Linha 3: badges de status + botões de ação */}

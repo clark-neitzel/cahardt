@@ -115,6 +115,9 @@ const pedidoService = {
                 pagamentosReais: {
                     select: { formaPagamentoNome: true, valor: true }
                 },
+                embarque: {
+                    select: { id: true, numero: true, responsavel: { select: { id: true, nome: true } } }
+                },
                 devolucoes: {
                     where: { status: 'ATIVA' },
                     select: {
