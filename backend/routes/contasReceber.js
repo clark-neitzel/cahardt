@@ -42,8 +42,13 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             pagamentoDe, pagamentoAte
         } = req.query;
 
+        const toList = (v) => (Array.isArray(v) ? v : String(v || '').split(',')).map(s => s.trim()).filter(Boolean);
+
         const where = {};
-        if (status) where.status = status;
+        if (status) {
+            const arr = toList(status);
+            where.status = arr.length > 1 ? { in: arr } : arr[0];
+        }
         if (origem) where.origem = origem;
         if (clienteId) where.clienteId = clienteId;
 
@@ -74,7 +79,10 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         if (vendedorId || condicaoPagamento) {
             where.pedido = {};
             if (vendedorId) where.pedido.vendedorId = vendedorId;
-            if (condicaoPagamento) where.pedido.nomeCondicaoPagamento = condicaoPagamento;
+            if (condicaoPagamento) {
+                const arr = toList(condicaoPagamento);
+                where.pedido.nomeCondicaoPagamento = arr.length > 1 ? { in: arr } : arr[0];
+            }
         }
 
         // Filtros que atuam no nível de parcela (precisam de "some")
@@ -89,8 +97,14 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             if (pagamentoDe) parcelaSome.dataPagamento.gte = new Date(pagamentoDe + 'T00:00:00.000Z');
             if (pagamentoAte) parcelaSome.dataPagamento.lte = new Date(pagamentoAte + 'T23:59:59.999Z');
         }
-        if (statusParcela) parcelaSome.status = statusParcela;
-        if (formaPagamento) parcelaSome.formaPagamento = formaPagamento;
+        if (statusParcela) {
+            const arr = toList(statusParcela);
+            parcelaSome.status = arr.length > 1 ? { in: arr } : arr[0];
+        }
+        if (formaPagamento) {
+            const arr = toList(formaPagamento);
+            parcelaSome.formaPagamento = arr.length > 1 ? { in: arr } : arr[0];
+        }
         if (Object.keys(parcelaSome).length > 0) {
             where.parcelas = { some: parcelaSome };
         }

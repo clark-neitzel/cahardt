@@ -50,15 +50,16 @@ const ContasReceberTabela = () => {
 
     const [vendedores, setVendedores] = useState([]);
 
-    // Filtros
+    // Filtros — status/statusParcela/condicao/forma são ARRAYS (multi-select)
+    const asArr = (v) => Array.isArray(v) ? v : (v ? [v] : []);
     const [filtros, setFiltros] = useState({
         busca: saved.busca || '',
-        status: saved.status || '',
-        statusParcela: saved.statusParcela || '',
+        status: asArr(saved.status),
+        statusParcela: asArr(saved.statusParcela),
         origem: saved.origem || '',
         vendedorId: saved.vendedorId || '',
-        condicaoPagamento: saved.condicaoPagamento || '',
-        formaPagamento: saved.formaPagamento || '',
+        condicaoPagamento: asArr(saved.condicaoPagamento),
+        formaPagamento: asArr(saved.formaPagamento),
         vencDe: saved.vencDe || '',
         vencAte: saved.vencAte || '',
         pagDe: saved.pagDe || '',
@@ -108,12 +109,12 @@ const ContasReceberTabela = () => {
         try {
             const params = {};
             if (filtros.busca) params.busca = filtros.busca;
-            if (filtros.status) params.status = filtros.status;
-            if (filtros.statusParcela) params.statusParcela = filtros.statusParcela;
+            if (filtros.status.length) params.status = filtros.status.join(',');
+            if (filtros.statusParcela.length) params.statusParcela = filtros.statusParcela.join(',');
             if (filtros.origem) params.origem = filtros.origem;
             if (filtros.vendedorId) params.vendedorId = filtros.vendedorId;
-            if (filtros.condicaoPagamento) params.condicaoPagamento = filtros.condicaoPagamento;
-            if (filtros.formaPagamento) params.formaPagamento = filtros.formaPagamento;
+            if (filtros.condicaoPagamento.length) params.condicaoPagamento = filtros.condicaoPagamento.join(',');
+            if (filtros.formaPagamento.length) params.formaPagamento = filtros.formaPagamento.join(',');
             if (filtros.vencDe) params.vencimentoDe = filtros.vencDe;
             if (filtros.vencAte) params.vencimentoAte = filtros.vencAte;
             if (filtros.pagDe) params.pagamentoDe = filtros.pagDe;
@@ -152,8 +153,8 @@ const ContasReceberTabela = () => {
             });
             // Filtro client-side extra para statusParcela/forma (quando some: combina em AND)
             let filtered = flat;
-            if (filtros.statusParcela) filtered = filtered.filter(l => l.statusParcela === filtros.statusParcela);
-            if (filtros.formaPagamento) filtered = filtered.filter(l => (l.formaPagamento || '') === filtros.formaPagamento);
+            if (filtros.statusParcela.length) filtered = filtered.filter(l => filtros.statusParcela.includes(l.statusParcela));
+            if (filtros.formaPagamento.length) filtered = filtered.filter(l => filtros.formaPagamento.includes(l.formaPagamento || ''));
             setLinhas(filtered);
             setIndicadores(data.indicadores || {});
             saveFilters();
@@ -169,8 +170,8 @@ const ContasReceberTabela = () => {
     const aplicarFiltros = () => fetchData();
     const limparFiltros = () => {
         setFiltros({
-            busca: '', status: '', statusParcela: '', origem: '', vendedorId: '',
-            condicaoPagamento: '', formaPagamento: '', vencDe: '', vencAte: '', pagDe: '', pagAte: ''
+            busca: '', status: [], statusParcela: [], origem: '', vendedorId: '',
+            condicaoPagamento: [], formaPagamento: [], vencDe: '', vencAte: '', pagDe: '', pagAte: ''
         });
         localStorage.removeItem(LS_KEY);
         setTimeout(fetchData, 0);
@@ -351,7 +352,45 @@ const ContasReceberTabela = () => {
         a.click(); URL.revokeObjectURL(url);
     };
 
-    const filtrosAtivos = useMemo(() => Object.values(filtros).filter(Boolean).length, [filtros]);
+    const filtrosAtivos = useMemo(() =>
+        Object.values(filtros).filter(v => Array.isArray(v) ? v.length > 0 : Boolean(v)).length
+    , [filtros]);
+
+    const MultiSelect = ({ label, options, value, onChange }) => {
+        const [open, setOpen] = useState(false);
+        const ref = React.useRef(null);
+        useEffect(() => {
+            const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+            document.addEventListener('mousedown', h);
+            return () => document.removeEventListener('mousedown', h);
+        }, []);
+        const toggle = (opt) => {
+            onChange(value.includes(opt) ? value.filter(v => v !== opt) : [...value, opt]);
+        };
+        const summary = value.length === 0 ? label : value.length === 1 ? value[0] : `${value.length} selec.`;
+        return (
+            <div className="relative" ref={ref}>
+                <button type="button" onClick={() => setOpen(v => !v)} className="w-full border rounded px-2 py-1.5 text-sm text-left flex items-center justify-between hover:bg-gray-50">
+                    <span className={value.length === 0 ? 'text-gray-500' : 'text-gray-900'}>{summary}</span>
+                    <ChevronDown className="w-3 h-3 text-gray-400" />
+                </button>
+                {open && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border rounded shadow-lg max-h-64 overflow-y-auto">
+                        {value.length > 0 && (
+                            <button type="button" onClick={() => onChange([])} className="w-full text-left text-xs text-blue-600 px-2 py-1 border-b hover:bg-gray-50">Limpar seleção</button>
+                        )}
+                        {options.length === 0 && <div className="px-2 py-2 text-xs text-gray-400">Sem opções</div>}
+                        {options.map(opt => (
+                            <label key={opt} className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-50 cursor-pointer">
+                                <input type="checkbox" checked={value.includes(opt)} onChange={() => toggle(opt)} className="cursor-pointer" />
+                                <span className="truncate">{opt}</span>
+                            </label>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     const Th = ({ col, children, className = '' }) => (
         <th className={`px-2 py-2 text-left text-xs font-semibold text-gray-600 select-none ${className}`}>
@@ -440,17 +479,21 @@ const ContasReceberTabela = () => {
                     </div>
                     <div>
                         <label className="text-xs text-gray-500">Status Conta</label>
-                        <select value={filtros.status} onChange={e => setFiltros(f => ({ ...f, status: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm">
-                            <option value="">Todos</option>
-                            <option>ABERTO</option><option>PARCIAL</option><option>QUITADO</option><option>CANCELADO</option>
-                        </select>
+                        <MultiSelect
+                            label="Todos"
+                            options={['ABERTO', 'PARCIAL', 'QUITADO', 'CANCELADO']}
+                            value={filtros.status}
+                            onChange={(v) => setFiltros(f => ({ ...f, status: v }))}
+                        />
                     </div>
                     <div>
                         <label className="text-xs text-gray-500">Status Parcela</label>
-                        <select value={filtros.statusParcela} onChange={e => setFiltros(f => ({ ...f, statusParcela: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm">
-                            <option value="">Todas</option>
-                            <option>PENDENTE</option><option>PAGO</option><option>VENCIDO</option><option>CANCELADO</option>
-                        </select>
+                        <MultiSelect
+                            label="Todas"
+                            options={['PENDENTE', 'PAGO', 'VENCIDO', 'CANCELADO']}
+                            value={filtros.statusParcela}
+                            onChange={(v) => setFiltros(f => ({ ...f, statusParcela: v }))}
+                        />
                     </div>
                     <div>
                         <label className="text-xs text-gray-500">Origem</label>
@@ -469,17 +512,21 @@ const ContasReceberTabela = () => {
                     </div>
                     <div>
                         <label className="text-xs text-gray-500">Condição Pgto</label>
-                        <select value={filtros.condicaoPagamento} onChange={e => setFiltros(f => ({ ...f, condicaoPagamento: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm">
-                            <option value="">Todas</option>
-                            {condicoes.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
+                        <MultiSelect
+                            label="Todas"
+                            options={condicoes}
+                            value={filtros.condicaoPagamento}
+                            onChange={(v) => setFiltros(f => ({ ...f, condicaoPagamento: v }))}
+                        />
                     </div>
                     <div>
                         <label className="text-xs text-gray-500">Forma Pgto (baixa)</label>
-                        <select value={filtros.formaPagamento} onChange={e => setFiltros(f => ({ ...f, formaPagamento: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm">
-                            <option value="">Todas</option>
-                            {[...new Set([...FORMAS, ...formasUsadas])].map(f => <option key={f}>{f}</option>)}
-                        </select>
+                        <MultiSelect
+                            label="Todas"
+                            options={[...new Set([...FORMAS, ...formasUsadas])]}
+                            value={filtros.formaPagamento}
+                            onChange={(v) => setFiltros(f => ({ ...f, formaPagamento: v }))}
+                        />
                     </div>
                     <div>
                         <label className="text-xs text-gray-500">Venc. de</label>
