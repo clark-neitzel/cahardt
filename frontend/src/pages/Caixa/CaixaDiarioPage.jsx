@@ -559,7 +559,7 @@ const CaixaDiarioPage = () => {
                                                 className="text-xs px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 font-medium disabled:opacity-50 flex items-center gap-1"
                                             >
                                                 {quitandoCA ? <Loader2 className="h-3 w-3 animate-spin" /> : <DollarSign className="h-3 w-3" />}
-                                                Quitar {selectedBaixa.size} no CA
+                                                Processar {selectedBaixa.size} selecionada(s)
                                             </button>
                                         )}
                                         {selectedBaixa.size > 0 && (
