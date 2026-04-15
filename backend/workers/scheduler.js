@@ -62,6 +62,23 @@ function startSchedulers() {
         await syncPedidosService.processarFila();
     }, 30000); // 30 segundos
 
+    // === 4.1. AUTO-SYNC BAIXAS (Contas a Receber CA → App) ===
+    // A cada 1 hora, verifica se parcelas abertas no app já foram baixadas no Conta Azul
+    // e aplica a baixa local (valor, data, forma de pagamento).
+    console.log('⏰ Iniciando Auto-Sync de Baixas (Contas a Receber CA → App)...');
+    const contasReceberSyncService = require('../services/contasReceberSyncService');
+    const _runSyncBaixas = async () => {
+        try {
+            await contasReceberSyncService.sincronizarTodasAbertas();
+        } catch (err) {
+            console.error('⚠️ Auto-Sync Baixas Error:', err.message);
+        }
+    };
+    // Primeira execução 5min após o start (p/ outros sincs rodarem antes)
+    setTimeout(_runSyncBaixas, 300000);
+    // Depois a cada 1 hora
+    setInterval(_runSyncBaixas, 3600000); // 60 min
+
     // === 5. CRON JOB INTELLIGENCE COMERCIAL ===
     // Recalcula todos os clientes 1 vez por dia, na madrugada (aprox 03:00)
     console.log('⏰ Agendando Motor Analítico (Inteligência Comercial)...');

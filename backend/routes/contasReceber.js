@@ -3,19 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const verificarAuth = require('../middlewares/authMiddleware');
-const contaAzulService = require('../services/contaAzulService');
-
-// Mapear metodo de pagamento CA -> forma local (string livre, só pra ter algo legível)
-const mapMetodoCA = (metodo) => {
-    if (!metodo) return null;
-    const m = String(metodo).toUpperCase();
-    const map = {
-        DINHEIRO: 'Dinheiro', BOLETO: 'Boleto', BOLETO_BANCARIO: 'Boleto',
-        PIX: 'Pix', CARTAO_CREDITO: 'Cartão Crédito', CARTAO_DEBITO: 'Cartão Débito',
-        TRANSFERENCIA_BANCARIA: 'Transferência', CHEQUE: 'Cheque', OUTRO: 'Outro'
-    };
-    return map[m] || metodo;
-};
+const contasReceberSyncService = require('../services/contasReceberSyncService');
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -663,112 +651,30 @@ router.post('/admin/sincronizar', verificarAuth, async (req, res) => {
 // ── POST /:id/sync-ca — Sincroniza baixas do Conta Azul para uma conta local ──
 router.post('/:id/sync-ca', verificarAuth, checkBaixa, async (req, res) => {
     try {
-        const conta = await prisma.contaReceber.findUnique({
-            where: { id: req.params.id },
-            include: {
-                pedido: { select: { id: true, numero: true, idVendaContaAzul: true, dataVenda: true, clienteId: true, especial: true } },
-                parcelas: { orderBy: { numeroParcela: 'asc' } }
-            }
+        const r = await contasReceberSyncService.sincronizarConta(req.params.id, {
+            baixadoPorId: req.user.id,
+            origem: 'MANUAL'
         });
-
-        if (!conta) return res.status(404).json({ error: 'Conta não encontrada.' });
-        if (!conta.pedido) return res.status(400).json({ error: 'Conta sem pedido vinculado.' });
-        if (conta.pedido.especial) return res.status(400).json({ error: 'Pedido especial não tem espelho no CA.' });
-        if (!conta.pedido.idVendaContaAzul) return res.status(400).json({ error: 'Pedido ainda não foi enviado ao Conta Azul.' });
-
-        const clienteCAId = conta.clienteId; // Cliente.UUID == id CA
-        const dataVendaStr = new Date(conta.pedido.dataVenda).toISOString().split('T')[0];
-
-        const parcelasCA = await contaAzulService.encontrarParcelasDeVenda(
-            clienteCAId, conta.pedido.idVendaContaAzul, dataVendaStr,
-            ['EM_ABERTO', 'ATRASADO', 'RECEBIDO', 'RECEBIDO_PARCIAL']
-        );
-
-        if (parcelasCA.length === 0) {
-            return res.json({ message: 'Nenhuma parcela encontrada no Conta Azul para esta venda.', aplicadas: 0, verificadas: 0 });
-        }
-
-        // Ordenar por numero_parcela (se disponível) ou por vencimento
-        parcelasCA.sort((a, b) => {
-            const na = a.numero_parcela || 0, nb = b.numero_parcela || 0;
-            if (na && nb) return na - nb;
-            return new Date(a.data_vencimento || 0) - new Date(b.data_vencimento || 0);
-        });
-
-        const parcelasPagasCA = parcelasCA.filter(p => p.status === 'RECEBIDO' || p.status === 'RECEBIDO_PARCIAL');
-
-        let aplicadas = 0;
-        const detalhes = [];
-        const hoje = new Date();
-
-        await prisma.$transaction(async (tx) => {
-            // Match por numeroParcela quando existir; fallback: posicional
-            for (let i = 0; i < conta.parcelas.length; i++) {
-                const local = conta.parcelas[i];
-                if (local.status === 'PAGO' || local.status === 'CANCELADO') continue;
-
-                // Acha parcela CA correspondente
-                let caPar = parcelasCA.find(p => (p.numero_parcela || 0) === local.numeroParcela);
-                if (!caPar) caPar = parcelasCA[i]; // fallback posicional
-
-                if (!caPar) continue;
-                if (caPar.status !== 'RECEBIDO' && caPar.status !== 'RECEBIDO_PARCIAL') continue;
-
-                const baixa = (caPar.baixas || [])[0];
-                const valorPago = Number(baixa?.valor_composicao?.valor_bruto || caPar.valor_composicao?.valor_bruto || local.valor);
-                const dataPgto = baixa?.data_pagamento ? new Date(baixa.data_pagamento + 'T12:00:00-03:00') : hoje;
-                const forma = mapMetodoCA(baixa?.metodo_pagamento || caPar.metodo_pagamento);
-
-                await tx.parcela.update({
-                    where: { id: local.id },
-                    data: {
-                        status: 'PAGO',
-                        valorPago,
-                        formaPagamento: forma,
-                        dataPagamento: dataPgto,
-                        baixadoPorId: req.user.id,
-                        observacao: `Baixa sincronizada do Conta Azul (${caPar.status})`
-                    }
-                });
-
-                await tx.atendimento.create({
-                    data: {
-                        tipo: 'FINANCEIRO',
-                        observacao: `Sync CA - parcela ${local.numeroParcela} - R$ ${valorPago.toFixed(2)} (${forma || 'N/I'}) em ${dataPgto.toISOString().split('T')[0]}`,
-                        clienteId: conta.clienteId,
-                        idVendedor: req.user.id,
-                        pedidoId: conta.pedidoId || null
-                    }
-                });
-
-                aplicadas++;
-                detalhes.push({ numeroParcela: local.numeroParcela, valor: valorPago, forma, data: dataPgto });
-            }
-
-            // Recalcular status da conta
-            const todas = await tx.parcela.findMany({ where: { contaReceberId: conta.id } });
-            const pagas = todas.filter(p => p.status === 'PAGO').length;
-            const canceladas = todas.filter(p => p.status === 'CANCELADO').length;
-            let novoStatus;
-            if (pagas + canceladas >= todas.length) novoStatus = 'QUITADO';
-            else if (pagas > 0) novoStatus = 'PARCIAL';
-            else novoStatus = 'ABERTO';
-
-            await tx.contaReceber.update({ where: { id: conta.id }, data: { status: novoStatus } });
-        });
-
         res.json({
-            message: aplicadas > 0
-                ? `${aplicadas} parcela(s) baixada(s) conforme Conta Azul.`
-                : 'Nenhuma baixa pendente de sincronização.',
-            aplicadas,
-            verificadas: parcelasCA.length,
-            pagasCA: parcelasPagasCA.length,
-            detalhes
+            message: r.aplicadas > 0
+                ? `${r.aplicadas} parcela(s) baixada(s) conforme Conta Azul.`
+                : (r.mensagem || 'Nenhuma baixa pendente de sincronização.'),
+            ...r
         });
     } catch (error) {
         console.error('Erro ao sincronizar com CA:', error?.response?.data || error);
-        res.status(500).json({ error: 'Erro ao sincronizar com Conta Azul.', detalhe: error?.response?.data || error.message });
+        res.status(400).json({ error: error.message || 'Erro ao sincronizar com Conta Azul.', detalhe: error?.response?.data });
+    }
+});
+
+// ── POST /sync-ca/todas — Sincroniza todas as contas abertas (admin) ──
+router.post('/sync-ca/todas', verificarAuth, checkBaixa, async (req, res) => {
+    try {
+        const r = await contasReceberSyncService.sincronizarTodasAbertas();
+        res.json({ message: `Sync concluído: ${r.totalParcelasBaixadas} parcela(s) baixadas em ${r.totalContasAtualizadas} conta(s).`, ...r });
+    } catch (error) {
+        console.error('Erro ao sincronizar todas com CA:', error);
+        res.status(500).json({ error: 'Erro ao sincronizar com Conta Azul.' });
     }
 });
 
