@@ -285,6 +285,8 @@ const ContasReceberTabela = () => {
                 });
             }
             setSyncLog({ progresso: i + 1, total: contasUnicas.length, itens: [...itens], ativo: i + 1 < contasUnicas.length, totalAplicadas, erros });
+            // throttle entre contas pra evitar rate limit do CA (10 req/s)
+            if (i + 1 < contasUnicas.length) await new Promise(r => setTimeout(r, 800));
         }
 
         toast.success(`Concluído: ${totalAplicadas} parcela(s) baixadas em ${contasUnicas.length} conta(s). ${erros} erro(s).`, { duration: 6000 });

@@ -153,6 +153,19 @@ const contaAzulService = {
         try {
             return await executeRequest(token);
         } catch (error) {
+            // 429 Rate Limit — retry com backoff (até 3 tentativas)
+            if (error.response?.status === 429) {
+                for (let tent = 1; tent <= 3; tent++) {
+                    const waitMs = 1200 * tent; // 1.2s, 2.4s, 3.6s
+                    console.warn(`⏳ 429 em ${resourceType}. Aguardando ${waitMs}ms (tentativa ${tent}/3)...`);
+                    await new Promise(r => setTimeout(r, waitMs));
+                    try {
+                        return await executeRequest(token);
+                    } catch (e2) {
+                        if (e2.response?.status !== 429 || tent === 3) throw e2;
+                    }
+                }
+            }
             if (error.response?.status === 401 && attempts === 0) {
                 console.warn('⚠️ Token 401. Tentando refresh forçado...');
                 attempts++;

@@ -72,6 +72,7 @@ async function sincronizarConta(contaId, opts = {}) {
 
     const parcelasCA = [];
     for (const p of parcelasTodasCliente) {
+        await new Promise(r => setTimeout(r, 150)); // throttle 150ms p/ respeitar 10 req/s do CA
         try {
             const det = await contaAzulService.buscarParcelaDetalhe(p.id);
             const refId = det?.evento?.referencia?.id;
@@ -159,7 +160,7 @@ async function sincronizarConta(contaId, opts = {}) {
         await tx.contaReceber.update({ where: { id: conta.id }, data: { status: novoStatus } });
     });
 
-    return { aplicadas, verificadas: parcelasCA.length, pagasCA: pagasCA.length, detalhes };
+    return { aplicadas, verificadas: parcelasCA.length, pagasCA: pagasCA.length, detalhes, debug };
 }
 
 /**
