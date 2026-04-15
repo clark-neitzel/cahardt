@@ -64,7 +64,8 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             {
                 pedido: {
                     statusEnvio: { notIn: ['EXCLUIDO'] },
-                    situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] }
+                    situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] },
+                    bonificacao: false
                 }
             }
         ];
