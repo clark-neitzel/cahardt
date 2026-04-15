@@ -592,24 +592,7 @@ const ContasReceberTabela = () => {
 
             {/* Tabela (xl+) */}
             <div className="hidden xl:block bg-white border rounded-lg">
-                <table className="w-full text-sm table-fixed">
-                    <colgroup>
-                        <col style={{ width: '32px' }} />
-                        <col style={{ width: '60px' }} />
-                        <col />
-                        <col style={{ width: '9%' }} />
-                        <col style={{ width: '10%' }} />
-                        <col style={{ width: '55px' }} />
-                        <col style={{ width: '70px' }} />
-                        <col style={{ width: '50px' }} />
-                        <col style={{ width: '92px' }} />
-                        <col style={{ width: '90px' }} />
-                        <col style={{ width: '80px' }} />
-                        <col style={{ width: '80px' }} />
-                        <col style={{ width: '8%' }} />
-                        <col style={{ width: '9%' }} />
-                        <col style={{ width: '110px' }} />
-                    </colgroup>
+                <table className="w-full text-sm">
                     <thead className="bg-gray-50 border-b">
                         <tr>
                             <th className="px-2 py-2 w-8">
@@ -620,86 +603,87 @@ const ContasReceberTabela = () => {
                             <Th col="pedidoNumero">Pedido</Th>
                             <Th col="clienteNome">Cliente</Th>
                             <Th col="vendedorNome">Vendedor</Th>
-                            <Th col="condicaoPagamento">Condição</Th>
-                            <Th col="origem">Origem</Th>
-                            <Th col="statusConta">Conta</Th>
-                            <Th col="numeroParcela">Parc.</Th>
                             <Th col="valor" className="text-right">Valor</Th>
                             <Th col="vencimento">Venc.</Th>
-                            <Th col="statusParcela">Status</Th>
-                            <Th col="pagamento">Pagto.</Th>
-                            <Th col="formaPagamento">Forma</Th>
-                            <Th col="baixadoPorNome">Baixado</Th>
-                            <th className="px-2 py-2 text-xs font-semibold text-gray-600">Ações</th>
+                            <th className="px-2 py-2 text-xs font-semibold text-gray-600 text-right">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading && (
-                            <tr><td colSpan={14} className="py-8 text-center text-gray-500">Carregando...</td></tr>
+                            <tr><td colSpan={7} className="py-8 text-center text-gray-500">Carregando...</td></tr>
                         )}
                         {!loading && linhasOrdenadas.length === 0 && (
-                            <tr><td colSpan={14} className="py-8 text-center text-gray-500">Nenhuma parcela encontrada.</td></tr>
+                            <tr><td colSpan={7} className="py-8 text-center text-gray-500">Nenhuma parcela encontrada.</td></tr>
                         )}
                         {!loading && linhasOrdenadas.map(l => {
                             const eleg = elegivel(l);
                             return (
-                                <tr key={l.parcelaId} className="border-b hover:bg-gray-50">
-                                    <td className="px-2 py-1.5">
-                                        {eleg ? (
-                                            <button onClick={() => toggleOne(l.parcelaId)}>
-                                                {sel.has(l.parcelaId) ? <CheckSquare className="w-4 h-4 text-blue-600" /> : <Square className="w-4 h-4 text-gray-400" />}
-                                            </button>
-                                        ) : null}
-                                    </td>
-                                    <td className="px-2 py-1.5">
-                                        {l.pedidoNumero ? `#${l.pedidoNumero}` : (l.pedidoEspecial ? 'Esp.' : '-')}
-                                    </td>
-                                    <td className="px-2 py-1.5 truncate" title={l.clienteNome}>{l.clienteNome}</td>
-                                    <td className="px-2 py-1.5 truncate" title={l.vendedorNome || ''}>{l.vendedorNome || '-'}</td>
-                                    <td className="px-2 py-1.5 truncate" title={l.condicaoPagamento || ''}>{l.condicaoPagamento || '-'}</td>
-                                    <td className="px-2 py-1.5 text-xs whitespace-nowrap">{l.origem === 'FATURADO_CA' ? 'CA' : 'Esp.'}</td>
-                                    <td className="px-2 py-1.5 whitespace-nowrap">
-                                        <span className={`px-1.5 py-0.5 rounded text-[11px] ${STATUS_CONTA[l.statusConta] || ''}`}>{l.statusConta}</span>
-                                    </td>
-                                    <td className="px-2 py-1.5 text-xs whitespace-nowrap">{l.numeroParcela}/{l.parcelasTotal}</td>
-                                    <td className="px-2 py-1.5 text-right font-medium tabular-nums whitespace-nowrap">R$ {fmt(l.valor)}</td>
-                                    <td className="px-2 py-1.5 whitespace-nowrap text-xs">{fmtData(l.dataVencimento)}</td>
-                                    <td className="px-2 py-1.5 whitespace-nowrap">
-                                        <span className={`px-1.5 py-0.5 rounded text-[11px] ${STATUS_PARC[l.statusParcela] || ''}`}>{l.statusParcela}</span>
-                                    </td>
-                                    <td className="px-2 py-1.5 whitespace-nowrap text-xs">{fmtData(l.dataPagamento)}</td>
-                                    <td className="px-2 py-1.5 text-xs truncate" title={l.formaPagamento || ''}>{l.formaPagamento || '-'}</td>
-                                    <td className="px-2 py-1.5 text-xs truncate" title={l.baixadoPorNome || ''}>{l.baixadoPorNome || '-'}</td>
-                                    <td className="px-2 py-1.5">
-                                        <div className="flex items-center gap-1">
-                                            {podeBaixar && eleg && (
-                                                <button onClick={() => handleBaixar(l)} title="Baixar" className="p-1 rounded hover:bg-green-100 text-green-700">
-                                                    <CheckCircle className="w-4 h-4" />
+                                <React.Fragment key={l.parcelaId}>
+                                    <tr className="hover:bg-gray-50">
+                                        <td className="px-2 pt-2 pb-0.5 align-top">
+                                            {eleg ? (
+                                                <button onClick={() => toggleOne(l.parcelaId)}>
+                                                    {sel.has(l.parcelaId) ? <CheckSquare className="w-4 h-4 text-blue-600" /> : <Square className="w-4 h-4 text-gray-400" />}
                                                 </button>
-                                            )}
-                                            {podeBaixar && l.statusParcela === 'PAGO' && (
-                                                <button onClick={() => handleEstornar(l)} title="Estornar" className="p-1 rounded hover:bg-yellow-100 text-yellow-700">
-                                                    <Undo2 className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                            {podeBaixar && l.idVendaContaAzul && l.statusConta !== 'QUITADO' && l.statusConta !== 'CANCELADO' && (
-                                                <button
-                                                    onClick={() => handleSyncCA(l.contaId, l.idVendaContaAzul)}
-                                                    disabled={syncing === l.contaId}
-                                                    title="Verificar baixas no Conta Azul"
-                                                    className="p-1 rounded hover:bg-blue-100 text-blue-700 disabled:opacity-40"
-                                                >
-                                                    <RefreshCw className={`w-4 h-4 ${syncing === l.contaId ? 'animate-spin' : ''}`} />
-                                                </button>
-                                            )}
-                                            {l.pedidoId && (
-                                                <Link to={`/pedidos/${l.pedidoId}`} title="Ver pedido" className="p-1 rounded hover:bg-gray-100 text-gray-600">
-                                                    <LinkIcon className="w-4 h-4" />
-                                                </Link>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
+                                            ) : null}
+                                        </td>
+                                        <td className="px-2 pt-2 pb-0.5 font-mono text-gray-700 whitespace-nowrap">
+                                            {l.pedidoNumero ? `#${l.pedidoNumero}` : (l.pedidoEspecial ? 'Esp.' : '-')}
+                                        </td>
+                                        <td className="px-2 pt-2 pb-0.5 font-medium">{l.clienteNome}</td>
+                                        <td className="px-2 pt-2 pb-0.5 text-gray-700">{l.vendedorNome || '-'}</td>
+                                        <td className="px-2 pt-2 pb-0.5 text-right font-bold tabular-nums whitespace-nowrap">R$ {fmt(l.valor)}</td>
+                                        <td className="px-2 pt-2 pb-0.5 whitespace-nowrap tabular-nums">{fmtData(l.dataVencimento)}</td>
+                                        <td className="px-2 pt-2 pb-0.5">
+                                            <div className="flex items-center justify-end gap-1">
+                                                {podeBaixar && eleg && (
+                                                    <button onClick={() => handleBaixar(l)} title="Baixar" className="p-1 rounded hover:bg-green-100 text-green-700">
+                                                        <CheckCircle className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                {podeBaixar && l.statusParcela === 'PAGO' && (
+                                                    <button onClick={() => handleEstornar(l)} title="Estornar" className="p-1 rounded hover:bg-yellow-100 text-yellow-700">
+                                                        <Undo2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                {podeBaixar && l.idVendaContaAzul && l.statusConta !== 'QUITADO' && l.statusConta !== 'CANCELADO' && (
+                                                    <button
+                                                        onClick={() => handleSyncCA(l.contaId, l.idVendaContaAzul)}
+                                                        disabled={syncing === l.contaId}
+                                                        title="Verificar baixas no Conta Azul"
+                                                        className="p-1 rounded hover:bg-blue-100 text-blue-700 disabled:opacity-40"
+                                                    >
+                                                        <RefreshCw className={`w-4 h-4 ${syncing === l.contaId ? 'animate-spin' : ''}`} />
+                                                    </button>
+                                                )}
+                                                {l.pedidoId && (
+                                                    <Link to={`/pedidos/${l.pedidoId}`} title="Ver pedido" className="p-1 rounded hover:bg-gray-100 text-gray-600">
+                                                        <LinkIcon className="w-4 h-4" />
+                                                    </Link>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr className="border-b hover:bg-gray-50">
+                                        <td></td>
+                                        <td colSpan={6} className="px-2 pt-0 pb-2 text-xs text-gray-500">
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                <span title="Condição"><span className="text-gray-400">Cond.:</span> {l.condicaoPagamento || '-'}</span>
+                                                <span title="Origem"><span className="text-gray-400">Orig.:</span> {l.origem === 'FATURADO_CA' ? 'CA' : 'Esp.'}</span>
+                                                <span className="inline-flex items-center gap-1"><span className="text-gray-400">Conta:</span>
+                                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${STATUS_CONTA[l.statusConta] || ''}`}>{l.statusConta}</span>
+                                                </span>
+                                                <span><span className="text-gray-400">Parc.:</span> {l.numeroParcela}/{l.parcelasTotal}</span>
+                                                <span className="inline-flex items-center gap-1"><span className="text-gray-400">Status:</span>
+                                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${STATUS_PARC[l.statusParcela] || ''}`}>{l.statusParcela}</span>
+                                                </span>
+                                                {l.dataPagamento && <span className="tabular-nums"><span className="text-gray-400">Pgto:</span> {fmtData(l.dataPagamento)}</span>}
+                                                {l.formaPagamento && <span><span className="text-gray-400">Forma:</span> {l.formaPagamento}</span>}
+                                                {l.baixadoPorNome && <span><span className="text-gray-400">Baixado por:</span> {l.baixadoPorNome}</span>}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </React.Fragment>
                             );
                         })}
                     </tbody>
