@@ -262,12 +262,13 @@ const ContasReceberTabela = () => {
             try {
                 const r = await contasReceberService.syncCA(l.contaId);
                 const aplicadas = r.aplicadas || 0;
+                const vencAt = r.vencimentosAtualizados || 0;
                 totalAplicadas += aplicadas;
                 itens.push({
                     pedido: label,
                     cliente: l.clienteNome,
-                    status: aplicadas > 0 ? 'ok' : 'semmudanca',
-                    msg: r.message || r.mensagem || (aplicadas > 0 ? `${aplicadas} parcela(s) baixada(s)` : 'Sem baixas novas no CA'),
+                    status: (aplicadas > 0 || vencAt > 0) ? 'ok' : 'semmudanca',
+                    msg: r.message || r.mensagem || 'Sem alterações',
                     aplicadas,
                     debug: r.debug || null,
                     raw: r

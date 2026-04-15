@@ -655,10 +655,11 @@ router.post('/:id/sync-ca', verificarAuth, checkBaixa, async (req, res) => {
             baixadoPorId: req.user.id,
             origem: 'MANUAL'
         });
+        const partes = [];
+        if (r.aplicadas > 0) partes.push(`${r.aplicadas} parcela(s) baixada(s)`);
+        if (r.vencimentosAtualizados > 0) partes.push(`${r.vencimentosAtualizados} vencimento(s) atualizado(s)`);
         res.json({
-            message: r.aplicadas > 0
-                ? `${r.aplicadas} parcela(s) baixada(s) conforme Conta Azul.`
-                : (r.mensagem || 'Nenhuma baixa pendente de sincronização.'),
+            message: partes.length > 0 ? partes.join(' + ') + '.' : (r.mensagem || 'Nenhuma alteração necessária.'),
             ...r
         });
     } catch (error) {

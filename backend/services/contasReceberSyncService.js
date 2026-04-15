@@ -106,6 +106,7 @@ async function sincronizarConta(contaId, opts = {}) {
     const pagasCA = parcelasCA.filter(p => STATUS_PAGO_CA.includes(p.status));
 
     let aplicadas = 0;
+    let vencimentosAtualizados = 0;
     const detalhes = [];
     const hoje = new Date();
 
@@ -117,6 +118,24 @@ async function sincronizarConta(contaId, opts = {}) {
             let caPar = parcelasCA.find(p => (p.numero_parcela || 0) === local.numeroParcela);
             if (!caPar) caPar = parcelasCA[i];
             if (!caPar) continue;
+
+            // Atualiza vencimento se divergir (mesmo que ainda esteja em aberto)
+            if (caPar.data_vencimento) {
+                const vencCA = new Date(caPar.data_vencimento + 'T12:00:00-03:00');
+                const vencLocal = local.dataVencimento ? new Date(local.dataVencimento) : null;
+                const diff = !vencLocal || vencCA.toISOString().split('T')[0] !== vencLocal.toISOString().split('T')[0];
+                if (diff) {
+                    await tx.parcela.update({ where: { id: local.id }, data: { dataVencimento: vencCA } });
+                    vencimentosAtualizados++;
+                    debug.vencimentosAtualizados = debug.vencimentosAtualizados || [];
+                    debug.vencimentosAtualizados.push({
+                        numeroParcela: local.numeroParcela,
+                        antes: vencLocal ? vencLocal.toISOString().split('T')[0] : null,
+                        depois: caPar.data_vencimento
+                    });
+                }
+            }
+
             if (!STATUS_PAGO_CA.includes(caPar.status)) continue;
 
             const baixa = (caPar.baixas || [])[0];
@@ -161,7 +180,7 @@ async function sincronizarConta(contaId, opts = {}) {
         await tx.contaReceber.update({ where: { id: conta.id }, data: { status: novoStatus } });
     });
 
-    return { aplicadas, verificadas: parcelasCA.length, pagasCA: pagasCA.length, detalhes, debug };
+    return { aplicadas, vencimentosAtualizados, verificadas: parcelasCA.length, pagasCA: pagasCA.length, detalhes, debug };
 }
 
 /**
