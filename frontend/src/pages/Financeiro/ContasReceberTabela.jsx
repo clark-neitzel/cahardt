@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import contasReceberService from '../../services/contasReceberService';
 import vendedorService from '../../services/vendedorService';
@@ -173,6 +173,20 @@ const ContasReceberTabela = () => {
 
     useEffect(() => { fetchData(); }, []); // eslint-disable-line
 
+    // Auto-refresh quando qualquer filtro muda (exceto "busca", que usa Enter/botão).
+    // Stringifica arrays/strings pra evitar trigger por nova ref a cada render.
+    const didMount = useRef(false);
+    const filtrosKey = JSON.stringify({
+        status: filtros.status, statusParcela: filtros.statusParcela, origem: filtros.origem,
+        vendedorId: filtros.vendedorId, condicaoPagamento: filtros.condicaoPagamento,
+        formaPagamento: filtros.formaPagamento, vencDe: filtros.vencDe, vencAte: filtros.vencAte,
+        pagDe: filtros.pagDe, pagAte: filtros.pagAte
+    });
+    useEffect(() => {
+        if (!didMount.current) { didMount.current = true; return; }
+        fetchData();
+    }, [filtrosKey]); // eslint-disable-line
+
     const aplicarFiltros = () => fetchData();
     const limparFiltros = () => {
         setFiltros({
@@ -180,7 +194,7 @@ const ContasReceberTabela = () => {
             condicaoPagamento: [], formaPagamento: [], vencDe: '', vencAte: '', pagDe: '', pagAte: ''
         });
         localStorage.removeItem(LS_KEY);
-        setTimeout(fetchData, 0);
+        // fetchData é disparado pelo useEffect acima quando filtrosKey muda.
     };
 
     // Ordenação
