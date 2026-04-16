@@ -727,11 +727,48 @@ const NovoPedido = () => {
         });
     }, [vendedorSelecionado, clienteSelecionado]);
 
+    const validarHorarioEntrega = (dataStr) => {
+        if (!dataStr || !user) return null;
+        const perms = user.permissoes || {};
+        if (perms.admin) return null;
+
+        const agora = new Date();
+        const horaAtual = agora.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false, hour: '2-digit', minute: '2-digit' });
+        const diaSemanaAtual = agora.toLocaleDateString('en-US', { timeZone: 'America/Sao_Paulo', weekday: 'short' });
+        const hojeStr = agora.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+
+        const d = new Date(dataStr + 'T12:00:00Z');
+        const diaSemanaEntrega = d.getUTCDay();
+
+        if ((diaSemanaEntrega === 0 || diaSemanaEntrega === 6) && !perms.Pode_Entregar_Fim_Semana) {
+            return 'Você não tem permissão para criar pedidos com entrega no sábado ou domingo.';
+        }
+
+        const criadoNoFimDeSemana = diaSemanaAtual === 'Sat' || diaSemanaAtual === 'Sun';
+        if (!criadoNoFimDeSemana) {
+            const amanhaDate = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+            amanhaDate.setDate(amanhaDate.getDate() + 1);
+            const amanhaStr = amanhaDate.toLocaleDateString('en-CA');
+
+            if (dataStr === hojeStr) {
+                const limite = perms.horarioLimiteHoje || '12:00';
+                if (horaAtual >= limite) return `Horário limite para pedidos com entrega hoje já passou (${limite}). Atual: ${horaAtual}.`;
+            } else if (dataStr === amanhaStr) {
+                const limite = perms.horarioLimiteAmanha || '18:00';
+                if (horaAtual >= limite) return `Horário limite para pedidos com entrega amanhã já passou (${limite}). Atual: ${horaAtual}.`;
+            }
+        }
+        return null;
+    };
+
     const handleSalvar = (statusEnvio) => {
         if (!clienteId || itensMap.size === 0) { toast.error("Preencha cliente e adicione itens.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (!tipoPedido) { toast.error("Selecione o tipo de pedido (Pedido, Especial ou Bonificação).", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (!condicaoPagamentoId) { toast.error("Selecione uma condição de pagamento.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (!dataEntrega) { toast.error("Selecione a data de entrega.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
+
+        const erroHorario = validarHorarioEntrega(dataEntrega);
+        if (erroHorario) { toast.error(erroHorario, { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (statusEnvio === 'ENVIAR' && !canalOrigem) { toast.error("Informe o Tipo de Atendimento que resultou nesta venda.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
 
         // Bloqueio de valor mínimo
@@ -1439,12 +1476,17 @@ const NovoPedido = () => {
                                         <div className="relative mt-0.5">
                                             <input
                                                 type="date"
-                                                className={`w-full border rounded-md p-2 bg-white text-sm focus:ring-blue-500 focus:border-blue-500 ${dataEntrega ? 'border-gray-300 text-gray-900' : 'border-blue-300 text-gray-400'}`}
+                                                className={`w-full border rounded-md p-2 bg-white text-sm focus:ring-blue-500 focus:border-blue-500 ${validarHorarioEntrega(dataEntrega) ? 'border-red-400 bg-red-50 text-red-700' : dataEntrega ? 'border-gray-300 text-gray-900' : 'border-blue-300 text-gray-400'}`}
                                                 value={dataEntrega}
                                                 onChange={e => setDataEntrega(e.target.value)}
                                                 onClick={e => { try { if (e.target.showPicker) e.target.showPicker(); } catch (err) { } }}
                                             />
                                         </div>
+                                        {dataEntrega && validarHorarioEntrega(dataEntrega) && (
+                                            <p className="text-xs text-red-600 font-semibold mt-1 bg-red-50 rounded px-2 py-1 border border-red-200">
+                                                {validarHorarioEntrega(dataEntrega)}
+                                            </p>
+                                        )}
                                         {isEncaixe && (
                                             <div className="mt-1 flex">
                                                 <span className="text-xs text-amber-600 font-bold bg-amber-50 rounded px-2 py-1 border border-amber-200 shadow-sm uppercase tracking-wide">

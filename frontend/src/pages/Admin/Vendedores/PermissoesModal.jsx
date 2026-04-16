@@ -5,7 +5,8 @@ import {
     PackageCheck, Truck, Wallet, Receipt, Search,
     Box, UserCog, Car, RefreshCw, FileText,
     Settings, DollarSign, Warehouse, TrendingUp,
-    Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3
+    Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3,
+    Clock, CalendarOff
 } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import configService from '../../../services/configService';
@@ -85,6 +86,10 @@ const DEFAULT_PERMISSIONS = {
         estoque: false,
         sugestoes: false,
     },
+    // Regras de Horário para Pedidos
+    horarioLimiteAmanha: '18:00',
+    horarioLimiteHoje: '12:00',
+    Pode_Entregar_Fim_Semana: false,
     // Tela inicial preferida
     telaInicial: '/',
 };
@@ -580,6 +585,52 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                     label="Aprovar Bonificação" />
                                 <Toggle checked={!!permissoes.Pode_Reverter_Bonificacao} onChange={() => toggleBool('Pode_Reverter_Bonificacao')}
                                     label="Reverter Bonificação" danger />
+                            </div>
+                        )}
+
+                        {/* Regras de Horário para Pedidos */}
+                        {permissoes.pedidos?.view && (
+                            <div className="border-t mt-3 pt-3">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Regras de Horário para Pedidos</p>
+                                <div className="bg-orange-50 p-3 rounded-md border border-orange-200 space-y-3">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Clock className="h-4 w-4 text-orange-600" />
+                                        <span className="text-xs font-bold text-orange-800">Limites de Horário</span>
+                                    </div>
+                                    <p className="text-[10px] text-orange-600">
+                                        Após estes horários, o vendedor não poderá criar pedidos para a data correspondente. Pedidos criados no sábado/domingo para segunda-feira não têm restrição de horário.
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-orange-800 mb-1">Limite p/ Entrega Amanhã</label>
+                                            <input
+                                                type="time"
+                                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm border p-2 bg-white text-gray-900"
+                                                value={permissoes.horarioLimiteAmanha || '18:00'}
+                                                onChange={e => setPermissoes(prev => ({ ...prev, horarioLimiteAmanha: e.target.value }))}
+                                            />
+                                            <p className="text-[9px] text-orange-500 mt-0.5">Ex: 18:00 — após esse horário, não cria pedido para amanhã</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-orange-800 mb-1">Limite p/ Entrega Hoje</label>
+                                            <input
+                                                type="time"
+                                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm border p-2 bg-white text-gray-900"
+                                                value={permissoes.horarioLimiteHoje || '12:00'}
+                                                onChange={e => setPermissoes(prev => ({ ...prev, horarioLimiteHoje: e.target.value }))}
+                                            />
+                                            <p className="text-[9px] text-orange-500 mt-0.5">Ex: 12:00 — após esse horário, não cria pedido para hoje</p>
+                                        </div>
+                                    </div>
+                                    <Toggle
+                                        checked={!!permissoes.Pode_Entregar_Fim_Semana}
+                                        onChange={() => toggleBool('Pode_Entregar_Fim_Semana')}
+                                        label="Pode Entregar no Fim de Semana"
+                                        sublabel="Permite criar pedidos com data de entrega no sábado ou domingo. Sem esta permissão, entregas só podem ser agendadas para dias úteis (seg–sex)."
+                                        icon={CalendarOff}
+                                        colorClass="bg-orange-600"
+                                    />
+                                </div>
                             </div>
                         )}
                     </DeptSection>

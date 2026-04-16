@@ -974,7 +974,13 @@ const ListaPedidos = () => {
                                         <div className="flex items-center gap-1 font-medium flex-wrap">
                                             <span className="text-gray-800">Entrega: {pedido.dataVenda ? new Date(pedido.dataVenda).toLocaleDateString('pt-BR') : '-'}</span>
                                             <span className="text-gray-300">|</span>
-                                            <span>Criação: {new Date(pedido.createdAt).toLocaleDateString('pt-BR')}</span>
+                                            <span>Criação: {new Date(pedido.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} {new Date(pedido.createdAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}</span>
+                                            {pedido.usuarioLancamento?.nome && (
+                                                <>
+                                                    <span className="text-gray-300">|</span>
+                                                    <span className="text-gray-500">por: <b className="text-gray-700">{pedido.usuarioLancamento.nome}</b></span>
+                                                </>
+                                            )}
                                         </div>
                                         <div className="uppercase text-gray-400">
                                             {pedido.cliente?.End_Cidade || ''}{pedido.cliente?.End_Bairro ? ` - ${pedido.cliente.End_Bairro}` : ''}

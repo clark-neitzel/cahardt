@@ -72,6 +72,46 @@ const pedidoController = {
                 }
             }
 
+            // Validação de horário e fim de semana para criação de pedidos
+            {
+                const permissoes = req.user?.permissoes || {};
+                if (!permissoes.admin && dadosPedido.dataVenda) {
+                    const agora = new Date();
+                    const horaAtual = agora.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false, hour: '2-digit', minute: '2-digit' });
+                    const diaSemanaAtual = agora.toLocaleDateString('en-US', { timeZone: 'America/Sao_Paulo', weekday: 'short' });
+                    const hojeStr = agora.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+
+                    const dataEntrega = new Date(dadosPedido.dataVenda);
+                    const dataEntregaStr = dataEntrega.toISOString().split('T')[0];
+                    const diaSemanaEntrega = dataEntrega.getUTCDay(); // 0=dom, 6=sab
+
+                    // Bloquear entrega no fim de semana sem permissão
+                    if ((diaSemanaEntrega === 0 || diaSemanaEntrega === 6) && !permissoes.Pode_Entregar_Fim_Semana) {
+                        return res.status(403).json({ error: 'Você não tem permissão para criar pedidos com entrega no sábado ou domingo.' });
+                    }
+
+                    // Regras de horário só se aplicam quando o pedido é criado em dia útil (seg-sex)
+                    const criadoNoFimDeSemana = diaSemanaAtual === 'Sat' || diaSemanaAtual === 'Sun';
+                    if (!criadoNoFimDeSemana) {
+                        const amanha = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+                        amanha.setDate(amanha.getDate() + 1);
+                        const amanhaStr = amanha.toLocaleDateString('en-CA');
+
+                        if (dataEntregaStr === hojeStr) {
+                            const limite = permissoes.horarioLimiteHoje || '12:00';
+                            if (horaAtual >= limite) {
+                                return res.status(403).json({ error: `Horário limite para pedidos com entrega hoje já passou (${limite}). Atual: ${horaAtual}.` });
+                            }
+                        } else if (dataEntregaStr === amanhaStr) {
+                            const limite = permissoes.horarioLimiteAmanha || '18:00';
+                            if (horaAtual >= limite) {
+                                return res.status(403).json({ error: `Horário limite para pedidos com entrega amanhã já passou (${limite}). Atual: ${horaAtual}.` });
+                            }
+                        }
+                    }
+                }
+            }
+
             const novoPedido = await pedidoService.criar(dadosPedido);
 
             // Enviar notificação WhatsApp via BotConversa (não bloqueia resposta)
