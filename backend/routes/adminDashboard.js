@@ -167,18 +167,17 @@ router.get('/', verificarAuth, async (req, res) => {
         const atendidosHojeIds = new Set([
             ...atendimentosHoje.map(a => a.clienteId).filter(Boolean),
             ...pedidosCriadosHoje.map(p => p.clienteId),
-            ...entregasHojeClienteIds.map(p => p.clienteId).filter(Boolean),
         ]);
         const clientesNaoAtendidos = clientesDoDia
             .filter(c => (c.Dia_de_venda || '').toUpperCase().split(',').map(s => s.trim()).includes(siglaDoDia))
             .filter(c => !atendidosHojeIds.has(c.UUID))
             .length;
 
-        // Distinct clientes atendidos hoje (união de Atendimento + Pedido + Entrega)
+        // Distinct clientes atendidos hoje = atendimento real (da rota) OU pedido lançado.
+        // Entregas NÃO contam como atendimento.
         const clientesAtendidos = new Set([
             ...atendimentosHoje.map(a => a.clienteId).filter(Boolean),
             ...pedidosCriadosHoje.map(p => p.clienteId).filter(Boolean),
-            ...entregasHojeClienteIds.map(p => p.clienteId).filter(Boolean),
         ]).size;
 
         // ============ LEADS ============
