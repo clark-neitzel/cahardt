@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import contasReceberService from '../../services/contasReceberService';
 import vendedorService from '../../services/vendedorService';
+import pedidoService from '../../services/pedidoService';
+import clienteService from '../../services/clienteService';
+import ClientePopup from '../Rota/ClientePopup';
 import {
     DollarSign, Search, Filter, X, RefreshCw, CheckCircle, Undo2,
     Download, ArrowUpDown, CheckSquare, Square, Link as LinkIcon,
@@ -47,6 +50,9 @@ const ContasReceberTabela = () => {
     const [syncing, setSyncing] = useState(null);
     const [syncingTodas, setSyncingTodas] = useState(false);
     const [syncLog, setSyncLog] = useState(null); // { progresso, total, itens: [{pedido, status, msg, aplicadas}], ativo }
+    const [pedidoPopup, setPedidoPopup] = useState(null); // pedido completo
+    const [pedidoLoading, setPedidoLoading] = useState(false);
+    const [clientePopup, setClientePopup] = useState(null);
 
     const [vendedores, setVendedores] = useState([]);
 
@@ -356,6 +362,31 @@ const ContasReceberTabela = () => {
         Object.values(filtros).filter(v => Array.isArray(v) ? v.length > 0 : Boolean(v)).length
     , [filtros]);
 
+    const abrirPedido = async (pedidoId) => {
+        if (!pedidoId) return;
+        setPedidoLoading(true);
+        setPedidoPopup({ carregando: true });
+        try {
+            const p = await pedidoService.detalhar(pedidoId);
+            setPedidoPopup(p);
+        } catch (e) {
+            toast.error('Erro ao buscar pedido');
+            setPedidoPopup(null);
+        } finally {
+            setPedidoLoading(false);
+        }
+    };
+
+    const abrirCliente = async (clienteId) => {
+        if (!clienteId) return;
+        try {
+            const c = await clienteService.detalhar(clienteId);
+            setClientePopup(c);
+        } catch (e) {
+            toast.error('Erro ao buscar cliente');
+        }
+    };
+
     const MultiSelect = ({ label, options, value, onChange }) => {
         const [open, setOpen] = useState(false);
         const ref = React.useRef(null);
@@ -607,7 +638,11 @@ const ContasReceberTabela = () => {
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-1 text-sm">
                                                 <span className="text-gray-400 font-mono">{l.pedidoNumero ? `#${l.pedidoNumero}` : (l.pedidoEspecial ? 'Esp.' : '-')}</span>
-                                                <span className="font-medium text-gray-900 truncate" title={l.clienteNome}>{l.clienteNome}</span>
+                                                <span
+                                                    className="font-medium text-blue-700 hover:underline truncate"
+                                                    title={l.clienteNome}
+                                                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); abrirCliente(l.clienteId); }}
+                                                >{l.clienteNome}</span>
                                             </div>
                                             <div className="text-xs text-gray-500 mt-0.5 truncate">
                                                 {l.condicaoPagamento || '-'}{l.vendedorNome ? ` · ${l.vendedorNome}` : ''}
@@ -684,7 +719,13 @@ const ContasReceberTabela = () => {
                                         <td className="px-2 pt-2 pb-0.5 font-mono text-gray-700 whitespace-nowrap">
                                             {l.pedidoNumero ? `#${l.pedidoNumero}` : (l.pedidoEspecial ? 'Esp.' : '-')}
                                         </td>
-                                        <td className="px-2 pt-2 pb-0.5 font-medium">{l.clienteNome}</td>
+                                        <td className="px-2 pt-2 pb-0.5 font-medium">
+                                            <button
+                                                onClick={() => abrirCliente(l.clienteId)}
+                                                className="text-blue-700 hover:underline text-left"
+                                                title="Ver cliente"
+                                            >{l.clienteNome}</button>
+                                        </td>
                                         <td className="px-2 pt-2 pb-0.5 text-gray-700">{l.vendedorNome || '-'}</td>
                                         <td className="px-2 pt-2 pb-0.5 text-right font-bold tabular-nums whitespace-nowrap">R$ {fmt(l.valor)}</td>
                                         <td className="px-2 pt-2 pb-0.5 whitespace-nowrap tabular-nums">{fmtData(l.dataVencimento)}</td>
@@ -711,9 +752,9 @@ const ContasReceberTabela = () => {
                                                     </button>
                                                 )}
                                                 {l.pedidoId && (
-                                                    <Link to={`/pedidos/${l.pedidoId}`} title="Ver pedido" className="p-1 rounded hover:bg-gray-100 text-gray-600">
+                                                    <button onClick={() => abrirPedido(l.pedidoId)} title="Ver pedido" className="p-1 rounded hover:bg-gray-100 text-gray-600">
                                                         <LinkIcon className="w-4 h-4" />
-                                                    </Link>
+                                                    </button>
                                                 )}
                                             </div>
                                         </td>
@@ -893,9 +934,9 @@ const ContasReceberTabela = () => {
                             </div>
                             <div className="sticky bottom-0 bg-white border-t px-4 py-3 flex flex-wrap gap-2 justify-end">
                                 {l.pedidoId && (
-                                    <Link to={`/pedidos/${l.pedidoId}`} onClick={close} className="px-3 py-2 rounded border text-sm inline-flex items-center gap-1 hover:bg-gray-50">
+                                    <button onClick={() => { abrirPedido(l.pedidoId); close(); }} className="px-3 py-2 rounded border text-sm inline-flex items-center gap-1 hover:bg-gray-50">
                                         <LinkIcon className="w-4 h-4" /> Ver pedido
-                                    </Link>
+                                    </button>
                                 )}
                                 {podeBaixar && l.idVendaContaAzul && l.statusConta !== 'QUITADO' && l.statusConta !== 'CANCELADO' && (
                                     <button
@@ -927,6 +968,251 @@ const ContasReceberTabela = () => {
                     </div>
                 );
             })()}
+
+            {/* Modal pedido completo */}
+            {pedidoPopup && (() => {
+                const p = pedidoPopup;
+                const close = () => setPedidoPopup(null);
+                if (p.carregando) {
+                    return (
+                        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={close}>
+                            <div className="bg-white rounded-lg p-6 inline-flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                <RefreshCw className="w-5 h-5 animate-spin text-blue-600" />
+                                <span className="text-sm text-gray-700">Carregando pedido...</span>
+                            </div>
+                        </div>
+                    );
+                }
+                const totalItens = (p.itens || []).reduce((s, it) => s + Number(it.quantidade || 0) * Number(it.valor || 0), 0);
+                const statusEntregaMap = {
+                    PENDENTE: 'bg-gray-100 text-gray-700',
+                    ENTREGUE: 'bg-green-100 text-green-700',
+                    ENTREGUE_PARCIAL: 'bg-yellow-100 text-yellow-800',
+                    DEVOLVIDO: 'bg-red-100 text-red-700'
+                };
+                return (
+                    <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={close}>
+                        <div className="bg-white rounded-t-lg md:rounded-lg max-w-3xl w-full max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between z-10">
+                                <div>
+                                    <h3 className="font-bold text-base">
+                                        Pedido {p.numero ? `#${p.numero}` : (p.especial ? 'Especial' : '—')}
+                                    </h3>
+                                    <div className="text-xs text-gray-500 mt-0.5">
+                                        {fmtData(p.dataVenda)} · {p.vendedor?.nome || '—'}
+                                        {p.especial && <span className="ml-2 text-purple-700">• Especial</span>}
+                                        {p.bonificacao && <span className="ml-2 text-amber-700">• Bonificação</span>}
+                                    </div>
+                                </div>
+                                <button onClick={close} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                            </div>
+
+                            <div className="p-4 space-y-4">
+                                {/* Cliente */}
+                                <div className="bg-gray-50 rounded-lg p-3">
+                                    <div className="text-[11px] text-gray-500 uppercase tracking-wide mb-1">Cliente</div>
+                                    <button
+                                        onClick={() => abrirCliente(p.clienteId)}
+                                        className="text-sm font-semibold text-blue-700 hover:underline text-left"
+                                    >
+                                        {p.cliente?.Nome || p.cliente?.NomeFantasia || '—'}
+                                    </button>
+                                    {p.cliente?.NomeFantasia && p.cliente?.Nome && p.cliente.NomeFantasia !== p.cliente.Nome && (
+                                        <div className="text-xs text-gray-500">{p.cliente.NomeFantasia}</div>
+                                    )}
+                                </div>
+
+                                {/* Resumo financeiro */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                    <div className="border rounded p-2">
+                                        <div className="text-[10px] text-gray-500 uppercase">Itens</div>
+                                        <div className="text-sm font-bold">R$ {fmt(totalItens)}</div>
+                                    </div>
+                                    {Number(p.valorFrete || 0) > 0 && (
+                                        <div className="border rounded p-2">
+                                            <div className="text-[10px] text-gray-500 uppercase">Frete</div>
+                                            <div className="text-sm font-bold">R$ {fmt(p.valorFrete)}</div>
+                                        </div>
+                                    )}
+                                    {Number(p.flexTotal || 0) > 0 && (
+                                        <div className="border rounded p-2">
+                                            <div className="text-[10px] text-gray-500 uppercase">Flex</div>
+                                            <div className="text-sm font-bold">R$ {fmt(p.flexTotal)}</div>
+                                        </div>
+                                    )}
+                                    <div className="border rounded p-2">
+                                        <div className="text-[10px] text-gray-500 uppercase">Condição</div>
+                                        <div className="text-xs font-medium">{p.nomeCondicaoPagamento || '—'}</div>
+                                    </div>
+                                </div>
+
+                                {/* Itens */}
+                                <div>
+                                    <div className="text-xs font-semibold text-gray-700 mb-1.5">Itens ({(p.itens || []).length})</div>
+                                    <div className="border rounded overflow-x-auto">
+                                        <table className="w-full text-xs">
+                                            <thead className="bg-gray-50 border-b">
+                                                <tr>
+                                                    <th className="px-2 py-1.5 text-left font-semibold text-gray-600">Produto</th>
+                                                    <th className="px-2 py-1.5 text-right font-semibold text-gray-600">Qtd</th>
+                                                    <th className="px-2 py-1.5 text-right font-semibold text-gray-600">Unit.</th>
+                                                    <th className="px-2 py-1.5 text-right font-semibold text-gray-600">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(p.itens || []).map(it => (
+                                                    <tr key={it.id} className="border-b last:border-0">
+                                                        <td className="px-2 py-1">{it.produto?.nome || '—'}</td>
+                                                        <td className="px-2 py-1 text-right tabular-nums">{Number(it.quantidade)}</td>
+                                                        <td className="px-2 py-1 text-right tabular-nums">R$ {fmt(it.valor)}</td>
+                                                        <td className="px-2 py-1 text-right tabular-nums font-medium">R$ {fmt(Number(it.quantidade) * Number(it.valor))}</td>
+                                                    </tr>
+                                                ))}
+                                                {(p.itens || []).length === 0 && (
+                                                    <tr><td colSpan={4} className="px-2 py-3 text-center text-gray-400">Sem itens</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* Entrega / Embarque */}
+                                <div>
+                                    <div className="text-xs font-semibold text-gray-700 mb-1.5">Entrega</div>
+                                    <div className="border rounded p-3 grid grid-cols-2 gap-2 text-xs">
+                                        <div>
+                                            <div className="text-[10px] text-gray-500 uppercase">Status</div>
+                                            <span className={`inline-block mt-0.5 px-2 py-0.5 rounded text-[11px] font-medium ${statusEntregaMap[p.statusEntrega] || 'bg-gray-100 text-gray-700'}`}>
+                                                {p.statusEntrega || 'PENDENTE'}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <div className="text-[10px] text-gray-500 uppercase">Data Entrega</div>
+                                            <div>{fmtData(p.dataEntrega)}</div>
+                                        </div>
+                                        {p.embarque && (
+                                            <>
+                                                <div>
+                                                    <div className="text-[10px] text-gray-500 uppercase">Embarque</div>
+                                                    <div>#{p.embarque.numero} · {fmtData(p.embarque.dataSaida)}</div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[10px] text-gray-500 uppercase">Motorista</div>
+                                                    <div>{p.embarque.responsavel?.nome || '—'}</div>
+                                                </div>
+                                            </>
+                                        )}
+                                        {p.observacaoEntrega && (
+                                            <div className="col-span-2">
+                                                <div className="text-[10px] text-gray-500 uppercase">Obs. do Motorista</div>
+                                                <div className="text-gray-700">{p.observacaoEntrega}</div>
+                                            </div>
+                                        )}
+                                        {p.motivoDevolucao && (
+                                            <div className="col-span-2">
+                                                <div className="text-[10px] text-gray-500 uppercase">Motivo Devolução</div>
+                                                <div className="text-red-700">{p.motivoDevolucao}</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Devoluções */}
+                                {(p.devolucoes || []).length > 0 && (
+                                    <div>
+                                        <div className="text-xs font-semibold text-gray-700 mb-1.5">Devoluções ({p.devolucoes.length})</div>
+                                        <div className="space-y-2">
+                                            {p.devolucoes.map(d => (
+                                                <div key={d.id} className={`border rounded p-3 ${d.status === 'REVERTIDA' ? 'bg-gray-50 opacity-70' : ''}`}>
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex flex-wrap items-center gap-2 text-xs">
+                                                                <span className="font-semibold">Dev. #{d.numero}</span>
+                                                                <span className="px-1.5 py-0.5 rounded bg-gray-200 text-gray-700 text-[10px]">{d.tipo}</span>
+                                                                <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px]">{d.escopo}</span>
+                                                                {d.status === 'REVERTIDA' && <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px]">REVERTIDA</span>}
+                                                                <span className="text-gray-500 tabular-nums">{fmtData(d.dataDevolucao)}</span>
+                                                                <span className="text-gray-500">por {d.registradoPor?.nome}</span>
+                                                            </div>
+                                                            <div className="text-xs text-gray-700 mt-1">{d.motivo}</div>
+                                                        </div>
+                                                        <div className="text-right flex-shrink-0">
+                                                            <div className="text-xs text-gray-500">Total</div>
+                                                            <div className="font-bold text-sm">R$ {fmt(d.valorTotal)}</div>
+                                                        </div>
+                                                    </div>
+                                                    {(d.itens || []).length > 0 && (
+                                                        <div className="mt-2 pt-2 border-t text-[11px] space-y-0.5">
+                                                            {d.itens.map(it => (
+                                                                <div key={it.id} className="flex justify-between">
+                                                                    <span className="truncate">{Number(it.quantidade)}× {it.produto?.nome}</span>
+                                                                    <span className="tabular-nums text-gray-600">R$ {fmt(it.valorTotal)}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Contas a receber / parcelas */}
+                                {p.contaReceber && (
+                                    <div>
+                                        <div className="text-xs font-semibold text-gray-700 mb-1.5">
+                                            Financeiro
+                                            <span className={`ml-2 px-2 py-0.5 rounded text-[10px] font-medium ${STATUS_CONTA[p.contaReceber.status] || ''}`}>
+                                                {p.contaReceber.status}
+                                            </span>
+                                        </div>
+                                        <div className="border rounded overflow-x-auto">
+                                            <table className="w-full text-xs">
+                                                <thead className="bg-gray-50 border-b">
+                                                    <tr>
+                                                        <th className="px-2 py-1.5 text-left font-semibold text-gray-600">Parc.</th>
+                                                        <th className="px-2 py-1.5 text-right font-semibold text-gray-600">Valor</th>
+                                                        <th className="px-2 py-1.5 text-left font-semibold text-gray-600">Venc.</th>
+                                                        <th className="px-2 py-1.5 text-left font-semibold text-gray-600">Status</th>
+                                                        <th className="px-2 py-1.5 text-left font-semibold text-gray-600">Pgto</th>
+                                                        <th className="px-2 py-1.5 text-left font-semibold text-gray-600">Forma</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {(p.contaReceber.parcelas || []).map(pc => (
+                                                        <tr key={pc.id} className="border-b last:border-0">
+                                                            <td className="px-2 py-1 tabular-nums">{pc.numeroParcela}</td>
+                                                            <td className="px-2 py-1 text-right tabular-nums font-medium">R$ {fmt(pc.valor)}</td>
+                                                            <td className="px-2 py-1 tabular-nums">{fmtData(pc.dataVencimento)}</td>
+                                                            <td className="px-2 py-1">
+                                                                <span className={`px-1.5 py-0.5 rounded text-[10px] ${STATUS_PARC[pc.status] || ''}`}>{pc.status}</span>
+                                                            </td>
+                                                            <td className="px-2 py-1 tabular-nums">{fmtData(pc.dataPagamento)}</td>
+                                                            <td className="px-2 py-1">{pc.formaPagamento || '-'}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {p.observacoes && (
+                                    <div>
+                                        <div className="text-xs font-semibold text-gray-700 mb-1">Observações</div>
+                                        <div className="border rounded p-2 text-xs text-gray-700 whitespace-pre-wrap">{p.observacoes}</div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* Popup cliente (reuso do Rota) */}
+            {clientePopup && (
+                <ClientePopup cliente={clientePopup} onClose={() => setClientePopup(null)} />
+            )}
         </div>
     );
 };

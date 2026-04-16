@@ -616,7 +616,21 @@ const pedidoService = {
                 },
                 itensDevolvidos: {
                     include: { produto: { select: { id: true, nome: true } } }
-                }
+                },
+                devolucoes: {
+                    orderBy: { dataDevolucao: 'desc' },
+                    include: {
+                        itens: { include: { produto: { select: { id: true, nome: true, codigo: true } } } },
+                        registradoPor: { select: { id: true, nome: true } }
+                    }
+                },
+                contaReceber: {
+                    include: {
+                        parcelas: { orderBy: { numeroParcela: 'asc' } }
+                    }
+                },
+                pagamentosReais: true,
+                embarque: { select: { id: true, numero: true, dataSaida: true, responsavel: { select: { nome: true } } } }
             }
         });
     },
