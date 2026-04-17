@@ -67,36 +67,6 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
 
-// TEMPORÁRIO: diagnóstico pedido (remover depois)
-app.get('/api/diag/pedido/:numero', async (req, res) => {
-    try {
-        const { PrismaClient } = require('@prisma/client');
-        const prisma = new PrismaClient();
-        const numero = parseInt(req.params.numero);
-        const pedido = await prisma.pedido.findFirst({
-            where: { numero },
-            include: {
-                cliente: { select: { UUID: true, Nome: true, NomeFantasia: true } },
-                itens: true,
-                contaReceber: { include: { parcelas: true } },
-            }
-        });
-        await prisma.$disconnect();
-        if (!pedido) return res.json({ error: `Pedido #${numero} não encontrado` });
-        res.json({
-            id: pedido.id, numero: pedido.numero, especial: pedido.especial,
-            bonificacao: pedido.bonificacao, statusEnvio: pedido.statusEnvio,
-            situacaoCA: pedido.situacaoCA, baixaCaRealizada: pedido.baixaCaRealizada,
-            cliente: pedido.cliente,
-            valorTotal: pedido.itens?.reduce((s, i) => s + (i.valor * i.quantidade), 0),
-            contaReceber: pedido.contaReceber || null,
-            _diagnostico: !pedido.contaReceber
-                ? 'CONTA_RECEBER_AUSENTE'
-                : pedido.contaReceber.parcelas?.length === 0
-                    ? 'CONTA_SEM_PARCELAS' : 'OK'
-        });
-    } catch (err) { res.json({ error: err.message }); }
-});
 
 // (Protegidas)
 app.use('/api/produtos', authMiddleware, produtoRoutes);
@@ -160,8 +130,39 @@ const startServer = async () => {
         const migrationService = require('./services/migrationService');
         await migrationService.run();
 
-        app.listen(PORT, () => {
+        app.listen(PORT, async () => {
             console.log(`Servidor rodando na porta ${PORT}`);
+
+            // TEMPORÁRIO: diagnóstico pedido #108
+            try {
+                const diagPrisma = require('./config/database');
+                for (const num of [108]) {
+                    const p = await diagPrisma.pedido.findFirst({
+                        where: { numero: num },
+                        include: {
+                            cliente: { select: { UUID: true, Nome: true, NomeFantasia: true } },
+                            itens: true,
+                            contaReceber: { include: { parcelas: true } },
+                        }
+                    });
+                    if (!p) { console.log(`🔍 [DIAG] Pedido #${num}: NÃO ENCONTRADO`); continue; }
+                    console.log(`🔍 [DIAG] Pedido #${num}:`, JSON.stringify({
+                        id: p.id, numero: p.numero, especial: p.especial,
+                        bonificacao: p.bonificacao, statusEnvio: p.statusEnvio,
+                        situacaoCA: p.situacaoCA, baixaCaRealizada: p.baixaCaRealizada,
+                        cliente: p.cliente?.NomeFantasia || p.cliente?.Nome,
+                        valorTotal: p.itens?.reduce((s, i) => s + (i.valor * i.quantidade), 0),
+                        contaReceber: p.contaReceber ? {
+                            id: p.contaReceber.id, origem: p.contaReceber.origem,
+                            status: p.contaReceber.status, valorTotal: p.contaReceber.valorTotal,
+                            parcelas: p.contaReceber.parcelas?.map(pr => ({
+                                id: pr.id, valor: pr.valor, status: pr.status, vencimento: pr.vencimento
+                            }))
+                        } : 'AUSENTE',
+                        _diagnostico: !p.contaReceber ? 'CONTA_RECEBER_AUSENTE' : 'OK'
+                    }, null, 2));
+                }
+            } catch (err) { console.log('🔍 [DIAG] Erro:', err.message); }
 
             // Inicia todos os jobs background (keep-alive, syncs, worker, cron)
             const { startSchedulers } = require('./workers/scheduler');
