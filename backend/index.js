@@ -67,6 +67,37 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
 
+// TEMPORÁRIO: diagnóstico pedido (remover depois)
+app.get('/api/diag/pedido/:numero', async (req, res) => {
+    try {
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        const numero = parseInt(req.params.numero);
+        const pedido = await prisma.pedido.findFirst({
+            where: { numero },
+            include: {
+                cliente: { select: { UUID: true, Nome: true, NomeFantasia: true } },
+                itens: true,
+                contaReceber: { include: { parcelas: true } },
+            }
+        });
+        await prisma.$disconnect();
+        if (!pedido) return res.json({ error: `Pedido #${numero} não encontrado` });
+        res.json({
+            id: pedido.id, numero: pedido.numero, especial: pedido.especial,
+            bonificacao: pedido.bonificacao, statusEnvio: pedido.statusEnvio,
+            situacaoCA: pedido.situacaoCA, baixaCaRealizada: pedido.baixaCaRealizada,
+            cliente: pedido.cliente,
+            valorTotal: pedido.itens?.reduce((s, i) => s + (i.valor * i.quantidade), 0),
+            contaReceber: pedido.contaReceber || null,
+            _diagnostico: !pedido.contaReceber
+                ? 'CONTA_RECEBER_AUSENTE'
+                : pedido.contaReceber.parcelas?.length === 0
+                    ? 'CONTA_SEM_PARCELAS' : 'OK'
+        });
+    } catch (err) { res.json({ error: err.message }); }
+});
+
 // (Protegidas)
 app.use('/api/produtos', authMiddleware, produtoRoutes);
 app.use('/api/clientes', authMiddleware, clienteRoutes);
