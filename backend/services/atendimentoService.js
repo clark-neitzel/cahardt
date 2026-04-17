@@ -301,11 +301,11 @@ const atendimentoService = {
 
         if (clientesDoDia.length === 0) return { pendente: false };
 
-        // Verifica quais tiveram atendimento ou pedido nesse dia
+        // Verifica quais tiveram atendimento ou pedido nesse dia OU hoje (atendimento de compensação)
         const inicioDia = new Date(diaAnterior);
         inicioDia.setHours(0, 0, 0, 0);
-        const fimDia = new Date(diaAnterior);
-        fimDia.setHours(23, 59, 59, 999);
+        const fimHoje = new Date(hoje);
+        fimHoje.setHours(23, 59, 59, 999);
 
         const uuids = clientesDoDia.map(c => c.UUID);
 
@@ -313,7 +313,7 @@ const atendimentoService = {
             prisma.atendimento.findMany({
                 where: {
                     clienteId: { in: uuids },
-                    criadoEm: { gte: inicioDia, lte: fimDia },
+                    criadoEm: { gte: inicioDia, lte: fimHoje },
                     tipo: { not: 'FINANCEIRO' },
                 },
                 select: { clienteId: true }
@@ -321,7 +321,7 @@ const atendimentoService = {
             prisma.pedido.findMany({
                 where: {
                     clienteId: { in: uuids },
-                    dataVenda: { gte: inicioDia, lte: fimDia },
+                    dataVenda: { gte: inicioDia, lte: fimHoje },
                 },
                 select: { clienteId: true }
             })
