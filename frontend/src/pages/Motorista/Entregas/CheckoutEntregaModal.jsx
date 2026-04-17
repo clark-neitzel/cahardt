@@ -74,23 +74,36 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                 const tipoPed = (pedido.tipoPagamento || '').toLowerCase();
                 const pedidoEhBoleto = nomeCond.includes('boleto') || tipoPed.includes('boleto');
 
+                // Resolver a condição do pedido: tenta por idCondicao, depois por tipoPagamento|opcaoCondicao, depois por nome
+                let condicaoPedido = null;
                 if (pedido.idCondicaoResolvido) {
-                    const condicaoPedido = tabelaForms.find(t => t.idCondicao === pedido.idCondicaoResolvido);
-                    if (condicaoPedido) {
-                        setRegrasCondicao({
-                            permiteDevolucaoTotal: condicaoPedido.permiteDevolucaoTotal !== false,
-                            permiteDevolucaoParcial: condicaoPedido.permiteDevolucaoParcial !== false,
-                            formasRecebimentoPermitidas: condicaoPedido.formasRecebimentoPermitidas || [],
-                            debitaCaixa: !pedidoEhBoleto
-                        });
-                        // Filtrar formas disponíveis se há restrição explícita
-                        if (condicaoPedido.formasRecebimentoPermitidas?.length > 0) {
-                            const permitidas = condicaoPedido.formasRecebimentoPermitidas;
-                            todasFormas = todasFormas.filter(f => permitidas.includes(f._selectId));
-                        }
+                    condicaoPedido = tabelaForms.find(t => t.idCondicao === pedido.idCondicaoResolvido);
+                }
+                if (!condicaoPedido && (pedido.tipoPagamento || pedido.opcaoCondicaoPagamento)) {
+                    const chavePedido = `${pedido.tipoPagamento || ''}|${pedido.opcaoCondicaoPagamento || ''}`;
+                    condicaoPedido = tabelaForms.find(t => `${t.tipoPagamento || ''}|${t.opcaoCondicao || ''}` === chavePedido)
+                        || tabelaForms.find(t => t.opcaoCondicao === pedido.opcaoCondicaoPagamento);
+                }
+                if (!condicaoPedido && pedido.nomeCondicaoPagamento) {
+                    condicaoPedido = tabelaForms.find(t => t.nomeCondicao === pedido.nomeCondicaoPagamento);
+                }
+
+                const idCondicaoResolvido = condicaoPedido?.idCondicao || pedido.idCondicaoResolvido || null;
+
+                if (condicaoPedido) {
+                    setRegrasCondicao({
+                        permiteDevolucaoTotal: condicaoPedido.permiteDevolucaoTotal !== false,
+                        permiteDevolucaoParcial: condicaoPedido.permiteDevolucaoParcial !== false,
+                        formasRecebimentoPermitidas: condicaoPedido.formasRecebimentoPermitidas || [],
+                        debitaCaixa: !pedidoEhBoleto
+                    });
+                    // Filtrar formas disponíveis se há restrição explícita
+                    if (condicaoPedido.formasRecebimentoPermitidas?.length > 0) {
+                        const permitidas = condicaoPedido.formasRecebimentoPermitidas;
+                        todasFormas = todasFormas.filter(f => permitidas.includes(f._selectId));
                     }
                 } else {
-                    // Sem idCondicaoResolvido (ex: "Funcionário")
+                    // Sem condição resolvida (ex: "Funcionário")
                     setRegrasCondicao(prev => ({ ...prev, debitaCaixa: !pedidoEhBoleto }));
                 }
                 // Filtro automático pelo nome:
@@ -98,7 +111,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                 // Boleto → remove condições sem "boleto" no nome
                 // Formas de Entrega (Escritório, Vendedor) são mantidas sempre
                 // A condição do próprio pedido é SEMPRE preservada (fonte de verdade, ignora filtro por nome)
-                const selectIdPedido = pedido.idCondicaoResolvido ? 'tabela_' + pedido.idCondicaoResolvido : null;
+                const selectIdPedido = idCondicaoResolvido ? 'tabela_' + idCondicaoResolvido : null;
                 todasFormas = todasFormas.filter(f => {
                     if (f._grupo !== 'Condições de Pagamento') return true;
                     if (selectIdPedido && f._selectId === selectIdPedido) return true;
@@ -129,13 +142,19 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     // Guarda o valor-alvo do caixa pra usar quando formasDisp carregar
     const [valorAlvoCaixa, setValorAlvoCaixa] = useState(null);
 
-    // Acha o melhor _selectId default: condição do pedido > primeira condição de pagamento > primeira forma
+    // Acha o melhor _selectId default: condição do pedido > match por nome > primeira condição > primeira forma
     const getDefaultSelectId = () => {
         if (formasDisp.length === 0) return null;
         // Tenta a condição original do pedido (idCondicaoResolvido vem do backend, mapeado de opcaoCondicao -> idCondicao)
         if (pedido.idCondicaoResolvido) {
             const match = formasDisp.find(f => f._selectId === 'tabela_' + pedido.idCondicaoResolvido);
             if (match) return match._selectId;
+        }
+        // Fallback: tenta encontrar por nome da condição do pedido
+        const nomePedido = (pedido.nomeCondicaoPagamento || pedido.opcaoCondicaoPagamento || '').toLowerCase().trim();
+        if (nomePedido) {
+            const matchNome = formasDisp.find(f => f._grupo === 'Condições de Pagamento' && f.nome.toLowerCase().trim() === nomePedido);
+            if (matchNome) return matchNome._selectId;
         }
         // Fallback: primeira condição de pagamento
         const primeiraCondicao = formasDisp.find(f => f._grupo === 'Condições de Pagamento');

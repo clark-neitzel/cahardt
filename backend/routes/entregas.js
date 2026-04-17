@@ -89,23 +89,29 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
         // Enriquece com o nome legível da condição de pagamento (join manual sem FK)
         // O pedido salva opcaoCondicaoPagamento = opcaoCondicao da TabelaPreco (não idCondicao!)
         const condicoesCodigos = [...new Set(entregas.map(e => e.opcaoCondicaoPagamento).filter(Boolean))];
+        const nomesCondicoes = [...new Set(entregas.map(e => e.nomeCondicaoPagamento).filter(Boolean))];
         let mapaCondicoes = {};
         let mapaCondicoesPorOpcao = {};
-        if (condicoesCodigos.length > 0) {
+        let mapaCondicoesPorNome = {};
+        if (condicoesCodigos.length > 0 || nomesCondicoes.length > 0) {
+            const whereOr = [];
+            if (condicoesCodigos.length > 0) whereOr.push({ opcaoCondicao: { in: condicoesCodigos } });
+            if (nomesCondicoes.length > 0) whereOr.push({ nomeCondicao: { in: nomesCondicoes } });
             const tabelas = await prisma.tabelaPreco.findMany({
-                where: { opcaoCondicao: { in: condicoesCodigos } },
+                where: { OR: whereOr },
                 select: { opcaoCondicao: true, tipoPagamento: true, nomeCondicao: true, idCondicao: true }
             });
             for (const t of tabelas) {
                 const chave = `${t.tipoPagamento || ''}|${t.opcaoCondicao || ''}`;
                 if (!mapaCondicoes[chave]) mapaCondicoes[chave] = { nome: t.nomeCondicao, idCondicao: t.idCondicao };
-                if (!mapaCondicoesPorOpcao[t.opcaoCondicao]) mapaCondicoesPorOpcao[t.opcaoCondicao] = { nome: t.nomeCondicao, idCondicao: t.idCondicao };
+                if (t.opcaoCondicao && !mapaCondicoesPorOpcao[t.opcaoCondicao]) mapaCondicoesPorOpcao[t.opcaoCondicao] = { nome: t.nomeCondicao, idCondicao: t.idCondicao };
+                if (!mapaCondicoesPorNome[t.nomeCondicao]) mapaCondicoesPorNome[t.nomeCondicao] = { nome: t.nomeCondicao, idCondicao: t.idCondicao };
             }
         }
 
         const pedidosEnriquecidos = entregas.map(e => {
             const chave = `${e.tipoPagamento || ''}|${e.opcaoCondicaoPagamento || ''}`;
-            const info = mapaCondicoes[chave] || mapaCondicoesPorOpcao[e.opcaoCondicaoPagamento];
+            const info = mapaCondicoes[chave] || mapaCondicoesPorOpcao[e.opcaoCondicaoPagamento] || mapaCondicoesPorNome[e.nomeCondicaoPagamento];
             return {
                 ...e,
                 _tipoEntrega: 'pedido',
@@ -304,13 +310,14 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
             return res.status(403).json({ error: 'Este pedido pertence à carga de outro motorista.' });
         }
 
-        // Buscar regras da condição de pagamento do pedido
+        // Buscar regras da condição de pagamento do pedido (múltiplos fallbacks para resolução robusta)
         let regrasCondicao = null;
-        if (pedido.opcaoCondicaoPagamento || pedido.tipoPagamento) {
+        if (pedido.opcaoCondicaoPagamento || pedido.tipoPagamento || pedido.nomeCondicaoPagamento) {
             const condicoes = await prisma.tabelaPreco.findMany({ where: { ativo: true } });
             const chave = `${pedido.tipoPagamento || ''}|${pedido.opcaoCondicaoPagamento || ''}`;
             regrasCondicao = condicoes.find(t => `${t.tipoPagamento || ''}|${t.opcaoCondicao || ''}` === chave)
                 || condicoes.find(t => t.opcaoCondicao === pedido.opcaoCondicaoPagamento)
+                || (pedido.nomeCondicaoPagamento ? condicoes.find(t => t.nomeCondicao === pedido.nomeCondicaoPagamento) : null)
                 || null;
         }
 
