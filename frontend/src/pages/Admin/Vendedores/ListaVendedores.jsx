@@ -202,8 +202,8 @@ const ListaVendedores = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     {editingId === vendedor.id ? (
                                         <div className="flex justify-end space-x-2">
-                                            <button onClick={() => handleSave(vendedor.id)} className="text-green-600 hover:text-green-900"><Save className="h-4 w-4" /></button>
-                                            <button onClick={handleCancel} className="text-red-600 hover:text-red-900"><X className="h-4 w-4" /></button>
+                                            <button onClick={() => handleSave(vendedor.id)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700"><Save className="h-3.5 w-3.5" /> Salvar</button>
+                                            <button onClick={handleCancel} className="inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50"><X className="h-3.5 w-3.5" /> Cancelar</button>
                                         </div>
                                     ) : (
                                         <div className="flex justify-end space-x-2">
