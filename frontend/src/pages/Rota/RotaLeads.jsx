@@ -96,6 +96,44 @@ const isAtendidoHoje = (item) => {
 
 const fmtHoraAtend = (d) => d ? new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
 
+// Badge de status do atendimento/pedido — reutilizado em CardCliente e CardLead
+const BadgeAtendidoHoje = ({ atendHoje, atendOutro, pedidoHoje }) => {
+    if (atendHoje) {
+        const nome = (atendHoje.usuario?.nome || atendHoje.vendedor?.nome || '').split(' ')[0];
+        const hora = fmtHoraAtend(atendHoje.criadoEm);
+        return (
+            <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-1" title={atendHoje.vendedor?.nome ? `Atendido por ${atendHoje.vendedor.nome}` : ''}>
+                <CheckCircle className="h-3 w-3 shrink-0" />
+                <span>Atendido{nome && ` por ${nome}`}</span>
+                {hora && <span className="text-green-500 font-medium">· {hora}</span>}
+            </span>
+        );
+    }
+    if (atendOutro) {
+        const nome = (atendOutro.vendedor?.nome || '').split(' ')[0] || 'outro';
+        const hora = fmtHoraAtend(atendOutro.criadoEm);
+        return (
+            <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded flex items-center gap-1" title={atendOutro.vendedor?.nome ? `Atendido por ${atendOutro.vendedor.nome}` : 'Atendido por outro vendedor'}>
+                <CheckCircle className="h-3 w-3 shrink-0" />
+                <span>Atendido por {nome}</span>
+                {hora && <span className="text-amber-500 font-medium">· {hora}</span>}
+            </span>
+        );
+    }
+    if (pedidoHoje) {
+        const nome = (pedidoHoje.usuarioLancamento?.nome || pedidoHoje.vendedor?.nome || '').split(' ')[0];
+        const hora = pedidoHoje.createdAt ? fmtHoraAtend(pedidoHoje.createdAt) : '';
+        return (
+            <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-1" title={nome ? `Pedido por ${nome}` : ''}>
+                <CheckCircle className="h-3 w-3 shrink-0" />
+                <span>Com Pedido{nome && ` por ${nome}`}</span>
+                {hora && <span className="text-green-500 font-medium">· {hora}</span>}
+            </span>
+        );
+    }
+    return null;
+};
+
 // Verifica se o item foi atendido por QUALQUER vendedor hoje (inclui _atendimentosTodos)
 const isAtendidoHojePorQualquer = (item) => {
     if (isAtendidoHoje(item)) return true;
@@ -141,25 +179,11 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-wide">Cliente</span>
-                            {atendHoje && (
-                                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) ? `Atendido por ${atendHoje.usuario?.nome || atendHoje.vendedor?.nome}` : ''}>
-                                    <CheckCircle className="h-3 w-3" /> Atendido {(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) && `por ${(atendHoje.usuario?.nome || atendHoje.vendedor?.nome).split(' ')[0]}`}{atendHoje.criadoEm && ` ${fmtHoraAtend(atendHoje.criadoEm)}`}
-                                </span>
-                            )}
-                            {!atendHoje && atendOutro && (
-                                <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={atendOutro.vendedor?.nome ? `Atendido por ${atendOutro.vendedor.nome}` : 'Atendido por outro vendedor'}>
-                                    <CheckCircle className="h-3 w-3" /> Atendido por {atendOutro.vendedor?.nome?.split(' ')[0] || 'outro'}{atendOutro.criadoEm && ` ${fmtHoraAtend(atendOutro.criadoEm)}`}
-                                </span>
-                            )}
-                            {atendHoje?.gpsVendedor && (
-                                <button onClick={(e) => { e.stopPropagation(); abrirMapa(atendHoje.gpsVendedor); }} className="text-[10px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Ver onde o atendimento foi registrado">
+                            <BadgeAtendidoHoje atendHoje={atendHoje} atendOutro={atendOutro} pedidoHoje={!atendHoje && !atendOutro ? getPedidoHoje(cliente._pedidos) : null} />
+                            {(atendHoje?.gpsVendedor || atendOutro?.gpsVendedor) && (
+                                <button onClick={(e) => { e.stopPropagation(); abrirMapa(atendHoje?.gpsVendedor || atendOutro?.gpsVendedor); }} className="text-[10px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Ver onde o atendimento foi registrado">
                                     <MapPin className="h-3 w-3" /> GPS
                                 </button>
-                            )}
-                            {!atendHoje && !atendOutro && getPedidoHoje(cliente._pedidos) && (
-                                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome) ? `Pedido por ${getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome}` : ''}>
-                                    <CheckCircle className="h-3 w-3" /> Com Pedido {(getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome) && `por ${(getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome).split(' ')[0]}`}
-                                </span>
                             )}
                         </div>
                         {/* Nome clicável */}
@@ -335,27 +359,13 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="text-[11px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded uppercase tracking-wide">Lead #{lead.numero || '?'}</span>
                             <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${ETAPA_COLORS[lead.etapa] || 'bg-gray-100 text-gray-600'}`}>{lead.etapa}</span>
-                            {atendHoje && (
-                                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) ? `Atendido por ${atendHoje.usuario?.nome || atendHoje.vendedor?.nome}` : ''}>
-                                    <CheckCircle className="h-3 w-3" /> Atendido {(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) && `por ${(atendHoje.usuario?.nome || atendHoje.vendedor?.nome).split(' ')[0]}`}{atendHoje.criadoEm && ` ${fmtHoraAtend(atendHoje.criadoEm)}`}
-                                </span>
-                            )}
-                            {!atendHoje && atendOutro && (
-                                <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={atendOutro.vendedor?.nome ? `Atendido por ${atendOutro.vendedor.nome}` : 'Atendido por outro vendedor'}>
-                                    <CheckCircle className="h-3 w-3" /> Atendido por {atendOutro.vendedor?.nome?.split(' ')[0] || 'outro'}{atendOutro.criadoEm && ` ${fmtHoraAtend(atendOutro.criadoEm)}`}
-                                </span>
-                            )}
-                            {atendHoje?.gpsVendedor && (
-                                <button onClick={(e) => { e.stopPropagation(); abrirMapa(atendHoje.gpsVendedor); }} className="text-[10px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Ver onde o atendimento foi registrado">
+                            <BadgeAtendidoHoje atendHoje={atendHoje} atendOutro={atendOutro} pedidoHoje={!atendHoje && !atendOutro ? getPedidoHoje(lead._pedidos || lead.pedidos) : null} />
+                            {(atendHoje?.gpsVendedor || atendOutro?.gpsVendedor) && (
+                                <button onClick={(e) => { e.stopPropagation(); abrirMapa(atendHoje?.gpsVendedor || atendOutro?.gpsVendedor); }} className="text-[10px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Ver onde o atendimento foi registrado">
                                     <MapPin className="h-3 w-3" /> GPS
                                 </button>
                             )}
                             {proxHoje && !atendHoje && !atendOutro && <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><Star className="h-3 w-3" /> Visita Hoje!</span>}
-                            {!atendHoje && !atendOutro && getPedidoHoje(lead._pedidos || lead.pedidos) && (
-                                <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(getPedidoHoje(lead._pedidos || lead.pedidos).usuarioLancamento?.nome || getPedidoHoje(lead._pedidos || lead.pedidos).vendedor?.nome) ? `Pedido por ${getPedidoHoje(lead._pedidos || lead.pedidos).usuarioLancamento?.nome || getPedidoHoje(lead._pedidos || lead.pedidos).vendedor?.nome}` : ''}>
-                                    <CheckCircle className="h-3 w-3" /> Com Pedido {(getPedidoHoje(lead._pedidos || lead.pedidos).usuarioLancamento?.nome || getPedidoHoje(lead._pedidos || lead.pedidos).vendedor?.nome) && `por ${(getPedidoHoje(lead._pedidos || lead.pedidos).usuarioLancamento?.nome || getPedidoHoje(lead._pedidos || lead.pedidos).vendedor?.nome).split(' ')[0]}`}
-                                </span>
-                            )}
                         </div>
                         {/* Nome do lead clicável */}
                         {podeEscolherVendedor && vendedorNome && (
