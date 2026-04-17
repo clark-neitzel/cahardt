@@ -110,8 +110,9 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
         }
 
         const pedidosEnriquecidos = entregas.map(e => {
+            // Priorizar match por nomeCondicaoPagamento (exato) sobre tipoPagamento|opcaoCondicao (ambíguo p/ boletos)
             const chave = `${e.tipoPagamento || ''}|${e.opcaoCondicaoPagamento || ''}`;
-            const info = mapaCondicoes[chave] || mapaCondicoesPorOpcao[e.opcaoCondicaoPagamento] || mapaCondicoesPorNome[e.nomeCondicaoPagamento];
+            const info = mapaCondicoesPorNome[e.nomeCondicaoPagamento] || mapaCondicoes[chave] || mapaCondicoesPorOpcao[e.opcaoCondicaoPagamento];
             return {
                 ...e,
                 _tipoEntrega: 'pedido',
@@ -310,14 +311,15 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
             return res.status(403).json({ error: 'Este pedido pertence à carga de outro motorista.' });
         }
 
-        // Buscar regras da condição de pagamento do pedido (múltiplos fallbacks para resolução robusta)
+        // Buscar regras da condição de pagamento do pedido (prioriza nome exato sobre chave ambígua)
         let regrasCondicao = null;
         if (pedido.opcaoCondicaoPagamento || pedido.tipoPagamento || pedido.nomeCondicaoPagamento) {
             const condicoes = await prisma.tabelaPreco.findMany({ where: { ativo: true } });
             const chave = `${pedido.tipoPagamento || ''}|${pedido.opcaoCondicaoPagamento || ''}`;
-            regrasCondicao = condicoes.find(t => `${t.tipoPagamento || ''}|${t.opcaoCondicao || ''}` === chave)
+            // Priorizar nomeCondicaoPagamento (exato) sobre tipoPagamento|opcaoCondicao (ambíguo p/ boletos: todos = "1x")
+            regrasCondicao = (pedido.nomeCondicaoPagamento ? condicoes.find(t => t.nomeCondicao === pedido.nomeCondicaoPagamento) : null)
+                || condicoes.find(t => `${t.tipoPagamento || ''}|${t.opcaoCondicao || ''}` === chave)
                 || condicoes.find(t => t.opcaoCondicao === pedido.opcaoCondicaoPagamento)
-                || (pedido.nomeCondicaoPagamento ? condicoes.find(t => t.nomeCondicao === pedido.nomeCondicaoPagamento) : null)
                 || null;
         }
 

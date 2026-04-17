@@ -74,18 +74,18 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                 const tipoPed = (pedido.tipoPagamento || '').toLowerCase();
                 const pedidoEhBoleto = nomeCond.includes('boleto') || tipoPed.includes('boleto');
 
-                // Resolver a condição do pedido: tenta por idCondicao, depois por tipoPagamento|opcaoCondicao, depois por nome
+                // Resolver a condição do pedido: prioriza nome exato (resolve ambiguidade entre boletos que têm mesmo opcaoCondicao="1x")
                 let condicaoPedido = null;
-                if (pedido.idCondicaoResolvido) {
+                if (pedido.nomeCondicaoPagamento) {
+                    condicaoPedido = tabelaForms.find(t => t.nomeCondicao === pedido.nomeCondicaoPagamento);
+                }
+                if (!condicaoPedido && pedido.idCondicaoResolvido) {
                     condicaoPedido = tabelaForms.find(t => t.idCondicao === pedido.idCondicaoResolvido);
                 }
                 if (!condicaoPedido && (pedido.tipoPagamento || pedido.opcaoCondicaoPagamento)) {
                     const chavePedido = `${pedido.tipoPagamento || ''}|${pedido.opcaoCondicaoPagamento || ''}`;
                     condicaoPedido = tabelaForms.find(t => `${t.tipoPagamento || ''}|${t.opcaoCondicao || ''}` === chavePedido)
                         || tabelaForms.find(t => t.opcaoCondicao === pedido.opcaoCondicaoPagamento);
-                }
-                if (!condicaoPedido && pedido.nomeCondicaoPagamento) {
-                    condicaoPedido = tabelaForms.find(t => t.nomeCondicao === pedido.nomeCondicaoPagamento);
                 }
 
                 const idCondicaoResolvido = condicaoPedido?.idCondicao || pedido.idCondicaoResolvido || null;
@@ -142,19 +142,19 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     // Guarda o valor-alvo do caixa pra usar quando formasDisp carregar
     const [valorAlvoCaixa, setValorAlvoCaixa] = useState(null);
 
-    // Acha o melhor _selectId default: condição do pedido > match por nome > primeira condição > primeira forma
+    // Acha o melhor _selectId default: nome exato > idCondicaoResolvido > primeira condição > primeira forma
     const getDefaultSelectId = () => {
         if (formasDisp.length === 0) return null;
-        // Tenta a condição original do pedido (idCondicaoResolvido vem do backend, mapeado de opcaoCondicao -> idCondicao)
-        if (pedido.idCondicaoResolvido) {
-            const match = formasDisp.find(f => f._selectId === 'tabela_' + pedido.idCondicaoResolvido);
-            if (match) return match._selectId;
-        }
-        // Fallback: tenta encontrar por nome da condição do pedido
-        const nomePedido = (pedido.nomeCondicaoPagamento || pedido.opcaoCondicaoPagamento || '').toLowerCase().trim();
+        // Prioridade 1: match exato por nome da condição do pedido (resolve ambiguidade entre boletos)
+        const nomePedido = (pedido.nomeCondicaoPagamento || '').toLowerCase().trim();
         if (nomePedido) {
             const matchNome = formasDisp.find(f => f._grupo === 'Condições de Pagamento' && f.nome.toLowerCase().trim() === nomePedido);
             if (matchNome) return matchNome._selectId;
+        }
+        // Prioridade 2: idCondicaoResolvido (pode ser ambíguo p/ boletos, mas funciona p/ outros)
+        if (pedido.idCondicaoResolvido) {
+            const match = formasDisp.find(f => f._selectId === 'tabela_' + pedido.idCondicaoResolvido);
+            if (match) return match._selectId;
         }
         // Fallback: primeira condição de pagamento
         const primeiraCondicao = formasDisp.find(f => f._grupo === 'Condições de Pagamento');
