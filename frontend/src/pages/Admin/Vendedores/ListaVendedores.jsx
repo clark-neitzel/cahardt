@@ -19,6 +19,20 @@ const ListaVendedores = () => {
     const [editForm, setEditForm] = useState({});
     const [permissionsModalVendedor, setPermissionsModalVendedor] = useState(null);
 
+    // Toggle direto de formas de atendimento visíveis (auto-save)
+    const handleToggleForma = async (vendedor, formaValue) => {
+        const atual = vendedor.formasAtendimentoVisiveis || [];
+        const jaAtivo = atual.includes(formaValue);
+        const novas = jaAtivo ? atual.filter(v => v !== formaValue) : [...atual, formaValue];
+        try {
+            const updated = await vendedorService.atualizar(vendedor.id, { formasAtendimentoVisiveis: novas });
+            setVendedores(vendedores.map(v => v.id === vendedor.id ? updated : v));
+            toast.success(`${vendedor.nome}: formas atualizadas`);
+        } catch (error) {
+            toast.error('Erro ao salvar formas de atendimento');
+        }
+    };
+
     // Carregar vendedores
     const fetchVendedores = async () => {
         try {
@@ -42,8 +56,7 @@ const ListaVendedores = () => {
             email: vendedor.email || '',
             flexMensal: vendedor.flexMensal || 0,
             flexDisponivel: vendedor.flexDisponivel || 0,
-            maxDescontoFlex: vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100,
-            formasAtendimentoVisiveis: vendedor.formasAtendimentoVisiveis || []
+            maxDescontoFlex: vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100
         });
     };
 
@@ -169,43 +182,22 @@ const ListaVendedores = () => {
                                     ) : `R$ ${Number(vendedor.flexDisponivel).toFixed(2)}`}
                                 </td>
                                 <td className="px-6 py-4 text-sm text-gray-500">
-                                    {editingId === vendedor.id ? (
-                                        <div className="flex flex-wrap gap-1">
-                                            {FORMAS_OPTIONS.map(f => {
-                                                const Icon = f.icon;
-                                                const ativo = (editForm.formasAtendimentoVisiveis || []).includes(f.value);
-                                                return (
-                                                    <button
-                                                        key={f.value}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            const atual = editForm.formasAtendimentoVisiveis || [];
-                                                            setEditForm({
-                                                                ...editForm,
-                                                                formasAtendimentoVisiveis: ativo
-                                                                    ? atual.filter(v => v !== f.value)
-                                                                    : [...atual, f.value]
-                                                            });
-                                                        }}
-                                                        className={`flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded border transition-colors ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200'}`}
-                                                    >
-                                                        <Icon className="h-3 w-3" />{f.label}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-wrap gap-1">
-                                            {(vendedor.formasAtendimentoVisiveis || []).length === 0 ? (
-                                                <span className="text-gray-300 italic text-[11px]">Todas</span>
-                                            ) : (vendedor.formasAtendimentoVisiveis || []).map(f => {
-                                                const opt = FORMAS_OPTIONS.find(o => o.value === f);
-                                                if (!opt) return null;
-                                                const Icon = opt.icon;
-                                                return <span key={f} className={`flex items-center gap-0.5 text-[11px] bg-${opt.color}-50 text-${opt.color}-700 px-1.5 py-0.5 rounded font-semibold`}><Icon className="h-3 w-3" />{opt.label}</span>;
-                                            })}
-                                        </div>
-                                    )}
+                                    <div className="flex flex-wrap gap-1">
+                                        {FORMAS_OPTIONS.map(f => {
+                                            const Icon = f.icon;
+                                            const ativo = (vendedor.formasAtendimentoVisiveis || []).includes(f.value);
+                                            return (
+                                                <button
+                                                    key={f.value}
+                                                    type="button"
+                                                    onClick={() => handleToggleForma(vendedor, f.value)}
+                                                    className={`flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded border transition-colors cursor-pointer ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200 hover:border-gray-300'}`}
+                                                >
+                                                    <Icon className="h-3 w-3" />{f.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     {editingId === vendedor.id ? (
@@ -271,33 +263,6 @@ const ListaVendedores = () => {
                                         <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] bg-white text-gray-900" value={editForm.flexDisponivel} onChange={e => setEditForm({ ...editForm, flexDisponivel: e.target.value })} type="number" step="0.01" />
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="text-[10px] text-gray-500 block mb-1">Formas de Atendimento Visíveis</label>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {FORMAS_OPTIONS.map(f => {
-                                            const Icon = f.icon;
-                                            const ativo = (editForm.formasAtendimentoVisiveis || []).includes(f.value);
-                                            return (
-                                                <button
-                                                    key={f.value}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        const atual = editForm.formasAtendimentoVisiveis || [];
-                                                        setEditForm({
-                                                            ...editForm,
-                                                            formasAtendimentoVisiveis: ativo
-                                                                ? atual.filter(v => v !== f.value)
-                                                                : [...atual, f.value]
-                                                        });
-                                                    }}
-                                                    className={`flex items-center gap-1 px-2 py-1.5 text-[11px] font-semibold rounded border transition-colors ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200'}`}
-                                                >
-                                                    <Icon className="h-3 w-3" />{f.label}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
                                 <div className="flex gap-2 pt-1">
                                     <button onClick={() => handleSave(vendedor.id)} className="flex-1 bg-green-600 text-white text-[12px] font-semibold py-1.5 rounded-lg flex items-center justify-center gap-1"><Save className="h-3.5 w-3.5" /> Salvar</button>
                                     <button onClick={handleCancel} className="px-3 py-1.5 border border-gray-300 text-gray-600 text-[12px] font-semibold rounded-lg">Cancelar</button>
@@ -311,14 +276,21 @@ const ListaVendedores = () => {
                                     <span>Desc: {Number(vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100).toFixed(0)}%</span>
                                     <span className="font-semibold text-green-700">Disp: R$ {Number(vendedor.flexDisponivel).toFixed(2)}</span>
                                 </div>
-                                <div className="flex flex-wrap gap-1 mt-1.5">
-                                    {(vendedor.formasAtendimentoVisiveis || []).length === 0 ? (
-                                        <span className="text-[10px] text-gray-300 italic">Todas as formas</span>
-                                    ) : (vendedor.formasAtendimentoVisiveis || []).map(f => {
-                                        const opt = FORMAS_OPTIONS.find(o => o.value === f);
-                                        if (!opt) return null;
-                                        const Icon = opt.icon;
-                                        return <span key={f} className={`flex items-center gap-0.5 text-[10px] bg-${opt.color}-50 text-${opt.color}-700 px-1.5 py-0.5 rounded font-semibold`}><Icon className="h-3 w-3" />{opt.label}</span>;
+                                <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-gray-100">
+                                    <span className="text-[10px] text-gray-400 w-full mb-0.5">Formas visíveis:</span>
+                                    {FORMAS_OPTIONS.map(f => {
+                                        const Icon = f.icon;
+                                        const ativo = (vendedor.formasAtendimentoVisiveis || []).includes(f.value);
+                                        return (
+                                            <button
+                                                key={f.value}
+                                                type="button"
+                                                onClick={() => handleToggleForma(vendedor, f.value)}
+                                                className={`flex items-center gap-1 px-2 py-1.5 text-[11px] font-semibold rounded border transition-colors ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200'}`}
+                                            >
+                                                <Icon className="h-3 w-3" />{f.label}
+                                            </button>
+                                        );
                                     })}
                                 </div>
                             </>
