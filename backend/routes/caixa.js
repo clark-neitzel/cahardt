@@ -1266,9 +1266,9 @@ router.post('/quitar-ca', async (req, res) => {
                             status: 'ABERTO',
                             parcelas: {
                                 create: [{
-                                    numero: 1,
+                                    numeroParcela: 1,
                                     valor: Math.round(valorTotal * 100) / 100,
-                                    vencimento: pedido.primeiroVencimento || now,
+                                    dataVencimento: pedido.primeiroVencimento || now,
                                     status: 'PENDENTE',
                                 }]
                             }
