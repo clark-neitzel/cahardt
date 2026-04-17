@@ -17,6 +17,46 @@ router.get('/relatorio', pedidoController.relatorio);
 // Listagem de Pedidos
 router.get('/', pedidoController.listar);
 
+// Diagnóstico: pedido + contaReceber + parcelas (TEMPORÁRIO)
+router.get('/diag/:numero', async (req, res) => {
+    try {
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        const numero = parseInt(req.params.numero);
+        const pedido = await prisma.pedido.findFirst({
+            where: { numero },
+            include: {
+                cliente: { select: { UUID: true, Nome: true, NomeFantasia: true } },
+                itens: true,
+                contaReceber: { include: { parcelas: true } },
+            }
+        });
+        if (!pedido) return res.status(404).json({ error: `Pedido #${numero} não encontrado` });
+        res.json({
+            id: pedido.id,
+            numero: pedido.numero,
+            especial: pedido.especial,
+            bonificacao: pedido.bonificacao,
+            statusEnvio: pedido.statusEnvio,
+            situacaoCA: pedido.situacaoCA,
+            baixaCaRealizada: pedido.baixaCaRealizada,
+            baixaCaValor: pedido.baixaCaValor,
+            baixaCaEm: pedido.baixaCaEm,
+            cliente: pedido.cliente,
+            valorTotal: pedido.itens?.reduce((s, i) => s + (i.valor * i.quantidade), 0),
+            contaReceber: pedido.contaReceber || null,
+            _diagnostico: !pedido.contaReceber
+                ? 'CONTA_RECEBER_AUSENTE — precisa ser criada para baixa especial funcionar'
+                : pedido.contaReceber.parcelas?.length === 0
+                    ? 'CONTA_SEM_PARCELAS — conta existe mas sem parcelas'
+                    : 'OK'
+        });
+        await prisma.$disconnect();
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Detalhes de um pedido
 router.get('/:id', pedidoController.detalhar);
 
