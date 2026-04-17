@@ -219,6 +219,179 @@ const atendimentoService = {
             include: { vendedor: { select: { nome: true } } },
             orderBy: { criadoEm: 'desc' }
         });
+    },
+
+    // Retorna TODOS os atendimentos de hoje, de todos os vendedores (para saber se outro vendedor já atendeu)
+    listarHojeTodos: async () => {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        const amanha = new Date(hoje);
+        amanha.setDate(amanha.getDate() + 1);
+
+        return await prisma.atendimento.findMany({
+            where: { criadoEm: { gte: hoje, lt: amanha } },
+            select: {
+                id: true,
+                clienteId: true,
+                leadId: true,
+                idVendedor: true,
+                tipo: true,
+                criadoEm: true,
+                vendedor: { select: { nome: true } },
+            },
+            orderBy: { criadoEm: 'desc' }
+        });
+    },
+
+    // Retorna o primeiro dia útil pendente (clientes sem atendimento/pedido) para um vendedor
+    // Regra ativa a partir de 2026-04-17
+    buscarPendenciasRota: async (vendedorId) => {
+        const SIGLAS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+        const DATA_INICIO_REGRA = new Date('2026-04-17T00:00:00');
+
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        // Se hoje é antes da data de início da regra, sem pendências
+        if (hoje < DATA_INICIO_REGRA) return { pendente: false };
+
+        // Busca todos os clientes do vendedor que têm dia de venda configurado
+        const clientes = await prisma.cliente.findMany({
+            where: {
+                idVendedor: vendedorId,
+                Ativo: true,
+                Dia_de_venda: { not: null },
+            },
+            select: {
+                UUID: true,
+                Nome: true,
+                NomeFantasia: true,
+                Dia_de_venda: true,
+                Dia_de_entrega: true,
+                Formas_Atendimento: true,
+                End_Cidade: true,
+                Ponto_GPS: true,
+            }
+        });
+
+        if (clientes.length === 0) return { pendente: false };
+
+        // Percorre de ontem para trás (até DATA_INICIO_REGRA), procurando o dia pendente mais antigo
+        // Mas para eficiência, vamos verificar no máximo 30 dias atrás
+        const MAX_DIAS = 30;
+        let diasPendentes = [];
+
+        for (let i = 1; i <= MAX_DIAS; i++) {
+            const dia = new Date(hoje);
+            dia.setDate(dia.getDate() - i);
+            if (dia < DATA_INICIO_REGRA) break;
+
+            const dow = dia.getDay(); // 0=dom, 6=sáb
+            if (dow === 0 || dow === 6) continue; // Pula dom e sáb
+
+            const sigla = SIGLAS[dow];
+
+            // Filtra clientes que têm esse dia na rota
+            const clientesDoDia = clientes.filter(c => {
+                const dias = c.Dia_de_venda.toUpperCase().split(',').map(d => d.trim());
+                return dias.includes(sigla);
+            });
+
+            if (clientesDoDia.length === 0) continue;
+
+            // Verifica quais desses clientes tiveram atendimento ou pedido nesse dia
+            const inicioDia = new Date(dia);
+            inicioDia.setHours(0, 0, 0, 0);
+            const fimDia = new Date(dia);
+            fimDia.setHours(23, 59, 59, 999);
+
+            const uuids = clientesDoDia.map(c => c.UUID);
+
+            const [atendimentos, pedidos] = await Promise.all([
+                prisma.atendimento.findMany({
+                    where: {
+                        clienteId: { in: uuids },
+                        idVendedor: vendedorId,
+                        criadoEm: { gte: inicioDia, lte: fimDia },
+                        tipo: { not: 'FINANCEIRO' },
+                    },
+                    select: { clienteId: true }
+                }),
+                prisma.pedido.findMany({
+                    where: {
+                        clienteId: { in: uuids },
+                        vendedorId: vendedorId,
+                        dataVenda: { gte: inicioDia, lte: fimDia },
+                    },
+                    select: { clienteId: true }
+                })
+            ]);
+
+            const clientesAtendidos = new Set([
+                ...atendimentos.map(a => a.clienteId),
+                ...pedidos.map(p => p.clienteId)
+            ]);
+
+            const clientesPendentes = clientesDoDia.filter(c => !clientesAtendidos.has(c.UUID));
+
+            if (clientesPendentes.length > 0) {
+                diasPendentes.push({
+                    data: dia.toISOString().split('T')[0],
+                    diaSigla: sigla,
+                    clientes: clientesPendentes,
+                    totalClientes: clientesDoDia.length,
+                    pendentes: clientesPendentes.length,
+                });
+            }
+        }
+
+        if (diasPendentes.length === 0) return { pendente: false };
+
+        // Retorna o dia mais antigo primeiro (para resolver sequencialmente)
+        diasPendentes.sort((a, b) => a.data.localeCompare(b.data));
+
+        return {
+            pendente: true,
+            diasPendentes: diasPendentes.length,
+            diaPendente: diasPendentes[0], // mais antigo
+        };
+    },
+
+    // Lista atendimentos com filtros completos (para página admin)
+    listarComFiltros: async ({ vendedorId, clienteId, leadId, tipo, dataInicio, dataFim, page = 1, limit = 50 }) => {
+        const where = {};
+        if (vendedorId) where.idVendedor = vendedorId;
+        if (clienteId) where.clienteId = clienteId;
+        if (leadId) where.leadId = leadId;
+        if (tipo) where.tipo = tipo;
+        if (dataInicio || dataFim) {
+            where.criadoEm = {};
+            if (dataInicio) where.criadoEm.gte = new Date(dataInicio);
+            if (dataFim) {
+                const fim = new Date(dataFim);
+                fim.setHours(23, 59, 59, 999);
+                where.criadoEm.lte = fim;
+            }
+        }
+
+        const [total, data] = await Promise.all([
+            prisma.atendimento.count({ where }),
+            prisma.atendimento.findMany({
+                where,
+                include: {
+                    vendedor: { select: { id: true, nome: true } },
+                    transferidoPara: { select: { id: true, nome: true } },
+                    cliente: { select: { UUID: true, NomeFantasia: true, Nome: true, End_Cidade: true } },
+                    lead: { select: { id: true, nomeEstabelecimento: true, numero: true } },
+                    amostra: { select: { id: true, numero: true, status: true } },
+                },
+                orderBy: { criadoEm: 'desc' },
+                skip: (page - 1) * limit,
+                take: limit,
+            })
+        ]);
+
+        return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
     }
 };
 

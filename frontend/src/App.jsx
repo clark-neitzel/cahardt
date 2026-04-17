@@ -51,12 +51,13 @@ import SugestoesProducao from './pages/PCP/SugestoesProducao';
 import DashboardPcp from './pages/PCP/DashboardPcp';
 import DeliveryKanban from './pages/Delivery/DeliveryKanban';
 import DeliveryConfig from './pages/Delivery/DeliveryConfig';
+import PainelAtendimentos from './pages/Atendimentos/PainelAtendimentos';
 
 import {
   Menu, X, LogOut, ChevronDown,
   LayoutDashboard, BookOpen, ClipboardList, Map, Target, Users,
   PackageCheck, Truck, Wallet, Receipt, Search,
-  Box, UserCog, Car, RefreshCw, FileText,
+  Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
   Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, History
 } from 'lucide-react';
@@ -65,6 +66,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DiarioProvider } from './contexts/DiarioContext';
 import DiarioGateway from './components/Diario/DiarioGateway';
 import DiarioCheckout from './components/Diario/DiarioCheckout';
+import PendenciaRotaGateway from './components/PendenciaRotaGateway';
 
 const PrivateRoute = ({ children, tab }) => {
   const { signed, loading, hasPermission } = useAuth();
@@ -184,6 +186,7 @@ const Layout = ({ children }) => {
           {hasPermission('delivery') && <SidebarItem to="/delivery" icon={Truck} label="Delivery" />}
           {hasPermission('pedidos') && <SidebarItem to="/rota" icon={Map} label="Rota" />}
           {hasPermission('rota') && <SidebarItem to="/leads" icon={Target} label="Leads" />}
+          {(isAdmin || hasPermission('Pode_Ver_Atendimentos')) && <SidebarItem to="/atendimentos" icon={ClipboardCheck} label="Atendimentos" />}
           {hasPermission('clientes') && <SidebarItem to="/clientes" icon={Users} label="Clientes" />}
 
           {/* Logística */}
@@ -308,6 +311,7 @@ const Layout = ({ children }) => {
               {hasPermission('delivery') && <NavLink to="/delivery" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Delivery</NavLink>}
               {hasPermission('pedidos') && <NavLink to="/rota" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rota</NavLink>}
               {hasPermission('rota') && <NavLink to="/leads" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Leads</NavLink>}
+              {(isAdmin || hasPermission('Pode_Ver_Atendimentos')) && <NavLink to="/atendimentos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Atendimentos</NavLink>}
               {hasPermission('clientes') && <NavLink to="/clientes" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Clientes</NavLink>}
             </MobileMenuSection>
 
@@ -398,6 +402,9 @@ const Layout = ({ children }) => {
           </div>
         </div>
 
+        {/* GATEKEEPER DE PENDÊNCIAS DE ROTA (bloqueia app inteiro) */}
+        <PendenciaRotaGateway />
+
         {/* GATEKEEPER DO DIÁRIO / PONTO */}
         <DiarioGateway />
 
@@ -441,6 +448,7 @@ function App() {
               {/* Rota / Leads (CRM) */}
               <Route path="/rota" element={<PrivateRoute tab="pedidos"><RotaLeads /></PrivateRoute>} />
               <Route path="/leads" element={<PrivateRoute tab="rota"><ListaLeads /></PrivateRoute>} />
+              <Route path="/atendimentos" element={<PrivateRoute tab="Pode_Ver_Atendimentos"><PainelAtendimentos /></PrivateRoute>} />
 
               {/* Clientes */}
               <Route path="/clientes" element={<PrivateRoute tab="clientes"><ListaClientes /></PrivateRoute>} />

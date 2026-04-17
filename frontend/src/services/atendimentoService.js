@@ -51,6 +51,24 @@ const atendimentoService = {
     listarTransferenciasResolvidas: async () => {
         const response = await api.get('/atendimentos/transferencias-resolvidas');
         return response.data;
+    },
+
+    // Retorna TODOS os atendimentos de hoje de todos os vendedores (para saber se outro atendeu)
+    listarHojeTodos: async () => {
+        const response = await api.get('/atendimentos/hoje-todos');
+        return response.data;
+    },
+
+    // Busca pendências de rota (clientes não atendidos em dias anteriores)
+    buscarPendenciasRota: async () => {
+        const response = await api.get('/atendimentos/pendencias-rota');
+        return response.data;
+    },
+
+    // Lista atendimentos com filtros completos (para página admin)
+    listarComFiltros: async (params) => {
+        const response = await api.get('/atendimentos/filtros', { params });
+        return response.data;
     }
 };
 

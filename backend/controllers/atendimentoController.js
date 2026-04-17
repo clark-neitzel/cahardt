@@ -103,6 +103,47 @@ const atendimentoController = {
             console.error('[atendimentoController.listarTransferenciasResolvidas]', error);
             res.status(500).json({ error: 'Erro ao listar transferências resolvidas.' });
         }
+    },
+
+    listarHojeTodos: async (req, res) => {
+        try {
+            const atendimentos = await atendimentoService.listarHojeTodos();
+            res.json(atendimentos);
+        } catch (error) {
+            console.error('[atendimentoController.listarHojeTodos]', error);
+            res.status(500).json({ error: 'Erro ao listar atendimentos de hoje.' });
+        }
+    },
+
+    buscarPendenciasRota: async (req, res) => {
+        try {
+            const vendedorId = req.query.vendedorId || req.user.id;
+            const result = await atendimentoService.buscarPendenciasRota(vendedorId);
+            res.json(result);
+        } catch (error) {
+            console.error('[atendimentoController.buscarPendenciasRota]', error);
+            res.status(500).json({ error: 'Erro ao buscar pendências de rota.' });
+        }
+    },
+
+    listarComFiltros: async (req, res) => {
+        try {
+            const { vendedorId, clienteId, leadId, tipo, dataInicio, dataFim, page, limit } = req.query;
+            const result = await atendimentoService.listarComFiltros({
+                vendedorId: vendedorId || null,
+                clienteId: clienteId || null,
+                leadId: leadId || null,
+                tipo: tipo || null,
+                dataInicio: dataInicio || null,
+                dataFim: dataFim || null,
+                page: parseInt(page) || 1,
+                limit: parseInt(limit) || 50,
+            });
+            res.json(result);
+        } catch (error) {
+            console.error('[atendimentoController.listarComFiltros]', error);
+            res.status(500).json({ error: 'Erro ao listar atendimentos.' });
+        }
     }
 };
 
