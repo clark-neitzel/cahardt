@@ -234,18 +234,49 @@ const pedidoController = {
                 return res.status(403).json({ error: 'Você não tem permissão para aprovar pedidos especiais.' });
             }
 
-            const pedido = await prisma.pedido.findUnique({ where: { id }, select: { especial: true, statusEnvio: true } });
+            const pedido = await prisma.pedido.findUnique({
+                where: { id },
+                include: { itens: true, contaReceber: true }
+            });
             if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
             if (!pedido.especial) return res.status(400).json({ error: 'Este pedido não é especial.' });
             if (pedido.statusEnvio === 'RECEBIDO') return res.status(400).json({ error: 'Este pedido já foi aprovado.' });
 
-            const pedidoAprovado = await prisma.pedido.update({
-                where: { id },
-                data: {
-                    statusEnvio: 'RECEBIDO',
-                    situacaoCA: 'FATURADO',
-                    enviadoEm: new Date()
+            const pedidoAprovado = await prisma.$transaction(async (tx) => {
+                const updated = await tx.pedido.update({
+                    where: { id },
+                    data: {
+                        statusEnvio: 'RECEBIDO',
+                        situacaoCA: 'FATURADO',
+                        enviadoEm: new Date()
+                    }
+                });
+
+                // Criar ContaReceber local se ainda não existe
+                if (!pedido.contaReceber) {
+                    const valorTotal = pedido.itens.reduce((s, i) => s + (i.valor * i.quantidade), 0);
+                    const { gerarParcelasData } = require('../services/pedidoCalculos');
+                    const parcelasData = gerarParcelasData({
+                        valorTotal,
+                        qtdParcelas: pedido.qtdParcelas,
+                        intervaloDias: pedido.intervaloDias,
+                        primeiroVencimento: pedido.primeiroVencimento,
+                        dataVenda: pedido.dataVenda
+                    });
+
+                    await tx.contaReceber.create({
+                        data: {
+                            pedidoId: id,
+                            clienteId: pedido.clienteId,
+                            origem: 'ESPECIAL',
+                            valorTotal: Math.round(valorTotal * 100) / 100,
+                            status: 'ABERTO',
+                            parcelas: { create: parcelasData }
+                        }
+                    });
                 }
+
+                return updated;
             });
 
             res.json({ message: 'Pedido especial aprovado com sucesso.', pedido: pedidoAprovado });
