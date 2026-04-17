@@ -247,7 +247,7 @@ const atendimentoService = {
     // Regra ativa a partir de 2026-04-16
     buscarPendenciasRota: async (vendedorId) => {
         const SIGLAS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-        const DATA_INICIO_REGRA = new Date('2026-04-16T00:00:00');
+        const DATA_INICIO_REGRA = new Date('2026-04-15T00:00:00');
 
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
