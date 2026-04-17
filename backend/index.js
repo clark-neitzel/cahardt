@@ -130,39 +130,8 @@ const startServer = async () => {
         const migrationService = require('./services/migrationService');
         await migrationService.run();
 
-        app.listen(PORT, async () => {
+        app.listen(PORT, () => {
             console.log(`Servidor rodando na porta ${PORT}`);
-
-            // TEMPORÁRIO: diagnóstico pedido #108
-            try {
-                const diagPrisma = require('./config/database');
-                for (const num of [108]) {
-                    const p = await diagPrisma.pedido.findFirst({
-                        where: { numero: num },
-                        include: {
-                            cliente: { select: { UUID: true, Nome: true, NomeFantasia: true } },
-                            itens: true,
-                            contaReceber: { include: { parcelas: true } },
-                        }
-                    });
-                    if (!p) { console.log(`🔍 [DIAG] Pedido #${num}: NÃO ENCONTRADO`); continue; }
-                    console.log(`🔍 [DIAG] Pedido #${num}:`, JSON.stringify({
-                        id: p.id, numero: p.numero, especial: p.especial,
-                        bonificacao: p.bonificacao, statusEnvio: p.statusEnvio,
-                        situacaoCA: p.situacaoCA, baixaCaRealizada: p.baixaCaRealizada,
-                        cliente: p.cliente?.NomeFantasia || p.cliente?.Nome,
-                        valorTotal: p.itens?.reduce((s, i) => s + (i.valor * i.quantidade), 0),
-                        contaReceber: p.contaReceber ? {
-                            id: p.contaReceber.id, origem: p.contaReceber.origem,
-                            status: p.contaReceber.status, valorTotal: p.contaReceber.valorTotal,
-                            parcelas: p.contaReceber.parcelas?.map(pr => ({
-                                id: pr.id, valor: pr.valor, status: pr.status, vencimento: pr.vencimento
-                            }))
-                        } : 'AUSENTE',
-                        _diagnostico: !p.contaReceber ? 'CONTA_RECEBER_AUSENTE' : 'OK'
-                    }, null, 2));
-                }
-            } catch (err) { console.log('🔍 [DIAG] Erro:', err.message); }
 
             // Inicia todos os jobs background (keep-alive, syncs, worker, cron)
             const { startSchedulers } = require('./workers/scheduler');

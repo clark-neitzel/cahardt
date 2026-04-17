@@ -1248,21 +1248,34 @@ router.post('/quitar-ca', async (req, res) => {
 
             try {
                 // Buscar ContaReceber + Parcelas locais
-                const contaReceber = await prisma.contaReceber.findUnique({
+                let contaReceber = await prisma.contaReceber.findUnique({
                     where: { pedidoId: pedido.id },
                     include: { parcelas: true }
                 });
 
                 if (!contaReceber) {
-                    resultados.push({
-                        pedidoId: pedido.id,
-                        numero: pedido.numero,
-                        cliente: clienteNome,
-                        tipo: 'ESPECIAL',
-                        status: 'ERRO',
-                        erro: 'Conta a receber local não encontrada para este pedido especial'
+                    // Auto-criar ContaReceber quando ausente (pedido especial sem conta local)
+                    const valorTotal = pedido.itens?.reduce((s, i) => s + (i.valor * i.quantidade), 0) || pedido._valorElegivel;
+                    const now = new Date();
+                    contaReceber = await prisma.contaReceber.create({
+                        data: {
+                            pedidoId: pedido.id,
+                            clienteId: pedido.clienteId,
+                            origem: 'ESPECIAL',
+                            valorTotal: Math.round(valorTotal * 100) / 100,
+                            status: 'ABERTO',
+                            parcelas: {
+                                create: [{
+                                    numero: 1,
+                                    valor: Math.round(valorTotal * 100) / 100,
+                                    vencimento: pedido.primeiroVencimento || now,
+                                    status: 'PENDENTE',
+                                }]
+                            }
+                        },
+                        include: { parcelas: true }
                     });
-                    continue;
+                    console.log(`[Caixa] Auto-criada ContaReceber para pedido especial #${pedido.numero}`);
                 }
 
                 const parcelasElegiveis = contaReceber.parcelas.filter(p => p.status === 'PENDENTE' || p.status === 'VENCIDO');
