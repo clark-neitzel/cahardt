@@ -94,6 +94,21 @@ const isAtendidoHoje = (item) => {
     return !!getAtendimentoHoje(item._atendimentos || item.atendimentos) || !!getPedidoHoje(item._pedidos || item.pedidos);
 };
 
+// Verifica se o item foi atendido por QUALQUER vendedor hoje (inclui _atendimentosTodos)
+const isAtendidoHojePorQualquer = (item) => {
+    if (isAtendidoHoje(item)) return true;
+    return !!getAtendimentoHoje(item._atendimentosTodos);
+};
+
+// Retorna o atendimento de outro vendedor (se existir)
+const getAtendimentoOutroVendedor = (item, meuVendedorId) => {
+    const todos = item._atendimentosTodos || [];
+    const hoje = new Date().toDateString();
+    return todos.find(a =>
+        new Date(a.criadoEm).toDateString() === hoje && a.tipo !== 'FINANCEIRO' && a.idVendedor !== meuVendedorId
+    );
+};
+
 const isProximaVisitaHoje = (proximaVisita) => {
     if (!proximaVisita) return false;
     return new Date(proximaVisita).toDateString() === new Date().toDateString();
@@ -108,24 +123,30 @@ const abrirMapa = (gps) => {
 // ================================================
 // Card de Cliente
 // ================================================
-const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado }) => {
+const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, meuVendedorId, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado }) => {
     const atendHoje = getAtendimentoHoje(cliente._atendimentos);
+    const atendOutro = !atendHoje ? getAtendimentoOutroVendedor(cliente, meuVendedorId) : null;
     const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
     const vendedorNome = cliente.vendedor?.nome || cliente.Vendedor?.nome;
 
     return (
         <div
-            className={`bg-white rounded-xl border shadow-sm overflow-hidden mb-3 ${alerta?.isHoje ? 'ring-2 animate-pulse-border' : doDia ? 'border-green-500/50 ring-1 ring-green-500/20' : 'border-gray-200'}`}
+            className={`rounded-xl border shadow-sm overflow-hidden mb-3 ${atendOutro && !atendHoje ? 'bg-amber-50/50' : 'bg-white'} ${alerta?.isHoje ? 'ring-2 animate-pulse-border' : doDia ? 'border-green-500/50 ring-1 ring-green-500/20' : 'border-gray-200'}`}
             style={alerta?.isHoje ? { borderColor: alerta.cor, '--alerta-cor': alerta.cor } : undefined}
         >
             <div className="p-4">
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-wide">Cliente</span>
                             {atendHoje && (
                                 <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) ? `Atendido por ${atendHoje.usuario?.nome || atendHoje.vendedor?.nome}` : ''}>
                                     <CheckCircle className="h-3 w-3" /> Atendido {(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) && `por ${(atendHoje.usuario?.nome || atendHoje.vendedor?.nome).split(' ')[0]}`}
+                                </span>
+                            )}
+                            {!atendHoje && atendOutro && (
+                                <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={atendOutro.vendedor?.nome ? `Atendido por ${atendOutro.vendedor.nome}` : 'Atendido por outro vendedor'}>
+                                    <CheckCircle className="h-3 w-3" /> Atendido por {atendOutro.vendedor?.nome?.split(' ')[0] || 'outro'}
                                 </span>
                             )}
                             {atendHoje?.gpsVendedor && (
@@ -133,7 +154,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                                     <MapPin className="h-3 w-3" /> GPS
                                 </button>
                             )}
-                            {!atendHoje && getPedidoHoje(cliente._pedidos) && (
+                            {!atendHoje && !atendOutro && getPedidoHoje(cliente._pedidos) && (
                                 <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome) ? `Pedido por ${getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome}` : ''}>
                                     <CheckCircle className="h-3 w-3" /> Com Pedido {(getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome) && `por ${(getPedidoHoje(cliente._pedidos).usuarioLancamento?.nome || getPedidoHoje(cliente._pedidos).vendedor?.nome).split(' ')[0]}`}
                                 </span>
@@ -294,15 +315,16 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
 // ================================================
 // Card de Lead
 // ================================================
-const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado }) => {
+const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, meuVendedorId, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado }) => {
     const atendHoje = getAtendimentoHoje(lead.atendimentos);
+    const atendOutro = !atendHoje ? getAtendimentoOutroVendedor(lead, meuVendedorId) : null;
     const proxHoje = isProximaVisitaHoje(lead.proximaVisita);
     const vendedorNome = lead.vendedor?.nome;
 
     // Prospectos/Leads ficam com destaque laranja
     return (
         <div
-            className={`bg-white rounded-xl border shadow-sm overflow-hidden mb-3 ${alerta?.isHoje ? 'ring-2 animate-pulse-border' : 'border-orange-400/50 ring-1 ring-orange-500/20'}`}
+            className={`rounded-xl border shadow-sm overflow-hidden mb-3 ${atendOutro && !atendHoje ? 'bg-amber-50/50' : 'bg-white'} ${alerta?.isHoje ? 'ring-2 animate-pulse-border' : 'border-orange-400/50 ring-1 ring-orange-500/20'}`}
             style={alerta?.isHoje ? { borderColor: alerta.cor, '--alerta-cor': alerta.cor } : undefined}
         >
             <div className="p-4">
@@ -316,13 +338,18 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
                                     <CheckCircle className="h-3 w-3" /> Atendido {(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) && `por ${(atendHoje.usuario?.nome || atendHoje.vendedor?.nome).split(' ')[0]}`}
                                 </span>
                             )}
+                            {!atendHoje && atendOutro && (
+                                <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={atendOutro.vendedor?.nome ? `Atendido por ${atendOutro.vendedor.nome}` : 'Atendido por outro vendedor'}>
+                                    <CheckCircle className="h-3 w-3" /> Atendido por {atendOutro.vendedor?.nome?.split(' ')[0] || 'outro'}
+                                </span>
+                            )}
                             {atendHoje?.gpsVendedor && (
                                 <button onClick={(e) => { e.stopPropagation(); abrirMapa(atendHoje.gpsVendedor); }} className="text-[10px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Ver onde o atendimento foi registrado">
                                     <MapPin className="h-3 w-3" /> GPS
                                 </button>
                             )}
-                            {proxHoje && !atendHoje && <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><Star className="h-3 w-3" /> Visita Hoje!</span>}
-                            {!atendHoje && getPedidoHoje(lead._pedidos || lead.pedidos) && (
+                            {proxHoje && !atendHoje && !atendOutro && <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><Star className="h-3 w-3" /> Visita Hoje!</span>}
+                            {!atendHoje && !atendOutro && getPedidoHoje(lead._pedidos || lead.pedidos) && (
                                 <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(getPedidoHoje(lead._pedidos || lead.pedidos).usuarioLancamento?.nome || getPedidoHoje(lead._pedidos || lead.pedidos).vendedor?.nome) ? `Pedido por ${getPedidoHoje(lead._pedidos || lead.pedidos).usuarioLancamento?.nome || getPedidoHoje(lead._pedidos || lead.pedidos).vendedor?.nome}` : ''}>
                                     <CheckCircle className="h-3 w-3" /> Com Pedido {(getPedidoHoje(lead._pedidos || lead.pedidos).usuarioLancamento?.nome || getPedidoHoje(lead._pedidos || lead.pedidos).vendedor?.nome) && `por ${(getPedidoHoje(lead._pedidos || lead.pedidos).usuarioLancamento?.nome || getPedidoHoje(lead._pedidos || lead.pedidos).vendedor?.nome).split(' ')[0]}`}
                                 </span>
@@ -1163,10 +1190,11 @@ const RotaLeads = () => {
                 idBusca = vendedorFiltro === 'todos' ? null : vendedorFiltro;
             }
 
-            const [leadsData, clientesData, atendHojeData] = await Promise.all([
+            const [leadsData, clientesData, atendHojeData, atendHojeTodosData] = await Promise.all([
                 leadService.listarParaRota(idBusca), // se null, traz de todos no backend
                 clienteService.listar({ limit: 2000 }), // cliente traz tudo, filtraremos depois
-                idBusca ? atendimentoService.listarHoje(idBusca) : atendimentoService.listarHoje()
+                idBusca ? atendimentoService.listarHoje(idBusca) : atendimentoService.listarHoje(),
+                atendimentoService.listarHojeTodos() // todos os vendedores (para saber se outro atendeu)
             ]);
 
             // Se quisermos ver pedidos do dia para abater da rota, precisamos buscar do pedidoService
@@ -1191,11 +1219,15 @@ const RotaLeads = () => {
             }
             const listaClientes = listaClientesRaw;
             const listaAtendHoje = Array.isArray(atendHojeData) ? atendHojeData : [];
+            const listaAtendTodos = Array.isArray(atendHojeTodosData) ? atendHojeTodosData : [];
 
             // Mapas: clienteId → [atendimentos hoje], leadId → [atendimentos hoje]
             const mapClienteAtend = {};
             const mapLeadAtend = {};
             const mapClientePedidos = {};
+            // Mapa de atendimentos de TODOS os vendedores (para detectar "atendido por outro")
+            const mapClienteAtendTodos = {};
+            const mapLeadAtendTodos = {};
 
             listaAtendHoje.forEach(a => {
                 if (a.clienteId) {
@@ -1216,10 +1248,23 @@ const RotaLeads = () => {
                 }
             });
 
+            // Popular mapas de atendimentos de TODOS os vendedores
+            listaAtendTodos.forEach(a => {
+                if (a.clienteId) {
+                    if (!mapClienteAtendTodos[a.clienteId]) mapClienteAtendTodos[a.clienteId] = [];
+                    mapClienteAtendTodos[a.clienteId].push(a);
+                }
+                if (a.leadId) {
+                    if (!mapLeadAtendTodos[a.leadId]) mapLeadAtendTodos[a.leadId] = [];
+                    mapLeadAtendTodos[a.leadId].push(a);
+                }
+            });
+
             // Injetar atendimentos e pedidos de hoje nos clientes
             const clientesComAtend = listaClientes.map(c => ({
                 ...c,
                 _atendimentos: mapClienteAtend[c.UUID] || [],
+                _atendimentosTodos: mapClienteAtendTodos[c.UUID] || [],
                 _pedidos: mapClientePedidos[c.UUID] || []
             }));
 
@@ -1228,7 +1273,8 @@ const RotaLeads = () => {
                 .filter(l => l.etapa !== 'FINALIZADO')
                 .map(l => ({
                     ...l,
-                    atendimentos: mapLeadAtend[l.id] || l.atendimentos || []
+                    atendimentos: mapLeadAtend[l.id] || l.atendimentos || [],
+                    _atendimentosTodos: mapLeadAtendTodos[l.id] || []
                 }));
 
             setLeads(leadsComAtend);
@@ -1456,7 +1502,8 @@ const RotaLeads = () => {
             if (alertasPorItem[key]?.isTransferenciaAtiva) {
                 return !receptorAtendeuHoje(i);
             }
-            return !isAtendidoHoje(i);
+            // Sai da lista se QUALQUER vendedor já atendeu hoje
+            return !isAtendidoHojePorQualquer(i);
         }).filter(i =>
             matchBusca(i._tipo === 'cliente' ? (i.NomeFantasia || i.Nome) : i.nomeEstabelecimento)
         );
@@ -1534,7 +1581,8 @@ const RotaLeads = () => {
             if (alertasPorItem[key]?.isTransferenciaAtiva) {
                 return receptorAtendeuHoje(i);
             }
-            return isAtendidoHoje(i);
+            // Considera atendido se QUALQUER vendedor atendeu
+            return isAtendidoHojePorQualquer(i);
         }).filter(i =>
             matchBusca(i._tipo === 'cliente' ? (i.NomeFantasia || i.Nome) : i.nomeEstabelecimento)
         ).map(i => {
@@ -1683,9 +1731,9 @@ const RotaLeads = () => {
         const mostrarAcoes = aba === 'atendimento';
 
         if (item._tipo === 'cliente') {
-            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} alerta={alertasPorItem[item.UUID]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} />;
+            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} meuVendedorId={vendedorId} alerta={alertasPorItem[item.UUID]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} />;
         }
-        return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} alerta={alertasPorItem[item.id]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} />;
+        return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} meuVendedorId={vendedorId} alerta={alertasPorItem[item.id]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} />;
     };
 
     const diaBase = getDiaSigla(getDiaBase());

@@ -45,6 +45,8 @@ const DEFAULT_PERMISSIONS = {
     Pode_Editar_Veiculos: false,
     // CRM / Leads
     Pode_Editar_Lead: false,
+    // Painel de Atendimentos
+    Pode_Ver_Atendimentos: false,
     // Reatribuição de vendedor em pedidos
     Pode_Reatribuir_Vendedor: false,
     // Exclusão de Registros
@@ -493,6 +495,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                     label="Pode Editar Leads" sublabel="Permite editar leads existentes, não apenas criar novos" />
                                 <Toggle checked={!!permissoes.Pode_Editar_GPS} onChange={() => toggleBool('Pode_Editar_GPS')}
                                     label="Editar GPS de Clientes" sublabel="Capturar e salvar localização GPS dos clientes na rota" />
+                                <Toggle checked={!!permissoes.Pode_Ver_Atendimentos} onChange={() => toggleBool('Pode_Ver_Atendimentos')}
+                                    label="Painel de Atendimentos" sublabel="Acesso ao painel completo com historico de todos os atendimentos" />
                             </div>
                         )}
 

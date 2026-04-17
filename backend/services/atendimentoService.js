@@ -243,11 +243,11 @@ const atendimentoService = {
         });
     },
 
-    // Retorna o primeiro dia útil pendente (clientes sem atendimento/pedido) para um vendedor
-    // Regra ativa a partir de 2026-04-17
+    // Retorna clientes sem atendimento/pedido do dia útil anterior (somente ontem, ou sexta se segunda)
+    // Regra ativa a partir de 2026-04-16
     buscarPendenciasRota: async (vendedorId) => {
         const SIGLAS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-        const DATA_INICIO_REGRA = new Date('2026-04-17T00:00:00');
+        const DATA_INICIO_REGRA = new Date('2026-04-16T00:00:00');
 
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
@@ -255,7 +255,26 @@ const atendimentoService = {
         // Se hoje é antes da data de início da regra, sem pendências
         if (hoje < DATA_INICIO_REGRA) return { pendente: false };
 
-        // Busca todos os clientes do vendedor que têm dia de venda configurado
+        // Determina o dia útil anterior: ontem, ou sexta se hoje é segunda
+        // Se hoje é domingo ou sábado, não cobra (não deveria estar trabalhando)
+        const dow = hoje.getDay(); // 0=dom, 6=sáb
+        if (dow === 0 || dow === 6) return { pendente: false };
+
+        const diaAnterior = new Date(hoje);
+        if (dow === 1) {
+            // Segunda → verifica sexta (3 dias atrás)
+            diaAnterior.setDate(diaAnterior.getDate() - 3);
+        } else {
+            // Ter-Sex → verifica ontem
+            diaAnterior.setDate(diaAnterior.getDate() - 1);
+        }
+
+        // Se o dia anterior é antes da regra, sem pendências
+        if (diaAnterior < DATA_INICIO_REGRA) return { pendente: false };
+
+        const sigla = SIGLAS[diaAnterior.getDay()];
+
+        // Busca clientes do vendedor que têm esse dia na rota
         const clientes = await prisma.cliente.findMany({
             where: {
                 idVendedor: vendedorId,
@@ -274,86 +293,61 @@ const atendimentoService = {
             }
         });
 
-        if (clientes.length === 0) return { pendente: false };
+        // Filtra clientes que têm o dia anterior na rota
+        const clientesDoDia = clientes.filter(c => {
+            const dias = (c.Dia_de_venda || '').toUpperCase().split(',').map(d => d.trim());
+            return dias.includes(sigla);
+        });
 
-        // Percorre de ontem para trás (até DATA_INICIO_REGRA), procurando o dia pendente mais antigo
-        // Mas para eficiência, vamos verificar no máximo 30 dias atrás
-        const MAX_DIAS = 30;
-        let diasPendentes = [];
+        if (clientesDoDia.length === 0) return { pendente: false };
 
-        for (let i = 1; i <= MAX_DIAS; i++) {
-            const dia = new Date(hoje);
-            dia.setDate(dia.getDate() - i);
-            if (dia < DATA_INICIO_REGRA) break;
+        // Verifica quais tiveram atendimento ou pedido nesse dia
+        const inicioDia = new Date(diaAnterior);
+        inicioDia.setHours(0, 0, 0, 0);
+        const fimDia = new Date(diaAnterior);
+        fimDia.setHours(23, 59, 59, 999);
 
-            const dow = dia.getDay(); // 0=dom, 6=sáb
-            if (dow === 0 || dow === 6) continue; // Pula dom e sáb
+        const uuids = clientesDoDia.map(c => c.UUID);
 
-            const sigla = SIGLAS[dow];
+        const [atendimentos, pedidos] = await Promise.all([
+            prisma.atendimento.findMany({
+                where: {
+                    clienteId: { in: uuids },
+                    idVendedor: vendedorId,
+                    criadoEm: { gte: inicioDia, lte: fimDia },
+                    tipo: { not: 'FINANCEIRO' },
+                },
+                select: { clienteId: true }
+            }),
+            prisma.pedido.findMany({
+                where: {
+                    clienteId: { in: uuids },
+                    vendedorId: vendedorId,
+                    dataVenda: { gte: inicioDia, lte: fimDia },
+                },
+                select: { clienteId: true }
+            })
+        ]);
 
-            // Filtra clientes que têm esse dia na rota
-            const clientesDoDia = clientes.filter(c => {
-                const dias = c.Dia_de_venda.toUpperCase().split(',').map(d => d.trim());
-                return dias.includes(sigla);
-            });
+        const clientesAtendidos = new Set([
+            ...atendimentos.map(a => a.clienteId),
+            ...pedidos.map(p => p.clienteId)
+        ]);
 
-            if (clientesDoDia.length === 0) continue;
+        const clientesPendentes = clientesDoDia.filter(c => !clientesAtendidos.has(c.UUID));
 
-            // Verifica quais desses clientes tiveram atendimento ou pedido nesse dia
-            const inicioDia = new Date(dia);
-            inicioDia.setHours(0, 0, 0, 0);
-            const fimDia = new Date(dia);
-            fimDia.setHours(23, 59, 59, 999);
-
-            const uuids = clientesDoDia.map(c => c.UUID);
-
-            const [atendimentos, pedidos] = await Promise.all([
-                prisma.atendimento.findMany({
-                    where: {
-                        clienteId: { in: uuids },
-                        idVendedor: vendedorId,
-                        criadoEm: { gte: inicioDia, lte: fimDia },
-                        tipo: { not: 'FINANCEIRO' },
-                    },
-                    select: { clienteId: true }
-                }),
-                prisma.pedido.findMany({
-                    where: {
-                        clienteId: { in: uuids },
-                        vendedorId: vendedorId,
-                        dataVenda: { gte: inicioDia, lte: fimDia },
-                    },
-                    select: { clienteId: true }
-                })
-            ]);
-
-            const clientesAtendidos = new Set([
-                ...atendimentos.map(a => a.clienteId),
-                ...pedidos.map(p => p.clienteId)
-            ]);
-
-            const clientesPendentes = clientesDoDia.filter(c => !clientesAtendidos.has(c.UUID));
-
-            if (clientesPendentes.length > 0) {
-                diasPendentes.push({
-                    data: dia.toISOString().split('T')[0],
-                    diaSigla: sigla,
-                    clientes: clientesPendentes,
-                    totalClientes: clientesDoDia.length,
-                    pendentes: clientesPendentes.length,
-                });
-            }
-        }
-
-        if (diasPendentes.length === 0) return { pendente: false };
-
-        // Retorna o dia mais antigo primeiro (para resolver sequencialmente)
-        diasPendentes.sort((a, b) => a.data.localeCompare(b.data));
+        if (clientesPendentes.length === 0) return { pendente: false };
 
         return {
             pendente: true,
-            diasPendentes: diasPendentes.length,
-            diaPendente: diasPendentes[0], // mais antigo
+            diasPendentes: 1,
+            diaPendente: {
+                data: diaAnterior.toISOString().split('T')[0],
+                diaSigla: sigla,
+                clientes: clientesPendentes,
+                totalClientes: clientesDoDia.length,
+                pendentes: clientesPendentes.length,
+            },
         };
     },
 
