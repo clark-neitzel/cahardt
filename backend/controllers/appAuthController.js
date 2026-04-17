@@ -59,7 +59,8 @@ const appAuthController = {
                     id: vendedor.id,
                     nome: vendedor.nome,
                     login: vendedor.login,
-                    permissoes: permissoesObj
+                    permissoes: permissoesObj,
+                    formasAtendimentoVisiveis: vendedor.formasAtendimentoVisiveis || []
                 }
             });
 
@@ -87,7 +88,8 @@ const appAuthController = {
                 id: vendedor.id,
                 nome: vendedor.nome,
                 login: vendedor.login,
-                permissoes: permissoesObj
+                permissoes: permissoesObj,
+                formasAtendimentoVisiveis: vendedor.formasAtendimentoVisiveis || []
             });
         } catch (error) {
             console.error('Erro no /me:', error);

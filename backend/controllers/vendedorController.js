@@ -37,7 +37,7 @@ const vendedorController = {
     atualizar: async (req, res) => {
         try {
             const { id } = req.params;
-            const { email, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, ativo } = req.body;
+            const { email, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, ativo, formasAtendimentoVisiveis } = req.body;
 
             // Prepara objeto de atualização (ignora undefined)
             const dataToUpdate = {};
@@ -48,6 +48,7 @@ const vendedorController = {
             if (ativo !== undefined) dataToUpdate.ativo = ativo;
             if (login !== undefined) dataToUpdate.login = login || null;
             if (permissoes !== undefined) dataToUpdate.permissoes = permissoes;
+            if (formasAtendimentoVisiveis !== undefined) dataToUpdate.formasAtendimentoVisiveis = formasAtendimentoVisiveis;
 
             if (senha && senha.trim() !== '') {
                 const salt = await bcrypt.genSalt(10);

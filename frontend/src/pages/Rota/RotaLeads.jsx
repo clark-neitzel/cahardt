@@ -1123,6 +1123,7 @@ const RotaLeads = () => {
     }, [busca]);
 
     const vendedorId = user?.id;
+    const formasVisiveis = user?.formasAtendimentoVisiveis || [];
     const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
     // Pode filtrar entregas por motorista = mesma regra do backend (admin ou Pode_Ver_Todas_Entregas)
     const podeVerTodasEntregas = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ver_Todas_Entregas);
@@ -1418,9 +1419,18 @@ const RotaLeads = () => {
 
     // Helper: aplica filtros de dia/forma e retorna flags foraFiltro
     // Quando há busca: não elimina; marca flags. Sem busca: elimina quem não bate.
+    // Também aplica restrição de formasAtendimentoVisiveis do vendedor (sempre elimina se não bate).
     const aplicarFiltrosDiaForma = useCallback((item) => {
         const dias = item._tipo === 'cliente' ? item.Dia_de_venda : item.diasVisita;
         const formas = item._tipo === 'cliente' ? item.Formas_Atendimento : item.formasAtendimento;
+
+        // Filtro hard: formas que o vendedor pode ver (se configurado)
+        if (formasVisiveis.length > 0) {
+            const formasItem = Array.isArray(formas) ? formas.map(f => String(f).toUpperCase()) : [];
+            const temIntersecao = formasItem.some(f => formasVisiveis.includes(f));
+            if (!temIntersecao) return { passa: false, flags: null };
+        }
+
         const okDia = itemMatchDia(dias, diaSemanaFiltro);
         const okForma = itemMatchForma(formas, formaFiltro);
         const temBusca = busca.trim().length > 0;
@@ -1433,7 +1443,7 @@ const RotaLeads = () => {
             outraForma: !okForma,
         };
         return { passa: true, flags: (flags.outroDia || flags.outraForma) ? flags : null };
-    }, [diaSemanaFiltro, formaFiltro, busca]);
+    }, [diaSemanaFiltro, formaFiltro, busca, formasVisiveis]);
 
     // Ordenar itens da aba "Atendimento" (não atendidos hoje OU com transferência ativa não atendida pelo receptor)
     const itensParaAtender = useMemo(() => {
@@ -1469,6 +1479,11 @@ const RotaLeads = () => {
             resultadosGlobais.forEach(c => {
                 if (uuidsLocais.has(c.UUID)) return; // já está na lista local
                 if (vendedorId && c.idVendedor === vendedorId) return; // é do próprio, mas não veio na lista de rota
+                // Filtro hard: formas que o vendedor pode ver
+                if (formasVisiveis.length > 0) {
+                    const formasCliente = Array.isArray(c.Formas_Atendimento) ? c.Formas_Atendimento.map(f => String(f).toUpperCase()) : [];
+                    if (!formasCliente.some(f => formasVisiveis.includes(f))) return;
+                }
                 const okDia = itemMatchDia(c.Dia_de_venda, diaSemanaFiltro);
                 const okForma = itemMatchForma(c.Formas_Atendimento, formaFiltro);
                 todos.push({
@@ -1754,7 +1769,7 @@ const RotaLeads = () => {
                             </button>
                             {formaOpen && (
                                 <div className="absolute right-0 top-full mt-1 z-30 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[160px] py-1">
-                                    {FORMAS_ATEND.map(f => (
+                                    {FORMAS_ATEND.filter(f => f.value === 'TODOS' || formasVisiveis.length === 0 || formasVisiveis.includes(f.value)).map(f => (
                                         <button
                                             key={f.value}
                                             onClick={() => { setFormaFiltro(f.value); setFormaOpen(false); }}

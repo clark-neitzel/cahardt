@@ -327,6 +327,9 @@ model Vendedor {
   senha      String?
   permissoes Json?
 
+  // Formas de atendimento que este vendedor pode visualizar na rota
+  formasAtendimentoVisiveis String[] @default([]) @map("formas_atendimento_visiveis")
+
   clientes             Cliente[]
   pedidos              Pedido[]
   pedidosLancados      Pedido[]         @relation("UsuarioLancamento")
