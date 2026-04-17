@@ -11,6 +11,9 @@ router.get('/historico-cliente', pedidoController.historicoComprasCliente);
 // Resumo de pendências (contagens por tipo e status)
 router.get('/resumo-pendencias', pedidoController.resumoPendencias);
 
+// Pedidos pendentes de faturamento (criados ontem, entrega hoje)
+router.get('/pendente-faturamento', pedidoController.pendenteFaturamento);
+
 // Relatório de Pedidos (com filtros avançados)
 router.get('/relatorio', pedidoController.relatorio);
 

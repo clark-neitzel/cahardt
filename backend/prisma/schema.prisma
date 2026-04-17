@@ -330,6 +330,9 @@ model Vendedor {
   // Formas de atendimento que este vendedor pode visualizar na rota
   formasAtendimentoVisiveis String[] @default([]) @map("formas_atendimento_visiveis")
 
+  // Alerta de pedidos não faturados (popup a cada 10 min)
+  alertaFaturamento Boolean @default(true) @map("alerta_faturamento")
+
   clientes             Cliente[]
   pedidos              Pedido[]
   pedidosLancados      Pedido[]         @relation("UsuarioLancamento")

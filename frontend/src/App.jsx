@@ -67,6 +67,7 @@ import { DiarioProvider } from './contexts/DiarioContext';
 import DiarioGateway from './components/Diario/DiarioGateway';
 import DiarioCheckout from './components/Diario/DiarioCheckout';
 import PendenciaRotaGateway from './components/PendenciaRotaGateway';
+import AlertaFaturamento from './components/AlertaFaturamento';
 
 const PrivateRoute = ({ children, tab }) => {
   const { signed, loading, hasPermission } = useAuth();
@@ -407,6 +408,9 @@ const Layout = ({ children }) => {
 
         {/* GATEKEEPER DO DIÁRIO / PONTO */}
         <DiarioGateway />
+
+        {/* ALERTA DE PEDIDOS PENDENTES DE FATURAMENTO (popup a cada 10 min) */}
+        <AlertaFaturamento />
 
         <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 overflow-x-hidden">
           {children}

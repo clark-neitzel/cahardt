@@ -694,6 +694,35 @@ const pedidoController = {
             console.error('Erro ao registrar impressão:', error);
             res.status(500).json({ error: 'Erro ao registrar impressão' });
         }
+    },
+
+    // Pedidos criados ontem com entrega para hoje que ainda não foram faturados
+    pendenteFaturamento: async (req, res) => {
+        try {
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+
+            const hojeFim = new Date(hoje);
+            hojeFim.setHours(23, 59, 59, 999);
+
+            const pedidos = await prisma.pedido.findMany({
+                where: {
+                    dataVenda: { gte: hoje, lte: hojeFim },
+                    situacaoCA: { not: 'FATURADO' },
+                    statusEnvio: { in: ['RECEBIDO', 'ENVIAR', 'SINCRONIZANDO'] }
+                },
+                include: {
+                    cliente: { select: { Nome: true } },
+                    vendedor: { select: { nome: true } }
+                },
+                orderBy: { createdAt: 'asc' }
+            });
+
+            res.json({ total: pedidos.length, pedidos });
+        } catch (error) {
+            console.error('Erro ao buscar pedidos pendentes de faturamento:', error);
+            res.status(500).json({ error: 'Erro ao buscar pedidos pendentes de faturamento' });
+        }
     }
 };
 

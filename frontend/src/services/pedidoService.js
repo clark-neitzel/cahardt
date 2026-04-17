@@ -107,6 +107,12 @@ const pedidoService = {
     consultarCA: async (id) => {
         const response = await api.post(`/pedidos/${id}/consultar-ca`);
         return response.data;
+    },
+
+    // Pedidos pendentes de faturamento (criados ontem, entrega hoje)
+    pendenteFaturamento: async () => {
+        const response = await api.get('/pedidos/pendente-faturamento');
+        return response.data;
     }
 };
 
