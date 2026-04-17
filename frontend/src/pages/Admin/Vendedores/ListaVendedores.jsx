@@ -126,56 +126,56 @@ const ListaVendedores = () => {
             </div>
 
             {/* Desktop: Tabela */}
-            <div className="hidden md:block bg-white shadow overflow-x-auto rounded-lg">
-                <table className="min-w-full divide-y divide-gray-200">
+            <div className="hidden md:block bg-white shadow rounded-lg overflow-hidden">
+                <table className="w-full table-fixed divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">E-mail</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Flex Mensal</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">% Máx. Desc.</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Flex Disponível</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Formas Visíveis</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                            <th className="w-[14%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                            <th className="w-[22%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">E-mail</th>
+                            <th className="w-[10%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flex Mensal</th>
+                            <th className="w-[8%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">% Desc.</th>
+                            <th className="w-[10%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flex Disp.</th>
+                            <th className="w-[24%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Formas Visíveis</th>
+                            <th className="w-[12%] px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {loading ? (
-                            <tr><td colSpan="7" className="px-6 py-4 text-center">Carregando...</td></tr>
+                            <tr><td colSpan="7" className="px-3 py-4 text-center">Carregando...</td></tr>
                         ) : filtered.length === 0 ? (
-                            <tr><td colSpan="7" className="px-6 py-4 text-center text-gray-500">Nenhum usuário encontrado.</td></tr>
+                            <tr><td colSpan="7" className="px-3 py-4 text-center text-gray-500">Nenhum usuário encontrado.</td></tr>
                         ) : filtered.map(vendedor => (
                             editingId === vendedor.id ? (
                                 <tr key={vendedor.id} className="bg-blue-50">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        <div className="font-bold">{vendedor.nome}</div>
+                                    <td className="px-3 py-3 text-sm font-medium text-gray-900">
+                                        <div className="font-bold truncate">{vendedor.nome}</div>
                                         <div className="flex gap-2 mt-2">
-                                            <button onClick={() => handleSave(vendedor.id)} className="inline-flex items-center gap-1 px-4 py-2 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700"><Save className="h-3.5 w-3.5" /> Salvar</button>
-                                            <button onClick={handleCancel} className="inline-flex items-center gap-1 px-4 py-2 border border-gray-300 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-100"><X className="h-3.5 w-3.5" /> Cancelar</button>
+                                            <button onClick={() => handleSave(vendedor.id)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700"><Save className="h-3.5 w-3.5" /> Salvar</button>
+                                            <button onClick={handleCancel} className="inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-100"><X className="h-3.5 w-3.5" /> Cancelar</button>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" />
+                                    <td className="px-3 py-3 text-sm text-gray-500">
+                                        <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" />
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <input className="border border-gray-300 rounded px-2 py-1 w-24 bg-white text-gray-900" value={editForm.flexMensal} onChange={e => setEditForm({ ...editForm, flexMensal: e.target.value })} type="number" step="0.01" />
+                                    <td className="px-3 py-3 text-sm text-gray-500">
+                                        <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.flexMensal} onChange={e => setEditForm({ ...editForm, flexMensal: e.target.value })} type="number" step="0.01" />
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <td className="px-3 py-3 text-sm text-gray-500">
                                         <div className="flex items-center">
-                                            <input className="border border-gray-300 rounded px-2 py-1 w-20 bg-white text-gray-900" value={editForm.maxDescontoFlex} onChange={e => setEditForm({ ...editForm, maxDescontoFlex: e.target.value })} type="number" step="0.01" min="0" max="100" />
-                                            <span className="ml-1">%</span>
+                                            <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.maxDescontoFlex} onChange={e => setEditForm({ ...editForm, maxDescontoFlex: e.target.value })} type="number" step="0.01" min="0" max="100" />
+                                            <span className="ml-1 text-xs">%</span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <input className="border border-gray-300 rounded px-2 py-1 w-24 bg-white text-gray-900" value={editForm.flexDisponivel} onChange={e => setEditForm({ ...editForm, flexDisponivel: e.target.value })} type="number" step="0.01" />
+                                    <td className="px-3 py-3 text-sm text-gray-500">
+                                        <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.flexDisponivel} onChange={e => setEditForm({ ...editForm, flexDisponivel: e.target.value })} type="number" step="0.01" />
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">
+                                    <td className="px-3 py-3 text-sm text-gray-500">
                                         <div className="flex flex-wrap gap-1">
                                             {FORMAS_OPTIONS.map(f => {
                                                 const Icon = f.icon;
                                                 const ativo = (vendedor.formasAtendimentoVisiveis || []).includes(f.value);
                                                 return (
-                                                    <button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded border transition-colors cursor-pointer ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200 hover:border-gray-300'}`}>
+                                                    <button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border transition-colors cursor-pointer ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
                                                         <Icon className="h-3 w-3" />{f.label}
                                                     </button>
                                                 );
@@ -186,43 +186,43 @@ const ListaVendedores = () => {
                                 </tr>
                             ) : (
                             <tr key={vendedor.id} className={vendedor.ativo === false ? 'bg-gray-50 opacity-60' : ''}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    <div className="flex items-center gap-2">
-                                        {vendedor.nome}
-                                        {vendedor.ativo === false && <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">INATIVO</span>}
+                                <td className="px-3 py-3 text-sm font-medium text-gray-900">
+                                    <div className="flex items-center gap-1">
+                                        <span className="truncate">{vendedor.nome}</span>
+                                        {vendedor.ativo === false && <span className="text-[9px] bg-red-100 text-red-700 px-1 py-0.5 rounded font-semibold shrink-0">INATIVO</span>}
                                     </div>
-                                    <div className="text-xs text-gray-400 font-mono mt-1">{vendedor.idLegado || '-'}</div>
+                                    <div className="text-[10px] text-gray-400 font-mono mt-0.5 truncate">{vendedor.idLegado || '-'}</div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    <div className="flex items-center">
-                                        <Mail className="h-4 w-4 mr-2 text-gray-400" />
-                                        {vendedor.email || <span className="text-gray-300 italic">Sem e-mail</span>}
+                                <td className="px-3 py-3 text-sm text-gray-500">
+                                    <div className="flex items-center truncate">
+                                        <Mail className="h-3.5 w-3.5 mr-1.5 text-gray-400 shrink-0" />
+                                        <span className="truncate text-xs">{vendedor.email || <span className="text-gray-300 italic">Sem e-mail</span>}</span>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
                                     {`R$ ${Number(vendedor.flexMensal).toFixed(2)}`}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
                                     {`${Number(vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100).toFixed(0)}%`}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
                                     {`R$ ${Number(vendedor.flexDisponivel).toFixed(2)}`}
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-500">
+                                <td className="px-3 py-3 text-sm text-gray-500">
                                     <div className="flex flex-wrap gap-1">
                                         {FORMAS_OPTIONS.map(f => {
                                             const Icon = f.icon;
                                             const ativo = (vendedor.formasAtendimentoVisiveis || []).includes(f.value);
                                             return (
-                                                <button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded border transition-colors cursor-pointer ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200 hover:border-gray-300'}`}>
+                                                <button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border transition-colors cursor-pointer ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
                                                     <Icon className="h-3 w-3" />{f.label}
                                                 </button>
                                             );
                                         })}
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div className="flex justify-end space-x-2">
+                                <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                    <div className="flex justify-end space-x-1.5">
                                         <button onClick={() => setPermissionsModalVendedor(vendedor)} className="text-indigo-600 hover:text-indigo-900" title="Acessos e Permissões"><Shield className="h-4 w-4" /></button>
                                         <button onClick={() => handleEdit(vendedor)} className="text-primary hover:text-indigo-900" title="Editar"><Pencil className="h-4 w-4" /></button>
                                         <button onClick={() => handleToggleAtivo(vendedor)} className={vendedor.ativo === false ? 'text-green-600 hover:text-green-800' : 'text-red-500 hover:text-red-700'} title={vendedor.ativo === false ? 'Reativar' : 'Inativar'}>
