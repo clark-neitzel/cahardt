@@ -1569,10 +1569,11 @@ const RotaLeads = () => {
         return [...transferidos, ...prioridade1, ...prioridade2, ...prioridade3, ...prioridadeND, ...demais];
     }, [clientesComAtendimento, leads, matchBusca, alertasPorItem, receptorAtendeuHoje, aplicarFiltrosDiaForma, busca, resultadosGlobais, vendedorId, podeEscolherVendedor, diaSemanaFiltro, formaFiltro]);
 
-    // Itens atendidos hoje (transferências ativas só aparecem aqui se o receptor já atendeu)
+    // Itens atendidos hoje — mostra TODOS que foram atendidos no nome do vendedor,
+    // sem filtro de formasVisiveis/dia/forma (o vendedor precisa ver tudo que fizeram por ele)
     const itensAtendidos = useMemo(() => {
         const todos = [
-            ...clientesComAtendimento.map(c => ({ _tipo: 'cliente', ...c })),
+            ...clientes.filter(c => c.Dia_de_venda || c.Dia_de_entrega || alertasPorItem[c.UUID] || isAtendidoHojePorQualquer({ ...c, _tipo: 'cliente' })).map(c => ({ _tipo: 'cliente', ...c })),
             ...leads.map(l => ({ _tipo: 'lead', ...l }))
         ];
         return todos.filter(i => {
@@ -1585,13 +1586,8 @@ const RotaLeads = () => {
             return isAtendidoHojePorQualquer(i);
         }).filter(i =>
             matchBusca(i._tipo === 'cliente' ? (i.NomeFantasia || i.Nome) : i.nomeEstabelecimento)
-        ).map(i => {
-            const key = i._tipo === 'cliente' ? i.UUID : i.id;
-            if (alertasPorItem[key]?.isTransferenciaAtiva) return { ...i, _foraFiltro: null };
-            const { passa, flags } = aplicarFiltrosDiaForma(i);
-            return passa ? { ...i, _foraFiltro: flags } : null;
-        }).filter(Boolean);
-    }, [clientesComAtendimento, leads, matchBusca, alertasPorItem, receptorAtendeuHoje, aplicarFiltrosDiaForma]);
+        );
+    }, [clientes, leads, matchBusca, alertasPorItem, receptorAtendeuHoje]);
 
     // Entregas filtradas por busca
     const entregasPendentesFiltradas = useMemo(() =>
