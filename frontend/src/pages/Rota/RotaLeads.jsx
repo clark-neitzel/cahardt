@@ -94,6 +94,8 @@ const isAtendidoHoje = (item) => {
     return !!getAtendimentoHoje(item._atendimentos || item.atendimentos) || !!getPedidoHoje(item._pedidos || item.pedidos);
 };
 
+const fmtHoraAtend = (d) => d ? new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+
 // Verifica se o item foi atendido por QUALQUER vendedor hoje (inclui _atendimentosTodos)
 const isAtendidoHojePorQualquer = (item) => {
     if (isAtendidoHoje(item)) return true;
@@ -141,12 +143,12 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                             <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase tracking-wide">Cliente</span>
                             {atendHoje && (
                                 <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) ? `Atendido por ${atendHoje.usuario?.nome || atendHoje.vendedor?.nome}` : ''}>
-                                    <CheckCircle className="h-3 w-3" /> Atendido {(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) && `por ${(atendHoje.usuario?.nome || atendHoje.vendedor?.nome).split(' ')[0]}`}
+                                    <CheckCircle className="h-3 w-3" /> Atendido {(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) && `por ${(atendHoje.usuario?.nome || atendHoje.vendedor?.nome).split(' ')[0]}`}{atendHoje.criadoEm && ` ${fmtHoraAtend(atendHoje.criadoEm)}`}
                                 </span>
                             )}
                             {!atendHoje && atendOutro && (
                                 <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={atendOutro.vendedor?.nome ? `Atendido por ${atendOutro.vendedor.nome}` : 'Atendido por outro vendedor'}>
-                                    <CheckCircle className="h-3 w-3" /> Atendido por {atendOutro.vendedor?.nome?.split(' ')[0] || 'outro'}
+                                    <CheckCircle className="h-3 w-3" /> Atendido por {atendOutro.vendedor?.nome?.split(' ')[0] || 'outro'}{atendOutro.criadoEm && ` ${fmtHoraAtend(atendOutro.criadoEm)}`}
                                 </span>
                             )}
                             {atendHoje?.gpsVendedor && (
@@ -335,12 +337,12 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
                             <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${ETAPA_COLORS[lead.etapa] || 'bg-gray-100 text-gray-600'}`}>{lead.etapa}</span>
                             {atendHoje && (
                                 <span className="text-[11px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) ? `Atendido por ${atendHoje.usuario?.nome || atendHoje.vendedor?.nome}` : ''}>
-                                    <CheckCircle className="h-3 w-3" /> Atendido {(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) && `por ${(atendHoje.usuario?.nome || atendHoje.vendedor?.nome).split(' ')[0]}`}
+                                    <CheckCircle className="h-3 w-3" /> Atendido {(atendHoje.usuario?.nome || atendHoje.vendedor?.nome) && `por ${(atendHoje.usuario?.nome || atendHoje.vendedor?.nome).split(' ')[0]}`}{atendHoje.criadoEm && ` ${fmtHoraAtend(atendHoje.criadoEm)}`}
                                 </span>
                             )}
                             {!atendHoje && atendOutro && (
                                 <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded flex items-center gap-0.5" title={atendOutro.vendedor?.nome ? `Atendido por ${atendOutro.vendedor.nome}` : 'Atendido por outro vendedor'}>
-                                    <CheckCircle className="h-3 w-3" /> Atendido por {atendOutro.vendedor?.nome?.split(' ')[0] || 'outro'}
+                                    <CheckCircle className="h-3 w-3" /> Atendido por {atendOutro.vendedor?.nome?.split(' ')[0] || 'outro'}{atendOutro.criadoEm && ` ${fmtHoraAtend(atendOutro.criadoEm)}`}
                                 </span>
                             )}
                             {atendHoje?.gpsVendedor && (
