@@ -313,7 +313,6 @@ const atendimentoService = {
             prisma.atendimento.findMany({
                 where: {
                     clienteId: { in: uuids },
-                    idVendedor: vendedorId,
                     criadoEm: { gte: inicioDia, lte: fimDia },
                     tipo: { not: 'FINANCEIRO' },
                 },
@@ -322,7 +321,6 @@ const atendimentoService = {
             prisma.pedido.findMany({
                 where: {
                     clienteId: { in: uuids },
-                    vendedorId: vendedorId,
                     dataVenda: { gte: inicioDia, lte: fimDia },
                 },
                 select: { clienteId: true }
