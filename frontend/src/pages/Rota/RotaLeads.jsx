@@ -24,6 +24,40 @@ import ClientePopup from './ClientePopup';
 import roteirizacaoService from '../../services/roteirizacaoService';
 
 const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'N/D'];
+
+// ─── Cenários do Motor de Orientação ───────────────────────────────
+const CENARIO_META = {
+    NOVO_SEM_COMPRA:           { label: 'Novo sem compra',        cor: 'bg-blue-100 text-blue-700 border-blue-200' },
+    FEZ_1_COMPRA_SEM_RECOMPRA: { label: '1ª compra sem recompra', cor: 'bg-purple-100 text-purple-700 border-purple-200' },
+    REGULAR_NO_PRAZO:          { label: 'Regular no prazo',        cor: 'bg-green-100 text-green-700 border-green-200' },
+    EM_ATENCAO:                { label: 'Em atenção',              cor: 'bg-amber-100 text-amber-700 border-amber-200' },
+    ATRASADO_PARADO:           { label: 'Atrasado / parado',       cor: 'bg-red-100 text-red-700 border-red-200' },
+    COMPROU_MENOS_NORMAL:      { label: 'Queda de ticket',         cor: 'bg-orange-100 text-orange-700 border-orange-200' },
+    NEGA_WHATSAPP:             { label: 'Nega por WhatsApp',       cor: 'bg-rose-100 text-rose-800 border-rose-200' },
+    OBJECAO_RECORRENTE:        { label: 'Objeção recorrente',      cor: 'bg-red-100 text-red-800 border-red-300' },
+};
+
+// Gera frase curta de "motivo" a partir dos dados do insight (por que chegou nesse cenário)
+const gerarMotivoInsight = (insight) => {
+    if (!insight) return null;
+    const tipo = insight.insightPrincipalTipo;
+    const dias = insight.diasSemComprar;
+    const ciclo = insight.cicloReferenciaDias;
+    const negativas = insight.qtdAtendimentosSemPedido30d;
+    const varTicket = insight.variacaoTicketPct != null ? Math.round(insight.variacaoTicketPct) : null;
+    switch (tipo) {
+        case 'NOVO_SEM_COMPRA':           return 'Sem histórico de compras';
+        case 'FEZ_1_COMPRA_SEM_RECOMPRA': return dias != null ? `1 compra · ${dias}d sem retorno` : '1 compra · sem retorno';
+        case 'REGULAR_NO_PRAZO':          return dias != null ? `${dias}d sem comprar · ciclo ${ciclo}d` : 'Comprando no prazo';
+        case 'EM_ATENCAO':                return dias != null ? `${dias}d sem comprar (ciclo ${ciclo}d)` : 'Compra atrasando';
+        case 'ATRASADO_PARADO':           return dias != null ? `Parado há ${dias} dias (ciclo ${ciclo}d)` : 'Cliente parado';
+        case 'COMPROU_MENOS_NORMAL':      return varTicket != null ? `Ticket caiu ${Math.abs(varTicket)}%` : 'Queda no volume';
+        case 'NEGA_WHATSAPP':             return negativas ? `${negativas} negativas em 30 dias` : 'Várias negativas por WhatsApp';
+        case 'OBJECAO_RECORRENTE':        return dias != null ? `Parado ${dias}d + devolução recente` : 'Objeção + devolução recente';
+        default:                          return null;
+    }
+};
+
 const ETAPA_COLORS = {
     NOVO: 'bg-blue-100 text-blue-700',
     VISITA: 'bg-purple-100 text-purple-700',
@@ -171,29 +205,36 @@ const OrientacaoPopup = ({ insight, onConfirm, onClose }) => {
         return () => clearTimeout(t);
     }, [segundos]);
     const ia = insight?.orientacaoIaJson;
+    const meta = CENARIO_META[insight?.insightPrincipalTipo] || {};
+    const motivo = gerarMotivoInsight(insight);
     return (
         <div className="fixed inset-0 z-[999] flex items-end md:items-center justify-center bg-black/50 p-3" onClick={onClose}>
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-4 space-y-3" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-indigo-500 uppercase tracking-wide">Orientação</span>
-                    <span className="text-[12px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full min-w-[28px] text-center">{segundos}s</span>
+                {/* Cenário + Motivo + Timer */}
+                <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1 min-w-0">
+                        <span className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded border ${meta.cor || 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>
+                            {meta.label || 'Orientação'}
+                        </span>
+                        {motivo && <p className="text-[11px] text-gray-500">{motivo}</p>}
+                    </div>
+                    <span className="text-[12px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full min-w-[28px] text-center shrink-0">{segundos}s</span>
                 </div>
                 {ia ? (
                     <div className="space-y-1.5">
-                        <p className="text-[13px] font-bold text-gray-900 leading-snug">{ia.situacao}</p>
                         {ia.objetivo && <p className="text-[12px] text-gray-700"><span className="font-semibold">Objetivo:</span> {ia.objetivo}</p>}
                         {ia.canal && <p className="text-[12px] text-gray-600"><span className="font-semibold">Canal:</span> {ia.canal}</p>}
-                        {ia.acao && <p className="text-[12px] text-gray-800 font-medium border-t pt-1.5 mt-1.5">{ia.acao}</p>}
+                        {ia.acao && <p className="text-[12px] text-gray-800 font-semibold border-t pt-1.5 mt-1">{ia.acao}</p>}
                         {ia.objecao && (
-                            <div className="bg-amber-50 rounded px-2.5 py-1.5 border border-amber-200 mt-1">
-                                <p className="text-[11px] text-amber-700 font-semibold">Objeção provável: {ia.objecao}</p>
-                                {ia.resposta && <p className="text-[11px] text-amber-600 mt-0.5 italic">{ia.resposta}</p>}
+                            <div className="bg-amber-50 rounded px-2.5 py-1.5 border border-amber-200">
+                                <p className="text-[11px] text-amber-700"><span className="font-semibold">Objeção:</span> {ia.objecao}</p>
+                                {ia.resposta && <p className="text-[11px] text-amber-600 italic mt-0.5">{ia.resposta}</p>}
                             </div>
                         )}
                     </div>
                 ) : (
                     <div className="space-y-1">
-                        <p className="text-[13px] font-bold text-gray-900 leading-snug">{insight?.insightPrincipalResumo}</p>
+                        {insight?.insightPrincipalResumo && <p className="text-[12px] font-semibold text-gray-900">{insight.insightPrincipalResumo}</p>}
                         {insight?.proximaAcaoSugerida && <p className="text-[12px] text-gray-700">{insight.proximaAcaoSugerida}</p>}
                     </div>
                 )}
@@ -317,38 +358,45 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                     const insight = cliente.clienteInsights?.[0];
                     if (!insight?.insightPrincipalTipo || atendHoje) return null;
                     const ia = insight.orientacaoIaJson;
+                    const meta = CENARIO_META[insight.insightPrincipalTipo] || {};
+                    const motivo = gerarMotivoInsight(insight);
                     return (
                         <div
                             className="mt-2"
                             onMouseEnter={() => setOrientExpanded(true)}
                             onMouseLeave={() => setOrientExpanded(false)}
                         >
+                            {/* Linha sempre visível: badge cenário + motivo curto + chevron */}
                             <button
-                                className="flex items-center gap-1 text-[10px] font-bold text-indigo-500 hover:text-indigo-700 transition-colors"
+                                className="flex items-center gap-1.5 w-full text-left"
                                 onClick={() => setOrientExpanded(v => !v)}
                             >
-                                <span className="bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">Orientação</span>
-                                <ChevronDown className={`h-3 w-3 transition-transform ${orientExpanded ? 'rotate-180' : ''}`} />
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${meta.cor || 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>
+                                    {meta.label || 'Orientação'}
+                                </span>
+                                {motivo && (
+                                    <span className="text-[10px] text-gray-500 truncate">{motivo}</span>
+                                )}
+                                <ChevronDown className={`h-3 w-3 text-gray-400 shrink-0 ml-auto transition-transform ${orientExpanded ? 'rotate-180' : ''}`} />
                             </button>
+
+                            {/* Conteúdo expandido (hover desktop / click mobile) */}
                             {orientExpanded && (
                                 ia ? (
-                                    <div className="mt-1 rounded-lg border border-violet-200 bg-violet-50/70 px-3 py-2 space-y-1.5">
-                                        <p className="text-[12px] font-semibold text-violet-900 leading-tight">{ia.situacao}</p>
-                                        {ia.objetivo && <p className="text-[11px] text-violet-700 leading-tight"><span className="font-semibold">Objetivo:</span> {ia.objetivo}</p>}
-                                        {ia.canal && <p className="text-[11px] text-violet-700 leading-tight"><span className="font-semibold">Canal:</span> {ia.canal}</p>}
-                                        {ia.acao && <p className="text-[11px] text-violet-800 font-medium leading-tight border-t border-violet-100 pt-1 mt-1">{ia.acao}</p>}
+                                    <div className="mt-1.5 rounded-lg border border-violet-200 bg-violet-50/70 px-3 py-2 space-y-1">
+                                        {ia.objetivo && <p className="text-[11px] text-violet-900"><span className="font-semibold">Objetivo:</span> {ia.objetivo}</p>}
+                                        {ia.canal && <p className="text-[11px] text-violet-700"><span className="font-semibold">Canal:</span> {ia.canal}</p>}
+                                        {ia.acao && <p className="text-[11px] text-violet-800 font-semibold border-t border-violet-100 pt-1 mt-1">{ia.acao}</p>}
                                         {ia.objecao && (
-                                            <div className="bg-white/60 rounded px-2 py-1 border border-violet-100 mt-1">
-                                                <p className="text-[10px] text-violet-500 font-semibold">Objeção provável</p>
-                                                <p className="text-[11px] text-violet-800">{ia.objecao}</p>
-                                                {ia.resposta && <p className="text-[11px] text-violet-700 mt-0.5 italic">{ia.resposta}</p>}
+                                            <div className="bg-white/60 rounded px-2 py-1 border border-violet-100 mt-0.5">
+                                                <p className="text-[10px] text-violet-600"><span className="font-semibold">Objeção:</span> {ia.objecao}</p>
+                                                {ia.resposta && <p className="text-[10px] text-violet-600 italic mt-0.5">{ia.resposta}</p>}
                                             </div>
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="mt-1 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2 space-y-1">
-                                        <p className="text-[12px] font-semibold text-indigo-900 leading-tight">{insight.insightPrincipalResumo}</p>
-                                        {insight.proximaAcaoSugerida && <p className="text-[11px] text-indigo-700 leading-tight">{insight.proximaAcaoSugerida}</p>}
+                                    <div className="mt-1.5 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2">
+                                        {insight.proximaAcaoSugerida && <p className="text-[11px] text-indigo-800 font-semibold">{insight.proximaAcaoSugerida}</p>}
                                     </div>
                                 )
                             )}
