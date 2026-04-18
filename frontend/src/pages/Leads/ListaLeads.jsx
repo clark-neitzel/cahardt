@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Search, Plus, UserCheck, Phone, Image, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, MapPin, Clock, Calendar, MessageSquare, Loader2, X, Camera, Upload } from 'lucide-react';
 import leadService from '../../services/leadService';
 import vendedorService from '../../services/vendedorService';
@@ -23,7 +23,8 @@ const LIMITS = [12, 25, 50, 100];
 const LS_KEY = 'leads_filters';
 
 const ListaLeads = () => {
-    const { user } = useAuth();
+    const { user, hasPermission } = useAuth();
+    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
 
@@ -336,7 +337,16 @@ const ListaLeads = () => {
                     {lead.cliente && (
                         <div className="bg-emerald-50 rounded-lg p-2.5 border border-emerald-200">
                             <p className="text-[10px] text-emerald-600 uppercase font-medium">Cliente Vinculado</p>
-                            <p className="text-emerald-800 font-semibold">{lead.cliente.NomeFantasia || lead.cliente.Nome}</p>
+                            {lead.etapa === 'CONVERTIDO' && hasPermission('clientes') ? (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); navigate(`/clientes/${lead.cliente.UUID}`); }}
+                                    className="text-emerald-800 font-semibold underline hover:text-emerald-600 transition-colors cursor-pointer text-left"
+                                >
+                                    {lead.cliente.NomeFantasia || lead.cliente.Nome}
+                                </button>
+                            ) : (
+                                <p className="text-emerald-800 font-semibold">{lead.cliente.NomeFantasia || lead.cliente.Nome}</p>
+                            )}
                         </div>
                     )}
                 </div>
