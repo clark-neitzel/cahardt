@@ -7,4 +7,8 @@ const clienteInsightController = require('../controllers/clienteInsightControlle
 router.get('/clientes/:clienteId', clienteInsightController.getInsightPorCliente);
 router.post('/clientes/:clienteId/recalcular', clienteInsightController.recalcularInsightManualmente);
 
+// Recalcula todos os clientes de um dia de rota específico
+// POST /api/insights/recalcular-dia/SEG
+router.post('/recalcular-dia/:diaSigla', clienteInsightController.recalcularPorDia);
+
 module.exports = router;
