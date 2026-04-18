@@ -115,6 +115,10 @@ router.get('/dump-db', async (req, res) => {
                     if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
                     if (typeof v === 'number') return v;
                     if (v instanceof Date) return `'${v.toISOString()}'`;
+                    if (Array.isArray(v)) {
+                        const items = v.map(i => i === null ? 'NULL' : `"${String(i).replace(/"/g, '\\"')}"`).join(',');
+                        return `'{${items}}'`;
+                    }
                     return `'${String(v).replace(/'/g, "''")}'`;
                 }).join(', ');
                 sql += `INSERT INTO "${tablename}" (${cols}) VALUES (${vals});\n`;
