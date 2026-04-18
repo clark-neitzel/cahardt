@@ -363,12 +363,9 @@ const atendimentoService = {
         }
         if (dataInicio || dataFim) {
             where.criadoEm = {};
-            if (dataInicio) where.criadoEm.gte = new Date(dataInicio);
-            if (dataFim) {
-                const fim = new Date(dataFim);
-                fim.setHours(23, 59, 59, 999);
-                where.criadoEm.lte = fim;
-            }
+            // Usa horário de São Paulo (UTC-3) para garantir que o dia correto é filtrado
+            if (dataInicio) where.criadoEm.gte = new Date(dataInicio + 'T00:00:00-03:00');
+            if (dataFim) where.criadoEm.lte = new Date(dataFim + 'T23:59:59.999-03:00');
         }
 
         const [total, data] = await Promise.all([
