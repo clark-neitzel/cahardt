@@ -27,6 +27,7 @@ const entregasRoutes = require('./routes/entregas'); // Módulo Mobile do Entreg
 const despesasRoutes = require('./routes/despesas'); // Módulo de Despesas
 const caixaRoutes = require('./routes/caixa'); // Módulo Caixa Diário
 const adminResetRoutes = require('./routes/adminReset'); // Reset Transacional (Admin)
+const adminExecRoutes = require('./routes/adminExec');   // Admin Exec: diagnóstico e manutenção
 const adminDashboardRoutes = require('./routes/adminDashboard'); // Novo Dashboard Admin
 const roteirizacaoRoutes = require('./routes/roteirizacao'); // Roteirizador de Entregas
 const metaRoutes = require('./routes/metaRoutes'); // Gestão de Metas e Dashboard Vendas
@@ -88,7 +89,8 @@ app.use('/api/entregas', entregasRoutes); // App Motorista
 app.use('/api/despesas', despesasRoutes); // Módulo de Despesas
 app.use('/api/caixa', caixaRoutes); // Módulo Caixa Diário
 app.use('/api/metas', metaRoutes); // Módulo de Metas e Dashboard
-app.use('/api/admin', adminResetRoutes); // Admin: Reset, Utilitários
+app.use('/api/admin', adminResetRoutes);         // Admin: Reset, Utilitários
+app.use('/api/admin-exec', adminExecRoutes);    // Admin Exec: diagnóstico protegido por ADMIN_SECRET
 app.use('/api/admin-dashboard', adminDashboardRoutes); // Dashboard Admin
 app.use('/api/roteirizar', roteirizacaoRoutes); // Roteirizador de Entregas (OSRM)
 app.use('/api/categorias-produto', authMiddleware, categoriasProdutoRoutes); // Inteligência Comercial
