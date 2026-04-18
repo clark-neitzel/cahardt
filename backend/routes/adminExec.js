@@ -10,6 +10,7 @@ const router = express.Router();
 const prisma = require('../config/database');
 const clienteInsightService = require('../services/clienteInsightService');
 const orientacaoService = require('../services/orientacaoService');
+const { execSync } = require('child_process');
 
 // Middleware: valida ADMIN_SECRET
 router.use((req, res, next) => {
@@ -76,6 +77,24 @@ router.post('/recalcular-dia/:diaSigla', async (req, res) => {
     } catch (error) {
         console.error('[admin-exec] Erro recalcular-dia:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/admin-exec/dump-db
+// Gera pg_dump e retorna como arquivo para download
+router.get('/dump-db', (req, res) => {
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) return res.status(500).json({ error: 'DATABASE_URL não configurada.' });
+    try {
+        const dump = execSync(`pg_dump "${dbUrl}" --no-owner --no-acl`, {
+            maxBuffer: 100 * 1024 * 1024,
+            timeout: 120000,
+        });
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.setHeader('Content-Disposition', 'attachment; filename="prod_dump.sql"');
+        res.send(dump);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
