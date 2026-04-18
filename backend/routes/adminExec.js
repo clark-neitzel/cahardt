@@ -95,9 +95,12 @@ router.get('/dump-db', async (req, res) => {
         `);
 
         const tableNames = tables.map(r => r.tablename);
+        // Excluir tabelas que não existem localmente ou causam conflito
+        const skipTables = new Set(['_prisma_migrations']);
+        const truncateNames = tableNames.filter(t => !skipTables.has(t));
 
         // Truncate todas as tabelas de uma vez — PostgreSQL resolve a ordem por FK
-        const truncateAll = tableNames.map(t => `"${t}"`).join(', ');
+        const truncateAll = truncateNames.map(t => `"${t}"`).join(', ');
         let sql = '-- Dump gerado pelo admin-exec\n';
         sql += 'SET session_replication_role = replica;\n\n';
         sql += `TRUNCATE TABLE ${truncateAll} RESTART IDENTITY CASCADE;\n\n`;
