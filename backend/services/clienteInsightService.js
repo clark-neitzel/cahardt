@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const moment = require('moment'); // Assumindo moment.js para dadas, ou date-fns (vou adaptar se houver outro)
+const orientacaoService = require('./orientacaoService');
 
 // 5. Centralizar critérios de pedido válido
 const STATUS_PEDIDO_VALIDO = ['ENVIAR', 'RECEBIDO'];
@@ -237,6 +238,17 @@ const clienteInsightService = {
             const finalScoreRisco = Math.min(100, scoreRisco);
             const finalScoreOportunidade = Math.min(100, scoreOportunidade);
 
+            // Monta objeto parcial para classificar o cenário antes de salvar
+            const insightParcial = {
+                statusRecompra,
+                variacaoTicketPct,
+                qtdAtendimentosSemPedido30d,
+                teveDevolucaoRecente,
+                ticketMedioBase,
+            };
+            const { insightPrincipalTipo, insightPrincipalResumo, proximaAcaoSugerida } =
+                orientacaoService.gerarOrientacao(insightParcial);
+
             const insight = {
                 dataUltimoPedido,
                 diasSemComprar,
@@ -263,9 +275,9 @@ const clienteInsightService = {
                 canalUltimoAtendimento,
                 scoreRisco: finalScoreRisco,
                 scoreOportunidade: finalScoreOportunidade,
-                insightPrincipalTipo: null,
-                insightPrincipalResumo: null,
-                proximaAcaoSugerida: null,
+                insightPrincipalTipo,
+                insightPrincipalResumo,
+                proximaAcaoSugerida,
                 recalculadoEm: moment().toDate()
             };
 
