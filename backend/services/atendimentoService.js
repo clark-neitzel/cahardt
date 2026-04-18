@@ -368,7 +368,16 @@ const atendimentoService = {
             if (dataFim) where.criadoEm.lte = new Date(dataFim + 'T23:59:59.999-03:00');
         }
 
-        const [total, data] = await Promise.all([
+        // Busca pedidos no mesmo período/vendedor para cruzar "com pedido"
+        const wherePedido = {};
+        if (vendedorId) wherePedido.idVendedor = vendedorId;
+        if (dataInicio || dataFim) {
+            wherePedido.dataVenda = {};
+            if (dataInicio) wherePedido.dataVenda.gte = new Date(dataInicio + 'T00:00:00-03:00');
+            if (dataFim) wherePedido.dataVenda.lte = new Date(dataFim + 'T23:59:59.999-03:00');
+        }
+
+        const [total, data, pedidosDoPeriodo] = await Promise.all([
             prisma.atendimento.count({ where }),
             prisma.atendimento.findMany({
                 where,
@@ -382,10 +391,17 @@ const atendimentoService = {
                 orderBy: { criadoEm: 'desc' },
                 skip: (page - 1) * limit,
                 take: limit,
-            })
+            }),
+            prisma.pedido.findMany({
+                where: wherePedido,
+                select: { clienteId: true },
+            }),
         ]);
 
-        return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+        // Set de clienteIds que fizeram pedido no período
+        const clientesComPedido = [...new Set(pedidosDoPeriodo.map(p => p.clienteId).filter(Boolean))];
+
+        return { data, total, page, limit, totalPages: Math.ceil(total / limit), clientesComPedido };
     }
 };
 

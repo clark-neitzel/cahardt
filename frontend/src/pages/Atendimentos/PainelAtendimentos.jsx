@@ -63,6 +63,7 @@ const PainelAtendimentos = () => {
     const hoje = new Date().toISOString().split('T')[0];
 
     const [data, setData] = useState([]);
+    const [clientesComPedido, setClientesComPedido] = useState(new Set());
     const [loading, setLoading] = useState(false);
     const [total, setTotal] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
@@ -101,6 +102,7 @@ const PainelAtendimentos = () => {
 
             const result = await atendimentoService.listarComFiltros(params);
             setData(result.data || []);
+            setClientesComPedido(new Set(result.clientesComPedido || []));
             setTotal(result.total || 0);
             setTotalPages(result.totalPages || 1);
         } catch (error) {
@@ -184,11 +186,11 @@ const PainelAtendimentos = () => {
                 return nomeCliente.includes(termo) || nomeLead.includes(termo) || nomeVendedor.includes(termo) || obs.includes(termo);
             });
         }
-        if (filtros.filtroEspecial === 'com_pedido') lista = lista.filter(a => !!a.pedidoId);
-        if (filtros.filtroEspecial === 'sem_pedido') lista = lista.filter(a => !a.pedidoId && !!a.clienteId);
+        if (filtros.filtroEspecial === 'com_pedido') lista = lista.filter(a => a.clienteId && clientesComPedido.has(a.clienteId));
+        if (filtros.filtroEspecial === 'sem_pedido') lista = lista.filter(a => a.clienteId && !clientesComPedido.has(a.clienteId));
         if (filtros.filtroEspecial === 'lead') lista = lista.filter(a => !!a.leadId);
         return lista;
-    }, [data, filtros.busca, filtros.filtroEspecial]);
+    }, [data, filtros.busca, filtros.filtroEspecial, clientesComPedido]);
 
     // Resumo (calculado sobre todos os dados sem filtro especial para mostrar totais reais)
     const resumo = useMemo(() => {
@@ -206,11 +208,11 @@ const PainelAtendimentos = () => {
             const vn = a.vendedor?.nome || 'Sem vendedor';
             porVendedor[vn] = (porVendedor[vn] || 0) + 1;
             if (a.leadId) lead++;
-            else if (a.pedidoId) comPedido++;
+            else if (a.clienteId && clientesComPedido.has(a.clienteId)) comPedido++;
             else if (a.clienteId) semPedido++;
         });
         return { porTipo, porVendedor, total: data.length, comPedido, semPedido, lead };
-    }, [data, filtros.busca]);
+    }, [data, filtros.busca, clientesComPedido]);
 
     const exportarCSV = () => {
         if (dataFiltrada.length === 0) return;
