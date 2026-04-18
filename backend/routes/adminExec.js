@@ -81,19 +81,49 @@ router.post('/recalcular-dia/:diaSigla', async (req, res) => {
 });
 
 // GET /api/admin-exec/dump-db
-// Gera pg_dump e retorna como arquivo para download
-router.get('/dump-db', (req, res) => {
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) return res.status(500).json({ error: 'DATABASE_URL não configurada.' });
+// Exporta todas as tabelas como INSERT INTO (sem precisar de pg_dump)
+router.get('/dump-db', async (req, res) => {
+    const { Client } = require('pg');
+    const client = new Client({ connectionString: process.env.DATABASE_URL });
     try {
-        const dump = execSync(`pg_dump "${dbUrl}" --no-owner --no-acl`, {
-            maxBuffer: 100 * 1024 * 1024,
-            timeout: 120000,
-        });
-        res.setHeader('Content-Type', 'application/octet-stream');
+        await client.connect();
+
+        const { rows: tables } = await client.query(`
+            SELECT tablename FROM pg_tables
+            WHERE schemaname = 'public'
+            ORDER BY tablename
+        `);
+
+        let sql = '-- Dump gerado pelo admin-exec\nSET session_replication_role = replica;\n\n';
+
+        for (const { tablename } of tables) {
+            const { rows } = await client.query(`SELECT * FROM "${tablename}"`);
+            if (rows.length === 0) continue;
+
+            const cols = Object.keys(rows[0]).map(c => `"${c}"`).join(', ');
+            sql += `-- Tabela: ${tablename}\nTRUNCATE TABLE "${tablename}" CASCADE;\n`;
+
+            for (const row of rows) {
+                const vals = Object.values(row).map(v => {
+                    if (v === null) return 'NULL';
+                    if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+                    if (typeof v === 'number') return v;
+                    if (v instanceof Date) return `'${v.toISOString()}'`;
+                    return `'${String(v).replace(/'/g, "''")}'`;
+                }).join(', ');
+                sql += `INSERT INTO "${tablename}" (${cols}) VALUES (${vals});\n`;
+            }
+            sql += '\n';
+        }
+
+        sql += 'SET session_replication_role = DEFAULT;\n';
+
+        await client.end();
+        res.setHeader('Content-Type', 'text/plain');
         res.setHeader('Content-Disposition', 'attachment; filename="prod_dump.sql"');
-        res.send(dump);
+        res.send(sql);
     } catch (err) {
+        await client.end().catch(() => {});
         res.status(500).json({ error: err.message });
     }
 });
