@@ -123,6 +123,23 @@ const pedidoController = {
             }
 
             res.status(201).json(novoPedido);
+
+            // Async: recalcular insights e orientação IA do cliente
+            if (novoPedido.clienteId) {
+                const clienteInsightService = require('../services/clienteInsightService');
+                setTimeout(() => {
+                    clienteInsightService.recalcularCliente(novoPedido.clienteId)
+                        .then(() => {
+                            setTimeout(() => {
+                                const orientacaoService = require('../services/orientacaoService');
+                                orientacaoService.gerarOrientacaoIA(novoPedido.clienteId).catch(err => {
+                                    console.error('[IA] Erro ao atualizar orientação após pedido:', err.message);
+                                });
+                            }, 2000);
+                        })
+                        .catch(console.error);
+                }, 0);
+            }
         } catch (error) {
             console.error('Erro ao criar pedido:', error);
             res.status(400).json({ error: error.message });

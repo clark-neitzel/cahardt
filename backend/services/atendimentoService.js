@@ -53,10 +53,20 @@ const atendimentoService = {
             }
         });
 
-        // Async: recalcular insights do cliente
+        // Async: recalcular insights e orientação IA do cliente
         if (clienteId) {
             setTimeout(() => {
-                clienteInsightService.recalcularCliente(clienteId).catch(console.error);
+                clienteInsightService.recalcularCliente(clienteId)
+                    .then(() => {
+                        // 2s de delay para garantir que o insight já foi salvo
+                        setTimeout(() => {
+                            const orientacaoService = require('./orientacaoService');
+                            orientacaoService.gerarOrientacaoIA(clienteId).catch(err => {
+                                console.error('[IA] Erro ao atualizar orientação após atendimento:', err.message);
+                            });
+                        }, 2000);
+                    })
+                    .catch(console.error);
             }, 0);
         }
 

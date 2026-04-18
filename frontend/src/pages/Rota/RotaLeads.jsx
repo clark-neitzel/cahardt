@@ -161,6 +161,54 @@ const abrirMapa = (gps) => {
 };
 
 // ================================================
+// Popup de Orientação (antes de Atender / Pedido)
+// ================================================
+const OrientacaoPopup = ({ insight, onConfirm, onClose }) => {
+    const [segundos, setSegundos] = useState(10);
+    useEffect(() => {
+        if (segundos <= 0) { onConfirm(); return; }
+        const t = setTimeout(() => setSegundos(s => s - 1), 1000);
+        return () => clearTimeout(t);
+    }, [segundos]);
+    const ia = insight?.orientacaoIaJson;
+    return (
+        <div className="fixed inset-0 z-[999] flex items-end md:items-center justify-center bg-black/50 p-3" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-4 space-y-3" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-indigo-500 uppercase tracking-wide">Orientação</span>
+                    <span className="text-[12px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full min-w-[28px] text-center">{segundos}s</span>
+                </div>
+                {ia ? (
+                    <div className="space-y-1.5">
+                        <p className="text-[13px] font-bold text-gray-900 leading-snug">{ia.situacao}</p>
+                        {ia.objetivo && <p className="text-[12px] text-gray-700"><span className="font-semibold">Objetivo:</span> {ia.objetivo}</p>}
+                        {ia.canal && <p className="text-[12px] text-gray-600"><span className="font-semibold">Canal:</span> {ia.canal}</p>}
+                        {ia.acao && <p className="text-[12px] text-gray-800 font-medium border-t pt-1.5 mt-1.5">{ia.acao}</p>}
+                        {ia.objecao && (
+                            <div className="bg-amber-50 rounded px-2.5 py-1.5 border border-amber-200 mt-1">
+                                <p className="text-[11px] text-amber-700 font-semibold">Objeção provável: {ia.objecao}</p>
+                                {ia.resposta && <p className="text-[11px] text-amber-600 mt-0.5 italic">{ia.resposta}</p>}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="space-y-1">
+                        <p className="text-[13px] font-bold text-gray-900 leading-snug">{insight?.insightPrincipalResumo}</p>
+                        {insight?.proximaAcaoSugerida && <p className="text-[12px] text-gray-700">{insight.proximaAcaoSugerida}</p>}
+                    </div>
+                )}
+                <button
+                    onClick={onConfirm}
+                    className="w-full bg-blue-600 text-white text-[13px] font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 active:opacity-80"
+                >
+                    <Check className="h-4 w-4" /> Confirmar leitura
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// ================================================
 // Card de Cliente
 // ================================================
 const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, meuVendedorId, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado }) => {
@@ -168,8 +216,38 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
     const atendOutro = !atendHoje ? getAtendimentoOutroVendedor(cliente, meuVendedorId) : null;
     const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
     const vendedorNome = cliente.vendedor?.nome || cliente.Vendedor?.nome;
+    const [orientExpanded, setOrientExpanded] = useState(false);
+    const [popup, setPopup] = useState(null); // { pendingAction }
+
+    const handleAtender = () => {
+        if (bloqueado) return;
+        const insight = cliente.clienteInsights?.[0];
+        if (!atendHoje && (insight?.orientacaoIaJson || insight?.insightPrincipalResumo)) {
+            setPopup({ pendingAction: () => onAtendimento({ tipo: 'cliente', item: cliente }), insight });
+        } else {
+            onAtendimento({ tipo: 'cliente', item: cliente });
+        }
+    };
+
+    const handlePedido = () => {
+        if (bloqueado) return;
+        const insight = cliente.clienteInsights?.[0];
+        if (!atendHoje && (insight?.orientacaoIaJson || insight?.insightPrincipalResumo)) {
+            setPopup({ pendingAction: () => onNovoPedido(cliente.UUID), insight });
+        } else {
+            onNovoPedido(cliente.UUID);
+        }
+    };
 
     return (
+        <>
+        {popup && (
+            <OrientacaoPopup
+                insight={popup.insight}
+                onConfirm={() => { const fn = popup.pendingAction; setPopup(null); fn(); }}
+                onClose={() => setPopup(null)}
+            />
+        )}
         <div
             className={`rounded-xl border shadow-sm overflow-hidden mb-3 ${atendOutro && !atendHoje ? 'bg-amber-50/50' : 'bg-white'} ${alerta?.isHoje ? 'ring-2 animate-pulse-border' : doDia ? 'border-green-500/50 ring-1 ring-green-500/20' : 'border-gray-200'}`}
             style={alerta?.isHoje ? { borderColor: alerta.cor, '--alerta-cor': alerta.cor } : undefined}
@@ -234,44 +312,45 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                     </div>
                 )}
 
-                {/* Orientação do dia */}
+                {/* Orientação do dia — colapsada, hover/click para expandir */}
                 {(() => {
                     const insight = cliente.clienteInsights?.[0];
                     if (!insight?.insightPrincipalTipo || atendHoje) return null;
                     const ia = insight.orientacaoIaJson;
-                    if (ia) {
-                        // Bloco IA — análise completa
-                        return (
-                            <div className="mt-2 rounded-lg border border-violet-200 bg-violet-50/70 px-3 py-2 space-y-1.5">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-[10px] font-bold text-violet-600 uppercase tracking-wide">Orientação IA</span>
-                                    <span className="text-[9px] bg-violet-200 text-violet-700 px-1 py-0.5 rounded font-bold">GPT-4o-mini</span>
-                                </div>
-                                <p className="text-[12px] font-semibold text-violet-900 leading-tight">{ia.situacao}</p>
-                                {ia.objetivo && <p className="text-[11px] text-violet-700 leading-tight"><span className="font-semibold">Objetivo:</span> {ia.objetivo}</p>}
-                                {ia.canal && <p className="text-[11px] text-violet-700 leading-tight"><span className="font-semibold">Canal:</span> {ia.canal}</p>}
-                                {ia.acao && <p className="text-[11px] text-violet-800 font-medium leading-tight border-t border-violet-100 pt-1 mt-1">{ia.acao}</p>}
-                                {ia.objecao && (
-                                    <div className="bg-white/60 rounded px-2 py-1 border border-violet-100 mt-1">
-                                        <p className="text-[10px] text-violet-500 font-semibold">Objeção provável</p>
-                                        <p className="text-[11px] text-violet-800">{ia.objecao}</p>
-                                        {ia.resposta && <p className="text-[11px] text-violet-700 mt-0.5 italic">{ia.resposta}</p>}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    }
-                    // Bloco determinístico (fallback)
                     return (
-                        <div className="mt-2 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2 space-y-1">
-                            <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide">Orientação</p>
-                            <p className="text-[12px] font-semibold text-indigo-900 leading-tight">
-                                {insight.insightPrincipalResumo}
-                            </p>
-                            {insight.proximaAcaoSugerida && (
-                                <p className="text-[11px] text-indigo-700 leading-tight">
-                                    {insight.proximaAcaoSugerida}
-                                </p>
+                        <div
+                            className="mt-2"
+                            onMouseEnter={() => setOrientExpanded(true)}
+                            onMouseLeave={() => setOrientExpanded(false)}
+                        >
+                            <button
+                                className="flex items-center gap-1 text-[10px] font-bold text-indigo-500 hover:text-indigo-700 transition-colors"
+                                onClick={() => setOrientExpanded(v => !v)}
+                            >
+                                <span className="bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">Orientação</span>
+                                <ChevronDown className={`h-3 w-3 transition-transform ${orientExpanded ? 'rotate-180' : ''}`} />
+                            </button>
+                            {orientExpanded && (
+                                ia ? (
+                                    <div className="mt-1 rounded-lg border border-violet-200 bg-violet-50/70 px-3 py-2 space-y-1.5">
+                                        <p className="text-[12px] font-semibold text-violet-900 leading-tight">{ia.situacao}</p>
+                                        {ia.objetivo && <p className="text-[11px] text-violet-700 leading-tight"><span className="font-semibold">Objetivo:</span> {ia.objetivo}</p>}
+                                        {ia.canal && <p className="text-[11px] text-violet-700 leading-tight"><span className="font-semibold">Canal:</span> {ia.canal}</p>}
+                                        {ia.acao && <p className="text-[11px] text-violet-800 font-medium leading-tight border-t border-violet-100 pt-1 mt-1">{ia.acao}</p>}
+                                        {ia.objecao && (
+                                            <div className="bg-white/60 rounded px-2 py-1 border border-violet-100 mt-1">
+                                                <p className="text-[10px] text-violet-500 font-semibold">Objeção provável</p>
+                                                <p className="text-[11px] text-violet-800">{ia.objecao}</p>
+                                                {ia.resposta && <p className="text-[11px] text-violet-700 mt-0.5 italic">{ia.resposta}</p>}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="mt-1 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2 space-y-1">
+                                        <p className="text-[12px] font-semibold text-indigo-900 leading-tight">{insight.insightPrincipalResumo}</p>
+                                        {insight.proximaAcaoSugerida && <p className="text-[11px] text-indigo-700 leading-tight">{insight.proximaAcaoSugerida}</p>}
+                                    </div>
+                                )
                             )}
                         </div>
                     );
@@ -359,7 +438,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                 <div className="flex gap-1.5 mt-2 pt-2 border-t border-gray-100">
                     {mostrarAcoes && (
                         <button
-                            onClick={() => !bloqueado && onAtendimento({ tipo: 'cliente', item: cliente })}
+                            onClick={handleAtender}
                             disabled={bloqueado}
                             title={bloqueado ? 'Cliente de outro vendedor — peça transferência' : ''}
                             className={`flex-1 text-[12px] font-semibold py-1.5 rounded flex items-center justify-center gap-1 ${bloqueado ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white active:opacity-80'}`}
@@ -368,7 +447,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                         </button>
                     )}
                     <button
-                        onClick={() => !bloqueado && onNovoPedido(cliente.UUID)}
+                        onClick={handlePedido}
                         disabled={bloqueado}
                         title={bloqueado ? 'Cliente de outro vendedor — peça transferência' : ''}
                         className={`${mostrarAcoes ? 'w-auto' : 'w-full justify-center'} text-[12px] font-semibold px-2 py-1.5 rounded flex items-center gap-1 ${bloqueado ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-100 text-gray-700 cursor-pointer active:opacity-80 hover:bg-gray-200 transition-colors'}`}
@@ -378,6 +457,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                 </div>
             </div>
         </div>
+        </>
     );
 };
 

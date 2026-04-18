@@ -102,6 +102,62 @@ function startSchedulers() {
         }, msToNight);
     };
     scheduleNextRecalculation();
+
+    // === 6. IA NOTURNA — Pré-análise dos clientes do dia seguinte ===
+    // Às 23:30, analisa clientes com rota amanhã que ainda não têm orientação IA gerada.
+    // Cobre clientes novos ou reativados que nunca tiveram análise.
+    console.log('⏰ Agendando IA Noturna (Pré-análise rota do dia seguinte)...');
+    const orientacaoService = require('../services/orientacaoService');
+    const prismaIA = require('../config/database');
+    const DIAS_SIGLA_IA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+
+    const scheduleIANoturna = () => {
+        const now = new Date();
+        const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 30, 0);
+        if (target <= now) target.setDate(target.getDate() + 1);
+        const msToTarget = target.getTime() - now.getTime();
+
+        setTimeout(async () => {
+            try {
+                const amanha = new Date();
+                amanha.setDate(amanha.getDate() + 1);
+                const siglaDia = DIAS_SIGLA_IA[amanha.getDay()];
+
+                const clientes = await prismaIA.cliente.findMany({
+                    where: { Ativo: true, insightAtivo: true, Dia_de_venda: { not: null } },
+                    select: { UUID: true, Dia_de_venda: true }
+                });
+                const clientesDoDia = clientes.filter(c =>
+                    (c.Dia_de_venda || '').toUpperCase().split(',').map(d => d.trim()).includes(siglaDia)
+                );
+
+                // Filtra apenas os que ainda não têm orientação IA
+                const insights = await prismaIA.clienteInsight.findMany({
+                    where: {
+                        clienteId: { in: clientesDoDia.map(c => c.UUID) },
+                        orientacaoIaJson: { not: null }
+                    },
+                    select: { clienteId: true }
+                });
+                const comIA = new Set(insights.map(i => i.clienteId));
+                const semIA = clientesDoDia.filter(c => !comIA.has(c.UUID));
+
+                console.log(`[IA Noturna] ${siglaDia}: ${semIA.length}/${clientesDoDia.length} clientes sem orientação IA — gerando...`);
+                for (const c of semIA) {
+                    try {
+                        await orientacaoService.gerarOrientacaoIA(c.UUID);
+                    } catch (err) {
+                        console.error(`[IA Noturna] Erro cliente ${c.UUID}:`, err.message);
+                    }
+                }
+                console.log(`[IA Noturna] Concluído para ${siglaDia}.`);
+            } catch (e) {
+                console.error('[IA Noturna] Erro geral:', e);
+            }
+            scheduleIANoturna();
+        }, msToTarget);
+    };
+    scheduleIANoturna();
 }
 
 module.exports = { startSchedulers };
