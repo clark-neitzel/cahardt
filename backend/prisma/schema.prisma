@@ -152,6 +152,7 @@ model Cliente {
   amostras       Amostra[]
   contasReceber  ContaReceber[]
   devolucoes     Devolucao[]
+  atendimentos   Atendimento[]
 
   // Indicação (auto-referência: quem indicou este cliente)
   indicacaoId    String?   @map("indicacao_id")
@@ -570,7 +571,8 @@ model Atendimento {
 
   leadId    String? @map("lead_id")
   lead      Lead?   @relation(fields: [leadId], references: [id])
-  clienteId String? @map("cliente_id")
+  clienteId String?  @map("cliente_id")
+  cliente   Cliente? @relation(fields: [clienteId], references: [UUID])
 
   idVendedor String   @map("id_vendedor")
   vendedor   Vendedor @relation(fields: [idVendedor], references: [id])
