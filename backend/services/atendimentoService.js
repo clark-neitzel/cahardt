@@ -369,12 +369,13 @@ const atendimentoService = {
         }
 
         // Busca pedidos no mesmo período/vendedor para cruzar "com pedido"
+        // Usa createdAt (quando o pedido foi criado), não dataVenda (data de entrega futura)
         const wherePedido = {};
-        if (vendedorId) wherePedido.idVendedor = vendedorId;
+        if (vendedorId) wherePedido.vendedorId = vendedorId;
         if (dataInicio || dataFim) {
-            wherePedido.dataVenda = {};
-            if (dataInicio) wherePedido.dataVenda.gte = new Date(dataInicio + 'T00:00:00-03:00');
-            if (dataFim) wherePedido.dataVenda.lte = new Date(dataFim + 'T23:59:59.999-03:00');
+            wherePedido.createdAt = {};
+            if (dataInicio) wherePedido.createdAt.gte = new Date(dataInicio + 'T00:00:00-03:00');
+            if (dataFim) wherePedido.createdAt.lte = new Date(dataFim + 'T23:59:59.999-03:00');
         }
 
         const [total, data, pedidosDoPeriodo] = await Promise.all([
