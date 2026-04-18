@@ -71,6 +71,16 @@ const clienteController = {
                             isentoFlex: true,
                             semLimiteDesconto: true
                         }
+                    },
+                    clienteInsights: {
+                        select: {
+                            insightPrincipalTipo: true,
+                            insightPrincipalResumo: true,
+                            proximaAcaoSugerida: true,
+                            statusRecompra: true,
+                            diasSemComprar: true,
+                            scoreRisco: true,
+                        }
                     }
                 }
             });

@@ -234,6 +234,21 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                     </div>
                 )}
 
+                {/* Orientação do dia */}
+                {cliente.clienteInsights?.insightPrincipalTipo && !atendHoje && (
+                    <div className="mt-2 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2 space-y-1">
+                        <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide">Orientação</p>
+                        <p className="text-[12px] font-semibold text-indigo-900 leading-tight">
+                            {cliente.clienteInsights.insightPrincipalResumo}
+                        </p>
+                        {cliente.clienteInsights.proximaAcaoSugerida && (
+                            <p className="text-[11px] text-indigo-700 leading-tight">
+                                {cliente.clienteInsights.proximaAcaoSugerida}
+                            </p>
+                        )}
+                    </div>
+                )}
+
                 {/* Alerta visual */}
                 {alerta?.cor && !alerta.isTransferenciaAtiva && !alerta.isTransferenciaResolvida && (
                     <button
