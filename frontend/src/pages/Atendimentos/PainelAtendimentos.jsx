@@ -74,6 +74,7 @@ const PainelAtendimentos = () => {
         vendedorId: saved.vendedorId || '',
         tipo: saved.tipo || '',
         busca: saved.busca || '',
+        filtroEspecial: saved.filtroEspecial || '',
         dataInicio: saved.dataInicio || hoje,
         dataFim: saved.dataFim || hoje,
         page: 1,
@@ -127,6 +128,7 @@ const PainelAtendimentos = () => {
             vendedorId: '',
             tipo: '',
             busca: '',
+            filtroEspecial: '',
             dataInicio: hoje,
             dataFim: hoje,
             page: 1,
@@ -169,30 +171,46 @@ const PainelAtendimentos = () => {
         return `${di.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} - ${df.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
     }, [filtros.dataInicio, filtros.dataFim]);
 
-    // Filtro local por busca (nome cliente/lead)
+    // Filtro local por busca e filtro especial (com/sem pedido, lead)
     const dataFiltrada = useMemo(() => {
-        if (!filtros.busca.trim()) return data;
-        const termo = filtros.busca.toLowerCase();
-        return data.filter(a => {
-            const nomeCliente = (a.cliente?.NomeFantasia || a.cliente?.Nome || '').toLowerCase();
-            const nomeLead = (a.lead?.nomeEstabelecimento || '').toLowerCase();
-            const nomeVendedor = (a.vendedor?.nome || '').toLowerCase();
-            const obs = (a.observacao || '').toLowerCase();
-            return nomeCliente.includes(termo) || nomeLead.includes(termo) || nomeVendedor.includes(termo) || obs.includes(termo);
-        });
-    }, [data, filtros.busca]);
+        let lista = data;
+        if (filtros.busca.trim()) {
+            const termo = filtros.busca.toLowerCase();
+            lista = lista.filter(a => {
+                const nomeCliente = (a.cliente?.NomeFantasia || a.cliente?.Nome || '').toLowerCase();
+                const nomeLead = (a.lead?.nomeEstabelecimento || '').toLowerCase();
+                const nomeVendedor = (a.vendedor?.nome || '').toLowerCase();
+                const obs = (a.observacao || '').toLowerCase();
+                return nomeCliente.includes(termo) || nomeLead.includes(termo) || nomeVendedor.includes(termo) || obs.includes(termo);
+            });
+        }
+        if (filtros.filtroEspecial === 'com_pedido') lista = lista.filter(a => !!a.pedidoId);
+        if (filtros.filtroEspecial === 'sem_pedido') lista = lista.filter(a => !a.pedidoId && !!a.clienteId);
+        if (filtros.filtroEspecial === 'lead') lista = lista.filter(a => !!a.leadId);
+        return lista;
+    }, [data, filtros.busca, filtros.filtroEspecial]);
 
-    // Resumo
+    // Resumo (calculado sobre todos os dados sem filtro especial para mostrar totais reais)
     const resumo = useMemo(() => {
         const porTipo = {};
         const porVendedor = {};
-        dataFiltrada.forEach(a => {
+        let comPedido = 0, semPedido = 0, lead = 0;
+        data.filter(a => {
+            if (!filtros.busca.trim()) return true;
+            const termo = filtros.busca.toLowerCase();
+            const nomeCliente = (a.cliente?.NomeFantasia || a.cliente?.Nome || '').toLowerCase();
+            const nomeLead = (a.lead?.nomeEstabelecimento || '').toLowerCase();
+            return nomeCliente.includes(termo) || nomeLead.includes(termo);
+        }).forEach(a => {
             porTipo[a.tipo] = (porTipo[a.tipo] || 0) + 1;
             const vn = a.vendedor?.nome || 'Sem vendedor';
             porVendedor[vn] = (porVendedor[vn] || 0) + 1;
+            if (a.leadId) lead++;
+            else if (a.pedidoId) comPedido++;
+            else if (a.clienteId) semPedido++;
         });
-        return { porTipo, porVendedor, total: dataFiltrada.length };
-    }, [dataFiltrada]);
+        return { porTipo, porVendedor, total: data.length, comPedido, semPedido, lead };
+    }, [data, filtros.busca]);
 
     const exportarCSV = () => {
         if (dataFiltrada.length === 0) return;
@@ -318,19 +336,38 @@ const PainelAtendimentos = () => {
                 </div>
             </div>
 
-            {/* Resumo cards */}
+            {/* Resumo cards - tipos */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
                     <p className="text-2xl font-bold text-gray-900">{resumo.total}</p>
                     <p className="text-[11px] text-gray-500 font-medium">Total</p>
                 </div>
                 {Object.entries(resumo.porTipo).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([tipo, count]) => (
-                    <div key={tipo} className="bg-white border border-gray-200 rounded-lg p-3 text-center cursor-pointer hover:border-blue-300 transition-colors"
+                    <div key={tipo} className={`bg-white border rounded-lg p-3 text-center cursor-pointer transition-colors ${filtros.tipo === tipo ? 'border-blue-400 ring-1 ring-blue-400' : 'border-gray-200 hover:border-blue-300'}`}
                         onClick={() => handleFiltro('tipo', filtros.tipo === tipo ? '' : tipo)}>
                         <p className="text-2xl font-bold text-gray-900">{count}</p>
                         <p className={`text-[11px] font-semibold px-1.5 py-0.5 rounded inline-block ${TIPO_BADGE[tipo] || 'bg-gray-100 text-gray-600'}`}>{tipo}</p>
                     </div>
                 ))}
+            </div>
+
+            {/* Resumo cards - com/sem pedido e lead */}
+            <div className="grid grid-cols-3 gap-2">
+                <div className={`border rounded-lg p-3 text-center cursor-pointer transition-colors ${filtros.filtroEspecial === 'com_pedido' ? 'border-green-400 bg-green-50 ring-1 ring-green-400' : 'bg-white border-gray-200 hover:border-green-300'}`}
+                    onClick={() => handleFiltro('filtroEspecial', filtros.filtroEspecial === 'com_pedido' ? '' : 'com_pedido')}>
+                    <p className="text-2xl font-bold text-green-700">{resumo.comPedido}</p>
+                    <p className="text-[11px] font-semibold text-green-600">Com Pedido</p>
+                </div>
+                <div className={`border rounded-lg p-3 text-center cursor-pointer transition-colors ${filtros.filtroEspecial === 'sem_pedido' ? 'border-orange-400 bg-orange-50 ring-1 ring-orange-400' : 'bg-white border-gray-200 hover:border-orange-300'}`}
+                    onClick={() => handleFiltro('filtroEspecial', filtros.filtroEspecial === 'sem_pedido' ? '' : 'sem_pedido')}>
+                    <p className="text-2xl font-bold text-orange-700">{resumo.semPedido}</p>
+                    <p className="text-[11px] font-semibold text-orange-600">Sem Pedido</p>
+                </div>
+                <div className={`border rounded-lg p-3 text-center cursor-pointer transition-colors ${filtros.filtroEspecial === 'lead' ? 'border-purple-400 bg-purple-50 ring-1 ring-purple-400' : 'bg-white border-gray-200 hover:border-purple-300'}`}
+                    onClick={() => handleFiltro('filtroEspecial', filtros.filtroEspecial === 'lead' ? '' : 'lead')}>
+                    <p className="text-2xl font-bold text-purple-700">{resumo.lead}</p>
+                    <p className="text-[11px] font-semibold text-purple-600">Lead</p>
+                </div>
             </div>
 
             {/* Resumo por vendedor (colapsavel) */}
