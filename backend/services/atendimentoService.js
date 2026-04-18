@@ -355,7 +355,12 @@ const atendimentoService = {
         if (vendedorId) where.idVendedor = vendedorId;
         if (clienteId) where.clienteId = clienteId;
         if (leadId) where.leadId = leadId;
-        if (tipo) where.tipo = tipo;
+        if (tipo) {
+            where.tipo = tipo;
+        } else {
+            // Por padrão exclui FINANCEIRO (não é atendimento comercial)
+            where.tipo = { not: 'FINANCEIRO' };
+        }
         if (dataInicio || dataFim) {
             where.criadoEm = {};
             if (dataInicio) where.criadoEm.gte = new Date(dataInicio);
