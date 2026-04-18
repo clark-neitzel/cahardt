@@ -144,9 +144,123 @@ function gerarOrientacao(insight) {
     };
 }
 
+// ─────────────────────────────────────────────
+// 5. Geração de orientação via IA (GPT-4o-mini)
+// ─────────────────────────────────────────────
+const prisma = require('../config/database');
+
+// Prompt completo enviado ao GPT — exportado para conferência
+function montarPromptIA({ nomeCliente, cenario, insight, atendimentosRecentes }) {
+    const cat = CATALOGO[cenario] || {};
+
+    const atendStr = atendimentosRecentes?.length
+        ? atendimentosRecentes.map(a =>
+            `- ${new Date(a.criadoEm).toLocaleDateString('pt-BR')} | ${a.tipo} | ${a.acaoLabel || '-'} | ${a.observacao || 'sem obs'}`
+          ).join('\n')
+        : '(nenhum atendimento registrado)';
+
+    return `Você é um assistente de vendas consultivas para distribuidora de alimentos.
+Analise o histórico deste cliente e gere uma orientação comercial objetiva e direta para o vendedor de campo.
+
+CLIENTE: ${nomeCliente}
+CENÁRIO CLASSIFICADO: ${cenario} — ${cat.situacao || ''}
+
+HISTÓRICO ANALÍTICO:
+- Dias sem comprar: ${insight.diasSemComprar ?? 'N/A'} (ciclo esperado: ${insight.cicloReferenciaDias} dias)
+- Status de recompra: ${insight.statusRecompra}
+- Pedidos últimos 30 dias: ${insight.qtdPedidosUltimos30d}
+- Ticket médio recente: ${insight.ticketMedioRecente ? 'R$ ' + Number(insight.ticketMedioRecente).toFixed(2) : 'sem dados'}
+- Ticket médio histórico: ${insight.ticketMedioBase ? 'R$ ' + Number(insight.ticketMedioBase).toFixed(2) : 'sem dados'}
+- Variação de ticket: ${insight.variacaoTicketPct != null ? Number(insight.variacaoTicketPct).toFixed(1) + '%' : 'sem dados'}
+- Atendimentos sem pedido (30d): ${insight.qtdAtendimentosSemPedido30d}
+- Canal último atendimento: ${insight.canalUltimoAtendimento || 'nenhum registrado'}
+- Devolução recente: ${insight.teveDevolucaoRecente ? 'Sim' : 'Não'}
+- Score de risco: ${insight.scoreRisco}/100
+- Score de oportunidade: ${insight.scoreOportunidade}/100
+
+ÚLTIMOS ATENDIMENTOS (mais recentes primeiro):
+${atendStr}
+
+Responda APENAS com JSON válido, sem markdown, sem explicação:
+{
+  "situacao": "situação atual do cliente em 1 frase objetiva (máx 70 chars)",
+  "objetivo": "o que o vendedor deve alcançar neste atendimento (máx 70 chars)",
+  "canal": "canal recomendado e motivo curto (máx 50 chars)",
+  "acao": "ação principal concreta a tomar (máx 90 chars)",
+  "objecao": "objeção mais provável com base no histórico (máx 70 chars)",
+  "resposta": "como contornar a objeção em linguagem de vendedor (máx 90 chars)"
+}`;
+}
+
+async function gerarOrientacaoIA(clienteId) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error('OPENAI_API_KEY não configurada.');
+
+    // Busca dados do cliente
+    const cliente = await prisma.cliente.findUnique({
+        where: { UUID: clienteId },
+        select: { Nome: true, NomeFantasia: true, categoriaCliente: { select: { nome: true } } }
+    });
+    if (!cliente) throw new Error(`Cliente ${clienteId} não encontrado.`);
+
+    // Busca insight atual
+    const insight = await prisma.clienteInsight.findUnique({ where: { clienteId } });
+    if (!insight) throw new Error(`Sem insight para cliente ${clienteId}. Rode recalcular primeiro.`);
+
+    // Busca últimos 5 atendimentos
+    const atendimentosRecentes = await prisma.atendimento.findMany({
+        where: { clienteId },
+        orderBy: { criadoEm: 'desc' },
+        take: 5,
+        select: { criadoEm: true, tipo: true, acaoLabel: true, observacao: true }
+    });
+
+    const cenario = classificarCenario(insight);
+    const nomeCliente = cliente.NomeFantasia || cliente.Nome;
+    const prompt = montarPromptIA({ nomeCliente, cenario, insight, atendimentosRecentes });
+
+    // Chamada GPT-4o-mini
+    const { OpenAI } = require('openai');
+    const openai = new OpenAI({ apiKey });
+
+    const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 400,
+    });
+
+    const raw = response.choices[0].message.content.trim();
+
+    let orientacaoIaJson;
+    try {
+        orientacaoIaJson = JSON.parse(raw);
+    } catch {
+        throw new Error(`GPT retornou JSON inválido: ${raw}`);
+    }
+
+    // Salva no banco
+    await prisma.clienteInsight.update({
+        where: { clienteId },
+        data: { orientacaoIaJson }
+    });
+
+    return {
+        clienteId,
+        nome: nomeCliente,
+        cenario,
+        orientacaoIaJson,
+        promptEnviado: prompt,
+        tokensUsados: response.usage,
+        dadosAnalise: { insight, atendimentosRecentes }
+    };
+}
+
 module.exports = {
     CENARIO,
     CATALOGO,
     classificarCenario,
     gerarOrientacao,
+    montarPromptIA,
+    gerarOrientacaoIA,
 };

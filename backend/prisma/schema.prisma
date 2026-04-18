@@ -701,6 +701,7 @@ model ClienteInsight {
   insightPrincipalTipo        String?   @map("insight_principal_tipo")
   insightPrincipalResumo      String?   @map("insight_principal_resumo") @db.Text
   proximaAcaoSugerida         String?   @map("proxima_acao_sugerida") @db.Text
+  orientacaoIaJson            Json?     @map("orientacao_ia_json") // Análise gerada por IA (GPT-4o-mini)
   recalculadoEm               DateTime  @map("recalculado_em")
 
   cliente Cliente @relation(fields: [clienteId], references: [UUID], onDelete: Cascade)

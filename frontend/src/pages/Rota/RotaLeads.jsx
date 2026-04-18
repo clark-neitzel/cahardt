@@ -238,6 +238,30 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                 {(() => {
                     const insight = cliente.clienteInsights?.[0];
                     if (!insight?.insightPrincipalTipo || atendHoje) return null;
+                    const ia = insight.orientacaoIaJson;
+                    if (ia) {
+                        // Bloco IA — análise completa
+                        return (
+                            <div className="mt-2 rounded-lg border border-violet-200 bg-violet-50/70 px-3 py-2 space-y-1.5">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] font-bold text-violet-600 uppercase tracking-wide">Orientação IA</span>
+                                    <span className="text-[9px] bg-violet-200 text-violet-700 px-1 py-0.5 rounded font-bold">GPT-4o-mini</span>
+                                </div>
+                                <p className="text-[12px] font-semibold text-violet-900 leading-tight">{ia.situacao}</p>
+                                {ia.objetivo && <p className="text-[11px] text-violet-700 leading-tight"><span className="font-semibold">Objetivo:</span> {ia.objetivo}</p>}
+                                {ia.canal && <p className="text-[11px] text-violet-700 leading-tight"><span className="font-semibold">Canal:</span> {ia.canal}</p>}
+                                {ia.acao && <p className="text-[11px] text-violet-800 font-medium leading-tight border-t border-violet-100 pt-1 mt-1">{ia.acao}</p>}
+                                {ia.objecao && (
+                                    <div className="bg-white/60 rounded px-2 py-1 border border-violet-100 mt-1">
+                                        <p className="text-[10px] text-violet-500 font-semibold">Objeção provável</p>
+                                        <p className="text-[11px] text-violet-800">{ia.objecao}</p>
+                                        {ia.resposta && <p className="text-[11px] text-violet-700 mt-0.5 italic">{ia.resposta}</p>}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+                    // Bloco determinístico (fallback)
                     return (
                         <div className="mt-2 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2 space-y-1">
                             <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide">Orientação</p>

@@ -79,6 +79,38 @@ router.post('/recalcular-dia/:diaSigla', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/ia-dia/:diaSigla
+// Gera orientação via IA (GPT-4o-mini) para todos os clientes de um dia de rota
+router.post('/ia-dia/:diaSigla', async (req, res) => {
+    const sigla = (req.params.diaSigla || '').toUpperCase().trim();
+    const DIAS_VALIDOS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
+    if (!DIAS_VALIDOS.includes(sigla)) {
+        return res.status(400).json({ error: `Sigla inválida. Use: ${DIAS_VALIDOS.join(', ')}` });
+    }
+    try {
+        const clientes = await prisma.cliente.findMany({
+            where: { Ativo: true, Dia_de_venda: { not: null } },
+            select: { UUID: true, Nome: true, NomeFantasia: true, Dia_de_venda: true }
+        });
+        const filtrados = clientes.filter(c =>
+            c.Dia_de_venda.toUpperCase().split(',').map(d => d.trim()).includes(sigla)
+        );
+        const resultados = [];
+        for (const c of filtrados) {
+            try {
+                const resultado = await orientacaoService.gerarOrientacaoIA(c.UUID);
+                resultados.push({ ok: true, ...resultado });
+            } catch (err) {
+                resultados.push({ ok: false, clienteId: c.UUID, nome: c.NomeFantasia || c.Nome, erro: err.message });
+            }
+        }
+        res.json({ dia: sigla, total: filtrados.length, resultados });
+    } catch (error) {
+        console.error('[admin-exec] Erro ia-dia:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // POST /api/admin-exec/recalcular-todos
 // Recalcula insights de TODOS os clientes ativos
 router.post('/recalcular-todos', async (req, res) => {

@@ -77,6 +77,7 @@ const clienteController = {
                             insightPrincipalTipo: true,
                             insightPrincipalResumo: true,
                             proximaAcaoSugerida: true,
+                            orientacaoIaJson: true,
                             statusRecompra: true,
                             diasSemComprar: true,
                             scoreRisco: true,
