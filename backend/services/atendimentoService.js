@@ -359,7 +359,7 @@ const atendimentoService = {
             where.tipo = tipo;
         } else {
             // Por padrão exclui FINANCEIRO (não é atendimento comercial)
-            where.tipo = { not: 'FINANCEIRO' };
+            where.tipo = { notIn: ['FINANCEIRO'] };
         }
         if (dataInicio || dataFim) {
             where.criadoEm = {};
