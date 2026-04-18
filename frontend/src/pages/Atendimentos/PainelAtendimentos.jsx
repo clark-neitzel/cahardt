@@ -352,26 +352,35 @@ const PainelAtendimentos = () => {
             {/* Tabela Desktop */}
             <div className="hidden md:block bg-white border border-gray-200 rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-sm table-fixed">
+                        <colgroup>
+                            <col className="w-[100px]" />
+                            <col className="w-[90px]" />
+                            <col className="w-[100px]" />
+                            <col className="w-[20%]" />
+                            <col className="w-[90px]" />
+                            <col className="w-[120px]" />
+                            <col className="w-[30%]" />
+                            <col className="w-[100px]" />
+                        </colgroup>
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-200">
-                                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Data/Hora</th>
-                                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Vendedor</th>
-                                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Tipo</th>
-                                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Cliente / Lead</th>
-                                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Cidade</th>
-                                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Acao</th>
-                                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Observacao</th>
-                                <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Retorno</th>
-                                <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide w-10"></th>
+                                <th className="text-left px-3 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Data/Hora</th>
+                                <th className="text-left px-3 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Vendedor</th>
+                                <th className="text-left px-3 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Tipo</th>
+                                <th className="text-left px-3 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Cliente / Lead</th>
+                                <th className="text-left px-3 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Cidade</th>
+                                <th className="text-left px-3 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Ação</th>
+                                <th className="text-left px-3 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Observação</th>
+                                <th className="text-left px-3 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Retorno</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {loading && (
-                                <tr><td colSpan={9} className="text-center py-12 text-gray-400">Carregando...</td></tr>
+                                <tr><td colSpan={8} className="text-center py-12 text-gray-400">Carregando...</td></tr>
                             )}
                             {!loading && dataFiltrada.length === 0 && (
-                                <tr><td colSpan={9} className="text-center py-12 text-gray-400">Nenhum atendimento encontrado.</td></tr>
+                                <tr><td colSpan={8} className="text-center py-12 text-gray-400">Nenhum atendimento encontrado.</td></tr>
                             )}
                             {!loading && dataFiltrada.map(a => {
                                 const nomeItem = a.cliente ? (a.cliente.NomeFantasia || a.cliente.Nome) : (a.lead ? `Lead #${a.lead.numero} - ${a.lead.nomeEstabelecimento}` : '-');
@@ -380,58 +389,55 @@ const PainelAtendimentos = () => {
                                     <React.Fragment key={a.id}>
                                         <tr className={`hover:bg-gray-50 cursor-pointer transition-colors ${a.transferidoParaId ? 'bg-indigo-50/30' : ''} ${a.alertaVisualAtivo ? 'bg-amber-50/30' : ''}`}
                                             onClick={() => setExpandedRow(isExpanded ? null : a.id)}>
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                <div className="text-sm font-medium text-gray-900">{fmtData(a.criadoEm)}</div>
+                                            <td className="px-3 py-2.5">
+                                                <div className="text-xs font-medium text-gray-900">{fmtData(a.criadoEm)}</div>
                                                 <div className="text-[11px] text-gray-500">{fmtHora(a.criadoEm)}</div>
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                <span className="text-sm font-medium text-gray-700">{a.vendedor?.nome?.split(' ')[0] || '-'}</span>
+                                            <td className="px-3 py-2.5">
+                                                <span className="text-xs font-medium text-gray-700">{a.vendedor?.nome?.split(' ')[0] || '-'}</span>
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded ${TIPO_BADGE[a.tipo] || 'bg-gray-100 text-gray-600'}`}>
+                                            <td className="px-3 py-2.5">
+                                                <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${TIPO_BADGE[a.tipo] || 'bg-gray-100 text-gray-600'}`}>
                                                     <TipoIcon tipo={a.tipo} /> {a.tipo}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 max-w-[200px]">
+                                            <td className="px-3 py-2.5">
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         if (a.cliente) setClientePopup(a.cliente);
                                                         else if (a.lead) setClientePopup(a.lead);
                                                     }}
-                                                    className="text-sm font-medium text-blue-700 hover:text-blue-900 truncate block max-w-full text-left"
+                                                    className="text-xs font-semibold text-blue-700 hover:text-blue-900 text-left w-full line-clamp-2 leading-tight"
                                                     title={nomeItem}
                                                 >
                                                     {nomeItem}
                                                 </button>
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                            <td className="px-3 py-2.5 text-xs text-gray-500 truncate">
                                                 {a.cliente?.End_Cidade || '-'}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
+                                            <td className="px-3 py-2.5">
                                                 {a.acaoLabel ? (
-                                                    <span className="text-[11px] font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">{a.acaoLabel}</span>
-                                                ) : '-'}
+                                                    <span className="text-[10px] font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded block truncate">{a.acaoLabel}</span>
+                                                ) : <span className="text-xs text-gray-400">-</span>}
                                             </td>
-                                            <td className="px-4 py-3 max-w-[250px]">
-                                                <p className="text-sm text-gray-600 truncate" title={a.observacao}>{a.observacao || '-'}</p>
+                                            <td className="px-3 py-2.5">
+                                                <p className="text-xs text-gray-600 line-clamp-2 leading-tight">{a.observacao || <span className="text-gray-400">-</span>}</p>
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
+                                            <td className="px-3 py-2.5">
                                                 {a.dataRetorno ? (
                                                     <div>
                                                         <div className="text-[11px] font-semibold text-amber-700">{fmtData(a.dataRetorno)}</div>
-                                                        {a.assuntoRetorno && <div className="text-[10px] text-gray-500 truncate max-w-[120px]">{a.assuntoRetorno}</div>}
+                                                        {a.assuntoRetorno && <div className="text-[10px] text-gray-500 line-clamp-1">{a.assuntoRetorno}</div>}
                                                     </div>
-                                                ) : '-'}
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400 inline" /> : <ChevronDown className="h-4 w-4 text-gray-400 inline" />}
+                                                ) : <span className="text-xs text-gray-400">-</span>}
                                             </td>
                                         </tr>
                                         {/* Expanded row details */}
                                         {isExpanded && (
                                             <tr>
-                                                <td colSpan={9} className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                                                <td colSpan={8} className="bg-gray-50 px-6 py-4 border-b border-gray-200">
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                                                         {a.observacao && (
                                                             <div className="lg:col-span-2">
