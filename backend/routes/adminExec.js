@@ -94,14 +94,20 @@ router.get('/dump-db', async (req, res) => {
             ORDER BY tablename
         `);
 
-        let sql = '-- Dump gerado pelo admin-exec\nSET session_replication_role = replica;\n\n';
+        const tableNames = tables.map(r => r.tablename);
 
-        for (const { tablename } of tables) {
+        // Truncate todas as tabelas de uma vez — PostgreSQL resolve a ordem por FK
+        const truncateAll = tableNames.map(t => `"${t}"`).join(', ');
+        let sql = '-- Dump gerado pelo admin-exec\n';
+        sql += 'SET session_replication_role = replica;\n\n';
+        sql += `TRUNCATE TABLE ${truncateAll} RESTART IDENTITY CASCADE;\n\n`;
+
+        for (const tablename of tableNames) {
             const { rows } = await client.query(`SELECT * FROM "${tablename}"`);
             if (rows.length === 0) continue;
 
             const cols = Object.keys(rows[0]).map(c => `"${c}"`).join(', ');
-            sql += `-- Tabela: ${tablename}\nTRUNCATE TABLE "${tablename}" CASCADE;\n`;
+            sql += `-- Tabela: ${tablename}\n`;
 
             for (const row of rows) {
                 const vals = Object.values(row).map(v => {
