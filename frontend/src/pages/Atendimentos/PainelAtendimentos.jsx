@@ -99,8 +99,13 @@ const PainelAtendimentos = () => {
             params.limit = filtros.limit;
 
             const result = await atendimentoService.listarComFiltros(params);
-            setData(result.data || []);
-            setTotal(result.total || 0);
+            // Exclui FINANCEIRO no frontend quando não há filtro de tipo selecionado
+            let registros = result.data || [];
+            if (!filtros.tipo) {
+                registros = registros.filter(a => a.tipo !== 'FINANCEIRO');
+            }
+            setData(registros);
+            setTotal(!filtros.tipo ? registros.length : (result.total || 0));
             setTotalPages(result.totalPages || 1);
         } catch (error) {
             console.error(error);
