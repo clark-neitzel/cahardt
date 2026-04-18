@@ -67,7 +67,6 @@ const PainelAtendimentos = () => {
     const [total, setTotal] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [vendedores, setVendedores] = useState([]);
-    const [showFilters, setShowFilters] = useState(true);
     const [expandedRow, setExpandedRow] = useState(null);
     const [clientePopup, setClientePopup] = useState(null);
 
@@ -134,6 +133,41 @@ const PainelAtendimentos = () => {
             limit: 50,
         });
     };
+
+    // Calcula a diferença em dias do período atual e navega para frente/trás
+    const navegarPeriodo = (direcao) => {
+        const inicio = new Date(filtros.dataInicio + 'T00:00:00');
+        const fim = new Date(filtros.dataFim + 'T00:00:00');
+        const diffMs = fim.getTime() - inicio.getTime();
+        const diffDias = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1);
+
+        const novoInicio = new Date(inicio);
+        const novoFim = new Date(fim);
+        novoInicio.setDate(novoInicio.getDate() + (direcao * diffDias));
+        novoFim.setDate(novoFim.getDate() + (direcao * diffDias));
+
+        setFiltros(prev => ({
+            ...prev,
+            dataInicio: novoInicio.toISOString().split('T')[0],
+            dataFim: novoFim.toISOString().split('T')[0],
+            page: 1,
+        }));
+    };
+
+    // Label legível do período
+    const labelPeriodo = useMemo(() => {
+        if (filtros.dataInicio === filtros.dataFim) {
+            const d = new Date(filtros.dataInicio + 'T12:00:00');
+            const hj = new Date().toISOString().split('T')[0];
+            if (filtros.dataInicio === hj) return 'Hoje';
+            const ontem = new Date(); ontem.setDate(ontem.getDate() - 1);
+            if (filtros.dataInicio === ontem.toISOString().split('T')[0]) return 'Ontem';
+            return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+        }
+        const di = new Date(filtros.dataInicio + 'T12:00:00');
+        const df = new Date(filtros.dataFim + 'T12:00:00');
+        return `${di.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} - ${df.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
+    }, [filtros.dataInicio, filtros.dataFim]);
 
     // Filtro local por busca (nome cliente/lead)
     const dataFiltrada = useMemo(() => {
@@ -212,87 +246,77 @@ const PainelAtendimentos = () => {
                     <button onClick={exportarCSV} disabled={dataFiltrada.length === 0} className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
                         <Download className="h-4 w-4" /> CSV
                     </button>
-                    <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${showFilters ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
-                        <Filter className="h-4 w-4" /> Filtros
-                    </button>
                 </div>
             </div>
 
-            {/* Filtros */}
-            {showFilters && (
-                <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                        {/* Data Inicio */}
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 mb-1">Data Inicio</label>
+            {/* Navegador de período + filtros */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                {/* Linha principal: setas + período + atalhos + vendedor + tipo */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    {/* Navegador de data com setas */}
+                    <div className="flex items-center gap-1">
+                        <button onClick={() => navegarPeriodo(-1)} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 active:bg-gray-100 transition-colors" title="Periodo anterior">
+                            <ChevronLeft className="h-4 w-4 text-gray-600" />
+                        </button>
+                        <div className="flex items-center gap-1.5 min-w-0">
                             <input type="date" value={filtros.dataInicio} onChange={e => handleFiltro('dataInicio', e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                        </div>
-                        {/* Data Fim */}
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 mb-1">Data Fim</label>
+                                className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm w-[130px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                            <span className="text-gray-400 text-sm">-</span>
                             <input type="date" value={filtros.dataFim} onChange={e => handleFiltro('dataFim', e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm w-[130px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                         </div>
-                        {/* Vendedor */}
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 mb-1">Vendedor</label>
-                            <select value={filtros.vendedorId} onChange={e => handleFiltro('vendedorId', e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">Todos</option>
-                                {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                            </select>
-                        </div>
-                        {/* Tipo */}
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 mb-1">Tipo</label>
-                            <select value={filtros.tipo} onChange={e => handleFiltro('tipo', e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                {TIPOS_ATENDIMENTO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                            </select>
-                        </div>
+                        <button onClick={() => navegarPeriodo(1)} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 active:bg-gray-100 transition-colors" title="Proximo periodo">
+                            <ChevronRight className="h-4 w-4 text-gray-600" />
+                        </button>
+                        <span className="text-xs font-semibold text-gray-500 ml-1 hidden sm:inline">{labelPeriodo}</span>
                     </div>
-                    {/* Busca e atalhos */}
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <input type="text" placeholder="Buscar por cliente, lead, vendedor ou observacao..." value={filtros.busca} onChange={e => handleFiltro('busca', e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                            {filtros.busca && (
-                                <button onClick={() => handleFiltro('busca', '')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={() => { handleFiltro('dataInicio', hoje); handleFiltro('dataFim', hoje); }}
-                                className="px-3 py-2 text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors whitespace-nowrap">
-                                Hoje
-                            </button>
-                            <button onClick={() => {
-                                const d = new Date(); d.setDate(d.getDate() - 7);
-                                handleFiltro('dataInicio', d.toISOString().split('T')[0]);
-                                setFiltros(prev => ({ ...prev, dataFim: hoje, page: 1 }));
-                            }}
-                                className="px-3 py-2 text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors whitespace-nowrap">
-                                7 dias
-                            </button>
-                            <button onClick={() => {
-                                const d = new Date(); d.setDate(d.getDate() - 30);
-                                handleFiltro('dataInicio', d.toISOString().split('T')[0]);
-                                setFiltros(prev => ({ ...prev, dataFim: hoje, page: 1 }));
-                            }}
-                                className="px-3 py-2 text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors whitespace-nowrap">
-                                30 dias
-                            </button>
-                            <button onClick={limparFiltros}
-                                className="px-3 py-2 text-xs font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors whitespace-nowrap">
-                                Limpar
-                            </button>
-                        </div>
+
+                    {/* Atalhos de período */}
+                    <div className="flex gap-1.5 flex-wrap">
+                        <button onClick={() => setFiltros(prev => ({ ...prev, dataInicio: hoje, dataFim: hoje, page: 1 }))}
+                            className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${filtros.dataInicio === hoje && filtros.dataFim === hoje ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>
+                            Hoje
+                        </button>
+                        <button onClick={() => { const d = new Date(); d.setDate(d.getDate() - 1); const o = d.toISOString().split('T')[0]; setFiltros(prev => ({ ...prev, dataInicio: o, dataFim: o, page: 1 })); }}
+                            className="px-2.5 py-1.5 text-xs font-semibold bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                            Ontem
+                        </button>
+                        <button onClick={() => { const d = new Date(); d.setDate(d.getDate() - 7); setFiltros(prev => ({ ...prev, dataInicio: d.toISOString().split('T')[0], dataFim: hoje, page: 1 })); }}
+                            className="px-2.5 py-1.5 text-xs font-semibold bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                            7d
+                        </button>
+                        <button onClick={() => { const d = new Date(); d.setDate(d.getDate() - 30); setFiltros(prev => ({ ...prev, dataInicio: d.toISOString().split('T')[0], dataFim: hoje, page: 1 })); }}
+                            className="px-2.5 py-1.5 text-xs font-semibold bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                            30d
+                        </button>
+                    </div>
+
+                    {/* Vendedor + Tipo inline */}
+                    <div className="flex gap-2 flex-1 min-w-0">
+                        <select value={filtros.vendedorId} onChange={e => handleFiltro('vendedorId', e.target.value)}
+                            className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm flex-1 min-w-0 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Todos vendedores</option>
+                            {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
+                        </select>
+                        <select value={filtros.tipo} onChange={e => handleFiltro('tipo', e.target.value)}
+                            className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm flex-1 min-w-0 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            {TIPOS_ATENDIMENTO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                        </select>
                     </div>
                 </div>
-            )}
+
+                {/* Busca */}
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input type="text" placeholder="Buscar por cliente, lead, vendedor ou observacao..." value={filtros.busca} onChange={e => handleFiltro('busca', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg pl-9 pr-9 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    {filtros.busca && (
+                        <button onClick={() => handleFiltro('busca', '')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            <X className="h-4 w-4" />
+                        </button>
+                    )}
+                </div>
+            </div>
 
             {/* Resumo cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
