@@ -12,5 +12,6 @@ router.put('/:id', leadController.atualizar);
 router.post('/:id/finalizar', leadController.finalizar);
 router.post('/:id/foto', uploadLead.single('foto'), leadController.uploadFoto);
 router.post('/:id/referenciar', leadController.referenciarCliente);
+router.delete('/:id', leadController.excluir);
 
 module.exports = router;

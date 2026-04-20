@@ -118,6 +118,24 @@ const leadController = {
             console.error('[leadController.buscarPorCliente]', error);
             res.status(500).json({ error: 'Erro ao buscar leads do cliente.' });
         }
+    },
+
+    excluir: async (req, res) => {
+        try {
+            const perms = typeof req.user.permissoes === 'string'
+                ? JSON.parse(req.user.permissoes)
+                : (req.user.permissoes || {});
+
+            if (!perms.admin && !perms.Pode_Excluir_Lead) {
+                return res.status(403).json({ error: 'Você não tem permissão para excluir leads.' });
+            }
+
+            await leadService.excluir(req.params.id);
+            res.json({ success: true });
+        } catch (error) {
+            console.error('[leadController.excluir]', error);
+            res.status(500).json({ error: 'Erro ao excluir lead.' });
+        }
     }
 };
 

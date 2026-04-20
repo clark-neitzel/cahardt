@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, MapPin, Loader, Mic, MicOff } from 'lucide-react';
+import { X, MapPin, Loader, Mic, MicOff, Trash2 } from 'lucide-react';
 import leadService from '../../services/leadService';
 import vendedorService from '../../services/vendedorService';
 import atendimentoService from '../../services/atendimentoService';
@@ -31,9 +31,10 @@ const ACOES_PADRAO = [
     { value: 'SEM_POTENCIAL', label: 'Sem potencial' },
 ];
 
-const ModalEditarLead = ({ lead, onClose, onSalvo, user }) => {
+const ModalEditarLead = ({ lead, onClose, onSalvo, onExcluido, user }) => {
     const perms = user?.permissoes || {};
     const podeEscolherVendedor = perms.admin || perms.pedidos?.clientes === 'todos';
+    const podeExcluir = perms.admin || perms.Pode_Excluir_Lead;
 
     const diasIniciais = lead.diasVisita
         ? lead.diasVisita.split(',').map(d => d.trim()).filter(Boolean)
@@ -168,6 +169,18 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, user }) => {
 
         recognitionRef.current = recognition;
         try { recognition.start(); } catch (e) { console.error(e); }
+    };
+
+    const handleExcluir = async () => {
+        if (!window.confirm(`Tem certeza que deseja excluir o lead "${lead.nomeEstabelecimento}"?\n\nEsta ação é irreversível e removerá todos os atendimentos vinculados.`)) return;
+        try {
+            await leadService.excluir(lead.id);
+            toast.success('Lead excluído com sucesso.');
+            onExcluido?.();
+        } catch (err) {
+            console.error(err);
+            toast.error('Erro ao excluir lead.');
+        }
     };
 
     const handleSalvar = async () => {
@@ -381,6 +394,16 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, user }) => {
                         {saving ? <Loader className="h-5 w-5 animate-spin" /> : null}
                         {saving ? 'Salvando...' : 'Salvar Alterações'}
                     </button>
+
+                    {podeExcluir && (
+                        <button
+                            onClick={handleExcluir}
+                            className="w-full border border-red-300 text-red-600 hover:bg-red-50 font-semibold py-2.5 rounded-xl text-[14px] flex items-center justify-center gap-2 transition-colors"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                            Excluir Lead
+                        </button>
+                    )}
 
                     <div className="h-4" />
                 </div>

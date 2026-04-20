@@ -53,6 +53,11 @@ const leadService = {
     buscarPorCliente: async (clienteId) => {
         const response = await api.get(`/leads/por-cliente/${clienteId}`);
         return response.data;
+    },
+
+    excluir: async (id) => {
+        const response = await api.delete(`/leads/${id}`);
+        return response.data;
     }
 };
 

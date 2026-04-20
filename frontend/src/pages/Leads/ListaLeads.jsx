@@ -732,11 +732,14 @@ const ListaLeads = () => {
                     onSalvo={() => {
                         setModalEditar(null);
                         fetchLeads();
-                        // Recarregar detalhes do lead expandido
                         if (expandedLeadId === modalEditar.id) {
                             toggleLeadDetail(modalEditar.id);
                             setTimeout(() => toggleLeadDetail(modalEditar.id), 100);
                         }
+                    }}
+                    onExcluido={() => {
+                        setModalEditar(null);
+                        fetchLeads();
                     }}
                 />
             )}

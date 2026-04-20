@@ -50,6 +50,7 @@ const DEFAULT_PERMISSIONS = {
     // Reatribuição de vendedor em pedidos
     Pode_Reatribuir_Vendedor: false,
     // Exclusão de Registros
+    Pode_Excluir_Lead: false,
     Pode_Excluir_Pedido: false,
     Pode_Excluir_Especial: false,
     Pode_Excluir_Bonificacao: false,
@@ -493,6 +494,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                             <div className="border-t mt-3 pt-3">
                                 <Toggle checked={!!permissoes.Pode_Editar_Lead} onChange={() => toggleBool('Pode_Editar_Lead')}
                                     label="Pode Editar Leads" sublabel="Permite editar leads existentes, não apenas criar novos" />
+                                <Toggle checked={!!permissoes.Pode_Excluir_Lead} onChange={() => toggleBool('Pode_Excluir_Lead')}
+                                    label="Pode Excluir Leads" sublabel="Permite excluir leads permanentemente (ação irreversível)" />
                                 <Toggle checked={!!permissoes.Pode_Editar_GPS} onChange={() => toggleBool('Pode_Editar_GPS')}
                                     label="Editar GPS de Clientes" sublabel="Capturar e salvar localização GPS dos clientes na rota" />
                                 <Toggle checked={!!permissoes.Pode_Ver_Atendimentos} onChange={() => toggleBool('Pode_Ver_Atendimentos')}

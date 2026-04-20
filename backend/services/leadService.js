@@ -183,6 +183,10 @@ const leadService = {
             },
             orderBy: [{ createdAt: 'desc' }]
         });
+    },
+
+    excluir: async (id) => {
+        return await prisma.lead.delete({ where: { id } });
     }
 };
 
