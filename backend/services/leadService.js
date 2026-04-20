@@ -56,6 +56,7 @@ const leadService = {
         return await prisma.lead.findMany({
             where,
             include: {
+                vendedor: { select: { id: true, nome: true } },
                 atendimentos: {
                     orderBy: { criadoEm: 'desc' },
                     take: 1
