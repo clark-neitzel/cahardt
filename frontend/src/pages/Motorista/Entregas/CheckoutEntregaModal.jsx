@@ -593,7 +593,8 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                                 >
                                                     {pg._selectId === '' && <option value="">— Escolha a forma —</option>}
                                                     {['Condições de Pagamento', 'Formas de Entrega'].map(grupo => {
-                                                        const itens = formasDisp.filter(f => f._grupo === grupo);
+                                                        const jaUsados = pagamentos.filter(p => p.idLocal !== pg.idLocal).map(p => p._selectId);
+                                                        const itens = formasDisp.filter(f => f._grupo === grupo && !jaUsados.includes(f._selectId));
                                                         if (itens.length === 0) return null;
                                                         return (
                                                             <optgroup key={grupo} label={grupo}>
