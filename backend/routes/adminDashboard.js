@@ -203,11 +203,7 @@ router.get('/', verificarAuth, async (req, res) => {
             .filter(p => (p.formaPagamentoNome || '').toLowerCase().includes('dinheiro'))
             .reduce((s, p) => s + num(p.valor), 0);
 
-        // ============ FECHAMENTO DE ONTEM + PRIORIDADES + QUALIDADE ============
-        const ontemStart = new Date(startOfDay); ontemStart.setDate(ontemStart.getDate() - 1);
-        const ontemEnd   = new Date(endOfDay);   ontemEnd.setDate(ontemEnd.getDate() - 1);
-        const siglaDOntem = DIAS_SIGLA[ontemStart.getDay()];
-
+        // ============ FECHAMENTO DO DIA + PRIORIDADES + QUALIDADE ============
         const [
             atendimentosOntem,
             pedidosCriadosOntem,
@@ -218,7 +214,7 @@ router.get('/', verificarAuth, async (req, res) => {
             todasComprasPorCliente,
         ] = await Promise.all([
             prisma.atendimento.findMany({
-                where: { criadoEm: { gte: ontemStart, lte: ontemEnd }, tipo: { not: 'FINANCEIRO' } },
+                where: { criadoEm: { gte: startOfDay, lte: endOfDay }, tipo: { not: 'FINANCEIRO' } },
                 select: {
                     clienteId: true, pedidoId: true, transferidoParaId: true,
                     dataRetorno: true, alertaVisualAtivo: true,
@@ -227,10 +223,10 @@ router.get('/', verificarAuth, async (req, res) => {
                 },
             }),
             prisma.pedido.findMany({
-                where: { ...baseWherePedido, createdAt: { gte: ontemStart, lte: ontemEnd } },
+                where: { ...baseWherePedido, createdAt: { gte: startOfDay, lte: endOfDay } },
                 select: { clienteId: true },
             }),
-            prisma.cliente.count({ where: { Ativo: true, Dia_de_venda: { contains: siglaDOntem, mode: 'insensitive' } } }),
+            prisma.cliente.count({ where: { Ativo: true, Dia_de_venda: { contains: siglaDoDia, mode: 'insensitive' } } }),
             prisma.amostra.count({ where: { status: { notIn: ['ENTREGUE', 'CANCELADA'] } } }),
             prisma.atendimento.count({ where: { proximaVisita: { gte: startOfDay, lte: endOfDay } } }),
             prisma.atendimento.count({ where: { transferidoParaId: { not: null }, transferenciaFinalizada: false } }),
@@ -503,7 +499,7 @@ router.get('/', verificarAuth, async (req, res) => {
             inadimplencia: { total: num(inadimplencia._sum.valor), parcelas: inadimplencia._count._all },
             produtosEmQueda,
             fechamentoOntem: {
-                data: ontemStart.toISOString().slice(0, 10),
+                data: startOfDay.toISOString().slice(0, 10),
                 clientesProgramados: clientesProgramadosOntem,
                 clientesAtendidos: clientesAtendidosOntemCount,
                 clientesNaoAtendidos: Math.max(0, clientesProgramadosOntem - clientesAtendidosOntemCount),

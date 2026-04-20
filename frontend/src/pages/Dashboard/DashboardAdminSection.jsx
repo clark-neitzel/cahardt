@@ -120,9 +120,9 @@ const DashboardAdminSection = () => {
     const maxProd = (d.topProdutos?.[0]?.valorLiquido) || 1;
     const maxCli = (d.topClientes?.[0]?.valor) || 1;
 
-    const fecData = fec.data
-        ? new Date(fec.data + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' })
-        : 'ontem';
+    const fecData = (fec.data || d.dataReferencia)
+        ? new Date((fec.data || d.dataReferencia) + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' })
+        : 'hoje';
 
     return (
         <div className="mb-8">
@@ -327,7 +327,7 @@ const DashboardAdminSection = () => {
                 icon={Calendar}
                 right={<span className="text-[11px] text-gray-400 capitalize">{fecData}</span>}
             >
-                Fechamento Comercial de Ontem
+                Fechamento Comercial
             </SectionTitle>
             <div className="bg-white border rounded-xl p-5">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -403,7 +403,7 @@ const DashboardAdminSection = () => {
                         icon={BarChart2}
                         right={<span className="text-[11px] text-gray-400 capitalize">{fecData}</span>}
                     >
-                        Qualidade do Atendimento — Ontem
+                        Qualidade do Atendimento
                     </SectionTitle>
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                         {/* Objeções / Motivos de não venda */}
