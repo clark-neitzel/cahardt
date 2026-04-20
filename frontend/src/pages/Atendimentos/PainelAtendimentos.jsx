@@ -16,6 +16,7 @@ const TIPOS_ATENDIMENTO = [
     { value: 'VISITA', label: 'Visita' },
     { value: 'WHATSAPP', label: 'WhatsApp' },
     { value: 'LIGACAO', label: 'Ligacao' },
+    { value: 'PEDIDO', label: 'Pedido' },
     { value: 'AMOSTRA', label: 'Amostra' },
     { value: 'RETORNO', label: 'Retorno' },
     { value: 'FINANCEIRO', label: 'Financeiro' },
@@ -25,6 +26,7 @@ const TIPO_BADGE = {
     VISITA: 'bg-purple-100 text-purple-700',
     WHATSAPP: 'bg-green-100 text-green-700',
     LIGACAO: 'bg-blue-100 text-blue-700',
+    PEDIDO: 'bg-sky-100 text-sky-700',
     AMOSTRA: 'bg-amber-100 text-amber-700',
     RETORNO: 'bg-indigo-100 text-indigo-700',
     FINANCEIRO: 'bg-gray-100 text-gray-600',
@@ -34,6 +36,7 @@ const TIPO_ICON = {
     VISITA: User,
     WHATSAPP: MessageCircle,
     LIGACAO: Phone,
+    PEDIDO: ClipboardList,
     AMOSTRA: Truck,
     RETORNO: Clock,
     FINANCEIRO: ClipboardList,
@@ -60,10 +63,12 @@ const PainelAtendimentos = () => {
     const isAdmin = !!user?.permissoes?.admin;
 
     const saved = loadFilters();
-    const hoje = new Date().toISOString().split('T')[0];
+    // Usa timezone de São Paulo para evitar bug de data UTC após 21h
+    const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
     const [data, setData] = useState([]);
     const [clientesComPedido, setClientesComPedido] = useState(new Set());
+    const [resumo, setResumo] = useState({ total: 0, porTipo: {}, porVendedor: {}, comPedido: 0, semPedido: 0, lead: 0 });
     const [loading, setLoading] = useState(false);
     const [total, setTotal] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
@@ -105,6 +110,7 @@ const PainelAtendimentos = () => {
             setClientesComPedido(new Set(result.clientesComPedido || []));
             setTotal(result.total || 0);
             setTotalPages(result.totalPages || 1);
+            if (result.resumo) setResumo(result.resumo);
         } catch (error) {
             console.error(error);
             toast.error('Erro ao carregar atendimentos.');
@@ -192,27 +198,7 @@ const PainelAtendimentos = () => {
         return lista;
     }, [data, filtros.busca, filtros.filtroEspecial, clientesComPedido]);
 
-    // Resumo (calculado sobre todos os dados sem filtro especial para mostrar totais reais)
-    const resumo = useMemo(() => {
-        const porTipo = {};
-        const porVendedor = {};
-        let comPedido = 0, semPedido = 0, lead = 0;
-        data.filter(a => {
-            if (!filtros.busca.trim()) return true;
-            const termo = filtros.busca.toLowerCase();
-            const nomeCliente = (a.cliente?.NomeFantasia || a.cliente?.Nome || '').toLowerCase();
-            const nomeLead = (a.lead?.nomeEstabelecimento || '').toLowerCase();
-            return nomeCliente.includes(termo) || nomeLead.includes(termo);
-        }).forEach(a => {
-            porTipo[a.tipo] = (porTipo[a.tipo] || 0) + 1;
-            const vn = a.vendedor?.nome || 'Sem vendedor';
-            porVendedor[vn] = (porVendedor[vn] || 0) + 1;
-            if (a.leadId) lead++;
-            else if (a.clienteId && clientesComPedido.has(a.clienteId)) comPedido++;
-            else if (a.clienteId) semPedido++;
-        });
-        return { porTipo, porVendedor, total: data.length, comPedido, semPedido, lead };
-    }, [data, filtros.busca, clientesComPedido]);
+    // Resumo vem do backend (sobre TODOS os registros, não só a página atual)
 
     const exportarCSV = () => {
         if (dataFiltrada.length === 0) return;
@@ -297,15 +283,15 @@ const PainelAtendimentos = () => {
                             className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${filtros.dataInicio === hoje && filtros.dataFim === hoje ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>
                             Hoje
                         </button>
-                        <button onClick={() => { const d = new Date(); d.setDate(d.getDate() - 1); const o = d.toISOString().split('T')[0]; setFiltros(prev => ({ ...prev, dataInicio: o, dataFim: o, page: 1 })); }}
+                        <button onClick={() => { const d = new Date(); d.setDate(d.getDate() - 1); const o = d.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); setFiltros(prev => ({ ...prev, dataInicio: o, dataFim: o, page: 1 })); }}
                             className="px-2.5 py-1.5 text-xs font-semibold bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                             Ontem
                         </button>
-                        <button onClick={() => { const d = new Date(); d.setDate(d.getDate() - 7); setFiltros(prev => ({ ...prev, dataInicio: d.toISOString().split('T')[0], dataFim: hoje, page: 1 })); }}
+                        <button onClick={() => { const d = new Date(); d.setDate(d.getDate() - 7); setFiltros(prev => ({ ...prev, dataInicio: d.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }), dataFim: hoje, page: 1 })); }}
                             className="px-2.5 py-1.5 text-xs font-semibold bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                             7d
                         </button>
-                        <button onClick={() => { const d = new Date(); d.setDate(d.getDate() - 30); setFiltros(prev => ({ ...prev, dataInicio: d.toISOString().split('T')[0], dataFim: hoje, page: 1 })); }}
+                        <button onClick={() => { const d = new Date(); d.setDate(d.getDate() - 30); setFiltros(prev => ({ ...prev, dataInicio: d.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }), dataFim: hoje, page: 1 })); }}
                             className="px-2.5 py-1.5 text-xs font-semibold bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                             30d
                         </button>

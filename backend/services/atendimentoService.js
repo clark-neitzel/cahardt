@@ -388,7 +388,7 @@ const atendimentoService = {
             if (dataFim) wherePedido.createdAt.lte = new Date(dataFim + 'T23:59:59.999-03:00');
         }
 
-        const [total, data, pedidosDoPeriodo] = await Promise.all([
+        const [total, data, pedidosDoPeriodo, todosParaResumo] = await Promise.all([
             prisma.atendimento.count({ where }),
             prisma.atendimento.findMany({
                 where,
@@ -407,12 +407,39 @@ const atendimentoService = {
                 where: wherePedido,
                 select: { clienteId: true },
             }),
+            // Busca leve de TODOS os registros do período para cálculo correto do resumo
+            prisma.atendimento.findMany({
+                where,
+                select: {
+                    tipo: true,
+                    clienteId: true,
+                    leadId: true,
+                    vendedor: { select: { nome: true } },
+                },
+            }),
         ]);
 
         // Set de clienteIds que fizeram pedido no período
-        const clientesComPedido = [...new Set(pedidosDoPeriodo.map(p => p.clienteId).filter(Boolean))];
+        const clientesComPedidoSet = new Set(pedidosDoPeriodo.map(p => p.clienteId).filter(Boolean));
+        const clientesComPedido = [...clientesComPedidoSet];
 
-        return { data, total, page, limit, totalPages: Math.ceil(total / limit), clientesComPedido };
+        // Resumo agregado sobre TODOS os registros (não só a página atual)
+        const porTipo = {};
+        const porVendedor = {};
+        let comPedido = 0, semPedido = 0, lead = 0;
+
+        todosParaResumo.forEach(a => {
+            porTipo[a.tipo] = (porTipo[a.tipo] || 0) + 1;
+            const vn = a.vendedor?.nome || 'Sem vendedor';
+            porVendedor[vn] = (porVendedor[vn] || 0) + 1;
+            if (a.leadId) lead++;
+            else if (a.clienteId && clientesComPedidoSet.has(a.clienteId)) comPedido++;
+            else if (a.clienteId) semPedido++;
+        });
+
+        const resumo = { total, porTipo, porVendedor, comPedido, semPedido, lead };
+
+        return { data, total, page, limit, totalPages: Math.ceil(total / limit), clientesComPedido, resumo };
     }
 };
 

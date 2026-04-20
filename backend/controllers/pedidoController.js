@@ -124,6 +124,21 @@ const pedidoController = {
 
             res.status(201).json(novoPedido);
 
+            // Auto-registrar atendimento do tipo PEDIDO para aparecer no Painel de Atendimentos
+            if (novoPedido.clienteId && novoPedido.vendedorId) {
+                const atendimentoService = require('../services/atendimentoService');
+                const prefixo = novoPedido.bonificacao ? 'BN' : novoPedido.especial ? 'ZZ' : '';
+                const numStr = `${prefixo}#${novoPedido.numero}`;
+                atendimentoService.registrar({
+                    tipo: 'PEDIDO',
+                    observacao: `Pedido ${numStr}`,
+                    clienteId: novoPedido.clienteId,
+                    idVendedor: novoPedido.vendedorId,
+                    pedidoId: novoPedido.id,
+                    usuarioRegistroId: req.user?.id || null,
+                }).catch(err => console.error('[Auto-Atendimento] Erro ao registrar atendimento de pedido:', err.message));
+            }
+
             // Async: recalcular insights e orientação IA do cliente
             if (novoPedido.clienteId) {
                 const clienteInsightService = require('../services/clienteInsightService');
