@@ -62,10 +62,9 @@ const PedidoA4 = ({ pedido }) => {
                 <thead>
                     <tr style={{ backgroundColor: '#f3f4f6' }}>
                         <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'left', width: '8%' }}>Cód.</th>
-                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'left', width: '42%' }}>Produto</th>
+                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'left', width: '52%' }}>Produto</th>
                         <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'center', width: '10%' }}>Qtd</th>
                         <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'right', width: '15%' }}>Vl. Unit.</th>
-                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'right', width: '10%' }}>Flex</th>
                         <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'right', width: '15%' }}>Total</th>
                     </tr>
                 </thead>
@@ -78,7 +77,6 @@ const PedidoA4 = ({ pedido }) => {
                                 <td style={{ border: '1px solid #ccc', padding: '2px 5px', fontWeight: 'bold' }}>{item.produto?.nome || item.nomeProduto || '-'}</td>
                                 <td style={{ border: '1px solid #ccc', padding: '2px 5px', textAlign: 'center' }}>{Number(item.quantidade)}</td>
                                 <td style={{ border: '1px solid #ccc', padding: '2px 5px', textAlign: 'right' }}>R$ {fmt(item.valor)}</td>
-                                <td style={{ border: '1px solid #ccc', padding: '2px 5px', textAlign: 'right', color: Number(item.flexGerado || 0) < 0 ? '#dc2626' : '#666' }}>{fmt(item.flexGerado || 0)}</td>
                                 <td style={{ border: '1px solid #ccc', padding: '2px 5px', textAlign: 'right', fontWeight: 'bold' }}>R$ {fmt(subtotal)}</td>
                             </tr>
                         );
@@ -96,9 +94,6 @@ const PedidoA4 = ({ pedido }) => {
                 <div style={{ textAlign: 'right' }}>
                     <p style={{ margin: '1px 0' }}><strong>Itens:</strong> {pedido.itens?.length || 0}</p>
                     <p style={{ margin: '1px 0', fontSize: '16px', fontWeight: 'bold' }}>TOTAL: R$ {fmt(total)}</p>
-                    {Number(pedido.flexTotal || 0) !== 0 && (
-                        <p style={{ margin: '1px 0', fontSize: '9px', color: '#dc2626' }}>Flex: R$ {fmt(pedido.flexTotal)}</p>
-                    )}
                 </div>
             </div>
         </div>
