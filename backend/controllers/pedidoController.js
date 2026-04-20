@@ -125,10 +125,12 @@ const pedidoController = {
             res.status(201).json(novoPedido);
 
             // Auto-registrar atendimento do tipo PEDIDO para aparecer no Painel de Atendimentos
+            // O atendimentoService.registrar já dispara recalcularCliente + gerarOrientacaoIA em background
             if (novoPedido.clienteId && novoPedido.vendedorId) {
                 const atendimentoService = require('../services/atendimentoService');
                 const prefixo = novoPedido.bonificacao ? 'BN' : novoPedido.especial ? 'ZZ' : '';
-                const numStr = `${prefixo}#${novoPedido.numero}`;
+                // numero pode ser null antes do sync com CA — usa id curto como fallback
+                const numStr = novoPedido.numero ? `${prefixo}#${novoPedido.numero}` : `id:${novoPedido.id.slice(-6)}`;
                 atendimentoService.registrar({
                     tipo: 'PEDIDO',
                     observacao: `Pedido ${numStr}`,
@@ -137,23 +139,6 @@ const pedidoController = {
                     pedidoId: novoPedido.id,
                     usuarioRegistroId: req.user?.id || null,
                 }).catch(err => console.error('[Auto-Atendimento] Erro ao registrar atendimento de pedido:', err.message));
-            }
-
-            // Async: recalcular insights e orientação IA do cliente
-            if (novoPedido.clienteId) {
-                const clienteInsightService = require('../services/clienteInsightService');
-                setTimeout(() => {
-                    clienteInsightService.recalcularCliente(novoPedido.clienteId)
-                        .then(() => {
-                            setTimeout(() => {
-                                const orientacaoService = require('../services/orientacaoService');
-                                orientacaoService.gerarOrientacaoIA(novoPedido.clienteId).catch(err => {
-                                    console.error('[IA] Erro ao atualizar orientação após pedido:', err.message);
-                                });
-                            }, 2000);
-                        })
-                        .catch(console.error);
-                }, 0);
             }
         } catch (error) {
             console.error('Erro ao criar pedido:', error);
