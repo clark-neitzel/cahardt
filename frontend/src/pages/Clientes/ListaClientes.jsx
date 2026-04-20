@@ -2,9 +2,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import clienteService from '../../services/clienteService';
-import vendedorService from '../../services/vendedorService'; // Import Service
-import { Search, MapPin, Phone, Truck, Building, User, Filter, CheckSquare, Settings, X, Save, AlertTriangle, MessageCircle } from 'lucide-react';
-import { cn } from '../../lib/utils'; // Assumindo utils (se não existir, criar inline)
+import vendedorService from '../../services/vendedorService';
+import tabelaPrecoService from '../../services/tabelaPrecoService';
+import { Search, MapPin, Phone, User, Filter, Settings, X, Save, AlertTriangle, MessageCircle } from 'lucide-react';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 
@@ -12,7 +12,6 @@ const ListaClientes = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
 
-    // Helpers para LocalStorage
     const getSaved = (key, defaultVal) => {
         const saved = localStorage.getItem(`clientesFiltro_${key}`);
         return saved !== null ? saved : defaultVal;
@@ -22,53 +21,55 @@ const ListaClientes = () => {
         else localStorage.removeItem(`clientesFiltro_${key}`);
     };
 
-    // Filtros Estado Inicial (Busca da URL -> LocalStorage -> Padrão)
     const initialSearch = searchParams.get('search') !== null ? searchParams.get('search') : getSaved('search', '');
     const initialPage = parseInt(searchParams.get('page')) || 1;
-    const initialLimit = parseInt(searchParams.get('limit')) || parseInt(getSaved('limit', '12'));
+    const initialLimit = parseInt(searchParams.get('limit')) || parseInt(getSaved('limit', '25'));
     const initialVendedor = searchParams.get('idVendedor') !== null ? searchParams.get('idVendedor') : getSaved('idVendedor', '');
     const initialDiaEntrega = searchParams.get('diaEntrega') !== null ? searchParams.get('diaEntrega') : getSaved('diaEntrega', '');
     const initialDiaVenda = searchParams.get('diaVenda') !== null ? searchParams.get('diaVenda') : getSaved('diaVenda', '');
+    const initialCondPadrão = searchParams.get('condicaoPagamento') !== null ? searchParams.get('condicaoPagamento') : getSaved('condicaoPagamento', '');
+    const initialCondPermitida = searchParams.get('condicaoPermitida') !== null ? searchParams.get('condicaoPermitida') : getSaved('condicaoPermitida', '');
 
     // Estados de Dados
     const [clientes, setClientes] = useState([]);
-    const [vendedores, setVendedores] = useState([]); // Lista para select
+    const [vendedores, setVendedores] = useState([]);
+    const [condicoesPagamento, setCondicoesPagamento] = useState([]);
     const [loading, setLoading] = useState(true);
     const [totalPages, setTotalPages] = useState(1);
     const [totalRegistros, setTotalRegistros] = useState(0);
 
-    // Estados de Controle
+    // Filtros
     const [search, setSearch] = useState(initialSearch);
     const [page, setPage] = useState(initialPage);
     const [limit, setLimit] = useState(initialLimit);
-    const [activeTab, setActiveTab] = useState(getSaved('activeTab', 'ativos')); // 'ativos' ou 'inativos'
-
-    // Filtros Avançados
+    const [activeTab, setActiveTab] = useState(getSaved('activeTab', 'ativos'));
     const [idVendedor, setIdVendedor] = useState(initialVendedor);
     const [diaEntrega, setDiaEntrega] = useState(initialDiaEntrega);
     const [diaVenda, setDiaVenda] = useState(initialDiaVenda);
-    const [showFilters, setShowFilters] = useState(false); // Toggle filtros no mobile
+    const [condicaoPagamento, setCondicaoPagamento] = useState(initialCondPadrão);
+    const [condicaoPermitida, setCondicaoPermitida] = useState(initialCondPermitida);
+    const [showFilters, setShowFilters] = useState(false);
 
     // Seleção em Lote
     const [selectedIds, setSelectedIds] = useState([]);
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
-    const [batchData, setBatchData] = useState({
-        idVendedor: '',
-        Dia_de_entrega: '',
-        Dia_de_venda: ''
-    });
+    const [batchData, setBatchData] = useState({ idVendedor: '', Dia_de_entrega: '', Dia_de_venda: '' });
 
-    // Carregar Vendedores ao montar
+    // Carregar dados de apoio
     useEffect(() => {
-        const loadVendedores = async () => {
+        const load = async () => {
             try {
-                const data = await vendedorService.listarAtivos();
-                setVendedores(data);
-            } catch (error) {
-                console.error("Erro ao carregar vendedores", error);
+                const [vends, conds] = await Promise.all([
+                    vendedorService.listarAtivos(),
+                    tabelaPrecoService.listar(true)
+                ]);
+                setVendedores(vends);
+                setCondicoesPagamento(conds);
+            } catch (e) {
+                console.error('Erro ao carregar filtros', e);
             }
         };
-        loadVendedores();
+        load();
     }, []);
 
     // Sync State -> URL e LocalStorage
@@ -76,41 +77,35 @@ const ListaClientes = () => {
         const params = {};
         if (search) params.search = search;
         if (page > 1) params.page = page;
-        if (limit !== 12) params.limit = limit;
+        if (limit !== 25) params.limit = limit;
         if (idVendedor) params.idVendedor = idVendedor;
         if (diaEntrega) params.diaEntrega = diaEntrega;
         if (diaVenda) params.diaVenda = diaVenda;
+        if (condicaoPagamento) params.condicaoPagamento = condicaoPagamento;
+        if (condicaoPermitida) params.condicaoPermitida = condicaoPermitida;
         setSearchParams(params, { replace: true });
 
-        // Salvar no localStorage
         saveToLocal('search', search);
-        saveToLocal('limit', limit !== 12 ? limit.toString() : '');
+        saveToLocal('limit', limit !== 25 ? limit.toString() : '');
         saveToLocal('idVendedor', idVendedor);
         saveToLocal('diaEntrega', diaEntrega);
         saveToLocal('diaVenda', diaVenda);
+        saveToLocal('condicaoPagamento', condicaoPagamento);
+        saveToLocal('condicaoPermitida', condicaoPermitida);
         saveToLocal('activeTab', activeTab);
-    }, [search, page, limit, idVendedor, diaEntrega, diaVenda, activeTab, setSearchParams]);
+    }, [search, page, limit, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, activeTab, setSearchParams]);
 
-    // Fetch Clientes
     const fetchClientes = async () => {
         setLoading(true);
         try {
             const ativo = activeTab === 'ativos';
             const data = await clienteService.listar({
-                page,
-                limit,
-                search,
-                ativo,
-                idVendedor,
-                diaEntrega,
-                diaVenda
+                page, limit, search, ativo, idVendedor, diaEntrega, diaVenda,
+                condicaoPagamento, condicaoPermitida
             });
             setClientes(data.data);
             setTotalPages(data.meta.totalPages);
             setTotalRegistros(data.meta.total);
-
-            // Limpar seleção ao mudar página/filtros se necessário (opção de UX)
-            // setSelectedIds([]); 
         } catch (error) {
             console.error(error);
         } finally {
@@ -118,47 +113,34 @@ const ListaClientes = () => {
         }
     };
 
-    // Trigger Fetch (Debounce Search)
     useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            fetchClientes();
-        }, 300);
-        return () => clearTimeout(timeoutId);
-    }, [page, limit, search, activeTab, idVendedor, diaEntrega, diaVenda]);
+        const t = setTimeout(fetchClientes, 300);
+        return () => clearTimeout(t);
+    }, [page, limit, search, activeTab, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida]);
 
-    // Handlers
-    const handleSearch = (e) => {
-        setSearch(e.target.value);
-        setPage(1);
-    };
+    const handleSearch = (e) => { setSearch(e.target.value); setPage(1); };
 
     const handleClearFilters = () => {
         setSearch('');
         setIdVendedor('');
         setDiaEntrega('');
         setDiaVenda('');
+        setCondicaoPagamento('');
+        setCondicaoPermitida('');
         setPage(1);
     };
 
-    const handleSelectAll = (e) => {
-        if (e.target.checked) {
-            const allIds = clientes.map(c => c.UUID);
-            setSelectedIds(allIds);
-        } else {
-            setSelectedIds([]);
-        }
-    };
+    const activeFiltersCount = [idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida].filter(Boolean).length;
 
+    const handleSelectAll = (e) => {
+        setSelectedIds(e.target.checked ? clientes.map(c => c.UUID) : []);
+    };
     const handleSelectOne = (uuid) => {
-        setSelectedIds(prev =>
-            prev.includes(uuid) ? prev.filter(id => id !== uuid) : [...prev, uuid]
-        );
+        setSelectedIds(prev => prev.includes(uuid) ? prev.filter(id => id !== uuid) : [...prev, uuid]);
     };
 
     const handleBatchSubmit = async () => {
         if (selectedIds.length === 0) return;
-
-        // Filtrar apenas campos preenchidos
         const dadosParaEnviar = {};
         if (batchData.idVendedor) dadosParaEnviar.idVendedor = batchData.idVendedor;
         if (batchData.Dia_de_entrega) dadosParaEnviar.Dia_de_entrega = batchData.Dia_de_entrega;
@@ -166,52 +148,32 @@ const ListaClientes = () => {
         if (batchData.Formas_Atendimento && batchData.Formas_Atendimento.length > 0) {
             dadosParaEnviar.Formas_Atendimento = batchData.Formas_Atendimento;
         }
-
-        if (Object.keys(dadosParaEnviar).length === 0) {
-            alert("Selecione pelo menos um campo para alterar.");
-            return;
-        }
-
+        if (Object.keys(dadosParaEnviar).length === 0) { alert("Selecione pelo menos um campo para alterar."); return; }
         if (!window.confirm(`Tem certeza que deseja alterar ${selectedIds.length} clientes?`)) return;
-
         try {
-            // Chamada direta ao endpoint de lote (precisa ser criado no service ou chamar api.put)
-            // Assumindo que clienteService será atualizado ou usando api diretamente aqui para agilizar
-            // Idealmente: clienteService.atualizarLote(selectedIds, dadosParaEnviar)
-
-            // Simulação da chamada do service (preciso adicionar no service também)
-            // await clienteService.atualizarLote({ ids: selectedIds, dados: dadosParaEnviar });
-
-            // Como ainda não adicionei no service frontend, vou fazer fetch direto ou adicionar no próximo passo.
-            // Para não quebrar, vou assumir que o service TEM o método atualizarLote (vou adicionar a seguir).
             await clienteService.atualizarLote({ ids: selectedIds, dados: dadosParaEnviar });
-
             alert("Atualização em lote realizada com sucesso!");
             setIsBatchModalOpen(false);
             setSelectedIds([]);
             setBatchData({ idVendedor: '', Dia_de_entrega: '', Dia_de_venda: '' });
-            fetchClientes(); // Atualizar lista
+            fetchClientes();
         } catch (error) {
             console.error("Erro na atualização em lote", error);
             alert("Erro ao atualizar clientes.");
         }
     };
 
-    // Helpers UI
-    const getBadgeColor = (perfil) => {
-        const p = (perfil || '').toLowerCase();
-        if (p.includes('cliente')) return 'bg-blue-100 text-blue-800';
-        if (p.includes('fornecedor')) return 'bg-purple-100 text-purple-800';
-        return 'bg-gray-100 text-gray-800';
+    const nomeCondicao = (id) => {
+        const c = condicoesPagamento.find(c => c.idCondicao === id);
+        return c ? c.nomeCondicao : id;
     };
 
-    // Render
     return (
-        <div className="container mx-auto px-4 py-4 md:py-8 relative">
-            {/* Header - Ações em Lote */}
+        <div className="max-w-screen-2xl mx-auto px-3 py-3 md:px-5 md:py-4 relative">
+            {/* Ações em Lote */}
             {selectedIds.length > 0 && (
-                <div className="flex flex-col md:flex-row justify-end items-start md:items-center mb-4 gap-4">
-                    <div className="flex items-center gap-4 bg-blue-50 px-4 py-2 rounded-lg border border-blue-200 shadow-sm animate-in fade-in slide-in-from-top-2 w-full md:w-auto">
+                <div className="flex justify-end items-center mb-3">
+                    <div className="flex items-center gap-3 bg-blue-50 px-4 py-2 rounded-lg border border-blue-200 shadow-sm">
                         <span className="text-sm font-medium text-blue-700">{selectedIds.length} selecionados</span>
                         <button
                             onClick={() => setIsBatchModalOpen(true)}
@@ -220,24 +182,24 @@ const ListaClientes = () => {
                             <Settings className="h-4 w-4" />
                             Alterar em Lote
                         </button>
-                        <button onClick={() => setSelectedIds([])} className="text-blue-500 hover:text-blue-700 ml-auto md:ml-0">
+                        <button onClick={() => setSelectedIds([])} className="text-blue-500 hover:text-blue-700">
                             <X className="h-4 w-4" />
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* Filtros e Busca (Agora sem Abas Separadas) */}
-            <div className="bg-white p-3 md:p-4 rounded-lg shadow-sm border border-gray-200 mb-4 space-y-4">
-                {/* Linha de Busca + Toggle Filtros Mobile */}
-                <div className="flex items-center gap-4">
+            {/* Filtros */}
+            <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200 mb-3 space-y-3">
+                {/* Busca + Toggle Mobile */}
+                <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-gray-400" />
+                            <Search className="h-4 w-4 text-gray-400" />
                         </div>
                         <input
                             type="text"
-                            className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
+                            className="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary text-sm"
                             placeholder="Buscar por nome, documento, código, cidade, bairro, telefone..."
                             value={search}
                             onChange={handleSearch}
@@ -245,19 +207,23 @@ const ListaClientes = () => {
                     </div>
                     <button
                         onClick={() => setShowFilters(!showFilters)}
-                        className="md:hidden p-2.5 border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50"
+                        className="md:hidden relative p-2 border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50"
                     >
-                        <Filter className="h-5 w-5" />
+                        <Filter className="h-4 w-4" />
+                        {activeFiltersCount > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center font-bold">
+                                {activeFiltersCount}
+                            </span>
+                        )}
                     </button>
                 </div>
 
-                {/* Filtros Avançados (Grid) */}
-                <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 ${showFilters ? 'block' : 'hidden md:grid'}`}>
-                    {/* Filtro Status (Novo) */}
+                {/* Grid de Filtros */}
+                <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-2 ${showFilters ? 'grid' : 'hidden md:grid'}`}>
                     <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                        <label className="block text-[11px] font-medium text-gray-500 mb-1">Status</label>
                         <select
-                            className="block w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                            className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
                             value={activeTab}
                             onChange={(e) => { setActiveTab(e.target.value); setPage(1); }}
                         >
@@ -266,11 +232,10 @@ const ListaClientes = () => {
                         </select>
                     </div>
 
-                    {/* Filtro Vendedor */}
                     <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Vendedor</label>
+                        <label className="block text-[11px] font-medium text-gray-500 mb-1">Vendedor</label>
                         <select
-                            className="block w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                            className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
                             value={idVendedor}
                             onChange={(e) => { setIdVendedor(e.target.value); setPage(1); }}
                         >
@@ -281,137 +246,167 @@ const ListaClientes = () => {
                         </select>
                     </div>
 
-                    {/* Filtro Dia Entrega */}
                     <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Dia de Entrega</label>
+                        <label className="block text-[11px] font-medium text-gray-500 mb-1">Dia de Entrega</label>
                         <select
-                            className="block w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                            className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
                             value={diaEntrega}
                             onChange={(e) => { setDiaEntrega(e.target.value); setPage(1); }}
                         >
                             <option value="">Qualquer Dia</option>
-                            {DIAS_SEMANA.map(dia => (
-                                <option key={dia} value={dia}>{dia}</option>
-                            ))}
+                            {DIAS_SEMANA.map(dia => <option key={dia} value={dia}>{dia}</option>)}
                         </select>
                     </div>
 
-                    {/* Filtro Dia Venda */}
                     <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Dia de Venda</label>
+                        <label className="block text-[11px] font-medium text-gray-500 mb-1">Dia de Venda</label>
                         <select
-                            className="block w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                            className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
                             value={diaVenda}
                             onChange={(e) => { setDiaVenda(e.target.value); setPage(1); }}
                         >
                             <option value="">Qualquer Dia</option>
-                            {DIAS_SEMANA.map(dia => (
-                                <option key={dia} value={dia}>{dia}</option>
+                            {DIAS_SEMANA.map(dia => <option key={dia} value={dia}>{dia}</option>)}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-[11px] font-medium text-gray-500 mb-1">Condição Padrão</label>
+                        <select
+                            className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                            value={condicaoPagamento}
+                            onChange={(e) => { setCondicaoPagamento(e.target.value); setPage(1); }}
+                        >
+                            <option value="">Qualquer Condição</option>
+                            {condicoesPagamento.map(c => (
+                                <option key={c.idCondicao} value={c.idCondicao}>{c.nomeCondicao}</option>
                             ))}
                         </select>
                     </div>
 
-                    {/* Botão Limpar */}
-                    <div className="flex items-end">
+                    <div>
+                        <label className="block text-[11px] font-medium text-gray-500 mb-1">Condição Permitida</label>
+                        <select
+                            className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                            value={condicaoPermitida}
+                            onChange={(e) => { setCondicaoPermitida(e.target.value); setPage(1); }}
+                        >
+                            <option value="">Qualquer Condição</option>
+                            {condicoesPagamento.map(c => (
+                                <option key={c.idCondicao} value={c.idCondicao}>{c.nomeCondicao}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="flex items-end col-span-2 sm:col-span-1">
                         <button
                             onClick={handleClearFilters}
-                            className="w-full text-sm py-2 text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-md transition-colors"
+                            className="w-full text-sm py-1.5 text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-md transition-colors flex items-center justify-center gap-1.5"
                         >
+                            <X className="h-3.5 w-3.5" />
                             Limpar Filtros
+                            {activeFiltersCount > 0 && (
+                                <span className="bg-gray-300 text-gray-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{activeFiltersCount}</span>
+                            )}
                         </button>
                     </div>
                 </div>
+
+                {/* Total */}
+                <div className="text-xs text-gray-400 pt-1 border-t border-gray-100">
+                    {loading ? 'Carregando...' : `${totalRegistros} cliente${totalRegistros !== 1 ? 's' : ''} encontrado${totalRegistros !== 1 ? 's' : ''}`}
+                </div>
             </div>
 
-            {/* Tabela de Clientes */}
-            <div className="hidden md:block bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
+            {/* Tabela Desktop */}
+            <div className="hidden md:block bg-white shadow-sm overflow-hidden rounded-lg border border-gray-200">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-4 text-left w-10">
+                            <th className="px-3 py-2.5 w-8">
                                 <input
                                     type="checkbox"
-                                    className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4"
+                                    className="rounded border-gray-300 text-primary focus:ring-primary h-3.5 w-3.5"
                                     checked={clientes.length > 0 && selectedIds.length === clientes.length}
                                     onChange={handleSelectAll}
                                 />
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Identificação</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendedor</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dia Entrega</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dia Venda</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CNPJ/CPF</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Cliente</th>
+                            <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Vendedor</th>
+                            <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Entrega</th>
+                            <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Venda</th>
+                            <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Condição Padrão</th>
+                            <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">CNPJ/CPF</th>
+                            <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                         </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white divide-y divide-gray-100">
                         {loading ? (
-                            <tr><td colSpan="7" className="text-center py-10">Carregando...</td></tr>
+                            <tr><td colSpan="8" className="text-center py-8 text-gray-400 text-sm">Carregando...</td></tr>
                         ) : clientes.length === 0 ? (
-                            <tr><td colSpan="7" className="text-center py-10 text-gray-500">Nenhum cliente encontrado.</td></tr>
+                            <tr><td colSpan="8" className="text-center py-8 text-gray-400 text-sm">Nenhum cliente encontrado.</td></tr>
                         ) : (
                             clientes.map((cliente) => (
                                 <tr
                                     key={cliente.UUID}
-                                    onClick={(e) => {
-                                        // Não navega se clicar no checkbox
-                                        if (e.target.type !== 'checkbox') {
-                                            navigate(`/clientes/${cliente.UUID}`);
-                                        }
-                                    }}
-                                    className={`cursor-pointer transition-colors ${selectedIds.includes(cliente.UUID) ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'}`}
+                                    onClick={(e) => { if (e.target.type !== 'checkbox') navigate(`/clientes/${cliente.UUID}`); }}
+                                    className={`cursor-pointer transition-colors text-sm ${selectedIds.includes(cliente.UUID) ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'}`}
                                 >
-                                    <td className="px-6 py-4">
+                                    <td className="px-3 py-2">
                                         <input
                                             type="checkbox"
-                                            className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4"
+                                            className="rounded border-gray-300 text-primary focus:ring-primary h-3.5 w-3.5"
                                             checked={selectedIds.includes(cliente.UUID)}
                                             onChange={() => handleSelectOne(cliente.UUID)}
                                             onClick={(e) => e.stopPropagation()}
                                         />
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-sm font-bold text-gray-900">
-                                            <span className="text-gray-400 font-normal text-xs block mb-0.5">Razão Social:</span>
-                                            {cliente.Nome}
-                                        </div>
-                                        <div className="text-xs text-gray-600 font-medium mt-1.5 whitespace-normal border-t border-gray-100 pt-1.5">
-                                            <span className="text-gray-400 font-normal">Fantasia:</span> {cliente.NomeFantasia || cliente.Nome}
-                                        </div>
-                                        <div className="text-xs text-gray-400 mt-2 flex items-center gap-1">
-                                            <MapPin className="h-3 w-3" />
-                                            {cliente.End_Cidade}/{cliente.End_Estado}
-                                        </div>
-                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                    <td className="px-3 py-2">
+                                        <div className="font-semibold text-gray-900 text-sm leading-tight">{cliente.Nome}</div>
+                                        {cliente.NomeFantasia && cliente.NomeFantasia !== cliente.Nome && (
+                                            <div className="text-xs text-gray-500 leading-tight mt-0.5 truncate max-w-xs">{cliente.NomeFantasia}</div>
+                                        )}
+                                        <div className="flex items-center gap-2 mt-1">
+                                            {cliente.End_Cidade && (
+                                                <span className="text-[11px] text-gray-400 flex items-center gap-0.5">
+                                                    <MapPin className="h-3 w-3" />{cliente.End_Cidade}/{cliente.End_Estado}
+                                                </span>
+                                            )}
                                             {(cliente.Formas_Atendimento || []).map(forma => {
-                                                let colors = "bg-gray-50 text-gray-600 border-gray-200";
-                                                let icon = null;
-                                                if (forma === 'Presencial') { colors = "bg-blue-50 text-blue-700 border-blue-200"; icon = <User className="h-3 w-3" />; }
-                                                else if (forma === 'Whatsapp') { colors = "bg-green-50 text-green-700 border-green-200"; icon = <MessageCircle className="h-3 w-3" />; }
-                                                else if (forma === 'Telefone') { colors = "bg-purple-50 text-purple-700 border-purple-200"; icon = <Phone className="h-3 w-3" />; }
+                                                let colors = "text-gray-500";
+                                                if (forma === 'Presencial') colors = "text-blue-500";
+                                                else if (forma === 'Whatsapp') colors = "text-green-500";
+                                                else if (forma === 'Telefone') colors = "text-purple-500";
                                                 return (
-                                                    <span key={forma} className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-medium ${colors}`}>
-                                                        {icon}
-                                                        {forma}
+                                                    <span key={forma} title={forma} className={`${colors}`}>
+                                                        {forma === 'Presencial' && <User className="h-3 w-3" />}
+                                                        {forma === 'Whatsapp' && <MessageCircle className="h-3 w-3" />}
+                                                        {forma === 'Telefone' && <Phone className="h-3 w-3" />}
                                                     </span>
-                                                )
+                                                );
                                             })}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">
-                                        {cliente.vendedor?.nome || '-'}
+                                    <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">
+                                        {cliente.vendedor?.nome || <span className="text-gray-300">—</span>}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">
-                                        {cliente.Dia_de_entrega || '-'}
+                                    <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">
+                                        {cliente.Dia_de_entrega || <span className="text-gray-300">—</span>}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">
-                                        {cliente.Dia_de_venda || '-'}
+                                    <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">
+                                        {cliente.Dia_de_venda || <span className="text-gray-300">—</span>}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 font-mono">
+                                    <td className="px-3 py-2 text-xs text-gray-600 max-w-[160px]">
+                                        {cliente.Condicao_de_pagamento
+                                            ? <span className="truncate block" title={nomeCondicao(cliente.Condicao_de_pagamento)}>{nomeCondicao(cliente.Condicao_de_pagamento)}</span>
+                                            : <span className="text-gray-300">—</span>
+                                        }
+                                    </td>
+                                    <td className="px-3 py-2 text-xs text-gray-500 font-mono whitespace-nowrap">
                                         {cliente.Documento}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                    <td className="px-3 py-2 whitespace-nowrap">
+                                        <span className={`px-1.5 py-0.5 inline-flex text-[11px] leading-4 font-semibold rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                             {cliente.Ativo ? 'Ativo' : 'Inativo'}
                                         </span>
                                     </td>
@@ -422,75 +417,75 @@ const ListaClientes = () => {
                 </table>
             </div>
 
-            {/* Mobile List (Simplificada & Focada em Negócio) */}
-            <div className="md:hidden mt-4 space-y-3">
-                {clientes.map((cliente) => (
+            {/* Lista Mobile */}
+            <div className="md:hidden space-y-2">
+                {loading ? (
+                    <div className="text-center py-8 text-gray-400 text-sm">Carregando...</div>
+                ) : clientes.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400 text-sm">Nenhum cliente encontrado.</div>
+                ) : clientes.map((cliente) => (
                     <div
                         key={cliente.UUID}
-                        className={`bg-white p-3.5 rounded-xl shadow-sm border ${selectedIds.includes(cliente.UUID) ? 'border-primary bg-blue-50/50' : 'border-gray-100'} relative`}
+                        className={`bg-white rounded-lg shadow-sm border ${selectedIds.includes(cliente.UUID) ? 'border-primary bg-blue-50/40' : 'border-gray-100'} relative`}
                     >
-                        {/* Checkbox em Lote Mobile */}
                         {selectedIds.length > 0 && (
-                            <div className="absolute top-3.5 right-3.5 z-10">
+                            <div className="absolute top-3 right-3 z-10">
                                 <input
                                     type="checkbox"
-                                    className="rounded border-gray-300 text-primary focus:ring-primary h-5 w-5 bg-white shadow-sm"
+                                    className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4 bg-white shadow-sm"
                                     checked={selectedIds.includes(cliente.UUID)}
                                     onChange={() => handleSelectOne(cliente.UUID)}
                                     onClick={e => e.stopPropagation()}
                                 />
                             </div>
                         )}
-
-                        <div className="flex flex-col gap-2" onClick={() => navigate(`/clientes/${cliente.UUID}`)}>
+                        <div className="p-3 flex flex-col gap-1.5" onClick={() => navigate(`/clientes/${cliente.UUID}`)}>
                             <div className="pr-8">
-                                <h3 className="font-bold text-gray-900 text-[16px] leading-tight tracking-tight">
+                                <h3 className="font-bold text-gray-900 text-sm leading-tight">
                                     {cliente.NomeFantasia || cliente.Nome}
                                 </h3>
-                                {/* Usando Razão Social sub-text se Fantasia existir e for diferente */}
                                 {cliente.NomeFantasia && cliente.NomeFantasia !== cliente.Nome && (
                                     <p className="text-[11px] text-gray-400 mt-0.5 truncate">{cliente.Nome}</p>
                                 )}
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                <span className="text-[11px] font-mono text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                            <div className="flex flex-wrap items-center gap-1">
+                                <span className="text-[10px] font-mono text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
                                     {cliente.Documento || 'Sem Documento'}
                                 </span>
                                 {cliente.End_Cidade && (
-                                    <span className="text-[11px] text-gray-500 flex items-center gap-0.5 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
-                                        <MapPin className="h-3 w-3 text-gray-400" />
-                                        {cliente.End_Cidade}
+                                    <span className="text-[10px] text-gray-500 flex items-center gap-0.5 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                                        <MapPin className="h-2.5 w-2.5 text-gray-400" />{cliente.End_Cidade}
                                     </span>
                                 )}
-                                {/* Formas de Atendimento integradas na mesma linha do Endereço */}
                                 {cliente.Formas_Atendimento && cliente.Formas_Atendimento.length > 0 && (
-                                    <div className="flex gap-1 ml-auto md:ml-0">
+                                    <div className="flex gap-0.5 ml-auto">
                                         {cliente.Formas_Atendimento.map(forma => {
                                             let colors = "bg-gray-50 text-gray-400 border-gray-100";
-                                            let icon = null;
-                                            if (forma === 'Presencial') { colors = "bg-blue-50 text-blue-600 border-blue-100"; icon = <User className="h-3.5 w-3.5" />; }
-                                            else if (forma === 'Whatsapp') { colors = "bg-green-50 text-green-600 border-green-100"; icon = <MessageCircle className="h-3.5 w-3.5" />; }
-                                            else if (forma === 'Telefone') { colors = "bg-purple-50 text-purple-600 border-purple-100"; icon = <Phone className="h-3.5 w-3.5" />; }
+                                            if (forma === 'Presencial') colors = "bg-blue-50 text-blue-600 border-blue-100";
+                                            else if (forma === 'Whatsapp') colors = "bg-green-50 text-green-600 border-green-100";
+                                            else if (forma === 'Telefone') colors = "bg-purple-50 text-purple-600 border-purple-100";
                                             return (
-                                                <span key={forma} title={forma} className={`p-1 rounded border flex items-center shadow-sm ${colors}`}>
-                                                    {icon}
+                                                <span key={forma} title={forma} className={`p-1 rounded border flex items-center ${colors}`}>
+                                                    {forma === 'Presencial' && <User className="h-3 w-3" />}
+                                                    {forma === 'Whatsapp' && <MessageCircle className="h-3 w-3" />}
+                                                    {forma === 'Telefone' && <Phone className="h-3 w-3" />}
                                                 </span>
-                                            )
+                                            );
                                         })}
                                     </div>
                                 )}
                             </div>
 
-                            <div className="flex gap-2 items-center flex-wrap pt-2 border-t border-gray-100 mt-1">
+                            <div className="flex gap-1.5 items-center flex-wrap pt-1.5 border-t border-gray-100">
                                 {cliente.vendedor?.nome && (
                                     <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
-                                        Vend: {cliente.vendedor.nome.split(' ')[0]}
+                                        {cliente.vendedor.nome.split(' ')[0]}
                                     </span>
                                 )}
                                 {cliente.Dia_de_entrega && (
                                     <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
-                                        Entrega: {cliente.Dia_de_entrega}
+                                        Ent: {cliente.Dia_de_entrega}
                                     </span>
                                 )}
                                 {cliente.Dia_de_venda && (
@@ -498,171 +493,163 @@ const ListaClientes = () => {
                                         Venda: {cliente.Dia_de_venda}
                                     </span>
                                 )}
+                                {cliente.Condicao_de_pagamento && (
+                                    <span className="text-[10px] font-medium text-gray-600 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-200 truncate max-w-[140px]" title={nomeCondicao(cliente.Condicao_de_pagamento)}>
+                                        {nomeCondicao(cliente.Condicao_de_pagamento)}
+                                    </span>
+                                )}
+                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ml-auto ${cliente.Ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                    {cliente.Ativo ? 'Ativo' : 'Inativo'}
+                                </span>
                             </div>
-
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Paginação e Limite */}
-            <div className="flex flex-col md:flex-row justify-between items-center mt-4 md:mt-6 gap-3 md:gap-4 px-1 md:px-0">
+            {/* Paginação */}
+            <div className="flex justify-between items-center mt-3 gap-3 px-1">
                 <div className="hidden md:flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Exibir</span>
+                    <span className="text-xs text-gray-500">Exibir</span>
                     <select
-                        className="border border-gray-300 rounded text-sm p-1.5 focus:ring-primary bg-white text-gray-900"
+                        className="border border-gray-300 rounded text-xs p-1.5 focus:ring-primary bg-white text-gray-900"
                         value={limit}
                         onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
                     >
-                        <option value="12">12</option>
                         <option value="25">25</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
+                        <option value="200">200</option>
                     </select>
-                    <span className="text-sm text-gray-600">por página</span>
+                    <span className="text-xs text-gray-500">por página</span>
                 </div>
 
                 <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
                     <button
                         onClick={() => setPage(page - 1)}
                         disabled={page === 1}
-                        className="px-3 md:px-4 py-2 border border-gray-300 rounded-md text-xs md:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                        className="px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40"
                     >
                         Anterior
                     </button>
-                    <span className="px-3 md:px-4 py-2 text-xs md:text-sm text-gray-700 font-medium bg-white border border-gray-200 rounded-md">
+                    <span className="px-3 py-1.5 text-xs text-gray-600 font-medium bg-white border border-gray-200 rounded-md">
                         {page} / {totalPages}
                     </span>
                     <button
                         onClick={() => setPage(page + 1)}
                         disabled={page === totalPages}
-                        className="px-3 md:px-4 py-2 border border-gray-300 rounded-md text-xs md:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                        className="px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40"
                     >
                         Próximo
                     </button>
                 </div>
             </div>
 
-            {/* Modal de Edição em Lote */}
-            {
-                isBatchModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                        <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                    <Settings className="h-5 w-5 text-primary" />
-                                    Edição em Lote
-                                </h3>
-                                <button onClick={() => setIsBatchModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                                    <X className="h-5 w-5" />
-                                </button>
+            {/* Modal Edição em Lote */}
+            {isBatchModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="bg-gray-50 px-5 py-4 border-b border-gray-200 flex justify-between items-center">
+                            <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                                <Settings className="h-4 w-4 text-primary" />
+                                Edição em Lote
+                            </h3>
+                            <button onClick={() => setIsBatchModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-4">
+                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 flex gap-3">
+                                <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                                <p className="text-sm text-yellow-700">
+                                    Você está alterando <strong>{selectedIds.length}</strong> clientes.
+                                    Campos vazios não serão alterados.
+                                </p>
                             </div>
 
-                            <div className="p-6 space-y-4">
-                                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                                    <div className="flex">
-                                        <div className="flex-shrink-0">
-                                            <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                                        </div>
-                                        <div className="ml-3">
-                                            <p className="text-sm text-yellow-700">
-                                                Você está alterando <strong>{selectedIds.length}</strong> clientes.
-                                                Preencha apenas os campos que deseja modificar. Campos vazios não serão alterados.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Novo Vendedor</label>
-                                    <select
-                                        className="block w-full border border-gray-300 rounded-md p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                        value={batchData.idVendedor}
-                                        onChange={(e) => setBatchData({ ...batchData, idVendedor: e.target.value })}
-                                    >
-                                        <option value="">Não alterar</option>
-                                        {vendedores.map(v => (
-                                            <option key={v.id} value={v.id}>{v.nome}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Novo Dia de Entrega</label>
-                                    <select
-                                        className="block w-full border border-gray-300 rounded-md p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                        value={batchData.Dia_de_entrega}
-                                        onChange={(e) => setBatchData({ ...batchData, Dia_de_entrega: e.target.value })}
-                                    >
-                                        <option value="">Não alterar</option>
-                                        {DIAS_SEMANA.map(dia => (
-                                            <option key={dia} value={dia}>{dia}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Novo Dia de Venda</label>
-                                    <select
-                                        className="block w-full border border-gray-300 rounded-md p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                        value={batchData.Dia_de_venda}
-                                        onChange={(e) => setBatchData({ ...batchData, Dia_de_venda: e.target.value })}
-                                    >
-                                        <option value="">Não alterar</option>
-                                        {DIAS_SEMANA.map(dia => (
-                                            <option key={dia} value={dia}>{dia}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Canais de Atendimento</label>
-                                    <p className="text-xs text-gray-500 mb-2">Selecione para <strong>adicionar/sobrescrever</strong> a lista atual.</p>
-                                    <div className="flex gap-2">
-                                        {['Presencial', 'Whatsapp', 'Telefone'].map(canal => (
-                                            <button
-                                                key={canal}
-                                                type="button"
-                                                onClick={() => {
-                                                    const atuais = batchData.Formas_Atendimento || [];
-                                                    const novo = atuais.includes(canal)
-                                                        ? atuais.filter(c => c !== canal)
-                                                        : [...atuais, canal];
-                                                    setBatchData({ ...batchData, Formas_Atendimento: novo });
-                                                }}
-                                                className={`px-3 py-1.5 rounded text-sm border flex items-center gap-1.5 transition-colors ${(batchData.Formas_Atendimento || []).includes(canal)
-                                                    ? 'bg-primary text-white border-primary'
-                                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                                                    }`}
-                                            >
-                                                {canal === 'Presencial' && <User className="h-3.5 w-3.5" />}
-                                                {canal === 'Whatsapp' && <MessageCircle className="h-3.5 w-3.5" />}
-                                                {canal === 'Telefone' && <Phone className="h-3.5 w-3.5" />}
-                                                {canal}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Novo Vendedor</label>
+                                <select
+                                    className="block w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                                    value={batchData.idVendedor}
+                                    onChange={(e) => setBatchData({ ...batchData, idVendedor: e.target.value })}
+                                >
+                                    <option value="">Não alterar</option>
+                                    {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
+                                </select>
                             </div>
 
-                            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-                                <button
-                                    onClick={() => setIsBatchModalOpen(false)}
-                                    className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Novo Dia de Entrega</label>
+                                <select
+                                    className="block w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                                    value={batchData.Dia_de_entrega}
+                                    onChange={(e) => setBatchData({ ...batchData, Dia_de_entrega: e.target.value })}
                                 >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={handleBatchSubmit}
-                                    className="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
+                                    <option value="">Não alterar</option>
+                                    {DIAS_SEMANA.map(dia => <option key={dia} value={dia}>{dia}</option>)}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Novo Dia de Venda</label>
+                                <select
+                                    className="block w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                                    value={batchData.Dia_de_venda}
+                                    onChange={(e) => setBatchData({ ...batchData, Dia_de_venda: e.target.value })}
                                 >
-                                    <Save className="h-4 w-4" />
-                                    Aplicar Alterações
-                                </button>
+                                    <option value="">Não alterar</option>
+                                    {DIAS_SEMANA.map(dia => <option key={dia} value={dia}>{dia}</option>)}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Canais de Atendimento</label>
+                                <p className="text-xs text-gray-500 mb-2">Selecione para <strong>sobrescrever</strong> a lista atual.</p>
+                                <div className="flex gap-2">
+                                    {['Presencial', 'Whatsapp', 'Telefone'].map(canal => (
+                                        <button
+                                            key={canal}
+                                            type="button"
+                                            onClick={() => {
+                                                const atuais = batchData.Formas_Atendimento || [];
+                                                const novo = atuais.includes(canal) ? atuais.filter(c => c !== canal) : [...atuais, canal];
+                                                setBatchData({ ...batchData, Formas_Atendimento: novo });
+                                            }}
+                                            className={`px-3 py-1.5 rounded text-sm border flex items-center gap-1.5 transition-colors ${(batchData.Formas_Atendimento || []).includes(canal)
+                                                ? 'bg-primary text-white border-primary'
+                                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            {canal === 'Presencial' && <User className="h-3.5 w-3.5" />}
+                                            {canal === 'Whatsapp' && <MessageCircle className="h-3.5 w-3.5" />}
+                                            {canal === 'Telefone' && <Phone className="h-3.5 w-3.5" />}
+                                            {canal}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
+
+                        <div className="bg-gray-50 px-5 py-3 border-t border-gray-200 flex justify-end gap-3">
+                            <button
+                                onClick={() => setIsBatchModalOpen(false)}
+                                className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleBatchSubmit}
+                                className="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
+                            >
+                                <Save className="h-4 w-4" />
+                                Aplicar Alterações
+                            </button>
+                        </div>
                     </div>
-                )}
+                </div>
+            )}
         </div>
     );
 };

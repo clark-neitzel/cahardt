@@ -6,7 +6,7 @@ const clienteController = {
     // Listar clientes com paginação e busca
     listar: async (req, res) => {
         try {
-            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda } = req.query;
+            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida } = req.query;
             const skip = (page - 1) * limit;
 
             const where = {};
@@ -38,6 +38,12 @@ const clienteController = {
             }
             if (diaVenda) {
                 where.Dia_de_venda = { contains: diaVenda };
+            }
+            if (condicaoPagamento) {
+                where.Condicao_de_pagamento = condicaoPagamento;
+            }
+            if (condicaoPermitida) {
+                where.condicoes_pagamento_permitidas = { has: condicaoPermitida };
             }
 
             // Controle de visibilidade com base no nível de permissão (Vendedor/Admin)
