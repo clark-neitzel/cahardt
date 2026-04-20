@@ -248,7 +248,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
 
     const handleAddPagamento = () => {
         if (formasDisp.length === 0) return toast.error('Nenhuma forma de pagamento configurada no painel web.');
-        const defaultId = pagamentos.length === 0 ? getDefaultSelectId() : (formasDisp.find(f => f._grupo === 'Condições de Pagamento')?._selectId || formasDisp[0]._selectId);
+        const defaultId = pagamentos.length === 0 ? getDefaultSelectId() : '';
         setPagamentos([...pagamentos, { idLocal: Date.now(), _selectId: defaultId, valor: saldoRestante > 0 ? saldoRestante : 0 }]);
     };
 
@@ -272,10 +272,24 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
             return;
         }
 
+        // Bloquear pagamentos sem forma selecionada
+        const semForma = pagamentos.find(p => !p._selectId);
+        if (semForma) {
+            return toast.error('Selecione a forma de pagamento em todas as linhas antes de continuar.');
+        }
+
         // Bloquear pagamentos com valor zerado ou negativo
         const pgtoZerado = pagamentos.find(p => Number(p.valor) <= 0);
         if (pgtoZerado) {
             return toast.error('Remova pagamentos com valor R$ 0,00. Cada linha precisa ter um valor real.');
+        }
+
+        // Bloquear condição de pagamento duplicada
+        const selectIds = pagamentos.map(p => p._selectId);
+        const duplicado = selectIds.find((id, i) => selectIds.indexOf(id) !== i);
+        if (duplicado) {
+            const nomeDuplicado = formasDisp.find(f => f._selectId === duplicado)?.nome || duplicado;
+            return toast.error(`"${nomeDuplicado}" foi usada mais de uma vez. Cada forma de pagamento só pode aparecer uma vez.`);
         }
 
         // Validação Matemática RIGOROSA (Travada de Segurança contra Calote Cego)
@@ -577,6 +591,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                                     value={pg._selectId}
                                                     onChange={(e) => updatePagamento(pg.idLocal, '_selectId', e.target.value)}
                                                 >
+                                                    {pg._selectId === '' && <option value="">— Escolha a forma —</option>}
                                                     {['Condições de Pagamento', 'Formas de Entrega'].map(grupo => {
                                                         const itens = formasDisp.filter(f => f._grupo === grupo);
                                                         if (itens.length === 0) return null;
