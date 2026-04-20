@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     X, MapPin, Navigation, Phone, Mail, Package,
     Calendar, DollarSign, User, FileText, Save,
-    Loader, CheckCircle, ExternalLink, AlertCircle, Lock
+    Loader, CheckCircle, ExternalLink, AlertCircle, Lock, ClipboardList
 } from 'lucide-react';
 import clienteService from '../../services/clienteService';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import HistoricoModal from './HistoricoModal';
 
 const formatDoc = (doc) => {
     if (!doc) return null;
@@ -44,6 +45,7 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
     const [capturando, setCapturando] = useState(false);
     const [salvandoGps, setSalvandoGps] = useState(false);
     const [gpsSalvo, setGpsSalvo] = useState(false);
+    const [showHistorico, setShowHistorico] = useState(false);
 
     const capturarGpsAtual = () => {
         if (!navigator.geolocation) {
@@ -134,9 +136,18 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                                 </p>
                             )}
                         </div>
-                        <button onClick={onClose} className="text-gray-400 hover:text-white p-1.5 -mr-1 mt-0.5">
-                            <X className="h-5 w-5" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setShowHistorico(true)}
+                                className="text-gray-400 hover:text-white p-1.5"
+                                title="Ver histórico completo"
+                            >
+                                <ClipboardList className="h-5 w-5" />
+                            </button>
+                            <button onClick={onClose} className="text-gray-400 hover:text-white p-1.5 -mr-1 mt-0.5">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -295,6 +306,10 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                     <div className="h-6" />
                 </div>
             </div>
+
+            {showHistorico && (
+                <HistoricoModal cliente={cliente} onClose={() => setShowHistorico(false)} />
+            )}
         </div>
     );
 };
