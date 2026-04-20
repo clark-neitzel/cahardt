@@ -471,85 +471,85 @@ const ListaLeads = () => {
             </div>
 
             {/* Desktop: Tabela */}
-            <div className="hidden md:block bg-white shadow overflow-hidden rounded-xl border border-gray-200">
-                <table className="min-w-full divide-y divide-gray-200">
+            <div className="hidden md:block bg-white shadow-sm rounded-xl border border-gray-200">
+                <table className="w-full divide-y divide-gray-200 table-fixed">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Foto</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estabelecimento</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contato</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Etapa</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cidade</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Origem</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoria</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendedor</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Criado em</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
+                            <th className="w-10 px-2 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase">#</th>
+                            <th className="w-12 px-2 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase">Foto</th>
+                            <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase">Estabelecimento</th>
+                            <th className="w-36 px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase">Contato</th>
+                            <th className="w-28 px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase">Etapa</th>
+                            <th className="w-28 px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase hidden lg:table-cell">Cidade</th>
+                            <th className="w-32 px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase hidden xl:table-cell">Origem</th>
+                            <th className="w-28 px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase hidden xl:table-cell">Categoria</th>
+                            <th className="w-28 px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase">Vendedor</th>
+                            <th className="w-24 px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase hidden lg:table-cell">Criado em</th>
+                            <th className="w-24 px-2 py-2.5 text-right text-[11px] font-semibold text-gray-500 uppercase">Ações</th>
                         </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white divide-y divide-gray-100">
                         {loading ? (
-                            <tr><td colSpan="11" className="px-4 py-8 text-center text-gray-500">Carregando...</td></tr>
+                            <tr><td colSpan="11" className="px-4 py-8 text-center text-gray-400 text-sm">Carregando...</td></tr>
                         ) : leads.length === 0 ? (
-                            <tr><td colSpan="11" className="px-4 py-8 text-center text-gray-500">Nenhum lead encontrado.</td></tr>
+                            <tr><td colSpan="11" className="px-4 py-8 text-center text-gray-400 text-sm">Nenhum lead encontrado.</td></tr>
                         ) : leads.map(lead => (
                             <React.Fragment key={lead.id}>
                                 <tr
                                     className={`hover:bg-gray-50 cursor-pointer transition-colors ${expandedLeadId === lead.id ? 'bg-orange-50' : ''}`}
                                     onClick={() => toggleLeadDetail(lead.id)}
                                 >
-                                    <td className="px-4 py-3 text-sm text-gray-400 font-mono">{lead.numero}</td>
-                                    <td className="px-4 py-3">
+                                    <td className="px-2 py-2 text-xs text-gray-400 font-mono">{lead.numero}</td>
+                                    <td className="px-2 py-2">
                                         {lead.fotoFachada ? (
                                             <img
                                                 src={`${API_URL}${lead.fotoFachada}`}
                                                 alt="Fachada"
-                                                className="h-10 w-10 rounded-md object-cover border border-gray-200"
+                                                className="h-8 w-8 rounded object-cover border border-gray-200"
                                             />
                                         ) : (
-                                            <div className="h-10 w-10 rounded-md bg-gray-100 flex items-center justify-center">
-                                                <Image className="h-4 w-4 text-gray-300" />
+                                            <div className="h-8 w-8 rounded bg-gray-100 flex items-center justify-center">
+                                                <Image className="h-3.5 w-3.5 text-gray-300" />
                                             </div>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3">
-                                        <p className="text-sm font-medium text-gray-900">{lead.nomeEstabelecimento}</p>
+                                    <td className="px-3 py-2 min-w-0">
+                                        <p className="text-sm font-semibold text-gray-900 truncate">{lead.nomeEstabelecimento}</p>
                                         {lead.cliente && (
-                                            <p className="text-xs text-emerald-600 mt-0.5">Vinculado: {lead.cliente.NomeFantasia || lead.cliente.Nome}</p>
+                                            <p className="text-xs text-emerald-600 truncate">↳ {lead.cliente.NomeFantasia || lead.cliente.Nome}</p>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3">
-                                        <p className="text-sm text-gray-700">{lead.contato || '-'}</p>
+                                    <td className="px-3 py-2">
+                                        <p className="text-xs text-gray-700 truncate">{lead.contato || '-'}</p>
                                         {lead.whatsapp && (
-                                            <p className="text-xs text-gray-400 flex items-center gap-0.5"><Phone className="h-3 w-3" /> {lead.whatsapp}</p>
+                                            <p className="text-[11px] text-gray-400 flex items-center gap-0.5 truncate"><Phone className="h-2.5 w-2.5 flex-shrink-0" /> {lead.whatsapp}</p>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3">
-                                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${ETAPA_COLORS[lead.etapa] || 'bg-gray-100 text-gray-500'}`}>
+                                    <td className="px-3 py-2">
+                                        <span className={`inline-flex px-1.5 py-0.5 rounded-full text-[11px] font-bold ${ETAPA_COLORS[lead.etapa] || 'bg-gray-100 text-gray-500'}`}>
                                             {lead.etapa}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-gray-500">{lead.cidade || '-'}</td>
-                                    <td className="px-4 py-3 text-sm text-gray-500">{lead.origemLead || '-'}</td>
-                                    <td className="px-4 py-3 text-sm text-gray-500">{lead.categoriaCliente?.nome || '-'}</td>
-                                    <td className="px-4 py-3 text-sm text-gray-500">{lead.vendedor?.nome || '-'}</td>
-                                    <td className="px-4 py-3 text-sm text-gray-400">{formatDate(lead.createdAt)}</td>
-                                    <td className="px-4 py-3 text-right">
-                                        <div className="flex items-center justify-end gap-2">
+                                    <td className="px-3 py-2 text-xs text-gray-500 truncate hidden lg:table-cell">{lead.cidade || '-'}</td>
+                                    <td className="px-3 py-2 text-xs text-gray-500 truncate hidden xl:table-cell">{lead.origemLead || '-'}</td>
+                                    <td className="px-3 py-2 text-xs text-gray-500 truncate hidden xl:table-cell">{lead.categoriaCliente?.nome || '-'}</td>
+                                    <td className="px-3 py-2 text-xs text-gray-500 truncate">{lead.vendedor?.nome || '-'}</td>
+                                    <td className="px-3 py-2 text-xs text-gray-400 hidden lg:table-cell">{formatDate(lead.createdAt)}</td>
+                                    <td className="px-2 py-2 text-right">
+                                        <div className="flex items-center justify-end gap-1.5">
                                             {lead.etapa !== 'CONVERTIDO' && lead.etapa !== 'FINALIZADO' && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setModalReferenciar(lead); }}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
+                                                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors whitespace-nowrap"
                                                     title="Vincular a Cliente"
                                                 >
-                                                    <UserCheck className="h-3.5 w-3.5" /> Vincular
+                                                    <UserCheck className="h-3 w-3" /> Vincular
                                                 </button>
                                             )}
                                             {expandedLeadId === lead.id ? (
-                                                <ChevronUp className="h-4 w-4 text-gray-400" />
+                                                <ChevronUp className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
                                             ) : (
-                                                <ChevronDown className="h-4 w-4 text-gray-400" />
+                                                <ChevronDown className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
                                             )}
                                         </div>
                                     </td>

@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import {
     AlertCircle, AlertTriangle, CheckSquare, TrendingUp, TrendingDown,
     Lock, Users, ShoppingCart, Package, UserX, Wallet, ArrowDownRight,
-    Target, Activity, ArrowUpRight, Crown, Zap, Flame, Trophy
+    Target, Activity, ArrowUpRight, Crown, Zap, Flame, Trophy,
+    Calendar, BarChart2,
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -47,26 +48,6 @@ const RankingRow = ({ rank, title, subtitle, value, pct, accent, right }) => (
         </div>
     </div>
 );
-
-const AlertaPill = ({ icon: Icon, label, value, sub, tone, to }) => {
-    const tones = {
-        red: 'border-red-300 bg-red-50 text-red-700',
-        amber: 'border-amber-300 bg-amber-50 text-amber-700',
-        gray: 'border-gray-200 bg-white text-gray-500',
-        emerald: 'border-emerald-300 bg-emerald-50 text-emerald-700',
-    };
-    const body = (
-        <div className={`border rounded-xl px-4 py-3 flex items-center gap-3 ${tones[tone]} h-full`}>
-            <Icon size={20} className="shrink-0" />
-            <div className="min-w-0 flex-1">
-                <div className="text-[11px] uppercase tracking-wider font-bold opacity-80">{label}</div>
-                <div className="font-bold text-lg truncate">{value}</div>
-                {sub && <div className="text-[11px] opacity-70 truncate">{sub}</div>}
-            </div>
-        </div>
-    );
-    return to ? <Link to={to} className="block">{body}</Link> : body;
-};
 
 const StatPill = ({ label, value, sub, color = 'gray' }) => {
     const colors = {
@@ -126,6 +107,9 @@ const DashboardAdminSection = () => {
     const inad = d.inadimplencia || { total: 0, parcelas: 0 };
     const inativos = d.clientesInativos || { total: 0, top: [] };
     const rupturaCount = (d.topProdutos || []).filter(p => p.rupturaRisco).length;
+    const fec = d.fechamentoOntem || {};
+    const pri = d.prioridadesHoje || {};
+    const qual = d.qualidadeAtendimento || {};
 
     const variacaoUp = (v.variacaoMesPct || 0) >= 0;
     const VarIcon = variacaoUp ? ArrowUpRight : ArrowDownRight;
@@ -135,6 +119,10 @@ const DashboardAdminSection = () => {
 
     const maxProd = (d.topProdutos?.[0]?.valorLiquido) || 1;
     const maxCli = (d.topClientes?.[0]?.valor) || 1;
+
+    const fecData = fec.data
+        ? new Date(fec.data + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' })
+        : 'ontem';
 
     return (
         <div className="mb-8">
@@ -334,73 +322,188 @@ const DashboardAdminSection = () => {
                 );
             })()}
 
-            {/* ═══════════ STRIP DE ALERTAS ═══════════ */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-2">
-                <AlertaPill
-                    icon={Wallet}
-                    label="Inadimplência"
-                    value={fmtBRL(inad.total)}
-                    sub={`${inad.parcelas} parcela(s) vencidas`}
-                    tone={inad.total > 0 ? 'red' : 'emerald'}
-                    to="/financeiro"
-                />
-                <AlertaPill
-                    icon={Flame}
-                    label="Ruptura no Top 10"
-                    value={`${rupturaCount} produto(s)`}
-                    sub="abaixo do estoque mínimo"
-                    tone={rupturaCount > 0 ? 'amber' : 'emerald'}
-                />
-                <AlertaPill
-                    icon={UserX}
-                    label="Clientes Inativos"
-                    value={`${inativos.total}`}
-                    sub="sem pedido há +45 dias"
-                    tone={inativos.total > 5 ? 'amber' : 'gray'}
-                />
-                <AlertaPill
-                    icon={AlertCircle}
-                    label="Erros ERP"
-                    value={`${d.pedidosComErro}`}
-                    sub="pedidos não sincronizados"
-                    tone={d.pedidosComErro > 0 ? 'red' : 'emerald'}
-                    to="/pedidos?statusEnvio=ERRO"
-                />
+            {/* ═══════════ FECHAMENTO COMERCIAL DE ONTEM ═══════════ */}
+            <SectionTitle
+                icon={Calendar}
+                right={<span className="text-[11px] text-gray-400 capitalize">{fecData}</span>}
+            >
+                Fechamento Comercial de Ontem
+            </SectionTitle>
+            <div className="bg-white border rounded-xl p-5">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <StatPill label="Clientes Programados" value={fmtNum(fec.clientesProgramados)} color="gray" />
+                    <StatPill label="Clientes Atendidos" value={fmtNum(fec.clientesAtendidos)} color="blue" />
+                    <StatPill label="Não Atendidos" value={fmtNum(fec.clientesNaoAtendidos)} color={fec.clientesNaoAtendidos > 0 ? 'red' : 'gray'} />
+                    <StatPill label="Pedidos Gerados" value={fmtNum(fec.pedidosGerados)} color="emerald" />
+                </div>
+                <div className="grid grid-cols-3 gap-4 border-t pt-4">
+                    <StatPill
+                        label="Transferências Abertas"
+                        value={fmtNum(fec.transferenciasAbertas)}
+                        color={fec.transferenciasAbertas > 0 ? 'amber' : 'gray'}
+                    />
+                    <StatPill
+                        label="Amostras em Aberto"
+                        value={fmtNum(fec.amostrasAbertas)}
+                        color={fec.amostrasAbertas > 0 ? 'amber' : 'gray'}
+                    />
+                    <StatPill
+                        label="Pendências Abertas"
+                        value={fmtNum(fec.pendenciasAbertas)}
+                        color={fec.pendenciasAbertas > 0 ? 'red' : 'gray'}
+                    />
+                </div>
             </div>
 
-            {/* ═══════════ OPERACIONAL ═══════════ */}
-            <SectionTitle icon={Activity}>Operação de Hoje</SectionTitle>
+            {/* ═══════════ PRIORIDADES DE HOJE ═══════════ */}
+            <SectionTitle icon={Zap}>Prioridades de Hoje</SectionTitle>
+            <div className="bg-white border rounded-xl p-5">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <Link to="/atendimentos" className="flex flex-col items-start gap-0.5 hover:opacity-80">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-gray-500">Reagendados p/ Hoje</span>
+                        <span className={`text-xl font-bold ${pri.reagendadosHoje > 0 ? 'text-indigo-700' : 'text-gray-900'}`}>
+                            {fmtNum(pri.reagendadosHoje)}
+                        </span>
+                        <span className="text-[11px] text-gray-400">visitas agendadas</span>
+                    </Link>
+                    <Link to="/atendimentos" className="flex flex-col items-start gap-0.5 hover:opacity-80">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-gray-500">Transf. p/ Concluir</span>
+                        <span className={`text-xl font-bold ${pri.transferenciasParaConcluir > 0 ? 'text-amber-700' : 'text-gray-900'}`}>
+                            {fmtNum(pri.transferenciasParaConcluir)}
+                        </span>
+                        <span className="text-[11px] text-gray-400">pendentes</span>
+                    </Link>
+                    <Link to="/caixa" className="flex flex-col items-start gap-0.5 hover:opacity-80">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-gray-500">Amostras p/ Entregar</span>
+                        <span className={`text-xl font-bold ${pri.amostrasParaEntregar > 0 ? 'text-amber-700' : 'text-gray-900'}`}>
+                            {fmtNum(pri.amostrasParaEntregar)}
+                        </span>
+                        <span className="text-[11px] text-gray-400">não entregues</span>
+                    </Link>
+                    <StatPill
+                        label="1 Compra s/ Recompra"
+                        value={fmtNum(pri.clientesUmaCompra)}
+                        sub="clientes para reter"
+                        color={pri.clientesUmaCompra > 0 ? 'amber' : 'gray'}
+                    />
+                    <Link to="/clientes" className="flex flex-col items-start gap-0.5 hover:opacity-80">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-gray-500">Em Risco (30–44d)</span>
+                        <span className={`text-xl font-bold ${pri.clientesEmRisco > 0 ? 'text-red-700' : 'text-gray-900'}`}>
+                            {fmtNum(pri.clientesEmRisco)}
+                        </span>
+                        <span className="text-[11px] text-gray-400">para visitar antes de inativar</span>
+                    </Link>
+                </div>
+            </div>
+
+            {/* ═══════════ QUALIDADE DO ATENDIMENTO ═══════════ */}
+            {podeVerVendas && (
+                <>
+                    <SectionTitle
+                        icon={BarChart2}
+                        right={<span className="text-[11px] text-gray-400 capitalize">{fecData}</span>}
+                    >
+                        Qualidade do Atendimento — Ontem
+                    </SectionTitle>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        {/* Objeções / Motivos de não venda */}
+                        <div className="bg-white border rounded-xl p-5">
+                            <div className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-3">
+                                Principais Objeções / Motivos sem Venda
+                            </div>
+                            {qual.objecoesOntem?.length > 0 ? (
+                                <div className="space-y-2">
+                                    {qual.objecoesOntem.map((o, i) => {
+                                        const maxCount = qual.objecoesOntem[0].count;
+                                        return (
+                                            <div key={i} className="relative flex items-center gap-3 py-1">
+                                                <div
+                                                    className="absolute inset-0 bg-red-50 rounded"
+                                                    style={{ width: `${(o.count / maxCount) * 100}%` }}
+                                                />
+                                                <span className="relative w-5 text-center text-xs font-bold text-gray-400">{i + 1}</span>
+                                                <span className="relative flex-1 text-sm font-semibold text-gray-800 truncate">{o.label}</span>
+                                                <span className="relative text-sm font-bold text-red-700 shrink-0">{o.count}x</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="text-sm text-gray-400 text-center py-6">
+                                    Sem atendimentos sem venda registrados ontem.
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Presencial via WhatsApp */}
+                        <div className="bg-white border rounded-xl p-5 flex flex-col gap-3">
+                            <div className="text-[11px] uppercase tracking-wider font-bold text-gray-400">
+                                Presencial atendido via WhatsApp
+                            </div>
+                            <Link to="/atendimentos" className="hover:opacity-80">
+                                <div className={`text-5xl font-black mt-1 ${qual.clientesPresencialNoWhatsApp > 0 ? 'text-amber-600' : 'text-gray-300'}`}>
+                                    {fmtNum(qual.clientesPresencialNoWhatsApp)}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-2 leading-relaxed">
+                                    cliente(s) que preferem visita presencial mas foram atendidos por WhatsApp ontem
+                                </div>
+                            </Link>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* ═══════════ OPERAÇÃO ═══════════ */}
+            <SectionTitle icon={Activity}>Operação</SectionTitle>
             <div className="bg-white border rounded-xl p-5 space-y-5">
-                {/* Atendimentos / Clientes */}
+                {/* Caixa & Entregas */}
                 <div>
-                    <div className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-2">Atendimentos & Clientes</div>
+                    <div className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-2">Caixa & Entregas</div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <StatPill label="Atend. com venda" value={fmtNum(op.atendimentosComPedido)} color="emerald" />
-                        <StatPill label="Atend. sem venda" value={fmtNum(op.atendimentosSemPedido)} color="amber" />
-                        <StatPill label="Clientes atendidos" value={fmtNum(op.clientesAtendidos)} sub={`${op.totalAtendimentos} atendimentos`} color="blue" />
-                        <StatPill label="Clientes não atendidos" value={fmtNum(op.clientesNaoAtendidos)} sub="da rota do dia" color={op.clientesNaoAtendidos > 0 ? 'red' : 'gray'} />
-                    </div>
-                </div>
-                {/* Leads */}
-                <div className="border-t pt-4">
-                    <div className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-2">Leads</div>
-                    <div className="grid grid-cols-3 gap-4">
-                        <StatPill label="Novos hoje" value={fmtNum(op.leadsNovosHoje)} color="indigo" />
-                        <StatPill label="Atendidos hoje" value={fmtNum(op.leadsAtendidosHoje)} color="emerald" />
-                        <StatPill label="Não atendidos" value={fmtNum(op.leadsNaoAtendidos)} sub="visita vencida" color={op.leadsNaoAtendidos > 0 ? 'red' : 'gray'} />
-                    </div>
-                </div>
-                {/* Caixa */}
-                <div className="border-t pt-4">
-                    <div className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-2">Caixa & Operacional</div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <StatPill label="Dinheiro no caixa" value={fmtBRL(op.dinheiroRecebidoHoje)} sub="recebido hoje" color="emerald" />
-                        <StatPill label="Total recebido (entregas)" value={fmtBRL(d.valorEntregueHoje)} color="blue" />
-                        <StatPill label="Pedidos lançados" value={fmtNum(op.pedidosHoje)} color="indigo" />
+                        <StatPill label="Dinheiro no Caixa" value={fmtBRL(op.dinheiroRecebidoHoje)} sub="recebido hoje" color="emerald" />
+                        <StatPill label="Total Recebido (entregas)" value={fmtBRL(d.valorEntregueHoje)} color="blue" />
+                        <StatPill label="Pedidos Lançados" value={fmtNum(op.pedidosHoje)} color="indigo" />
                         <Link to="/caixa" className="flex flex-col items-start gap-0.5 hover:opacity-80">
-                            <span className="text-[11px] uppercase tracking-wider font-semibold text-gray-500 flex items-center gap-1"><CheckSquare size={11} /> Caixas a conferir</span>
-                            <span className={`text-xl font-bold ${d.caixasAConferir > 0 ? 'text-indigo-700' : 'text-gray-900'}`}>{fmtNum(d.caixasAConferir)}</span>
+                            <span className="text-[11px] uppercase tracking-wider font-semibold text-gray-500 flex items-center gap-1">
+                                <CheckSquare size={11} /> Caixas a Conferir
+                            </span>
+                            <span className={`text-xl font-bold ${d.caixasAConferir > 0 ? 'text-indigo-700' : 'text-gray-900'}`}>
+                                {fmtNum(d.caixasAConferir)}
+                            </span>
                         </Link>
+                    </div>
+                </div>
+                {/* Alertas Operacionais */}
+                <div className="border-t pt-4">
+                    <div className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-2">Alertas Operacionais</div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <Link to="/financeiro" className="flex flex-col items-start gap-0.5 hover:opacity-80">
+                            <span className="text-[11px] uppercase tracking-wider font-semibold text-gray-500 flex items-center gap-1">
+                                <Wallet size={11} /> Inadimplência
+                            </span>
+                            <span className={`text-xl font-bold ${inad.total > 0 ? 'text-red-700' : 'text-gray-900'}`}>
+                                {fmtBRLcompact(inad.total)}
+                            </span>
+                            {inad.parcelas > 0 && <span className="text-[11px] text-gray-500">{inad.parcelas} parcela(s)</span>}
+                        </Link>
+                        <Link to="/pedidos?statusEnvio=ERRO" className="flex flex-col items-start gap-0.5 hover:opacity-80">
+                            <span className="text-[11px] uppercase tracking-wider font-semibold text-gray-500 flex items-center gap-1">
+                                <AlertCircle size={11} /> Erros ERP
+                            </span>
+                            <span className={`text-xl font-bold ${d.pedidosComErro > 0 ? 'text-red-700' : 'text-gray-900'}`}>
+                                {fmtNum(d.pedidosComErro)}
+                            </span>
+                            {d.pedidosComErro > 0 && <span className="text-[11px] text-gray-500">não sincronizados</span>}
+                        </Link>
+                        {d.pedidosEspeciais > 0 && (
+                            <Link to="/pedidos?especial=true" className="flex flex-col items-start gap-0.5 hover:opacity-80">
+                                <span className="text-[11px] uppercase tracking-wider font-semibold text-gray-500 flex items-center gap-1">
+                                    <AlertTriangle size={11} /> Nota Pendente
+                                </span>
+                                <span className="text-xl font-bold text-amber-700">{fmtNum(d.pedidosEspeciais)}</span>
+                                <span className="text-[11px] text-gray-500">pedido(s) especial(is)</span>
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>
@@ -480,18 +583,14 @@ const DashboardAdminSection = () => {
 
                     {/* ═══════════ INATIVOS + EM QUEDA ═══════════ */}
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                        <div>
-                            <SectionTitle
-                                icon={UserX}
-                                right={<span className="text-[11px] text-gray-400">{inativos.total} clientes ativos sem pedido +45d</span>}
-                            >
-                                Clientes Inativos — recuperar
-                            </SectionTitle>
-                            {inativos.top.length === 0 ? (
-                                <div className="bg-white border rounded-xl p-6 text-center text-sm text-emerald-600">
-                                    🎉 Nenhum cliente inativo no critério.
-                                </div>
-                            ) : (
+                        {inativos.total > 0 && (
+                            <div>
+                                <SectionTitle
+                                    icon={UserX}
+                                    right={<span className="text-[11px] text-gray-400">{inativos.total} clientes ativos sem pedido +45d</span>}
+                                >
+                                    Clientes Inativos — recuperar
+                                </SectionTitle>
                                 <div className="bg-white border rounded-xl overflow-hidden">
                                     {inativos.top.map(c => {
                                         const dias = diasSem(c.ultimoPedido);
@@ -508,21 +607,17 @@ const DashboardAdminSection = () => {
                                         );
                                     })}
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
-                        <div>
-                            <SectionTitle
-                                icon={TrendingDown}
-                                right={<span className="text-[11px] text-gray-400">30d vs 30–60d · queda &gt; 30%</span>}
-                            >
-                                Produtos em Queda — investigar
-                            </SectionTitle>
-                            {(!d.produtosEmQueda || d.produtosEmQueda.length === 0) ? (
-                                <div className="bg-white border rounded-xl p-6 text-center text-sm text-emerald-600">
-                                    ✓ Nenhum produto em queda relevante.
-                                </div>
-                            ) : (
+                        {d.produtosEmQueda?.length > 0 && (
+                            <div>
+                                <SectionTitle
+                                    icon={TrendingDown}
+                                    right={<span className="text-[11px] text-gray-400">30d vs 30–60d · queda &gt; 30%</span>}
+                                >
+                                    Produtos em Queda — investigar
+                                </SectionTitle>
                                 <div className="bg-white border rounded-xl overflow-hidden">
                                     {d.produtosEmQueda.map(p => (
                                         <div key={p.produtoId} className="px-4 py-2.5 border-b last:border-0 flex items-center justify-between hover:bg-gray-50">
@@ -537,23 +632,9 @@ const DashboardAdminSection = () => {
                                         </div>
                                     ))}
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
-
-                    {/* ═══════════ FOOTER: NOTAS PENDENTES ═══════════ */}
-                    {d.pedidosEspeciais > 0 && (
-                        <div className="mt-6">
-                            <Link to="/pedidos?especial=true" className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 hover:bg-amber-100 transition">
-                                <AlertTriangle size={20} className="text-amber-600" />
-                                <div className="flex-1">
-                                    <div className="font-semibold text-amber-900 text-sm">{d.pedidosEspeciais} pedido(s) especial(is) com nota pendente</div>
-                                    <div className="text-[11px] text-amber-700">clique para revisar</div>
-                                </div>
-                                <Zap size={16} className="text-amber-600" />
-                            </Link>
-                        </div>
-                    )}
                 </>
             )}
         </div>

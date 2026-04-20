@@ -203,6 +203,68 @@ router.get('/', verificarAuth, async (req, res) => {
             .filter(p => (p.formaPagamentoNome || '').toLowerCase().includes('dinheiro'))
             .reduce((s, p) => s + num(p.valor), 0);
 
+        // ============ FECHAMENTO DE ONTEM + PRIORIDADES + QUALIDADE ============
+        const ontemStart = new Date(startOfDay); ontemStart.setDate(ontemStart.getDate() - 1);
+        const ontemEnd   = new Date(endOfDay);   ontemEnd.setDate(ontemEnd.getDate() - 1);
+        const siglaDOntem = DIAS_SIGLA[ontemStart.getDay()];
+
+        const [
+            atendimentosOntem,
+            pedidosCriadosOntem,
+            clientesProgramadosOntem,
+            amostrasAbertas,
+            reagendadosHoje,
+            transferenciasParaConcluir,
+            todasComprasPorCliente,
+        ] = await Promise.all([
+            prisma.atendimento.findMany({
+                where: { criadoEm: { gte: ontemStart, lte: ontemEnd }, tipo: { not: 'FINANCEIRO' } },
+                select: {
+                    clienteId: true, pedidoId: true, transferidoParaId: true,
+                    dataRetorno: true, alertaVisualAtivo: true,
+                    acaoLabel: true, tipo: true,
+                    cliente: { select: { Formas_Atendimento: true } },
+                },
+            }),
+            prisma.pedido.findMany({
+                where: { ...baseWherePedido, createdAt: { gte: ontemStart, lte: ontemEnd } },
+                select: { clienteId: true },
+            }),
+            prisma.cliente.count({ where: { Ativo: true, Dia_de_venda: { contains: siglaDOntem, mode: 'insensitive' } } }),
+            prisma.amostra.count({ where: { status: { notIn: ['ENTREGUE', 'CANCELADA'] } } }),
+            prisma.atendimento.count({ where: { proximaVisita: { gte: startOfDay, lte: endOfDay } } }),
+            prisma.atendimento.count({ where: { transferidoParaId: { not: null }, transferenciaFinalizada: false } }),
+            prisma.pedido.groupBy({ by: ['clienteId'], _count: { id: true }, where: baseWherePedido }),
+        ]);
+
+        const pedidosGeradosOntem = pedidosCriadosOntem.length;
+        const clientesComPedidoOntem = new Set(pedidosCriadosOntem.map(p => p.clienteId));
+        const clientesAtendidosOntemCount = new Set(atendimentosOntem.map(a => a.clienteId).filter(Boolean)).size;
+        const transferenciasAbertasOntem = atendimentosOntem.filter(a => a.transferidoParaId).length;
+        const pendenciasAbertasOntem = atendimentosOntem.filter(a => a.dataRetorno || a.alertaVisualAtivo).length;
+        const clientesUmaCompra = todasComprasPorCliente.filter(c => c._count.id === 1).length;
+
+        // Qualidade do atendimento (de ontem) — agrupamento por acaoLabel em atend. sem venda
+        const semVendaOntem = atendimentosOntem.filter(a =>
+            !a.pedidoId && !(a.clienteId && clientesComPedidoOntem.has(a.clienteId))
+        );
+        const _labelCount = {};
+        for (const a of semVendaOntem) {
+            const k = a.acaoLabel || 'Sem motivo registrado';
+            _labelCount[k] = (_labelCount[k] || 0) + 1;
+        }
+        const objecoesOntem = Object.entries(_labelCount)
+            .sort((a, b) => b[1] - a[1]).slice(0, 5)
+            .map(([label, count]) => ({ label, count }));
+
+        const clientesPresencialNoWhatsApp = atendimentosOntem.filter(a => {
+            if (a.tipo !== 'WHATSAPP') return false;
+            const formas = a.cliente?.Formas_Atendimento;
+            const arr = Array.isArray(formas) ? formas
+                : (typeof formas === 'string' ? (() => { try { return JSON.parse(formas); } catch { return []; } })() : []);
+            return arr.some(f => typeof f === 'string' && f.toUpperCase().includes('PRESENCIAL'));
+        }).length;
+
         // ============ TOP 10 PRODUTOS (30d, líquido) ============
         const itensUltimos30 = await prisma.pedidoItem.findMany({
             where: { pedido: { ...baseWherePedido, dataVenda: { gte: start30d } } },
@@ -292,6 +354,12 @@ router.get('/', verificarAuth, async (req, res) => {
         inativos.sort((a, b) => a.ultimoPedido - b.ultimoPedido); // mais antigos primeiro
         const clientesInativosCount = inativos.length;
         const clientesInativosTop = inativos.slice(0, 10);
+
+        // Clientes em risco: último pedido entre 30 e 44 dias (antes de virar inativo)
+        const risco44 = new Date(agora); risco44.setDate(risco44.getDate() - 44);
+        const risco30 = new Date(agora); risco30.setDate(risco30.getDate() - 30);
+        const clientesEmRisco = [...mapaUltimo.values()]
+            .filter(data => data >= risco44 && data < risco30).length;
 
         // ============ INADIMPLÊNCIA (parcelas vencidas em aberto) ============
         const inadimplencia = await prisma.parcela.aggregate({
@@ -434,6 +502,27 @@ router.get('/', verificarAuth, async (req, res) => {
             clientesInativos: { total: clientesInativosCount, top: clientesInativosTop },
             inadimplencia: { total: num(inadimplencia._sum.valor), parcelas: inadimplencia._count._all },
             produtosEmQueda,
+            fechamentoOntem: {
+                data: ontemStart.toISOString().slice(0, 10),
+                clientesProgramados: clientesProgramadosOntem,
+                clientesAtendidos: clientesAtendidosOntemCount,
+                clientesNaoAtendidos: Math.max(0, clientesProgramadosOntem - clientesAtendidosOntemCount),
+                pedidosGerados: pedidosGeradosOntem,
+                transferenciasAbertas: transferenciasAbertasOntem,
+                amostrasAbertas,
+                pendenciasAbertas: pendenciasAbertasOntem,
+            },
+            prioridadesHoje: {
+                reagendadosHoje,
+                transferenciasParaConcluir,
+                amostrasParaEntregar: amostrasAbertas,
+                clientesUmaCompra,
+                clientesEmRisco,
+            },
+            qualidadeAtendimento: {
+                objecoesOntem,
+                clientesPresencialNoWhatsApp,
+            },
             metas: {
                 metaTotalMes,
                 realizadoTotal: realizadoTotalVendedores,
