@@ -86,6 +86,9 @@ const ContasReceberTabela = () => {
     const [baixaLoteOpen, setBaixaLoteOpen] = useState(false);
     const [baixaLoteForm, setBaixaLoteForm] = useState({ formaPagamento: '', dataPagamento: '', observacao: '' });
     const [salvando, setSalvando] = useState(false);
+    const [relatorioOpen, setRelatorioOpen] = useState(false);
+    const [relatorioData, setRelatorioData] = useState(null);
+    const [relatorioLoading, setRelatorioLoading] = useState(false);
 
     // Carrega aux
     useEffect(() => {
@@ -372,6 +375,58 @@ const ContasReceberTabela = () => {
         a.click(); URL.revokeObjectURL(url);
     };
 
+    const abrirRelatorio = async () => {
+        setRelatorioOpen(true);
+        setRelatorioData(null);
+        setRelatorioLoading(true);
+        try {
+            const params = {};
+            if (filtros.busca) params.busca = filtros.busca;
+            if (filtros.status.length) params.status = filtros.status.join(',');
+            if (filtros.statusParcela.length) params.statusParcela = filtros.statusParcela.join(',');
+            if (filtros.origem) params.origem = filtros.origem;
+            if (filtros.vendedorId) params.vendedorId = filtros.vendedorId;
+            if (filtros.condicaoPagamento.length) params.condicaoPagamento = filtros.condicaoPagamento.join(',');
+            if (filtros.formaPagamento.length) params.formaPagamento = filtros.formaPagamento.join(',');
+            if (filtros.vencDe) params.vencimentoDe = filtros.vencDe;
+            if (filtros.vencAte) params.vencimentoAte = filtros.vencAte;
+            if (filtros.pagDe) params.pagamentoDe = filtros.pagDe;
+            if (filtros.pagAte) params.pagamentoAte = filtros.pagAte;
+            const data = await contasReceberService.relatorioItens(params);
+            setRelatorioData(data);
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao gerar relatório');
+            setRelatorioOpen(false);
+        } finally {
+            setRelatorioLoading(false);
+        }
+    };
+
+    const exportarRelatorioCSV = () => {
+        if (!relatorioData?.pedidos) return;
+        const header = ['Pedido', 'Cliente', 'Vendedor', 'Data Venda', 'Produto', 'Qtd', 'Valor Unit.', 'Total'];
+        const rows = [];
+        relatorioData.pedidos.forEach(p => {
+            p.itens.forEach(it => {
+                rows.push([
+                    p.pedidoNumero ? `#${p.pedidoNumero}` : (p.pedidoEspecial ? 'Especial' : '-'),
+                    p.clienteNome, p.vendedorNome, fmtData(p.dataVenda),
+                    it.produtoNome,
+                    Number(it.quantidade).toFixed(3).replace('.', ','),
+                    Number(it.valorUnitario).toFixed(2).replace('.', ','),
+                    Number(it.total).toFixed(2).replace('.', ',')
+                ]);
+            });
+            rows.push(['', '', '', '', 'SUBTOTAL', '', '', Number(p.subtotal).toFixed(2).replace('.', ',')]);
+        });
+        const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n');
+        const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url;
+        a.download = `relatorio-itens-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click(); URL.revokeObjectURL(url);
+    };
+
     const filtrosAtivos = useMemo(() =>
         Object.values(filtros).filter(v => Array.isArray(v) ? v.length > 0 : Boolean(v)).length
     , [filtros]);
@@ -467,6 +522,9 @@ const ContasReceberTabela = () => {
                             {syncingTodas ? 'Baixando...' : 'Baixar parcelas do CA'}
                         </button>
                     )}
+                    <button onClick={abrirRelatorio} className="text-sm px-3 py-1.5 rounded border hover:bg-gray-50 inline-flex items-center gap-1" title="Relatório de itens por pedido (filtros atuais)">
+                        <Download className="w-4 h-4" /> Relatório
+                    </button>
                     <button onClick={exportarCSV} className="text-sm px-3 py-1.5 rounded border hover:bg-gray-50 inline-flex items-center gap-1">
                         <Download className="w-4 h-4" /> CSV
                     </button>
@@ -1226,6 +1284,106 @@ const ContasReceberTabela = () => {
             {/* Popup cliente (reuso do Rota) */}
             {clientePopup && (
                 <ClientePopup cliente={clientePopup} onClose={() => setClientePopup(null)} />
+            )}
+
+            {/* Modal Relatório de Itens por Pedido */}
+            {relatorioOpen && (
+                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg max-w-5xl w-full max-h-[90vh] flex flex-col">
+                        {/* Header */}
+                        <div className="px-4 py-3 border-b flex items-center justify-between flex-shrink-0">
+                            <div>
+                                <h3 className="font-bold text-base">Relatório de Itens por Pedido</h3>
+                                {filtrosAtivos > 0 && (
+                                    <div className="text-xs text-blue-600 mt-0.5">{filtrosAtivos} filtro(s) ativo(s)</div>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {relatorioData && !relatorioLoading && (
+                                    <button
+                                        onClick={exportarRelatorioCSV}
+                                        className="text-sm px-3 py-1.5 rounded border hover:bg-gray-50 inline-flex items-center gap-1"
+                                    >
+                                        <Download className="w-4 h-4" /> CSV
+                                    </button>
+                                )}
+                                <button onClick={() => setRelatorioOpen(false)} className="p-1 rounded hover:bg-gray-100">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Body */}
+                        <div className="overflow-y-auto flex-1 p-4">
+                            {relatorioLoading && (
+                                <div className="flex items-center justify-center py-12 text-gray-500">
+                                    <RefreshCw className="w-5 h-5 animate-spin mr-2" /> Gerando relatório...
+                                </div>
+                            )}
+                            {!relatorioLoading && relatorioData && relatorioData.pedidos.length === 0 && (
+                                <div className="text-center py-12 text-gray-400">Nenhum pedido encontrado com os filtros atuais.</div>
+                            )}
+                            {!relatorioLoading && relatorioData && relatorioData.pedidos.length > 0 && (
+                                <div className="space-y-4">
+                                    {relatorioData.pedidos.map((p) => (
+                                        <div key={p.pedidoId} className="border rounded-lg overflow-hidden">
+                                            <div className="bg-gray-50 px-3 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm border-b">
+                                                <span className="font-mono font-semibold text-gray-800">
+                                                    {p.pedidoNumero ? `#${p.pedidoNumero}` : (p.pedidoEspecial ? 'Especial' : '—')}
+                                                </span>
+                                                <span className="font-medium text-gray-900">{p.clienteNome}</span>
+                                                <span className="text-gray-500">{p.vendedorNome}</span>
+                                                <span className="text-gray-500 tabular-nums">{fmtData(p.dataVenda)}</span>
+                                                <span className="ml-auto font-bold text-gray-900 tabular-nums">
+                                                    R$ {fmt(p.subtotal)}
+                                                </span>
+                                            </div>
+                                            <table className="w-full text-xs">
+                                                <thead className="bg-gray-50/50 border-b">
+                                                    <tr>
+                                                        <th className="px-3 py-1.5 text-left font-semibold text-gray-600">Produto</th>
+                                                        <th className="px-3 py-1.5 text-right font-semibold text-gray-600 w-20">Qtd</th>
+                                                        <th className="px-3 py-1.5 text-right font-semibold text-gray-600 w-24">Valor Unit.</th>
+                                                        <th className="px-3 py-1.5 text-right font-semibold text-gray-600 w-24">Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {p.itens.map((it, idx) => (
+                                                        <tr key={idx} className="border-b last:border-0 hover:bg-gray-50">
+                                                            <td className="px-3 py-1.5 text-gray-800">{it.produtoNome}</td>
+                                                            <td className="px-3 py-1.5 text-right tabular-nums text-gray-700">
+                                                                {Number(it.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}
+                                                            </td>
+                                                            <td className="px-3 py-1.5 text-right tabular-nums text-gray-700">
+                                                                R$ {fmt(it.valorUnitario)}
+                                                            </td>
+                                                            <td className="px-3 py-1.5 text-right tabular-nums font-medium text-gray-900">
+                                                                R$ {fmt(it.total)}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer — total geral */}
+                        {!relatorioLoading && relatorioData && relatorioData.pedidos.length > 0 && (() => {
+                            const grandTotal = relatorioData.pedidos.reduce((s, p) => s + p.subtotal, 0);
+                            return (
+                                <div className="px-4 py-3 border-t bg-gray-50 flex items-center justify-between flex-shrink-0 text-sm">
+                                    <span className="text-gray-600">{relatorioData.pedidos.length} pedido(s)</span>
+                                    <span className="font-bold text-gray-900 tabular-nums text-base">
+                                        Total Geral: R$ {fmt(grandTotal)}
+                                    </span>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                </div>
             )}
         </div>
     );

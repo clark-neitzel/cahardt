@@ -236,6 +236,104 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── GET /relatorio-itens — Relatório de itens por pedido ──
+router.get('/relatorio-itens', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const {
+            status, clienteId, vencimentoDe, vencimentoAte, origem, busca,
+            vendedorId, condicaoPagamento, formaPagamento, statusParcela,
+            pagamentoDe, pagamentoAte
+        } = req.query;
+
+        const toList = (v) => (Array.isArray(v) ? v : String(v || '').split(',')).map(s => s.trim()).filter(Boolean);
+
+        const where = {};
+        if (status) { const arr = toList(status); where.status = arr.length > 1 ? { in: arr } : arr[0]; }
+        if (origem) where.origem = origem;
+        if (clienteId) where.clienteId = clienteId;
+        if (busca) {
+            where.cliente = { OR: [
+                { NomeFantasia: { contains: busca, mode: 'insensitive' } },
+                { Nome: { contains: busca, mode: 'insensitive' } }
+            ]};
+        }
+        where.OR = [
+            { pedidoId: null },
+            { pedido: { statusEnvio: { notIn: ['EXCLUIDO'] }, situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] }, bonificacao: false } }
+        ];
+        if (vendedorId || condicaoPagamento) {
+            where.pedido = {};
+            if (vendedorId) where.pedido.vendedorId = vendedorId;
+            if (condicaoPagamento) { const arr = toList(condicaoPagamento); where.pedido.nomeCondicaoPagamento = arr.length > 1 ? { in: arr } : arr[0]; }
+        }
+        const parcelaSome = {};
+        if (vencimentoDe || vencimentoAte) {
+            parcelaSome.dataVencimento = {};
+            if (vencimentoDe) parcelaSome.dataVencimento.gte = new Date(vencimentoDe + 'T00:00:00.000Z');
+            if (vencimentoAte) parcelaSome.dataVencimento.lte = new Date(vencimentoAte + 'T23:59:59.999Z');
+        }
+        if (pagamentoDe || pagamentoAte) {
+            parcelaSome.dataPagamento = {};
+            if (pagamentoDe) parcelaSome.dataPagamento.gte = new Date(pagamentoDe + 'T00:00:00.000Z');
+            if (pagamentoAte) parcelaSome.dataPagamento.lte = new Date(pagamentoAte + 'T23:59:59.999Z');
+        }
+        if (statusParcela) { const arr = toList(statusParcela); parcelaSome.status = arr.length > 1 ? { in: arr } : arr[0]; }
+        if (formaPagamento) { const arr = toList(formaPagamento); parcelaSome.formaPagamento = arr.length > 1 ? { in: arr } : arr[0]; }
+        if (Object.keys(parcelaSome).length > 0) where.parcelas = { some: parcelaSome };
+
+        const contas = await prisma.contaReceber.findMany({
+            where,
+            select: {
+                id: true, pedidoId: true,
+                pedido: {
+                    select: {
+                        id: true, numero: true, especial: true, dataVenda: true,
+                        cliente: { select: { NomeFantasia: true, Nome: true } },
+                        vendedor: { select: { nome: true } },
+                        itens: {
+                            select: {
+                                id: true, descricao: true, quantidade: true, valor: true,
+                                produto: { select: { nome: true } }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const pedidosMap = new Map();
+        for (const conta of contas) {
+            if (!conta.pedidoId || !conta.pedido) continue;
+            if (pedidosMap.has(conta.pedidoId)) continue;
+            const p = conta.pedido;
+            const clienteNome = p.cliente?.NomeFantasia || p.cliente?.Nome || '-';
+            const itens = (p.itens || []).map(it => {
+                const quantidade = Number(it.quantidade);
+                const valorUnitario = Number(it.valor);
+                return {
+                    produtoNome: it.produto?.nome || it.descricao || '-',
+                    descricao: it.descricao || null,
+                    quantidade, valorUnitario,
+                    total: Math.round(quantidade * valorUnitario * 100) / 100
+                };
+            });
+            pedidosMap.set(conta.pedidoId, {
+                pedidoId: p.id, contaId: conta.id,
+                pedidoNumero: p.numero || null, pedidoEspecial: p.especial || false,
+                clienteNome, vendedorNome: p.vendedor?.nome || '-',
+                dataVenda: p.dataVenda, itens,
+                subtotal: itens.reduce((s, i) => s + i.total, 0)
+            });
+        }
+
+        const resultado = [...pedidosMap.values()];
+        res.json({ pedidos: resultado, total: resultado.length });
+    } catch (error) {
+        console.error('Erro ao gerar relatório de itens:', error);
+        res.status(500).json({ error: 'Erro ao gerar relatório de itens.' });
+    }
+});
+
 // ── GET /:id — Detalhe de uma conta ──
 router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
     try {

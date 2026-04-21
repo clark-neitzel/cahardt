@@ -40,6 +40,10 @@ const contasReceberService = {
     syncCATodas: async () => {
         const response = await api.post('/contas-receber/sync-ca/todas');
         return response.data;
+    },
+    relatorioItens: async (filtros = {}) => {
+        const response = await api.get('/contas-receber/relatorio-itens', { params: filtros });
+        return response.data;
     }
 };
 
