@@ -174,6 +174,18 @@ router.get('/ia-log-status', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/limpar-atendimentos-pedido
+// Remove atendimentos auto-criados do tipo PEDIDO (gerados erroneamente ao criar pedido)
+router.post('/limpar-atendimentos-pedido', async (req, res) => {
+    try {
+        const result = await prisma.$executeRawUnsafe(`DELETE FROM "Atendimento" WHERE tipo = 'PEDIDO'`);
+        res.json({ ok: true, removidos: result });
+    } catch (error) {
+        console.error('[admin-exec] Erro limpar-atendimentos-pedido:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // POST /api/admin-exec/recalcular-todos
 // Recalcula insights de TODOS os clientes ativos
 router.post('/recalcular-todos', async (req, res) => {
