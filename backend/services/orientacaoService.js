@@ -173,13 +173,13 @@ Regras:
 - Use linguagem de vendedor de rota, não de gerente
 - "motivo" deve ser um dado concreto (ex: "12 dias sem comprar", "ticket caiu 35%")
 - "seNegar" deve ser uma ação real, não uma frase genérica
+- NÃO sugira trocar o canal de atendimento (ex: não diga "ligue em vez de WhatsApp" ou "visite pessoalmente"). O canal já está definido — foque no conteúdo da abordagem
 
 Responda APENAS com JSON válido, sem markdown, sem explicação:
 {
   "situacao": "classificação curta e forte (máx 60 chars)",
   "motivo": "dado concreto que justifica o cenário (máx 70 chars)",
   "metaHoje": "o que buscar nesta visita (máx 60 chars)",
-  "canal": "canal recomendado com motivo curto (máx 50 chars)",
   "acao": "ação concreta e específica (máx 90 chars)",
   "seNegar": "plano B se o cliente recusar (máx 80 chars)"
 }`;

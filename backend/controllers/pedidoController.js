@@ -124,21 +124,11 @@ const pedidoController = {
 
             res.status(201).json(novoPedido);
 
-            // Auto-registrar atendimento do tipo PEDIDO para aparecer no Painel de Atendimentos
-            // O atendimentoService.registrar já dispara recalcularCliente + gerarOrientacaoIA em background
-            if (novoPedido.clienteId && novoPedido.vendedorId) {
-                const atendimentoService = require('../services/atendimentoService');
-                const prefixo = novoPedido.bonificacao ? 'BN' : novoPedido.especial ? 'ZZ' : '';
-                // numero pode ser null antes do sync com CA — usa id curto como fallback
-                const numStr = novoPedido.numero ? `${prefixo}#${novoPedido.numero}` : `id:${novoPedido.id.slice(-6)}`;
-                atendimentoService.registrar({
-                    tipo: 'PEDIDO',
-                    observacao: `Pedido ${numStr}`,
-                    clienteId: novoPedido.clienteId,
-                    idVendedor: novoPedido.vendedorId,
-                    pedidoId: novoPedido.id,
-                    usuarioRegistroId: req.user?.id || null,
-                }).catch(err => console.error('[Auto-Atendimento] Erro ao registrar atendimento de pedido:', err.message));
+            // Recalcular insight do cliente em background (sem criar atendimento duplicado)
+            if (novoPedido.clienteId) {
+                const clienteInsightService = require('../services/clienteInsightService');
+                clienteInsightService.recalcularCliente(novoPedido.clienteId)
+                    .catch(err => console.error('[Insight] Erro ao recalcular após pedido:', err.message));
             }
         } catch (error) {
             console.error('Erro ao criar pedido:', error);

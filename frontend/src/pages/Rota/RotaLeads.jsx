@@ -141,7 +141,7 @@ const FORMAS_ATEND = [
 const getAtendimentoHoje = (atendimentos) => {
     if (!atendimentos || atendimentos.length === 0) return null;
     const hoje = new Date().toDateString();
-    return atendimentos.find(a => new Date(a.criadoEm).toDateString() === hoje && a.tipo !== 'FINANCEIRO');
+    return atendimentos.find(a => new Date(a.criadoEm).toDateString() === hoje && a.tipo !== 'FINANCEIRO' && a.tipo !== 'PEDIDO');
 };
 
 const getPedidoHoje = (pedidos) => {
@@ -249,7 +249,6 @@ const OrientacaoPopup = ({ insight, onConfirm, onClose }) => {
                 {ia ? (
                     <div className="space-y-1.5">
                         {(ia.metaHoje || ia.objetivo) && <p className="text-[12px] text-gray-700"><span className="font-semibold">Meta:</span> {ia.metaHoje || ia.objetivo}</p>}
-                        {ia.canal && <p className="text-[12px] text-gray-600"><span className="font-semibold">Canal:</span> {ia.canal}</p>}
                         {ia.acao && <p className="text-[12px] text-gray-800 font-semibold border-t pt-1.5 mt-1">{ia.acao}</p>}
                         {(ia.seNegar || ia.objecao) && (
                             <div className="bg-amber-50 rounded px-2.5 py-1.5 border border-amber-200">
@@ -277,7 +276,7 @@ const OrientacaoPopup = ({ insight, onConfirm, onClose }) => {
 // ================================================
 // Card de Cliente
 // ================================================
-const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, meuVendedorId, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado }) => {
+const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, meuVendedorId, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado, podeUsarIA = false }) => {
     const atendHoje = getAtendimentoHoje(cliente._atendimentos);
     const atendOutro = !atendHoje ? getAtendimentoOutroVendedor(cliente, meuVendedorId) : null;
     const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
@@ -420,18 +419,22 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                                 {motivo && (
                                     <span className="text-[10px] text-gray-500 truncate">{motivo}</span>
                                 )}
-                                <button
-                                    onClick={handleAnalisarIA}
-                                    disabled={analisandoIA}
-                                    className="ml-auto shrink-0 p-0.5 rounded text-violet-400 hover:text-violet-600 hover:bg-violet-50 transition-colors disabled:opacity-40"
-                                    title="Analisar com IA"
-                                >
-                                    {analisandoIA
-                                        ? <Loader className="h-3 w-3 animate-spin" />
-                                        : <Sparkles className="h-3 w-3" />
-                                    }
-                                </button>
-                                <ChevronDown className={`h-3 w-3 text-gray-400 shrink-0 transition-transform ${orientExpanded ? 'rotate-180' : ''}`} />
+                                <span className="ml-auto flex items-center gap-0.5 shrink-0">
+                                    {podeUsarIA && (
+                                        <button
+                                            onClick={handleAnalisarIA}
+                                            disabled={analisandoIA}
+                                            className="p-0.5 rounded text-violet-400 hover:text-violet-600 hover:bg-violet-50 transition-colors disabled:opacity-40"
+                                            title="Analisar com IA"
+                                        >
+                                            {analisandoIA
+                                                ? <Loader className="h-3 w-3 animate-spin" />
+                                                : <Sparkles className="h-3 w-3" />
+                                            }
+                                        </button>
+                                    )}
+                                    <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${orientExpanded ? 'rotate-180' : ''}`} />
+                                </span>
                             </button>
 
                             {/* Conteúdo expandido (hover desktop / click mobile) */}
@@ -439,7 +442,6 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                                 ia ? (
                                     <div className="mt-1.5 rounded-lg border border-violet-200 bg-violet-50/70 px-3 py-2 space-y-1">
                                         {(ia.metaHoje || ia.objetivo) && <p className="text-[11px] text-violet-900"><span className="font-semibold">Meta:</span> {ia.metaHoje || ia.objetivo}</p>}
-                                        {ia.canal && <p className="text-[11px] text-violet-700"><span className="font-semibold">Canal:</span> {ia.canal}</p>}
                                         {ia.acao && <p className="text-[11px] text-violet-800 font-semibold border-t border-violet-100 pt-1 mt-1">{ia.acao}</p>}
                                         {(ia.seNegar || ia.objecao) && (
                                             <div className="bg-white/60 rounded px-2 py-1 border border-violet-100 mt-0.5">
@@ -1409,6 +1411,7 @@ const RotaLeads = () => {
     const podeVerTodasEntregas = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ver_Todas_Entregas);
     const podeEntregas = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Executar_Entregas);
     const podeAjustar = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ajustar_Entregas);
+    const podeUsarIAOrientacao = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Usar_IA_Orientacao);
 
     // Filtro mantido no localStorage para não resetar ao voltar pra tela
     const [vendedorFiltro, setVendedorFiltro] = useState(() => {
@@ -1984,7 +1987,7 @@ const RotaLeads = () => {
         const mostrarAcoes = aba === 'atendimento';
 
         if (item._tipo === 'cliente') {
-            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} meuVendedorId={vendedorId} alerta={alertasPorItem[item.UUID]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} />;
+            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} meuVendedorId={vendedorId} alerta={alertasPorItem[item.UUID]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} podeUsarIA={podeUsarIAOrientacao} />;
         }
         return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} meuVendedorId={vendedorId} alerta={alertasPorItem[item.id]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} />;
     };

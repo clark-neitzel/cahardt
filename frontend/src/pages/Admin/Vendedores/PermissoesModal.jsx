@@ -47,6 +47,8 @@ const DEFAULT_PERMISSIONS = {
     Pode_Editar_Lead: false,
     // Painel de Atendimentos
     Pode_Ver_Atendimentos: false,
+    // Orientação IA na Rota
+    Pode_Usar_IA_Orientacao: false,
     // Reatribuição de vendedor em pedidos
     Pode_Reatribuir_Vendedor: false,
     // Exclusão de Registros
@@ -500,6 +502,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                     label="Editar GPS de Clientes" sublabel="Capturar e salvar localização GPS dos clientes na rota" />
                                 <Toggle checked={!!permissoes.Pode_Ver_Atendimentos} onChange={() => toggleBool('Pode_Ver_Atendimentos')}
                                     label="Painel de Atendimentos" sublabel="Acesso ao painel completo com historico de todos os atendimentos" />
+                                <Toggle checked={!!permissoes.Pode_Usar_IA_Orientacao} onChange={() => toggleBool('Pode_Usar_IA_Orientacao')}
+                                    label="Orientação IA na Rota" sublabel="Exibe botão para gerar análise de orientação comercial com IA nos cards da rota" icon={Lightbulb} colorClass="bg-violet-600" />
                             </div>
                         )}
 
