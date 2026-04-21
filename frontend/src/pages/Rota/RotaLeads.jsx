@@ -1616,8 +1616,9 @@ const RotaLeads = () => {
     }, [alertasAtivos, vendedorId]);
 
     // Filtra clientes com rota definida ou com alerta/transferência ativa
+    // Clientes inativos nunca aparecem na rota
     const clientesComAtendimento = useMemo(() => {
-        return clientes.filter(c => c.Dia_de_venda || c.Dia_de_entrega || alertasPorItem[c.UUID]);
+        return clientes.filter(c => c.Ativo !== false && (c.Dia_de_venda || c.Dia_de_entrega || alertasPorItem[c.UUID]));
     }, [clientes, alertasPorItem]);
 
     const handleMarcarAlertaVisto = async (atendimentoId) => {
@@ -1777,7 +1778,7 @@ const RotaLeads = () => {
     // sem filtro de formasVisiveis/dia/forma (o vendedor precisa ver tudo que fizeram por ele)
     const itensAtendidos = useMemo(() => {
         const todos = [
-            ...clientes.filter(c => c.Dia_de_venda || c.Dia_de_entrega || alertasPorItem[c.UUID] || isAtendidoHojePorQualquer({ ...c, _tipo: 'cliente' })).map(c => ({ _tipo: 'cliente', ...c })),
+            ...clientes.filter(c => c.Ativo !== false && (c.Dia_de_venda || c.Dia_de_entrega || alertasPorItem[c.UUID] || isAtendidoHojePorQualquer({ ...c, _tipo: 'cliente' }))).map(c => ({ _tipo: 'cliente', ...c })),
             ...leads.map(l => ({ _tipo: 'lead', ...l }))
         ];
         return todos.filter(i => {
