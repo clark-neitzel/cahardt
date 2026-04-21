@@ -27,17 +27,25 @@ const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'N/D'];
 
 // ─── Cenários do Motor de Orientação ───────────────────────────────
 const CENARIO_META = {
-    NOVO_SEM_COMPRA:           { label: 'Novo sem compra',        cor: 'bg-blue-100 text-blue-700 border-blue-200' },
+    // v2 — nomes novos
+    NOVO_SEM_COMPRA:    { label: 'Novo sem compra',        cor: 'bg-blue-100 text-blue-700 border-blue-200' },
+    PRIMEIRA_COMPRA:    { label: '1ª compra sem recompra', cor: 'bg-purple-100 text-purple-700 border-purple-200' },
+    REGULAR:            { label: 'Regular no prazo',        cor: 'bg-green-100 text-green-700 border-green-200' },
+    ATENCAO:            { label: 'Em atenção',              cor: 'bg-amber-100 text-amber-700 border-amber-200' },
+    ATRASADO:           { label: 'Atrasado',                cor: 'bg-orange-100 text-orange-700 border-orange-200' },
+    PARADO:             { label: 'Parado',                  cor: 'bg-red-100 text-red-700 border-red-200' },
+    QUEDA_TICKET:       { label: 'Queda de ticket',         cor: 'bg-orange-100 text-orange-700 border-orange-200' },
+    NEGA_WHATSAPP:      { label: 'Nega por WhatsApp',       cor: 'bg-rose-100 text-rose-800 border-rose-200' },
+    OBJECAO_RECORRENTE: { label: 'Objeção recorrente',      cor: 'bg-red-100 text-red-800 border-red-300' },
+    // Compatibilidade com registros antigos no banco (v1)
     FEZ_1_COMPRA_SEM_RECOMPRA: { label: '1ª compra sem recompra', cor: 'bg-purple-100 text-purple-700 border-purple-200' },
     REGULAR_NO_PRAZO:          { label: 'Regular no prazo',        cor: 'bg-green-100 text-green-700 border-green-200' },
     EM_ATENCAO:                { label: 'Em atenção',              cor: 'bg-amber-100 text-amber-700 border-amber-200' },
     ATRASADO_PARADO:           { label: 'Atrasado / parado',       cor: 'bg-red-100 text-red-700 border-red-200' },
     COMPROU_MENOS_NORMAL:      { label: 'Queda de ticket',         cor: 'bg-orange-100 text-orange-700 border-orange-200' },
-    NEGA_WHATSAPP:             { label: 'Nega por WhatsApp',       cor: 'bg-rose-100 text-rose-800 border-rose-200' },
-    OBJECAO_RECORRENTE:        { label: 'Objeção recorrente',      cor: 'bg-red-100 text-red-800 border-red-300' },
 };
 
-// Gera frase curta de "motivo" a partir dos dados do insight (por que chegou nesse cenário)
+// Gera frase curta de "motivo" a partir dos dados do insight
 const gerarMotivoInsight = (insight) => {
     if (!insight) return null;
     const tipo = insight.insightPrincipalTipo;
@@ -46,15 +54,32 @@ const gerarMotivoInsight = (insight) => {
     const negativas = insight.qtdAtendimentosSemPedido30d;
     const varTicket = insight.variacaoTicketPct != null ? Math.round(insight.variacaoTicketPct) : null;
     switch (tipo) {
-        case 'NOVO_SEM_COMPRA':           return 'Sem histórico de compras';
-        case 'FEZ_1_COMPRA_SEM_RECOMPRA': return dias != null ? `1 compra · ${dias}d sem retorno` : '1 compra · sem retorno';
-        case 'REGULAR_NO_PRAZO':          return dias != null ? `${dias}d sem comprar · ciclo ${ciclo}d` : 'Comprando no prazo';
-        case 'EM_ATENCAO':                return dias != null ? `${dias}d sem comprar (ciclo ${ciclo}d)` : 'Compra atrasando';
-        case 'ATRASADO_PARADO':           return dias != null ? `Parado há ${dias} dias (ciclo ${ciclo}d)` : 'Cliente parado';
-        case 'COMPROU_MENOS_NORMAL':      return varTicket != null ? `Ticket caiu ${Math.abs(varTicket)}%` : 'Queda no volume';
-        case 'NEGA_WHATSAPP':             return negativas ? `${negativas} negativas em 30 dias` : 'Várias negativas por WhatsApp';
-        case 'OBJECAO_RECORRENTE':        return dias != null ? `Parado ${dias}d + devolução recente` : 'Objeção + devolução recente';
-        default:                          return null;
+        case 'NOVO_SEM_COMPRA':
+            return 'Sem histórico de compras';
+        case 'PRIMEIRA_COMPRA':
+        case 'FEZ_1_COMPRA_SEM_RECOMPRA':
+            return dias != null ? `1 compra · ${dias}d sem retorno` : '1 compra · sem retorno';
+        case 'REGULAR':
+        case 'REGULAR_NO_PRAZO':
+            return dias != null ? `${dias}d sem comprar · ciclo ${ciclo}d` : 'Comprando no prazo';
+        case 'ATENCAO':
+        case 'EM_ATENCAO':
+            return dias != null ? `${dias}d sem comprar (ciclo ${ciclo}d)` : 'Compra atrasando';
+        case 'ATRASADO':
+            return dias != null ? `Atrasado ${dias}d · ~2 ciclos` : 'Atrasado 2 ciclos';
+        case 'PARADO':
+            return dias != null ? `Parado há ${dias} dias (${ciclo ? Math.round(dias / ciclo) : '?'} ciclos)` : 'Cliente inativo';
+        case 'ATRASADO_PARADO':
+            return dias != null ? `Parado há ${dias} dias (ciclo ${ciclo}d)` : 'Cliente parado';
+        case 'QUEDA_TICKET':
+        case 'COMPROU_MENOS_NORMAL':
+            return varTicket != null ? `Ticket caiu ${Math.abs(varTicket)}%` : 'Queda no volume';
+        case 'NEGA_WHATSAPP':
+            return negativas ? `${negativas} negativas em 30 dias` : 'Várias negativas';
+        case 'OBJECAO_RECORRENTE':
+            return dias != null ? `Parado ${dias}d + devolução recente` : 'Objeção + devolução';
+        default:
+            return null;
     }
 };
 
@@ -222,13 +247,12 @@ const OrientacaoPopup = ({ insight, onConfirm, onClose }) => {
                 </div>
                 {ia ? (
                     <div className="space-y-1.5">
-                        {ia.objetivo && <p className="text-[12px] text-gray-700"><span className="font-semibold">Objetivo:</span> {ia.objetivo}</p>}
+                        {(ia.metaHoje || ia.objetivo) && <p className="text-[12px] text-gray-700"><span className="font-semibold">Meta:</span> {ia.metaHoje || ia.objetivo}</p>}
                         {ia.canal && <p className="text-[12px] text-gray-600"><span className="font-semibold">Canal:</span> {ia.canal}</p>}
                         {ia.acao && <p className="text-[12px] text-gray-800 font-semibold border-t pt-1.5 mt-1">{ia.acao}</p>}
-                        {ia.objecao && (
+                        {(ia.seNegar || ia.objecao) && (
                             <div className="bg-amber-50 rounded px-2.5 py-1.5 border border-amber-200">
-                                <p className="text-[11px] text-amber-700"><span className="font-semibold">Objeção:</span> {ia.objecao}</p>
-                                {ia.resposta && <p className="text-[11px] text-amber-600 italic mt-0.5">{ia.resposta}</p>}
+                                <p className="text-[11px] text-amber-700"><span className="font-semibold">Se negar:</span> {ia.seNegar || ia.objecao}</p>
                             </div>
                         )}
                     </div>
@@ -385,13 +409,12 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                             {orientExpanded && (
                                 ia ? (
                                     <div className="mt-1.5 rounded-lg border border-violet-200 bg-violet-50/70 px-3 py-2 space-y-1">
-                                        {ia.objetivo && <p className="text-[11px] text-violet-900"><span className="font-semibold">Objetivo:</span> {ia.objetivo}</p>}
+                                        {(ia.metaHoje || ia.objetivo) && <p className="text-[11px] text-violet-900"><span className="font-semibold">Meta:</span> {ia.metaHoje || ia.objetivo}</p>}
                                         {ia.canal && <p className="text-[11px] text-violet-700"><span className="font-semibold">Canal:</span> {ia.canal}</p>}
                                         {ia.acao && <p className="text-[11px] text-violet-800 font-semibold border-t border-violet-100 pt-1 mt-1">{ia.acao}</p>}
-                                        {ia.objecao && (
+                                        {(ia.seNegar || ia.objecao) && (
                                             <div className="bg-white/60 rounded px-2 py-1 border border-violet-100 mt-0.5">
-                                                <p className="text-[10px] text-violet-600"><span className="font-semibold">Objeção:</span> {ia.objecao}</p>
-                                                {ia.resposta && <p className="text-[10px] text-violet-600 italic mt-0.5">{ia.resposta}</p>}
+                                                <p className="text-[10px] text-violet-600"><span className="font-semibold">Se negar:</span> {ia.seNegar || ia.objecao}</p>
                                             </div>
                                         )}
                                     </div>

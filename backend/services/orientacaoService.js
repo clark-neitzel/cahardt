@@ -1,77 +1,73 @@
 /**
  * Motor de Orientação Comercial do Atendimento
  *
- * Etapa 1: Classificação determinística do cenário do cliente.
- * Usa apenas dados já existentes em ClienteInsight — sem novos campos.
- *
- * Etapa 3 (futuro): validador pré-salvamento via GPT usará OPENAI_API_KEY.
+ * v2 — histórico unificado [PEDIDO]/[ATENDIMENTO], prompt direto para vendedor de campo.
+ * FINANCEIRO e eventos automáticos excluídos da análise comercial.
  */
 
 // ─────────────────────────────────────────────
 // 1. Enum de cenários
 // ─────────────────────────────────────────────
 const CENARIO = {
-    NOVO_SEM_COMPRA:            'NOVO_SEM_COMPRA',
-    FEZ_1_COMPRA_SEM_RECOMPRA:  'FEZ_1_COMPRA_SEM_RECOMPRA',
-    REGULAR_NO_PRAZO:           'REGULAR_NO_PRAZO',
-    EM_ATENCAO:                 'EM_ATENCAO',
-    ATRASADO_PARADO:            'ATRASADO_PARADO',
-    COMPROU_MENOS_NORMAL:       'COMPROU_MENOS_NORMAL',
-    NEGA_WHATSAPP:              'NEGA_WHATSAPP',
-    OBJECAO_RECORRENTE:         'OBJECAO_RECORRENTE',
+    NOVO_SEM_COMPRA:    'NOVO_SEM_COMPRA',
+    PRIMEIRA_COMPRA:    'PRIMEIRA_COMPRA',
+    REGULAR:            'REGULAR',
+    ATENCAO:            'ATENCAO',
+    ATRASADO:           'ATRASADO',
+    PARADO:             'PARADO',
+    QUEDA_TICKET:       'QUEDA_TICKET',
+    NEGA_WHATSAPP:      'NEGA_WHATSAPP',
+    OBJECAO_RECORRENTE: 'OBJECAO_RECORRENTE',
 };
 
 // ─────────────────────────────────────────────
-// 2. Catálogo estático de orientação (4 campos)
+// 2. Catálogo estático (fallback sem IA)
 // ─────────────────────────────────────────────
 const CATALOGO = {
     [CENARIO.NOVO_SEM_COMPRA]: {
-        situacao:         'Novo cliente sem compra',
-        objetivo:         'Realizar a primeira venda',
-        canalRecomendado: 'Presencial',
-        acaoSugerida:     'Apresentar portfólio e condições especiais de primeiro pedido',
+        situacao:      'Novo cliente sem compra',
+        acaoSugerida:  'Apresentar portfólio e condições especiais de primeiro pedido',
+        seNegar:       'Deixar catálogo e agendar retorno em 3 dias',
     },
-    [CENARIO.FEZ_1_COMPRA_SEM_RECOMPRA]: {
-        situacao:         'Fez 1 compra e não recomprou',
-        objetivo:         'Converter em cliente recorrente',
-        canalRecomendado: 'Presencial',
-        acaoSugerida:     'Verificar satisfação, entender objeção e oferecer novo pedido',
+    [CENARIO.PRIMEIRA_COMPRA]: {
+        situacao:      '1ª compra, sem recompra ainda',
+        acaoSugerida:  'Validar giro do último pedido e tentar 2ª compra',
+        seNegar:       'Perguntar até quando dura o estoque e marcar retorno',
     },
-    [CENARIO.REGULAR_NO_PRAZO]: {
-        situacao:         'Regular comprando no prazo',
-        objetivo:         'Manter e ampliar o mix',
-        canalRecomendado: 'WhatsApp ou Presencial',
-        acaoSugerida:     'Sugerir produto ausente ou promoção ativa',
+    [CENARIO.REGULAR]: {
+        situacao:      'Regular comprando no prazo',
+        acaoSugerida:  'Sugerir produto ausente do mix ou promoção ativa',
+        seNegar:       'Perguntar quando costuma reabastecer e confirmar próxima visita',
     },
-    [CENARIO.EM_ATENCAO]: {
-        situacao:         'Em atenção — compra atrasando',
-        objetivo:         'Reativar antes de virar crítico',
-        canalRecomendado: 'Presencial',
-        acaoSugerida:     'Visita com proposta concreta (produto, condição ou promoção)',
+    [CENARIO.ATENCAO]: {
+        situacao:      'Em atenção — compra atrasando 1 ciclo',
+        acaoSugerida:  'Visita presencial com proposta concreta',
+        seNegar:       'Entender motivo e oferecer pedido menor ou prazo diferenciado',
     },
-    [CENARIO.ATRASADO_PARADO]: {
-        situacao:         'Atrasado / parado',
-        objetivo:         'Reabrir relacionamento comercial',
-        canalRecomendado: 'Presencial',
-        acaoSugerida:     'Visita pessoal para entender sumiço e fechar pedido',
+    [CENARIO.ATRASADO]: {
+        situacao:      'Atrasado — 2 ciclos sem comprar',
+        acaoSugerida:  'Visita para entender quebra de frequência e reativar',
+        seNegar:       'Oferecer amostra ou condição especial para retomar',
     },
-    [CENARIO.COMPROU_MENOS_NORMAL]: {
-        situacao:         'Comprou menos que o normal',
-        objetivo:         'Entender queda e recuperar ticket',
-        canalRecomendado: 'Presencial',
-        acaoSugerida:     'Verificar concorrência ou problema e recompor mix',
+    [CENARIO.PARADO]: {
+        situacao:      'Parado — 3+ ciclos sem comprar',
+        acaoSugerida:  'Visita pessoal para entender sumiço e reabrir relação',
+        seNegar:       'Deixar amostra e reagendar em 1 semana',
+    },
+    [CENARIO.QUEDA_TICKET]: {
+        situacao:      'Comprou menos que o normal',
+        acaoSugerida:  'Verificar concorrência ou problema e recompor mix',
+        seNegar:       'Investigar motivo da queda e propor item complementar',
     },
     [CENARIO.NEGA_WHATSAPP]: {
-        situacao:         'Nega muito por WhatsApp',
-        objetivo:         'Forçar contato presencial',
-        canalRecomendado: 'Presencial',
-        acaoSugerida:     'Não insistir no WhatsApp — agendar visita física',
+        situacao:      'Negando por WhatsApp repetidamente',
+        acaoSugerida:  'Não insistir no WhatsApp — forçar contato presencial',
+        seNegar:       'Agendar visita física sem avisar pelo WhatsApp',
     },
     [CENARIO.OBJECAO_RECORRENTE]: {
-        situacao:         'Objeção recorrente',
-        objetivo:         'Resolver causa raiz da objeção',
-        canalRecomendado: 'Presencial',
-        acaoSugerida:     'Levantar histórico de objeções e apresentar solução direcionada',
+        situacao:      'Objeção recorrente com devolução recente',
+        acaoSugerida:  'Visita para resolver causa raiz da objeção',
+        seNegar:       'Levantar histórico de objeções e apresentar solução direcionada',
     },
 };
 
@@ -89,47 +85,45 @@ function classificarCenario(insight) {
         variacaoTicketPct,
         qtdAtendimentosSemPedido30d,
         teveDevolucaoRecente,
-        ticketMedioBase,   // null quando há poucos pedidos (< 3 no histórico total)
+        ticketMedioBase,
+        diasSemComprar,
+        cicloReferenciaDias,
     } = insight;
 
-    // Nega por WhatsApp: vários atendimentos sem gerar pedido
+    // Nega recorrente: 3+ atendimentos comerciais sem gerar pedido em 30 dias
     if (qtdAtendimentosSemPedido30d >= 3) {
         return CENARIO.NEGA_WHATSAPP;
     }
 
-    // Fez 1 compra e parou: sem base histórica + fora do prazo
+    // 1ª compra: sem base histórica (< 3 pedidos) e fora do prazo
     if (ticketMedioBase === null && statusRecompra !== 'NO_PRAZO') {
-        return CENARIO.FEZ_1_COMPRA_SEM_RECOMPRA;
+        return CENARIO.PRIMEIRA_COMPRA;
     }
 
-    // Objeção recorrente: crítico E devolução recente
-    if (statusRecompra === 'CRITICO' && teveDevolucaoRecente) {
-        return CENARIO.OBJECAO_RECORRENTE;
-    }
-
-    // Atrasado/parado
+    // Crítico — diferenciar ATRASADO (2 ciclos) de PARADO (3+ ciclos)
     if (statusRecompra === 'CRITICO') {
-        return CENARIO.ATRASADO_PARADO;
+        if (teveDevolucaoRecente) return CENARIO.OBJECAO_RECORRENTE;
+        const ciclos = (diasSemComprar || 0) / (cicloReferenciaDias || 7);
+        if (ciclos >= 3) return CENARIO.PARADO;
+        return CENARIO.ATRASADO;
     }
 
-    // Comprou menos que o normal
+    // Atrasado com queda de ticket
     if (statusRecompra === 'ATRASADO' && variacaoTicketPct !== null && variacaoTicketPct < -20) {
-        return CENARIO.COMPROU_MENOS_NORMAL;
+        return CENARIO.QUEDA_TICKET;
     }
 
-    // Em atenção (atrasado sem queda de ticket, ou apenas atenção)
+    // Em atenção (1 ciclo)
     if (statusRecompra === 'ATRASADO' || statusRecompra === 'ATENCAO') {
-        return CENARIO.EM_ATENCAO;
+        return CENARIO.ATENCAO;
     }
 
-    // Regular no prazo
-    return CENARIO.REGULAR_NO_PRAZO;
+    // Regular
+    return CENARIO.REGULAR;
 }
 
 // ─────────────────────────────────────────────
-// 4. Gerar orientação a partir do insight
-//    Retorna os dados prontos para salvar nos
-//    3 campos null do ClienteInsight.
+// 4. Gerar orientação determinística (fallback)
 // ─────────────────────────────────────────────
 function gerarOrientacao(insight) {
     const cenario = classificarCenario(insight);
@@ -139,8 +133,7 @@ function gerarOrientacao(insight) {
         insightPrincipalTipo:   cenario,
         insightPrincipalResumo: orientacao.situacao,
         proximaAcaoSugerida:    orientacao.acaoSugerida,
-        // Dados extras para uso no card (não persistidos, enviados via API)
-        _orientacaoCompleta: orientacao,
+        _orientacaoCompleta:    orientacao,
     };
 }
 
@@ -149,46 +142,46 @@ function gerarOrientacao(insight) {
 // ─────────────────────────────────────────────
 const prisma = require('../config/database');
 
-// Prompt completo enviado ao GPT — exportado para conferência
-function montarPromptIA({ nomeCliente, cenario, insight, atendimentosRecentes }) {
+// Monta prompt — recebe historicoStr (já filtrado/tagueado) e orientacaoAnterior
+function montarPromptIA({ nomeCliente, cenario, insight, historicoStr, orientacaoAnterior }) {
     const cat = CATALOGO[cenario] || {};
 
-    const atendStr = atendimentosRecentes?.length
-        ? atendimentosRecentes.map(a =>
-            `- ${new Date(a.criadoEm).toLocaleDateString('pt-BR')} | ${a.tipo} | ${a.acaoLabel || '-'} | ${a.observacao || 'sem obs'}`
-          ).join('\n')
-        : '(nenhum atendimento registrado)';
-
     return `Você é um assistente de vendas consultivas para distribuidora de alimentos.
-Analise o histórico deste cliente e gere uma orientação comercial objetiva e direta para o vendedor de campo.
+Analise o histórico comercial deste cliente e gere uma orientação prática e direta para o vendedor de campo.
 
 CLIENTE: ${nomeCliente}
-CENÁRIO CLASSIFICADO: ${cenario} — ${cat.situacao || ''}
+CENÁRIO: ${cenario} — ${cat.situacao || ''}
 
-HISTÓRICO ANALÍTICO:
+DADOS ANALÍTICOS:
 - Dias sem comprar: ${insight.diasSemComprar ?? 'N/A'} (ciclo esperado: ${insight.cicloReferenciaDias} dias)
 - Status de recompra: ${insight.statusRecompra}
 - Pedidos últimos 30 dias: ${insight.qtdPedidosUltimos30d}
 - Ticket médio recente: ${insight.ticketMedioRecente ? 'R$ ' + Number(insight.ticketMedioRecente).toFixed(2) : 'sem dados'}
 - Ticket médio histórico: ${insight.ticketMedioBase ? 'R$ ' + Number(insight.ticketMedioBase).toFixed(2) : 'sem dados'}
 - Variação de ticket: ${insight.variacaoTicketPct != null ? Number(insight.variacaoTicketPct).toFixed(1) + '%' : 'sem dados'}
-- Atendimentos sem pedido (30d): ${insight.qtdAtendimentosSemPedido30d}
-- Canal último atendimento: ${insight.canalUltimoAtendimento || 'nenhum registrado'}
+- Atendimentos comerciais sem pedido (30d): ${insight.qtdAtendimentosSemPedido30d}
 - Devolução recente: ${insight.teveDevolucaoRecente ? 'Sim' : 'Não'}
 - Score de risco: ${insight.scoreRisco}/100
-- Score de oportunidade: ${insight.scoreOportunidade}/100
 
-ÚLTIMOS ATENDIMENTOS (mais recentes primeiro):
-${atendStr}
+HISTÓRICO COMERCIAL (últimos 10 eventos — [PEDIDO] e [ATENDIMENTO] apenas):
+${historicoStr}
+
+${orientacaoAnterior}
+
+Regras:
+- Seja direto e prático — o vendedor lê isso em 5 segundos antes de entrar
+- Use linguagem de vendedor de rota, não de gerente
+- "motivo" deve ser um dado concreto (ex: "12 dias sem comprar", "ticket caiu 35%")
+- "seNegar" deve ser uma ação real, não uma frase genérica
 
 Responda APENAS com JSON válido, sem markdown, sem explicação:
 {
-  "situacao": "situação atual do cliente em 1 frase objetiva (máx 70 chars)",
-  "objetivo": "o que o vendedor deve alcançar neste atendimento (máx 70 chars)",
-  "canal": "canal recomendado e motivo curto (máx 50 chars)",
-  "acao": "ação principal concreta a tomar (máx 90 chars)",
-  "objecao": "objeção mais provável com base no histórico (máx 70 chars)",
-  "resposta": "como contornar a objeção em linguagem de vendedor (máx 90 chars)"
+  "situacao": "classificação curta e forte (máx 60 chars)",
+  "motivo": "dado concreto que justifica o cenário (máx 70 chars)",
+  "metaHoje": "o que buscar nesta visita (máx 60 chars)",
+  "canal": "canal recomendado com motivo curto (máx 50 chars)",
+  "acao": "ação concreta e específica (máx 90 chars)",
+  "seNegar": "plano B se o cliente recusar (máx 80 chars)"
 }`;
 }
 
@@ -202,37 +195,67 @@ async function gerarOrientacaoIA(clienteId, opcoes = {}) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('OPENAI_API_KEY não configurada.');
 
-    // Busca dados do cliente
     const cliente = await prisma.cliente.findUnique({
         where: { UUID: clienteId },
         select: { Nome: true, NomeFantasia: true, idVendedor: true, categoriaCliente: { select: { nome: true } } }
     });
     if (!cliente) throw new Error(`Cliente ${clienteId} não encontrado.`);
 
-    // Busca insight atual
     const insight = await prisma.clienteInsight.findUnique({ where: { clienteId } });
     if (!insight) throw new Error(`Sem insight para cliente ${clienteId}. Rode recalcular primeiro.`);
 
-    // Busca últimos 5 atendimentos
-    const atendimentosRecentes = await prisma.atendimento.findMany({
-        where: { clienteId },
-        orderBy: { criadoEm: 'desc' },
-        take: 5,
-        select: { criadoEm: true, tipo: true, acaoLabel: true, observacao: true }
-    });
+    // ── Histórico unificado: atendimentos comerciais + pedidos (últimos 10) ──
+    const [atendimentosComerciais, pedidosRecentes] = await Promise.all([
+        prisma.atendimento.findMany({
+            where: { clienteId, tipo: { notIn: ['FINANCEIRO'] } },
+            orderBy: { criadoEm: 'desc' },
+            take: 20,
+            select: { criadoEm: true, tipo: true, acaoLabel: true, observacao: true }
+        }),
+        prisma.pedido.findMany({
+            where: { clienteId },
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            select: { createdAt: true, statusEnvio: true, numero: true,
+                      itens: { select: { valor: true, quantidade: true } } }
+        })
+    ]);
+
+    const timeline = [
+        ...atendimentosComerciais.map(a => ({
+            data: a.criadoEm,
+            tag: '[ATENDIMENTO]',
+            descricao: `${a.tipo}${a.acaoLabel ? ' | ' + a.acaoLabel : ''} | ${a.observacao || 'sem obs'}`
+        })),
+        ...pedidosRecentes.map(p => {
+            const total = p.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0);
+            return {
+                data: p.createdAt,
+                tag: '[PEDIDO]',
+                descricao: `#${p.numero || '?'} | ${p.statusEnvio} | R$ ${total.toFixed(2)}`
+            };
+        })
+    ].sort((a, b) => new Date(b.data) - new Date(a.data)).slice(0, 10);
+
+    const historicoStr = timeline.length
+        ? timeline.map(e => `- ${new Date(e.data).toLocaleDateString('pt-BR')} ${e.tag} ${e.descricao}`).join('\n')
+        : '(sem histórico comercial registrado)';
+
+    const orientacaoAnterior = insight.orientacaoIaJson
+        ? `ORIENTAÇÃO ANTERIOR SUGERIDA:\n${JSON.stringify(insight.orientacaoIaJson, null, 2)}`
+        : 'ORIENTAÇÃO ANTERIOR: nenhuma ainda';
+    // ─────────────────────────────────────────────────────────────────────────
 
     const cenario = classificarCenario(insight);
     const nomeCliente = cliente.NomeFantasia || cliente.Nome;
-    const prompt = montarPromptIA({ nomeCliente, cenario, insight, atendimentosRecentes });
-    const dadosEntrada = { insight, atendimentosRecentes };
+    const prompt = montarPromptIA({ nomeCliente, cenario, insight, historicoStr, orientacaoAnterior });
     const modelo = 'gpt-4o-mini';
     const inicio = Date.now();
+    const dadosEntrada = { insight, timeline };
 
-    // Chamada GPT-4o-mini
     const { OpenAI } = require('openai');
     const openai = new OpenAI({ apiKey });
 
-    // Helper: salva log via raw SQL (evita dependência do Prisma client gerado)
     const salvarLog = async (params) => {
         try {
             await prisma.$executeRawUnsafe(
@@ -278,7 +301,6 @@ async function gerarOrientacaoIA(clienteId, opcoes = {}) {
             throw new Error(`GPT retornou JSON inválido: ${raw}`);
         }
 
-        // Salva no banco
         await prisma.clienteInsight.update({
             where: { clienteId },
             data: { orientacaoIaJson }
@@ -297,7 +319,6 @@ async function gerarOrientacaoIA(clienteId, opcoes = {}) {
         throw err;
     }
 
-    // Salva log de sucesso
     await salvarLog({
         clienteId, vendedorId: cliente.idVendedor,
         disparadoPor, usuarioId, atendimentoId,
@@ -317,7 +338,7 @@ async function gerarOrientacaoIA(clienteId, opcoes = {}) {
         orientacaoIaJson,
         promptEnviado: prompt,
         tokensUsados: response.usage,
-        dadosAnalise: { insight, atendimentosRecentes }
+        dadosAnalise: { insight, timeline }
     };
 }
 

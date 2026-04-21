@@ -197,12 +197,14 @@ const clienteInsightService = {
                 motivoUltimaDevolucao = `Item parcial devolvido`;
             }
 
-            // 2.10 Atendimentos sem Pedido 
+            // 2.10 Atendimentos sem Pedido
             // - contar atendimentos dos últimos 30 dias sem pedido no mesmo dia
+            // - FINANCEIRO excluído: não é interação comercial
             const atendimentos30d = await prisma.atendimento.findMany({
                 where: {
                     clienteId: clienteId,
-                    criadoEm: { gte: trintaDiasAtras }
+                    criadoEm: { gte: trintaDiasAtras },
+                    tipo: { notIn: ['FINANCEIRO'] }
                 },
                 orderBy: { criadoEm: 'desc' }
             });
@@ -245,6 +247,8 @@ const clienteInsightService = {
                 qtdAtendimentosSemPedido30d,
                 teveDevolucaoRecente,
                 ticketMedioBase,
+                diasSemComprar,
+                cicloReferenciaDias,
             };
             const { insightPrincipalTipo, insightPrincipalResumo, proximaAcaoSugerida } =
                 orientacaoService.gerarOrientacao(insightParcial);
