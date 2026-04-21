@@ -61,7 +61,11 @@ const atendimentoService = {
                         // 2s de delay para garantir que o insight já foi salvo
                         setTimeout(() => {
                             const orientacaoService = require('./orientacaoService');
-                            orientacaoService.gerarOrientacaoIA(clienteId).catch(err => {
+                            orientacaoService.gerarOrientacaoIA(clienteId, {
+                                disparadoPor: 'ATENDIMENTO',
+                                usuarioId: usuarioRegistroId || null,
+                                atendimentoId: novoAtendimento.id || null,
+                            }).catch(err => {
                                 console.error('[IA] Erro ao atualizar orientação após atendimento:', err.message);
                             });
                         }, 2000);

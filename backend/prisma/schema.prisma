@@ -166,6 +166,7 @@ model Cliente {
   insightAtivo                 Boolean           @default(true) @map("insight_ativo")
   observacaoComercialFixa      String?           @map("observacao_comercial_fixa") @db.Text
   clienteInsights              ClienteInsight[]
+  iaAnaliseLogs                IaAnaliseLog[]
 
   @@index([Nome])
   @@index([NomeFantasia])
@@ -1427,4 +1428,32 @@ model DevolucaoItem {
 
   @@index([devolucaoId])
   @@map("devolucao_itens")
+}
+
+model IaAnaliseLog {
+  id                      Int      @id @default(autoincrement())
+  clienteId               String   @map("cliente_id")
+  vendedorId              String?  @map("vendedor_id")
+  disparadoPor            String   @map("disparado_por") // ATENDIMENTO | NOTURNO | MANUAL
+  disparadoPorUsuarioId   String?  @map("disparado_por_usuario_id")
+  atendimentoId           Int?     @map("atendimento_id")
+  modelo                  String   @default("gpt-4o-mini")
+  promptEnviado           String   @map("prompt_enviado") @db.Text
+  dadosEntrada            Json     @map("dados_entrada")
+  respostaIa              Json?    @map("resposta_ia")
+  tokensPrompt            Int?     @map("tokens_prompt")
+  tokensResposta          Int?     @map("tokens_resposta")
+  tokensTotal             Int?     @map("tokens_total")
+  duracaoMs               Int?     @map("duracao_ms")
+  sucesso                 Boolean  @default(true)
+  erroMsg                 String?  @map("erro_msg")
+  criadoEm               DateTime @default(now()) @map("criado_em")
+
+  cliente Cliente @relation(fields: [clienteId], references: [UUID])
+
+  @@index([clienteId])
+  @@index([criadoEm(sort: Desc)])
+  @@index([vendedorId])
+  @@index([disparadoPor])
+  @@map("ia_analise_logs")
 }

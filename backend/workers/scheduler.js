@@ -145,7 +145,7 @@ function startSchedulers() {
                 console.log(`[IA Noturna] ${siglaDia}: ${semIA.length}/${clientesDoDia.length} clientes sem orientação IA — gerando...`);
                 for (const c of semIA) {
                     try {
-                        await orientacaoService.gerarOrientacaoIA(c.UUID);
+                        await orientacaoService.gerarOrientacaoIA(c.UUID, { disparadoPor: 'NOTURNO' });
                     } catch (err) {
                         console.error(`[IA Noturna] Erro cliente ${c.UUID}:`, err.message);
                     }

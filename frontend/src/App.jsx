@@ -52,6 +52,7 @@ import DashboardPcp from './pages/PCP/DashboardPcp';
 import DeliveryKanban from './pages/Delivery/DeliveryKanban';
 import DeliveryConfig from './pages/Delivery/DeliveryConfig';
 import PainelAtendimentos from './pages/Atendimentos/PainelAtendimentos';
+import PainelAnaliseIA from './pages/AnaliseIA/PainelAnaliseIA';
 
 import {
   Menu, X, LogOut, ChevronDown,
@@ -59,7 +60,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, History
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, History, Sparkles
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -188,6 +189,7 @@ const Layout = ({ children }) => {
           {hasPermission('pedidos') && <SidebarItem to="/rota" icon={Map} label="Rota" />}
           {hasPermission('rota') && <SidebarItem to="/leads" icon={Target} label="Leads" />}
           {(isAdmin || hasPermission('Pode_Ver_Atendimentos')) && <SidebarItem to="/atendimentos" icon={ClipboardCheck} label="Atendimentos" />}
+          {(isAdmin || hasPermission('Pode_Ver_Atendimentos')) && <SidebarItem to="/analise-ia" icon={Sparkles} label="Análise IA" />}
           {hasPermission('clientes') && <SidebarItem to="/clientes" icon={Users} label="Clientes" />}
 
           {/* Logística */}
@@ -313,6 +315,7 @@ const Layout = ({ children }) => {
               {hasPermission('pedidos') && <NavLink to="/rota" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rota</NavLink>}
               {hasPermission('rota') && <NavLink to="/leads" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Leads</NavLink>}
               {(isAdmin || hasPermission('Pode_Ver_Atendimentos')) && <NavLink to="/atendimentos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Atendimentos</NavLink>}
+              {(isAdmin || hasPermission('Pode_Ver_Atendimentos')) && <NavLink to="/analise-ia" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Análise IA</NavLink>}
               {hasPermission('clientes') && <NavLink to="/clientes" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Clientes</NavLink>}
             </MobileMenuSection>
 
@@ -453,6 +456,7 @@ function App() {
               <Route path="/rota" element={<PrivateRoute tab="pedidos"><RotaLeads /></PrivateRoute>} />
               <Route path="/leads" element={<PrivateRoute tab="rota"><ListaLeads /></PrivateRoute>} />
               <Route path="/atendimentos" element={<PrivateRoute tab="Pode_Ver_Atendimentos"><PainelAtendimentos /></PrivateRoute>} />
+              <Route path="/analise-ia" element={<PrivateRoute tab="Pode_Ver_Atendimentos"><PainelAnaliseIA /></PrivateRoute>} />
 
               {/* Clientes */}
               <Route path="/clientes" element={<PrivateRoute tab="clientes"><ListaClientes /></PrivateRoute>} />

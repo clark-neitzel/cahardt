@@ -192,14 +192,20 @@ Responda APENAS com JSON válido, sem markdown, sem explicação:
 }`;
 }
 
-async function gerarOrientacaoIA(clienteId) {
+async function gerarOrientacaoIA(clienteId, opcoes = {}) {
+    const {
+        disparadoPor = 'MANUAL',
+        usuarioId = null,
+        atendimentoId = null,
+    } = opcoes;
+
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error('OPENAI_API_KEY não configurada.');
 
     // Busca dados do cliente
     const cliente = await prisma.cliente.findUnique({
         where: { UUID: clienteId },
-        select: { Nome: true, NomeFantasia: true, categoriaCliente: { select: { nome: true } } }
+        select: { Nome: true, NomeFantasia: true, idVendedor: true, categoriaCliente: { select: { nome: true } } }
     });
     if (!cliente) throw new Error(`Cliente ${clienteId} não encontrado.`);
 
@@ -218,32 +224,89 @@ async function gerarOrientacaoIA(clienteId) {
     const cenario = classificarCenario(insight);
     const nomeCliente = cliente.NomeFantasia || cliente.Nome;
     const prompt = montarPromptIA({ nomeCliente, cenario, insight, atendimentosRecentes });
+    const dadosEntrada = { insight, atendimentosRecentes };
+    const modelo = 'gpt-4o-mini';
+    const inicio = Date.now();
 
     // Chamada GPT-4o-mini
     const { OpenAI } = require('openai');
     const openai = new OpenAI({ apiKey });
 
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-        max_tokens: 400,
-    });
-
-    const raw = response.choices[0].message.content.trim();
-
-    let orientacaoIaJson;
+    let response, orientacaoIaJson, erroMsg = null, sucesso = true;
     try {
-        orientacaoIaJson = JSON.parse(raw);
-    } catch {
-        throw new Error(`GPT retornou JSON inválido: ${raw}`);
+        response = await openai.chat.completions.create({
+            model: modelo,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+            max_tokens: 400,
+        });
+
+        const raw = response.choices[0].message.content.trim();
+        try {
+            orientacaoIaJson = JSON.parse(raw);
+        } catch {
+            throw new Error(`GPT retornou JSON inválido: ${raw}`);
+        }
+
+        // Salva no banco
+        await prisma.clienteInsight.update({
+            where: { clienteId },
+            data: { orientacaoIaJson }
+        });
+    } catch (err) {
+        sucesso = false;
+        erroMsg = err.message;
+        // Salva log de erro e propaga
+        try {
+            await prisma.iaAnaliseLog.create({
+                data: {
+                    clienteId,
+                    vendedorId: cliente.idVendedor || null,
+                    disparadoPor,
+                    disparadoPorUsuarioId: usuarioId,
+                    atendimentoId: atendimentoId || null,
+                    modelo,
+                    promptEnviado: prompt,
+                    dadosEntrada,
+                    respostaIa: null,
+                    tokensPrompt: null,
+                    tokensResposta: null,
+                    tokensTotal: null,
+                    duracaoMs: Date.now() - inicio,
+                    sucesso: false,
+                    erroMsg,
+                }
+            });
+        } catch (logErr) {
+            console.error('[IA] Erro ao salvar log de falha:', logErr.message);
+        }
+        throw err;
     }
 
-    // Salva no banco
-    await prisma.clienteInsight.update({
-        where: { clienteId },
-        data: { orientacaoIaJson }
-    });
+    // Salva log de sucesso
+    try {
+        await prisma.iaAnaliseLog.create({
+            data: {
+                clienteId,
+                vendedorId: cliente.idVendedor || null,
+                disparadoPor,
+                disparadoPorUsuarioId: usuarioId,
+                atendimentoId: atendimentoId || null,
+                modelo,
+                promptEnviado: prompt,
+                dadosEntrada,
+                respostaIa: orientacaoIaJson,
+                tokensPrompt: response.usage?.prompt_tokens ?? null,
+                tokensResposta: response.usage?.completion_tokens ?? null,
+                tokensTotal: response.usage?.total_tokens ?? null,
+                duracaoMs: Date.now() - inicio,
+                sucesso: true,
+                erroMsg: null,
+            }
+        });
+    } catch (logErr) {
+        console.error('[IA] Erro ao salvar log:', logErr.message);
+    }
 
     return {
         clienteId,
