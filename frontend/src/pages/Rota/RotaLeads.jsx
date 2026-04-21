@@ -258,6 +258,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
     const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
     const vendedorNome = cliente.vendedor?.nome || cliente.Vendedor?.nome;
     const [orientExpanded, setOrientExpanded] = useState(false);
+    const [obsExpanded, setObsExpanded] = useState(false);
     const [popup, setPopup] = useState(null); // { pendingAction }
 
     const handleAtender = () => {
@@ -457,16 +458,24 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                     </button>
                 )}
 
-                {/* Exibir observação se já atendido */}
-                {atendHoje?.observacao && (
-                    <div className="mt-2 bg-gray-50 border border-gray-100 rounded p-2">
-                        <p className="text-[11px] font-semibold text-gray-700 mb-0.5 flex items-center gap-1">
-                            <ClipboardList className="h-3 w-3" />
-                            Obs. Atendimento
-                        </p>
-                        <p className="text-[12px] text-gray-600 line-clamp-2">{atendHoje.observacao}</p>
-                    </div>
-                )}
+                {/* Exibir observação se já atendido (próprio ou outro usuário) */}
+                {(atendHoje?.observacao || atendOutro?.observacao) && (() => {
+                    const obs = atendHoje?.observacao || atendOutro?.observacao;
+                    const longa = obs.length > 80;
+                    return (
+                        <div className="mt-2 bg-gray-50 border border-gray-100 rounded p-2">
+                            <button
+                                className="text-[11px] font-semibold text-gray-700 mb-0.5 flex items-center gap-1 w-full text-left"
+                                onClick={e => { e.stopPropagation(); setObsExpanded(v => !v); }}
+                            >
+                                <ClipboardList className="h-3 w-3" />
+                                Obs. Atendimento
+                                {longa && <ChevronDown className={`h-3 w-3 ml-auto text-gray-400 transition-transform ${obsExpanded ? 'rotate-180' : ''}`} />}
+                            </button>
+                            <p className={`text-[12px] text-gray-600 ${longa && !obsExpanded ? 'line-clamp-2' : ''}`}>{obs}</p>
+                        </div>
+                    );
+                })()}
 
                 {/* Alerta fora do filtro / outro vendedor */}
                 {foraFiltro && (foraFiltro.outroDia || foraFiltro.outraForma || foraFiltro.outroVendedor) && (
@@ -517,6 +526,7 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
     const atendOutro = !atendHoje ? getAtendimentoOutroVendedor(lead, meuVendedorId) : null;
     const proxHoje = isProximaVisitaHoje(lead.proximaVisita);
     const vendedorNome = lead.vendedor?.nome;
+    const [obsExpanded, setObsExpanded] = useState(false);
 
     // Prospectos/Leads ficam com destaque laranja
     return (
@@ -636,16 +646,24 @@ const CardLead = ({ lead, onAtendimento, onVerCliente, mostrarAcoes = true, pode
                     </button>
                 )}
 
-                {/* Exibir observação se já atendido */}
-                {atendHoje?.observacao && (
-                    <div className="mt-2 bg-gray-50 border border-gray-100 rounded p-2">
-                        <p className="text-[11px] font-semibold text-gray-700 mb-0.5 flex items-center gap-1">
-                            <ClipboardList className="h-3 w-3" />
-                            Obs. Atendimento
-                        </p>
-                        <p className="text-[12px] text-gray-600 line-clamp-2">{atendHoje.observacao}</p>
-                    </div>
-                )}
+                {/* Exibir observação se já atendido (próprio ou outro usuário) */}
+                {(atendHoje?.observacao || atendOutro?.observacao) && (() => {
+                    const obs = atendHoje?.observacao || atendOutro?.observacao;
+                    const longa = obs.length > 80;
+                    return (
+                        <div className="mt-2 bg-gray-50 border border-gray-100 rounded p-2">
+                            <button
+                                className="text-[11px] font-semibold text-gray-700 mb-0.5 flex items-center gap-1 w-full text-left"
+                                onClick={e => { e.stopPropagation(); setObsExpanded(v => !v); }}
+                            >
+                                <ClipboardList className="h-3 w-3" />
+                                Obs. Atendimento
+                                {longa && <ChevronDown className={`h-3 w-3 ml-auto text-gray-400 transition-transform ${obsExpanded ? 'rotate-180' : ''}`} />}
+                            </button>
+                            <p className={`text-[12px] text-gray-600 ${longa && !obsExpanded ? 'line-clamp-2' : ''}`}>{obs}</p>
+                        </div>
+                    );
+                })()}
 
                 {/* Alerta fora do filtro / outro vendedor */}
                 {foraFiltro && (foraFiltro.outroDia || foraFiltro.outraForma || foraFiltro.outroVendedor) && (
@@ -1654,10 +1672,13 @@ const RotaLeads = () => {
         const formas = item._tipo === 'cliente' ? item.Formas_Atendimento : item.formasAtendimento;
 
         // Filtro hard: formas que o vendedor pode ver (se configurado)
+        // Clientes sem nenhuma forma cadastrada passam sempre (não bloqueamos por omissão)
         if (formasVisiveis.length > 0) {
             const formasItem = Array.isArray(formas) ? formas.map(f => String(f).toUpperCase()) : [];
-            const temIntersecao = formasItem.some(f => formasVisiveis.includes(f));
-            if (!temIntersecao) return { passa: false, flags: null };
+            if (formasItem.length > 0) {
+                const temIntersecao = formasItem.some(f => formasVisiveis.includes(f));
+                if (!temIntersecao) return { passa: false, flags: null };
+            }
         }
 
         const okDia = itemMatchDia(dias, diaSemanaFiltro);
