@@ -93,6 +93,7 @@ const ContasReceberTabela = () => {
     const [relatorioOpen, setRelatorioOpen] = useState(false);
     const [relatorioData, setRelatorioData] = useState(null);
     const [relatorioLoading, setRelatorioLoading] = useState(false);
+    const [relatorioAgrupamento, setRelatorioAgrupamento] = useState('pedido'); // pedido | cliente | vendedor | nenhum
 
     // Carrega aux
     useEffect(() => {
@@ -416,29 +417,150 @@ const ContasReceberTabela = () => {
         buscarRelatorio(rf);
     };
 
+    // Agrupa pedidos conforme seleção
+    const gerarGrupos = (pedidos, agrupamento) => {
+        if (agrupamento === 'cliente' || agrupamento === 'vendedor') {
+            const map = new Map();
+            pedidos.forEach(p => {
+                const key = agrupamento === 'cliente' ? p.clienteNome : (p.vendedorNome || '-');
+                if (!map.has(key)) map.set(key, { chave: key, total: 0, pedidos: [] });
+                const g = map.get(key);
+                g.pedidos.push(p);
+                g.total += p.subtotal;
+            });
+            return [...map.values()].sort((a, b) => a.chave.localeCompare(b.chave, 'pt-BR'));
+        }
+        // 'pedido' e 'nenhum' — sem grupos, usa pedidos diretamente
+        return [{ chave: null, total: pedidos.reduce((s, p) => s + p.subtotal, 0), pedidos }];
+    };
+
     const exportarRelatorioCSV = () => {
         if (!relatorioData?.pedidos) return;
-        const header = ['Pedido', 'Cliente', 'Vendedor', 'Data Venda', 'Produto', 'Qtd', 'Valor Unit.', 'Total'];
+        const header = agrupamento => agrupamento === 'nenhum'
+            ? ['Pedido', 'Cliente', 'Vendedor', 'Data Venda', 'Produto', 'Qtd', 'Valor Unit.', 'Total']
+            : ['Grupo', 'Pedido', 'Cliente', 'Vendedor', 'Data Venda', 'Produto', 'Qtd', 'Valor Unit.', 'Total'];
         const rows = [];
-        relatorioData.pedidos.forEach(p => {
-            (p.itens || []).forEach(it => {
-                rows.push([
-                    p.pedidoNumero ? `#${p.pedidoNumero}` : (p.pedidoEspecial ? 'Especial' : '-'),
-                    p.clienteNome, p.vendedorNome, fmtData(p.dataVenda),
-                    it.produtoNome,
-                    Number(it.quantidade).toFixed(3).replace('.', ','),
-                    Number(it.valorUnitario).toFixed(2).replace('.', ','),
-                    Number(it.total).toFixed(2).replace('.', ',')
-                ]);
+        const grupos = gerarGrupos(relatorioData.pedidos, relatorioAgrupamento);
+        grupos.forEach(g => {
+            if (g.chave) rows.push([g.chave, '', '', '', '', `--- Total: R$ ${fmt(g.total)}`, '', '', '']);
+            g.pedidos.forEach(p => {
+                (p.itens || []).forEach(it => {
+                    const base = [
+                        p.pedidoNumero ? `#${p.pedidoNumero}` : (p.pedidoEspecial ? 'Especial' : '-'),
+                        p.clienteNome, p.vendedorNome, fmtData(p.dataVenda),
+                        it.produtoNome,
+                        Number(it.quantidade).toFixed(3).replace('.', ','),
+                        Number(it.valorUnitario).toFixed(2).replace('.', ','),
+                        Number(it.total).toFixed(2).replace('.', ',')
+                    ];
+                    rows.push(g.chave ? [g.chave, ...base] : base);
+                });
+                const sub = ['', '', '', '', '', 'SUBTOTAL', '', '', Number(p.subtotal).toFixed(2).replace('.', ',')];
+                rows.push(g.chave ? [g.chave, ...sub.slice(1)] : sub.slice(1));
             });
-            rows.push(['', '', '', '', 'SUBTOTAL', '', '', Number(p.subtotal).toFixed(2).replace('.', ',')]);
         });
-        const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n');
+        const h = header(relatorioAgrupamento);
+        const csv = [h, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n');
         const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href = url;
         a.download = `relatorio-itens-${new Date().toISOString().split('T')[0]}.csv`;
         a.click(); URL.revokeObjectURL(url);
+    };
+
+    const imprimirRelatorio = () => {
+        if (!relatorioData?.pedidos) return;
+        const grupos = gerarGrupos(relatorioData.pedidos, relatorioAgrupamento);
+        const grandTotal = relatorioData.pedidos.reduce((s, p) => s + p.subtotal, 0);
+        const labelAgrup = { pedido: 'Por Pedido', cliente: 'Por Cliente', vendedor: 'Por Vendedor', nenhum: 'Sem Agrupamento' };
+        const tabelaItens = (pedidos, mostrarCliente, mostrarVendedor) => pedidos.map(p => `
+            <div class="pedido-bloco">
+                <div class="pedido-header">
+                    <span class="pedido-num">${p.pedidoNumero ? '#' + p.pedidoNumero : (p.pedidoEspecial ? 'Especial' : '—')}</span>
+                    ${mostrarCliente ? `<span>${p.clienteNome}</span>` : ''}
+                    ${mostrarVendedor ? `<span class="dim">${p.vendedorNome}</span>` : ''}
+                    <span class="dim">${fmtData(p.dataVenda)}</span>
+                    <span class="subtotal">R$ ${fmt(p.subtotal)}</span>
+                </div>
+                <table><thead><tr>
+                    <th>Produto</th><th class="r">Qtd</th><th class="r">Valor Unit.</th><th class="r">Total</th>
+                </tr></thead><tbody>
+                ${(p.itens || []).length === 0
+                    ? '<tr><td colspan="4" class="sem-itens">Nenhum item registrado</td></tr>'
+                    : (p.itens || []).map(it => `<tr>
+                        <td>${it.produtoNome}</td>
+                        <td class="r">${Number(it.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}</td>
+                        <td class="r">R$ ${fmt(it.valorUnitario)}</td>
+                        <td class="r bold">R$ ${fmt(it.total)}</td>
+                    </tr>`).join('')}
+                </tbody></table>
+            </div>`).join('');
+
+        const corpoGrupos = relatorioAgrupamento === 'pedido'
+            ? tabelaItens(grupos[0].pedidos, true, true)
+            : relatorioAgrupamento === 'nenhum'
+            ? `<table class="flat"><thead><tr>
+                <th>Pedido</th><th>Cliente</th><th>Vendedor</th><th>Data</th>
+                <th>Produto</th><th class="r">Qtd</th><th class="r">Val. Unit.</th><th class="r">Total</th>
+               </tr></thead><tbody>
+               ${grupos[0].pedidos.flatMap(p => (p.itens || []).map(it => `<tr>
+                <td>${p.pedidoNumero ? '#' + p.pedidoNumero : '—'}</td>
+                <td>${p.clienteNome}</td><td>${p.vendedorNome}</td><td>${fmtData(p.dataVenda)}</td>
+                <td>${it.produtoNome}</td>
+                <td class="r">${Number(it.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}</td>
+                <td class="r">R$ ${fmt(it.valorUnitario)}</td>
+                <td class="r bold">R$ ${fmt(it.total)}</td>
+               </tr>`)).join('')}
+               </tbody></table>`
+            : grupos.map(g => `
+                <div class="grupo-bloco">
+                    <div class="grupo-header">
+                        <span>${g.chave}</span>
+                        <span class="subtotal">R$ ${fmt(g.total)}</span>
+                    </div>
+                    ${tabelaItens(g.pedidos, relatorioAgrupamento !== 'cliente', relatorioAgrupamento !== 'vendedor')}
+                </div>`).join('');
+
+        const html = `<!DOCTYPE html><html lang="pt-BR"><head>
+        <meta charset="UTF-8"><title>Relatório de Itens</title>
+        <style>
+            body { font-family: Arial, sans-serif; font-size: 11px; color: #111; margin: 20px; }
+            h1 { font-size: 14px; margin-bottom: 2px; }
+            .sub { font-size: 10px; color: #555; margin-bottom: 12px; }
+            .grupo-bloco { margin-bottom: 16px; }
+            .grupo-header { background: #e5e7eb; padding: 5px 8px; font-weight: bold; display: flex; justify-content: space-between; border-radius: 4px; margin-bottom: 4px; }
+            .pedido-bloco { margin-bottom: 10px; border: 1px solid #d1d5db; border-radius: 4px; overflow: hidden; }
+            .pedido-header { background: #f3f4f6; padding: 4px 8px; display: flex; gap: 12px; align-items: center; font-size: 11px; border-bottom: 1px solid #d1d5db; }
+            .pedido-num { font-weight: bold; font-family: monospace; }
+            .dim { color: #6b7280; }
+            .subtotal { margin-left: auto; font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; font-size: 10px; }
+            table.flat { border: 1px solid #d1d5db; border-radius: 4px; overflow: hidden; }
+            th { background: #f9fafb; padding: 3px 6px; text-align: left; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #374151; }
+            td { padding: 3px 6px; border-bottom: 1px solid #f3f4f6; }
+            .r { text-align: right; }
+            .bold { font-weight: bold; }
+            .sem-itens { text-align: center; color: #9ca3af; font-style: italic; padding: 6px; }
+            .grand-total { margin-top: 12px; padding: 6px 10px; background: #f3f4f6; border-radius: 4px; display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; }
+            @media print { body { margin: 10mm; } }
+        </style></head><body>
+        <h1>Relatório de Itens por Pedido</h1>
+        <div class="sub">
+            Agrupamento: ${labelAgrup[relatorioAgrupamento]} &nbsp;|&nbsp;
+            ${relatorioFiltros.vencDe || relatorioFiltros.vencAte ? `Venc. ${relatorioFiltros.vencDe || '...'} até ${relatorioFiltros.vencAte || '...'} &nbsp;|&nbsp;` : ''}
+            Gerado em: ${new Date().toLocaleString('pt-BR')}
+        </div>
+        ${corpoGrupos}
+        <div class="grand-total">
+            <span>${relatorioData.pedidos.length} pedido(s)</span>
+            <span>Total Geral: R$ ${fmt(grandTotal)}</span>
+        </div>
+        </body></html>`;
+
+        const win = window.open('', '_blank');
+        win.document.write(html);
+        win.document.close();
+        setTimeout(() => win.print(), 400);
     };
 
     const filtrosAtivos = useMemo(() =>
@@ -1320,14 +1442,16 @@ const ContasReceberTabela = () => {
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
-                                {relatorioData && !relatorioLoading && (
-                                    <button
-                                        onClick={exportarRelatorioCSV}
-                                        className="text-sm px-3 py-1.5 rounded border hover:bg-gray-50 inline-flex items-center gap-1"
-                                    >
+                                {relatorioData && !relatorioLoading && (<>
+                                    <button onClick={imprimirRelatorio}
+                                        className="text-sm px-3 py-1.5 rounded border hover:bg-gray-50 inline-flex items-center gap-1">
+                                        🖨 Imprimir
+                                    </button>
+                                    <button onClick={exportarRelatorioCSV}
+                                        className="text-sm px-3 py-1.5 rounded border hover:bg-gray-50 inline-flex items-center gap-1">
                                         <Download className="w-4 h-4" /> CSV
                                     </button>
-                                )}
+                                </>)}
                                 <button onClick={() => setRelatorioOpen(false)} className="p-1 rounded hover:bg-gray-100">
                                     <X className="w-5 h-5" />
                                 </button>
@@ -1361,6 +1485,15 @@ const ContasReceberTabela = () => {
                                 className="text-sm px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 inline-flex items-center gap-1">
                                 <Filter className="w-3 h-3" /> Filtrar
                             </button>
+                            <div className="flex items-center gap-1 ml-auto">
+                                <span className="text-xs text-gray-500 whitespace-nowrap">Agrupar:</span>
+                                {[['pedido','Por Pedido'],['cliente','Por Cliente'],['vendedor','Por Vendedor'],['nenhum','Sem Agrup.']].map(([val, label]) => (
+                                    <button key={val} onClick={() => setRelatorioAgrupamento(val)}
+                                        className={`text-xs px-2 py-1 rounded border ${relatorioAgrupamento === val ? 'bg-gray-800 text-white border-gray-800' : 'hover:bg-gray-100'}`}>
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
                         {/* Body */}
@@ -1373,55 +1506,105 @@ const ContasReceberTabela = () => {
                             {!relatorioLoading && relatorioData && relatorioData.pedidos.length === 0 && (
                                 <div className="text-center py-12 text-gray-400">Nenhum pedido encontrado com os filtros atuais.</div>
                             )}
-                            {!relatorioLoading && relatorioData && relatorioData.pedidos.length > 0 && (
-                                <div className="space-y-4">
-                                    {relatorioData.pedidos.map((p) => (
-                                        <div key={p.pedidoId} className="border rounded-lg overflow-hidden">
-                                            <div className="bg-gray-50 px-3 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm border-b">
-                                                <span className="font-mono font-semibold text-gray-800">
-                                                    {p.pedidoNumero ? `#${p.pedidoNumero}` : (p.pedidoEspecial ? 'Especial' : '—')}
-                                                </span>
-                                                <span className="font-medium text-gray-900">{p.clienteNome}</span>
-                                                <span className="text-gray-500">{p.vendedorNome}</span>
-                                                <span className="text-gray-500 tabular-nums">{fmtData(p.dataVenda)}</span>
-                                                <span className="ml-auto font-bold text-gray-900 tabular-nums">
-                                                    R$ {fmt(p.subtotal)}
-                                                </span>
-                                            </div>
+                            {!relatorioLoading && relatorioData && relatorioData.pedidos.length > 0 && (() => {
+                                const grupos = gerarGrupos(relatorioData.pedidos, relatorioAgrupamento);
+                                const PedidoCard = ({ p, mostrarCliente = true, mostrarVendedor = true }) => (
+                                    <div className="border rounded-lg overflow-hidden">
+                                        <div className="bg-gray-50 px-3 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm border-b">
+                                            <span className="font-mono font-semibold text-gray-800">
+                                                {p.pedidoNumero ? `#${p.pedidoNumero}` : (p.pedidoEspecial ? 'Especial' : '—')}
+                                            </span>
+                                            {mostrarCliente && <span className="font-medium text-gray-900">{p.clienteNome}</span>}
+                                            {mostrarVendedor && <span className="text-gray-500">{p.vendedorNome}</span>}
+                                            <span className="text-gray-500 tabular-nums">{fmtData(p.dataVenda)}</span>
+                                            <span className="ml-auto font-bold text-gray-900 tabular-nums">R$ {fmt(p.subtotal)}</span>
+                                        </div>
+                                        <table className="w-full text-xs">
+                                            <thead className="bg-gray-50/50 border-b">
+                                                <tr>
+                                                    <th className="px-3 py-1.5 text-left font-semibold text-gray-600">Produto</th>
+                                                    <th className="px-3 py-1.5 text-right font-semibold text-gray-600 w-20">Qtd</th>
+                                                    <th className="px-3 py-1.5 text-right font-semibold text-gray-600 w-24">Valor Unit.</th>
+                                                    <th className="px-3 py-1.5 text-right font-semibold text-gray-600 w-24">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(p.itens || []).length === 0 ? (
+                                                    <tr><td colSpan={4} className="px-3 py-2 text-center text-xs text-gray-400 italic">Nenhum item registrado</td></tr>
+                                                ) : (p.itens || []).map((it, idx) => (
+                                                    <tr key={idx} className="border-b last:border-0 hover:bg-gray-50">
+                                                        <td className="px-3 py-1.5 text-gray-800">{it.produtoNome}</td>
+                                                        <td className="px-3 py-1.5 text-right tabular-nums text-gray-700">{Number(it.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}</td>
+                                                        <td className="px-3 py-1.5 text-right tabular-nums text-gray-700">R$ {fmt(it.valorUnitario)}</td>
+                                                        <td className="px-3 py-1.5 text-right tabular-nums font-medium text-gray-900">R$ {fmt(it.total)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                );
+
+                                if (relatorioAgrupamento === 'nenhum') {
+                                    const todosItens = relatorioData.pedidos.flatMap(p =>
+                                        (p.itens || []).map(it => ({ ...it, pedidoNumero: p.pedidoNumero, pedidoEspecial: p.pedidoEspecial, clienteNome: p.clienteNome, vendedorNome: p.vendedorNome, dataVenda: p.dataVenda }))
+                                    );
+                                    return (
+                                        <div className="border rounded-lg overflow-hidden">
                                             <table className="w-full text-xs">
-                                                <thead className="bg-gray-50/50 border-b">
+                                                <thead className="bg-gray-50 border-b">
                                                     <tr>
+                                                        <th className="px-3 py-1.5 text-left font-semibold text-gray-600">Pedido</th>
+                                                        <th className="px-3 py-1.5 text-left font-semibold text-gray-600">Cliente</th>
+                                                        <th className="px-3 py-1.5 text-left font-semibold text-gray-600">Vendedor</th>
                                                         <th className="px-3 py-1.5 text-left font-semibold text-gray-600">Produto</th>
                                                         <th className="px-3 py-1.5 text-right font-semibold text-gray-600 w-20">Qtd</th>
-                                                        <th className="px-3 py-1.5 text-right font-semibold text-gray-600 w-24">Valor Unit.</th>
+                                                        <th className="px-3 py-1.5 text-right font-semibold text-gray-600 w-24">Val. Unit.</th>
                                                         <th className="px-3 py-1.5 text-right font-semibold text-gray-600 w-24">Total</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {(p.itens || []).length === 0 ? (
-                                                        <tr>
-                                                            <td colSpan={4} className="px-3 py-2 text-center text-xs text-gray-400 italic">Nenhum item registrado</td>
-                                                        </tr>
-                                                    ) : (p.itens || []).map((it, idx) => (
+                                                    {todosItens.map((it, idx) => (
                                                         <tr key={idx} className="border-b last:border-0 hover:bg-gray-50">
+                                                            <td className="px-3 py-1.5 font-mono text-gray-700">{it.pedidoNumero ? `#${it.pedidoNumero}` : '—'}</td>
+                                                            <td className="px-3 py-1.5 text-gray-800">{it.clienteNome}</td>
+                                                            <td className="px-3 py-1.5 text-gray-500">{it.vendedorNome}</td>
                                                             <td className="px-3 py-1.5 text-gray-800">{it.produtoNome}</td>
-                                                            <td className="px-3 py-1.5 text-right tabular-nums text-gray-700">
-                                                                {Number(it.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}
-                                                            </td>
-                                                            <td className="px-3 py-1.5 text-right tabular-nums text-gray-700">
-                                                                R$ {fmt(it.valorUnitario)}
-                                                            </td>
-                                                            <td className="px-3 py-1.5 text-right tabular-nums font-medium text-gray-900">
-                                                                R$ {fmt(it.total)}
-                                                            </td>
+                                                            <td className="px-3 py-1.5 text-right tabular-nums text-gray-700">{Number(it.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}</td>
+                                                            <td className="px-3 py-1.5 text-right tabular-nums text-gray-700">R$ {fmt(it.valorUnitario)}</td>
+                                                            <td className="px-3 py-1.5 text-right tabular-nums font-medium text-gray-900">R$ {fmt(it.total)}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
                                             </table>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
+                                    );
+                                }
+
+                                if (relatorioAgrupamento === 'pedido') {
+                                    return <div className="space-y-3">{grupos[0].pedidos.map(p => <PedidoCard key={p.pedidoId} p={p} />)}</div>;
+                                }
+
+                                // cliente | vendedor
+                                return (
+                                    <div className="space-y-5">
+                                        {grupos.map(g => (
+                                            <div key={g.chave}>
+                                                <div className="flex items-center justify-between bg-gray-200 rounded px-3 py-1.5 mb-2">
+                                                    <span className="font-semibold text-gray-800 text-sm">{g.chave}</span>
+                                                    <span className="font-bold text-gray-900 tabular-nums text-sm">R$ {fmt(g.total)}</span>
+                                                </div>
+                                                <div className="space-y-2 pl-2">
+                                                    {g.pedidos.map(p => (
+                                                        <PedidoCard key={p.pedidoId} p={p}
+                                                            mostrarCliente={relatorioAgrupamento !== 'cliente'}
+                                                            mostrarVendedor={relatorioAgrupamento !== 'vendedor'} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            })()}
                         </div>
 
                         {/* Footer — total geral */}
