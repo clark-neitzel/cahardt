@@ -141,6 +141,32 @@ router.post('/migrate-ia-log', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/ia-log-status
+// Diagnóstico: verifica se iaAnaliseLog está disponível no Prisma e conta registros
+router.get('/ia-log-status', async (req, res) => {
+    try {
+        // 1. Conta via raw SQL (sempre funciona se a tabela existe)
+        const [countRaw] = await prisma.$queryRaw`SELECT COUNT(*)::int as total FROM "ia_analise_logs"`;
+        // 2. Testa se o model Prisma está disponível
+        let prismaModelOk = false;
+        let prismaCount = null;
+        try {
+            prismaCount = await prisma.iaAnaliseLog.count();
+            prismaModelOk = true;
+        } catch (e) {
+            prismaModelOk = false;
+        }
+        res.json({
+            tabelaExiste: true,
+            totalRegistrosRaw: countRaw.total,
+            prismaModelDisponivel: prismaModelOk,
+            prismaCount,
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message, tabelaExiste: false });
+    }
+});
+
 // POST /api/admin-exec/recalcular-todos
 // Recalcula insights de TODOS os clientes ativos
 router.post('/recalcular-todos', async (req, res) => {
