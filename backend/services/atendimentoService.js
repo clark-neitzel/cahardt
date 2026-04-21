@@ -247,6 +247,8 @@ const atendimentoService = {
                 idVendedor: true,
                 tipo: true,
                 criadoEm: true,
+                observacao: true,
+                gpsVendedor: true,
                 vendedor: { select: { nome: true } },
             },
             orderBy: { criadoEm: 'desc' }
