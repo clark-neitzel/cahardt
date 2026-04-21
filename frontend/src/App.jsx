@@ -69,6 +69,7 @@ import DiarioGateway from './components/Diario/DiarioGateway';
 import DiarioCheckout from './components/Diario/DiarioCheckout';
 import PendenciaRotaGateway from './components/PendenciaRotaGateway';
 import AlertaFaturamento from './components/AlertaFaturamento';
+import { useVersionCheck } from './hooks/useVersionCheck';
 
 const PrivateRoute = ({ children, tab }) => {
   const { signed, loading, hasPermission } = useAuth();
@@ -141,6 +142,7 @@ const MobileMenuSection = ({ label, icon: Icon, children, defaultOpen = false })
 const Layout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout, hasPermission, loading } = useAuth();
+  const { updateAvailable } = useVersionCheck();
 
   if (!user || loading) return <>{children}</>;
 
@@ -249,6 +251,14 @@ const Layout = ({ children }) => {
             </div>
             <span className="text-[12px] font-medium text-gray-700 truncate opacity-0 group-hover:opacity-100 transition-opacity duration-200">{user.nome || user.login}</span>
             <button
+              onClick={() => window.location.reload()}
+              title={updateAvailable ? 'Nova versão disponível — clique para atualizar' : 'Atualizar app'}
+              className={`relative p-1.5 transition-colors shrink-0 opacity-0 group-hover:opacity-100 ${updateAvailable ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <RefreshCw className={`h-4 w-4 ${updateAvailable ? 'animate-spin' : ''}`} style={updateAvailable ? { animationDuration: '3s' } : undefined} />
+              {updateAvailable && <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+            </button>
+            <button
               onClick={logout}
               title="Sair"
               className="ml-auto p-1.5 text-gray-400 hover:text-red-600 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
@@ -270,6 +280,14 @@ const Layout = ({ children }) => {
               Hardt App
             </Link>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => window.location.reload()}
+                title={updateAvailable ? 'Nova versão disponível — clique para atualizar' : 'Atualizar app'}
+                className={`relative p-2 rounded-md transition-colors ${updateAvailable ? 'text-primary' : 'text-gray-400 hover:text-gray-500 hover:bg-gray-100'}`}
+              >
+                <RefreshCw className={`h-5 w-5 ${updateAvailable ? 'animate-spin' : ''}`} style={updateAvailable ? { animationDuration: '3s' } : undefined} />
+                {updateAvailable && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+              </button>
               <DiarioCheckout />
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

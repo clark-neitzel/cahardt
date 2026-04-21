@@ -120,6 +120,12 @@ app.get('/', (req, res) => {
     res.send('API Hardt Salgados - v1.0.1');
 });
 
+// Versão do build — para detecção de deploy no frontend (PWA sem botão de refresh)
+app.get('/api/version', (req, res) => {
+    const version = process.env.APP_VERSION || require('./package.json').version || 'unknown';
+    res.json({ version });
+});
+
 const prisma = require('./config/database');
 
 // Inicialização
