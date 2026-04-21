@@ -114,46 +114,30 @@ router.post('/ia-dia/:diaSigla', async (req, res) => {
 // POST /api/admin-exec/migrate-ia-log
 // Cria tabela ia_analise_logs se não existir (migração manual)
 router.post('/migrate-ia-log', async (req, res) => {
+    const steps = [];
     try {
-        await prisma.$executeRawUnsafe(`
-            CREATE TABLE IF NOT EXISTS "ia_analise_logs" (
-                "id" SERIAL NOT NULL,
-                "cliente_id" TEXT NOT NULL,
-                "vendedor_id" TEXT,
-                "disparado_por" TEXT NOT NULL,
-                "disparado_por_usuario_id" TEXT,
-                "atendimento_id" INTEGER,
-                "modelo" TEXT NOT NULL DEFAULT 'gpt-4o-mini',
-                "prompt_enviado" TEXT NOT NULL,
-                "dados_entrada" JSONB NOT NULL,
-                "resposta_ia" JSONB,
-                "tokens_prompt" INTEGER,
-                "tokens_resposta" INTEGER,
-                "tokens_total" INTEGER,
-                "duracao_ms" INTEGER,
-                "sucesso" BOOLEAN NOT NULL DEFAULT true,
-                "erro_msg" TEXT,
-                "criado_em" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                CONSTRAINT "ia_analise_logs_pkey" PRIMARY KEY ("id")
-            );
-            CREATE INDEX IF NOT EXISTS "ia_analise_logs_cliente_id_idx" ON "ia_analise_logs"("cliente_id");
-            CREATE INDEX IF NOT EXISTS "ia_analise_logs_criado_em_idx" ON "ia_analise_logs"("criado_em" DESC);
-            CREATE INDEX IF NOT EXISTS "ia_analise_logs_vendedor_id_idx" ON "ia_analise_logs"("vendedor_id");
-            CREATE INDEX IF NOT EXISTS "ia_analise_logs_disparado_por_idx" ON "ia_analise_logs"("disparado_por");
-            DO $$ BEGIN
-                IF NOT EXISTS (
-                    SELECT 1 FROM information_schema.table_constraints
-                    WHERE constraint_name = 'ia_analise_logs_cliente_id_fkey'
-                ) THEN
-                    ALTER TABLE "ia_analise_logs" ADD CONSTRAINT "ia_analise_logs_cliente_id_fkey"
-                    FOREIGN KEY ("cliente_id") REFERENCES "clientes"("UUID") ON DELETE RESTRICT ON UPDATE CASCADE;
-                END IF;
-            END $$;
-        `);
-        res.json({ ok: true, mensagem: 'Tabela ia_analise_logs criada/verificada com sucesso.' });
+        await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "ia_analise_logs" ("id" SERIAL NOT NULL, "cliente_id" TEXT NOT NULL, "vendedor_id" TEXT, "disparado_por" TEXT NOT NULL, "disparado_por_usuario_id" TEXT, "atendimento_id" INTEGER, "modelo" TEXT NOT NULL DEFAULT 'gpt-4o-mini', "prompt_enviado" TEXT NOT NULL, "dados_entrada" JSONB NOT NULL, "resposta_ia" JSONB, "tokens_prompt" INTEGER, "tokens_resposta" INTEGER, "tokens_total" INTEGER, "duracao_ms" INTEGER, "sucesso" BOOLEAN NOT NULL DEFAULT true, "erro_msg" TEXT, "criado_em" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "ia_analise_logs_pkey" PRIMARY KEY ("id"))`);
+        steps.push('tabela criada');
+        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ia_analise_logs_cliente_id_idx" ON "ia_analise_logs"("cliente_id")`);
+        steps.push('index cliente_id');
+        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ia_analise_logs_criado_em_idx" ON "ia_analise_logs"("criado_em" DESC)`);
+        steps.push('index criado_em');
+        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ia_analise_logs_vendedor_id_idx" ON "ia_analise_logs"("vendedor_id")`);
+        steps.push('index vendedor_id');
+        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ia_analise_logs_disparado_por_idx" ON "ia_analise_logs"("disparado_por")`);
+        steps.push('index disparado_por');
+        // FK com verificação manual (DO $$ não é prepared statement)
+        const [fkExiste] = await prisma.$queryRaw`SELECT COUNT(*) as c FROM information_schema.table_constraints WHERE constraint_name = 'ia_analise_logs_cliente_id_fkey'`;
+        if (Number(fkExiste.c) === 0) {
+            await prisma.$executeRawUnsafe(`ALTER TABLE "ia_analise_logs" ADD CONSTRAINT "ia_analise_logs_cliente_id_fkey" FOREIGN KEY ("cliente_id") REFERENCES "clientes"("UUID") ON DELETE RESTRICT ON UPDATE CASCADE`);
+            steps.push('FK adicionada');
+        } else {
+            steps.push('FK já existe');
+        }
+        res.json({ ok: true, steps, mensagem: 'Tabela ia_analise_logs criada/verificada com sucesso.' });
     } catch (error) {
         console.error('[admin-exec] Erro migrate-ia-log:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error.message, steps });
     }
 });
 
