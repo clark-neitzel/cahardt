@@ -4,6 +4,7 @@ import contasReceberService from '../../services/contasReceberService';
 import vendedorService from '../../services/vendedorService';
 import pedidoService from '../../services/pedidoService';
 import clienteService from '../../services/clienteService';
+import categoriaClienteService from '../../services/categoriaClienteService';
 import ClientePopup from '../Rota/ClientePopup';
 import {
     DollarSign, Search, Filter, X, RefreshCw, CheckCircle, Undo2,
@@ -55,6 +56,7 @@ const ContasReceberTabela = () => {
     const [clientePopup, setClientePopup] = useState(null);
 
     const [vendedores, setVendedores] = useState([]);
+    const [categorias, setCategorias] = useState([]);
 
     // Filtros — status/statusParcela/condicao/forma são ARRAYS (multi-select)
     const asArr = (v) => Array.isArray(v) ? v : (v ? [v] : []);
@@ -64,6 +66,7 @@ const ContasReceberTabela = () => {
         statusParcela: asArr(saved.statusParcela),
         origem: saved.origem || '',
         vendedorId: saved.vendedorId || '',
+        categoriaClienteId: saved.categoriaClienteId || '',
         condicaoPagamento: asArr(saved.condicaoPagamento),
         formaPagamento: asArr(saved.formaPagamento),
         vencDe: saved.vencDe || '',
@@ -71,6 +74,7 @@ const ContasReceberTabela = () => {
         pagDe: saved.pagDe || '',
         pagAte: saved.pagAte || ''
     });
+    const [relatorioFiltros, setRelatorioFiltros] = useState({ vencDe: '', vencAte: '', categoriaClienteId: '' });
 
     // Ordenação client-side
     const [sort, setSort] = useState({ col: 'vencimento', dir: 'asc' });
@@ -93,6 +97,7 @@ const ContasReceberTabela = () => {
     // Carrega aux
     useEffect(() => {
         vendedorService.listarAtivos().then(setVendedores).catch(() => {});
+        categoriaClienteService.listar().then(setCategorias).catch(() => {});
     }, []);
 
     // Condições distintas, derivadas das contas carregadas
@@ -122,6 +127,7 @@ const ContasReceberTabela = () => {
             if (filtros.statusParcela.length) params.statusParcela = filtros.statusParcela.join(',');
             if (filtros.origem) params.origem = filtros.origem;
             if (filtros.vendedorId) params.vendedorId = filtros.vendedorId;
+            if (filtros.categoriaClienteId) params.categoriaClienteId = filtros.categoriaClienteId;
             if (filtros.condicaoPagamento.length) params.condicaoPagamento = filtros.condicaoPagamento.join(',');
             if (filtros.formaPagamento.length) params.formaPagamento = filtros.formaPagamento.join(',');
             if (filtros.vencDe) params.vencimentoDe = filtros.vencDe;
@@ -181,7 +187,8 @@ const ContasReceberTabela = () => {
     const didMount = useRef(false);
     const filtrosKey = JSON.stringify({
         status: filtros.status, statusParcela: filtros.statusParcela, origem: filtros.origem,
-        vendedorId: filtros.vendedorId, condicaoPagamento: filtros.condicaoPagamento,
+        vendedorId: filtros.vendedorId, categoriaClienteId: filtros.categoriaClienteId,
+        condicaoPagamento: filtros.condicaoPagamento,
         formaPagamento: filtros.formaPagamento, vencDe: filtros.vencDe, vencAte: filtros.vencAte,
         pagDe: filtros.pagDe, pagAte: filtros.pagAte
     });
@@ -193,7 +200,7 @@ const ContasReceberTabela = () => {
     const aplicarFiltros = () => fetchData();
     const limparFiltros = () => {
         setFiltros({
-            busca: '', status: [], statusParcela: [], origem: '', vendedorId: '',
+            busca: '', status: [], statusParcela: [], origem: '', vendedorId: '', categoriaClienteId: '',
             condicaoPagamento: [], formaPagamento: [], vencDe: '', vencAte: '', pagDe: '', pagAte: ''
         });
         localStorage.removeItem(LS_KEY);
@@ -375,10 +382,9 @@ const ContasReceberTabela = () => {
         a.click(); URL.revokeObjectURL(url);
     };
 
-    const abrirRelatorio = async () => {
-        setRelatorioOpen(true);
-        setRelatorioData(null);
+    const buscarRelatorio = async (rf) => {
         setRelatorioLoading(true);
+        setRelatorioData(null);
         try {
             const params = {};
             if (filtros.busca) params.busca = filtros.busca;
@@ -388,18 +394,26 @@ const ContasReceberTabela = () => {
             if (filtros.vendedorId) params.vendedorId = filtros.vendedorId;
             if (filtros.condicaoPagamento.length) params.condicaoPagamento = filtros.condicaoPagamento.join(',');
             if (filtros.formaPagamento.length) params.formaPagamento = filtros.formaPagamento.join(',');
-            if (filtros.vencDe) params.vencimentoDe = filtros.vencDe;
-            if (filtros.vencAte) params.vencimentoAte = filtros.vencAte;
             if (filtros.pagDe) params.pagamentoDe = filtros.pagDe;
             if (filtros.pagAte) params.pagamentoAte = filtros.pagAte;
+            // Filtros do próprio modal de relatório
+            if (rf.vencDe) params.vencimentoDe = rf.vencDe;
+            if (rf.vencAte) params.vencimentoAte = rf.vencAte;
+            if (rf.categoriaClienteId) params.categoriaClienteId = rf.categoriaClienteId;
             const data = await contasReceberService.relatorioItens(params);
             setRelatorioData(data);
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao gerar relatório');
-            setRelatorioOpen(false);
         } finally {
             setRelatorioLoading(false);
         }
+    };
+
+    const abrirRelatorio = () => {
+        const rf = { vencDe: filtros.vencDe, vencAte: filtros.vencAte, categoriaClienteId: filtros.categoriaClienteId || '' };
+        setRelatorioFiltros(rf);
+        setRelatorioOpen(true);
+        buscarRelatorio(rf);
     };
 
     const exportarRelatorioCSV = () => {
@@ -407,7 +421,7 @@ const ContasReceberTabela = () => {
         const header = ['Pedido', 'Cliente', 'Vendedor', 'Data Venda', 'Produto', 'Qtd', 'Valor Unit.', 'Total'];
         const rows = [];
         relatorioData.pedidos.forEach(p => {
-            p.itens.forEach(it => {
+            (p.itens || []).forEach(it => {
                 rows.push([
                     p.pedidoNumero ? `#${p.pedidoNumero}` : (p.pedidoEspecial ? 'Especial' : '-'),
                     p.clienteNome, p.vendedorNome, fmtData(p.dataVenda),
@@ -611,6 +625,13 @@ const ContasReceberTabela = () => {
                         <select value={filtros.vendedorId} onChange={e => setFiltros(f => ({ ...f, vendedorId: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm">
                             <option value="">Todos</option>
                             {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-xs text-gray-500">Categoria Cliente</label>
+                        <select value={filtros.categoriaClienteId} onChange={e => setFiltros(f => ({ ...f, categoriaClienteId: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm">
+                            <option value="">Todas</option>
+                            {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                         </select>
                     </div>
                     <div>
@@ -1313,6 +1334,35 @@ const ContasReceberTabela = () => {
                             </div>
                         </div>
 
+                        {/* Filtros do relatório */}
+                        <div className="px-4 py-2 border-b bg-gray-50 flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <div className="flex items-center gap-1.5">
+                                <label className="text-xs text-gray-500 whitespace-nowrap">Venc. de</label>
+                                <input type="date" value={relatorioFiltros.vencDe}
+                                    onChange={e => setRelatorioFiltros(f => ({ ...f, vencDe: e.target.value }))}
+                                    className="border rounded px-2 py-1 text-sm" />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <label className="text-xs text-gray-500 whitespace-nowrap">até</label>
+                                <input type="date" value={relatorioFiltros.vencAte}
+                                    onChange={e => setRelatorioFiltros(f => ({ ...f, vencAte: e.target.value }))}
+                                    className="border rounded px-2 py-1 text-sm" />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <label className="text-xs text-gray-500 whitespace-nowrap">Categoria</label>
+                                <select value={relatorioFiltros.categoriaClienteId}
+                                    onChange={e => setRelatorioFiltros(f => ({ ...f, categoriaClienteId: e.target.value }))}
+                                    className="border rounded px-2 py-1 text-sm">
+                                    <option value="">Todas</option>
+                                    {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                                </select>
+                            </div>
+                            <button onClick={() => buscarRelatorio(relatorioFiltros)}
+                                className="text-sm px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 inline-flex items-center gap-1">
+                                <Filter className="w-3 h-3" /> Filtrar
+                            </button>
+                        </div>
+
                         {/* Body */}
                         <div className="overflow-y-auto flex-1 p-4">
                             {relatorioLoading && (
@@ -1348,7 +1398,11 @@ const ContasReceberTabela = () => {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {p.itens.map((it, idx) => (
+                                                    {(p.itens || []).length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan={4} className="px-3 py-2 text-center text-xs text-gray-400 italic">Nenhum item registrado</td>
+                                                        </tr>
+                                                    ) : (p.itens || []).map((it, idx) => (
                                                         <tr key={idx} className="border-b last:border-0 hover:bg-gray-50">
                                                             <td className="px-3 py-1.5 text-gray-800">{it.produtoNome}</td>
                                                             <td className="px-3 py-1.5 text-right tabular-nums text-gray-700">

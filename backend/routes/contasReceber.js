@@ -39,7 +39,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         const {
             status, clienteId, vencimentoDe, vencimentoAte, origem, busca, ordenarPor,
             vendedorId, condicaoPagamento, formaPagamento, statusParcela,
-            pagamentoDe, pagamentoAte
+            pagamentoDe, pagamentoAte, categoriaClienteId
         } = req.query;
 
         const toList = (v) => (Array.isArray(v) ? v : String(v || '').split(',')).map(s => s.trim()).filter(Boolean);
@@ -60,6 +60,11 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                     { Nome: { contains: busca, mode: 'insensitive' } }
                 ]
             };
+        }
+
+        // Filtro por categoria de cliente
+        if (categoriaClienteId) {
+            where.cliente = { ...(where.cliente || {}), categoriaClienteId };
         }
 
         // Sempre esconde contas cujo pedido foi excluído/cancelado no CA.
@@ -242,7 +247,7 @@ router.get('/relatorio-itens', verificarAuth, checkAcesso, async (req, res) => {
         const {
             status, clienteId, vencimentoDe, vencimentoAte, origem, busca,
             vendedorId, condicaoPagamento, formaPagamento, statusParcela,
-            pagamentoDe, pagamentoAte
+            pagamentoDe, pagamentoAte, categoriaClienteId
         } = req.query;
 
         const toList = (v) => (Array.isArray(v) ? v : String(v || '').split(',')).map(s => s.trim()).filter(Boolean);
@@ -256,6 +261,9 @@ router.get('/relatorio-itens', verificarAuth, checkAcesso, async (req, res) => {
                 { NomeFantasia: { contains: busca, mode: 'insensitive' } },
                 { Nome: { contains: busca, mode: 'insensitive' } }
             ]};
+        }
+        if (categoriaClienteId) {
+            where.cliente = { ...(where.cliente || {}), categoriaClienteId };
         }
         where.OR = [
             { pedidoId: null },
