@@ -232,7 +232,37 @@ async function gerarOrientacaoIA(clienteId, opcoes = {}) {
     const { OpenAI } = require('openai');
     const openai = new OpenAI({ apiKey });
 
-    let response, orientacaoIaJson, erroMsg = null, sucesso = true;
+    // Helper: salva log via raw SQL (evita dependência do Prisma client gerado)
+    const salvarLog = async (params) => {
+        try {
+            await prisma.$executeRawUnsafe(
+                `INSERT INTO "ia_analise_logs"
+                 ("cliente_id","vendedor_id","disparado_por","disparado_por_usuario_id","atendimento_id",
+                  "modelo","prompt_enviado","dados_entrada","resposta_ia",
+                  "tokens_prompt","tokens_resposta","tokens_total","duracao_ms","sucesso","erro_msg")
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10,$11,$12,$13,$14,$15)`,
+                params.clienteId,
+                params.vendedorId || null,
+                params.disparadoPor,
+                params.usuarioId || null,
+                params.atendimentoId || null,
+                params.modelo,
+                params.promptEnviado,
+                JSON.stringify(params.dadosEntrada),
+                params.respostaIa !== null ? JSON.stringify(params.respostaIa) : null,
+                params.tokensPrompt || null,
+                params.tokensResposta || null,
+                params.tokensTotal || null,
+                params.duracaoMs || null,
+                params.sucesso,
+                params.erroMsg || null,
+            );
+        } catch (logErr) {
+            console.error('[IA] Erro ao salvar log:', logErr.message);
+        }
+    };
+
+    let response, orientacaoIaJson, erroMsg = null;
     try {
         response = await openai.chat.completions.create({
             model: modelo,
@@ -254,59 +284,31 @@ async function gerarOrientacaoIA(clienteId, opcoes = {}) {
             data: { orientacaoIaJson }
         });
     } catch (err) {
-        sucesso = false;
         erroMsg = err.message;
-        // Salva log de erro e propaga
-        try {
-            await prisma.iaAnaliseLog.create({
-                data: {
-                    clienteId,
-                    vendedorId: cliente.idVendedor || null,
-                    disparadoPor,
-                    disparadoPorUsuarioId: usuarioId,
-                    atendimentoId: atendimentoId || null,
-                    modelo,
-                    promptEnviado: prompt,
-                    dadosEntrada,
-                    respostaIa: null,
-                    tokensPrompt: null,
-                    tokensResposta: null,
-                    tokensTotal: null,
-                    duracaoMs: Date.now() - inicio,
-                    sucesso: false,
-                    erroMsg,
-                }
-            });
-        } catch (logErr) {
-            console.error('[IA] Erro ao salvar log de falha:', logErr.message);
-        }
+        await salvarLog({
+            clienteId, vendedorId: cliente.idVendedor,
+            disparadoPor, usuarioId, atendimentoId,
+            modelo, promptEnviado: prompt, dadosEntrada,
+            respostaIa: null,
+            tokensPrompt: null, tokensResposta: null, tokensTotal: null,
+            duracaoMs: Date.now() - inicio,
+            sucesso: false, erroMsg,
+        });
         throw err;
     }
 
     // Salva log de sucesso
-    try {
-        await prisma.iaAnaliseLog.create({
-            data: {
-                clienteId,
-                vendedorId: cliente.idVendedor || null,
-                disparadoPor,
-                disparadoPorUsuarioId: usuarioId,
-                atendimentoId: atendimentoId || null,
-                modelo,
-                promptEnviado: prompt,
-                dadosEntrada,
-                respostaIa: orientacaoIaJson,
-                tokensPrompt: response.usage?.prompt_tokens ?? null,
-                tokensResposta: response.usage?.completion_tokens ?? null,
-                tokensTotal: response.usage?.total_tokens ?? null,
-                duracaoMs: Date.now() - inicio,
-                sucesso: true,
-                erroMsg: null,
-            }
-        });
-    } catch (logErr) {
-        console.error('[IA] Erro ao salvar log:', logErr.message);
-    }
+    await salvarLog({
+        clienteId, vendedorId: cliente.idVendedor,
+        disparadoPor, usuarioId, atendimentoId,
+        modelo, promptEnviado: prompt, dadosEntrada,
+        respostaIa: orientacaoIaJson,
+        tokensPrompt: response.usage?.prompt_tokens ?? null,
+        tokensResposta: response.usage?.completion_tokens ?? null,
+        tokensTotal: response.usage?.total_tokens ?? null,
+        duracaoMs: Date.now() - inicio,
+        sucesso: true, erroMsg: null,
+    });
 
     return {
         clienteId,
