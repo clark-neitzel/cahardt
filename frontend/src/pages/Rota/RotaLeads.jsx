@@ -5,7 +5,7 @@ import {
     Clock, Calendar, Tag, CheckCircle, ClipboardList, Star,
     Package, X, Navigation, Loader, Search, Truck, Edit3,
     DollarSign, Trash2, Save, ChevronDown, ChevronUp, Route, Bell,
-    ArrowLeftRight, Check
+    ArrowLeftRight, Check, Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import leadService from '../../services/leadService';
@@ -22,6 +22,7 @@ import ModalNovoLead from './ModalNovoLead';
 import CheckoutEntregaModal from '../Motorista/Entregas/CheckoutEntregaModal';
 import ClientePopup from './ClientePopup';
 import roteirizacaoService from '../../services/roteirizacaoService';
+import api from '../../services/api';
 
 const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'N/D'];
 
@@ -284,6 +285,8 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
     const [orientExpanded, setOrientExpanded] = useState(false);
     const [obsExpanded, setObsExpanded] = useState(false);
     const [popup, setPopup] = useState(null); // { pendingAction }
+    const [analisandoIA, setAnalisandoIA] = useState(false);
+    const [orientacaoLocalIA, setOrientacaoLocalIA] = useState(null);
 
     const handleAtender = () => {
         if (bloqueado) return;
@@ -302,6 +305,21 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
             setPopup({ pendingAction: () => onNovoPedido(cliente.UUID), insight });
         } else {
             onNovoPedido(cliente.UUID);
+        }
+    };
+
+    const handleAnalisarIA = async (e) => {
+        e.stopPropagation();
+        setAnalisandoIA(true);
+        try {
+            const res = await api.post(`/insights/clientes/${cliente.UUID}/gerar-ia`);
+            setOrientacaoLocalIA(res.data.orientacaoIaJson);
+            setOrientExpanded(true);
+            toast.success('Análise IA atualizada');
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'Erro ao analisar');
+        } finally {
+            setAnalisandoIA(false);
         }
     };
 
@@ -382,7 +400,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                 {(() => {
                     const insight = cliente.clienteInsights?.[0];
                     if (!insight?.insightPrincipalTipo || atendHoje) return null;
-                    const ia = insight.orientacaoIaJson;
+                    const ia = orientacaoLocalIA || insight.orientacaoIaJson;
                     const meta = CENARIO_META[insight.insightPrincipalTipo] || {};
                     const motivo = gerarMotivoInsight(insight);
                     return (
@@ -391,7 +409,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                             onMouseEnter={() => setOrientExpanded(true)}
                             onMouseLeave={() => setOrientExpanded(false)}
                         >
-                            {/* Linha sempre visível: badge cenário + motivo curto + chevron */}
+                            {/* Linha sempre visível: badge cenário + motivo curto + botão IA + chevron */}
                             <button
                                 className="flex items-center gap-1.5 w-full text-left"
                                 onClick={() => setOrientExpanded(v => !v)}
@@ -402,7 +420,18 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                                 {motivo && (
                                     <span className="text-[10px] text-gray-500 truncate">{motivo}</span>
                                 )}
-                                <ChevronDown className={`h-3 w-3 text-gray-400 shrink-0 ml-auto transition-transform ${orientExpanded ? 'rotate-180' : ''}`} />
+                                <button
+                                    onClick={handleAnalisarIA}
+                                    disabled={analisandoIA}
+                                    className="ml-auto shrink-0 p-0.5 rounded text-violet-400 hover:text-violet-600 hover:bg-violet-50 transition-colors disabled:opacity-40"
+                                    title="Analisar com IA"
+                                >
+                                    {analisandoIA
+                                        ? <Loader className="h-3 w-3 animate-spin" />
+                                        : <Sparkles className="h-3 w-3" />
+                                    }
+                                </button>
+                                <ChevronDown className={`h-3 w-3 text-gray-400 shrink-0 transition-transform ${orientExpanded ? 'rotate-180' : ''}`} />
                             </button>
 
                             {/* Conteúdo expandido (hover desktop / click mobile) */}

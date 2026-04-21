@@ -82,8 +82,37 @@ const recalcularPorDia = async (req, res) => {
     }
 };
 
+// Gera orientação IA manualmente para um cliente específico
+// POST /api/insights/clientes/:clienteId/gerar-ia
+const gerarOrientacaoIAManual = async (req, res) => {
+    try {
+        const { clienteId } = req.params;
+
+        // Garante que o insight está atualizado antes de chamar a IA
+        await clienteInsightService.recalcularCliente(clienteId);
+
+        const orientacaoService = require('../services/orientacaoService');
+        const resultado = await orientacaoService.gerarOrientacaoIA(clienteId, {
+            disparadoPor: 'MANUAL_UI',
+            usuarioId: req.user?.id || null,
+        });
+
+        res.json({
+            ok: true,
+            clienteId,
+            cenario: resultado.cenario,
+            orientacaoIaJson: resultado.orientacaoIaJson,
+            tokensUsados: resultado.tokensUsados,
+        });
+    } catch (error) {
+        console.error('Erro ao gerar orientação IA manual:', error);
+        res.status(500).json({ error: error.message || 'Falha ao gerar orientação IA' });
+    }
+};
+
 module.exports = {
     getInsightPorCliente,
     recalcularInsightManualmente,
     recalcularPorDia,
+    gerarOrientacaoIAManual,
 };
