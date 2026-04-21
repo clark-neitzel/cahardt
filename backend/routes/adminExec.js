@@ -134,6 +134,13 @@ router.post('/migrate-ia-log', async (req, res) => {
         } else {
             steps.push('FK já existe');
         }
+        // Corrigir tipo da coluna atendimento_id de INTEGER para TEXT (fix UUID)
+        try {
+            await prisma.$executeRawUnsafe(`ALTER TABLE "ia_analise_logs" ALTER COLUMN "atendimento_id" TYPE TEXT USING "atendimento_id"::text`);
+            steps.push('coluna atendimento_id convertida para TEXT');
+        } catch (e) {
+            steps.push(`atendimento_id já é TEXT ou erro: ${e.message}`);
+        }
         res.json({ ok: true, steps, mensagem: 'Tabela ia_analise_logs criada/verificada com sucesso.' });
     } catch (error) {
         console.error('[admin-exec] Erro migrate-ia-log:', error);

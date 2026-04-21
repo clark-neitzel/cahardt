@@ -5,7 +5,7 @@ CREATE TABLE "ia_analise_logs" (
     "vendedor_id" TEXT,
     "disparado_por" TEXT NOT NULL,
     "disparado_por_usuario_id" TEXT,
-    "atendimento_id" INTEGER,
+    "atendimento_id" TEXT,
     "modelo" TEXT NOT NULL DEFAULT 'gpt-4o-mini',
     "prompt_enviado" TEXT NOT NULL,
     "dados_entrada" JSONB NOT NULL,

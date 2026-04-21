@@ -1436,7 +1436,7 @@ model IaAnaliseLog {
   vendedorId              String?  @map("vendedor_id")
   disparadoPor            String   @map("disparado_por") // ATENDIMENTO | NOTURNO | MANUAL
   disparadoPorUsuarioId   String?  @map("disparado_por_usuario_id")
-  atendimentoId           Int?     @map("atendimento_id")
+  atendimentoId           String?  @map("atendimento_id")
   modelo                  String   @default("gpt-4o-mini")
   promptEnviado           String   @map("prompt_enviado") @db.Text
   dadosEntrada            Json     @map("dados_entrada")
