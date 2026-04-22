@@ -215,7 +215,7 @@ router.get('/debug-pendencias', async (req, res) => {
 
         const atendimentos = await prisma.atendimento.findMany({
             where: { clienteId: { in: uuids }, criadoEm: { gte: inicioDia, lte: fimAmanha }, tipo: { not: 'FINANCEIRO' } },
-            select: { id: true, tipo: true, criadoEm: true, clienteId: true, cliente: { select: { NomeFantasia: true } } },
+            select: { id: true, tipo: true, criadoEm: true, observacao: true, clienteId: true, cliente: { select: { NomeFantasia: true } } },
         });
         const pedidos = await prisma.pedido.findMany({
             where: { clienteId: { in: uuids }, createdAt: { gte: inicioDia, lte: fimAmanha } },
