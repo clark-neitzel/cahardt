@@ -242,6 +242,24 @@ router.get('/debug-pendencias', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/debug-cliente-atendimentos?clienteId=xxx
+// Últimos atendimentos de um cliente (sem filtro de data)
+router.get('/debug-cliente-atendimentos', async (req, res) => {
+    try {
+        const { clienteId } = req.query;
+        if (!clienteId) return res.status(400).json({ error: 'clienteId obrigatório' });
+        const atendimentos = await prisma.atendimento.findMany({
+            where: { clienteId },
+            select: { id: true, tipo: true, acaoKey: true, acaoLabel: true, observacao: true, criadoEm: true, idVendedor: true },
+            orderBy: { criadoEm: 'desc' },
+            take: 10,
+        });
+        res.json({ total: atendimentos.length, atendimentos });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // POST /api/admin-exec/recalcular-todos
 // Recalcula insights de TODOS os clientes ativos
 router.post('/recalcular-todos', async (req, res) => {
