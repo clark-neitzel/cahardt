@@ -186,29 +186,57 @@ router.post('/limpar-atendimentos-pedido', async (req, res) => {
     }
 });
 
-// GET /api/admin-exec/debug-pendencias?vendedorId=xxx&data=2026-04-21
+// GET /api/admin-exec/debug-pendencias?email=xxx&data=2026-04-21
 // Diagnostica o que existe no banco para um vendedor em uma data
 router.get('/debug-pendencias', async (req, res) => {
     try {
-        const { vendedorId, data } = req.query;
-        if (!vendedorId || !data) return res.status(400).json({ error: 'vendedorId e data obrigatórios' });
+        const { email, data } = req.query;
+        if (!email || !data) return res.status(400).json({ error: 'email e data obrigatórios' });
+
+        const vendedor = await prisma.vendedor.findFirst({ where: { email } });
+        if (!vendedor) return res.status(404).json({ error: 'Vendedor não encontrado', email });
+
+        const vendedorId = vendedor.id;
         const inicioDia = new Date(data + 'T00:00:00Z');
-        const fimDia = new Date(data + 'T23:59:59.999Z');
-        const fimAmanha = new Date(inicioDia);
+        const fimAmanha = new Date(data + 'T23:59:59.999Z');
         fimAmanha.setDate(fimAmanha.getDate() + 1);
-        fimAmanha.setHours(23, 59, 59, 999);
+
+        // Clientes da rota do dia
+        const SIGLAS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+        const sigla = SIGLAS[new Date(data + 'T12:00:00Z').getDay()];
+        const todosClientes = await prisma.cliente.findMany({
+            where: { idVendedor: vendedorId, Ativo: true, Dia_de_venda: { not: null } },
+            select: { UUID: true, NomeFantasia: true, Nome: true, Dia_de_venda: true },
+        });
+        const clientesDoDia = todosClientes.filter(c =>
+            (c.Dia_de_venda || '').toUpperCase().split(',').map(d => d.trim()).includes(sigla)
+        );
+        const uuids = clientesDoDia.map(c => c.UUID);
 
         const atendimentos = await prisma.atendimento.findMany({
-            where: { idVendedor: vendedorId, criadoEm: { gte: inicioDia, lte: fimAmanha }, tipo: { not: 'FINANCEIRO' } },
+            where: { clienteId: { in: uuids }, criadoEm: { gte: inicioDia, lte: fimAmanha }, tipo: { not: 'FINANCEIRO' } },
             select: { id: true, tipo: true, criadoEm: true, clienteId: true, cliente: { select: { NomeFantasia: true } } },
-            orderBy: { criadoEm: 'asc' },
         });
         const pedidos = await prisma.pedido.findMany({
-            where: { vendedorId, createdAt: { gte: inicioDia, lte: fimAmanha } },
-            select: { id: true, createdAt: true, clienteId: true, cliente: { select: { NomeFantasia: true } } },
-            orderBy: { createdAt: 'asc' },
+            where: { clienteId: { in: uuids }, createdAt: { gte: inicioDia, lte: fimAmanha } },
+            select: { id: true, createdAt: true, dataVenda: true, clienteId: true, cliente: { select: { NomeFantasia: true } } },
         });
-        res.json({ atendimentos: atendimentos.length, pedidos: pedidos.length, detalheAtendimentos: atendimentos, detalhePedidos: pedidos });
+
+        const atendidos = new Set([...atendimentos.map(a => a.clienteId), ...pedidos.map(p => p.clienteId)]);
+        const pendentes = clientesDoDia.filter(c => !atendidos.has(c.UUID));
+
+        res.json({
+            vendedor: vendedor.nome || vendedor.email,
+            vendedorId,
+            sigla,
+            totalRota: clientesDoDia.length,
+            atendimentos: atendimentos.length,
+            pedidos: pedidos.length,
+            pendentes: pendentes.length,
+            clientesPendentes: pendentes.map(c => c.NomeFantasia || c.Nome),
+            detalheAtendimentos: atendimentos,
+            detalhePedidos: pedidos,
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
