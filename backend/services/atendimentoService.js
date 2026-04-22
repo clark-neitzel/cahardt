@@ -337,7 +337,7 @@ const atendimentoService = {
             prisma.pedido.findMany({
                 where: {
                     clienteId: { in: uuids },
-                    dataVenda: { gte: inicioDia, lte: fimHoje },
+                    createdAt: { gte: inicioDia, lte: fimHoje }, // usa data de criação, não dataVenda (que é entrega)
                 },
                 select: { clienteId: true }
             })
