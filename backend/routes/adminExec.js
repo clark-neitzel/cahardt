@@ -186,6 +186,34 @@ router.post('/limpar-atendimentos-pedido', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/debug-pendencias?vendedorId=xxx&data=2026-04-21
+// Diagnostica o que existe no banco para um vendedor em uma data
+router.get('/debug-pendencias', async (req, res) => {
+    try {
+        const { vendedorId, data } = req.query;
+        if (!vendedorId || !data) return res.status(400).json({ error: 'vendedorId e data obrigatórios' });
+        const inicioDia = new Date(data + 'T00:00:00Z');
+        const fimDia = new Date(data + 'T23:59:59.999Z');
+        const fimAmanha = new Date(inicioDia);
+        fimAmanha.setDate(fimAmanha.getDate() + 1);
+        fimAmanha.setHours(23, 59, 59, 999);
+
+        const atendimentos = await prisma.atendimento.findMany({
+            where: { idVendedor: vendedorId, criadoEm: { gte: inicioDia, lte: fimAmanha }, tipo: { not: 'FINANCEIRO' } },
+            select: { id: true, tipo: true, criadoEm: true, clienteId: true, cliente: { select: { NomeFantasia: true } } },
+            orderBy: { criadoEm: 'asc' },
+        });
+        const pedidos = await prisma.pedido.findMany({
+            where: { vendedorId, createdAt: { gte: inicioDia, lte: fimAmanha } },
+            select: { id: true, createdAt: true, clienteId: true, cliente: { select: { NomeFantasia: true } } },
+            orderBy: { createdAt: 'asc' },
+        });
+        res.json({ atendimentos: atendimentos.length, pedidos: pedidos.length, detalheAtendimentos: atendimentos, detalhePedidos: pedidos });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // POST /api/admin-exec/recalcular-todos
 // Recalcula insights de TODOS os clientes ativos
 router.post('/recalcular-todos', async (req, res) => {
