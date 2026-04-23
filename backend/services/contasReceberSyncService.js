@@ -119,14 +119,14 @@ async function sincronizarConta(contaId, opts = {}) {
     await prisma.$transaction(async (tx) => {
         for (let i = 0; i < conta.parcelas.length; i++) {
             const local = conta.parcelas[i];
-            if (local.status === 'PAGO' || local.status === 'CANCELADO') continue;
+            if (local.status === 'CANCELADO') continue;
 
             let caPar = parcelasCA.find(p => (p.numero_parcela || 0) === local.numeroParcela);
             if (!caPar) caPar = parcelasCA[i];
             if (!caPar) continue;
 
             // Atualiza vencimento se divergir (mesmo que ainda esteja em aberto)
-            if (caPar.data_vencimento) {
+            if (local.status !== 'PAGO' && caPar.data_vencimento) {
                 const vencCA = new Date(caPar.data_vencimento + 'T12:00:00-03:00');
                 const vencLocal = local.dataVencimento ? new Date(local.dataVencimento) : null;
                 const diff = !vencLocal || vencCA.toISOString().split('T')[0] !== vencLocal.toISOString().split('T')[0];
@@ -144,16 +144,26 @@ async function sincronizarConta(contaId, opts = {}) {
 
             if (!STATUS_PAGO_CA.includes(caPar.status)) continue;
 
-            const baixa = (caPar.baixas || [])[0];
-            const valorPago = Number(baixa?.valor_composicao?.valor_bruto || caPar.valor_composicao?.valor_bruto || local.valor);
-            const dataPgto = baixa?.data_pagamento ? new Date(baixa.data_pagamento + 'T12:00:00-03:00') : hoje;
-            const forma = mapMetodoCA(baixa?.metodo_pagamento || caPar.metodo_pagamento);
+            // Soma todas as baixas para obter o valor total efetivamente recebido
+            const todasBaixas = caPar.baixas || [];
+            const valorPago = todasBaixas.length > 0
+                ? todasBaixas.reduce((sum, b) => sum + Number(b?.valor_composicao?.valor_bruto || 0), 0)
+                : Number(caPar.valor_composicao?.valor_bruto || local.valor);
+            const baixaPrincipal = todasBaixas[0];
+            const dataPgto = baixaPrincipal?.data_pagamento ? new Date(baixaPrincipal.data_pagamento + 'T12:00:00-03:00') : hoje;
+            const forma = mapMetodoCA(baixaPrincipal?.metodo_pagamento || caPar.metodo_pagamento);
+
+            // Só atualiza (e conta como "aplicada") se houver mudança real
+            const valorPagoArredondado = Math.round(valorPago * 100) / 100;
+            const jaAtualizado = local.status === 'PAGO' &&
+                Math.abs((local.valorPago || 0) - valorPagoArredondado) < 0.01;
+            if (jaAtualizado) continue;
 
             await tx.parcela.update({
                 where: { id: local.id },
                 data: {
                     status: 'PAGO',
-                    valorPago,
+                    valorPago: valorPagoArredondado,
                     formaPagamento: forma,
                     dataPagamento: dataPgto,
                     baixadoPorId,
@@ -164,7 +174,7 @@ async function sincronizarConta(contaId, opts = {}) {
             await tx.atendimento.create({
                 data: {
                     tipo: 'FINANCEIRO',
-                    observacao: `Sync CA [${origem}] - parcela ${local.numeroParcela} - R$ ${valorPago.toFixed(2)} (${forma || 'N/I'}) em ${dataPgto.toISOString().split('T')[0]}`,
+                    observacao: `Sync CA [${origem}] - parcela ${local.numeroParcela} - R$ ${valorPagoArredondado.toFixed(2)} (${forma || 'N/I'}) em ${dataPgto.toISOString().split('T')[0]}`,
                     clienteId: conta.clienteId,
                     idVendedor: baixadoPorId,
                     pedidoId: conta.pedidoId || null
@@ -172,7 +182,7 @@ async function sincronizarConta(contaId, opts = {}) {
             });
 
             aplicadas++;
-            detalhes.push({ numeroParcela: local.numeroParcela, valor: valorPago, forma, data: dataPgto });
+            detalhes.push({ numeroParcela: local.numeroParcela, valor: valorPagoArredondado, forma, data: dataPgto });
         }
 
         const todas = await tx.parcela.findMany({ where: { contaReceberId: conta.id } });

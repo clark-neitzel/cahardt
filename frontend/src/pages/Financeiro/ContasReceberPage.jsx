@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import contasReceberService from '../../services/contasReceberService';
 import {
     DollarSign, ChevronDown, ChevronUp, Search, Filter, X,
-    CheckCircle, AlertTriangle, Clock, Ban, Undo2, ArrowUpDown, CheckSquare, Square, FileText, ExternalLink
+    CheckCircle, AlertTriangle, Clock, Ban, Undo2, ArrowUpDown, CheckSquare, Square, FileText, ExternalLink, RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_URL } from '../../services/api';
@@ -53,6 +53,8 @@ const ContasReceberPage = () => {
     const [filtroVencAte, setFiltroVencAte] = useState(saved.vencAte || '');
     const [ordenarPor, setOrdenarPor] = useState(saved.ordenarPor || 'vencimento');
     const [showFiltros, setShowFiltros] = useState(false);
+
+    const [syncing, setSyncing] = useState(null);
 
     // Modal baixa
     const [baixaModal, setBaixaModal] = useState(null);
@@ -302,6 +304,19 @@ const ContasReceberPage = () => {
             fetchData();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao reverter cancelamento.');
+        }
+    };
+
+    const handleSyncCA = async (contaId) => {
+        setSyncing(contaId);
+        try {
+            const r = await contasReceberService.syncCA(contaId);
+            toast.success(r.message);
+            fetchData();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro na sincronização CA');
+        } finally {
+            setSyncing(null);
         }
     };
 
@@ -765,6 +780,16 @@ const ContasReceberPage = () => {
                                         {/* Ações da conta */}
                                         {(podeBaixar || podeReverter || podeReverterCancelamento) && (
                                             <div className="mt-3 pt-3 border-t border-gray-200 flex justify-end gap-2 flex-wrap">
+                                                {podeBaixar && conta.idVendaContaAzul && conta.origem !== 'ESPECIAL' && (
+                                                    <button
+                                                        onClick={() => handleSyncCA(conta.id)}
+                                                        disabled={syncing === conta.id}
+                                                        className="flex items-center gap-1 px-3 py-1.5 text-xs text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100 active:bg-blue-200 font-medium disabled:opacity-50"
+                                                        title="Verificar baixas no Conta Azul"
+                                                    >
+                                                        <RefreshCw className={`h-3.5 w-3.5 ${syncing === conta.id ? 'animate-spin' : ''}`} /> Sync CA
+                                                    </button>
+                                                )}
                                                 {podeReverterCancelamento && conta.status === 'CANCELADO' && (
                                                     <button
                                                         onClick={() => handleReverterCancelamento(conta.id)}

@@ -956,7 +956,7 @@ const ContasReceberTabela = () => {
                                                         <Undo2 className="w-4 h-4" />
                                                     </button>
                                                 )}
-                                                {podeBaixar && l.idVendaContaAzul && l.statusConta !== 'QUITADO' && l.statusConta !== 'CANCELADO' && (
+                                                {podeBaixar && l.idVendaContaAzul && l.statusConta !== 'CANCELADO' && (
                                                     <button
                                                         onClick={() => handleSyncCA(l.contaId, l.idVendaContaAzul)}
                                                         disabled={syncing === l.contaId}
@@ -1153,7 +1153,7 @@ const ContasReceberTabela = () => {
                                         <LinkIcon className="w-4 h-4" /> Ver pedido
                                     </button>
                                 )}
-                                {podeBaixar && l.idVendaContaAzul && l.statusConta !== 'QUITADO' && l.statusConta !== 'CANCELADO' && (
+                                {podeBaixar && l.idVendaContaAzul && l.statusConta !== 'CANCELADO' && (
                                     <button
                                         onClick={() => { handleSyncCA(l.contaId, l.idVendaContaAzul); close(); }}
                                         disabled={syncing === l.contaId}
