@@ -343,4 +343,65 @@ router.post('/cancelar-contas-pedido-excluido', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/debug-inadimplencia?clienteId=xxx — parcelas vencidas PENDENTES de um cliente
+router.get('/debug-inadimplencia', async (req, res) => {
+    try {
+        const { clienteId } = req.query;
+        if (!clienteId) return res.status(400).json({ error: 'clienteId obrigatório' });
+        const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+
+        const parcelas = await prisma.parcela.findMany({
+            where: {
+                status: 'PENDENTE',
+                dataVencimento: { lt: hoje },
+                contaReceber: { clienteId, status: { in: ['ABERTO', 'PARCIAL'] } }
+            },
+            include: {
+                contaReceber: {
+                    select: { id: true, status: true, origem: true, pedidoId: true,
+                        pedido: { select: { numero: true, statusEnvio: true, situacaoCA: true } } }
+                }
+            }
+        });
+
+        const todasContas = await prisma.contaReceber.findMany({
+            where: { clienteId },
+            select: { id: true, status: true, origem: true,
+                pedido: { select: { numero: true, statusEnvio: true, situacaoCA: true } },
+                parcelas: { select: { status: true, dataVencimento: true, valor: true } }
+            }
+        });
+
+        res.json({ parcelasVencidasPendentes: parcelas.length, parcelas, todasContas });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/admin-exec/cancelar-contas-bonificacao — cancela contasReceber de pedidos bonificação (não deveriam existir)
+router.post('/cancelar-contas-bonificacao', async (req, res) => {
+    try {
+        const contas = await prisma.contaReceber.findMany({
+            where: { status: { in: ['ABERTO', 'PARCIAL'] }, pedido: { bonificacao: true } },
+            select: { id: true, pedido: { select: { numero: true } } }
+        });
+
+        let canceladas = 0;
+        for (const c of contas) {
+            await prisma.$transaction([
+                prisma.parcela.updateMany({
+                    where: { contaReceberId: c.id, status: { notIn: ['PAGO'] } },
+                    data: { status: 'CANCELADO' }
+                }),
+                prisma.contaReceber.update({ where: { id: c.id }, data: { status: 'CANCELADO' } })
+            ]);
+            canceladas++;
+        }
+
+        res.json({ ok: true, canceladas, pedidos: contas.map(c => c.pedido?.numero) });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;

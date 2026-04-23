@@ -256,4 +256,31 @@ async function sincronizarTodasAbertas() {
     return { totalContasVerificadas: contas.length, totalContasAtualizadas, totalParcelasBaixadas, erros, duracaoSeg: Number(duracao) };
 }
 
-module.exports = { sincronizarConta, sincronizarTodasAbertas };
+/**
+ * Sincroniza todas as contas abertas de UM cliente específico com o CA.
+ * Usado antes de verificar inadimplência na criação de pedido.
+ * Sem throttle entre contas (clientes geralmente têm poucas contas abertas).
+ */
+async function sincronizarContasCliente(clienteId) {
+    const contas = await prisma.contaReceber.findMany({
+        where: {
+            clienteId,
+            status: { in: ['ABERTO', 'PARCIAL'] },
+            pedido: { idVendaContaAzul: { not: null }, especial: false }
+        },
+        select: { id: true }
+    });
+
+    let sincronizadas = 0;
+    for (const c of contas) {
+        try {
+            const r = await sincronizarConta(c.id, { origem: 'AUTO' });
+            if (r.aplicadas > 0) sincronizadas++;
+        } catch (err) {
+            console.warn(`[Sync inadimplência] Falha conta ${c.id}: ${err.message}`);
+        }
+    }
+    return { verificadas: contas.length, sincronizadas };
+}
+
+module.exports = { sincronizarConta, sincronizarTodasAbertas, sincronizarContasCliente };

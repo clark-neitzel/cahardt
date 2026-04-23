@@ -117,7 +117,8 @@ const pedidoController = {
                 const permissoes = req.user?.permissoes || {};
                 const hoje = new Date();
                 hoje.setHours(0, 0, 0, 0);
-                const parcelasVencidas = await prisma.parcela.findMany({
+
+                const buscarParcelasVencidas = () => prisma.parcela.findMany({
                     where: {
                         status: 'PENDENTE',
                         dataVencimento: { lt: hoje },
@@ -128,6 +129,21 @@ const pedidoController = {
                     },
                     select: { valor: true }
                 });
+
+                let parcelasVencidas = await buscarParcelasVencidas();
+
+                // Se encontrou parcelas vencidas, sincroniza com CA antes de bloquear
+                // — pode ser que o pagamento já foi registrado no CA mas não baixado aqui
+                if (parcelasVencidas.length > 0) {
+                    try {
+                        const { sincronizarContasCliente } = require('../services/contasReceberSyncService');
+                        await sincronizarContasCliente(dadosPedido.clienteId);
+                        parcelasVencidas = await buscarParcelasVencidas();
+                    } catch (syncErr) {
+                        console.warn('[Inadimplência] Sync CA falhou, usando dados locais:', syncErr.message);
+                    }
+                }
+
                 if (parcelasVencidas.length > 0) {
                     if (!permissoes.admin && !permissoes.Pode_Vender_Inadimplente) {
                         return res.status(403).json({ error: 'Este cliente possui contas em aberto. Você não tem permissão para realizar esta venda.' });
