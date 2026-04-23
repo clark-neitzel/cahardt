@@ -74,6 +74,7 @@ const DEFAULT_PERMISSIONS = {
     // Financeiro
     Pode_Acessar_Contas_Receber: false,
     Pode_Baixar_Contas_Receber: false,
+    Pode_Vender_Inadimplente: false,
     // Devoluções
     Pode_Fazer_Devolucao: false,
     Pode_Reverter_Devolucao: false,
@@ -698,6 +699,11 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                     label="Dar Baixa em Parcelas" sublabel="Registrar pagamentos e estornar baixas" />
                             </div>
                         )}
+
+                        <div className="border-t mt-3 pt-3">
+                            <Toggle checked={!!permissoes.Pode_Vender_Inadimplente} onChange={() => toggleBool('Pode_Vender_Inadimplente')}
+                                label="Pode vender para clientes com contas em aberto" sublabel="Se ativado, o vendedor se torna responsável e a observação é registrada no pedido" danger />
+                        </div>
 
                         {/* Devoluções */}
                         <div className="border-t mt-3 pt-3">

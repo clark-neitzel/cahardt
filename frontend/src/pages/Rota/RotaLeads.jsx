@@ -5,7 +5,7 @@ import {
     Clock, Calendar, Tag, CheckCircle, ClipboardList, Star,
     Package, X, Navigation, Loader, Search, Truck, Edit3,
     DollarSign, Trash2, Save, ChevronDown, ChevronUp, Route, Bell,
-    ArrowLeftRight, Check, Sparkles
+    ArrowLeftRight, Check, Sparkles, AlertCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import leadService from '../../services/leadService';
@@ -332,7 +332,7 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
             />
         )}
         <div
-            className={`rounded-xl border shadow-sm overflow-hidden mb-3 ${atendOutro && !atendHoje ? 'bg-amber-50/50' : 'bg-white'} ${alerta?.isHoje ? 'ring-2 animate-pulse-border' : doDia ? 'border-green-500/50 ring-1 ring-green-500/20' : 'border-gray-200'}`}
+            className={`rounded-xl border overflow-hidden mb-3 ${atendOutro && !atendHoje ? 'bg-amber-50/50' : cliente.inadimplente ? 'bg-red-50/40' : 'bg-white'} ${alerta?.isHoje ? 'ring-2 animate-pulse-border shadow-sm' : cliente.inadimplente ? 'border-red-400 shadow-[0_0_0_4px_rgba(239,68,68,0.2)]' : doDia ? 'border-green-500/50 ring-1 ring-green-500/20 shadow-sm' : 'border-gray-200 shadow-sm'}`}
             style={alerta?.isHoje ? { borderColor: alerta.cor, '--alerta-cor': alerta.cor } : undefined}
         >
             <div className="p-4">
@@ -392,6 +392,16 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                         {cliente.Formas_Atendimento.some(f => f.toUpperCase() === 'PRESENCIAL') && <span className="text-[11px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><User className="h-3 w-3" />Presencial</span>}
                         {cliente.Formas_Atendimento.some(f => f.toUpperCase() === 'WHATSAPP') && <span className="text-[11px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><MessageCircle className="h-3 w-3" />WhatsApp</span>}
                         {cliente.Formas_Atendimento.some(f => f.toUpperCase() === 'TELEFONE') && <span className="text-[11px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-semibold flex items-center gap-0.5"><Phone className="h-3 w-3" />Telefone</span>}
+                    </div>
+                )}
+
+                {/* Badge de inadimplência */}
+                {cliente.inadimplente && (
+                    <div className="mt-2 flex items-center gap-1.5 bg-red-50 border border-red-200 rounded px-2 py-1">
+                        <AlertCircle className="h-3 w-3 text-red-600 shrink-0" />
+                        <span className="text-[11px] font-bold text-red-700">
+                            Inadimplente — {Number(cliente.totalVencido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em atraso
+                        </span>
                     </div>
                 )}
 

@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import clienteService from '../../services/clienteService';
 import vendedorService from '../../services/vendedorService';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
-import { Search, MapPin, Phone, User, Filter, Settings, X, Save, AlertTriangle, MessageCircle } from 'lucide-react';
+import { Search, MapPin, Phone, User, Filter, Settings, X, Save, AlertTriangle, MessageCircle, AlertCircle } from 'lucide-react';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 
@@ -54,6 +54,11 @@ const ListaClientes = () => {
     const [selectedIds, setSelectedIds] = useState([]);
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
     const [batchData, setBatchData] = useState({ idVendedor: '', Dia_de_entrega: '', Dia_de_venda: '' });
+
+    // Modal de Inadimplência
+    const [clienteInadimplente, setClienteInadimplente] = useState(null); // { nome, uuid }
+    const [inadimplenciaDetalhe, setInadimplenciaDetalhe] = useState(null);
+    const [loadingInadimplencia, setLoadingInadimplencia] = useState(false);
 
     // Carregar dados de apoio
     useEffect(() => {
@@ -166,6 +171,24 @@ const ListaClientes = () => {
     const nomeCondicao = (id) => {
         const c = condicoesPagamento.find(c => c.idCondicao === id);
         return c ? c.nomeCondicao : id;
+    };
+
+    const formatarMoeda = (valor) =>
+        Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    const abrirModalInadimplencia = async (e, cliente) => {
+        e.stopPropagation();
+        setClienteInadimplente({ nome: cliente.NomeFantasia || cliente.Nome, uuid: cliente.UUID });
+        setInadimplenciaDetalhe(null);
+        setLoadingInadimplencia(true);
+        try {
+            const data = await clienteService.obterInadimplencia(cliente.UUID);
+            setInadimplenciaDetalhe(data);
+        } catch {
+            setInadimplenciaDetalhe({ erro: true });
+        } finally {
+            setLoadingInadimplencia(false);
+        }
     };
 
     return (
@@ -350,7 +373,7 @@ const ListaClientes = () => {
                                 <tr
                                     key={cliente.UUID}
                                     onClick={(e) => { if (e.target.type !== 'checkbox') navigate(`/clientes/${cliente.UUID}`); }}
-                                    className={`cursor-pointer transition-colors text-sm ${selectedIds.includes(cliente.UUID) ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'}`}
+                                    className={`cursor-pointer transition-colors text-sm ${selectedIds.includes(cliente.UUID) ? 'bg-blue-50 hover:bg-blue-100' : cliente.inadimplente ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}
                                 >
                                     <td className="px-3 py-2">
                                         <input
@@ -406,9 +429,21 @@ const ListaClientes = () => {
                                         {cliente.Documento}
                                     </td>
                                     <td className="px-3 py-2 whitespace-nowrap">
-                                        <span className={`px-1.5 py-0.5 inline-flex text-[11px] leading-4 font-semibold rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                            {cliente.Ativo ? 'Ativo' : 'Inativo'}
-                                        </span>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className={`px-1.5 py-0.5 inline-flex text-[11px] leading-4 font-semibold rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                {cliente.Ativo ? 'Ativo' : 'Inativo'}
+                                            </span>
+                                            {cliente.inadimplente && (
+                                                <button
+                                                    onClick={(e) => abrirModalInadimplencia(e, cliente)}
+                                                    className="px-1.5 py-0.5 inline-flex items-center gap-0.5 text-[11px] leading-4 font-semibold rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
+                                                    title={`Inadimplente — ${formatarMoeda(cliente.totalVencido)} em atraso`}
+                                                >
+                                                    <AlertCircle className="h-2.5 w-2.5" />
+                                                    Inad. {formatarMoeda(cliente.totalVencido)}
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))
@@ -426,7 +461,7 @@ const ListaClientes = () => {
                 ) : clientes.map((cliente) => (
                     <div
                         key={cliente.UUID}
-                        className={`bg-white rounded-lg shadow-sm border ${selectedIds.includes(cliente.UUID) ? 'border-primary bg-blue-50/40' : 'border-gray-100'} relative`}
+                        className={`rounded-lg shadow-sm border relative ${selectedIds.includes(cliente.UUID) ? 'border-primary bg-blue-50/40' : cliente.inadimplente ? 'border-red-300 bg-red-50/40' : 'bg-white border-gray-100'}`}
                     >
                         {selectedIds.length > 0 && (
                             <div className="absolute top-3 right-3 z-10">
@@ -498,9 +533,18 @@ const ListaClientes = () => {
                                         {nomeCondicao(cliente.Condicao_de_pagamento)}
                                     </span>
                                 )}
-                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ml-auto ${cliente.Ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                     {cliente.Ativo ? 'Ativo' : 'Inativo'}
                                 </span>
+                                {cliente.inadimplente && (
+                                    <button
+                                        onClick={(e) => abrirModalInadimplencia(e, cliente)}
+                                        className="ml-auto px-1.5 py-0.5 inline-flex items-center gap-0.5 text-[10px] font-semibold rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
+                                    >
+                                        <AlertCircle className="h-2.5 w-2.5" />
+                                        Inadimplente {formatarMoeda(cliente.totalVencido)}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -645,6 +689,82 @@ const ListaClientes = () => {
                             >
                                 <Save className="h-4 w-4" />
                                 Aplicar Alterações
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Inadimplência */}
+            {clienteInadimplente && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden">
+                        <div className="bg-red-600 px-5 py-4 flex justify-between items-center">
+                            <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                                <AlertCircle className="h-5 w-5" />
+                                Contas em Aberto — {clienteInadimplente.nome}
+                            </h3>
+                            <button onClick={() => setClienteInadimplente(null)} className="text-red-100 hover:text-white">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-5">
+                            {loadingInadimplencia ? (
+                                <p className="text-sm text-gray-500 text-center py-4">Carregando...</p>
+                            ) : inadimplenciaDetalhe?.erro ? (
+                                <p className="text-sm text-red-600 text-center py-4">Erro ao carregar dados.</p>
+                            ) : inadimplenciaDetalhe ? (
+                                <>
+                                    <div className="flex items-center justify-between mb-4 bg-red-50 rounded-lg p-3 border border-red-100">
+                                        <div>
+                                            <p className="text-xs text-red-500 font-medium uppercase tracking-wider">Total Vencido</p>
+                                            <p className="text-xl font-bold text-red-700">{formatarMoeda(inadimplenciaDetalhe.totalVencido)}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xs text-red-500 font-medium uppercase tracking-wider">Parcelas</p>
+                                            <p className="text-xl font-bold text-red-700">{inadimplenciaDetalhe.parcelasVencidas}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wider">
+                                                    <th className="text-left py-2 pr-4">Parcela</th>
+                                                    <th className="text-left py-2 pr-4">Vencimento</th>
+                                                    <th className="text-right py-2 pr-4">Valor</th>
+                                                    <th className="text-right py-2">Atraso</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {inadimplenciaDetalhe.detalhes.map((p, i) => (
+                                                    <tr key={p.id || i}>
+                                                        <td className="py-2 pr-4 text-gray-600">#{p.numeroParcela || (i + 1)}</td>
+                                                        <td className="py-2 pr-4 text-gray-600">
+                                                            {new Date(p.dataVencimento).toLocaleDateString('pt-BR')}
+                                                        </td>
+                                                        <td className="py-2 pr-4 text-right font-medium text-red-700">{formatarMoeda(p.valor)}</td>
+                                                        <td className="py-2 text-right">
+                                                            <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-xs font-semibold">
+                                                                {p.diasAtraso}d
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </>
+                            ) : null}
+                        </div>
+
+                        <div className="bg-gray-50 px-5 py-3 border-t border-gray-200 flex justify-end">
+                            <button
+                                onClick={() => setClienteInadimplente(null)}
+                                className="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                                Fechar
                             </button>
                         </div>
                     </div>

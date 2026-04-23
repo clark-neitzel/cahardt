@@ -92,8 +92,40 @@ const clienteController = {
                 }
             });
 
+            // Flag de inadimplência por cliente (parcelas vencidas não pagas)
+            const clienteIds = clientes.map(c => c.UUID);
+            let delinqMap = {};
+            if (clienteIds.length > 0) {
+                const hoje = new Date();
+                hoje.setHours(0, 0, 0, 0);
+                const contasAbertas = await prisma.contaReceber.findMany({
+                    where: {
+                        clienteId: { in: clienteIds },
+                        status: { in: ['ABERTO', 'PARCIAL'] },
+                        parcelas: { some: { status: 'PENDENTE', dataVencimento: { lt: hoje } } }
+                    },
+                    select: {
+                        clienteId: true,
+                        parcelas: {
+                            where: { status: 'PENDENTE', dataVencimento: { lt: hoje } },
+                            select: { valor: true }
+                        }
+                    }
+                });
+                for (const cr of contasAbertas) {
+                    if (!delinqMap[cr.clienteId]) delinqMap[cr.clienteId] = 0;
+                    for (const p of cr.parcelas) delinqMap[cr.clienteId] += Number(p.valor);
+                }
+            }
+
+            const clientesComFlag = clientes.map(c => ({
+                ...c,
+                inadimplente: !!delinqMap[c.UUID],
+                totalVencido: delinqMap[c.UUID] || 0
+            }));
+
             res.json({
-                data: clientes,
+                data: clientesComFlag,
                 meta: {
                     total,
                     page: Number(page),
@@ -256,6 +288,48 @@ const clienteController = {
         } catch (error) {
             console.error('Erro no sync de clientes:', error);
             res.status(500).json({ error: 'Erro ao sincronizar clientes' });
+        }
+    },
+
+    // Retornar status de inadimplência de um cliente
+    obterInadimplencia: async (req, res) => {
+        try {
+            const { uuid } = req.params;
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+
+            const parcelas = await prisma.parcela.findMany({
+                where: {
+                    status: 'PENDENTE',
+                    dataVencimento: { lt: hoje },
+                    contaReceber: {
+                        clienteId: uuid,
+                        status: { in: ['ABERTO', 'PARCIAL'] }
+                    }
+                },
+                select: {
+                    id: true,
+                    valor: true,
+                    dataVencimento: true,
+                    numeroParcela: true
+                }
+            });
+
+            const totalVencido = parcelas.reduce((acc, p) => acc + Number(p.valor), 0);
+            const detalhes = parcelas.map(p => {
+                const diasAtraso = Math.floor((hoje - new Date(p.dataVencimento)) / (1000 * 60 * 60 * 24));
+                return { id: p.id, valor: Number(p.valor), dataVencimento: p.dataVencimento, diasAtraso };
+            });
+
+            res.json({
+                inadimplente: parcelas.length > 0,
+                totalVencido,
+                parcelasVencidas: parcelas.length,
+                detalhes
+            });
+        } catch (error) {
+            console.error('Erro ao verificar inadimplência:', error);
+            res.status(500).json({ error: 'Erro ao verificar inadimplência' });
         }
     },
 

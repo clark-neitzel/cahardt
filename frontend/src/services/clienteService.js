@@ -16,6 +16,11 @@ const clienteService = {
         return response.data;
     },
 
+    obterInadimplencia: async (uuid) => {
+        const response = await api.get(`/clientes/${uuid}/inadimplencia`);
+        return response.data;
+    },
+
     atualizar: async (uuid, dados) => {
         const response = await api.patch(`/clientes/${uuid}`, dados);
         return response.data;
