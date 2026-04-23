@@ -1,8 +1,10 @@
 const jwt = require('jsonwebtoken');
+const { PrismaClient } = require('@prisma/client');
 
+const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123';
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -13,10 +15,33 @@ const authMiddleware = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded; // { id, login, nome, permissoes }
+
+        // Busca permissões atualizadas do banco para garantir que mudanças de admin
+        // tenham efeito imediato, sem precisar de novo login
+        const vendedor = await prisma.vendedor.findUnique({
+            where: { id: decoded.id },
+            select: { permissoes: true, ativo: true, maxDescontoFlex: true }
+        });
+
+        if (!vendedor || vendedor.ativo === false) {
+            return res.status(401).json({ error: 'Usuário inativo ou não encontrado.' });
+        }
+
+        const permissoesAtuais = typeof vendedor.permissoes === 'string'
+            ? JSON.parse(vendedor.permissoes)
+            : vendedor.permissoes || {};
+
+        req.user = {
+            ...decoded,
+            permissoes: permissoesAtuais,
+            maxDescontoFlex: vendedor.maxDescontoFlex
+        };
         next();
     } catch (error) {
-        return res.status(401).json({ error: 'Token expirado ou inválido.' });
+        if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+            return res.status(401).json({ error: 'Token expirado ou inválido.' });
+        }
+        return res.status(500).json({ error: 'Erro interno de autenticação.' });
     }
 };
 
