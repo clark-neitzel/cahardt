@@ -965,7 +965,6 @@ const contaAzulService = {
                     where: {
                         statusEnvio: 'RECEBIDO',
                         idVendaContaAzul: { not: null },
-                        // Pula pedidos já em estágio final (não mudam mais) para poupar varredura
                         situacaoCA: { notIn: ['FATURADO', 'EMITIDO', 'CANCELADO'] },
                         ...(idsPrioritarios.length > 0 ? { id: { notIn: idsPrioritarios } } : {}),
                         OR: [
@@ -978,8 +977,37 @@ const contaAzulService = {
                 });
             }
 
-            // Merge: prioritários primeiro, depois normais
-            const pedidosLocaisAtivos = [...pedidosPrioritarios, ...pedidosNormais];
+            // === PRIORIDADE 3: Pedidos FATURADO com conta a receber ainda aberta (cooldown 7 dias) ===
+            // Faturas podem ser canceladas no CA após faturamento; verificar periodicamente
+            const cooldown7dias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+            const idsJaIncluidos = [...idsPrioritarios, ...pedidosNormais.map(p => p.id)];
+            const vagasFaturado = Math.max(0, 20 - pedidosPrioritarios.length - pedidosNormais.length);
+            let pedidosFaturadoAberto = [];
+            if (vagasFaturado > 0) {
+                pedidosFaturadoAberto = await prisma.pedido.findMany({
+                    where: {
+                        statusEnvio: 'RECEBIDO',
+                        idVendaContaAzul: { not: null },
+                        situacaoCA: 'FATURADO',
+                        especial: false,
+                        bonificacao: false,
+                        contaReceber: { status: { in: ['ABERTO', 'PARCIAL'] } },
+                        ...(idsJaIncluidos.length > 0 ? { id: { notIn: idsJaIncluidos } } : {}),
+                        OR: [
+                            { contaAzulUpdatedAt: null },
+                            { contaAzulUpdatedAt: { lt: cooldown7dias } }
+                        ]
+                    },
+                    orderBy: { contaAzulUpdatedAt: 'asc' },
+                    take: vagasFaturado
+                });
+                if (pedidosFaturadoAberto.length > 0) {
+                    console.log(`[GARBAGE COLLECTOR] 🔍 ${pedidosFaturadoAberto.length} pedido(s) FATURADO com CR aberto incluídos na varredura.`);
+                }
+            }
+
+            // Merge: prioritários primeiro, depois normais, depois faturados com CR aberto
+            const pedidosLocaisAtivos = [...pedidosPrioritarios, ...pedidosNormais, ...pedidosFaturadoAberto];
             if (pedidosPrioritarios.length > 0) {
                 console.log(`[GARBAGE COLLECTOR] ⚡ ${pedidosPrioritarios.length} pedido(s) SEM retorno CA na frente da fila.`);
             }
