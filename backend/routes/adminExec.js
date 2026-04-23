@@ -269,4 +269,37 @@ router.post('/recalcular-todos', async (req, res) => {
     });
 });
 
+// GET /api/admin-exec/debug-contas-receber-abertas — diagnóstico de contas ABERTO/PARCIAL por status do pedido
+router.get('/debug-contas-receber-abertas', async (req, res) => {
+    try {
+        const contas = await prisma.contaReceber.findMany({
+            where: { status: { in: ['ABERTO', 'PARCIAL'] } },
+            select: {
+                id: true, status: true, origem: true,
+                pedido: { select: { numero: true, statusEnvio: true, situacaoCA: true, bonificacao: true, especial: true } }
+            },
+            orderBy: { createdAt: 'asc' }
+        });
+
+        const agrupado = {};
+        for (const c of contas) {
+            const key = c.pedido
+                ? `pedido: statusEnvio=${c.pedido.statusEnvio} | situacaoCA=${c.pedido.situacaoCA} | bonificacao=${c.pedido.bonificacao} | especial=${c.pedido.especial}`
+                : 'sem pedido (ESPECIAL)';
+            if (!agrupado[key]) agrupado[key] = { count: 0, exemplos: [] };
+            agrupado[key].count++;
+            if (agrupado[key].exemplos.length < 5) {
+                agrupado[key].exemplos.push({
+                    contaStatus: c.status,
+                    pedidoNumero: c.pedido?.numero || null
+                });
+            }
+        }
+
+        res.json({ total: contas.length, agrupado });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;
