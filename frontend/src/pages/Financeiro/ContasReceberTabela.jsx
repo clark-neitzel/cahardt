@@ -1387,6 +1387,7 @@ const ContasReceberTabela = () => {
                                                     <tr>
                                                         <th className="px-2 py-1.5 text-left font-semibold text-gray-600">Parc.</th>
                                                         <th className="px-2 py-1.5 text-right font-semibold text-gray-600">Valor</th>
+                                                        <th className="px-2 py-1.5 text-right font-semibold text-gray-600">Pago</th>
                                                         <th className="px-2 py-1.5 text-left font-semibold text-gray-600">Venc.</th>
                                                         <th className="px-2 py-1.5 text-left font-semibold text-gray-600">Status</th>
                                                         <th className="px-2 py-1.5 text-left font-semibold text-gray-600">Pgto</th>
@@ -1398,6 +1399,11 @@ const ContasReceberTabela = () => {
                                                         <tr key={pc.id} className="border-b last:border-0">
                                                             <td className="px-2 py-1 tabular-nums">{pc.numeroParcela}</td>
                                                             <td className="px-2 py-1 text-right tabular-nums font-medium">R$ {fmt(pc.valor)}</td>
+                                                            <td className="px-2 py-1 text-right tabular-nums">
+                                                                {pc.valorPago != null
+                                                                    ? <span className={pc.valorPago < pc.valor ? 'text-orange-600 font-medium' : 'text-green-700'}>R$ {fmt(pc.valorPago)}</span>
+                                                                    : <span className="text-gray-400">—</span>}
+                                                            </td>
                                                             <td className="px-2 py-1 tabular-nums">{fmtData(pc.dataVencimento)}</td>
                                                             <td className="px-2 py-1">
                                                                 <span className={`px-1.5 py-0.5 rounded text-[10px] ${STATUS_PARC[pc.status] || ''}`}>{pc.status}</span>
@@ -1409,6 +1415,17 @@ const ContasReceberTabela = () => {
                                                 </tbody>
                                             </table>
                                         </div>
+                                        {podeBaixar && p.idVendaContaAzul && p.contaReceber.status !== 'CANCELADO' && (
+                                            <div className="mt-2 flex justify-end">
+                                                <button
+                                                    onClick={() => { handleSyncCA(p.contaReceber.id, p.idVendaContaAzul); close(); }}
+                                                    disabled={syncing === p.contaReceber.id}
+                                                    className="flex items-center gap-1 px-3 py-1.5 text-xs text-blue-700 bg-blue-50 rounded hover:bg-blue-100 disabled:opacity-50"
+                                                >
+                                                    <RefreshCw className={`w-3.5 h-3.5 ${syncing === p.contaReceber.id ? 'animate-spin' : ''}`} /> Sync CA
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
