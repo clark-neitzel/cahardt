@@ -112,6 +112,33 @@ const pedidoController = {
                 }
             }
 
+            // Verificar inadimplência do cliente (apenas pedidos normais)
+            if (dadosPedido.clienteId && !dadosPedido.especial && !dadosPedido.bonificacao) {
+                const permissoes = req.user?.permissoes || {};
+                const hoje = new Date();
+                hoje.setHours(0, 0, 0, 0);
+                const parcelasVencidas = await prisma.parcela.findMany({
+                    where: {
+                        status: 'PENDENTE',
+                        dataVencimento: { lt: hoje },
+                        contaReceber: {
+                            clienteId: dadosPedido.clienteId,
+                            status: { in: ['ABERTO', 'PARCIAL'] }
+                        }
+                    },
+                    select: { valor: true }
+                });
+                if (parcelasVencidas.length > 0) {
+                    if (!permissoes.admin && !permissoes.Pode_Vender_Inadimplente) {
+                        return res.status(403).json({ error: 'Este cliente possui contas em aberto. Você não tem permissão para realizar esta venda.' });
+                    }
+                    const totalVencido = parcelasVencidas.reduce((acc, p) => acc + Number(p.valor), 0);
+                    const nomeVendedor = req.user?.nome || 'Vendedor';
+                    const obsInadimplencia = `\n[${nomeVendedor} se responsabiliza pela venda — cliente com R$ ${totalVencido.toFixed(2).replace('.', ',')} em atraso]`;
+                    dadosPedido.observacoes = (dadosPedido.observacoes || '') + obsInadimplencia;
+                }
+            }
+
             const novoPedido = await pedidoService.criar(dadosPedido);
 
             // Enviar notificação WhatsApp via BotConversa (não bloqueia resposta)
@@ -715,10 +742,25 @@ const pedidoController = {
             const pedidos = await prisma.pedido.findMany({
                 where: {
                     dataVenda: { gte: hoje, lte: hojeFim },
-                    situacaoCA: { not: 'FATURADO' },
-                    statusEnvio: { in: ['RECEBIDO', 'ENVIAR', 'SINCRONIZANDO'] }
+                    bonificacao: false,
+                    AND: [
+                        // situacaoCA != FATURADO incluindo nulls (NULL != 'FATURADO' é NULL/falsy em SQL)
+                        { OR: [{ situacaoCA: null }, { situacaoCA: { not: 'FATURADO' } }] },
+                        {
+                            OR: [
+                                // Pedidos normais: no pipeline de envio ao CA
+                                { especial: false, statusEnvio: { in: ['RECEBIDO', 'ENVIAR', 'SINCRONIZANDO'] } },
+                                // Pedidos especiais: ABERTO ou ENVIAR, não entregues
+                                { especial: true, statusEntrega: { not: 'ENTREGUE' } }
+                            ]
+                        }
+                    ]
                 },
-                include: {
+                select: {
+                    id: true,
+                    numero: true,
+                    situacaoCA: true,
+                    especial: true,
                     cliente: { select: { Nome: true } },
                     vendedor: { select: { nome: true } }
                 },

@@ -99,7 +99,8 @@ const AlertaFaturamento = () => {
                                     </div>
                                     <div className="text-xs text-gray-500 mt-0.5">
                                         Vendedor: {p.vendedor?.nome || '—'}
-                                        {p.situacaoCA && <span className="ml-2 text-amber-600 font-medium">CA: {p.situacaoCA}</span>}
+                                        {p.especial && <span className="ml-2 text-purple-600 font-medium">ESPECIAL</span>}
+                                        {!p.especial && p.situacaoCA && <span className="ml-2 text-amber-600 font-medium">CA: {p.situacaoCA}</span>}
                                     </div>
                                 </div>
                             </div>
