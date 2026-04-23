@@ -96,8 +96,8 @@ const clienteController = {
             const clienteIds = clientes.map(c => c.UUID);
             let delinqMap = {};
             if (clienteIds.length > 0) {
-                const hoje = new Date();
-                hoje.setHours(0, 0, 0, 0);
+                const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+                const hoje = new Date(hojeStr + 'T00:00:00.000Z');
                 const contasAbertas = await prisma.contaReceber.findMany({
                     where: {
                         clienteId: { in: clienteIds },
@@ -295,8 +295,8 @@ const clienteController = {
     obterInadimplencia: async (req, res) => {
         try {
             const { uuid } = req.params;
-            const hoje = new Date();
-            hoje.setHours(0, 0, 0, 0);
+            const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+            const hoje = new Date(hojeStr + 'T00:00:00.000Z');
 
             const contas = await prisma.contaReceber.findMany({
                 where: {

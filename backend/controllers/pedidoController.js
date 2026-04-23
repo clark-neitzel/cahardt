@@ -115,8 +115,8 @@ const pedidoController = {
             // Verificar inadimplência do cliente (apenas pedidos normais)
             if (dadosPedido.clienteId && !dadosPedido.especial && !dadosPedido.bonificacao) {
                 const permissoes = req.user?.permissoes || {};
-                const hoje = new Date();
-                hoje.setHours(0, 0, 0, 0);
+                const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+                const hoje = new Date(hojeStr + 'T00:00:00.000Z');
 
                 const buscarParcelasVencidas = () => prisma.parcela.findMany({
                     where: {
