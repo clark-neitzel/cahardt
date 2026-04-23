@@ -1409,7 +1409,12 @@ const ContasReceberTabela = () => {
                                                                 <span className={`px-1.5 py-0.5 rounded text-[10px] ${STATUS_PARC[pc.status] || ''}`}>{pc.status}</span>
                                                             </td>
                                                             <td className="px-2 py-1 tabular-nums">{fmtData(pc.dataPagamento)}</td>
-                                                            <td className="px-2 py-1">{pc.formaPagamento || '-'}</td>
+                                                            <td className="px-2 py-1">
+                                                                <div>{pc.formaPagamento || '-'}</div>
+                                                                {pc.observacao && pc.observacao.startsWith('CA:') && (
+                                                                    <div className="text-[10px] text-gray-400 mt-0.5">{pc.observacao}</div>
+                                                                )}
+                                                            </td>
                                                         </tr>
                                                     ))}
                                                 </tbody>

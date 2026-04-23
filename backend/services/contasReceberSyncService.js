@@ -153,11 +153,25 @@ async function sincronizarConta(contaId, opts = {}) {
             const dataPgto = baixaPrincipal?.data_pagamento ? new Date(baixaPrincipal.data_pagamento + 'T12:00:00-03:00') : hoje;
             const forma = mapMetodoCA(baixaPrincipal?.metodo_pagamento || caPar.metodo_pagamento);
 
+            // Monta detalhe das baixas para a observação (ex: "Dinheiro R$120,50 + Outros R$21,24 (desc. R$21,23)")
+            const detalheBaixas = todasBaixas.length > 1
+                ? todasBaixas.map(b => {
+                    const f = mapMetodoCA(b.metodo_pagamento) || 'Outros';
+                    const vb = Number(b?.valor_composicao?.valor_bruto || 0);
+                    const desc = Number(b?.valor_composicao?.valor_desconto || 0);
+                    return desc > 0 ? `${f} R$${vb.toFixed(2)} (desc. R$${desc.toFixed(2)})` : `${f} R$${vb.toFixed(2)}`;
+                }).join(' + ')
+                : null;
+
             // Só atualiza (e conta como "aplicada") se houver mudança real
             const valorPagoArredondado = Math.round(valorPago * 100) / 100;
             const jaAtualizado = local.status === 'PAGO' &&
                 Math.abs((local.valorPago || 0) - valorPagoArredondado) < 0.01;
             if (jaAtualizado) continue;
+
+            const obsSync = detalheBaixas
+                ? `CA: ${detalheBaixas}`
+                : `Baixa sincronizada do Conta Azul (${caPar.status}) [${origem}]`;
 
             await tx.parcela.update({
                 where: { id: local.id },
@@ -167,7 +181,7 @@ async function sincronizarConta(contaId, opts = {}) {
                     formaPagamento: forma,
                     dataPagamento: dataPgto,
                     baixadoPorId,
-                    observacao: `Baixa sincronizada do Conta Azul (${caPar.status}) [${origem}]`
+                    observacao: obsSync
                 }
             });
 
