@@ -291,41 +291,89 @@ const clienteController = {
         }
     },
 
-    // Retornar status de inadimplência de um cliente
+    // Retornar status de inadimplência + contas a receber em aberto de um cliente
     obterInadimplencia: async (req, res) => {
         try {
             const { uuid } = req.params;
             const hoje = new Date();
             hoje.setHours(0, 0, 0, 0);
 
-            const parcelas = await prisma.parcela.findMany({
+            const contas = await prisma.contaReceber.findMany({
                 where: {
-                    status: 'PENDENTE',
-                    dataVencimento: { lt: hoje },
-                    contaReceber: {
-                        clienteId: uuid,
-                        status: { in: ['ABERTO', 'PARCIAL'] }
+                    clienteId: uuid,
+                    status: { in: ['ABERTO', 'PARCIAL'] }
+                },
+                include: {
+                    pedido: {
+                        select: {
+                            numero: true, especial: true, dataVenda: true,
+                            nomeCondicaoPagamento: true, statusEntrega: true,
+                            itensDevolvidos: { select: { valorBaseItem: true, quantidade: true } },
+                            devolucoes: { where: { status: 'ATIVA' }, select: { valorTotal: true, escopo: true } }
+                        }
+                    },
+                    parcelas: {
+                        orderBy: { numeroParcela: 'asc' },
+                        include: { baixadoPor: { select: { nome: true } } }
                     }
                 },
-                select: {
-                    id: true,
-                    valor: true,
-                    dataVencimento: true,
-                    numeroParcela: true
-                }
+                orderBy: { createdAt: 'desc' }
             });
 
-            const totalVencido = parcelas.reduce((acc, p) => acc + Number(p.valor), 0);
-            const detalhes = parcelas.map(p => {
-                const diasAtraso = Math.floor((hoje - new Date(p.dataVencimento)) / (1000 * 60 * 60 * 24));
-                return { id: p.id, valor: Number(p.valor), dataVencimento: p.dataVencimento, diasAtraso };
+            let totalVencido = 0;
+            let parcelasVencidas = 0;
+
+            const contasFormatadas = contas.map(c => {
+                const valorDevolvido = (c.pedido?.itensDevolvidos || [])
+                    .reduce((s, i) => s + Number(i.valorBaseItem) * Number(i.quantidade), 0);
+                const devolucaoAtiva = c.pedido?.devolucoes?.[0] || null;
+
+                const parcelas = c.parcelas.map(p => {
+                    const vencida = p.status === 'PENDENTE' && new Date(p.dataVencimento) < hoje;
+                    const diasAtraso = vencida
+                        ? Math.floor((hoje - new Date(p.dataVencimento)) / (1000 * 60 * 60 * 24))
+                        : 0;
+                    if (vencida) { totalVencido += Number(p.valor); parcelasVencidas++; }
+                    return {
+                        id: p.id,
+                        numeroParcela: p.numeroParcela,
+                        valor: Number(p.valor),
+                        dataVencimento: p.dataVencimento,
+                        dataPagamento: p.dataPagamento,
+                        valorPago: p.valorPago ? Number(p.valorPago) : null,
+                        formaPagamento: p.formaPagamento,
+                        status: p.status,
+                        diasAtraso,
+                        baixadoPorNome: p.baixadoPor?.nome || null
+                    };
+                });
+
+                return {
+                    id: c.id,
+                    status: c.status,
+                    origem: c.origem,
+                    valorTotal: Number(c.valorTotal),
+                    valorDevolvido: valorDevolvido > 0 ? Math.round(valorDevolvido * 100) / 100 : 0,
+                    devolucaoEscopo: devolucaoAtiva?.escopo || null,
+                    pedidoNumero: c.pedido?.numero || null,
+                    pedidoEspecial: c.pedido?.especial || false,
+                    dataVenda: c.pedido?.dataVenda || null,
+                    condicaoPagamento: c.pedido?.nomeCondicaoPagamento || null,
+                    statusEntrega: c.pedido?.statusEntrega || null,
+                    parcelasTotal: parcelas.length,
+                    parcelasPagas: parcelas.filter(p => p.status === 'PAGO').length,
+                    proximoVencimento: parcelas
+                        .filter(p => p.status === 'PENDENTE' || p.status === 'VENCIDO')
+                        .sort((a, b) => new Date(a.dataVencimento) - new Date(b.dataVencimento))[0]?.dataVencimento || null,
+                    parcelas
+                };
             });
 
             res.json({
-                inadimplente: parcelas.length > 0,
-                totalVencido,
-                parcelasVencidas: parcelas.length,
-                detalhes
+                inadimplente: parcelasVencidas > 0,
+                totalVencido: Math.round(totalVencido * 100) / 100,
+                parcelasVencidas,
+                contas: contasFormatadas
             });
         } catch (error) {
             console.error('Erro ao verificar inadimplência:', error);

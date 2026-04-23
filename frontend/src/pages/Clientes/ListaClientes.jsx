@@ -709,51 +709,84 @@ const ListaClientes = () => {
                             </button>
                         </div>
 
-                        <div className="p-5">
+                        <div className="flex flex-col max-h-[75vh] overflow-hidden">
                             {loadingInadimplencia ? (
-                                <p className="text-sm text-gray-500 text-center py-4">Carregando...</p>
+                                <p className="text-sm text-gray-500 text-center py-8">Carregando...</p>
                             ) : inadimplenciaDetalhe?.erro ? (
-                                <p className="text-sm text-red-600 text-center py-4">Erro ao carregar dados.</p>
+                                <p className="text-sm text-red-600 text-center py-8">Erro ao carregar dados.</p>
                             ) : inadimplenciaDetalhe ? (
                                 <>
-                                    <div className="flex items-center justify-between mb-4 bg-red-50 rounded-lg p-3 border border-red-100">
+                                    <div className="flex gap-6 px-5 py-3 bg-red-50 border-b border-red-100 shrink-0">
                                         <div>
-                                            <p className="text-xs text-red-500 font-medium uppercase tracking-wider">Total Vencido</p>
-                                            <p className="text-xl font-bold text-red-700">{formatarMoeda(inadimplenciaDetalhe.totalVencido)}</p>
+                                            <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wide">Total vencido</p>
+                                            <p className="text-lg font-bold text-red-700">{formatarMoeda(inadimplenciaDetalhe.totalVencido)}</p>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-xs text-red-500 font-medium uppercase tracking-wider">Parcelas</p>
-                                            <p className="text-xl font-bold text-red-700">{inadimplenciaDetalhe.parcelasVencidas}</p>
+                                        <div>
+                                            <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wide">Parcelas vencidas</p>
+                                            <p className="text-lg font-bold text-red-700">{inadimplenciaDetalhe.parcelasVencidas}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wide">Notas em aberto</p>
+                                            <p className="text-lg font-bold text-red-700">{inadimplenciaDetalhe.contas?.length || 0}</p>
                                         </div>
                                     </div>
-
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wider">
-                                                    <th className="text-left py-2 pr-4">Parcela</th>
-                                                    <th className="text-left py-2 pr-4">Vencimento</th>
-                                                    <th className="text-right py-2 pr-4">Valor</th>
-                                                    <th className="text-right py-2">Atraso</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-100">
-                                                {inadimplenciaDetalhe.detalhes.map((p, i) => (
-                                                    <tr key={p.id || i}>
-                                                        <td className="py-2 pr-4 text-gray-600">#{p.numeroParcela || (i + 1)}</td>
-                                                        <td className="py-2 pr-4 text-gray-600">
-                                                            {new Date(p.dataVencimento).toLocaleDateString('pt-BR')}
-                                                        </td>
-                                                        <td className="py-2 pr-4 text-right font-medium text-red-700">{formatarMoeda(p.valor)}</td>
-                                                        <td className="py-2 text-right">
-                                                            <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-xs font-semibold">
-                                                                {p.diasAtraso}d
+                                    <div className="overflow-y-auto flex-1 p-4 space-y-3">
+                                        {(inadimplenciaDetalhe.contas || []).map(conta => (
+                                            <div key={conta.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                                                <div className="bg-gray-50 px-3 py-2.5 flex items-start justify-between gap-2">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                            {conta.pedidoNumero && (
+                                                                <span className="text-xs font-bold text-gray-800">{conta.pedidoEspecial ? 'ZZ' : ''}#{conta.pedidoNumero}</span>
+                                                            )}
+                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${conta.status === 'PARCIAL' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                                {conta.status === 'PARCIAL' ? 'Parcial' : 'Em aberto'}
                                                             </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                            {conta.condicaoPagamento && (
+                                                                <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{conta.condicaoPagamento}</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex gap-3 mt-0.5 text-[10px] text-gray-500">
+                                                            {conta.dataVenda && <span>Venda: {new Date(conta.dataVenda).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</span>}
+                                                            <span>{conta.parcelasPagas}/{conta.parcelasTotal} pagas</span>
+                                                            {conta.valorDevolvido > 0 && <span className="text-red-600 font-medium">Dev: {formatarMoeda(conta.valorDevolvido)}</span>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <p className="text-xs font-bold text-gray-800">{formatarMoeda(conta.valorTotal)}</p>
+                                                        {conta.proximoVencimento && <p className="text-[10px] text-gray-400">Próx: {new Date(conta.proximoVencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>}
+                                                    </div>
+                                                </div>
+                                                <div className="divide-y divide-gray-100">
+                                                    {conta.parcelas.map(p => {
+                                                        const vencida = p.status === 'PENDENTE' && p.diasAtraso > 0;
+                                                        const pago = p.status === 'PAGO';
+                                                        return (
+                                                            <div key={p.id} className={`px-3 py-2 flex items-center justify-between gap-2 ${vencida ? 'bg-red-50/60' : pago ? 'bg-green-50/40' : ''}`}>
+                                                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                                    <span className="text-[11px] font-bold text-gray-400 shrink-0 w-4 text-center">{p.numeroParcela}</span>
+                                                                    <div className="min-w-0">
+                                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                                            <span className="text-xs font-semibold text-gray-800">{formatarMoeda(p.valor)}</span>
+                                                                            <span className={`text-[10px] px-1 py-0.5 rounded font-medium ${pago ? 'bg-green-100 text-green-700' : vencida ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                                                {pago ? 'Pago' : vencida ? 'Vencido' : 'Pendente'}
+                                                                            </span>
+                                                                            {vencida && <span className="text-[10px] font-bold text-red-600">{p.diasAtraso}d</span>}
+                                                                        </div>
+                                                                        <div className="text-[10px] text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
+                                                                            <span>Venc: {new Date(p.dataVencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</span>
+                                                                            {p.dataPagamento && <span className="text-green-600">Pago: {new Date(p.dataPagamento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</span>}
+                                                                            {p.valorPago && p.valorPago !== p.valor && <span className="text-green-600">({formatarMoeda(p.valorPago)} recebido)</span>}
+                                                                            {p.formaPagamento && <span>{p.formaPagamento}</span>}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </>
                             ) : null}

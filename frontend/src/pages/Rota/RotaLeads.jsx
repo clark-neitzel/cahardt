@@ -276,10 +276,41 @@ const OrientacaoPopup = ({ insight, onConfirm, onClose }) => {
 // ================================================
 // Card de Cliente
 // ================================================
+const fmtMoeda = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—';
+
+const PARCELA_STATUS = {
+    PENDENTE: { label: 'Pendente', cls: 'bg-gray-100 text-gray-700' },
+    PAGO:     { label: 'Pago',     cls: 'bg-green-100 text-green-700' },
+    VENCIDO:  { label: 'Vencido',  cls: 'bg-red-100 text-red-700' },
+    CANCELADO:{ label: 'Cancelado',cls: 'bg-gray-100 text-gray-400' },
+};
+const CONTA_STATUS = {
+    ABERTO:   { label: 'Em aberto', cls: 'bg-blue-100 text-blue-700' },
+    PARCIAL:  { label: 'Parcial',   cls: 'bg-yellow-100 text-yellow-700' },
+};
+
 const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, meuVendedorId, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado, podeUsarIA = false }) => {
     const atendHoje = getAtendimentoHoje(cliente._atendimentos);
     const atendOutro = !atendHoje ? getAtendimentoOutroVendedor(cliente, meuVendedorId) : null;
     const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
+
+    const [inadimplenciaData, setInadimplenciaData] = useState(null);
+    const [loadingInad, setLoadingInad] = useState(false);
+
+    const abrirInadimplencia = async (e) => {
+        e.stopPropagation();
+        setInadimplenciaData('loading');
+        setLoadingInad(true);
+        try {
+            const res = await clienteService.obterInadimplencia(cliente.UUID);
+            setInadimplenciaData(res);
+        } catch {
+            setInadimplenciaData('erro');
+        } finally {
+            setLoadingInad(false);
+        }
+    };
     const vendedorNome = cliente.vendedor?.nome || cliente.Vendedor?.nome;
     const [orientExpanded, setOrientExpanded] = useState(false);
     const [obsExpanded, setObsExpanded] = useState(false);
@@ -330,6 +361,133 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                 onConfirm={() => { const fn = popup.pendingAction; setPopup(null); fn(); }}
                 onClose={() => setPopup(null)}
             />
+        )}
+
+        {/* Modal de inadimplência */}
+        {inadimplenciaData && (
+            <div className="fixed inset-0 z-[999] flex items-end md:items-center justify-center bg-black/60 p-0 md:p-4" onClick={() => setInadimplenciaData(null)}>
+                <div className="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-2xl shadow-xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3 bg-red-600 rounded-t-2xl md:rounded-t-2xl shrink-0">
+                        <div className="flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-white" />
+                            <span className="text-sm font-bold text-white">{cliente.NomeFantasia || cliente.Nome}</span>
+                        </div>
+                        <button onClick={() => setInadimplenciaData(null)} className="text-red-100 hover:text-white p-1">
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+
+                    {inadimplenciaData === 'loading' ? (
+                        <div className="flex items-center justify-center py-12 text-gray-400 text-sm gap-2">
+                            <Loader className="h-4 w-4 animate-spin" /> Carregando...
+                        </div>
+                    ) : inadimplenciaData === 'erro' ? (
+                        <div className="text-center py-10 text-red-500 text-sm">Erro ao carregar dados.</div>
+                    ) : (
+                        <>
+                            {/* Totalizador */}
+                            <div className="flex gap-4 px-4 py-3 bg-red-50 border-b border-red-100 shrink-0">
+                                <div>
+                                    <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wide">Total vencido</p>
+                                    <p className="text-lg font-bold text-red-700">{fmtMoeda(inadimplenciaData.totalVencido)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wide">Parcelas</p>
+                                    <p className="text-lg font-bold text-red-700">{inadimplenciaData.parcelasVencidas}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wide">Notas em aberto</p>
+                                    <p className="text-lg font-bold text-red-700">{inadimplenciaData.contas?.length || 0}</p>
+                                </div>
+                            </div>
+
+                            {/* Contas — uma abaixo da outra */}
+                            <div className="overflow-y-auto flex-1 p-3 space-y-3">
+                                {(inadimplenciaData.contas || []).map(conta => {
+                                    const stBadge = CONTA_STATUS[conta.status] || CONTA_STATUS.ABERTO;
+                                    return (
+                                        <div key={conta.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                                            {/* Cabeçalho da nota */}
+                                            <div className="bg-gray-50 px-3 py-2.5 flex items-start justify-between gap-2">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        {conta.pedidoNumero && (
+                                                            <span className="text-xs font-bold text-gray-800">
+                                                                {conta.pedidoEspecial ? 'ZZ' : ''}#{conta.pedidoNumero}
+                                                            </span>
+                                                        )}
+                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${stBadge.cls}`}>
+                                                            {stBadge.label}
+                                                        </span>
+                                                        {conta.condicaoPagamento && (
+                                                            <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                                                                {conta.condicaoPagamento}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-3 mt-0.5 text-[10px] text-gray-500">
+                                                        {conta.dataVenda && <span>Venda: {fmtData(conta.dataVenda)}</span>}
+                                                        <span>{conta.parcelasPagas}/{conta.parcelasTotal} parc. pagas</span>
+                                                        {conta.valorDevolvido > 0 && (
+                                                            <span className="text-red-600 font-medium">Dev: {fmtMoeda(conta.valorDevolvido)}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right shrink-0">
+                                                    <p className="text-xs font-bold text-gray-800">{fmtMoeda(conta.valorTotal)}</p>
+                                                    {conta.proximoVencimento && (
+                                                        <p className="text-[10px] text-gray-400">Próx: {fmtData(conta.proximoVencimento)}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Parcelas */}
+                                            <div className="divide-y divide-gray-100">
+                                                {conta.parcelas.map(p => {
+                                                    const pb = PARCELA_STATUS[p.status] || PARCELA_STATUS.PENDENTE;
+                                                    const vencida = p.status === 'PENDENTE' && p.diasAtraso > 0;
+                                                    return (
+                                                        <div key={p.id} className={`px-3 py-2 flex items-center justify-between gap-2 ${vencida ? 'bg-red-50/60' : p.status === 'PAGO' ? 'bg-green-50/40' : ''}`}>
+                                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                                <span className="text-[11px] font-bold text-gray-500 shrink-0 w-5 text-center">{p.numeroParcela}</span>
+                                                                <div className="min-w-0">
+                                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                                        <span className="text-xs font-semibold text-gray-800">{fmtMoeda(p.valor)}</span>
+                                                                        <span className={`text-[10px] px-1 py-0.5 rounded font-medium ${pb.cls}`}>{pb.label}</span>
+                                                                        {vencida && (
+                                                                            <span className="text-[10px] font-bold text-red-600">{p.diasAtraso}d atraso</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="text-[10px] text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
+                                                                        <span>Venc: {fmtData(p.dataVencimento)}</span>
+                                                                        {p.dataPagamento && <span className="text-green-600">Pago: {fmtData(p.dataPagamento)}</span>}
+                                                                        {p.valorPago && p.valorPago !== p.valor && (
+                                                                            <span className="text-green-600">({fmtMoeda(p.valorPago)} recebido)</span>
+                                                                        )}
+                                                                        {p.formaPagamento && <span>{p.formaPagamento}</span>}
+                                                                        {p.baixadoPorNome && <span className="text-gray-300">· {p.baixadoPorNome}</span>}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="px-4 py-3 border-t border-gray-100 shrink-0">
+                                <button onClick={() => setInadimplenciaData(null)} className="w-full py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
+                                    Fechar
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
         )}
         <div
             className={`rounded-xl border overflow-hidden mb-3 ${atendOutro && !atendHoje ? 'bg-amber-50/50' : cliente.inadimplente ? 'bg-red-50/40' : 'bg-white'} ${alerta?.isHoje ? 'ring-2 animate-pulse-border shadow-sm' : cliente.inadimplente ? 'border-red-400 shadow-[0_0_0_4px_rgba(239,68,68,0.2)]' : doDia ? 'border-green-500/50 ring-1 ring-green-500/20 shadow-sm' : 'border-gray-200 shadow-sm'}`}
@@ -395,14 +553,18 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                     </div>
                 )}
 
-                {/* Badge de inadimplência */}
+                {/* Badge de inadimplência — clicável */}
                 {cliente.inadimplente && (
-                    <div className="mt-2 flex items-center gap-1.5 bg-red-50 border border-red-200 rounded px-2 py-1">
-                        <AlertCircle className="h-3 w-3 text-red-600 shrink-0" />
-                        <span className="text-[11px] font-bold text-red-700">
-                            Inadimplente — {Number(cliente.totalVencido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em atraso
+                    <button
+                        onClick={abrirInadimplencia}
+                        className="mt-2 w-full flex items-center gap-1.5 bg-red-50 border border-red-200 hover:bg-red-100 active:bg-red-200 transition-colors rounded px-2 py-1.5 text-left"
+                    >
+                        <AlertCircle className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                        <span className="text-[11px] font-bold text-red-700 flex-1">
+                            Inadimplente — {fmtMoeda(cliente.totalVencido)} em atraso
                         </span>
-                    </div>
+                        <ChevronRight className="h-3 w-3 text-red-400 shrink-0" />
+                    </button>
                 )}
 
                 {/* Orientação do dia — colapsada, hover/click para expandir */}
