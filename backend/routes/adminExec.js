@@ -302,4 +302,45 @@ router.get('/debug-contas-receber-abertas', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/cancelar-contas-pedido-excluido — cancela contas cujo pedido foi excluído/cancelado no CA
+router.post('/cancelar-contas-pedido-excluido', async (req, res) => {
+    try {
+        const contas = await prisma.contaReceber.findMany({
+            where: {
+                status: { in: ['ABERTO', 'PARCIAL'] },
+                pedido: {
+                    OR: [
+                        { statusEnvio: 'EXCLUIDO' },
+                        { situacaoCA: { in: ['CANCELADO', 'EXCLUIDO'] } }
+                    ]
+                }
+            },
+            select: { id: true, pedido: { select: { numero: true, statusEnvio: true, situacaoCA: true, bonificacao: true } } }
+        });
+
+        let canceladas = 0;
+        for (const c of contas) {
+            await prisma.$transaction([
+                prisma.parcela.updateMany({
+                    where: { contaReceberId: c.id, status: { notIn: ['PAGO'] } },
+                    data: { status: 'CANCELADO' }
+                }),
+                prisma.contaReceber.update({
+                    where: { id: c.id },
+                    data: { status: 'CANCELADO' }
+                })
+            ]);
+            canceladas++;
+        }
+
+        res.json({
+            ok: true,
+            canceladas,
+            detalhes: contas.map(c => ({ pedidoNumero: c.pedido?.numero, statusEnvio: c.pedido?.statusEnvio, situacaoCA: c.pedido?.situacaoCA, bonificacao: c.pedido?.bonificacao }))
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;

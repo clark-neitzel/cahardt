@@ -1028,6 +1028,23 @@ const contaAzulService = {
                                 contaAzulUpdatedAt: new Date()
                             }
                         });
+                        // Cancela conta a receber vinculada (parcelas não pagas → CANCELADO)
+                        try {
+                            const cr = await prisma.contaReceber.findUnique({ where: { pedidoId: local.id } });
+                            if (cr && ['ABERTO', 'PARCIAL'].includes(cr.status)) {
+                                await prisma.parcela.updateMany({
+                                    where: { contaReceberId: cr.id, status: { notIn: ['PAGO'] } },
+                                    data: { status: 'CANCELADO' }
+                                });
+                                await prisma.contaReceber.update({
+                                    where: { id: cr.id },
+                                    data: { status: 'CANCELADO' }
+                                });
+                                console.log(`💸 [GARBAGE COLLECTOR] ContaReceber do pedido #${local.numero} cancelada.`);
+                            }
+                        } catch (eCR) {
+                            console.error(`[GARBAGE COLLECTOR] Erro ao cancelar contaReceber pedido #${local.numero}:`, eCR.message);
+                        }
                         if (eraRecebido) {
                             try {
                                 const estoqueService = require('./estoqueService');
