@@ -31,7 +31,6 @@ import PainelMotorista from './pages/Motorista/Entregas/PainelMotorista';
 import DespesasPage from './pages/Caixa/DespesasPage';
 import CaixaDiarioPage from './pages/Caixa/CaixaDiarioPage';
 import RelatorioCaixaPrint from './pages/Caixa/RelatorioCaixaPrint';
-import ContasReceberPage from './pages/Financeiro/ContasReceberPage';
 import ContasReceberTabela from './pages/Financeiro/ContasReceberTabela';
 import RelatorioPedidos from './pages/Relatorios/RelatorioPedidos';
 import PainelEstoque from './pages/Estoque/PainelEstoque';
@@ -204,8 +203,7 @@ const Layout = ({ children }) => {
           {hasPermission('Pode_Acessar_Caixa') && <SidebarItem to="/caixa" icon={Wallet} label="Caixa" />}
           {hasPermission('Pode_Acessar_Caixa') && <SidebarItem to="/despesas" icon={Receipt} label="Despesas" />}
           {hasPermission('Pode_Ver_Todas_Entregas') && <SidebarItem to="/admin/auditoria-entregas" icon={Search} label="Auditoria" />}
-          {hasPermission('Pode_Acessar_Contas_Receber') && <SidebarItem to="/financeiro/contas-receber" icon={DollarSign} label="Contas a Receber" />}
-          {hasPermission('Pode_Acessar_Contas_Receber') && <SidebarItem to="/financeiro/contas-receber/tabela" icon={DollarSign} label="CR — Tabela" />}
+          {hasPermission('Pode_Acessar_Contas_Receber') && <SidebarItem to="/financeiro/contas-receber/tabela" icon={DollarSign} label="Contas a Receber" />}
 
           {/* Admin */}
           {showAdmin && <SidebarSection label="Admin" />}
@@ -351,8 +349,7 @@ const Layout = ({ children }) => {
                 {hasPermission('Pode_Acessar_Caixa') && <NavLink to="/caixa" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Caixa</NavLink>}
                 {hasPermission('Pode_Acessar_Caixa') && <NavLink to="/despesas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Despesas</NavLink>}
                 {hasPermission('Pode_Ver_Todas_Entregas') && <NavLink to="/admin/auditoria-entregas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Auditoria</NavLink>}
-                {hasPermission('Pode_Acessar_Contas_Receber') && <NavLink to="/financeiro/contas-receber" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Contas a Receber</NavLink>}
-                {hasPermission('Pode_Acessar_Contas_Receber') && <NavLink to="/financeiro/contas-receber/tabela" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>CR — Tabela</NavLink>}
+                {hasPermission('Pode_Acessar_Contas_Receber') && <NavLink to="/financeiro/contas-receber/tabela" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Contas a Receber</NavLink>}
               </MobileMenuSection>
             )}
 
@@ -487,7 +484,7 @@ function App() {
               <Route path="/minhas-entregas" element={<PrivateRoute tab="Pode_Executar_Entregas"><PainelMotorista /></PrivateRoute>} />
 
               {/* Financeiro */}
-              <Route path="/financeiro/contas-receber" element={<PrivateRoute tab="Pode_Acessar_Contas_Receber"><ContasReceberPage /></PrivateRoute>} />
+              <Route path="/financeiro/contas-receber" element={<Navigate to="/financeiro/contas-receber/tabela" replace />} />
               <Route path="/financeiro/contas-receber/tabela" element={<PrivateRoute tab="Pode_Acessar_Contas_Receber"><ContasReceberTabela /></PrivateRoute>} />
 
               {/* Caixa Diário e Despesas */}
