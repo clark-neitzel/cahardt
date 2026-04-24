@@ -411,7 +411,7 @@ router.get('/listar-contas-sem-pedido', async (req, res) => {
             where: { pedidoId: null },
             select: {
                 id: true, status: true, origem: true,
-                valor: true, createdAt: true,
+                valorTotal: true, createdAt: true,
                 cliente: { select: { Nome: true, NomeFantasia: true } },
                 parcelas: { select: { id: true, status: true, valor: true, dataVencimento: true } }
             },
