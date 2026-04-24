@@ -439,7 +439,6 @@ router.post('/deletar-contas-ids', async (req, res) => {
             });
             if (!conta) { deletadas.push({ id, status: 'não encontrada' }); continue; }
             await prisma.$transaction([
-                prisma.atendimento.deleteMany({ where: { contaReceber: { some: { id } } } }),
                 prisma.parcela.deleteMany({ where: { contaReceberId: id } }),
                 prisma.contaReceber.delete({ where: { id } })
             ]);
