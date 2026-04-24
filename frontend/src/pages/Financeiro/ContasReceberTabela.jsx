@@ -62,7 +62,7 @@ const ContasReceberTabela = () => {
     const asArr = (v) => Array.isArray(v) ? v : (v ? [v] : []);
     const [filtros, setFiltros] = useState({
         busca: saved.busca || '',
-        status: asArr(saved.status),
+        status: asArr(saved.status).filter(s => s !== 'PARCIAL'),
         statusParcela: asArr(saved.statusParcela),
         origem: saved.origem || '',
         vendedorId: saved.vendedorId || '',
@@ -124,7 +124,11 @@ const ContasReceberTabela = () => {
         try {
             const params = {};
             if (filtros.busca) params.busca = filtros.busca;
-            if (filtros.status.length) params.status = filtros.status.join(',');
+            // ABERTO inclui PARCIAL (conta com pagamento parcial ainda está em aberto)
+            const statusQuery = filtros.status.includes('ABERTO')
+                ? [...new Set([...filtros.status, 'PARCIAL'])]
+                : filtros.status;
+            if (statusQuery.length) params.status = statusQuery.join(',');
             if (filtros.statusParcela.length) params.statusParcela = filtros.statusParcela.join(',');
             if (filtros.origem) params.origem = filtros.origem;
             if (filtros.vendedorId) params.vendedorId = filtros.vendedorId;
@@ -389,7 +393,10 @@ const ContasReceberTabela = () => {
         try {
             const params = {};
             if (filtros.busca) params.busca = filtros.busca;
-            if (filtros.status.length) params.status = filtros.status.join(',');
+            const statusQueryRel = filtros.status.includes('ABERTO')
+                ? [...new Set([...filtros.status, 'PARCIAL'])]
+                : filtros.status;
+            if (statusQueryRel.length) params.status = statusQueryRel.join(',');
             if (filtros.statusParcela.length) params.statusParcela = filtros.statusParcela.join(',');
             if (filtros.origem) params.origem = filtros.origem;
             if (filtros.vendedorId) params.vendedorId = filtros.vendedorId;
@@ -720,7 +727,7 @@ const ContasReceberTabela = () => {
                         <label className="text-xs text-gray-500">Status Conta</label>
                         <MultiSelect
                             label="Todos"
-                            options={['ABERTO', 'PARCIAL', 'QUITADO', 'CANCELADO']}
+                            options={['ABERTO', 'QUITADO', 'CANCELADO']}
                             value={filtros.status}
                             onChange={(v) => setFiltros(f => ({ ...f, status: v }))}
                         />
