@@ -404,4 +404,51 @@ router.post('/cancelar-contas-bonificacao', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/listar-contas-sem-pedido — lista todas as contas sem pedido vinculado (especial de teste)
+router.get('/listar-contas-sem-pedido', async (req, res) => {
+    try {
+        const contas = await prisma.contaReceber.findMany({
+            where: { pedidoId: null },
+            select: {
+                id: true, status: true, origem: true,
+                valor: true, createdAt: true,
+                cliente: { select: { Nome: true, NomeFantasia: true } },
+                parcelas: { select: { id: true, status: true, valor: true, dataVencimento: true } }
+            },
+            orderBy: { createdAt: 'asc' }
+        });
+        res.json({ total: contas.length, contas });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/admin-exec/deletar-contas-ids — deleta permanentemente contas a receber por IDs
+// Body: { ids: ["id1","id2",...] }
+router.post('/deletar-contas-ids', async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'Body deve conter { ids: [...] }' });
+        }
+        const deletadas = [];
+        for (const id of ids) {
+            const conta = await prisma.contaReceber.findUnique({
+                where: { id },
+                select: { id: true, status: true, cliente: { select: { Nome: true } }, pedidoId: true }
+            });
+            if (!conta) { deletadas.push({ id, status: 'não encontrada' }); continue; }
+            await prisma.$transaction([
+                prisma.atendimento.deleteMany({ where: { contaReceber: { some: { id } } } }),
+                prisma.parcela.deleteMany({ where: { contaReceberId: id } }),
+                prisma.contaReceber.delete({ where: { id } })
+            ]);
+            deletadas.push({ id, cliente: conta.cliente?.Nome, status: 'deletada' });
+        }
+        res.json({ ok: true, deletadas });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;
