@@ -104,6 +104,7 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
     };
 
     const veiculoSelecionado = veiculos.find(v => v.id === veiculoId);
+    const bloqueadoSemVeiculo = categoria === 'COMBUSTIVEL' && !veiculoDoDia && !despesaEditando && !podeEditarVeiculos;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -201,15 +202,19 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
                         </select>
                     </div>
 
-                    {/* Aviso: sem placa no dia */}
-                    {categoria === 'COMBUSTIVEL' && !veiculoDoDia && !despesaEditando && !podeEditarVeiculos && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-sm text-yellow-800">
-                            Você não possui um veículo registrado para hoje. Inicie o dia com um veículo para lançar combustível.
+                    {/* Aviso: sem placa no dia — bloqueia completamente para não-admin */}
+                    {bloqueadoSemVeiculo && (
+                        <div className="bg-red-50 border border-red-300 rounded-md p-4 text-sm text-red-800 flex items-start gap-2">
+                            <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="font-medium">Sem veículo para hoje</p>
+                                <p className="mt-0.5">Você não possui um veículo registrado para hoje. Inicie o dia com um veículo para poder lançar combustível.</p>
+                            </div>
                         </div>
                     )}
 
                     {/* Campos de Combustível */}
-                    {categoria === 'COMBUSTIVEL' && (
+                    {categoria === 'COMBUSTIVEL' && !bloqueadoSemVeiculo && (
                         <>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Veículo *</label>
@@ -351,7 +356,7 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
                         </button>
                         <button
                             type="submit"
-                            disabled={saving || erroKm}
+                            disabled={saving || erroKm || bloqueadoSemVeiculo}
                             className={`px-4 py-2 text-sm font-medium text-white rounded-md flex items-center gap-2 ${alertaPreco && !confirmandoPreco ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary-dark'} disabled:opacity-50`}
                         >
                             <Save className="h-4 w-4" />
