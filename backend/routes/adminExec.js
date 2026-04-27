@@ -450,4 +450,22 @@ router.post('/deletar-contas-ids', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/setar-combustivel — define tipoCombustivel em veículos pelo array {placa, tipo}
+router.post('/setar-combustivel', async (req, res) => {
+    try {
+        const { veiculos } = req.body; // [{ placa: 'RLB6E01', tipo: 'DIESEL' }, ...]
+        if (!Array.isArray(veiculos)) return res.status(400).json({ error: 'veiculos deve ser array' });
+        const resultados = [];
+        for (const { placa, tipo } of veiculos) {
+            const v = await prisma.veiculo.findUnique({ where: { placa: placa.toUpperCase() } });
+            if (!v) { resultados.push({ placa, ok: false, erro: 'não encontrado' }); continue; }
+            await prisma.veiculo.update({ where: { id: v.id }, data: { tipoCombustivel: tipo } });
+            resultados.push({ placa, ok: true, tipo });
+        }
+        res.json({ ok: true, resultados });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;

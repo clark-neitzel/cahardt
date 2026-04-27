@@ -72,8 +72,8 @@ const veiculoService = {
                 },
                 despesas: {
                     where: { categoria: 'COMBUSTIVEL' },
-                    orderBy: { createdAt: 'desc' },
-                    take: 50
+                    orderBy: { kmNoAbastecimento: 'desc' },
+                    take: 100
                 }
             }
         });
@@ -86,35 +86,23 @@ const veiculoService = {
             ? Math.round(diariosComKm.reduce((sum, d) => sum + (d.kmFinal - d.kmInicial), 0) / diariosComKm.length)
             : null;
 
-        // Calcular média de consumo real (km/L) a partir dos abastecimentos com KM registrado
-        // Lógica: entre cada par de abastecimentos consecutivos, km_percorridos / litros_no_2o_abastecimento
+        // Calcular consumo médio real (km/L) — últimos 30 registros com KM e litros válidos
+        // Método: km percorrido no período (último KM - primeiro KM) / total de litros abastecidos
+        // Isso é mais preciso que somar médias parciais de cada par de abastecimentos
         const combsComKm = veiculo.despesas
             .filter(d => d.litros && Number(d.litros) > 0 && d.kmNoAbastecimento && Number(d.kmNoAbastecimento) > 0)
-            .map(d => ({ litros: Number(d.litros), km: Number(d.kmNoAbastecimento), data: d.dataReferencia }))
-            .sort((a, b) => a.km - b.km); // ordena por km crescente
+            .map(d => ({ litros: Number(d.litros), km: Number(d.kmNoAbastecimento) }))
+            .sort((a, b) => a.km - b.km) // ordena por km crescente
+            .slice(-30); // últimos 30 registros
 
         let consumoMedioReal = null;
-        const parcelasConsumo = [];
 
         if (combsComKm.length >= 2) {
-            for (let i = 1; i < combsComKm.length; i++) {
-                const kmRodados = combsComKm[i].km - combsComKm[i - 1].km;
-                const litrosNoPonto = combsComKm[i].litros;
-                // Sanity check: ignora segmentos inválidos
-                // - KM rodados deve ser > 0 e < 5000 (mais que 5000km entre abastecimentos é dado errado)
-                // - km/L deve ser <= 50 (acima disso é abastecimento parcial/1L ou dado errado)
-                // - litros deve ser >= 5 (menos que 5L é abastecimento parcial - afeta a média)
-                if (kmRodados > 0 && kmRodados < 5000 && litrosNoPonto >= 5) {
-                    const eficiencia = kmRodados / litrosNoPonto;
-                    if (eficiencia <= 50) {
-                        parcelasConsumo.push(eficiencia);
-                    }
-                }
-            }
-
-            if (parcelasConsumo.length > 0) {
-                const somaConsumo = parcelasConsumo.reduce((s, v) => s + v, 0);
-                consumoMedioReal = parseFloat((somaConsumo / parcelasConsumo.length).toFixed(2));
+            const kmPercorrido = combsComKm[combsComKm.length - 1].km - combsComKm[0].km;
+            // Soma litros do 2º ao último (o primeiro abastecimento "começa" o período, não conta os litros)
+            const totalLitros = combsComKm.slice(1).reduce((s, d) => s + d.litros, 0);
+            if (kmPercorrido > 0 && totalLitros > 0) {
+                consumoMedioReal = parseFloat((kmPercorrido / totalLitros).toFixed(2));
             }
         }
 
@@ -155,6 +143,7 @@ const veiculoService = {
                 seguroApoliceUrl: dados.seguroApoliceUrl || null,
                 capacidadeTanque: dados.capacidadeTanque || null,
                 kmMedioSugerido: dados.kmMedioSugerido ? parseInt(dados.kmMedioSugerido) : null,
+                tipoCombustivel: dados.tipoCombustivel || null,
                 observacoes: dados.observacoes || null
             }
         });
@@ -185,9 +174,31 @@ const veiculoService = {
                 kmMedioSugerido: dados.kmMedioSugerido !== undefined
                     ? (dados.kmMedioSugerido ? parseInt(dados.kmMedioSugerido) : null)
                     : undefined,
+                tipoCombustivel: dados.tipoCombustivel !== undefined ? (dados.tipoCombustivel || null) : undefined,
                 observacoes: dados.observacoes !== undefined ? dados.observacoes : undefined
             }
         });
+    },
+
+    // Preço médio por litro dos últimos 20 abastecimentos com litros e valor registrados
+    precoMedioLitro: async (veiculoId) => {
+        const registros = await prisma.despesa.findMany({
+            where: {
+                veiculoId,
+                categoria: 'COMBUSTIVEL',
+                litros: { gt: 0 },
+                valor: { gt: 0 }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            select: { valor: true, litros: true }
+        });
+        if (registros.length === 0) return null;
+        const validos = registros.filter(r => Number(r.litros) >= 5);
+        if (validos.length === 0) return null;
+        const totalValor = validos.reduce((s, r) => s + Number(r.valor), 0);
+        const totalLitros = validos.reduce((s, r) => s + Number(r.litros), 0);
+        return parseFloat((totalValor / totalLitros).toFixed(3));
     },
 
     excluir: async (id) => {

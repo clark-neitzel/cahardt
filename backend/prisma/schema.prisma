@@ -615,6 +615,7 @@ model Veiculo {
   // Métricas e Configurações
   capacidadeTanque Decimal? @map("capacidade_tanque") @db.Decimal(8, 2)
   kmMedioSugerido  Int?     @map("km_medio_sugerido")
+  tipoCombustivel  String?  @map("tipo_combustivel") // "DIESEL" | "GASOLINA"
   observacoes      String?  @db.Text
 
   diarios           DiarioVendedor[]

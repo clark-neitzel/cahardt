@@ -55,6 +55,15 @@ router.get('/:id/ultimo-km-abastecimento', authMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Erro ao buscar último KM.' });
     }
 });
+router.get('/:id/preco-medio-litro', authMiddleware, async (req, res) => {
+    try {
+        const veiculoService = require('../services/veiculoService');
+        const preco = await veiculoService.precoMedioLitro(req.params.id);
+        res.json({ precoMedioLitro: preco });
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao buscar preço médio.' });
+    }
+});
 router.get('/:id/ficha', authMiddleware, veiculoController.obterFicha);
 router.get('/:id', authMiddleware, veiculoController.obterPorId);
 

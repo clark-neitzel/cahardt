@@ -86,6 +86,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                 seguroSeguradora: res.data.seguroSeguradora || '',
                 capacidadeTanque: res.data.capacidadeTanque || '',
                 kmMedioSugerido: res.data.kmMedioSugerido || '',
+                tipoCombustivel: res.data.tipoCombustivel || '',
                 observacoes: res.data.observacoes || '',
                 documentoUrl: res.data.documentoUrl || '',
             });
@@ -684,7 +685,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                         {stats.consumoMedioReal ? `${stats.consumoMedioReal} km/L` : '—'}
                                     </p>
                                     <p className="text-xs text-orange-700 mt-1">Consumo médio real</p>
-                                    <p className="text-[10px] text-orange-500 mt-0.5">calculado dos abastecimentos</p>
+                                    <p className="text-[10px] text-orange-500 mt-0.5">km total ÷ litros (últ. 30 registros)</p>
                                 </div>
                                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
                                     <div className="flex justify-center mb-2"><ChevronRight className="h-6 w-6 text-blue-500" /></div>
@@ -722,19 +723,40 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                 )}
                             </div>
 
-                            {/* Capacidade do tanque */}
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                                <h3 className="text-sm font-bold text-gray-700 mb-2">⛽ Capacidade do Tanque</h3>
-                                {editando ? (
-                                    <input type="number" step="0.5" value={form.capacidadeTanque}
-                                        onChange={e => setForm(p => ({ ...p, capacidadeTanque: e.target.value }))}
-                                        placeholder="Ex: 50 (litros)"
-                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
-                                ) : (
-                                    <p className="text-lg font-bold text-gray-900 font-mono">
-                                        {ficha?.capacidadeTanque ? `${Number(ficha.capacidadeTanque)} L` : '—'}
-                                    </p>
-                                )}
+                            {/* Capacidade do tanque + Tipo de combustível */}
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+                                <h3 className="text-sm font-bold text-gray-700">⛽ Tanque e Combustível</h3>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Capacidade do Tanque</label>
+                                        {editando ? (
+                                            <input type="number" step="0.5" value={form.capacidadeTanque}
+                                                onChange={e => setForm(p => ({ ...p, capacidadeTanque: e.target.value }))}
+                                                placeholder="Ex: 50"
+                                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                                        ) : (
+                                            <p className="text-lg font-bold text-gray-900 font-mono">
+                                                {ficha?.capacidadeTanque ? `${Number(ficha.capacidadeTanque)} L` : '—'}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Tipo de Combustível</label>
+                                        {editando ? (
+                                            <select value={form.tipoCombustivel || ''}
+                                                onChange={e => setForm(p => ({ ...p, tipoCombustivel: e.target.value }))}
+                                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                                                <option value="">Não definido</option>
+                                                <option value="GASOLINA">Gasolina</option>
+                                                <option value="DIESEL">Diesel</option>
+                                            </select>
+                                        ) : (
+                                            <p className="text-base font-bold text-gray-900">
+                                                {ficha?.tipoCombustivel === 'DIESEL' ? 'Diesel' : ficha?.tipoCombustivel === 'GASOLINA' ? 'Gasolina' : '—'}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Registrar abastecimento */}
@@ -828,6 +850,7 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                                 const kmRodados = kmAtual && kmAnterior ? kmAtual - kmAnterior : null;
                                                 const litros = d.litros ? Number(d.litros) : 0;
                                                 const eficiencia = kmRodados && litros >= 5 ? (kmRodados / litros).toFixed(1) : null;
+                                                const precoLitro = litros > 0 && d.valor ? (Number(d.valor) / litros).toFixed(3) : null;
 
                                                 // Modo edição inline
                                                 if (!readOnly && editingAbastId === d.id) {
@@ -914,6 +937,9 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                                                 <p className="text-[13px] font-bold text-gray-900 font-mono">
                                                                     R$ {Number(d.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                                 </p>
+                                                                {precoLitro && (
+                                                                    <p className="text-[10px] text-gray-400 font-mono">R$ {precoLitro}/L</p>
+                                                                )}
                                                                 {!readOnly && <div className="flex gap-1 mt-1">
                                                                     <button onClick={() => handleEditAbast(d)} className="p-1 text-gray-400 hover:text-orange-600 hover:bg-orange-100 rounded transition-colors" title="Editar">
                                                                         <Edit3 className="h-3.5 w-3.5" />
