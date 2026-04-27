@@ -145,13 +145,20 @@ const pedidoController = {
                 }
 
                 if (parcelasVencidas.length > 0) {
-                    if (!permissoes.admin && !permissoes.Pode_Vender_Inadimplente) {
-                        return res.status(403).json({ error: 'Este cliente possui contas em aberto. Você não tem permissão para realizar esta venda.' });
-                    }
                     const totalVencido = parcelasVencidas.reduce((acc, p) => acc + Number(p.valor), 0);
                     const nomeVendedor = req.user?.nome || 'Vendedor';
-                    const obsInadimplencia = `\n[${nomeVendedor} se responsabiliza pela venda — cliente com R$ ${totalVencido.toFixed(2).replace('.', ',')} em atraso]`;
-                    dadosPedido.observacoes = (dadosPedido.observacoes || '') + obsInadimplencia;
+                    if (!permissoes.admin && !permissoes.Pode_Vender_Inadimplente) {
+                        const isAVista = (dadosPedido.nomeCondicaoPagamento || '').toLowerCase().includes('vista');
+                        if (!isAVista) {
+                            return res.status(403).json({ error: 'Este cliente possui contas em aberto. Você não tem permissão para realizar esta venda.' });
+                        }
+                        // À vista: permite com responsabilidade do lançador
+                        const obsInadimplencia = `\n[${nomeVendedor} responsável — venda à vista para cliente com R$ ${totalVencido.toFixed(2).replace('.', ',')} em atraso]`;
+                        dadosPedido.observacoes = (dadosPedido.observacoes || '') + obsInadimplencia;
+                    } else {
+                        const obsInadimplencia = `\n[${nomeVendedor} se responsabiliza pela venda — cliente com R$ ${totalVencido.toFixed(2).replace('.', ',')} em atraso]`;
+                        dadosPedido.observacoes = (dadosPedido.observacoes || '') + obsInadimplencia;
+                    }
                 }
             }
 

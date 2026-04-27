@@ -774,8 +774,11 @@ const NovoPedido = () => {
         if (inadimplenciaCliente?.inadimplente) {
             const perms = user?.permissoes || {};
             if (!perms.admin && !perms.Pode_Vender_Inadimplente) {
-                toast.error('Venda bloqueada. Este cliente possui contas em atraso e você não tem permissão para realizar esta venda.', { duration: 7000, style: { maxWidth: "600px" } });
-                return;
+                const selecionouAVista = condicaoSelecionada?.nomeCondicao?.toLowerCase().includes('vista');
+                if (!selecionouAVista) {
+                    toast.error('Venda bloqueada. Selecione a condição "à vista" para prosseguir com sua responsabilidade.', { duration: 7000, style: { maxWidth: "600px" } });
+                    return;
+                }
             }
         }
 
@@ -1352,19 +1355,34 @@ const NovoPedido = () => {
                     const perms = user?.permissoes || {};
                     const podeVender = perms.admin || perms.Pode_Vender_Inadimplente;
                     const totalFormatado = Number(inadimplenciaCliente.totalVencido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                    const temAVista = condicoesPermitidas.some(c => c.nomeCondicao?.toLowerCase().includes('vista'));
+                    const selecionouAVista = condicaoSelecionada?.nomeCondicao?.toLowerCase().includes('vista');
+
+                    let cor, titulo, subtitulo;
+                    if (podeVender) {
+                        cor = 'bg-orange-50 border-orange-300 text-orange-800';
+                        titulo = `Cliente com ${totalFormatado} em atraso — você será registrado como responsável`;
+                        subtitulo = `${inadimplenciaCliente.parcelasVencidas} parcela${inadimplenciaCliente.parcelasVencidas !== 1 ? 's' : ''} vencida${inadimplenciaCliente.parcelasVencidas !== 1 ? 's' : ''} sem pagamento`;
+                    } else if (!temAVista) {
+                        cor = 'bg-red-50 border-red-300 text-red-800';
+                        titulo = `Venda bloqueada — cliente com ${totalFormatado} em atraso`;
+                        subtitulo = `${inadimplenciaCliente.parcelasVencidas} parcela${inadimplenciaCliente.parcelasVencidas !== 1 ? 's' : ''} vencida${inadimplenciaCliente.parcelasVencidas !== 1 ? 's' : ''} sem pagamento · Contate um administrador para obter permissão`;
+                    } else if (selecionouAVista) {
+                        cor = 'bg-orange-50 border-orange-300 text-orange-800';
+                        titulo = `Cliente com ${totalFormatado} em atraso — você será registrado como responsável`;
+                        subtitulo = `Venda à vista autorizada com sua responsabilidade`;
+                    } else {
+                        cor = 'bg-red-50 border-red-300 text-red-800';
+                        titulo = `Venda bloqueada — cliente com ${totalFormatado} em atraso`;
+                        subtitulo = `Selecione a condição "à vista" para prosseguir com sua responsabilidade`;
+                    }
+
                     return (
-                        <div className={`mx-3 mt-1 mb-1 px-3 py-2.5 rounded-lg border flex items-start gap-2.5 text-sm ${podeVender ? 'bg-orange-50 border-orange-300 text-orange-800' : 'bg-red-50 border-red-300 text-red-800'}`}>
+                        <div className={`mx-3 mt-1 mb-1 px-3 py-2.5 rounded-lg border flex items-start gap-2.5 text-sm ${cor}`}>
                             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                             <div>
-                                <p className="font-semibold leading-tight">
-                                    {podeVender
-                                        ? `Cliente com ${totalFormatado} em atraso — você será registrado como responsável`
-                                        : `Venda bloqueada — cliente com ${totalFormatado} em atraso`}
-                                </p>
-                                <p className="text-xs mt-0.5 opacity-80">
-                                    {inadimplenciaCliente.parcelasVencidas} parcela{inadimplenciaCliente.parcelasVencidas !== 1 ? 's' : ''} vencida{inadimplenciaCliente.parcelasVencidas !== 1 ? 's' : ''} sem pagamento
-                                    {!podeVender && ' · Contate um administrador para obter permissão'}
-                                </p>
+                                <p className="font-semibold leading-tight">{titulo}</p>
+                                <p className="text-xs mt-0.5 opacity-80">{subtitulo}</p>
                             </div>
                         </div>
                     );
