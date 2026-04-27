@@ -20,7 +20,7 @@ const Veiculos = () => {
     const [novoAlerta, setNovoAlerta] = useState({ tipo: '', descricao: '', kmAlerta: '', dataAlerta: '' });
     const [alertasPendentes, setAlertasPendentes] = useState({});
     const [formData, setFormData] = useState({
-        id: null, placa: '', modelo: '', documentoUrl: '', ativo: true
+        id: null, placa: '', modelo: '', tipoCombustivel: '', documentoUrl: '', ativo: true
     });
 
     const carregarVeiculos = async () => {
@@ -59,7 +59,7 @@ const Veiculos = () => {
     };
 
     const openEdit = (veiculo) => {
-        setFormData({ id: veiculo.id, placa: veiculo.placa, modelo: veiculo.modelo, documentoUrl: veiculo.documentoUrl || '', ativo: veiculo.ativo });
+        setFormData({ id: veiculo.id, placa: veiculo.placa, modelo: veiculo.modelo, tipoCombustivel: veiculo.tipoCombustivel || '', documentoUrl: veiculo.documentoUrl || '', ativo: veiculo.ativo });
         setIsModalOpen(true);
     };
 
@@ -171,7 +171,7 @@ const Veiculos = () => {
                     <p className="text-xs md:text-sm text-gray-500 mt-0.5">Gerencie a frota e acompanhe o histórico</p>
                 </div>
                 <button
-                    onClick={() => { setFormData({ id: null, placa: '', modelo: '', documentoUrl: '', ativo: true }); setIsModalOpen(true); }}
+                    onClick={() => { setFormData({ id: null, placa: '', modelo: '', tipoCombustivel: '', documentoUrl: '', ativo: true }); setIsModalOpen(true); }}
                     disabled={!podeEditarVeiculos}
                     className="flex items-center justify-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark w-full sm:w-auto"
                 >
@@ -295,6 +295,17 @@ const Veiculos = () => {
                                 <label className="block text-sm font-medium text-gray-700">Modelo *</label>
                                 <input type="text" name="modelo" required value={formData.modelo} onChange={handleChange}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50" placeholder="Ex: Fiat Fiorino / Baú" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Tipo de Combustível</label>
+                                <select name="tipoCombustivel" value={formData.tipoCombustivel} onChange={handleChange}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50">
+                                    <option value="">Não definido</option>
+                                    <option value="GASOLINA">Gasolina</option>
+                                    <option value="DIESEL">Diesel</option>
+                                    <option value="ETANOL">Etanol</option>
+                                    <option value="FLEX">Flex (Gasolina/Etanol)</option>
+                                </select>
                             </div>
                             <p className="text-xs text-gray-400">Documentos e apolice podem ser enviados pela ficha do veiculo apos o cadastro.</p>
                             <div className="flex items-center">
