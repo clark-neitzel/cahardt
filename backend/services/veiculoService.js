@@ -117,6 +117,17 @@ const veiculoService = {
                 kmAtual,
                 kmMedioPorDia,
                 consumoMedioReal,
+                precoMedioLitro: (() => {
+                    const validos = combsComKm.filter(d => d.litros >= 5);
+                    // usa despesas originais p/ ter o valor
+                    const despesasValidas = veiculo.despesas
+                        .filter(d => d.litros && Number(d.litros) >= 5 && d.valor && Number(d.valor) > 0)
+                        .slice(0, 20);
+                    if (despesasValidas.length === 0) return null;
+                    const totalV = despesasValidas.reduce((s, d) => s + Number(d.valor), 0);
+                    const totalL = despesasValidas.reduce((s, d) => s + Number(d.litros), 0);
+                    return parseFloat((totalV / totalL).toFixed(3));
+                })(),
                 totalDiarios: veiculo.diarios.length,
                 totalAbastecimentos: veiculo.despesas.filter(d => d.litros && Number(d.litros) > 0).length,
                 alertasPendentes: veiculo.alertasManutencao.filter(a => !a.concluido).length,

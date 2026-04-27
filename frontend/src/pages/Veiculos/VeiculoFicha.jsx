@@ -696,6 +696,15 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                     <p className="text-[10px] text-blue-500 mt-0.5">baseado em {ficha?.diarios?.filter(d => d.kmFinal).length || 0} diárias</p>
                                 </div>
                             </div>
+                            {stats.precoMedioLitro && (
+                                <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                                    <p className="text-2xl font-bold font-mono text-green-900">
+                                        R$ {stats.precoMedioLitro.toFixed(3).replace('.', ',')}/L
+                                    </p>
+                                    <p className="text-xs text-green-700 mt-1">Preço médio do combustível</p>
+                                    <p className="text-[10px] text-green-500 mt-0.5">últimos 20 abastecimentos completos</p>
+                                </div>
+                            )}
 
                             {/* Base manual de KM médio */}
                             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
