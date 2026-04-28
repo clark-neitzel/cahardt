@@ -2156,7 +2156,7 @@ const RotaLeads = () => {
     }, [aba, carregarEntregas]);
 
     const renderItem = (item) => {
-        const mostrarAcoes = aba === 'atendimento';
+        const mostrarAcoes = aba === 'atendimento' || aba === 'atendidos';
 
         if (item._tipo === 'cliente') {
             return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} meuVendedorId={vendedorId} alerta={alertasPorItem[item.UUID]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} podeUsarIA={podeUsarIAOrientacao} />;
