@@ -1319,7 +1319,7 @@ const NovoPedido = () => {
             </div>
 
             {/* ===== FORMULÁRIO (cliente + etapas sequenciais) ===== */}
-            <div className="bg-white shadow-sm">
+            <div className={`bg-white shadow-sm${itensMap.size > 0 ? ' pb-40' : ''}`}>
                 {/* Campo cliente — abre info (read-only) se já selecionado, busca se não */}
                 <div className="px-3 py-3 border-b border-gray-100 bg-white">
                     <button
@@ -1647,7 +1647,7 @@ const NovoPedido = () => {
 
             {/* ===== LISTA DE PRODUTOS ===== */}
             {clienteId && tipoPedido && condicaoPagamentoId && canalOrigem && !mostrarFormulario && (
-                <div className="flex-1 pb-28">
+                <div className="flex-1 pb-40">
                     {/* Campo de busca de produto fixo */}
                     <div className="bg-gray-100 px-3 py-2 sticky top-[72px] z-10 border-b border-gray-200">
                         <div className="flex items-center bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 gap-2 shadow-sm">
