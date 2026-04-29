@@ -538,12 +538,15 @@ router.get('/auditoria', verificarAuth, checkAuditor, async (req, res) => {
         }
 
         if (cliente) {
-            where.cliente = {
-                OR: [
+            const numeroPedido = parseInt(cliente, 10);
+            const condicoes = [
+                { cliente: { OR: [
                     { NomeFantasia: { contains: cliente, mode: 'insensitive' } },
                     { Nome: { contains: cliente, mode: 'insensitive' } }
-                ]
-            };
+                ]}}
+            ];
+            if (!isNaN(numeroPedido)) condicoes.push({ numero: numeroPedido });
+            where.OR = condicoes;
         }
 
         const entregas = await prisma.pedido.findMany({
