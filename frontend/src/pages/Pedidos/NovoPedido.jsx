@@ -1319,7 +1319,7 @@ const NovoPedido = () => {
             </div>
 
             {/* ===== FORMULÁRIO (cliente + etapas sequenciais) ===== */}
-            <div className={`bg-white shadow-sm${itensMap.size > 0 ? ' pb-40' : ''}`}>
+            <div className="bg-white shadow-sm">
                 {/* Campo cliente — abre info (read-only) se já selecionado, busca se não */}
                 <div className="px-3 py-3 border-b border-gray-100 bg-white">
                     <button

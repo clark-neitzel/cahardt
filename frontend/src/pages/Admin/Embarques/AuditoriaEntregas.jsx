@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, AlertTriangle, CheckCircle, Package, Truck } from 'lucide-react';
+import { AlertTriangle, Truck, Pencil, X, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../services/api';
 
@@ -12,6 +12,11 @@ const AuditoriaEntregas = () => {
     const [dataFilter, setDataFilter] = useState(hojeISO);
     const [motoristaFilter, setMotoristaFilter] = useState('');
     const [clienteFilter, setClienteFilter] = useState('');
+
+    const [editandoEntrega, setEditandoEntrega] = useState(null);
+    const [editPagamentos, setEditPagamentos] = useState([]);
+    const [formasPagamento, setFormasPagamento] = useState([]);
+    const [salvandoEdicao, setSalvandoEdicao] = useState(false);
 
     const fetchAuditoria = async () => {
         try {
@@ -37,6 +42,57 @@ const AuditoriaEntregas = () => {
         const t = setTimeout(fetchAuditoria, 300);
         return () => clearTimeout(t);
     }, [filtroDivergente, embarqueIdFilter, dataFilter, motoristaFilter, clienteFilter]);
+
+    const abrirEdicao = async (entrega) => {
+        if (formasPagamento.length === 0) {
+            try {
+                const res = await api.get('/pagamentos-entrega');
+                setFormasPagamento(res.data.filter(f => f.ativo));
+            } catch {
+                toast.error('Erro ao carregar formas de pagamento.');
+                return;
+            }
+        }
+        setEditPagamentos(
+            entrega.pagamentosReais?.length > 0
+                ? entrega.pagamentosReais.map(pg => ({
+                    formaPagamentoEntregaId: pg.formaPagamentoEntregaId || '',
+                    formaPagamentoNome: pg.formaPagamentoNome,
+                    valor: String(Number(pg.valor).toFixed(2)),
+                    escritorioResponsavel: pg.escritorioResponsavel || false,
+                }))
+                : [{ formaPagamentoEntregaId: '', formaPagamentoNome: '', valor: '', escritorioResponsavel: false }]
+        );
+        setEditandoEntrega(entrega);
+    };
+
+    const handleSalvarEdicao = async () => {
+        const pagamentos = editPagamentos
+            .filter(p => p.formaPagamentoNome && Number(p.valor) > 0)
+            .map(p => ({
+                formaPagamentoEntregaId: p.formaPagamentoEntregaId || null,
+                formaPagamentoNome: p.formaPagamentoNome,
+                valor: Number(p.valor),
+                escritorioResponsavel: p.escritorioResponsavel,
+            }));
+
+        if (pagamentos.length === 0) {
+            toast.error('Informe ao menos um pagamento válido.');
+            return;
+        }
+
+        setSalvandoEdicao(true);
+        try {
+            await api.patch(`/entregas/${editandoEntrega.id}/editar`, { pagamentos });
+            toast.success('Pagamento atualizado com sucesso!');
+            setEditandoEntrega(null);
+            fetchAuditoria();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao salvar alteração.');
+        } finally {
+            setSalvandoEdicao(false);
+        }
+    };
 
     const handleEstorno = async (pedidoId, cliente) => {
         if (!window.confirm(`ATENÇÃO FINANCEIRO: Tem certeza que deseja estornar a baixa de entrega do cliente ${cliente}? Essa ação apagará a entrada de dinheiro do caixa do motorista e devolverá o pedido para o Caminhão.`)) return;
@@ -201,12 +257,21 @@ const AuditoriaEntregas = () => {
                                     )}
                                 </td>
                                 <td className="px-4 py-4 text-right text-sm font-medium">
-                                    <button
-                                        onClick={() => handleEstorno(entrega.id, entrega.cliente?.NomeFantasia)}
-                                        className="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded-md transition-colors"
-                                    >
-                                        Estornar
-                                    </button>
+                                    <div className="flex items-center justify-end gap-2">
+                                        <button
+                                            onClick={() => abrirEdicao(entrega)}
+                                            className="text-sky-600 hover:text-sky-900 bg-sky-50 p-2 rounded-md transition-colors"
+                                            title="Editar pagamento"
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleEstorno(entrega.id, entrega.cliente?.NomeFantasia)}
+                                            className="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded-md transition-colors"
+                                        >
+                                            Estornar
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -258,16 +323,112 @@ const AuditoriaEntregas = () => {
                             </div>
                         )}
 
-                        <button
-                            onClick={() => handleEstorno(entrega.id, entrega.cliente?.NomeFantasia)}
-                            className="mt-2 w-full text-[11px] font-semibold text-red-600 bg-red-50 py-1.5 rounded-lg border border-red-200"
-                        >
-                            Estornar Baixa
-                        </button>
+                        <div className="mt-2 flex gap-2">
+                            <button
+                                onClick={() => abrirEdicao(entrega)}
+                                className="flex-1 text-[11px] font-semibold text-sky-600 bg-sky-50 py-1.5 rounded-lg border border-sky-200 flex items-center justify-center gap-1"
+                            >
+                                <Pencil className="h-3 w-3" /> Editar
+                            </button>
+                            <button
+                                onClick={() => handleEstorno(entrega.id, entrega.cliente?.NomeFantasia)}
+                                className="flex-1 text-[11px] font-semibold text-red-600 bg-red-50 py-1.5 rounded-lg border border-red-200"
+                            >
+                                Estornar
+                            </button>
+                        </div>
                     </div>
                 ))}
             </div>
-        </div>
+
+        {/* Modal Editar Pagamento */}
+        {editandoEntrega && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+                    <div className="flex items-center justify-between px-5 py-4 border-b">
+                        <div>
+                            <h2 className="text-base font-bold text-gray-900">Editar Pagamentos</h2>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                                {editandoEntrega.cliente?.NomeFantasia || editandoEntrega.cliente?.Nome} — Ped CA: {editandoEntrega.numero}
+                            </p>
+                        </div>
+                        <button onClick={() => setEditandoEntrega(null)} className="text-gray-400 hover:text-gray-600">
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
+
+                    <div className="px-5 py-4 space-y-3 max-h-80 overflow-y-auto">
+                        {editPagamentos.map((pg, idx) => (
+                            <div key={idx} className="flex gap-2 items-start">
+                                <div className="flex-1 space-y-1.5">
+                                    <select
+                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                                        value={pg.formaPagamentoEntregaId || pg.formaPagamentoNome}
+                                        onChange={(e) => {
+                                            const selected = formasPagamento.find(f => f.id === e.target.value);
+                                            const updated = [...editPagamentos];
+                                            updated[idx] = {
+                                                ...updated[idx],
+                                                formaPagamentoEntregaId: selected ? selected.id : '',
+                                                formaPagamentoNome: selected ? selected.nome : e.target.value,
+                                            };
+                                            setEditPagamentos(updated);
+                                        }}
+                                    >
+                                        <option value="">Selecionar forma...</option>
+                                        {formasPagamento.map(f => (
+                                            <option key={f.id} value={f.id}>{f.nome}</option>
+                                        ))}
+                                    </select>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="Valor (R$)"
+                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                                        value={pg.valor}
+                                        onChange={(e) => {
+                                            const updated = [...editPagamentos];
+                                            updated[idx] = { ...updated[idx], valor: e.target.value };
+                                            setEditPagamentos(updated);
+                                        }}
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => setEditPagamentos(editPagamentos.filter((_, i) => i !== idx))}
+                                    className="mt-1 text-red-400 hover:text-red-600 p-1"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </div>
+                        ))}
+                        <button
+                            onClick={() => setEditPagamentos([...editPagamentos, { formaPagamentoEntregaId: '', formaPagamentoNome: '', valor: '', escritorioResponsavel: false }])}
+                            className="flex items-center gap-1 text-xs text-sky-600 hover:text-sky-800 font-medium"
+                        >
+                            <Plus className="h-3.5 w-3.5" /> Adicionar pagamento
+                        </button>
+                    </div>
+
+                    <div className="px-5 py-4 border-t flex justify-end gap-3">
+                        <button
+                            onClick={() => setEditandoEntrega(null)}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={handleSalvarEdicao}
+                            disabled={salvandoEdicao}
+                            className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50 rounded-lg"
+                        >
+                            {salvandoEdicao ? 'Salvando...' : 'Salvar'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+    </div>
     );
 };
 
