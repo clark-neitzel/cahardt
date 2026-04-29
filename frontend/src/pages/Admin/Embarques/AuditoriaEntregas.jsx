@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Truck, Pencil, X, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../services/api';
+import tabelaPrecoService from '../../../services/tabelaPrecoService';
+import formasPagamentoService from '../../../services/formasPagamentoService';
 
 const AuditoriaEntregas = () => {
     const [entregas, setEntregas] = useState([]);
@@ -44,36 +46,91 @@ const AuditoriaEntregas = () => {
     }, [filtroDivergente, embarqueIdFilter, dataFilter, motoristaFilter, clienteFilter]);
 
     const abrirEdicao = async (entrega) => {
-        if (formasPagamento.length === 0) {
-            try {
-                const res = await api.get('/pagamentos-entrega');
-                setFormasPagamento(res.data.filter(f => f.ativo));
-            } catch {
-                toast.error('Erro ao carregar formas de pagamento.');
-                return;
+        try {
+            const [customForms, tabelaForms] = await Promise.all([
+                formasPagamentoService.listar(),
+                tabelaPrecoService.listar(true)
+            ]);
+
+            const ativas = customForms.filter(f => f.ativo).map(f => ({
+                _selectId: f.id,
+                nome: f.nome,
+                formaPagamentoEntregaId: f.id,
+            }));
+            const nomesFormas = new Set(ativas.map(f => f.nome.toLowerCase().trim()));
+            const tabelas = tabelaForms
+                .filter(t => !nomesFormas.has(t.nomeCondicao.toLowerCase().trim()))
+                .map(t => ({
+                    _selectId: 'tabela_' + t.idCondicao,
+                    nome: t.nomeCondicao,
+                    formaPagamentoEntregaId: null,
+                }));
+
+            let todasFormas = [...tabelas, ...ativas];
+
+            const nomeCond = (entrega.nomeCondicaoPagamento || entrega.opcaoCondicaoPagamento || '').toLowerCase();
+            const tipoPed = (entrega.tipoPagamento || '').toLowerCase();
+            const pedidoEhBoleto = nomeCond.includes('boleto') || tipoPed.includes('boleto');
+
+            let condicaoPedido = null;
+            if (entrega.nomeCondicaoPagamento)
+                condicaoPedido = tabelaForms.find(t => t.nomeCondicao === entrega.nomeCondicaoPagamento);
+            if (!condicaoPedido && entrega.idCondicaoResolvido)
+                condicaoPedido = tabelaForms.find(t => t.idCondicao === entrega.idCondicaoResolvido);
+            if (!condicaoPedido && (entrega.tipoPagamento || entrega.opcaoCondicaoPagamento)) {
+                const chave = `${entrega.tipoPagamento || ''}|${entrega.opcaoCondicaoPagamento || ''}`;
+                condicaoPedido = tabelaForms.find(t => `${t.tipoPagamento || ''}|${t.opcaoCondicao || ''}` === chave)
+                    || tabelaForms.find(t => t.opcaoCondicao === entrega.opcaoCondicaoPagamento);
             }
+
+            if (condicaoPedido?.formasRecebimentoPermitidas?.length > 0) {
+                const permitidas = condicaoPedido.formasRecebimentoPermitidas;
+                todasFormas = todasFormas.filter(f => permitidas.includes(f._selectId));
+            }
+
+            const idCondicaoResolvido = condicaoPedido?.idCondicao || entrega.idCondicaoResolvido || null;
+            const selectIdPedido = idCondicaoResolvido ? 'tabela_' + idCondicaoResolvido : null;
+            todasFormas = todasFormas.filter(f => {
+                if (!f._selectId.startsWith('tabela_')) return true;
+                if (selectIdPedido && f._selectId === selectIdPedido) return true;
+                const nomeLower = f.nome.toLowerCase();
+                if (pedidoEhBoleto) return nomeLower.includes('boleto');
+                return !nomeLower.includes('boleto');
+            });
+
+            setFormasPagamento(todasFormas);
+
+            // Mapeia pagamentos existentes para _selectId
+            const pgIniciais = entrega.pagamentosReais?.length > 0
+                ? entrega.pagamentosReais.map(pg => {
+                    const selectId = pg.formaPagamentoEntregaId
+                        ? pg.formaPagamentoEntregaId
+                        : (todasFormas.find(f => f.nome === pg.formaPagamentoNome)?._selectId || '');
+                    return {
+                        _selectId: selectId,
+                        formaPagamentoEntregaId: pg.formaPagamentoEntregaId || null,
+                        formaPagamentoNome: pg.formaPagamentoNome,
+                        valor: String(Number(pg.valor).toFixed(2)),
+                        escritorioResponsavel: pg.escritorioResponsavel || false,
+                    };
+                })
+                : [{ _selectId: '', formaPagamentoEntregaId: null, formaPagamentoNome: '', valor: '', escritorioResponsavel: false }];
+
+            setEditPagamentos(pgIniciais);
+            setEditandoEntrega(entrega);
+        } catch {
+            toast.error('Erro ao carregar formas de pagamento.');
         }
-        setEditPagamentos(
-            entrega.pagamentosReais?.length > 0
-                ? entrega.pagamentosReais.map(pg => ({
-                    formaPagamentoEntregaId: pg.formaPagamentoEntregaId || '',
-                    formaPagamentoNome: pg.formaPagamentoNome,
-                    valor: String(Number(pg.valor).toFixed(2)),
-                    escritorioResponsavel: pg.escritorioResponsavel || false,
-                }))
-                : [{ formaPagamentoEntregaId: '', formaPagamentoNome: '', valor: '', escritorioResponsavel: false }]
-        );
-        setEditandoEntrega(entrega);
     };
 
     const handleSalvarEdicao = async () => {
         const pagamentos = editPagamentos
             .filter(p => p.formaPagamentoNome && Number(p.valor) > 0)
             .map(p => ({
-                formaPagamentoEntregaId: p.formaPagamentoEntregaId || null,
+                formaPagamentoEntregaId: p._selectId?.startsWith('tabela_') ? null : (p.formaPagamentoEntregaId || null),
                 formaPagamentoNome: p.formaPagamentoNome,
                 valor: Number(p.valor),
-                escritorioResponsavel: p.escritorioResponsavel,
+                escritorioResponsavel: p.escritorioResponsavel || false,
             }));
 
         if (pagamentos.length === 0) {
@@ -363,21 +420,22 @@ const AuditoriaEntregas = () => {
                                 <div className="flex-1 space-y-1.5">
                                     <select
                                         className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                                        value={pg.formaPagamentoEntregaId || pg.formaPagamentoNome}
+                                        value={pg._selectId || ''}
                                         onChange={(e) => {
-                                            const selected = formasPagamento.find(f => f.id === e.target.value);
+                                            const selected = formasPagamento.find(f => f._selectId === e.target.value);
                                             const updated = [...editPagamentos];
                                             updated[idx] = {
                                                 ...updated[idx],
-                                                formaPagamentoEntregaId: selected ? selected.id : '',
-                                                formaPagamentoNome: selected ? selected.nome : e.target.value,
+                                                _selectId: selected?._selectId || '',
+                                                formaPagamentoEntregaId: selected?.formaPagamentoEntregaId || null,
+                                                formaPagamentoNome: selected?.nome || '',
                                             };
                                             setEditPagamentos(updated);
                                         }}
                                     >
                                         <option value="">Selecionar forma...</option>
                                         {formasPagamento.map(f => (
-                                            <option key={f.id} value={f.id}>{f.nome}</option>
+                                            <option key={f._selectId} value={f._selectId}>{f.nome}</option>
                                         ))}
                                     </select>
                                     <input
@@ -403,7 +461,7 @@ const AuditoriaEntregas = () => {
                             </div>
                         ))}
                         <button
-                            onClick={() => setEditPagamentos([...editPagamentos, { formaPagamentoEntregaId: '', formaPagamentoNome: '', valor: '', escritorioResponsavel: false }])}
+                            onClick={() => setEditPagamentos([...editPagamentos, { _selectId: '', formaPagamentoEntregaId: null, formaPagamentoNome: '', valor: '', escritorioResponsavel: false }])}
                             className="flex items-center gap-1 text-xs text-sky-600 hover:text-sky-800 font-medium"
                         >
                             <Plus className="h-3.5 w-3.5" /> Adicionar pagamento
