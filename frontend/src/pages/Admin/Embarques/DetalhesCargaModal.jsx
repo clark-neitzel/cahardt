@@ -179,8 +179,8 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                 .print-container th, .print-container td { font-size: 8px !important; padding: 2px 3px !important; line-height: 1.1 !important; color: #000 !important; border: 1px solid #000 !important; font-family: 'Courier Prime', 'Courier New', Courier, monospace !important; }
                                 .print-container .page-produtos th, .print-container .page-produtos td { font-size: 10px !important; padding: 3px 5px !important; line-height: 1.2 !important; }
                                 .print-container td.wrap-text { white-space: normal !important; word-wrap: break-word !important; }
-                                .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 0 5mm !important; page-break-after: always; }
-                                .print-page:last-child { page-break-after: auto; }
+                                .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: 0 !important; height: auto !important; padding: 0 5mm !important; page-break-after: always; break-after: always; }
+                                .print-page:last-child { page-break-after: auto !important; break-after: auto !important; }
                             }
                             `}
                         </style>
