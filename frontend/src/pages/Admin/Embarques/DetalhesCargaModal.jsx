@@ -130,7 +130,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
         if (produtosPaginados.length === 0) produtosPaginados.push([]);
 
         // Rastreabilidade: produto -> qtde -> pedidos vinculados
-        const rastreabilidadePaginada = chunkArray(arrConsolidado, 35);
+        const rastreabilidadePaginada = chunkArray(arrConsolidado, 55);
         if (rastreabilidadePaginada.length === 0) rastreabilidadePaginada.push([]);
 
         const amostrasEmbarque = embarque?.amostras || [];
