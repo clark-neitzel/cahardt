@@ -455,6 +455,7 @@ const ListaPedidos = () => {
     const [consultandoCA, setConsultandoCA] = useState(new Set());
     const [cobrancasCA, setCobrancasCA] = useState({});
     // { [pedidoId]: { loading, links: [{label, url, tipo}], error, open } }
+    const [clickedCobrancaLinks, setClickedCobrancaLinks] = useState(new Set());
 
     const handleBuscarCobrancasCA = async (pedido) => {
         const atual = cobrancasCA[pedido.id];
@@ -464,6 +465,8 @@ const ListaPedidos = () => {
         }
         setCobrancasCA(prev => ({ ...prev, [pedido.id]: { loading: true, open: false } }));
         try {
+            // Sincroniza com CA antes de buscar cobranças para garantir dados atualizados
+            try { await pedidoService.consultarCA(pedido.id); } catch (_) {}
             const data = await pedidoService.buscarCobrancasCA(pedido.id);
             setCobrancasCA(prev => ({ ...prev, [pedido.id]: { loading: false, links: data.cobrancas, open: true } }));
         } catch (e) {
@@ -1090,7 +1093,8 @@ const ListaPedidos = () => {
                                                                             href={cob.url}
                                                                             target="_blank"
                                                                             rel="noreferrer"
-                                                                            className="flex items-center gap-1.5 text-[11px] text-indigo-600 hover:text-indigo-800 hover:underline py-0.5"
+                                                                            onClick={() => setClickedCobrancaLinks(prev => new Set(prev).add(`${pedido.id}-${cob.label}`))}
+                                                                            className={`flex items-center gap-1.5 text-[11px] hover:underline py-0.5 ${clickedCobrancaLinks.has(`${pedido.id}-${cob.label}`) ? 'text-green-600 hover:text-green-800' : 'text-indigo-600 hover:text-indigo-800'}`}
                                                                         >
                                                                             <ExternalLink className="h-3 w-3 shrink-0" />
                                                                             {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''}
