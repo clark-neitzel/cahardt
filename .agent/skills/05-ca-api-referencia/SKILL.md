@@ -5,7 +5,7 @@ description: "📚 DICIONÁRIO COMPLETO CONTA AZUL. Consulte para ver payloads, 
 
 # 05 CA API REFERENCIA — Documentação Completa
 
-> ⚠️ **DOCUMENTO MESTRE** — Atualizado em Mar/2026 com toda a documentação oficial do Portal do Desenvolvedor Conta Azul.
+> ⚠️ **DOCUMENTO MESTRE** — Atualizado em Abr/2026 com toda a documentação oficial do Portal do Desenvolvedor Conta Azul.
 > Organizado por área: [Autenticação](#-autenticação-oauth-20) | [Pessoas/Clientes](#-pessoas-clientes-e-fornecedores) | [Produtos](#-produtos-e-estoque) | [Vendas](#-vendas) | [Financeiro](#-financeiro) | [Notas Fiscais](#-notas-fiscais) | [Contratos](#-contratos)
 
 ---
@@ -99,7 +99,9 @@ Authorization: Bearer <access_token>
 
 **Base URL:** `https://api-v2.contaazul.com/v1/pessoas`
 
-> ⚠️ O filtro de data (`data_alteracao_de` / `data_alteracao_ate`) exige **ambos os campos** e formato **sem milissegundos e sem Z** (`YYYY-MM-DDTHH:mm:ss`), caso contrário retorna erro 500.
+> ⚠️ O filtro de data (`data_alteracao_de` / `data_alteracao_ate`) exige **ambos os campos**, formato **sem milissegundos e sem Z** (`YYYY-MM-DDTHH:mm:ss`), e **intervalo máximo de 365 dias** — caso contrário retorna erro.
+
+> **`GET /v1/pessoas/conta-conectada`** (adicionado Mar/2026): retorna os dados cadastrais e de contato da empresa vinculada à integração (útil para validar qual conta está conectada ao token atual).
 
 ---
 
@@ -718,12 +720,16 @@ Campos extendidos no banco local (não existem na API CA):
 | `GET` | `/v1/conta-financeira` | Listar contas financeiras |
 | `GET` | `/v1/conta-financeira/{id}/saldo-atual` | Saldo atual de uma conta financeira |
 | `GET` | `/v1/financeiro/eventos-financeiros/{id_evento}/parcelas` | Parcelas por evento financeiro |
-| `GET` | `/v1/financeiro/eventos-financeiros/parcelas/{id}` | Parcela por ID |
+| `GET` | `/v1/financeiro/eventos-financeiros/parcelas/{id}` | Parcela por ID (inclui `codigo_referencia`, rateio, centros de custo, categoria, renegociação) |
 | `PATCH` | `/v1/financeiro/eventos-financeiros/parcelas/{id}` | Atualizar parcela (parcial) |
 | `POST` | `/v1/financeiro/eventos-financeiros/contas-a-receber` | Criar conta a receber |
 | `GET` | `/v1/financeiro/eventos-financeiros/contas-a-receber/buscar` | Buscar receitas por filtro |
+| `POST` | `/v1/financeiro/eventos-financeiros/contas-a-receber/gerar-cobranca` | Gerar cobrança (suporta `maximo_parcelas`) |
 | `POST` | `/v1/financeiro/eventos-financeiros/contas-a-pagar` | Criar conta a pagar |
 | `GET` | `/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar` | Buscar despesas por filtro |
+| `GET` | `/v1/financeiro/eventos-financeiros/alteracoes` | IDs de eventos financeiros alterados em um período |
+| `GET` | `/v1/financeiro/eventos-financeiros/saldo-inicial` | Saldos iniciais das contas financeiras por período |
+| `GET` | `/v1/financeiro/transferencias` | Transferências por período (adicionado Mar/2026) |
 
 ---
 
@@ -897,14 +903,27 @@ curl -X POST 'https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/con
 
 ### GET /v1/financeiro/eventos-financeiros/parcelas/{id} — Parcela por ID
 
-Retorna também: rateio, centros de custo, categoria financeira e novos status (adicionado Ago/2025 e Nov/2025).
+Retorna rateio, centros de custo, categoria financeira, objeto de renegociação e `codigo_referencia`.
 
 ```bash
 curl -X GET 'https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/parcelas/UUID-DA-PARCELA' \
   -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
 ```
 
-**Novos status de parcela (Nov/2025):** `RENEGOCIADO`, `RECEBIDO_PARCIAL`, `ATRASADO`, `PERDIDO`
+**Todos os status possíveis de parcela:**
+
+| Status | Descrição |
+|--------|-----------|
+| `EM_ABERTO` | Ainda não vencida e não paga |
+| `ATRASADO` | Vencida sem pagamento |
+| `RECEBIDO` | Paga integralmente |
+| `RECEBIDO_PARCIAL` | Paga parcialmente |
+| `RENEGOCIADO` | Parcela substituída por renegociação |
+| `PERDIDO` | Baixada como perda/inadimplência definitiva |
+
+> **`codigo_referencia`** (adicionado Abr/2026): campo retornado na parcela por ID para facilitar conciliação bancária — identifica o título correspondente no banco.
+> **Objeto `renegociacao`** (adicionado Nov/2025): presente quando `status = RENEGOCIADO`, contém dados da parcela que substituiu esta.
+> **App Hardt:** usa status `['EM_ABERTO', 'ATRASADO', 'RECEBIDO', 'RECEBIDO_PARCIAL']` na busca de parcelas. `RENEGOCIADO` e `PERDIDO` não estão incluídos — parcelas nesses status ficam invisíveis para o app (decisão intencional).
 
 ---
 
@@ -920,6 +939,34 @@ curl -X PATCH 'https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/pa
     "observacoes": "Ajuste de vencimento"
   }'
 ```
+
+---
+
+### GET /v1/financeiro/eventos-financeiros/alteracoes — IDs de Eventos Alterados
+
+Retorna os IDs dos eventos financeiros modificados em um período. Útil para sync incremental eficiente sem buscar todas as parcelas.
+
+```bash
+curl -X GET \
+  'https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/alteracoes?data_de=2026-04-01&data_ate=2026-04-28' \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+
+> Adicionado Mar/2026.
+
+---
+
+### GET /v1/financeiro/eventos-financeiros/saldo-inicial — Saldos Iniciais
+
+Retorna os saldos iniciais das contas financeiras em um período definido por data de início e fim.
+
+```bash
+curl -X GET \
+  'https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/saldo-inicial?data_de=2026-01-01&data_ate=2026-04-28' \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+
+> Adicionado Abr/2026.
 
 ---
 
@@ -1119,16 +1166,33 @@ curl -X POST 'https://api-v2.contaazul.com/v1/contratos' \
 
 | Versão | Data | O que mudou |
 |--------|------|-------------|
-| Fev/2026 | 2026-02-xx | Itens de venda: campo `id_centro_custo` no retorno; PIX padronizado como `PIX_PAGAMENTO_INSTANTANEO`; NFS-e: filtro por `ids`; Receitas: filtro `ids_clientes` + campos `data_competencia`, `centros_de_custo`, `categorias` no retorno |
-| Dez/2025 | 2025-12-18 | Novo endpoint: NFS-e por filtro (`GET /v1/notas-fiscais-servico`); campo `url_imagem` no produto por ID |
-| Dez/2025 | 2025-12-10 | Canal de suporte migrado para Portal do Desenvolvedor (email api@contaazul.com descontinuado) |
-| Nov/2025 | 2025-11-19 | Rate limit atualizado: **600/min e 10/seg** — agora por conta conectada (antes por aplicação) |
+| Abr/2026 | 2026-04-24 | Gerar cobrança: campo `maximo_parcelas` no body (`POST /v1/financeiro/eventos-financeiros/contas-a-receber/gerar-cobranca`) |
+| Abr/2026 | 2026-04-17 | Contratos: parâmetros `tipo_pagamento` e `status` no filtro; objeto `conta_financeira`, objeto `termos` (data_fim, tipo_expiracao, vigencia_atual, vigencia_total), campos `tipo_pagamento`, `total` e `total_proximo_vencimento` no retorno; novo endpoint `POST /v1/contratos/{id}/encerrar`; novo endpoint `DELETE /v1/contratos/{id}` |
+| Abr/2026 | 2026-04-16 | Contratos: novo endpoint `GET /v1/contratos/{id}` |
+| Abr/2026 | 2026-04-06 | Parcelas: campo `codigo_referencia` no retorno de `GET /v1/financeiro/eventos-financeiros/parcelas/{id}` — facilita conciliação bancária |
+| Abr/2026 | 2026-04-01 | Novo endpoint: `GET /v1/financeiro/eventos-financeiros/saldo-inicial` — saldos iniciais das contas financeiras por período |
+| Mar/2026 | 2026-03-31 | Novo endpoint: `GET /v1/financeiro/eventos-financeiros/alteracoes` — IDs de eventos financeiros alterados em período (sync incremental eficiente) |
+| Mar/2026 | 2026-03-24 | Novo endpoint: `GET /v1/pessoas/conta-conectada` — dados cadastrais da empresa vinculada à integração |
+| Mar/2026 | 2026-03-18 | Vendas: suporte a criação e alteração de itens do tipo **kit** (`POST /v1/venda` e `PUT /v1/venda/{id}`) |
+| Mar/2026 | 2026-03-12 | Pessoas: campo `contato_cobranca_faturamento` em atualizar (`PUT` e `PATCH /v1/pessoas/{id}`) |
+| Mar/2026 | 2026-03-11 | Pessoas: campo `contato_cobranca_faturamento` no retorno de `GET /v1/pessoas/{id}` e `GET /v1/pessoas/legacyid/{id}` |
+| Mar/2026 | 2026-03-10 | Pessoas: filtro `data_alteracao_de/ate` passa a exigir **intervalo máximo de 365 dias** |
+| Mar/2026 | 2026-03-06 | Pessoas: campo `contato_cobranca_faturamento` em criar (`POST /v1/pessoas`); novo endpoint `GET /v1/financeiro/transferencias` — transferências por período |
+| Mar/2026 | 2026-03-05 | Receitas, Despesas e Vendas: filtro `data_alteracao_de/ate` passa a exigir **intervalo máximo de 365 dias** |
+| Fev/2026 | 2026-02-23 | Itens de venda: campo `id_centro_custo` no retorno; `tamanho_pagina` válido: `10, 20, 50, 100, 200, 500, 1000` |
+| Fev/2026 | 2026-02-18 | Produtos: campo `url_imagem` no retorno de `GET /v1/produtos/{id}` |
+| Fev/2026 | 2026-02-13 | Receitas: filtro `ids_clientes` adicionado; campos `data_competencia`, `centros_de_custo`, `categorias` no retorno de receitas e despesas |
+| Jan/2026 | 2026-01-29 | NFS-e: filtro e retorno por `ids`; Vendas: `tipo_pagamento` PIX padronizado como `PIX_PAGAMENTO_INSTANTANEO` (antes era `PAGAMENTO_INSTANTANEO`) |
+| Jan/2026 | 2026-01-14 | Vendas: campo `id_contrato` no retorno das vendas por filtro; objeto `contrato` no retorno de `GET /v1/venda/{id}` |
+| Dez/2025 | 2025-12-18 | Novo endpoint: NFS-e por filtro (`GET /v1/notas-fiscais-servico`) |
+| Dez/2025 | 2025-12-02 | Canal de suporte migrado para Portal do Desenvolvedor (email api@contaazul.com descontinuado) |
+| Nov/2025 | 2025-11-19 | Rate limit: **600/min e 10/seg por conta conectada do ERP** (antes era por aplicação) |
 | Nov/2025 | 2025-11-14 | NF-e: filtro por `id_venda` |
 | Nov/2025 | 2025-11-12 | Produtos: novos filtros `sku`, `data_alteracao_de`, `data_alteracao_ate` |
-| Nov/2025 | 2025-11-11 | Contratos: novo endpoint `GET /v1/contratos/proximo-numero` |
-| Nov/2025 | 2025-11-07 | Parcelas: novos status (`RENEGOCIADO`, `RECEBIDO_PARCIAL`, `ATRASADO`, `PERDIDO`); objeto de renegociação nas parcelas |
-| Nov/2025 | 2025-11-05 | Pessoas: filtro por `data_alteracao_de/ate` |
-| Nov/2025 | 2025-11-04 | Vendas: filtro por `data_alteracao_de/ate`; campo `id_contrato` no retorno das vendas |
+| Nov/2025 | 2025-11-11 | Contratos: endpoint `GET /v1/contratos/proximo-numero` |
+| Nov/2025 | 2025-11-07 | Parcelas: todos os status mapeados (`EM_ABERTO`, `ATRASADO`, `RECEBIDO`, `RECEBIDO_PARCIAL`, `RENEGOCIADO`, `PERDIDO`); objeto `renegociacao` nas parcelas |
+| Nov/2025 | 2025-11-05 | Pessoas: filtro por `data_alteracao_de/ate` (adicionado, mas intervalo máx. 365d imposto em Mar/2026) |
+| Nov/2025 | 2025-11-04 | Vendas: filtro por `data_alteracao_de/ate` |
 | Out/2025 | 2025-10-23 | Receitas/Despesas: filtro por `data_alteracao_de/ate`; Itens de venda: campo `valor_custo` no retorno |
 | Out/2025 | 2025-10-10 | Saldo de conta financeira: `GET /v1/conta-financeira/{id}/saldo-atual`; Categorias DRE: `GET /v1/financeiro/categorias-dre` |
 | Ago/2025 | 2025-08-27 | Parcelas: retorna rateio, centros de custo e categoria financeira |

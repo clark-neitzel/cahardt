@@ -118,15 +118,15 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
     }
 
     if (showPreview) {
-        // Lógica de Paginação Artificial (40 por página)
-        const CHUNK_SIZE = 40;
+        // Lógica de Paginação Artificial (55 por página)
+        const CHUNK_SIZE = 55;
         const chunkArray = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size));
 
         const pedidosPaginados = chunkArray(embarque?.pedidos || [], CHUNK_SIZE);
         if (pedidosPaginados.length === 0) pedidosPaginados.push([]); // Garante Pelo menos 1 página vazia
 
         const arrConsolidado = Object.entries(consolidado).sort((a, b) => a[0].localeCompare(b[0]));
-        const produtosPaginados = chunkArray(arrConsolidado, CHUNK_SIZE);
+        const produtosPaginados = chunkArray(arrConsolidado, 55);
         if (produtosPaginados.length === 0) produtosPaginados.push([]);
 
         // Rastreabilidade: produto -> qtde -> pedidos vinculados
