@@ -76,8 +76,7 @@ router.get('/', verificarAuth, async (req, res) => {
         // ============ VENDAS POR PERÍODO ============
         // Carrega pedidos do mês corrente e mês anterior (mesmo período) - exclui cancelados/bonificação
         const baseWherePedido = {
-            statusEnvio: { notIn: ['CANCELADO'] },
-            situacaoCA: { not: 'CANCELADO' },
+            situacaoCA: 'FATURADO',
             bonificacao: false,
         };
 

@@ -166,7 +166,8 @@ const metaService = {
                     gte: dataInicioMesDb,
                     lte: dataFimMesDb
                 },
-                statusEnvio: { not: 'CANCELADO' } // Ajustar conforme regra de negócio
+                situacaoCA: 'FATURADO',
+                bonificacao: false,
             },
             include: {
                 itens: true // Necessário para checar produtos e promoções depois
