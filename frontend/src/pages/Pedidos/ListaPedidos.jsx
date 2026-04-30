@@ -1083,30 +1083,50 @@ const ListaPedidos = () => {
                                                             className="absolute right-0 bottom-full mb-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-20 min-w-[160px]"
                                                             onClick={e => e.stopPropagation()}
                                                         >
-                                                            <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Cobranças CA</p>
-                                                            {cobrancasCA[pedido.id].links?.length === 0 ? (
-                                                                <p className="text-[11px] text-gray-400">Sem cobranças ativas</p>
-                                                            ) : (
-                                                                cobrancasCA[pedido.id].links?.map(cob => (
-                                                                    cob.url ? (
-                                                                        <a
-                                                                            key={cob.label}
-                                                                            href={cob.url}
-                                                                            target="_blank"
-                                                                            rel="noreferrer"
-                                                                            onClick={() => setClickedCobrancaLinks(prev => new Set(prev).add(`${pedido.id}-${cob.label}`))}
-                                                                            className={`flex items-center gap-1.5 text-[11px] hover:underline py-0.5 ${clickedCobrancaLinks.has(`${pedido.id}-${cob.label}`) ? 'text-green-600 hover:text-green-800' : 'text-indigo-600 hover:text-indigo-800'}`}
-                                                                        >
-                                                                            <ExternalLink className="h-3 w-3 shrink-0" />
-                                                                            {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''}
-                                                                        </a>
-                                                                    ) : (
-                                                                        <span key={cob.label} className="flex items-center gap-1.5 text-[11px] text-gray-400 py-0.5">
-                                                                            {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''} — sem link
-                                                                        </span>
-                                                                    )
-                                                                ))
-                                                            )}
+                                                            {(() => {
+                                                                const links = cobrancasCA[pedido.id].links || [];
+                                                                const comUrl = links.filter(c => c.url);
+                                                                const textoParaCopiar = comUrl.length === 1
+                                                                    ? `Cobrança - ${comUrl[0].url}`
+                                                                    : comUrl.map((c, i) => `Cobrança ${i + 1} - ${c.url}`).join('\n');
+                                                                return (
+                                                                    <>
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <p className="text-[10px] font-bold text-gray-500 uppercase">Cobranças CA</p>
+                                                                            {comUrl.length > 0 && (
+                                                                                <button
+                                                                                    onClick={() => { navigator.clipboard.writeText(textoParaCopiar); }}
+                                                                                    className="text-[10px] text-indigo-500 hover:text-indigo-700 font-medium ml-2"
+                                                                                    title="Copiar links"
+                                                                                >Copiar</button>
+                                                                            )}
+                                                                        </div>
+                                                                        {links.length === 0 ? (
+                                                                            <p className="text-[11px] text-gray-400">Sem cobranças ativas</p>
+                                                                        ) : (
+                                                                            links.map(cob => (
+                                                                                cob.url ? (
+                                                                                    <a
+                                                                                        key={cob.label}
+                                                                                        href={cob.url}
+                                                                                        target="_blank"
+                                                                                        rel="noreferrer"
+                                                                                        onClick={() => setClickedCobrancaLinks(prev => new Set(prev).add(`${pedido.id}-${cob.label}`))}
+                                                                                        className={`flex items-center gap-1.5 text-[11px] hover:underline py-0.5 ${clickedCobrancaLinks.has(`${pedido.id}-${cob.label}`) ? 'text-green-600 hover:text-green-800' : 'text-indigo-600 hover:text-indigo-800'}`}
+                                                                                    >
+                                                                                        <ExternalLink className="h-3 w-3 shrink-0" />
+                                                                                        {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''}
+                                                                                    </a>
+                                                                                ) : (
+                                                                                    <span key={cob.label} className="flex items-center gap-1.5 text-[11px] text-gray-400 py-0.5">
+                                                                                        {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''} — sem link
+                                                                                    </span>
+                                                                                )
+                                                                            ))
+                                                                        )}
+                                                                    </>
+                                                                );
+                                                            })()}
                                                         </div>
                                                     )}
                                                 </div>
