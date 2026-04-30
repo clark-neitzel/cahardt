@@ -468,4 +468,46 @@ router.post('/setar-combustivel', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/debug-charge/:pedidoId — retorna raw do CA para cobranças do pedido
+router.get('/debug-charge/:pedidoId', async (req, res) => {
+    try {
+        const contaAzulService = require('../services/contaAzulService');
+        const axios = require('axios');
+
+        const pedido = await prisma.pedido.findUnique({
+            where: { id: req.params.pedidoId },
+            include: { cliente: { select: { UUID: true } } }
+        });
+        if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
+        if (!pedido.idVendaContaAzul) return res.status(400).json({ error: 'Pedido sem idVendaContaAzul' });
+
+        const dataVendaStr = new Date(pedido.dataVenda).toISOString().split('T')[0];
+        const parcelas = await contaAzulService.encontrarParcelasDeVenda(
+            pedido.cliente.UUID, pedido.idVendaContaAzul, dataVendaStr
+        );
+
+        const token = await contaAzulService.getAccessToken();
+        const resultado = [];
+
+        for (const parcela of parcelas) {
+            const solicitacoes = parcela.solicitacoes_cobrancas || [];
+            for (const cob of solicitacoes) {
+                if (!cob?.id) continue;
+                try {
+                    const r = await axios.get(`https://api-v2.contaazul.com/v1/charge/${cob.id}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    resultado.push({ cobObj: cob, chargeRaw: r.data });
+                } catch (e) {
+                    resultado.push({ cobObj: cob, erro: e.response?.data || e.message });
+                }
+            }
+        }
+
+        res.json({ pedidoId: pedido.id, idVendaCA: pedido.idVendaContaAzul, parcelas: parcelas.length, cobranças: resultado });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;
