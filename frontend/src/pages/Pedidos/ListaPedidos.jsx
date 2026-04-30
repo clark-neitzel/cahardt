@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck } from 'lucide-react';
+import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck, CircleDollarSign } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
@@ -1076,7 +1076,7 @@ const ListaPedidos = () => {
                                                         className={`p-1.5 rounded hover:bg-gray-100 disabled:opacity-50 ${cobrancasCA[pedido.id]?.open ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-600'}`}
                                                         title="Links de cobrança (PIX/Boleto) no CA"
                                                     >
-                                                        {cobrancasCA[pedido.id]?.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+                                                        {cobrancasCA[pedido.id]?.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CircleDollarSign className="h-4 w-4" />}
                                                     </button>
                                                     {cobrancasCA[pedido.id]?.open && (
                                                         <div
