@@ -609,6 +609,9 @@ const GerenciarProduto = () => {
             if (location.state.selectedCategories?.length > 0) {
                 params.set('categorias', location.state.selectedCategories.join(','));
             }
+            if (location.state.selectedCatsComerciais?.length > 0) {
+                params.set('categoriasComerciais', location.state.selectedCatsComerciais.join(','));
+            }
             navigate(`/admin/produtos?${params.toString()}`);
         } else {
             navigate(-1);

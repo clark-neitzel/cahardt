@@ -160,6 +160,8 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                     <div ref={printRef} className="print-container flex flex-col gap-10 print:gap-0 print:block transform scale-[0.45] sm:scale-75 md:scale-100 origin-top transition-transform">
                         <style>
                             {`
+                            @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+                            .print-container, .print-container * { font-family: 'Courier Prime', 'Courier New', Courier, monospace !important; }
                             .print-container table { width: 100%; border-collapse: collapse; margin-top: 5px; }
                             .print-container th, .print-container td { border: 1px solid #000; padding: 2px 4px; text-align: left; font-size: 8px; line-height: 1.1; color: #000; }
                             .print-container .page-produtos th, .print-container .page-produtos td { font-size: 10px; line-height: 1.2; padding: 3px 5px; }
@@ -168,14 +170,13 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             .print-container h2 { font-size: 11px; font-weight: bold; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px; color: #000; }
                             @media print {
                                 @page { size: A4 portrait; margin: 8mm 5mm 5mm 5mm; }
-                                /* Esconde TUDO da página exceto o conteúdo de impressão */
                                 body * { visibility: hidden; }
                                 #print-root-overlay, #print-root-overlay .print-scroll-area, #print-root-overlay .print-scroll-area * { visibility: visible; }
                                 #print-root-overlay { position: absolute !important; top: 0; left: 0; width: 100% !important; background: white !important; overflow: visible !important; }
                                 .print-scroll-area { padding: 0 !important; margin: 0 !important; display: block !important; }
                                 * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #000 !important; }
-                                .print-container { transform: scale(1) !important; margin: 0 !important; gap: 0 !important; display: block !important; }
-                                .print-container th, .print-container td { font-size: 8px !important; padding: 2px 3px !important; line-height: 1.1 !important; color: #000 !important; border: 1px solid #000 !important; }
+                                .print-container { transform: scale(1) !important; margin: 0 !important; gap: 0 !important; display: block !important; font-family: 'Courier Prime', 'Courier New', Courier, monospace !important; }
+                                .print-container th, .print-container td { font-size: 8px !important; padding: 2px 3px !important; line-height: 1.1 !important; color: #000 !important; border: 1px solid #000 !important; font-family: 'Courier Prime', 'Courier New', Courier, monospace !important; }
                                 .print-container .page-produtos th, .print-container .page-produtos td { font-size: 10px !important; padding: 3px 5px !important; line-height: 1.2 !important; }
                                 .print-container td.wrap-text { white-space: normal !important; word-wrap: break-word !important; }
                                 .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: auto !important; padding: 0 5mm !important; page-break-after: always; }

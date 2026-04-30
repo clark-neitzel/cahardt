@@ -1,11 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, X, Check } from 'lucide-react';
 
-const MultiSelect = ({ options, selected, onChange, placeholder = "Selecione..." }) => {
+// Supports string arrays OR object arrays { value, label }
+const MultiSelect = ({ options, selected, onChange, placeholder = "Selecione...", valueKey, labelKey }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 
-    // Close on click outside
+    const getValue = (opt) => valueKey ? opt[valueKey] : opt;
+    const getLabel = (opt) => labelKey ? opt[labelKey] : opt;
+
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -16,17 +19,24 @@ const MultiSelect = ({ options, selected, onChange, placeholder = "Selecione..."
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const toggleOption = (option) => {
-        if (selected.includes(option)) {
-            onChange(selected.filter(item => item !== option));
+    const toggleOption = (opt) => {
+        const val = getValue(opt);
+        if (selected.includes(val)) {
+            onChange(selected.filter(item => item !== val));
         } else {
-            onChange([...selected, option]);
+            onChange([...selected, val]);
         }
     };
 
-    const removeOption = (e, option) => {
+    const removeOption = (e, val) => {
         e.stopPropagation();
-        onChange(selected.filter(item => item !== option));
+        onChange(selected.filter(item => item !== val));
+    };
+
+    const getLabelForValue = (val) => {
+        if (!valueKey) return val;
+        const opt = options.find(o => getValue(o) === val);
+        return opt ? getLabel(opt) : val;
     };
 
     return (
@@ -38,11 +48,11 @@ const MultiSelect = ({ options, selected, onChange, placeholder = "Selecione..."
                 {selected.length === 0 ? (
                     <span className="text-gray-500 block truncate">{placeholder}</span>
                 ) : (
-                    selected.map(item => (
-                        <span key={item} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                            {item}
+                    selected.map(val => (
+                        <span key={val} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                            {getLabelForValue(val)}
                             <button
-                                onClick={(e) => removeOption(e, item)}
+                                onClick={(e) => removeOption(e, val)}
                                 className="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none"
                             >
                                 <X size={12} />
@@ -60,22 +70,27 @@ const MultiSelect = ({ options, selected, onChange, placeholder = "Selecione..."
                     {options.length === 0 ? (
                         <div className="py-2 px-4 text-gray-500">Nenhuma opção disponível</div>
                     ) : (
-                        options.map((option) => (
-                            <div
-                                key={option}
-                                className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 ${selected.includes(option) ? 'bg-blue-50 text-blue-900' : 'text-gray-900'}`}
-                                onClick={() => toggleOption(option)}
-                            >
-                                <span className={`block truncate ${selected.includes(option) ? 'font-semibold' : 'font-normal'}`}>
-                                    {option}
-                                </span>
-                                {selected.includes(option) && (
-                                    <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-primary">
-                                        <Check className="h-4 w-4" />
+                        options.map((option) => {
+                            const val = getValue(option);
+                            const label = getLabel(option);
+                            const isSelected = selected.includes(val);
+                            return (
+                                <div
+                                    key={val}
+                                    className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 ${isSelected ? 'bg-blue-50 text-blue-900' : 'text-gray-900'}`}
+                                    onClick={() => toggleOption(option)}
+                                >
+                                    <span className={`block truncate ${isSelected ? 'font-semibold' : 'font-normal'}`}>
+                                        {label}
                                     </span>
-                                )}
-                            </div>
-                        ))
+                                    {isSelected && (
+                                        <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-primary">
+                                            <Check className="h-4 w-4" />
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })
                     )}
                 </div>
             )}

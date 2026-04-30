@@ -6,7 +6,7 @@ const produtoController = {
     // Listar produtos com paginação e filtros
     listar: async (req, res) => {
         try {
-            const { page = 1, limit = 10, search, ativo, categorias } = req.query;
+            const { page = 1, limit = 10, search, ativo, categorias, categoriaProdutoIds } = req.query;
             const skip = (page - 1) * limit;
 
             const where = {};
@@ -17,17 +17,23 @@ const produtoController = {
                     { ean: { contains: search, mode: 'insensitive' } }
                 ];
             }
-            // Filtro de Ativo/Inativo
-            // Se ativo for 'all' ou undefined, traz tudo. Se for 'true' traz ativos, 'false' inativos.
             if (ativo !== undefined && ativo !== 'all') {
                 where.ativo = ativo === 'true';
             }
 
-            // Filtro de Categorias (Multi-select)
+            // Filtro de Categorias CA (Multi-select por nome)
             if (categorias) {
                 const cats = categorias.split(',').map(c => c.trim()).filter(c => c);
                 if (cats.length > 0) {
                     where.categoria = { in: cats };
+                }
+            }
+
+            // Filtro de Categoria Comercial (Multi-select por ID)
+            if (categoriaProdutoIds) {
+                const ids = categoriaProdutoIds.split(',').map(c => c.trim()).filter(c => c);
+                if (ids.length > 0) {
+                    where.categoriaProdutoId = { in: ids };
                 }
             }
 
@@ -38,11 +44,11 @@ const produtoController = {
                     take: Number(limit),
                     include: {
                         imagens: {
-                            where: { principal: true },
+                            orderBy: [{ principal: 'desc' }, { ordem: 'asc' }],
                             take: 1
                         },
                         categoriaProduto: {
-                            select: { id: true, nome: true, permiteFracao: true }
+                            select: { id: true, nome: true, corTag: true }
                         }
                     },
                     orderBy: { nome: 'asc' }
