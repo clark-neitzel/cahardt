@@ -1086,9 +1086,11 @@ const ListaPedidos = () => {
                                                             {(() => {
                                                                 const links = cobrancasCA[pedido.id].links || [];
                                                                 const comUrl = links.filter(c => c.url);
-                                                                const textoParaCopiar = comUrl.length === 1
+                                                                const valorTotal = Number((pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0) + Number(pedido.valorFrete || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                                                                const linhasCob = comUrl.length === 1
                                                                     ? `Cobrança - ${comUrl[0].url}`
                                                                     : comUrl.map((c, i) => `Cobrança ${i + 1} - ${c.url}`).join('\n');
+                                                                const textoParaCopiar = `Pedido #${pedido.numero} - R$ ${valorTotal}\n${linhasCob}`;
                                                                 return (
                                                                     <>
                                                                         <div className="flex items-center justify-between mb-1">
