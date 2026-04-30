@@ -547,6 +547,7 @@ const ListaPedidos = () => {
 
     // Retorno do render
     return (
+        <>
         <div className="w-full py-4 sm:py-6 overflow-x-hidden">
             <div className="flex justify-between items-center mb-4">
                 <h1 className="text-lg sm:text-2xl font-black text-gray-900 flex items-center gap-2">
@@ -1382,6 +1383,7 @@ const ListaPedidos = () => {
                 </div>
             </div>
         )}
+        </>
     );
 };
 
