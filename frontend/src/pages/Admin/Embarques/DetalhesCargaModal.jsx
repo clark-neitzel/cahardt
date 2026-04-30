@@ -347,9 +347,10 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                         {/* Paginação da Rastreabilidade (Produto x Pedidos) */}
                         {rastreabilidadePaginada.map((chunkRastreio, idx) => {
                             const thisPage = globalPageCount++;
+                            const isLastPage = idx === rastreabilidadePaginada.length - 1;
                             return (
                                 <React.Fragment key={`rastreio-${idx}`}>
-                                    <div className="print-page page-produtos bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '0mm 6mm' }}>
+                                    <div className="print-page page-produtos bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '0mm 6mm', ...(isLastPage ? { pageBreakAfter: 'auto', breakAfter: 'auto' } : {}) }}>
                                         <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">
                                             Página {thisPage} de {totalPages}
                                         </div>
