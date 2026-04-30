@@ -837,11 +837,12 @@ const pedidoController = {
                         cobrancas.push({
                             label: `Cob-${idx}`,
                             url: url || null,
-                            tipo: cob.tipo || charge.type || charge.tipo || null
+                            tipo: cob.tipo || charge.type || charge.tipo || null,
+                            raw: charge
                         });
                     } catch (e) {
                         console.warn(`[buscarCobrancasCA] Erro ao buscar cobrança ${cob.id}:`, e.message);
-                        cobrancas.push({ label: `Cob-${idx}`, url: null, tipo: cob.tipo || null });
+                        cobrancas.push({ label: `Cob-${idx}`, url: null, tipo: cob.tipo || null, raw: null });
                     }
                     idx++;
                 }
