@@ -842,7 +842,7 @@ const pedidoController = {
                         });
                     } catch (e) {
                         console.warn(`[buscarCobrancasCA] Erro ao buscar cobrança ${cob.id}:`, e.message);
-                        cobrancas.push({ label: `Cob-${idx}`, url: null, tipo: cob.tipo || null, raw: null });
+                        cobrancas.push({ label: `Cob-${idx}`, url: null, tipo: cob.tipo || null, raw: { _erro: e.message, _status: e.response?.status, _cobObj: cob, _responseData: e.response?.data } });
                     }
                     idx++;
                 }

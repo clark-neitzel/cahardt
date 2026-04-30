@@ -1104,10 +1104,10 @@ const ListaPedidos = () => {
                                                                     ) : (
                                                                         <button
                                                                             key={cob.label}
-                                                                            onClick={() => cob.raw && setRawChargePopup({ label: cob.label, raw: cob.raw })}
-                                                                            className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-gray-600 py-0.5 w-full text-left"
+                                                                            onClick={() => setRawChargePopup({ label: cob.label, raw: cob.raw })}
+                                                                            className="flex items-center gap-1.5 text-[11px] text-indigo-500 hover:text-indigo-700 underline py-0.5 w-full text-left cursor-pointer"
                                                                         >
-                                                                            {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''} — {cob.raw ? 'ver dados' : 'sem link'}</button>
+                                                                            {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''} — ver dados</button>
                                                                     )
                                                                 ))
                                                             )}
