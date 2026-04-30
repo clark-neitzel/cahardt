@@ -246,7 +246,8 @@ const syncPedidosService = {
                     ? 'Cobrança: Escritório responsável'
                     : null;
 
-            const observacoesFinal = [pedido.observacoes, linhaPromo, linhaCobrancaEspecial].filter(Boolean).join('\n') || undefined;
+            const linhaReferencia = `Referente ao pedido #${numeroVenda}`;
+            const observacoesFinal = [linhaReferencia, pedido.observacoes, linhaPromo, linhaCobrancaEspecial].filter(Boolean).join('\n');
 
             // Mapear tipos de pagamento internos para os valores aceitos pela API do CA
             const tipoPagamentoMap = {
