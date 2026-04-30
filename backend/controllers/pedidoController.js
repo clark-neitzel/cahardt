@@ -802,12 +802,12 @@ const pedidoController = {
             const id = req.params.id;
             const pedido = await prisma.pedido.findUnique({
                 where: { id },
-                include: { cliente: { select: { contaAzulId: true } } }
+                include: { cliente: { select: { UUID: true } } }
             });
             if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
             if (!pedido.idVendaContaAzul) return res.status(400).json({ error: 'Pedido sem ID de venda no CA' });
 
-            const clienteCAId = pedido.cliente?.contaAzulId;
+            const clienteCAId = pedido.cliente?.UUID;
             if (!clienteCAId) return res.status(400).json({ error: 'Cliente sem ID no CA' });
 
             const dataVendaStr = new Date(pedido.dataVenda).toISOString().split('T')[0];
