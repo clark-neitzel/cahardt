@@ -14,86 +14,83 @@ const fmtEndereco = (c) => {
     return parts ? `${parts}${c.End_Cidade ? ` - ${c.End_Cidade}` : ''}` : null;
 };
 
+const DIGITAL_FONT = "'Share Tech Mono', 'Courier New', Courier, monospace";
+
 // ═══════════════════════════════════════════════════════════
-//  Componente de Impressão A4
+//  Componente de Impressão A4 (meia folha, fonte digital)
 // ═══════════════════════════════════════════════════════════
 const PedidoA4 = ({ pedido }) => {
     const total = pedido.itens?.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0) || 0;
     const numStr = pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
+    const f = (v) => ({ fontFamily: DIGITAL_FONT, ...v });
 
     return (
-        <div className="print-page bg-white text-black" style={{ width: '210mm', minHeight: '148mm', padding: '8mm 12mm' }}>
+        <div className="print-page bg-white text-black" style={{ width: '210mm', padding: '5mm 10mm', fontFamily: DIGITAL_FONT }}>
             {/* Cabeçalho */}
-            <div style={{ borderBottom: '2px solid #000', paddingBottom: '4mm', marginBottom: '4mm' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                        <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>HARDT SALGADOS</h1>
-                        <p style={{ fontSize: '9px', margin: '2px 0 0 0', color: '#555' }}>Pedido {numStr} {pedido.especial ? '(ESPECIAL)' : ''}</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2.5px solid #000', paddingBottom: '2.5mm', marginBottom: '2.5mm' }}>
+                <div>
+                    <div style={{ fontSize: '17px', fontWeight: 'bold', letterSpacing: '1px' }}>HARDT SALGADOS</div>
+                    <div style={{ fontSize: '13px', marginTop: '1px' }}>
+                        Pedido {numStr}{pedido.especial ? '  [ESPECIAL]' : pedido.bonificacao ? '  [BONIF.]' : ''}
                     </div>
-                    <div style={{ textAlign: 'right', fontSize: '9px' }}>
-                        <p style={{ margin: 0 }}><strong>Emissão:</strong> {fmtData(pedido.createdAt)}</p>
-                        <p style={{ margin: 0 }}><strong>Entrega:</strong> {fmtData(pedido.dataVenda)}</p>
-                        <p style={{ margin: 0 }}><strong>Vendedor:</strong> {pedido.vendedor?.nome || pedido.usuarioLancamento?.nome || '-'}</p>
-                    </div>
+                </div>
+                <div style={{ textAlign: 'right', fontSize: '11px', lineHeight: '1.5' }}>
+                    <div>Emissao: {fmtData(pedido.createdAt)}</div>
+                    <div>Entrega: {fmtData(pedido.dataVenda)}</div>
+                    <div>Vendedor: {pedido.vendedor?.nome || pedido.usuarioLancamento?.nome || '-'}</div>
                 </div>
             </div>
 
-            {/* Dados do cliente */}
-            <div style={{ marginBottom: '4mm', fontSize: '10px' }}>
-                <div style={{ display: 'flex', gap: '20px' }}>
-                    <div style={{ flex: 1 }}>
-                        <p style={{ margin: '1px 0' }}><strong>Cliente:</strong> {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || '-'}</p>
-                        <p style={{ margin: '1px 0' }}><strong>Razão:</strong> {pedido.cliente?.Nome || '-'}</p>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                        <p style={{ margin: '1px 0' }}><strong>CNPJ/CPF:</strong> {pedido.cliente?.CpfCnpj || '-'}</p>
-                        <p style={{ margin: '1px 0' }}><strong>Telefone:</strong> {pedido.cliente?.Celular || pedido.cliente?.Telefone || '-'}</p>
-                    </div>
+            {/* Dados do cliente — 1 linha compacta */}
+            <div style={{ fontSize: '11px', lineHeight: '1.5', marginBottom: '2mm', borderBottom: '1px solid #aaa', paddingBottom: '2mm' }}>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                    <span><strong>Cliente:</strong> {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || '-'}</span>
+                    {pedido.cliente?.NomeFantasia && pedido.cliente?.Nome && pedido.cliente.NomeFantasia !== pedido.cliente.Nome && (
+                        <span style={{ fontSize: '10px', color: '#444' }}>({pedido.cliente.Nome})</span>
+                    )}
+                    {(pedido.cliente?.Celular || pedido.cliente?.Telefone) && (
+                        <span>Fone: {pedido.cliente?.Celular || pedido.cliente?.Telefone}</span>
+                    )}
                 </div>
                 {fmtEndereco(pedido.cliente) && (
-                    <p style={{ margin: '1px 0', fontSize: '9px', color: '#555' }}>
-                        <strong>Endereço:</strong> {fmtEndereco(pedido.cliente)}
-                    </p>
+                    <div style={{ fontSize: '10px', color: '#333' }}>End.: {fmtEndereco(pedido.cliente)}</div>
                 )}
             </div>
 
             {/* Tabela de itens */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', fontFamily: DIGITAL_FONT }}>
                 <thead>
-                    <tr style={{ backgroundColor: '#f3f4f6' }}>
-                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'left', width: '8%' }}>Cód.</th>
-                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'left', width: '52%' }}>Produto</th>
-                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'center', width: '10%' }}>Qtd</th>
-                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'right', width: '15%' }}>Vl. Unit.</th>
-                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'right', width: '15%' }}>Total</th>
+                    <tr style={{ backgroundColor: '#e5e7eb' }}>
+                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'left', width: '55%', fontFamily: DIGITAL_FONT }}>Produto</th>
+                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'center', width: '10%', fontFamily: DIGITAL_FONT }}>Qtd</th>
+                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'right', width: '17%', fontFamily: DIGITAL_FONT }}>Vl. Unit.</th>
+                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'right', width: '18%', fontFamily: DIGITAL_FONT }}>Total</th>
                     </tr>
                 </thead>
                 <tbody>
                     {pedido.itens?.map((item, idx) => {
                         const subtotal = Number(item.valor) * Number(item.quantidade);
                         return (
-                            <tr key={idx}>
-                                <td style={{ border: '1px solid #ccc', padding: '2px 5px' }}>{item.produto?.codigo || '-'}</td>
-                                <td style={{ border: '1px solid #ccc', padding: '2px 5px', fontWeight: 'bold' }}>{item.produto?.nome || item.nomeProduto || '-'}</td>
-                                <td style={{ border: '1px solid #ccc', padding: '2px 5px', textAlign: 'center' }}>{Number(item.quantidade)}</td>
-                                <td style={{ border: '1px solid #ccc', padding: '2px 5px', textAlign: 'right' }}>R$ {fmt(item.valor)}</td>
-                                <td style={{ border: '1px solid #ccc', padding: '2px 5px', textAlign: 'right', fontWeight: 'bold' }}>R$ {fmt(subtotal)}</td>
+                            <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                                <td style={{ border: '1px solid #ccc', padding: '3px 5px', fontWeight: 'bold', fontFamily: DIGITAL_FONT }}>{item.produto?.nome || item.nomeProduto || '-'}</td>
+                                <td style={{ border: '1px solid #ccc', padding: '3px 5px', textAlign: 'center', fontFamily: DIGITAL_FONT }}>{Number(item.quantidade)}</td>
+                                <td style={{ border: '1px solid #ccc', padding: '3px 5px', textAlign: 'right', fontFamily: DIGITAL_FONT }}>R$ {fmt(item.valor)}</td>
+                                <td style={{ border: '1px solid #ccc', padding: '3px 5px', textAlign: 'right', fontWeight: 'bold', fontFamily: DIGITAL_FONT }}>R$ {fmt(subtotal)}</td>
                             </tr>
                         );
                     })}
                 </tbody>
             </table>
 
-            {/* Rodapé com totais */}
-            <div style={{ marginTop: '3mm', borderTop: '2px solid #000', paddingTop: '3mm', display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
-                <div>
-                    <p style={{ margin: '1px 0' }}><strong>Condição:</strong> {pedido.nomeCondicaoPagamento || '-'}</p>
-                    <p style={{ margin: '1px 0' }}><strong>Parcelas:</strong> {pedido.qtdParcelas || 1}x {pedido.primeiroVencimento ? `| 1º Venc.: ${fmtData(pedido.primeiroVencimento)}` : ''}</p>
-                    {pedido.observacoes && <p style={{ margin: '3px 0 0 0', fontSize: '9px', fontStyle: 'italic' }}><strong>Obs:</strong> {pedido.observacoes}</p>}
+            {/* Rodapé */}
+            <div style={{ marginTop: '2.5mm', borderTop: '2.5px solid #000', paddingTop: '2.5mm', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '11px', fontFamily: DIGITAL_FONT }}>
+                <div style={{ lineHeight: '1.6' }}>
+                    <div><strong>Cond.:</strong> {pedido.nomeCondicaoPagamento || '-'}{pedido.qtdParcelas > 1 ? `  ${pedido.qtdParcelas}x` : ''}{pedido.primeiroVencimento ? `  | 1o Venc.: ${fmtData(pedido.primeiroVencimento)}` : ''}</div>
+                    {pedido.observacoes && <div style={{ fontStyle: 'italic' }}>Obs: {pedido.observacoes}</div>}
+                    <div style={{ fontSize: '10px', color: '#555' }}>Itens: {pedido.itens?.length || 0}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                    <p style={{ margin: '1px 0' }}><strong>Itens:</strong> {pedido.itens?.length || 0}</p>
-                    <p style={{ margin: '1px 0', fontSize: '16px', fontWeight: 'bold' }}>TOTAL: R$ {fmt(total)}</p>
+                    <div style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '1px', fontFamily: DIGITAL_FONT }}>TOTAL: R$ {fmt(total)}</div>
                 </div>
             </div>
         </div>
@@ -336,17 +333,20 @@ const ImpressaoPedido = () => {
 
     // Gerar HTML completo para impressão
     const buildHtml = (bodyHtml, isCupom, heightMm, extraCss = '') => `<html>
-        <head><style>
+        <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+        <style>
             @media print {
-                @page { ${isCupom ? `size: 80mm ${heightMm}mm;` : 'size: A4 portrait;'} ${isCupom ? 'margin: 0;' : 'margin: 8mm;'} }
+                @page { ${isCupom ? `size: 80mm ${heightMm}mm;` : 'size: A4 portrait;'} ${isCupom ? 'margin: 0;' : 'margin: 6mm 8mm;'} }
                 body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; ${isCupom ? 'width: 80mm; max-width: 80mm; overflow: hidden;' : ''} }
                 * { color: #000 !important; }
                 ${extraCss}
             }
-            body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; color: #000; ${isCupom ? 'width: 80mm;' : ''} }
+            body { margin: 0; padding: 0; font-family: 'Share Tech Mono', 'Courier New', monospace; color: #000; ${isCupom ? 'width: 80mm;' : ''} }
             ${extraCss}
-            table { width: 100%; border-collapse: collapse; }
-            th, td { color: #000; }
+            table { width: 100%; border-collapse: collapse; font-family: 'Share Tech Mono', 'Courier New', monospace; }
+            th, td { color: #000; font-family: 'Share Tech Mono', 'Courier New', monospace; }
         </style></head>
         <body>${bodyHtml}</body></html>`;
 
@@ -702,6 +702,7 @@ const ImpressaoPedido = () => {
                     } ${isBatch ? 'flex flex-col gap-6' : ''}`}
                 >
                     <style>{`
+                        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
                         .print-page table { width: 100%; border-collapse: collapse; }
                         .print-page { box-shadow: 0 4px 30px rgba(0,0,0,0.4); }
                         @media print {
