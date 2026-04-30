@@ -109,6 +109,12 @@ const pedidoService = {
         return response.data;
     },
 
+    // Buscar links de cobrança (PIX/Boleto) no CA para um pedido
+    buscarCobrancasCA: async (id) => {
+        const response = await api.get(`/pedidos/${id}/cobrancas-ca`);
+        return response.data;
+    },
+
     // Pedidos pendentes de faturamento (criados ontem, entrega hoje)
     pendenteFaturamento: async () => {
         const response = await api.get('/pedidos/pendente-faturamento');

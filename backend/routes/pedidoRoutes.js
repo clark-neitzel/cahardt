@@ -59,4 +59,7 @@ router.put('/:id/impresso', pedidoController.registrarImpressao);
 // Consultar situação atual no Conta Azul (GET /v1/venda/{id}) e atualizar local
 router.post('/:id/consultar-ca', pedidoController.consultarCA);
 
+// Buscar links de cobrança (PIX/Boleto) do CA para um pedido
+router.get('/:id/cobrancas-ca', pedidoController.buscarCobrancasCA);
+
 module.exports = router;

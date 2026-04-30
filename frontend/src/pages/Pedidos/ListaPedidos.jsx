@@ -453,6 +453,25 @@ const ListaPedidos = () => {
     };
 
     const [consultandoCA, setConsultandoCA] = useState(new Set());
+    const [cobrancasCA, setCobrancasCA] = useState({});
+    // { [pedidoId]: { loading, links: [{label, url, tipo}], error, open } }
+
+    const handleBuscarCobrancasCA = async (pedido) => {
+        const atual = cobrancasCA[pedido.id];
+        if (atual?.links) {
+            setCobrancasCA(prev => ({ ...prev, [pedido.id]: { ...prev[pedido.id], open: !prev[pedido.id].open } }));
+            return;
+        }
+        setCobrancasCA(prev => ({ ...prev, [pedido.id]: { loading: true, open: false } }));
+        try {
+            const data = await pedidoService.buscarCobrancasCA(pedido.id);
+            setCobrancasCA(prev => ({ ...prev, [pedido.id]: { loading: false, links: data.cobrancas, open: true } }));
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao buscar cobranças no CA');
+            setCobrancasCA(prev => ({ ...prev, [pedido.id]: { loading: false, error: true, open: false } }));
+        }
+    };
+
     const handleConsultarCA = async (pedido) => {
         if (!pedido?.idVendaContaAzul) {
             toast.error('Pedido ainda não foi enviado ao CA.');
@@ -1044,6 +1063,48 @@ const ListaPedidos = () => {
                                                 >
                                                     {consultandoCA.has(pedido.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                                 </button>
+                                            )}
+                                            {pedido.idVendaContaAzul && (
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleBuscarCobrancasCA(pedido); }}
+                                                        disabled={cobrancasCA[pedido.id]?.loading}
+                                                        className={`p-1.5 rounded hover:bg-gray-100 disabled:opacity-50 ${cobrancasCA[pedido.id]?.open ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-600'}`}
+                                                        title="Links de cobrança (PIX/Boleto) no CA"
+                                                    >
+                                                        {cobrancasCA[pedido.id]?.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+                                                    </button>
+                                                    {cobrancasCA[pedido.id]?.open && (
+                                                        <div
+                                                            className="absolute right-0 bottom-full mb-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-20 min-w-[160px]"
+                                                            onClick={e => e.stopPropagation()}
+                                                        >
+                                                            <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Cobranças CA</p>
+                                                            {cobrancasCA[pedido.id].links?.length === 0 ? (
+                                                                <p className="text-[11px] text-gray-400">Sem cobranças ativas</p>
+                                                            ) : (
+                                                                cobrancasCA[pedido.id].links?.map(cob => (
+                                                                    cob.url ? (
+                                                                        <a
+                                                                            key={cob.label}
+                                                                            href={cob.url}
+                                                                            target="_blank"
+                                                                            rel="noreferrer"
+                                                                            className="flex items-center gap-1.5 text-[11px] text-indigo-600 hover:text-indigo-800 hover:underline py-0.5"
+                                                                        >
+                                                                            <ExternalLink className="h-3 w-3 shrink-0" />
+                                                                            {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''}
+                                                                        </a>
+                                                                    ) : (
+                                                                        <span key={cob.label} className="flex items-center gap-1.5 text-[11px] text-gray-400 py-0.5">
+                                                                            {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''} — sem link
+                                                                        </span>
+                                                                    )
+                                                                ))
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )}
                                             {pedido.situacaoCA === 'FATURADO' && (
                                                 <button onClick={(e) => { e.stopPropagation(); handlePrintPedido(pedido); }} className="p-1.5 text-gray-400 hover:text-purple-600 rounded hover:bg-gray-100" title="Imprimir Pedido"><Printer className="h-4 w-4" /></button>

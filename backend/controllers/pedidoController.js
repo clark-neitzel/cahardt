@@ -795,6 +795,63 @@ const pedidoController = {
             console.error('Erro ao buscar pedidos pendentes de faturamento:', error);
             res.status(500).json({ error: 'Erro ao buscar pedidos pendentes de faturamento' });
         }
+    },
+
+    buscarCobrancasCA: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const pedido = await prisma.pedido.findUnique({
+                where: { id },
+                include: { cliente: { select: { contaAzulId: true } } }
+            });
+            if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
+            if (!pedido.idVendaContaAzul) return res.status(400).json({ error: 'Pedido sem ID de venda no CA' });
+
+            const clienteCAId = pedido.cliente?.contaAzulId;
+            if (!clienteCAId) return res.status(400).json({ error: 'Cliente sem ID no CA' });
+
+            const dataVendaStr = new Date(pedido.dataVenda).toISOString().split('T')[0];
+            const parcelas = await contaAzulService.encontrarParcelasDeVenda(
+                clienteCAId, pedido.idVendaContaAzul, dataVendaStr
+            );
+
+            if (!parcelas.length) return res.json({ cobrancas: [] });
+
+            const token = await contaAzulService.getAccessToken();
+            const cobrancas = [];
+            let idx = 1;
+
+            for (const parcela of parcelas) {
+                const solicitacoes = parcela.solicitacoes_cobrancas || [];
+                for (const cob of solicitacoes) {
+                    if (!cob?.id) continue;
+                    try {
+                        const resCA = await axios.get(
+                            `https://api-v2.contaazul.com/v1/charge/${cob.id}`,
+                            { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        const charge = resCA.data;
+                        const url = charge.url || charge.link ||
+                            charge.bank_slip?.url || charge.bankSlip?.url ||
+                            charge.pix?.url || charge.qr_code?.url;
+                        cobrancas.push({
+                            label: `Cob-${idx}`,
+                            url: url || null,
+                            tipo: cob.tipo || charge.type || charge.tipo || null
+                        });
+                    } catch (e) {
+                        console.warn(`[buscarCobrancasCA] Erro ao buscar cobrança ${cob.id}:`, e.message);
+                        cobrancas.push({ label: `Cob-${idx}`, url: null, tipo: cob.tipo || null });
+                    }
+                    idx++;
+                }
+            }
+
+            res.json({ cobrancas });
+        } catch (error) {
+            console.error('Erro ao buscar cobranças CA:', error.message);
+            res.status(500).json({ error: error.message || 'Erro ao buscar cobranças' });
+        }
     }
 };
 
