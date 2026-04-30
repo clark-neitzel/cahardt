@@ -817,7 +817,6 @@ const pedidoController = {
 
             if (!parcelas.length) return res.json({ cobrancas: [] });
 
-            const token = await contaAzulService.getAccessToken();
             const cobrancas = [];
             let idx = 1;
 
@@ -825,25 +824,11 @@ const pedidoController = {
                 const solicitacoes = parcela.solicitacoes_cobrancas || [];
                 for (const cob of solicitacoes) {
                     if (!cob?.id) continue;
-                    try {
-                        const resCA = await axios.get(
-                            `https://api-v2.contaazul.com/v1/charge/${cob.id}`,
-                            { headers: { Authorization: `Bearer ${token}` } }
-                        );
-                        const charge = resCA.data;
-                        const url = charge.url || charge.link ||
-                            charge.bank_slip?.url || charge.bankSlip?.url ||
-                            charge.pix?.url || charge.qr_code?.url;
-                        cobrancas.push({
-                            label: `Cob-${idx}`,
-                            url: url || null,
-                            tipo: cob.tipo || charge.type || charge.tipo || null,
-                            raw: charge
-                        });
-                    } catch (e) {
-                        console.warn(`[buscarCobrancasCA] Erro ao buscar cobrança ${cob.id}:`, e.message);
-                        cobrancas.push({ label: `Cob-${idx}`, url: null, tipo: cob.tipo || null, raw: { _erro: e.message, _status: e.response?.status, _cobObj: cob, _responseData: e.response?.data } });
-                    }
+                    cobrancas.push({
+                        label: `Cob-${idx}`,
+                        url: cob.url || null,
+                        tipo: cob.tipo_solicitacao_cobranca || cob.tipo || null
+                    });
                     idx++;
                 }
             }

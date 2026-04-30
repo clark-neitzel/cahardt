@@ -456,7 +456,6 @@ const ListaPedidos = () => {
     const [cobrancasCA, setCobrancasCA] = useState({});
     // { [pedidoId]: { loading, links: [{label, url, tipo, raw}], error, open } }
     const [clickedCobrancaLinks, setClickedCobrancaLinks] = useState(new Set());
-    const [rawChargePopup, setRawChargePopup] = useState(null); // { label, raw }
 
     const handleBuscarCobrancasCA = async (pedido) => {
         const atual = cobrancasCA[pedido.id];
@@ -1102,12 +1101,9 @@ const ListaPedidos = () => {
                                                                             {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''}
                                                                         </a>
                                                                     ) : (
-                                                                        <button
-                                                                            key={cob.label}
-                                                                            onClick={() => setRawChargePopup({ label: cob.label, raw: cob.raw })}
-                                                                            className="flex items-center gap-1.5 text-[11px] text-indigo-500 hover:text-indigo-700 underline py-0.5 w-full text-left cursor-pointer"
-                                                                        >
-                                                                            {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''} — ver dados</button>
+                                                                        <span key={cob.label} className="flex items-center gap-1.5 text-[11px] text-gray-400 py-0.5">
+                                                                            {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''} — sem link
+                                                                        </span>
                                                                     )
                                                                 ))
                                                             )}
@@ -1369,20 +1365,6 @@ const ListaPedidos = () => {
             )}
         </div>
 
-        {/* Popup debug: dados raw da cobrança CA */}
-        {rawChargePopup && (
-            <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4" onClick={() => setRawChargePopup(null)}>
-                <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-between px-4 py-3 border-b">
-                        <span className="font-bold text-sm">Dados CA — {rawChargePopup.label}</span>
-                        <button onClick={() => setRawChargePopup(null)} className="text-gray-400 hover:text-gray-700 text-xl leading-none">&times;</button>
-                    </div>
-                    <pre className="overflow-auto p-4 text-[11px] text-gray-800 bg-gray-50 flex-1 rounded-b-lg whitespace-pre-wrap break-all">
-                        {JSON.stringify(rawChargePopup.raw, null, 2)}
-                    </pre>
-                </div>
-            </div>
-        )}
         </>
     );
 };
