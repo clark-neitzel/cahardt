@@ -24,75 +24,121 @@ const PedidoA4 = ({ pedido }) => {
     const numStr = pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
     const f = (v) => ({ fontFamily: DIGITAL_FONT, ...v });
 
+    const vendedor = pedido.vendedor?.nome || pedido.usuarioLancamento?.nome || '-';
+    const fone = pedido.cliente?.Celular || pedido.cliente?.Telefone;
+    const endereco = fmtEndereco(pedido.cliente);
+    const tipo = pedido.bonificacao ? 'BONIFICACAO' : pedido.especial ? 'ESPECIAL' : 'PEDIDO';
+
     return (
-        <div className="print-page bg-white text-black" style={{ width: '210mm', padding: '5mm 10mm', fontFamily: DIGITAL_FONT }}>
-            {/* Cabeçalho */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '2.5px solid #000', paddingBottom: '2.5mm', marginBottom: '2.5mm' }}>
-                <div>
-                    <div style={{ fontSize: '17px', fontWeight: 'bold', letterSpacing: '1px' }}>HARDT SALGADOS</div>
-                    <div style={{ fontSize: '13px', marginTop: '1px' }}>
-                        Pedido {numStr}{pedido.especial ? '  [ESPECIAL]' : pedido.bonificacao ? '  [BONIF.]' : ''}
+        <div className="print-page bg-white text-black" style={{ width: '210mm', padding: '8mm 12mm', fontFamily: DIGITAL_FONT }}>
+
+            {/* ── Linha 1: data + número destaque ── */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingBottom: '3mm', borderBottom: '1.5px solid #000', marginBottom: '4mm' }}>
+                <div style={{ fontSize: '13px' }}>
+                    <div>{fmtData(pedido.createdAt)}</div>
+                    <div style={{ fontSize: '12px', color: '#444', marginTop: '1px' }}>Vendedor: {vendedor}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '13px' }}>{tipo} </span>
+                    <span style={{ fontSize: '28px', fontWeight: 'bold', letterSpacing: '2px' }}>{numStr}</span>
+                    {pedido.especial && <div style={{ fontSize: '11px', color: '#666', textAlign: 'right' }}>[ESPECIAL]</div>}
+                    {pedido.bonificacao && <div style={{ fontSize: '11px', color: '#666', textAlign: 'right' }}>[BONIFICACAO]</div>}
+                </div>
+            </div>
+
+            {/* ── Caixa do cliente (estilo NF) ── */}
+            <div style={{ border: '1px solid #000', padding: '4mm 5mm', marginBottom: '4mm' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                        <div style={{ fontSize: '15px', fontWeight: 'bold' }}>{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || '-'}</div>
+                        {pedido.cliente?.NomeFantasia && pedido.cliente?.Nome && pedido.cliente.NomeFantasia !== pedido.cliente.Nome && (
+                            <div style={{ fontSize: '11px', color: '#555' }}>{pedido.cliente.Nome}</div>
+                        )}
+                        {pedido.cliente?.CpfCnpj && (
+                            <div style={{ fontSize: '11px', marginTop: '1px' }}>CNPJ/CPF: {pedido.cliente.CpfCnpj}</div>
+                        )}
+                        {endereco && <div style={{ fontSize: '11px', marginTop: '2px' }}>{endereco}</div>}
                     </div>
-                </div>
-                <div style={{ textAlign: 'right', fontSize: '11px', lineHeight: '1.5' }}>
-                    <div>Emissao: {fmtData(pedido.createdAt)}</div>
-                    <div>Entrega: {fmtData(pedido.dataVenda)}</div>
-                    <div>Vendedor: {pedido.vendedor?.nome || pedido.usuarioLancamento?.nome || '-'}</div>
+                    {fone && (
+                        <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 'bold' }}>{fone}</div>
+                    )}
                 </div>
             </div>
 
-            {/* Dados do cliente — 1 linha compacta */}
-            <div style={{ fontSize: '11px', lineHeight: '1.5', marginBottom: '2mm', borderBottom: '1px solid #aaa', paddingBottom: '2mm' }}>
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                    <span><strong>Cliente:</strong> {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || '-'}</span>
-                    {pedido.cliente?.NomeFantasia && pedido.cliente?.Nome && pedido.cliente.NomeFantasia !== pedido.cliente.Nome && (
-                        <span style={{ fontSize: '10px', color: '#444' }}>({pedido.cliente.Nome})</span>
-                    )}
-                    {(pedido.cliente?.Celular || pedido.cliente?.Telefone) && (
-                        <span>Fone: {pedido.cliente?.Celular || pedido.cliente?.Telefone}</span>
-                    )}
-                </div>
-                {fmtEndereco(pedido.cliente) && (
-                    <div style={{ fontSize: '10px', color: '#333' }}>End.: {fmtEndereco(pedido.cliente)}</div>
-                )}
-            </div>
-
-            {/* Tabela de itens */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', fontFamily: DIGITAL_FONT }}>
+            {/* ── Tabela de itens ── */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', fontFamily: DIGITAL_FONT, marginBottom: '0' }}>
                 <thead>
                     <tr style={{ backgroundColor: '#e5e7eb' }}>
-                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'left', width: '55%', fontFamily: DIGITAL_FONT }}>Produto</th>
-                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'center', width: '10%', fontFamily: DIGITAL_FONT }}>Qtd</th>
-                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'right', width: '17%', fontFamily: DIGITAL_FONT }}>Vl. Unit.</th>
-                        <th style={{ border: '1px solid #000', padding: '3px 5px', textAlign: 'right', width: '18%', fontFamily: DIGITAL_FONT }}>Total</th>
+                        <th style={{ border: '1px solid #888', padding: '4px 6px', textAlign: 'left', width: '52%' }}>Produto</th>
+                        <th style={{ border: '1px solid #888', padding: '4px 6px', textAlign: 'center', width: '13%' }}>Quantidade</th>
+                        <th style={{ border: '1px solid #888', padding: '4px 6px', textAlign: 'right', width: '17%' }}>Valor Unitario</th>
+                        <th style={{ border: '1px solid #888', padding: '4px 6px', textAlign: 'right', width: '18%' }}>Valor Total</th>
                     </tr>
                 </thead>
                 <tbody>
                     {pedido.itens?.map((item, idx) => {
                         const subtotal = Number(item.valor) * Number(item.quantidade);
                         return (
-                            <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#f9fafb' }}>
-                                <td style={{ border: '1px solid #ccc', padding: '3px 5px', fontWeight: 'bold', fontFamily: DIGITAL_FONT }}>{item.produto?.nome || item.nomeProduto || '-'}</td>
-                                <td style={{ border: '1px solid #ccc', padding: '3px 5px', textAlign: 'center', fontFamily: DIGITAL_FONT }}>{Number(item.quantidade)}</td>
-                                <td style={{ border: '1px solid #ccc', padding: '3px 5px', textAlign: 'right', fontFamily: DIGITAL_FONT }}>R$ {fmt(item.valor)}</td>
-                                <td style={{ border: '1px solid #ccc', padding: '3px 5px', textAlign: 'right', fontWeight: 'bold', fontFamily: DIGITAL_FONT }}>R$ {fmt(subtotal)}</td>
+                            <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#f3f4f6' }}>
+                                <td style={{ border: '1px solid #ccc', padding: '5px 6px', fontWeight: 'bold' }}>{item.produto?.nome || item.nomeProduto || '-'}</td>
+                                <td style={{ border: '1px solid #ccc', padding: '5px 6px', textAlign: 'center', fontWeight: 'bold' }}>{Number(item.quantidade)}</td>
+                                <td style={{ border: '1px solid #ccc', padding: '5px 6px', textAlign: 'right' }}>R$ {fmt(item.valor)}</td>
+                                <td style={{ border: '1px solid #ccc', padding: '5px 6px', textAlign: 'right', fontWeight: 'bold' }}>R$ {fmt(subtotal)}</td>
                             </tr>
                         );
                     })}
                 </tbody>
             </table>
 
-            {/* Rodapé */}
-            <div style={{ marginTop: '2.5mm', borderTop: '2.5px solid #000', paddingTop: '2.5mm', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '11px', fontFamily: DIGITAL_FONT }}>
-                <div style={{ lineHeight: '1.6' }}>
-                    <div><strong>Cond.:</strong> {pedido.nomeCondicaoPagamento || '-'}{pedido.qtdParcelas > 1 ? `  ${pedido.qtdParcelas}x` : ''}{pedido.primeiroVencimento ? `  | 1o Venc.: ${fmtData(pedido.primeiroVencimento)}` : ''}</div>
-                    {pedido.observacoes && <div style={{ fontStyle: 'italic' }}>Obs: {pedido.observacoes}</div>}
-                    <div style={{ fontSize: '10px', color: '#555' }}>Itens: {pedido.itens?.length || 0}</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '1px', fontFamily: DIGITAL_FONT }}>TOTAL: R$ {fmt(total)}</div>
-                </div>
+            {/* ── Total ── */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '2px solid #000', paddingTop: '3mm', marginTop: '0', marginBottom: '4mm' }}>
+                <table style={{ borderCollapse: 'collapse', fontSize: '13px', minWidth: '160px' }}>
+                    <tbody>
+                        <tr>
+                            <td style={{ padding: '2px 8px', textAlign: 'right', color: '#555' }}>Total</td>
+                            <td style={{ padding: '2px 8px', textAlign: 'right', fontWeight: 'bold' }}>R$ {fmt(total)}</td>
+                        </tr>
+                        <tr style={{ borderTop: '1px solid #ccc' }}>
+                            <td style={{ padding: '3px 8px', textAlign: 'right', fontSize: '15px', fontWeight: 'bold' }}>Valor liquido</td>
+                            <td style={{ padding: '3px 8px', textAlign: 'right', fontSize: '15px', fontWeight: 'bold' }}>R$ {fmt(total)}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
+
+            {/* ── Pagamento ── */}
+            <div style={{ borderTop: '1px solid #ccc', paddingTop: '3mm', fontSize: '12px' }}>
+                <div style={{ marginBottom: '2mm' }}>
+                    <strong>Condicao de pagamento:</strong> {pedido.nomeCondicaoPagamento || '-'}
+                    {pedido.qtdParcelas > 1 && <span>  —  {pedido.qtdParcelas}x</span>}
+                </div>
+                {pedido.primeiroVencimento && (
+                    <table style={{ borderCollapse: 'collapse', fontSize: '12px', marginBottom: '3mm' }}>
+                        <thead>
+                            <tr style={{ backgroundColor: '#f3f4f6' }}>
+                                <th style={{ border: '1px solid #ccc', padding: '3px 8px' }}>No</th>
+                                <th style={{ border: '1px solid #ccc', padding: '3px 8px' }}>Vencimento</th>
+                                <th style={{ border: '1px solid #ccc', padding: '3px 8px', textAlign: 'right' }}>Valor (R$)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style={{ border: '1px solid #ccc', padding: '3px 8px', textAlign: 'center' }}>1o</td>
+                                <td style={{ border: '1px solid #ccc', padding: '3px 8px' }}>{fmtData(pedido.primeiroVencimento)}</td>
+                                <td style={{ border: '1px solid #ccc', padding: '3px 8px', textAlign: 'right', fontWeight: 'bold' }}>{fmt(total)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                )}
+            </div>
+
+            {/* ── Observações ── */}
+            {pedido.observacoes && (
+                <div style={{ borderTop: '1px solid #ccc', paddingTop: '3mm', fontSize: '12px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '1mm' }}>Observacoes:</div>
+                    <div style={{ fontStyle: 'italic' }}>{pedido.observacoes}</div>
+                </div>
+            )}
         </div>
     );
 };
