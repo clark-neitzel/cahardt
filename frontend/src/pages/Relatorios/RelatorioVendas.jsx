@@ -26,6 +26,17 @@ const MiniBar = ({ valor, max }) => {
     );
 };
 
+const STORAGE_KEY = 'relatorio-vendas-filtros';
+
+const carregarFiltrosSalvos = () => {
+    try {
+        const salvo = localStorage.getItem(STORAGE_KEY);
+        return salvo ? JSON.parse(salvo) : {};
+    } catch {
+        return {};
+    }
+};
+
 const RelatorioVendas = () => {
     const { user } = useAuth();
 
@@ -35,16 +46,15 @@ const RelatorioVendas = () => {
     const [activeTab, setActiveTab] = useState('vendedor');
     const [vendedores, setVendedores] = useState([]);
 
-    const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-    const inicioMes = hoje.slice(0, 8) + '01';
+    const saved = carregarFiltrosSalvos();
 
-    const [dataCriacaoDe, setDataCriacaoDe] = useState(inicioMes);
-    const [dataCriacaoAte, setDataCriacaoAte] = useState(hoje);
-    const [dataVendaDe, setDataVendaDe] = useState('');
-    const [dataVendaAte, setDataVendaAte] = useState('');
-    const [vendedorId, setVendedorId] = useState('');
-    const [situacaoCA, setSituacaoCA] = useState('FATURADO');
-    const [excluirBonificacao, setExcluirBonificacao] = useState('true');
+    const [dataCriacaoDe, setDataCriacaoDe] = useState(saved.dataCriacaoDe ?? '');
+    const [dataCriacaoAte, setDataCriacaoAte] = useState(saved.dataCriacaoAte ?? '');
+    const [dataVendaDe, setDataVendaDe] = useState(saved.dataVendaDe ?? '');
+    const [dataVendaAte, setDataVendaAte] = useState(saved.dataVendaAte ?? '');
+    const [vendedorId, setVendedorId] = useState(saved.vendedorId ?? '');
+    const [situacaoCA, setSituacaoCA] = useState(saved.situacaoCA ?? 'FATURADO');
+    const [excluirBonificacao, setExcluirBonificacao] = useState(saved.excluirBonificacao ?? 'true');
 
     const podeVerTodos = user?.permissoes?.admin || user?.permissoes?.pedidos?.clientes === 'todos';
 
@@ -53,6 +63,11 @@ const RelatorioVendas = () => {
             api.get('/vendedores').then(r => setVendedores(r.data || [])).catch(() => {});
         }
     }, [podeVerTodos]);
+
+    useEffect(() => {
+        const filtros = { dataCriacaoDe, dataCriacaoAte, dataVendaDe, dataVendaAte, vendedorId, situacaoCA, excluirBonificacao };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtros));
+    }, [dataCriacaoDe, dataCriacaoAte, dataVendaDe, dataVendaAte, vendedorId, situacaoCA, excluirBonificacao]);
 
     const fetchRelatorio = useCallback(async () => {
         try {
@@ -137,9 +152,10 @@ const RelatorioVendas = () => {
     };
 
     const limpar = () => {
-        setDataCriacaoDe(inicioMes); setDataCriacaoAte(hoje);
+        setDataCriacaoDe(''); setDataCriacaoAte('');
         setDataVendaDe(''); setDataVendaAte('');
         setVendedorId(''); setSituacaoCA('FATURADO'); setExcluirBonificacao('true');
+        localStorage.removeItem(STORAGE_KEY);
     };
 
     const maxVendedor = dados ? Math.max(...dados.porVendedor.map(e => e.valorTotal), 1) : 1;
