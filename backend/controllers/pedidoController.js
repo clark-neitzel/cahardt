@@ -590,6 +590,136 @@ const pedidoController = {
         }
     },
 
+    relatorioVendas: async (req, res) => {
+        try {
+            const { dataVendaDe, dataVendaAte, dataCriacaoDe, dataCriacaoAte, vendedorId, situacaoCA, excluirBonificacao } = req.query;
+
+            const permissoes = req.user?.permissoes || {};
+            const podeVerTodos = permissoes.admin || permissoes.pedidos?.clientes === 'todos';
+
+            const where = { statusEnvio: { not: 'EXCLUIDO' } };
+
+            if (!podeVerTodos) {
+                where.vendedorId = req.user.id;
+            } else if (vendedorId) {
+                where.vendedorId = vendedorId;
+            }
+
+            if (situacaoCA) where.situacaoCA = situacaoCA;
+            if (excluirBonificacao === 'true') where.bonificacao = false;
+
+            if (dataCriacaoDe || dataCriacaoAte) {
+                where.createdAt = {};
+                if (dataCriacaoDe) where.createdAt.gte = new Date(dataCriacaoDe + 'T00:00:00.000Z');
+                if (dataCriacaoAte) where.createdAt.lte = new Date(dataCriacaoAte + 'T23:59:59.999Z');
+            }
+
+            if (dataVendaDe || dataVendaAte) {
+                where.dataVenda = {};
+                if (dataVendaDe) where.dataVenda.gte = new Date(dataVendaDe + 'T00:00:00.000Z');
+                if (dataVendaAte) where.dataVenda.lte = new Date(dataVendaAte + 'T23:59:59.999Z');
+            }
+
+            const pedidos = await prisma.pedido.findMany({
+                where,
+                select: {
+                    id: true,
+                    clienteId: true,
+                    vendedorId: true,
+                    nomeCondicaoPagamento: true,
+                    bonificacao: true,
+                    cliente: {
+                        select: { Nome: true, NomeFantasia: true, End_Cidade: true, End_Bairro: true }
+                    },
+                    vendedor: { select: { nome: true } },
+                    itens: { select: { valorTotal: true, quantidade: true } }
+                }
+            });
+
+            const getValor = (p) => p.itens.reduce((s, i) => s + Number(i.valorTotal || 0), 0);
+
+            const vendedorMap = new Map();
+            const clienteMap = new Map();
+            const condicaoMap = new Map();
+            const cidadeMap = new Map();
+            const bairroMap = new Map();
+
+            let totalGeral = 0;
+            let totalPedidosGeral = 0;
+
+            for (const p of pedidos) {
+                const valor = getValor(p);
+                totalGeral += valor;
+                totalPedidosGeral++;
+
+                const vendedorNome = p.vendedor?.nome || '-';
+                const clienteNome = p.cliente?.NomeFantasia || p.cliente?.Nome || '-';
+                const cidade = p.cliente?.End_Cidade || 'Não informada';
+                const bairro = p.cliente?.End_Bairro || 'Não informado';
+                const condicao = p.nomeCondicaoPagamento || 'Não informada';
+
+                // Por vendedor
+                const vk = p.vendedorId || '_';
+                if (!vendedorMap.has(vk)) vendedorMap.set(vk, { vendedorNome, totalPedidos: 0, valorTotal: 0 });
+                const ve = vendedorMap.get(vk);
+                ve.totalPedidos++; ve.valorTotal += valor;
+
+                // Por cliente
+                const ck = p.clienteId || '_' + clienteNome;
+                if (!clienteMap.has(ck)) clienteMap.set(ck, { clienteNome, cidade, bairro, vendedorNome, totalPedidos: 0, valorTotal: 0 });
+                const ce = clienteMap.get(ck);
+                ce.totalPedidos++; ce.valorTotal += valor;
+
+                // Por condição
+                if (!condicaoMap.has(condicao)) condicaoMap.set(condicao, { condicao, totalPedidos: 0, valorTotal: 0 });
+                const co = condicaoMap.get(condicao);
+                co.totalPedidos++; co.valorTotal += valor;
+
+                // Por cidade
+                if (!cidadeMap.has(cidade)) cidadeMap.set(cidade, { cidade, totalPedidos: 0, valorTotal: 0, clientes: new Set() });
+                const ci = cidadeMap.get(cidade);
+                ci.totalPedidos++; ci.valorTotal += valor;
+                if (p.clienteId) ci.clientes.add(p.clienteId);
+
+                // Por bairro
+                const bk = `${cidade}|${bairro}`;
+                if (!bairroMap.has(bk)) bairroMap.set(bk, { cidade, bairro, totalPedidos: 0, valorTotal: 0, clientes: new Set() });
+                const ba = bairroMap.get(bk);
+                ba.totalPedidos++; ba.valorTotal += valor;
+                if (p.clienteId) ba.clientes.add(p.clienteId);
+            }
+
+            const tm = (e) => e.totalPedidos > 0 ? e.valorTotal / e.totalPedidos : 0;
+            const sortVal = (a, b) => b.valorTotal - a.valorTotal;
+
+            res.json({
+                resumo: {
+                    totalPedidos: totalPedidosGeral,
+                    valorTotalGeral: totalGeral,
+                    ticketMedio: totalPedidosGeral > 0 ? totalGeral / totalPedidosGeral : 0
+                },
+                porVendedor: [...vendedorMap.values()]
+                    .map(e => ({ ...e, ticketMedio: tm(e) }))
+                    .sort(sortVal),
+                porCliente: [...clienteMap.values()]
+                    .map(e => ({ ...e, ticketMedio: tm(e) }))
+                    .sort(sortVal),
+                porCondicao: [...condicaoMap.values()]
+                    .map(e => ({ ...e, ticketMedio: tm(e) }))
+                    .sort(sortVal),
+                porCidade: [...cidadeMap.values()]
+                    .map(e => ({ cidade: e.cidade, totalPedidos: e.totalPedidos, valorTotal: e.valorTotal, ticketMedio: tm(e), qtdClientes: e.clientes.size }))
+                    .sort(sortVal),
+                porBairro: [...bairroMap.values()]
+                    .map(e => ({ cidade: e.cidade, bairro: e.bairro, totalPedidos: e.totalPedidos, valorTotal: e.valorTotal, ticketMedio: tm(e), qtdClientes: e.clientes.size }))
+                    .sort(sortVal)
+            });
+        } catch (error) {
+            console.error('Erro ao gerar relatório de vendas:', error);
+            res.status(500).json({ error: 'Erro ao gerar relatório de vendas.' });
+        }
+    },
+
     excluir: async (req, res) => {
         try {
             const id = req.params.id;

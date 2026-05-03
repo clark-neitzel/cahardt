@@ -17,6 +17,9 @@ router.get('/pendente-faturamento', pedidoController.pendenteFaturamento);
 // Relatório de Pedidos (com filtros avançados)
 router.get('/relatorio', pedidoController.relatorio);
 
+// Relatório de Vendas (agrupado por vendedor, cliente, condição, cidade, bairro)
+router.get('/relatorio-vendas', pedidoController.relatorioVendas);
+
 // Listagem de Pedidos
 router.get('/', pedidoController.listar);
 
