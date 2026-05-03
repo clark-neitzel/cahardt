@@ -632,11 +632,11 @@ const pedidoController = {
                         select: { Nome: true, NomeFantasia: true, End_Cidade: true, End_Bairro: true }
                     },
                     vendedor: { select: { nome: true } },
-                    itens: { select: { valorTotal: true, quantidade: true } }
+                    itens: { select: { valor: true, quantidade: true } }
                 }
             });
 
-            const getValor = (p) => p.itens.reduce((s, i) => s + Number(i.valorTotal || 0), 0);
+            const getValor = (p) => p.itens.reduce((s, i) => s + Number(i.valor || 0) * Number(i.quantidade || 0), 0);
 
             const vendedorMap = new Map();
             const clienteMap = new Map();
