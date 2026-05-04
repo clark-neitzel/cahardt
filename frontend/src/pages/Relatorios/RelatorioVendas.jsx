@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
-import { BarChart2, Filter, Download, Printer, ChevronUp, ChevronDown, ChevronsUpDown, X, ArrowLeft } from 'lucide-react';
+import { BarChart2, Filter, Download, Printer, ChevronUp, ChevronDown, ChevronsUpDown, X, ArrowLeft, ListFilter, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -39,6 +39,119 @@ const carregar = () => {
     try { const s = localStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : {}; } catch { return {}; }
 };
 
+// Dropdown de filtro por coluna (estilo Excel)
+function FilterDropdown({ col, allData, selecao, onChange, onClose }) {
+    const ref = useRef();
+    const [busca, setBusca] = useState('');
+
+    useEffect(() => {
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [onClose]);
+
+    const todosValores = useMemo(() => {
+        const vals = new Set(allData.map(r => String(r[col.field] ?? '')));
+        return [...vals].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+    }, [allData, col.field]);
+
+    const valoresFiltrados = busca.trim()
+        ? todosValores.filter(v => v.toLowerCase().includes(busca.toLowerCase()))
+        : todosValores;
+
+    // selecao === undefined → tudo selecionado (sem filtro)
+    // selecao === Set<string> → apenas esses valores aparecem
+    const isChecked = (val) => !selecao || selecao.has(val);
+    const totalSelecionados = selecao ? selecao.size : todosValores.length;
+    const todosMarcados = !selecao || selecao.size === todosValores.length;
+
+    const toggle = (val) => {
+        // Constrói nova seleção baseada no estado atual
+        const atual = selecao ? new Set(selecao) : new Set(todosValores);
+        atual.has(val) ? atual.delete(val) : atual.add(val);
+        // Se tudo selecionado → limpa o filtro
+        onChange(col.id, atual.size === todosValores.length ? undefined : atual);
+    };
+
+    const toggleTodos = () => {
+        if (todosMarcados) {
+            // Desmarcar todos → sem nenhum visível (filtramos para vazio)
+            onChange(col.id, new Set());
+        } else {
+            // Marcar todos → remove filtro
+            onChange(col.id, undefined);
+        }
+    };
+
+    return (
+        <div ref={ref}
+            className="absolute top-full left-0 z-[100] bg-white border border-gray-200 rounded-lg shadow-2xl w-64 mt-1"
+            onClick={e => e.stopPropagation()}>
+
+            {/* Busca */}
+            <div className="p-2 border-b">
+                <div className="relative">
+                    <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
+                    <input
+                        autoFocus
+                        type="text"
+                        value={busca}
+                        onChange={e => setBusca(e.target.value)}
+                        placeholder="Buscar..."
+                        className="w-full pl-7 pr-2 py-1.5 text-xs border rounded-md bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                    />
+                </div>
+            </div>
+
+            {/* Selecionar todos */}
+            <div className="px-3 py-1.5 border-b bg-gray-50 flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={todosMarcados}
+                        onChange={toggleTodos}
+                        className="rounded text-indigo-600"
+                    />
+                    <span className="text-xs font-medium text-gray-600">Selecionar todos</span>
+                </label>
+                <span className="text-[10px] text-gray-400">{totalSelecionados}/{todosValores.length}</span>
+            </div>
+
+            {/* Lista de valores */}
+            <div className="max-h-56 overflow-y-auto py-1">
+                {valoresFiltrados.length === 0 && (
+                    <p className="text-xs text-gray-400 text-center py-4">Nenhum resultado</p>
+                )}
+                {valoresFiltrados.map(val => (
+                    <label key={val} className="flex items-center gap-2 px-3 py-1.5 hover:bg-indigo-50 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={isChecked(val)}
+                            onChange={() => toggle(val)}
+                            className="rounded text-indigo-600 flex-shrink-0"
+                        />
+                        <span className="text-xs text-gray-700 truncate">{val || '(vazio)'}</span>
+                    </label>
+                ))}
+            </div>
+
+            {/* Rodapé */}
+            <div className="p-2 border-t bg-gray-50 flex justify-between">
+                <button
+                    onClick={() => { onChange(col.id, undefined); onClose(); }}
+                    className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100">
+                    Limpar
+                </button>
+                <button
+                    onClick={onClose}
+                    className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 font-medium">
+                    OK
+                </button>
+            </div>
+        </div>
+    );
+}
+
 const PRINT_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
 .rv-print-container, .rv-print-container * { font-family: 'Courier Prime', 'Courier New', Courier, monospace !important; }
@@ -72,18 +185,19 @@ export default function RelatorioVendas() {
     const [showPrint, setShowPrint] = useState(false);
     const [vendedores, setVendedores] = useState([]);
 
-    // Filtros do painel
-    const [dataVendaDe,       setDataVendaDe]       = useState(saved.dataVendaDe       ?? '');
-    const [dataVendaAte,      setDataVendaAte]      = useState(saved.dataVendaAte      ?? '');
-    const [vendedorId,        setVendedorId]        = useState(saved.vendedorId        ?? '');
-    const [situacaoCA,        setSituacaoCA]        = useState(saved.situacaoCA        ?? 'FATURADO');
-    const [excluirBonificacao,setExcluirBonificacao]= useState(saved.excluirBonificacao ?? 'true');
+    const [dataVendaDe,        setDataVendaDe]        = useState(saved.dataVendaDe        ?? '');
+    const [dataVendaAte,       setDataVendaAte]       = useState(saved.dataVendaAte       ?? '');
+    const [vendedorId,         setVendedorId]         = useState(saved.vendedorId         ?? '');
+    const [situacaoCA,         setSituacaoCA]         = useState(saved.situacaoCA         ?? 'FATURADO');
+    const [excluirBonificacao, setExcluirBonificacao] = useState(saved.excluirBonificacao ?? 'true');
 
-    // Tabela dinâmica
     const [sortCol, setSortCol] = useState('dataVenda');
     const [sortDir, setSortDir] = useState('desc');
     const [colsVisiveis, setColsVisiveis] = useState(() => new Set(COLUNAS.map(c => c.id)));
-    const [filtrosAtivos, setFiltrosAtivos] = useState({}); // { colId: Set<string> }
+    // filtrosAtivos: { colId: Set<string> | undefined }
+    // undefined = sem filtro (tudo visível); Set = apenas esses valores
+    const [filtrosAtivos, setFiltrosAtivos] = useState({});
+    const [dropdownAberto, setDropdownAberto] = useState(null); // colId ou null
 
     const podeVerTodos = user?.permissoes?.admin || user?.permissoes?.pedidos?.clientes === 'todos';
 
@@ -99,10 +213,10 @@ export default function RelatorioVendas() {
         try {
             setLoading(true);
             const params = {};
-            if (dataVendaDe)        params.dataVendaDe       = dataVendaDe;
-            if (dataVendaAte)       params.dataVendaAte      = dataVendaAte;
-            if (vendedorId)         params.vendedorId        = vendedorId;
-            if (situacaoCA)         params.situacaoCA        = situacaoCA;
+            if (dataVendaDe)        params.dataVendaDe        = dataVendaDe;
+            if (dataVendaAte)       params.dataVendaAte       = dataVendaAte;
+            if (vendedorId)         params.vendedorId         = vendedorId;
+            if (situacaoCA)         params.situacaoCA         = situacaoCA;
             if (excluirBonificacao) params.excluirBonificacao = excluirBonificacao;
             const { data } = await api.get('/pedidos/relatorio-vendas', { params });
             setPedidos(data.pedidos || []);
@@ -122,31 +236,20 @@ export default function RelatorioVendas() {
         localStorage.removeItem(STORAGE_KEY);
     };
 
-    const handleSort = (col) => {
+    const handleSort = (col, e) => {
+        e.stopPropagation();
         if (sortCol === col.id) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
         else { setSortCol(col.id); setSortDir('asc'); }
     };
 
-    const handleCellClick = (col, valor) => {
-        if (!col.filtravel) return;
+    const handleFiltroChange = (colId, novaSelecao) => {
         setFiltrosAtivos(prev => {
             const next = { ...prev };
-            const set = new Set(next[col.id] || []);
-            set.has(valor) ? set.delete(valor) : set.add(valor);
-            if (set.size === 0) delete next[col.id];
-            else next[col.id] = set;
-            return next;
-        });
-    };
-
-    const removerFiltroAtivo = (colId, valor) => {
-        setFiltrosAtivos(prev => {
-            const next = { ...prev };
-            if (!next[colId]) return next;
-            const set = new Set(next[colId]);
-            set.delete(valor);
-            if (set.size === 0) delete next[colId];
-            else next[colId] = set;
+            if (novaSelecao === undefined || novaSelecao === null) {
+                delete next[colId];
+            } else {
+                next[colId] = novaSelecao;
+            }
             return next;
         });
     };
@@ -161,10 +264,11 @@ export default function RelatorioVendas() {
 
     const dadosFiltrados = useMemo(() => {
         let result = [...pedidos];
-        for (const [colId, vals] of Object.entries(filtrosAtivos)) {
+        for (const [colId, selecao] of Object.entries(filtrosAtivos)) {
+            if (!selecao) continue;
             const col = COLUNAS.find(c => c.id === colId);
             if (!col) continue;
-            result = result.filter(row => vals.has(String(row[col.field] ?? '')));
+            result = result.filter(row => selecao.has(String(row[col.field] ?? '')));
         }
         const col = COLUNAS.find(c => c.id === sortCol);
         if (col) {
@@ -181,7 +285,19 @@ export default function RelatorioVendas() {
         return result;
     }, [pedidos, filtrosAtivos, sortCol, sortDir]);
 
-    const totalFiltrado = useMemo(() => dadosFiltrados.reduce((s, r) => s + Number(r.valorTotal || 0), 0), [dadosFiltrados]);
+    const totalFiltrado = useMemo(
+        () => dadosFiltrados.reduce((s, r) => s + Number(r.valorTotal || 0), 0),
+        [dadosFiltrados]
+    );
+
+    // Chips: um por coluna com filtro ativo
+    const chips = useMemo(() => Object.entries(filtrosAtivos)
+        .filter(([, sel]) => sel && sel.size > 0)
+        .map(([colId, sel]) => {
+            const col = COLUNAS.find(c => c.id === colId);
+            const total = new Set(pedidos.map(r => String(r[col?.field] ?? ''))).size;
+            return { colId, label: col?.label || colId, qtd: sel.size, total };
+        }), [filtrosAtivos, pedidos]);
 
     const exportarCSV = () => {
         if (!dadosFiltrados.length) { toast.error('Nenhum dado para exportar.'); return; }
@@ -193,20 +309,16 @@ export default function RelatorioVendas() {
             if (c.tipo === 'data') return fmtData(v);
             return `"${String(v ?? '').replace(/"/g, '""')}"`;
         }));
-        const BOM = '﻿';
-        const csv = BOM + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+        const csv = '﻿' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `relatorio-vendas.csv`; a.click();
+        a.href = url; a.download = 'relatorio-vendas.csv'; a.click();
         URL.revokeObjectURL(url);
         toast.success('CSV exportado!');
     };
 
     const colsAtivas = COLUNAS.filter(c => colsVisiveis.has(c.id));
-    const chips = Object.entries(filtrosAtivos).flatMap(([colId, vals]) =>
-        [...vals].map(v => ({ colId, val: v, label: COLUNAS.find(c => c.id === colId)?.label }))
-    );
     const temDados = pedidos.length > 0;
 
     return (
@@ -239,10 +351,9 @@ export default function RelatorioVendas() {
                     </div>
                 </div>
 
-                {/* Filtros */}
+                {/* Painel de filtros */}
                 {showFiltros && (
                     <div className="bg-white rounded-lg shadow-sm border p-3 sm:p-4 mb-4">
-                        {/* Linha 1: período */}
                         <div className="flex items-end gap-2 mb-3">
                             <div className="flex-1">
                                 <label className="text-xs text-gray-500 font-medium">Data Venda</label>
@@ -251,12 +362,11 @@ export default function RelatorioVendas() {
                             </div>
                             <span className="text-gray-400 text-sm pb-2">até</span>
                             <div className="flex-1">
-                                <label className="text-xs text-gray-500 font-medium">&nbsp;</label>
+                                <label className="text-xs text-gray-500 font-medium invisible">até</label>
                                 <input type="date" value={dataVendaAte} onChange={e => setDataVendaAte(e.target.value)}
                                     className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
                             </div>
                         </div>
-                        {/* Linha 2: demais filtros */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             {podeVerTodos && (
                                 <div>
@@ -297,7 +407,6 @@ export default function RelatorioVendas() {
                     </div>
                 )}
 
-                {/* Loading */}
                 {loading && (
                     <div className="flex justify-center items-center py-20">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mr-3" />
@@ -305,14 +414,12 @@ export default function RelatorioVendas() {
                     </div>
                 )}
 
-                {/* Estado vazio */}
                 {!loading && !temDados && (
                     <div className="text-center text-gray-400 py-20">
                         Configure os filtros e clique em "Gerar Relatório".
                     </div>
                 )}
 
-                {/* Tabela dinâmica */}
                 {!loading && temDados && (
                     <>
                         {/* Cards resumo */}
@@ -329,15 +436,17 @@ export default function RelatorioVendas() {
                             </div>
                             <div className="bg-white rounded-lg border p-3">
                                 <p className="text-[10px] sm:text-xs text-gray-500">Ticket médio</p>
-                                <p className="text-base font-bold text-gray-900">R$ {fmt(dadosFiltrados.length > 0 ? totalFiltrado / dadosFiltrados.length : 0)}</p>
+                                <p className="text-base font-bold text-gray-900">
+                                    R$ {fmt(dadosFiltrados.length > 0 ? totalFiltrado / dadosFiltrados.length : 0)}
+                                </p>
                             </div>
                             <div className="bg-white rounded-lg border p-3">
-                                <p className="text-[10px] sm:text-xs text-gray-500">Colunas / Filtros</p>
+                                <p className="text-[10px] sm:text-xs text-gray-500">Colunas / Filtros ativos</p>
                                 <p className="text-base font-bold text-gray-900">{colsAtivas.length} cols · {chips.length} filtros</p>
                             </div>
                         </div>
 
-                        {/* Toggles de colunas */}
+                        {/* Toggle de colunas */}
                         <div className="flex flex-wrap gap-1.5 mb-2">
                             {COLUNAS.map(c => (
                                 <button key={c.id} onClick={() => toggleCol(c.id)}
@@ -351,20 +460,23 @@ export default function RelatorioVendas() {
                             ))}
                         </div>
 
-                        {/* Chips de filtros ativos */}
+                        {/* Chips de filtros ativos por coluna */}
                         {chips.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mb-2">
-                                {chips.map((chip, i) => (
-                                    <span key={i} className="flex items-center gap-1 px-2 py-0.5 text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full">
-                                        <span className="font-medium">{chip.label}:</span> {chip.val}
-                                        <button onClick={() => removerFiltroAtivo(chip.colId, chip.val)} className="ml-0.5 hover:text-indigo-900">
+                            <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                                {chips.map(chip => (
+                                    <span key={chip.colId}
+                                        className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full font-medium">
+                                        <ListFilter className="h-3 w-3" />
+                                        {chip.label}: {chip.qtd} de {chip.total}
+                                        <button onClick={() => handleFiltroChange(chip.colId, undefined)}
+                                            className="ml-0.5 hover:text-indigo-900">
                                             <X className="h-3 w-3" />
                                         </button>
                                     </span>
                                 ))}
                                 <button onClick={() => setFiltrosAtivos({})}
                                     className="px-2 py-0.5 text-xs text-gray-500 hover:text-gray-700 underline">
-                                    Limpar filtros
+                                    Limpar todos
                                 </button>
                             </div>
                         )}
@@ -374,16 +486,43 @@ export default function RelatorioVendas() {
                             <table className="w-full text-sm min-w-max">
                                 <thead className="bg-gray-50 border-b">
                                     <tr>
-                                        {colsAtivas.map(col => (
-                                            <th key={col.id}
-                                                onClick={() => handleSort(col)}
-                                                className={`px-3 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 whitespace-nowrap ${col.align === 'right' ? 'text-right' : 'text-left'}`}>
-                                                <div className={`flex items-center gap-1 ${col.align === 'right' ? 'justify-end' : ''}`}>
-                                                    {col.label}
-                                                    <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />
-                                                </div>
-                                            </th>
-                                        ))}
+                                        {colsAtivas.map(col => {
+                                            const temFiltro = filtrosAtivos[col.id] && filtrosAtivos[col.id].size > 0;
+                                            return (
+                                                <th key={col.id}
+                                                    className={`px-3 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wider select-none whitespace-nowrap relative ${col.align === 'right' ? 'text-right' : 'text-left'}`}>
+                                                    <div className={`flex items-center gap-1 ${col.align === 'right' ? 'justify-end' : ''}`}>
+                                                        {/* Sort */}
+                                                        <button
+                                                            onClick={(e) => handleSort(col, e)}
+                                                            className="flex items-center gap-1 hover:text-indigo-700">
+                                                            {col.label}
+                                                            <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />
+                                                        </button>
+                                                        {/* Filtro por coluna */}
+                                                        {col.filtravel && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setDropdownAberto(d => d === col.id ? null : col.id); }}
+                                                                className={`ml-0.5 p-0.5 rounded transition-colors ${temFiltro ? 'text-indigo-600 bg-indigo-100' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                                                                title={`Filtrar por ${col.label}`}>
+                                                                <ListFilter className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Dropdown */}
+                                                    {dropdownAberto === col.id && (
+                                                        <FilterDropdown
+                                                            col={col}
+                                                            allData={pedidos}
+                                                            selecao={filtrosAtivos[col.id]}
+                                                            onChange={handleFiltroChange}
+                                                            onClose={() => setDropdownAberto(null)}
+                                                        />
+                                                    )}
+                                                </th>
+                                            );
+                                        })}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
@@ -391,14 +530,12 @@ export default function RelatorioVendas() {
                                         <tr key={row.id} className="hover:bg-gray-50">
                                             {colsAtivas.map(col => {
                                                 const val = row[col.field];
-                                                const ativo = filtrosAtivos[col.id]?.has(String(val ?? ''));
                                                 return (
                                                     <td key={col.id}
-                                                        onClick={() => handleCellClick(col, String(val ?? ''))}
-                                                        className={`px-3 py-2 text-sm whitespace-nowrap ${col.align === 'right' ? 'text-right' : ''} ${col.filtravel ? 'cursor-pointer hover:bg-indigo-50' : ''} ${ativo ? 'bg-indigo-50 font-medium text-indigo-800' : 'text-gray-800'}`}>
-                                                        {col.id === 'data'    && fmtData(val)}
-                                                        {col.id === 'valor'   && <span className="font-semibold">R$ {fmt(val)}</span>}
-                                                        {col.id === 'tipo'    && (
+                                                        className={`px-3 py-2 text-sm whitespace-nowrap text-gray-800 ${col.align === 'right' ? 'text-right' : ''}`}>
+                                                        {col.id === 'data'  && fmtData(val)}
+                                                        {col.id === 'valor' && <span className="font-semibold">R$ {fmt(val)}</span>}
+                                                        {col.id === 'tipo'  && (
                                                             <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${TIPO_BADGE[val] || 'bg-gray-100 text-gray-700'}`}>{val}</span>
                                                         )}
                                                         {!['data','valor','tipo'].includes(col.id) && (val || '-')}
@@ -413,8 +550,8 @@ export default function RelatorioVendas() {
                                         <tr>
                                             {colsAtivas.map(col => (
                                                 <td key={col.id} className={`px-3 py-2 text-xs font-semibold text-gray-700 ${col.align === 'right' ? 'text-right' : ''}`}>
-                                                    {col.id === 'data'    && `${dadosFiltrados.length} reg.`}
-                                                    {col.id === 'valor'   && `R$ ${fmt(totalFiltrado)}`}
+                                                    {col.id === 'data'  && `${dadosFiltrados.length} reg.`}
+                                                    {col.id === 'valor' && `R$ ${fmt(totalFiltrado)}`}
                                                 </td>
                                             ))}
                                         </tr>
@@ -427,7 +564,7 @@ export default function RelatorioVendas() {
                         </div>
 
                         <p className="text-xs text-gray-400 mt-2 text-center">
-                            Clique nas células coloridas para filtrar · Clique nas colunas para ordenar
+                            Clique no ícone <ListFilter className="h-3 w-3 inline" /> para filtrar por coluna · Clique no nome da coluna para ordenar
                         </p>
                     </>
                 )}
@@ -437,8 +574,6 @@ export default function RelatorioVendas() {
             {showPrint && (
                 <div id="rv-print-root" className="fixed inset-0 z-[9999] bg-gray-800 overflow-y-auto flex flex-col print:bg-white print:overflow-visible">
                     <style>{PRINT_CSS}</style>
-
-                    {/* Barra de ação */}
                     <div className="sticky top-0 z-10 bg-gray-900 border-b border-gray-700 px-6 py-3 flex items-center justify-between print:hidden flex-shrink-0">
                         <div className="flex items-center gap-3">
                             <button onClick={() => setShowPrint(false)} className="flex items-center gap-1.5 px-4 py-2 border border-gray-600 text-gray-300 hover:bg-gray-700 rounded-md text-sm">
@@ -452,29 +587,21 @@ export default function RelatorioVendas() {
                             Imprimir / Salvar PDF
                         </button>
                     </div>
-
-                    {/* Área de impressão */}
                     <div className="rv-print-scroll flex-1 flex flex-col items-center py-8 print:py-0 print:block">
                         <div className="rv-print-container bg-white text-black mx-auto shadow-2xl transform scale-[0.5] sm:scale-75 md:scale-100 origin-top"
                             style={{ width: '210mm', minHeight: '297mm', padding: '4mm 6mm' }}>
-
                             <h1>RELATÓRIO DE VENDAS</h1>
                             <div className="sub">
                                 {[
                                     dataVendaDe && `Venda: ${fmtData(dataVendaDe)} a ${fmtData(dataVendaAte || dataVendaDe)}`,
-                                    situacaoCA    && `Situação: ${situacaoCA}`,
-                                    chips.length  && `Filtros: ${chips.map(c => `${c.label}=${c.val}`).join(', ')}`,
+                                    situacaoCA  && `Situação: ${situacaoCA}`,
+                                    chips.length && `Filtros: ${chips.map(c => `${c.label} (${c.qtd}/${c.total})`).join(', ')}`,
                                     `Total: ${dadosFiltrados.length} pedidos · R$ ${fmt(totalFiltrado)}`
                                 ].filter(Boolean).join(' | ')}
                             </div>
-
                             <table>
                                 <thead>
-                                    <tr>
-                                        {colsAtivas.map(col => (
-                                            <th key={col.id} style={{ textAlign: col.align || 'left' }}>{col.label}</th>
-                                        ))}
-                                    </tr>
+                                    <tr>{colsAtivas.map(col => <th key={col.id} style={{ textAlign: col.align || 'left' }}>{col.label}</th>)}</tr>
                                 </thead>
                                 <tbody>
                                     {dadosFiltrados.map(row => (
