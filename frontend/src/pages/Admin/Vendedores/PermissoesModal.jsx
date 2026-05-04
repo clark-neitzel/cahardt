@@ -5,7 +5,7 @@ import {
     PackageCheck, Truck, Wallet, Receipt, Search,
     Box, UserCog, Car, RefreshCw, FileText,
     Settings, DollarSign, Warehouse, TrendingUp,
-    Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3,
+    Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3, BarChart2,
     Clock, CalendarOff
 } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
@@ -20,6 +20,7 @@ const DEFAULT_PERMISSIONS = {
     clientes: { view: false, edit: false },
     produtos: { view: false, edit: false },
     vendedores: { view: false, edit: false },
+    relatorioVendas: false,
     sync: { view: false, edit: false },
     configuracoes: { view: false, edit: false },
     // Dashboard
@@ -297,7 +298,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
 
     // Count active permissions per department for badges
     const countVendas = [
-        permissoes.catalogo?.view, permissoes.pedidos?.view, permissoes.rota?.view, permissoes.clientes?.view
+        permissoes.catalogo?.view, permissoes.pedidos?.view, permissoes.rota?.view, permissoes.clientes?.view, permissoes.relatorioVendas
     ].filter(Boolean).length;
     const countLogistica = [
         permissoes.Pode_Acessar_Embarque, permissoes.Pode_Ver_Todas_Entregas, permissoes.Pode_Executar_Entregas
@@ -448,6 +449,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         <MenuToggle icon={BookOpen} label="Catálogo" checked={!!permissoes.catalogo?.view} onChange={() => toggleView('catalogo')} />
                         <MenuToggle icon={ClipboardList} label="Pedidos" checked={!!permissoes.pedidos?.view} onChange={() => toggleView('pedidos')} />
                         <MenuToggle icon={FileText} label="Relatórios" checked={!!permissoes.pedidos?.view} onChange={() => toggleView('pedidos')} />
+                        <MenuToggle icon={BarChart2} label="Rel. Vendas" checked={!!permissoes.relatorioVendas} onChange={() => toggleBool('relatorioVendas')} />
                         <MenuToggle icon={Map} label="Rota" checked={!!permissoes.pedidos?.view} onChange={() => toggleView('pedidos')} />
                         <MenuToggle icon={Target} label="Leads" checked={!!permissoes.rota?.view} onChange={() => toggleView('rota')} />
                         <MenuToggle icon={Users} label="Clientes" checked={!!permissoes.clientes?.view} onChange={() => toggleView('clientes')} />
