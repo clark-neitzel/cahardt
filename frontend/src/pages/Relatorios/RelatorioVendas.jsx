@@ -692,7 +692,7 @@ export default function RelatorioVendas() {
                     </div>
                     <div className="rv-print-scroll flex-1 flex flex-col items-center py-8 print:py-0 print:block">
                         <div className="rv-print-container bg-white text-black mx-auto shadow-2xl transform scale-[0.5] sm:scale-75 md:scale-100 origin-top"
-                            style={{ width: '210mm', minHeight: '297mm', padding: '4mm 6mm' }}>
+                            style={{ width: '210mm', padding: '4mm 6mm' }}>
                             <h1>RELATÓRIO DE VENDAS</h1>
                             <div className="sub">
                                 {[
