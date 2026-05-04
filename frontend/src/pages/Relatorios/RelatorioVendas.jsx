@@ -215,10 +215,10 @@ export default function RelatorioVendas() {
     const [sortCol, setSortCol] = useState('dataVenda');
     const [sortDir, setSortDir] = useState('desc');
     const [colsVisiveis, setColsVisiveis] = useState(() => new Set(COLUNAS.map(c => c.id)));
-    // filtrosAtivos: { colId: Set<string> | undefined }
-    // undefined = sem filtro (tudo visível); Set = apenas esses valores
+    const [colOrdem, setColOrdem] = useState(() => COLUNAS.map(c => c.id));
     const [filtrosAtivos, setFiltrosAtivos] = useState({});
-    const [dropdownAberto, setDropdownAberto] = useState(null); // colId ou null
+    const [dropdownAberto, setDropdownAberto] = useState(null);
+    const dragColRef = useRef(null);
 
     const podeVerTodos = user?.permissoes?.admin || user?.permissoes?.pedidos?.clientes === 'todos';
 
@@ -294,11 +294,49 @@ export default function RelatorioVendas() {
             if (!col) continue;
             result = result.filter(row => selecao.has(String(row[col.field] ?? '').toLowerCase()));
         }
+        return result;
+    }, [pedidos, filtrosAtivos]);
+
+    // Colunas na ordem definida pelo usuário, apenas as visíveis
+    const colsAtivas = colOrdem.map(id => COLUNAS.find(c => c.id === id)).filter(c => c && colsVisiveis.has(c.id));
+    const todasDimensoesVisiveis = COLUNAS.filter(c => c.tipo !== 'numero').every(c => colsVisiveis.has(c.id));
+
+    const dadosAgrupados = useMemo(() => {
+        const dimCols = colsAtivas.filter(c => c.tipo !== 'numero');
+        if (todasDimensoesVisiveis) {
+            // Sem agrupamento — ordena e retorna com _count=1
+            const col = COLUNAS.find(c => c.id === sortCol);
+            const sorted = [...dadosFiltrados];
+            if (col) {
+                sorted.sort((a, b) => {
+                    let va = a[col.field] ?? '', vb = b[col.field] ?? '';
+                    if (col.tipo === 'numero') { va = Number(va); vb = Number(vb); }
+                    else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
+                    if (va < vb) return sortDir === 'asc' ? -1 : 1;
+                    if (va > vb) return sortDir === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+            return sorted.map(r => ({ ...r, _count: 1, _key: r.id }));
+        }
+        // Agrupa por chave das colunas dimensão visíveis
+        const map = new Map();
+        dadosFiltrados.forEach(row => {
+            const key = dimCols.map(c => String(row[c.field] ?? '')).join('\x00');
+            if (!map.has(key)) {
+                const g = { _key: key, _count: 0, valorTotal: 0 };
+                dimCols.forEach(c => { g[c.field] = row[c.field]; });
+                map.set(key, g);
+            }
+            const g = map.get(key);
+            g.valorTotal += Number(row.valorTotal || 0);
+            g._count += 1;
+        });
+        const result = [...map.values()];
         const col = COLUNAS.find(c => c.id === sortCol);
-        if (col) {
+        if (col && colsVisiveis.has(col.id)) {
             result.sort((a, b) => {
-                let va = a[col.field] ?? '';
-                let vb = b[col.field] ?? '';
+                let va = a[col.field] ?? '', vb = b[col.field] ?? '';
                 if (col.tipo === 'numero') { va = Number(va); vb = Number(vb); }
                 else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
                 if (va < vb) return sortDir === 'asc' ? -1 : 1;
@@ -307,7 +345,7 @@ export default function RelatorioVendas() {
             });
         }
         return result;
-    }, [pedidos, filtrosAtivos, sortCol, sortDir]);
+    }, [dadosFiltrados, colsAtivas, todasDimensoesVisiveis, sortCol, sortDir]);
 
     const totalFiltrado = useMemo(
         () => dadosFiltrados.reduce((s, r) => s + Number(r.valorTotal || 0), 0),
@@ -324,10 +362,9 @@ export default function RelatorioVendas() {
         }), [filtrosAtivos, pedidos]);
 
     const exportarCSV = () => {
-        if (!dadosFiltrados.length) { toast.error('Nenhum dado para exportar.'); return; }
-        const cols = COLUNAS.filter(c => colsVisiveis.has(c.id));
-        const headers = cols.map(c => c.label);
-        const rows = dadosFiltrados.map(r => cols.map(c => {
+        if (!dadosAgrupados.length) { toast.error('Nenhum dado para exportar.'); return; }
+        const headers = colsAtivas.map(c => c.label);
+        const rows = dadosAgrupados.map(r => colsAtivas.map(c => {
             const v = r[c.field];
             if (c.tipo === 'numero') return Number(v || 0).toFixed(2).replace('.', ',');
             if (c.tipo === 'data') return fmtData(v);
@@ -342,7 +379,22 @@ export default function RelatorioVendas() {
         toast.success('CSV exportado!');
     };
 
-    const colsAtivas = COLUNAS.filter(c => colsVisiveis.has(c.id));
+    const handleDragStart = (colId) => { dragColRef.current = colId; };
+    const handleDragOver = (e, colId) => {
+        e.preventDefault();
+        if (!dragColRef.current || dragColRef.current === colId) return;
+        setColOrdem(prev => {
+            const next = [...prev];
+            const from = next.indexOf(dragColRef.current);
+            const to = next.indexOf(colId);
+            if (from < 0 || to < 0) return prev;
+            next.splice(from, 1);
+            next.splice(to, 0, dragColRef.current);
+            return next;
+        });
+    };
+    const handleDragEnd = () => { dragColRef.current = null; };
+
     const temDados = pedidos.length > 0;
 
     return (
@@ -476,23 +528,31 @@ export default function RelatorioVendas() {
                                 </p>
                             </div>
                             <div className="bg-white rounded-lg border p-3">
-                                <p className="text-[10px] sm:text-xs text-gray-500">Colunas / Filtros ativos</p>
-                                <p className="text-base font-bold text-gray-900">{colsAtivas.length} cols · {chips.length} filtros</p>
+                                <p className="text-[10px] sm:text-xs text-gray-500">Linhas · Filtros ativos</p>
+                                <p className="text-base font-bold text-gray-900">{dadosAgrupados.length} linhas · {chips.length} filtros</p>
                             </div>
                         </div>
 
-                        {/* Toggle de colunas */}
+                        {/* Toggle de colunas — mostra na ordem atual, arrastar para reordenar */}
                         <div className="flex flex-wrap gap-1.5 mb-2">
-                            {COLUNAS.map(c => (
-                                <button key={c.id} onClick={() => toggleCol(c.id)}
-                                    className={`px-2.5 py-1 text-xs rounded-full border font-medium transition-colors ${
-                                        colsVisiveis.has(c.id)
-                                            ? 'bg-indigo-600 text-white border-indigo-600'
-                                            : 'bg-white text-gray-500 border-gray-300 hover:border-gray-400'
-                                    }`}>
-                                    {c.label}
-                                </button>
-                            ))}
+                            {colOrdem.map(id => {
+                                const c = COLUNAS.find(col => col.id === id);
+                                if (!c) return null;
+                                return (
+                                    <button key={c.id} onClick={() => toggleCol(c.id)}
+                                        draggable
+                                        onDragStart={() => handleDragStart(c.id)}
+                                        onDragOver={e => handleDragOver(e, c.id)}
+                                        onDragEnd={handleDragEnd}
+                                        className={`px-2.5 py-1 text-xs rounded-full border font-medium transition-colors cursor-grab active:cursor-grabbing ${
+                                            colsVisiveis.has(c.id)
+                                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                                : 'bg-white text-gray-500 border-gray-300 hover:border-gray-400'
+                                        }`}>
+                                        {c.label}
+                                    </button>
+                                );
+                            })}
                         </div>
 
                         {/* Chips de filtros ativos por coluna */}
@@ -525,16 +585,18 @@ export default function RelatorioVendas() {
                                             const temFiltro = filtrosAtivos[col.id] && filtrosAtivos[col.id].size > 0;
                                             return (
                                                 <th key={col.id}
-                                                    className={`px-2 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wider select-none relative ${col.align === 'right' ? 'text-right' : 'text-left'}`}>
+                                                    draggable
+                                                    onDragStart={() => handleDragStart(col.id)}
+                                                    onDragOver={e => handleDragOver(e, col.id)}
+                                                    onDragEnd={handleDragEnd}
+                                                    className={`px-2 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wider select-none relative cursor-grab active:cursor-grabbing ${col.align === 'right' ? 'text-right' : 'text-left'}`}>
                                                     <div className={`flex items-center gap-1 ${col.align === 'right' ? 'justify-end' : ''}`}>
-                                                        {/* Sort */}
                                                         <button
                                                             onClick={(e) => handleSort(col, e)}
                                                             className="flex items-center gap-1 hover:text-indigo-700">
                                                             {col.label}
                                                             <SortIcon col={col} sortCol={sortCol} sortDir={sortDir} />
                                                         </button>
-                                                        {/* Filtro por coluna */}
                                                         {col.filtravel && (
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); setDropdownAberto(d => d === col.id ? null : col.id); }}
@@ -544,8 +606,6 @@ export default function RelatorioVendas() {
                                                             </button>
                                                         )}
                                                     </div>
-
-                                                    {/* Dropdown */}
                                                     {dropdownAberto === col.id && (
                                                         <FilterDropdown
                                                             col={col}
@@ -561,16 +621,21 @@ export default function RelatorioVendas() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                    {dadosFiltrados.map(row => (
-                                        <tr key={row.id} className="hover:bg-gray-50">
+                                    {dadosAgrupados.map(row => (
+                                        <tr key={row._key} className="hover:bg-gray-50">
                                             {colsAtivas.map(col => {
                                                 const val = row[col.field];
                                                 return (
                                                     <td key={col.id}
                                                         className={`px-2 py-2 text-xs text-gray-800 ${col.align === 'right' ? 'text-right' : ''}`}>
                                                         {(col.id === 'data' || col.id === 'criacao') && fmtData(val)}
-                                                        {col.id === 'valor' && <span className="font-semibold">R$ {fmt(val)}</span>}
-                                                        {col.id === 'tipo'  && (
+                                                        {col.id === 'valor' && (
+                                                            <span className="font-semibold">
+                                                                R$ {fmt(val)}
+                                                                {row._count > 1 && <span className="ml-1 text-[10px] text-gray-400 font-normal">({row._count})</span>}
+                                                            </span>
+                                                        )}
+                                                        {col.id === 'tipo' && (
                                                             <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${TIPO_BADGE[val] || 'bg-gray-100 text-gray-700'}`}>{val}</span>
                                                         )}
                                                         {!['data','criacao','valor','tipo'].includes(col.id) && (val || '-')}
@@ -580,12 +645,12 @@ export default function RelatorioVendas() {
                                         </tr>
                                     ))}
                                 </tbody>
-                                {dadosFiltrados.length > 0 && (
+                                {dadosAgrupados.length > 0 && (
                                     <tfoot className="border-t-2 border-gray-200 bg-gray-50">
                                         <tr>
-                                            {colsAtivas.map(col => (
+                                            {colsAtivas.map((col, i) => (
                                                 <td key={col.id} className={`px-2 py-2 text-xs font-semibold text-gray-700 ${col.align === 'right' ? 'text-right' : ''}`}>
-                                                    {col.id === 'criacao' && `${dadosFiltrados.length} reg.`}
+                                                    {i === 0 && `${dadosAgrupados.length} linhas`}
                                                     {col.id === 'valor' && `R$ ${fmt(totalFiltrado)}`}
                                                 </td>
                                             ))}
@@ -593,13 +658,13 @@ export default function RelatorioVendas() {
                                     </tfoot>
                                 )}
                             </table>
-                            {dadosFiltrados.length === 0 && (
+                            {dadosAgrupados.length === 0 && (
                                 <p className="text-center text-gray-400 py-10">Nenhum registro com os filtros ativos.</p>
                             )}
                         </div>
 
                         <p className="text-xs text-gray-400 mt-2 text-center">
-                            Clique no ícone <ListFilter className="h-3 w-3 inline" /> para filtrar por coluna · Clique no nome da coluna para ordenar
+                            Arraste as pílulas ou os cabeçalhos para reordenar · <ListFilter className="h-3 w-3 inline" /> filtra · clique no nome ordena · ocultar coluna agrupa os dados
                         </p>
                     </>
                 )}
@@ -631,7 +696,7 @@ export default function RelatorioVendas() {
                                     dataVendaDe && `Venda: ${fmtData(dataVendaDe)} a ${fmtData(dataVendaAte || dataVendaDe)}`,
                                     situacaoCA  && `Situação: ${situacaoCA}`,
                                     chips.length && `Filtros: ${chips.map(c => `${c.label} (${c.qtd}/${c.total})`).join(', ')}`,
-                                    `Total: ${dadosFiltrados.length} pedidos · R$ ${fmt(totalFiltrado)}`
+                                    `Total: ${dadosFiltrados.length} pedidos · ${dadosAgrupados.length} linhas · R$ ${fmt(totalFiltrado)}`
                                 ].filter(Boolean).join(' | ')}
                             </div>
                             <table>
@@ -639,14 +704,14 @@ export default function RelatorioVendas() {
                                     <tr>{colsAtivas.map(col => <th key={col.id} style={{ textAlign: col.align || 'left' }}>{col.label}</th>)}</tr>
                                 </thead>
                                 <tbody>
-                                    {dadosFiltrados.map(row => (
-                                        <tr key={row.id}>
+                                    {dadosAgrupados.map(row => (
+                                        <tr key={row._key}>
                                             {colsAtivas.map(col => {
                                                 const val = row[col.field];
                                                 return (
                                                     <td key={col.id} className={col.align === 'right' ? 'num' : ''}>
                                                         {(col.id === 'data' || col.id === 'criacao') ? fmtData(val)
-                                                        : col.id === 'valor' ? `R$ ${fmt(val)}`
+                                                        : col.id === 'valor' ? `R$ ${fmt(val)}${row._count > 1 ? ` (${row._count})` : ''}`
                                                         : val || '-'}
                                                     </td>
                                                 );
@@ -656,9 +721,9 @@ export default function RelatorioVendas() {
                                 </tbody>
                                 <tfoot>
                                     <tr>
-                                        {colsAtivas.map(col => (
+                                        {colsAtivas.map((col, i) => (
                                             <td key={col.id} className={col.align === 'right' ? 'num' : ''}>
-                                                {col.id === 'criacao' && `${dadosFiltrados.length} registros`}
+                                                {i === 0 && `${dadosAgrupados.length} linhas`}
                                                 {col.id === 'valor' && `R$ ${fmt(totalFiltrado)}`}
                                             </td>
                                         ))}
