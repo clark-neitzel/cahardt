@@ -398,37 +398,65 @@ export default function RelatorioVendas() {
 
     const temDados = pedidos.length > 0;
 
+    // Altura do header fixo em px — usada no padding-top do conteúdo e no top do thead
+    const HEADER_H = 57;
+
     return (
         <>
-            <div className="container mx-auto px-3 sm:px-4 max-w-6xl py-4 sm:py-6">
-                {/* Header — sticky funciona agora que App.jsx usa overflow-x-clip */}
-                <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-100 -mx-3 sm:-mx-4 px-3 sm:px-4 py-3 mb-4 print:hidden">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <BarChart2 className="h-6 w-6 text-indigo-600 flex-shrink-0" />
-                            <h1 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">Relatório de Vendas</h1>
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                            {temDados && <>
-                                <button onClick={() => setShowPrint(true)}
-                                    className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-700 text-white rounded-md hover:bg-gray-800 font-medium">
-                                    <Printer className="h-4 w-4" />
-                                    <span className="hidden sm:inline">Imprimir</span>
-                                </button>
-                                <button onClick={exportarCSV}
-                                    className="flex items-center gap-1.5 px-3 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 font-medium">
-                                    <Download className="h-4 w-4" />
-                                    <span className="hidden sm:inline">CSV</span>
-                                </button>
-                            </>}
-                            <button onClick={() => setShowFiltros(!showFiltros)}
-                                className="flex items-center gap-1.5 px-2.5 py-2 text-sm bg-white border rounded-md hover:bg-gray-50">
-                                <Filter className="h-4 w-4" />
-                                <span className="hidden sm:inline">Filtros</span>
-                            </button>
-                        </div>
-                    </div>
+            {/*
+              Header FIXO no desktop. Usa position:fixed com left:64px (largura do sidebar md:w-16).
+              No mobile o sidebar não existe e o top-nav já tem z-50, então ocultamos com md:flex.
+            */}
+            <div
+                className="hidden md:flex fixed top-0 left-16 right-0 z-40 bg-white border-b border-gray-100 shadow-sm items-center justify-between px-6 print:hidden"
+                style={{ height: HEADER_H }}>
+                <div className="flex items-center gap-2 min-w-0">
+                    <BarChart2 className="h-6 w-6 text-indigo-600 flex-shrink-0" />
+                    <h1 className="text-2xl font-bold text-gray-800 truncate">Relatório de Vendas</h1>
                 </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    {temDados && <>
+                        <button onClick={() => setShowPrint(true)}
+                            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-700 text-white rounded-md hover:bg-gray-800 font-medium">
+                            <Printer className="h-4 w-4" /> Imprimir
+                        </button>
+                        <button onClick={exportarCSV}
+                            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 font-medium">
+                            <Download className="h-4 w-4" /> CSV
+                        </button>
+                    </>}
+                    <button onClick={() => setShowFiltros(!showFiltros)}
+                        className="flex items-center gap-1.5 px-2.5 py-2 text-sm bg-white border rounded-md hover:bg-gray-50">
+                        <Filter className="h-4 w-4" /> Filtros
+                    </button>
+                </div>
+            </div>
+
+            {/* Header mobile — fluxo normal (não fixo) */}
+            <div className="md:hidden flex items-center justify-between px-3 py-3 mb-3 border-b border-gray-100 print:hidden">
+                <div className="flex items-center gap-2 min-w-0">
+                    <BarChart2 className="h-5 w-5 text-indigo-600 flex-shrink-0" />
+                    <h1 className="text-lg font-bold text-gray-800 truncate">Relatório de Vendas</h1>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    {temDados && <>
+                        <button onClick={() => setShowPrint(true)} className="flex items-center gap-1 px-2.5 py-1.5 text-sm bg-gray-700 text-white rounded-md hover:bg-gray-800">
+                            <Printer className="h-4 w-4" />
+                        </button>
+                        <button onClick={exportarCSV} className="flex items-center gap-1 px-2.5 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700">
+                            <Download className="h-4 w-4" />
+                        </button>
+                    </>}
+                    <button onClick={() => setShowFiltros(!showFiltros)} className="flex items-center gap-1 px-2.5 py-1.5 text-sm bg-white border rounded-md hover:bg-gray-50">
+                        <Filter className="h-4 w-4" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Espaçador no desktop para empurrar conteúdo abaixo do header fixo */}
+            <div className="hidden md:block" style={{ height: HEADER_H }} />
+
+            <div className="container mx-auto px-3 sm:px-4 max-w-6xl">
 
                 {/* Painel de filtros */}
                 {showFiltros && (
@@ -582,7 +610,7 @@ export default function RelatorioVendas() {
                         {/* Tabela */}
                         <div className="bg-white rounded-lg border shadow-sm">
                             <table className="w-full text-sm">
-                                <thead className="bg-gray-50 border-b sticky top-[57px] z-10">
+                                <thead className="bg-gray-50 border-b md:sticky md:top-[57px] z-10">
                                     <tr>
                                         {colsAtivas.map(col => {
                                             const temFiltro = filtrosAtivos[col.id] && filtrosAtivos[col.id].size > 0;
