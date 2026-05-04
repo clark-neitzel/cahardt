@@ -400,9 +400,10 @@ export default function RelatorioVendas() {
 
     return (
         <>
-            <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-6xl">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <div className="container mx-auto px-3 sm:px-4 max-w-6xl">
+                {/* Header — sticky no desktop */}
+                <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-100 py-3 sm:py-4 mb-4 sm:mb-5 -mx-3 sm:-mx-4 px-3 sm:px-4">
+                <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0">
                         <BarChart2 className="h-6 w-6 text-indigo-600 flex-shrink-0" />
                         <h1 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">Relatório de Vendas</h1>
@@ -426,6 +427,7 @@ export default function RelatorioVendas() {
                             <span className="hidden sm:inline">Filtros</span>
                         </button>
                     </div>
+                </div>
                 </div>
 
                 {/* Painel de filtros */}
@@ -580,7 +582,7 @@ export default function RelatorioVendas() {
                         {/* Tabela */}
                         <div className="bg-white rounded-lg border shadow-sm">
                             <table className="w-full text-sm">
-                                <thead className="bg-gray-50 border-b">
+                                <thead className="bg-gray-50 border-b sticky top-[57px] z-10">
                                     <tr>
                                         {colsAtivas.map(col => {
                                             const temFiltro = filtrosAtivos[col.id] && filtrosAtivos[col.id].size > 0;
