@@ -38,12 +38,28 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
         fetchDetalhes();
     }, [embarqueId]);
 
-    const handleRemover = async (pedidoId) => {
+    const handleRemover = async (pedido) => {
+        const statusLabels = {
+            ENTREGUE: 'Entregue',
+            ENTREGUE_PARCIAL: 'Entregue Parcialmente',
+            DEVOLVIDO: 'Devolvido',
+        };
+        if (pedido.statusEntrega && pedido.statusEntrega !== 'PENDENTE') {
+            const label = statusLabels[pedido.statusEntrega] || pedido.statusEntrega;
+            alert(
+                `Este pedido não pode ser removido do embarque.\n\n` +
+                `Status atual: "${label}"\n\n` +
+                `O motorista já registrou a entrega (ou devolução) deste pedido na rua. ` +
+                `Para retirar do romaneio, primeiro desfaça a entrega no sistema.`
+            );
+            return;
+        }
+
         if (!window.confirm('Tem certeza que deseja retirar essa NF do caminhão?')) return;
 
         try {
-            setRemoverLoader(pedidoId);
-            await embarqueService.removerPedido(embarqueId, pedidoId);
+            setRemoverLoader(pedido.id);
+            await embarqueService.removerPedido(embarqueId, pedido.id);
             toast.success('Nota Fiscal removida da doca.');
             fetchDetalhes();
             if (onUpdated) onUpdated();
@@ -528,7 +544,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                                 </td>
                                                 <td className="px-4 py-4 whitespace-nowrap text-right text-sm">
                                                     <button
-                                                        onClick={() => handleRemover(p.id)}
+                                                        onClick={() => handleRemover(p)}
                                                         disabled={removerLoader === p.id}
                                                         className="text-red-500 hover:text-red-700 disabled:opacity-50"
                                                         title="Remover do Embarque (Volta pra doca)"
