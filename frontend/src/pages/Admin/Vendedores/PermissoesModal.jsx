@@ -6,7 +6,7 @@ import {
     Box, UserCog, Car, RefreshCw, FileText,
     Settings, DollarSign, Warehouse, TrendingUp,
     Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3, BarChart2,
-    Clock, CalendarOff
+    Clock, CalendarOff, ClipboardCheck
 } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import configService from '../../../services/configService';
@@ -298,7 +298,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
 
     // Count active permissions per department for badges
     const countVendas = [
-        permissoes.catalogo?.view, permissoes.pedidos?.view, permissoes.rota?.view, permissoes.clientes?.view, permissoes.relatorioVendas
+        permissoes.catalogo?.view, permissoes.pedidos?.view, permissoes.rota?.view, permissoes.clientes?.view, permissoes.relatorioVendas, permissoes.Pode_Ver_Atendimentos
     ].filter(Boolean).length;
     const countLogistica = [
         permissoes.Pode_Acessar_Embarque, permissoes.Pode_Ver_Todas_Entregas, permissoes.Pode_Executar_Entregas
@@ -451,6 +451,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         <MenuToggle icon={FileText} label="Relatórios" checked={!!permissoes.pedidos?.view} onChange={() => toggleView('pedidos')} />
                         <MenuToggle icon={BarChart2} label="Rel. Vendas" checked={!!permissoes.relatorioVendas} onChange={() => toggleBool('relatorioVendas')} />
                         <MenuToggle icon={Map} label="Rota" checked={!!permissoes.pedidos?.view} onChange={() => toggleView('pedidos')} />
+                        <MenuToggle icon={ClipboardCheck} label="Atendimentos" checked={!!permissoes.Pode_Ver_Atendimentos} onChange={() => toggleBool('Pode_Ver_Atendimentos')} />
                         <MenuToggle icon={Target} label="Leads" checked={!!permissoes.rota?.view} onChange={() => toggleView('rota')} />
                         <MenuToggle icon={Users} label="Clientes" checked={!!permissoes.clientes?.view} onChange={() => toggleView('clientes')} />
 
@@ -505,8 +506,6 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                     label="Pode Excluir Leads" sublabel="Permite excluir leads permanentemente (ação irreversível)" />
                                 <Toggle checked={!!permissoes.Pode_Editar_GPS} onChange={() => toggleBool('Pode_Editar_GPS')}
                                     label="Editar GPS de Clientes" sublabel="Capturar e salvar localização GPS dos clientes na rota" />
-                                <Toggle checked={!!permissoes.Pode_Ver_Atendimentos} onChange={() => toggleBool('Pode_Ver_Atendimentos')}
-                                    label="Painel de Atendimentos" sublabel="Acesso ao painel completo com historico de todos os atendimentos" />
                                 <Toggle checked={!!permissoes.Pode_Ver_Analise_IA} onChange={() => toggleBool('Pode_Ver_Analise_IA')}
                                     label="Análise IA" sublabel="Acesso ao painel de auditoria das análises geradas pela IA" icon={Lightbulb} colorClass="bg-violet-600" />
                                 <Toggle checked={!!permissoes.Pode_Usar_IA_Orientacao} onChange={() => toggleBool('Pode_Usar_IA_Orientacao')}
