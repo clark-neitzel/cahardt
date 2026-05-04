@@ -6,10 +6,11 @@ import toast from 'react-hot-toast';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (v) => v ? new Date(v + 'T12:00:00').toLocaleDateString('pt-BR') : '-';
-const STORAGE_KEY = 'relatorio-vendas-v3';
+const STORAGE_KEY = 'relatorio-vendas-v4';
 
 const COLUNAS = [
-    { id: 'data',     label: 'Data',      field: 'dataVenda',             tipo: 'data',   filtravel: false },
+    { id: 'criacao',  label: 'Criação',   field: 'dataCriacao',           tipo: 'data',   filtravel: false },
+    { id: 'data',     label: 'Dt Venda',  field: 'dataVenda',             tipo: 'data',   filtravel: false },
     { id: 'cliente',  label: 'Cliente',   field: 'clienteNome',           tipo: 'texto',  filtravel: true  },
     { id: 'valor',    label: 'Valor',     field: 'valorTotal',            tipo: 'numero', filtravel: false, align: 'right' },
     { id: 'condicao', label: 'Condição',  field: 'nomeCondicaoPagamento', tipo: 'texto',  filtravel: true  },
@@ -186,6 +187,8 @@ export default function RelatorioVendas() {
 
     const [dataVendaDe,        setDataVendaDe]        = useState(saved.dataVendaDe        ?? '');
     const [dataVendaAte,       setDataVendaAte]       = useState(saved.dataVendaAte       ?? '');
+    const [dataCriacaoDe,      setDataCriacaoDe]      = useState(saved.dataCriacaoDe      ?? '');
+    const [dataCriacaoAte,     setDataCriacaoAte]     = useState(saved.dataCriacaoAte     ?? '');
     const [vendedorId,         setVendedorId]         = useState(saved.vendedorId         ?? '');
     const [situacaoCA,         setSituacaoCA]         = useState(saved.situacaoCA         ?? 'FATURADO');
     const [excluirBonificacao, setExcluirBonificacao] = useState(saved.excluirBonificacao ?? 'true');
@@ -205,8 +208,8 @@ export default function RelatorioVendas() {
     }, [podeVerTodos]);
 
     useEffect(() => {
-        salvar({ dataVendaDe, dataVendaAte, vendedorId, situacaoCA, excluirBonificacao });
-    }, [dataVendaDe, dataVendaAte, vendedorId, situacaoCA, excluirBonificacao]);
+        salvar({ dataVendaDe, dataVendaAte, dataCriacaoDe, dataCriacaoAte, vendedorId, situacaoCA, excluirBonificacao });
+    }, [dataVendaDe, dataVendaAte, dataCriacaoDe, dataCriacaoAte, vendedorId, situacaoCA, excluirBonificacao]);
 
     const fetchRelatorio = useCallback(async () => {
         try {
@@ -214,6 +217,8 @@ export default function RelatorioVendas() {
             const params = {};
             if (dataVendaDe)        params.dataVendaDe        = dataVendaDe;
             if (dataVendaAte)       params.dataVendaAte       = dataVendaAte;
+            if (dataCriacaoDe)      params.dataCriacaoDe      = dataCriacaoDe;
+            if (dataCriacaoAte)     params.dataCriacaoAte     = dataCriacaoAte;
             if (vendedorId)         params.vendedorId         = vendedorId;
             if (situacaoCA)         params.situacaoCA         = situacaoCA;
             if (excluirBonificacao) params.excluirBonificacao = excluirBonificacao;
@@ -227,10 +232,11 @@ export default function RelatorioVendas() {
         } finally {
             setLoading(false);
         }
-    }, [dataVendaDe, dataVendaAte, vendedorId, situacaoCA, excluirBonificacao]);
+    }, [dataVendaDe, dataVendaAte, dataCriacaoDe, dataCriacaoAte, vendedorId, situacaoCA, excluirBonificacao]);
 
     const limpar = () => {
         setDataVendaDe(''); setDataVendaAte('');
+        setDataCriacaoDe(''); setDataCriacaoAte('');
         setVendedorId(''); setSituacaoCA('FATURADO'); setExcluirBonificacao('true');
         localStorage.removeItem(STORAGE_KEY);
     };
@@ -353,16 +359,27 @@ export default function RelatorioVendas() {
                 {/* Painel de filtros */}
                 {showFiltros && (
                     <div className="bg-white rounded-lg shadow-sm border p-3 sm:p-4 mb-4">
-                        <div className="flex items-end gap-2 mb-3">
-                            <div className="flex-1">
-                                <label className="text-xs text-gray-500 font-medium">Data Venda</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                            {/* Data Venda */}
+                            <div>
+                                <label className="text-xs text-gray-500 font-medium">Data Venda De</label>
                                 <input type="date" value={dataVendaDe} onChange={e => setDataVendaDe(e.target.value)}
                                     className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
                             </div>
-                            <span className="text-gray-400 text-sm pb-2">até</span>
-                            <div className="flex-1">
-                                <label className="text-xs text-gray-500 font-medium invisible">até</label>
+                            <div>
+                                <label className="text-xs text-gray-500 font-medium">Data Venda Até</label>
                                 <input type="date" value={dataVendaAte} onChange={e => setDataVendaAte(e.target.value)}
+                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
+                            </div>
+                            {/* Data Criação */}
+                            <div>
+                                <label className="text-xs text-gray-500 font-medium">Data Criação De</label>
+                                <input type="date" value={dataCriacaoDe} onChange={e => setDataCriacaoDe(e.target.value)}
+                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-500 font-medium">Data Criação Até</label>
+                                <input type="date" value={dataCriacaoAte} onChange={e => setDataCriacaoAte(e.target.value)}
                                     className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
                             </div>
                         </div>
@@ -532,12 +549,12 @@ export default function RelatorioVendas() {
                                                 return (
                                                     <td key={col.id}
                                                         className={`px-3 py-2 text-sm whitespace-nowrap text-gray-800 ${col.align === 'right' ? 'text-right' : ''}`}>
-                                                        {col.id === 'data'  && fmtData(val)}
+                                                        {(col.id === 'data' || col.id === 'criacao') && fmtData(val)}
                                                         {col.id === 'valor' && <span className="font-semibold">R$ {fmt(val)}</span>}
                                                         {col.id === 'tipo'  && (
                                                             <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${TIPO_BADGE[val] || 'bg-gray-100 text-gray-700'}`}>{val}</span>
                                                         )}
-                                                        {!['data','valor','tipo'].includes(col.id) && (val || '-')}
+                                                        {!['data','criacao','valor','tipo'].includes(col.id) && (val || '-')}
                                                     </td>
                                                 );
                                             })}
@@ -549,7 +566,7 @@ export default function RelatorioVendas() {
                                         <tr>
                                             {colsAtivas.map(col => (
                                                 <td key={col.id} className={`px-3 py-2 text-xs font-semibold text-gray-700 ${col.align === 'right' ? 'text-right' : ''}`}>
-                                                    {col.id === 'data'  && `${dadosFiltrados.length} reg.`}
+                                                    {col.id === 'criacao' && `${dadosFiltrados.length} reg.`}
                                                     {col.id === 'valor' && `R$ ${fmt(totalFiltrado)}`}
                                                 </td>
                                             ))}
@@ -609,7 +626,7 @@ export default function RelatorioVendas() {
                                                 const val = row[col.field];
                                                 return (
                                                     <td key={col.id} className={col.align === 'right' ? 'num' : ''}>
-                                                        {col.id === 'data'  ? fmtData(val)
+                                                        {(col.id === 'data' || col.id === 'criacao') ? fmtData(val)
                                                         : col.id === 'valor' ? `R$ ${fmt(val)}`
                                                         : val || '-'}
                                                     </td>
@@ -622,7 +639,7 @@ export default function RelatorioVendas() {
                                     <tr>
                                         {colsAtivas.map(col => (
                                             <td key={col.id} className={col.align === 'right' ? 'num' : ''}>
-                                                {col.id === 'data'  && `${dadosFiltrados.length} registros`}
+                                                {col.id === 'criacao' && `${dadosFiltrados.length} registros`}
                                                 {col.id === 'valor' && `R$ ${fmt(totalFiltrado)}`}
                                             </td>
                                         ))}
