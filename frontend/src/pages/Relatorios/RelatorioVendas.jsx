@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (v) => v ? new Date(v + 'T12:00:00').toLocaleDateString('pt-BR') : '-';
-const STORAGE_KEY = 'relatorio-vendas-v2';
+const STORAGE_KEY = 'relatorio-vendas-v3';
 
 const COLUNAS = [
     { id: 'data',     label: 'Data',      field: 'dataVenda',             tipo: 'data',   filtravel: false },
@@ -73,8 +73,6 @@ export default function RelatorioVendas() {
     const [vendedores, setVendedores] = useState([]);
 
     // Filtros do painel
-    const [dataCriacaoDe,     setDataCriacaoDe]     = useState(saved.dataCriacaoDe     ?? '');
-    const [dataCriacaoAte,    setDataCriacaoAte]    = useState(saved.dataCriacaoAte    ?? '');
     const [dataVendaDe,       setDataVendaDe]       = useState(saved.dataVendaDe       ?? '');
     const [dataVendaAte,      setDataVendaAte]      = useState(saved.dataVendaAte      ?? '');
     const [vendedorId,        setVendedorId]        = useState(saved.vendedorId        ?? '');
@@ -94,15 +92,13 @@ export default function RelatorioVendas() {
     }, [podeVerTodos]);
 
     useEffect(() => {
-        salvar({ dataCriacaoDe, dataCriacaoAte, dataVendaDe, dataVendaAte, vendedorId, situacaoCA, excluirBonificacao });
-    }, [dataCriacaoDe, dataCriacaoAte, dataVendaDe, dataVendaAte, vendedorId, situacaoCA, excluirBonificacao]);
+        salvar({ dataVendaDe, dataVendaAte, vendedorId, situacaoCA, excluirBonificacao });
+    }, [dataVendaDe, dataVendaAte, vendedorId, situacaoCA, excluirBonificacao]);
 
     const fetchRelatorio = useCallback(async () => {
         try {
             setLoading(true);
             const params = {};
-            if (dataCriacaoDe)      params.dataCriacaoDe     = dataCriacaoDe;
-            if (dataCriacaoAte)     params.dataCriacaoAte    = dataCriacaoAte;
             if (dataVendaDe)        params.dataVendaDe       = dataVendaDe;
             if (dataVendaAte)       params.dataVendaAte      = dataVendaAte;
             if (vendedorId)         params.vendedorId        = vendedorId;
@@ -118,10 +114,10 @@ export default function RelatorioVendas() {
         } finally {
             setLoading(false);
         }
-    }, [dataCriacaoDe, dataCriacaoAte, dataVendaDe, dataVendaAte, vendedorId, situacaoCA, excluirBonificacao]);
+    }, [dataVendaDe, dataVendaAte, vendedorId, situacaoCA, excluirBonificacao]);
 
     const limpar = () => {
-        setDataCriacaoDe(''); setDataCriacaoAte(''); setDataVendaDe(''); setDataVendaAte('');
+        setDataVendaDe(''); setDataVendaAte('');
         setVendedorId(''); setSituacaoCA('FATURADO'); setExcluirBonificacao('true');
         localStorage.removeItem(STORAGE_KEY);
     };
@@ -246,27 +242,22 @@ export default function RelatorioVendas() {
                 {/* Filtros */}
                 {showFiltros && (
                     <div className="bg-white rounded-lg shadow-sm border p-3 sm:p-4 mb-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            <div>
-                                <label className="text-xs text-gray-500 font-medium">Data Criação - De</label>
-                                <input type="date" value={dataCriacaoDe} onChange={e => setDataCriacaoDe(e.target.value)}
-                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-500 font-medium">Data Criação - Até</label>
-                                <input type="date" value={dataCriacaoAte} onChange={e => setDataCriacaoAte(e.target.value)}
-                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-500 font-medium">Data Venda - De</label>
+                        {/* Linha 1: período */}
+                        <div className="flex items-end gap-2 mb-3">
+                            <div className="flex-1">
+                                <label className="text-xs text-gray-500 font-medium">Data Venda</label>
                                 <input type="date" value={dataVendaDe} onChange={e => setDataVendaDe(e.target.value)}
                                     className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
                             </div>
-                            <div>
-                                <label className="text-xs text-gray-500 font-medium">Data Venda - Até</label>
+                            <span className="text-gray-400 text-sm pb-2">até</span>
+                            <div className="flex-1">
+                                <label className="text-xs text-gray-500 font-medium">&nbsp;</label>
                                 <input type="date" value={dataVendaAte} onChange={e => setDataVendaAte(e.target.value)}
                                     className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
                             </div>
+                        </div>
+                        {/* Linha 2: demais filtros */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             {podeVerTodos && (
                                 <div>
                                     <label className="text-xs text-gray-500 font-medium">Vendedor</label>
@@ -470,8 +461,7 @@ export default function RelatorioVendas() {
                             <h1>RELATÓRIO DE VENDAS</h1>
                             <div className="sub">
                                 {[
-                                    dataCriacaoDe && `Criação: ${fmtData(dataCriacaoDe)} a ${fmtData(dataCriacaoAte || dataCriacaoDe)}`,
-                                    dataVendaDe   && `Venda: ${fmtData(dataVendaDe)} a ${fmtData(dataVendaAte || dataVendaDe)}`,
+                                    dataVendaDe && `Venda: ${fmtData(dataVendaDe)} a ${fmtData(dataVendaAte || dataVendaDe)}`,
                                     situacaoCA    && `Situação: ${situacaoCA}`,
                                     chips.length  && `Filtros: ${chips.map(c => `${c.label}=${c.val}`).join(', ')}`,
                                     `Total: ${dadosFiltrados.length} pedidos · R$ ${fmt(totalFiltrado)}`
