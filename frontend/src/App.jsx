@@ -187,7 +187,7 @@ const Layout = ({ children }) => {
           {hasPermission('catalogo') && <SidebarItem to="/catalogo" icon={BookOpen} label="Catálogo" />}
           {hasPermission('pedidos') && <SidebarItem to="/pedidos" icon={ClipboardList} label="Pedidos" />}
           {hasPermission('pedidos') && <SidebarItem to="/relatorios/pedidos" icon={FileText} label="Rel. Pedidos" />}
-          {hasPermission('pedidos') && <SidebarItem to="/relatorios/vendas" icon={BarChart2} label="Rel. Vendas" />}
+          {hasPermission('vendedores') && <SidebarItem to="/relatorios/vendas" icon={BarChart2} label="Rel. Vendas" />}
           {hasPermission('delivery') && <SidebarItem to="/delivery" icon={Truck} label="Delivery" />}
           {hasPermission('pedidos') && <SidebarItem to="/rota" icon={Map} label="Rota" />}
           {hasPermission('rota') && <SidebarItem to="/leads" icon={Target} label="Leads" />}
@@ -329,7 +329,7 @@ const Layout = ({ children }) => {
               {hasPermission('catalogo') && <NavLink to="/catalogo" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Catálogo</NavLink>}
               {hasPermission('pedidos') && <NavLink to="/pedidos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Pedidos</NavLink>}
               {hasPermission('pedidos') && <NavLink to="/relatorios/pedidos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rel. Pedidos</NavLink>}
-              {hasPermission('pedidos') && <NavLink to="/relatorios/vendas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rel. Vendas</NavLink>}
+              {hasPermission('vendedores') && <NavLink to="/relatorios/vendas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rel. Vendas</NavLink>}
               {hasPermission('delivery') && <NavLink to="/delivery" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Delivery</NavLink>}
               {hasPermission('pedidos') && <NavLink to="/rota" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rota</NavLink>}
               {hasPermission('rota') && <NavLink to="/leads" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Leads</NavLink>}
@@ -465,7 +465,7 @@ function App() {
 
               {/* Relatórios */}
               <Route path="/relatorios/pedidos" element={<PrivateRoute tab="pedidos"><RelatorioPedidos /></PrivateRoute>} />
-              <Route path="/relatorios/vendas" element={<PrivateRoute tab="pedidos"><RelatorioVendas /></PrivateRoute>} />
+              <Route path="/relatorios/vendas" element={<PrivateRoute tab="vendedores"><RelatorioVendas /></PrivateRoute>} />
 
               {/* Delivery (Kit Festa) */}
               <Route path="/delivery" element={<PrivateRoute tab="delivery"><DeliveryKanban /></PrivateRoute>} />
