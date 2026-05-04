@@ -39,7 +39,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         const {
             status, clienteId, vencimentoDe, vencimentoAte, origem, busca, ordenarPor,
             vendedorId, condicaoPagamento, formaPagamento, statusParcela,
-            pagamentoDe, pagamentoAte, categoriaClienteId
+            pagamentoDe, pagamentoAte, categoriaClienteId, formaPagamentoEntrega
         } = req.query;
 
         const toList = (v) => (Array.isArray(v) ? v : String(v || '').split(',')).map(s => s.trim()).filter(Boolean);
@@ -80,13 +80,17 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             }
         ];
 
-        // Filtros via pedido (vendedor e condição de pagamento)
-        if (vendedorId || condicaoPagamento) {
+        // Filtros via pedido (vendedor, condição de pagamento e condição na entrega)
+        if (vendedorId || condicaoPagamento || formaPagamentoEntrega) {
             where.pedido = {};
             if (vendedorId) where.pedido.vendedorId = vendedorId;
             if (condicaoPagamento) {
                 const arr = toList(condicaoPagamento);
                 where.pedido.nomeCondicaoPagamento = arr.length > 1 ? { in: arr } : arr[0];
+            }
+            if (formaPagamentoEntrega) {
+                const arr = toList(formaPagamentoEntrega);
+                where.pedido.pagamentosReais = { some: { formaPagamentoNome: arr.length > 1 ? { in: arr } : arr[0], valor: { gt: 0 } } };
             }
         }
 
@@ -128,6 +132,10 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                         devolucoes: {
                             where: { status: 'ATIVA' },
                             select: { valorTotal: true, escopo: true, dataDevolucao: true, pdfBoletoUrl: true }
+                        },
+                        pagamentosReais: {
+                            where: { valor: { gt: 0 } },
+                            select: { formaPagamentoNome: true, valor: true, escritorioResponsavel: true, vendedorResponsavelId: true }
                         }
                     }
                 },
@@ -198,6 +206,12 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                 vendedorNome: c.pedido?.vendedor?.nome || null,
                 condicaoPagamento: c.pedido?.nomeCondicaoPagamento || null,
                 statusEntrega: c.pedido?.statusEntrega || null,
+                pagamentosEntrega: (c.pedido?.pagamentosReais || []).map(p => ({
+                    formaPagamentoNome: p.formaPagamentoNome,
+                    valor: Number(p.valor),
+                    escritorioResponsavel: p.escritorioResponsavel,
+                    vendedorResponsavelId: p.vendedorResponsavelId || null
+                })),
                 devolucaoFinalizada: c.pedido?.devolucaoFinalizada || false,
                 valorDevolvido: valorDevolvido > 0 ? Math.round(valorDevolvido * 100) / 100 : null,
                 devolucaoEscopo: devolucaoAtiva?.escopo || null,

@@ -9,7 +9,7 @@ import ClientePopup from '../Rota/ClientePopup';
 import {
     DollarSign, Search, Filter, X, RefreshCw, CheckCircle, Undo2,
     Download, ArrowUpDown, CheckSquare, Square, Link as LinkIcon,
-    ChevronDown, ChevronUp, MoreVertical
+    ChevronDown, ChevronUp, MoreVertical, Eye
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -68,6 +68,7 @@ const ContasReceberTabela = () => {
         vendedorId: saved.vendedorId || '',
         categoriaClienteId: saved.categoriaClienteId || '',
         condicaoPagamento: asArr(saved.condicaoPagamento),
+        formaPagamentoEntrega: asArr(saved.formaPagamentoEntrega),
         formaPagamento: asArr(saved.formaPagamento),
         vencDe: saved.vencDe || '',
         vencAte: saved.vencAte || '',
@@ -115,6 +116,13 @@ const ContasReceberTabela = () => {
         return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
     }, [linhas]);
 
+    // Formas de pagamento registradas na entrega
+    const formasEntregaUsadas = useMemo(() => {
+        const set = new Set();
+        linhas.forEach(l => { (l.pagamentosEntrega || []).forEach(p => { if (p.formaPagamentoNome) set.add(p.formaPagamentoNome); }); });
+        return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    }, [linhas]);
+
     const saveFilters = useCallback(() => {
         localStorage.setItem(LS_KEY, JSON.stringify(filtros));
     }, [filtros]);
@@ -134,6 +142,7 @@ const ContasReceberTabela = () => {
             if (filtros.vendedorId) params.vendedorId = filtros.vendedorId;
             if (filtros.categoriaClienteId) params.categoriaClienteId = filtros.categoriaClienteId;
             if (filtros.condicaoPagamento.length) params.condicaoPagamento = filtros.condicaoPagamento.join(',');
+            if (filtros.formaPagamentoEntrega.length) params.formaPagamentoEntrega = filtros.formaPagamentoEntrega.join(',');
             if (filtros.formaPagamento.length) params.formaPagamento = filtros.formaPagamento.join(',');
             if (filtros.vencDe) params.vencimentoDe = filtros.vencDe;
             if (filtros.vencAte) params.vencimentoAte = filtros.vencAte;
@@ -156,6 +165,8 @@ const ContasReceberTabela = () => {
                         idVendaContaAzul: c.idVendaContaAzul,
                         origem: c.origem,
                         condicaoPagamento: c.condicaoPagamento,
+                        statusEntrega: c.statusEntrega,
+                        pagamentosEntrega: c.pagamentosEntrega || [],
                         vendedorNome: c.vendedorNome,
                         vendedorId: c.vendedorId,
                         statusConta: c.status,
@@ -193,7 +204,7 @@ const ContasReceberTabela = () => {
     const filtrosKey = JSON.stringify({
         status: filtros.status, statusParcela: filtros.statusParcela, origem: filtros.origem,
         vendedorId: filtros.vendedorId, categoriaClienteId: filtros.categoriaClienteId,
-        condicaoPagamento: filtros.condicaoPagamento,
+        condicaoPagamento: filtros.condicaoPagamento, formaPagamentoEntrega: filtros.formaPagamentoEntrega,
         formaPagamento: filtros.formaPagamento, vencDe: filtros.vencDe, vencAte: filtros.vencAte,
         pagDe: filtros.pagDe, pagAte: filtros.pagAte
     });
@@ -206,7 +217,7 @@ const ContasReceberTabela = () => {
     const limparFiltros = () => {
         setFiltros({
             busca: '', status: [], statusParcela: [], origem: '', vendedorId: '', categoriaClienteId: '',
-            condicaoPagamento: [], formaPagamento: [], vencDe: '', vencAte: '', pagDe: '', pagAte: ''
+            condicaoPagamento: [], formaPagamentoEntrega: [], formaPagamento: [], vencDe: '', vencAte: '', pagDe: '', pagAte: ''
         });
         localStorage.removeItem(LS_KEY);
         // fetchData é disparado pelo useEffect acima quando filtrosKey muda.
@@ -401,6 +412,7 @@ const ContasReceberTabela = () => {
             if (filtros.origem) params.origem = filtros.origem;
             if (filtros.vendedorId) params.vendedorId = filtros.vendedorId;
             if (filtros.condicaoPagamento.length) params.condicaoPagamento = filtros.condicaoPagamento.join(',');
+            if (filtros.formaPagamentoEntrega.length) params.formaPagamentoEntrega = filtros.formaPagamentoEntrega.join(',');
             if (filtros.formaPagamento.length) params.formaPagamento = filtros.formaPagamento.join(',');
             if (filtros.pagDe) params.pagamentoDe = filtros.pagDe;
             if (filtros.pagAte) params.pagamentoAte = filtros.pagAte;
@@ -773,6 +785,15 @@ const ContasReceberTabela = () => {
                         />
                     </div>
                     <div>
+                        <label className="text-xs text-gray-500">Condição na Entrega</label>
+                        <MultiSelect
+                            label="Todas"
+                            options={formasEntregaUsadas}
+                            value={filtros.formaPagamentoEntrega}
+                            onChange={(v) => setFiltros(f => ({ ...f, formaPagamentoEntrega: v }))}
+                        />
+                    </div>
+                    <div>
                         <label className="text-xs text-gray-500">Forma Pgto (baixa)</label>
                         <MultiSelect
                             label="Todas"
@@ -973,6 +994,9 @@ const ContasReceberTabela = () => {
                                                         <RefreshCw className={`w-4 h-4 ${syncing === l.contaId ? 'animate-spin' : ''}`} />
                                                     </button>
                                                 )}
+                                                <button onClick={() => setDetalheLinha(l)} title="Ver detalhes" className="p-1 rounded hover:bg-gray-100 text-gray-600">
+                                                    <Eye className="w-4 h-4" />
+                                                </button>
                                                 {l.pedidoId && (
                                                     <button onClick={() => abrirPedido(l.pedidoId)} title="Ver pedido" className="p-1 rounded hover:bg-gray-100 text-gray-600">
                                                         <LinkIcon className="w-4 h-4" />
@@ -1153,6 +1177,31 @@ const ContasReceberTabela = () => {
                                     <Field label="Baixado por" value={l.baixadoPorNome} />
                                     <Field label="ID CA" value={l.idVendaContaAzul ? '✓ Sincronizado' : 'Não enviado'} />
                                 </div>
+
+                                {/* Pagamentos registrados na entrega */}
+                                {(l.pagamentosEntrega || []).length > 0 && (
+                                    <div className="border-t pt-3">
+                                        <div className="text-[11px] text-gray-500 uppercase tracking-wide mb-2">
+                                            Entrega — {l.statusEntrega || 'PENDENTE'}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            {l.pagamentosEntrega.map((pg, i) => (
+                                                <div key={i} className="flex items-center justify-between bg-gray-50 rounded px-2 py-1.5 text-sm">
+                                                    <span className="font-medium text-gray-800">{pg.formaPagamentoNome}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        {pg.escritorioResponsavel && (
+                                                            <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">Escritório resp.</span>
+                                                        )}
+                                                        {pg.vendedorResponsavelId && !pg.escritorioResponsavel && (
+                                                            <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Vendedor resp.</span>
+                                                        )}
+                                                        <span className="font-bold tabular-nums text-gray-900">R$ {fmt(pg.valor)}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <div className="sticky bottom-0 bg-white border-t px-4 py-3 flex flex-wrap gap-2 justify-end">
                                 {l.pedidoId && (
@@ -1334,6 +1383,27 @@ const ContasReceberTabela = () => {
                                             <div className="col-span-2">
                                                 <div className="text-[10px] text-gray-500 uppercase">Motivo Devolução</div>
                                                 <div className="text-red-700">{p.motivoDevolucao}</div>
+                                            </div>
+                                        )}
+                                        {(p.pagamentosReais || []).filter(x => Number(x.valor) > 0).length > 0 && (
+                                            <div className="col-span-2">
+                                                <div className="text-[10px] text-gray-500 uppercase mb-1">Pagamentos Registrados na Entrega</div>
+                                                <div className="space-y-1">
+                                                    {p.pagamentosReais.filter(x => Number(x.valor) > 0).map((pg, i) => (
+                                                        <div key={i} className="flex items-center justify-between bg-white border rounded px-2 py-1 text-xs">
+                                                            <span className="font-medium">{pg.formaPagamentoNome}</span>
+                                                            <div className="flex items-center gap-1.5">
+                                                                {pg.escritorioResponsavel && (
+                                                                    <span className="text-[10px] bg-orange-100 text-orange-700 px-1 rounded">Escritório resp.</span>
+                                                                )}
+                                                                {pg.vendedorResponsavelId && !pg.escritorioResponsavel && (
+                                                                    <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">Vendedor resp.</span>
+                                                                )}
+                                                                <span className="font-bold tabular-nums">R$ {fmt(pg.valor)}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
