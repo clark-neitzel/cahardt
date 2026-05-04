@@ -433,7 +433,7 @@ const Layout = ({ children }) => {
         {/* ALERTA DE PEDIDOS PENDENTES DE FATURAMENTO (popup a cada 10 min) */}
         <AlertaFaturamento />
 
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 overflow-x-hidden">
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 overflow-x-clip">
           {children}
         </main>
       </div>
