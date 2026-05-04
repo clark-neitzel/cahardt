@@ -41,18 +41,12 @@ const carregar = () => {
 };
 
 // Dropdown de filtro por coluna (estilo Excel)
+// Usa estado local pendente — só aplica o filtro ao clicar OK (evita salto de layout durante seleção)
 function FilterDropdown({ col, allData, selecao, onChange, onClose }) {
     const ref = useRef();
     const [busca, setBusca] = useState('');
 
-    useEffect(() => {
-        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, [onClose]);
-
     const todosValores = useMemo(() => {
-        // Usa Map keyed por lowercase para deduplicar sem case-sensitivity, mantendo o valor original
         const map = new Map();
         allData.forEach(r => {
             const v = String(r[col.field] ?? '');
@@ -62,25 +56,50 @@ function FilterDropdown({ col, allData, selecao, onChange, onClose }) {
         return [...map.values()].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
     }, [allData, col.field]);
 
+    // Estado local — não afeta a tabela até clicar OK
+    const [pendente, setPendente] = useState(() =>
+        selecao ? new Set(selecao) : new Set(todosValores.map(v => v.toLowerCase()))
+    );
+
+    useEffect(() => {
+        const handler = (e) => {
+            if (ref.current && !ref.current.contains(e.target)) {
+                // Fechar sem aplicar (clique fora = cancela)
+                onClose();
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [onClose]);
+
     const valoresFiltrados = busca.trim()
         ? todosValores.filter(v => v.toLowerCase().includes(busca.toLowerCase()))
         : todosValores;
 
-    // selecao === undefined → tudo selecionado (sem filtro)
-    // selecao === Set<string (lowercase)> → apenas esses valores aparecem
-    const isChecked = (val) => !selecao || selecao.has(val.toLowerCase());
-    const totalSelecionados = selecao ? selecao.size : todosValores.length;
-    const todosMarcados = !selecao || selecao.size >= todosValores.length;
+    const todosMarcados = pendente.size >= todosValores.length;
 
     const toggle = (val) => {
-        const atual = selecao ? new Set(selecao) : new Set(todosValores.map(v => v.toLowerCase()));
+        const next = new Set(pendente);
         const key = val.toLowerCase();
-        atual.has(key) ? atual.delete(key) : atual.add(key);
-        onChange(col.id, atual.size >= todosValores.length ? undefined : atual);
+        next.has(key) ? next.delete(key) : next.add(key);
+        setPendente(next);
     };
 
     const toggleTodos = () => {
-        onChange(col.id, todosMarcados ? new Set() : undefined);
+        setPendente(todosMarcados
+            ? new Set()
+            : new Set(todosValores.map(v => v.toLowerCase()))
+        );
+    };
+
+    const aplicar = () => {
+        onChange(col.id, pendente.size >= todosValores.length ? undefined : pendente);
+        onClose();
+    };
+
+    const limpar = () => {
+        onChange(col.id, undefined);
+        onClose();
     };
 
     return (
@@ -114,7 +133,7 @@ function FilterDropdown({ col, allData, selecao, onChange, onClose }) {
                     />
                     <span className="text-xs font-medium text-gray-600">Selecionar todos</span>
                 </label>
-                <span className="text-[10px] text-gray-400">{totalSelecionados}/{todosValores.length}</span>
+                <span className="text-[10px] text-gray-400">{pendente.size}/{todosValores.length}</span>
             </div>
 
             {/* Lista de valores */}
@@ -126,7 +145,7 @@ function FilterDropdown({ col, allData, selecao, onChange, onClose }) {
                     <label key={val} className="flex items-center gap-2 px-3 py-1.5 hover:bg-indigo-50 cursor-pointer">
                         <input
                             type="checkbox"
-                            checked={isChecked(val)}
+                            checked={pendente.has(val.toLowerCase())}
                             onChange={() => toggle(val)}
                             className="rounded text-indigo-600 flex-shrink-0"
                         />
@@ -138,12 +157,12 @@ function FilterDropdown({ col, allData, selecao, onChange, onClose }) {
             {/* Rodapé */}
             <div className="p-2 border-t bg-gray-50 flex justify-between">
                 <button
-                    onClick={() => { onChange(col.id, undefined); onClose(); }}
+                    onClick={limpar}
                     className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100">
                     Limpar
                 </button>
                 <button
-                    onClick={onClose}
+                    onClick={aplicar}
                     className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 font-medium">
                     OK
                 </button>
@@ -498,15 +517,15 @@ export default function RelatorioVendas() {
                         )}
 
                         {/* Tabela */}
-                        <div className="bg-white rounded-lg border shadow-sm overflow-x-auto">
-                            <table className="w-full text-sm min-w-max">
+                        <div className="bg-white rounded-lg border shadow-sm">
+                            <table className="w-full text-sm">
                                 <thead className="bg-gray-50 border-b">
                                     <tr>
                                         {colsAtivas.map(col => {
                                             const temFiltro = filtrosAtivos[col.id] && filtrosAtivos[col.id].size > 0;
                                             return (
                                                 <th key={col.id}
-                                                    className={`px-3 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wider select-none whitespace-nowrap relative ${col.align === 'right' ? 'text-right' : 'text-left'}`}>
+                                                    className={`px-2 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wider select-none relative ${col.align === 'right' ? 'text-right' : 'text-left'}`}>
                                                     <div className={`flex items-center gap-1 ${col.align === 'right' ? 'justify-end' : ''}`}>
                                                         {/* Sort */}
                                                         <button
@@ -548,7 +567,7 @@ export default function RelatorioVendas() {
                                                 const val = row[col.field];
                                                 return (
                                                     <td key={col.id}
-                                                        className={`px-3 py-2 text-sm whitespace-nowrap text-gray-800 ${col.align === 'right' ? 'text-right' : ''}`}>
+                                                        className={`px-2 py-2 text-xs text-gray-800 ${col.align === 'right' ? 'text-right' : ''}`}>
                                                         {(col.id === 'data' || col.id === 'criacao') && fmtData(val)}
                                                         {col.id === 'valor' && <span className="font-semibold">R$ {fmt(val)}</span>}
                                                         {col.id === 'tipo'  && (
@@ -565,7 +584,7 @@ export default function RelatorioVendas() {
                                     <tfoot className="border-t-2 border-gray-200 bg-gray-50">
                                         <tr>
                                             {colsAtivas.map(col => (
-                                                <td key={col.id} className={`px-3 py-2 text-xs font-semibold text-gray-700 ${col.align === 'right' ? 'text-right' : ''}`}>
+                                                <td key={col.id} className={`px-2 py-2 text-xs font-semibold text-gray-700 ${col.align === 'right' ? 'text-right' : ''}`}>
                                                     {col.id === 'criacao' && `${dadosFiltrados.length} reg.`}
                                                     {col.id === 'valor' && `R$ ${fmt(totalFiltrado)}`}
                                                 </td>
