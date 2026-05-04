@@ -51,8 +51,14 @@ function FilterDropdown({ col, allData, selecao, onChange, onClose }) {
     }, [onClose]);
 
     const todosValores = useMemo(() => {
-        const vals = new Set(allData.map(r => String(r[col.field] ?? '')));
-        return [...vals].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+        // Usa Map keyed por lowercase para deduplicar sem case-sensitivity, mantendo o valor original
+        const map = new Map();
+        allData.forEach(r => {
+            const v = String(r[col.field] ?? '');
+            const key = v.toLowerCase();
+            if (!map.has(key)) map.set(key, v);
+        });
+        return [...map.values()].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
     }, [allData, col.field]);
 
     const valoresFiltrados = busca.trim()
@@ -60,32 +66,25 @@ function FilterDropdown({ col, allData, selecao, onChange, onClose }) {
         : todosValores;
 
     // selecao === undefined → tudo selecionado (sem filtro)
-    // selecao === Set<string> → apenas esses valores aparecem
-    const isChecked = (val) => !selecao || selecao.has(val);
+    // selecao === Set<string (lowercase)> → apenas esses valores aparecem
+    const isChecked = (val) => !selecao || selecao.has(val.toLowerCase());
     const totalSelecionados = selecao ? selecao.size : todosValores.length;
-    const todosMarcados = !selecao || selecao.size === todosValores.length;
+    const todosMarcados = !selecao || selecao.size >= todosValores.length;
 
     const toggle = (val) => {
-        // Constrói nova seleção baseada no estado atual
-        const atual = selecao ? new Set(selecao) : new Set(todosValores);
-        atual.has(val) ? atual.delete(val) : atual.add(val);
-        // Se tudo selecionado → limpa o filtro
-        onChange(col.id, atual.size === todosValores.length ? undefined : atual);
+        const atual = selecao ? new Set(selecao) : new Set(todosValores.map(v => v.toLowerCase()));
+        const key = val.toLowerCase();
+        atual.has(key) ? atual.delete(key) : atual.add(key);
+        onChange(col.id, atual.size >= todosValores.length ? undefined : atual);
     };
 
     const toggleTodos = () => {
-        if (todosMarcados) {
-            // Desmarcar todos → sem nenhum visível (filtramos para vazio)
-            onChange(col.id, new Set());
-        } else {
-            // Marcar todos → remove filtro
-            onChange(col.id, undefined);
-        }
+        onChange(col.id, todosMarcados ? new Set() : undefined);
     };
 
     return (
         <div ref={ref}
-            className="absolute top-full left-0 z-[100] bg-white border border-gray-200 rounded-lg shadow-2xl w-64 mt-1"
+            className="absolute top-full left-0 z-[100] bg-white border border-gray-200 rounded-lg shadow-2xl w-64 mt-1 normal-case tracking-normal font-normal"
             onClick={e => e.stopPropagation()}>
 
             {/* Busca */}
@@ -268,7 +267,7 @@ export default function RelatorioVendas() {
             if (!selecao) continue;
             const col = COLUNAS.find(c => c.id === colId);
             if (!col) continue;
-            result = result.filter(row => selecao.has(String(row[col.field] ?? '')));
+            result = result.filter(row => selecao.has(String(row[col.field] ?? '').toLowerCase()));
         }
         const col = COLUNAS.find(c => c.id === sortCol);
         if (col) {
@@ -295,7 +294,7 @@ export default function RelatorioVendas() {
         .filter(([, sel]) => sel && sel.size > 0)
         .map(([colId, sel]) => {
             const col = COLUNAS.find(c => c.id === colId);
-            const total = new Set(pedidos.map(r => String(r[col?.field] ?? ''))).size;
+            const total = new Set(pedidos.map(r => String(r[col?.field] ?? '').toLowerCase())).size;
             return { colId, label: col?.label || colId, qtd: sel.size, total };
         }), [filtrosAtivos, pedidos]);
 
