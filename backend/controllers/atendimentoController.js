@@ -126,6 +126,19 @@ const atendimentoController = {
         }
     },
 
+    excluir: async (req, res) => {
+        try {
+            if (!req.user?.permissoes?.admin) {
+                return res.status(403).json({ error: 'Sem permissão para excluir atendimentos.' });
+            }
+            await atendimentoService.excluir(req.params.id);
+            res.json({ ok: true });
+        } catch (error) {
+            console.error('[atendimentoController.excluir]', error);
+            res.status(500).json({ error: 'Erro ao excluir atendimento.' });
+        }
+    },
+
     listarComFiltros: async (req, res) => {
         try {
             const { vendedorId, clienteId, leadId, tipo, dataInicio, dataFim, page, limit } = req.query;

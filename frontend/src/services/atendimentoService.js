@@ -69,6 +69,11 @@ const atendimentoService = {
     listarComFiltros: async (params) => {
         const response = await api.get('/atendimentos/filtros', { params });
         return response.data;
+    },
+
+    excluir: async (id) => {
+        const response = await api.delete(`/atendimentos/${id}`);
+        return response.data;
     }
 };
 

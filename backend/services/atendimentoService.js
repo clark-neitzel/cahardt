@@ -365,6 +365,10 @@ const atendimentoService = {
         };
     },
 
+    excluir: async (id) => {
+        return await prisma.atendimento.delete({ where: { id } });
+    },
+
     // Lista atendimentos com filtros completos (para página admin)
     listarComFiltros: async ({ vendedorId, clienteId, leadId, tipo, dataInicio, dataFim, page = 1, limit = 50 }) => {
         const where = {};

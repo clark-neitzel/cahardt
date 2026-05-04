@@ -16,5 +16,6 @@ router.patch('/:id/transferencia-vista', atendimentoController.marcarTransferenc
 router.get('/transferencias-resolvidas', atendimentoController.listarTransferenciasResolvidas);
 router.get('/lead/:leadId', atendimentoController.listarPorLead);
 router.get('/cliente/:clienteId', atendimentoController.listarPorCliente);
+router.delete('/:id', atendimentoController.excluir);
 
 module.exports = router;
