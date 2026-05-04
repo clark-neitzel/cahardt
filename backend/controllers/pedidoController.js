@@ -633,7 +633,10 @@ const pedidoController = {
                     bonificacao: true,
                     especial: true,
                     cliente: {
-                        select: { Nome: true, NomeFantasia: true, End_Cidade: true, End_Bairro: true }
+                        select: {
+                            Nome: true, NomeFantasia: true, End_Cidade: true, End_Bairro: true,
+                            indicacao: { select: { Nome: true, NomeFantasia: true } }
+                        }
                     },
                     vendedor: { select: { nome: true } },
                     itens: { select: { valor: true, quantidade: true } }
@@ -657,6 +660,7 @@ const pedidoController = {
                     tipo,
                     cidade: p.cliente?.End_Cidade || 'Não informada',
                     bairro: p.cliente?.End_Bairro || 'Não informado',
+                    indicacao: p.cliente?.indicacao?.NomeFantasia || p.cliente?.indicacao?.Nome || '',
                     vendedorNome: p.vendedor?.nome || '-'
                 };
             });

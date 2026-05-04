@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (v) => v ? new Date(v + 'T12:00:00').toLocaleDateString('pt-BR') : '-';
-const STORAGE_KEY = 'relatorio-vendas-v4';
+const STORAGE_KEY = 'relatorio-vendas-v5';
 
 const COLUNAS = [
     { id: 'criacao',  label: 'Criação',   field: 'dataCriacao',           tipo: 'data',   filtravel: false },
@@ -18,6 +18,7 @@ const COLUNAS = [
     { id: 'cidade',   label: 'Cidade',    field: 'cidade',                tipo: 'texto',  filtravel: true  },
     { id: 'bairro',   label: 'Bairro',    field: 'bairro',                tipo: 'texto',  filtravel: true  },
     { id: 'vendedor', label: 'Vendedor',  field: 'vendedorNome',          tipo: 'texto',  filtravel: true  },
+    { id: 'indicacao',label: 'Indicação', field: 'indicacao',             tipo: 'texto',  filtravel: true  },
 ];
 
 const TIPO_BADGE = {
