@@ -624,95 +624,48 @@ const pedidoController = {
                 where,
                 select: {
                     id: true,
+                    numero: true,
+                    dataVenda: true,
                     clienteId: true,
                     vendedorId: true,
                     nomeCondicaoPagamento: true,
                     bonificacao: true,
+                    especial: true,
                     cliente: {
                         select: { Nome: true, NomeFantasia: true, End_Cidade: true, End_Bairro: true }
                     },
                     vendedor: { select: { nome: true } },
                     itens: { select: { valor: true, quantidade: true } }
-                }
+                },
+                orderBy: { dataVenda: 'desc' }
             });
 
-            const getValor = (p) => p.itens.reduce((s, i) => s + Number(i.valor || 0) * Number(i.quantidade || 0), 0);
-
-            const vendedorMap = new Map();
-            const clienteMap = new Map();
-            const condicaoMap = new Map();
-            const cidadeMap = new Map();
-            const bairroMap = new Map();
-
             let totalGeral = 0;
-            let totalPedidosGeral = 0;
-
-            for (const p of pedidos) {
-                const valor = getValor(p);
-                totalGeral += valor;
-                totalPedidosGeral++;
-
-                const vendedorNome = p.vendedor?.nome || '-';
-                const clienteNome = p.cliente?.NomeFantasia || p.cliente?.Nome || '-';
-                const cidade = p.cliente?.End_Cidade || 'Não informada';
-                const bairro = p.cliente?.End_Bairro || 'Não informado';
-                const condicao = p.nomeCondicaoPagamento || 'Não informada';
-
-                // Por vendedor
-                const vk = p.vendedorId || '_';
-                if (!vendedorMap.has(vk)) vendedorMap.set(vk, { vendedorNome, totalPedidos: 0, valorTotal: 0 });
-                const ve = vendedorMap.get(vk);
-                ve.totalPedidos++; ve.valorTotal += valor;
-
-                // Por cliente
-                const ck = p.clienteId || '_' + clienteNome;
-                if (!clienteMap.has(ck)) clienteMap.set(ck, { clienteNome, cidade, bairro, vendedorNome, totalPedidos: 0, valorTotal: 0 });
-                const ce = clienteMap.get(ck);
-                ce.totalPedidos++; ce.valorTotal += valor;
-
-                // Por condição
-                if (!condicaoMap.has(condicao)) condicaoMap.set(condicao, { condicao, totalPedidos: 0, valorTotal: 0 });
-                const co = condicaoMap.get(condicao);
-                co.totalPedidos++; co.valorTotal += valor;
-
-                // Por cidade
-                if (!cidadeMap.has(cidade)) cidadeMap.set(cidade, { cidade, totalPedidos: 0, valorTotal: 0, clientes: new Set() });
-                const ci = cidadeMap.get(cidade);
-                ci.totalPedidos++; ci.valorTotal += valor;
-                if (p.clienteId) ci.clientes.add(p.clienteId);
-
-                // Por bairro
-                const bk = `${cidade}|${bairro}`;
-                if (!bairroMap.has(bk)) bairroMap.set(bk, { cidade, bairro, totalPedidos: 0, valorTotal: 0, clientes: new Set() });
-                const ba = bairroMap.get(bk);
-                ba.totalPedidos++; ba.valorTotal += valor;
-                if (p.clienteId) ba.clientes.add(p.clienteId);
-            }
-
-            const tm = (e) => e.totalPedidos > 0 ? e.valorTotal / e.totalPedidos : 0;
-            const sortVal = (a, b) => b.valorTotal - a.valorTotal;
+            const registros = pedidos.map(p => {
+                const valorTotal = p.itens.reduce((s, i) => s + Number(i.valor || 0) * Number(i.quantidade || 0), 0);
+                totalGeral += valorTotal;
+                const tipo = p.bonificacao ? 'Bonificação' : p.especial ? 'Especial' : 'Normal';
+                return {
+                    id: p.id,
+                    numero: p.numero,
+                    dataVenda: p.dataVenda ? p.dataVenda.toISOString().split('T')[0] : null,
+                    clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome || '-',
+                    valorTotal,
+                    nomeCondicaoPagamento: p.nomeCondicaoPagamento || 'Não informada',
+                    tipo,
+                    cidade: p.cliente?.End_Cidade || 'Não informada',
+                    bairro: p.cliente?.End_Bairro || 'Não informado',
+                    vendedorNome: p.vendedor?.nome || '-'
+                };
+            });
 
             res.json({
                 resumo: {
-                    totalPedidos: totalPedidosGeral,
+                    totalPedidos: registros.length,
                     valorTotalGeral: totalGeral,
-                    ticketMedio: totalPedidosGeral > 0 ? totalGeral / totalPedidosGeral : 0
+                    ticketMedio: registros.length > 0 ? totalGeral / registros.length : 0
                 },
-                porVendedor: [...vendedorMap.values()]
-                    .map(e => ({ ...e, ticketMedio: tm(e) }))
-                    .sort(sortVal),
-                porCliente: [...clienteMap.values()]
-                    .map(e => ({ ...e, ticketMedio: tm(e) }))
-                    .sort(sortVal),
-                porCondicao: [...condicaoMap.values()]
-                    .map(e => ({ ...e, ticketMedio: tm(e) }))
-                    .sort(sortVal),
-                porCidade: [...cidadeMap.values()]
-                    .map(e => ({ cidade: e.cidade, totalPedidos: e.totalPedidos, valorTotal: e.valorTotal, ticketMedio: tm(e), qtdClientes: e.clientes.size }))
-                    .sort(sortVal),
-                porBairro: [...bairroMap.values()]
-                    .map(e => ({ cidade: e.cidade, bairro: e.bairro, totalPedidos: e.totalPedidos, valorTotal: e.valorTotal, ticketMedio: tm(e), qtdClientes: e.clientes.size }))
-                    .sort(sortVal)
+                pedidos: registros
             });
         } catch (error) {
             console.error('Erro ao gerar relatório de vendas:', error);
