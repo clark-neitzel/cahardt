@@ -639,23 +639,30 @@ const pedidoController = {
                         }
                     },
                     vendedor: { select: { nome: true } },
-                    itens: { select: { valor: true, quantidade: true } }
+                    itens: {
+                        select: {
+                            id: true,
+                            valor: true,
+                            quantidade: true,
+                            produto: { select: { nome: true } }
+                        }
+                    }
                 },
                 orderBy: { dataVenda: 'desc' }
             });
 
             let totalGeral = 0;
-            const registros = pedidos.map(p => {
-                const valorTotal = p.itens.reduce((s, i) => s + Number(i.valor || 0) * Number(i.quantidade || 0), 0);
-                totalGeral += valorTotal;
+            const registros = [];
+            const pedidosIds = new Set();
+            pedidos.forEach(p => {
+                pedidosIds.add(p.id);
                 const tipo = p.bonificacao ? 'Bonificação' : p.especial ? 'Especial' : 'Normal';
-                return {
-                    id: p.id,
+                const base = {
+                    pedidoId: p.id,
                     numero: p.numero,
                     dataVenda: p.dataVenda ? p.dataVenda.toISOString().split('T')[0] : null,
                     dataCriacao: p.createdAt ? p.createdAt.toISOString().split('T')[0] : null,
                     clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome || '-',
-                    valorTotal,
                     nomeCondicaoPagamento: p.nomeCondicaoPagamento || 'Não informada',
                     tipo,
                     cidade: p.cliente?.End_Cidade || 'Não informada',
@@ -663,13 +670,31 @@ const pedidoController = {
                     indicacao: p.cliente?.indicacao?.NomeFantasia || p.cliente?.indicacao?.Nome || '',
                     vendedorNome: p.vendedor?.nome || '-'
                 };
+                if (p.itens.length === 0) {
+                    registros.push({ ...base, id: p.id, produto: '-', quantidade: 0, valorUnit: 0, valorTotal: 0 });
+                } else {
+                    p.itens.forEach(item => {
+                        const valorUnit = Number(item.valor || 0);
+                        const quantidade = Number(item.quantidade || 0);
+                        const valorTotal = valorUnit * quantidade;
+                        totalGeral += valorTotal;
+                        registros.push({
+                            ...base,
+                            id: `${p.id}-${item.id}`,
+                            produto: item.produto?.nome || '-',
+                            quantidade,
+                            valorUnit,
+                            valorTotal
+                        });
+                    });
+                }
             });
 
             res.json({
                 resumo: {
-                    totalPedidos: registros.length,
+                    totalPedidos: pedidosIds.size,
                     valorTotalGeral: totalGeral,
-                    ticketMedio: registros.length > 0 ? totalGeral / registros.length : 0
+                    ticketMedio: pedidosIds.size > 0 ? totalGeral / pedidosIds.size : 0
                 },
                 pedidos: registros
             });

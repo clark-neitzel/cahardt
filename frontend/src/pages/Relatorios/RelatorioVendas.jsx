@@ -6,13 +6,16 @@ import toast from 'react-hot-toast';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (v) => v ? new Date(v + 'T12:00:00').toLocaleDateString('pt-BR') : '-';
-const STORAGE_KEY = 'relatorio-vendas-v5';
+const STORAGE_KEY = 'relatorio-vendas-v6';
 
 const COLUNAS = [
     { id: 'criacao',  label: 'Criação',   field: 'dataCriacao',           tipo: 'data',   filtravel: false },
     { id: 'data',     label: 'Dt Venda',  field: 'dataVenda',             tipo: 'data',   filtravel: false },
-    { id: 'cliente',  label: 'Cliente',   field: 'clienteNome',           tipo: 'texto',  filtravel: true  },
-    { id: 'valor',    label: 'Valor',     field: 'valorTotal',            tipo: 'numero', filtravel: false, align: 'right' },
+    { id: 'cliente',   label: 'Cliente',   field: 'clienteNome',           tipo: 'texto',  filtravel: true  },
+    { id: 'produto',   label: 'Produto',   field: 'produto',               tipo: 'texto',  filtravel: true  },
+    { id: 'quantidade',label: 'Qtd',       field: 'quantidade',            tipo: 'numero', filtravel: false, align: 'right' },
+    { id: 'valorUnit', label: 'Vl Unit',   field: 'valorUnit',             tipo: 'numero', filtravel: false, align: 'right' },
+    { id: 'valor',     label: 'Valor',     field: 'valorTotal',            tipo: 'numero', filtravel: false, align: 'right' },
     { id: 'condicao', label: 'Condição',  field: 'nomeCondicaoPagamento', tipo: 'texto',  filtravel: true  },
     { id: 'tipo',     label: 'Tipo',      field: 'tipo',                  tipo: 'texto',  filtravel: true  },
     { id: 'cidade',   label: 'Cidade',    field: 'cidade',                tipo: 'texto',  filtravel: true  },
@@ -325,12 +328,13 @@ export default function RelatorioVendas() {
         dadosFiltrados.forEach(row => {
             const key = dimCols.map(c => String(row[c.field] ?? '')).join('\x00');
             if (!map.has(key)) {
-                const g = { _key: key, _count: 0, valorTotal: 0 };
+                const g = { _key: key, _count: 0, valorTotal: 0, quantidade: 0, valorUnit: null };
                 dimCols.forEach(c => { g[c.field] = row[c.field]; });
                 map.set(key, g);
             }
             const g = map.get(key);
             g.valorTotal += Number(row.valorTotal || 0);
+            g.quantidade += Number(row.quantidade || 0);
             g._count += 1;
         });
         const result = [...map.values()];
@@ -544,12 +548,12 @@ export default function RelatorioVendas() {
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                             <div className="bg-white rounded-lg border p-3">
                                 <p className="text-[10px] sm:text-xs text-gray-500">Total geral</p>
-                                <p className="text-base font-bold text-gray-900">{pedidos.length} pedidos</p>
+                                <p className="text-base font-bold text-gray-900">{resumo.totalPedidos} pedidos</p>
                                 <p className="text-xs text-gray-500">R$ {fmt(resumo.valorTotalGeral)}</p>
                             </div>
                             <div className="bg-white rounded-lg border p-3">
                                 <p className="text-[10px] sm:text-xs text-gray-500">Filtrado</p>
-                                <p className="text-base font-bold text-indigo-700">{dadosFiltrados.length} pedidos</p>
+                                <p className="text-base font-bold text-indigo-700">{dadosFiltrados.length} itens</p>
                                 <p className="text-xs text-indigo-500">R$ {fmt(totalFiltrado)}</p>
                             </div>
                             <div className="bg-white rounded-lg border p-3">
@@ -666,10 +670,16 @@ export default function RelatorioVendas() {
                                                                 {row._count > 1 && <span className="ml-1 text-[10px] text-gray-400 font-normal">({row._count})</span>}
                                                             </span>
                                                         )}
+                                                        {col.id === 'quantidade' && (
+                                                            <span>{Number(val || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}</span>
+                                                        )}
+                                                        {col.id === 'valorUnit' && (
+                                                            val != null ? <span>R$ {fmt(val)}</span> : <span className="text-gray-400">-</span>
+                                                        )}
                                                         {col.id === 'tipo' && (
                                                             <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${TIPO_BADGE[val] || 'bg-gray-100 text-gray-700'}`}>{val}</span>
                                                         )}
-                                                        {!['data','criacao','valor','tipo'].includes(col.id) && (val || '-')}
+                                                        {!['data','criacao','valor','quantidade','valorUnit','tipo'].includes(col.id) && (val || '-')}
                                                     </td>
                                                 );
                                             })}
@@ -682,6 +692,7 @@ export default function RelatorioVendas() {
                                             {colsAtivas.map((col, i) => (
                                                 <td key={col.id} className={`px-2 py-2 text-xs font-semibold text-gray-700 ${col.align === 'right' ? 'text-right' : ''}`}>
                                                     {i === 0 && `${dadosAgrupados.length} linhas`}
+                                                    {col.id === 'quantidade' && dadosAgrupados.reduce((s, r) => s + Number(r.quantidade || 0), 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}
                                                     {col.id === 'valor' && `R$ ${fmt(totalFiltrado)}`}
                                                 </td>
                                             ))}
@@ -743,6 +754,8 @@ export default function RelatorioVendas() {
                                                     <td key={col.id} className={col.align === 'right' ? 'num' : ''}>
                                                         {(col.id === 'data' || col.id === 'criacao') ? fmtData(val)
                                                         : col.id === 'valor' ? `R$ ${fmt(val)}${row._count > 1 ? ` (${row._count})` : ''}`
+                                                        : col.id === 'quantidade' ? Number(val || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
+                                                        : col.id === 'valorUnit' ? (val != null ? `R$ ${fmt(val)}` : '-')
                                                         : val || '-'}
                                                     </td>
                                                 );
