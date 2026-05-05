@@ -515,31 +515,47 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                     <thead className="bg-gray-50">
                                         <tr>
                                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo / Nº</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Endereço Geográfico</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente / Obs</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cidade</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Endereço</th>
                                             <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Volumes</th>
                                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Retirar</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {embarque.pedidos.length === 0 ? (
-                                            <tr><td colSpan="5" className="px-6 py-8 text-center text-gray-500">Caminhão Vazio.</td></tr>
+                                            <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">Caminhão Vazio.</td></tr>
                                         ) : embarque.pedidos.map(p => {
                                             const nomeCliente = p.cliente?.NomeFantasia || p.cliente?.Nome || '—';
                                             const prefixo = p.bonificacao ? 'BN#' : p.especial ? 'ZZ#' : '';
                                             const numExibido = prefixo ? `${prefixo}${p.numero}` : (p.numero || 'S/N');
                                             const tipoCor = p.bonificacao ? 'text-green-700 bg-green-50' : p.especial ? 'text-purple-700 bg-purple-50' : 'text-gray-700';
+                                            const enderecoCompleto = [
+                                                p.cliente?.End_Logradouro,
+                                                p.cliente?.End_Numero || 'SN',
+                                                p.cliente?.End_Bairro,
+                                            ].filter(Boolean).join(', ');
                                             return (
                                             <tr key={p.id}>
-                                                <td className="px-4 py-4 whitespace-nowrap">
+                                                <td className="px-4 py-3 whitespace-nowrap">
                                                     <span className={`text-sm font-mono font-bold px-1.5 py-0.5 rounded ${tipoCor}`}>{numExibido}</span>
                                                 </td>
-                                                <td className="px-4 py-4 text-sm font-bold text-gray-900">{nomeCliente}</td>
-                                                <td className="px-4 py-4 text-sm text-gray-500 max-w-xs truncate">
-                                                    <MapPin className="inline h-3 w-3 mr-1 text-gray-400" />
-                                                    {p.cliente?.End_Logradouro || 'N/A'}, {p.cliente?.End_Numero || 'SN'} - {p.cliente?.End_Bairro || 'N/A'} ({p.cliente?.End_Cidade || '—'})
+                                                <td className="px-4 py-3 text-sm">
+                                                    <div className="font-bold text-gray-900">{nomeCliente}</div>
+                                                    {p.observacoes && (
+                                                        <div className="text-xs text-amber-700 italic mt-0.5 leading-snug">{p.observacoes}</div>
+                                                    )}
                                                 </td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-center text-sm font-bold text-gray-700 bg-gray-50">
+                                                <td className="px-4 py-3 text-sm font-semibold text-gray-800 whitespace-nowrap">
+                                                    {p.cliente?.End_Cidade || '—'}
+                                                </td>
+                                                <td className="px-4 py-3 text-xs text-gray-500 max-w-[200px]">
+                                                    <div className="flex items-start gap-1">
+                                                        <MapPin className="h-3 w-3 mt-0.5 text-gray-400 flex-shrink-0" />
+                                                        <span>{enderecoCompleto || 'N/A'}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-bold text-gray-700 bg-gray-50">
                                                     {p.itens.reduce((acc, i) => acc + Number(i.quantidade), 0)} itens
                                                 </td>
                                                 <td className="px-4 py-4 whitespace-nowrap text-right text-sm">
