@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import despesaService from '../../services/despesaService';
+import api from '../../services/api';
 import NovaDespesaModal from './NovaDespesaModal';
 import { Plus, Trash2, Edit, Fuel, Hotel, Wrench, DollarSign, ReceiptText, CircleEllipsis, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -51,6 +52,7 @@ const DespesasPage = () => {
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [despesaEditando, setDespesaEditando] = useState(null);
+    const [veiculoDoDia, setVeiculoDoDia] = useState(null);
 
     // Persistir filtros na sessão sempre que mudarem
     useEffect(() => {
@@ -58,7 +60,12 @@ const DespesasPage = () => {
     }, [data, vendedorId]);
 
     useEffect(() => {
-        if (vendedorId && data) fetchDespesas();
+        if (vendedorId && data) {
+            fetchDespesas();
+            api.get('/caixa/resumo', { params: { data, vendedorId } })
+                .then(res => setVeiculoDoDia(res.data?.diario?.veiculoId || null))
+                .catch(() => setVeiculoDoDia(null));
+        }
     }, [vendedorId, data]);
 
     const fetchDespesas = async () => {
@@ -288,6 +295,7 @@ const DespesasPage = () => {
                     vendedorId={vendedorId}
                     dataReferencia={data}
                     despesaEditando={despesaEditando}
+                    veiculoDoDia={veiculoDoDia}
                 />
             )}
         </div>
