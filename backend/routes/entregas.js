@@ -408,10 +408,6 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
             }
         }
 
-        // A transação atômica do Prisma vai gravar tudo junto: 
-        // 1. Atualiza status do Pedido 
-        // 2. Grava extratos recebidos (se houver) 
-        // 3. Grava log de itens devolvidos (se houver parcial)
         await prisma.$transaction(async (tx) => {
             await tx.pedido.update({
                 where: { id },
@@ -435,6 +431,40 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
                 await tx.entregaItemDevolvido.createMany({
                     data: operacoesItem.map(op => ({ ...op, pedidoId: id }))
                 });
+            }
+
+            // Pedidos Especiais não têm espelho no CA — o sync nunca fecharia as parcelas.
+            // Se 100% do saldo foi pago em caixa (não-escritório), baixar as parcelas agora.
+            if (pedido.especial && ['ENTREGUE', 'ENTREGUE_PARCIAL'].includes(statusEntrega) && valorSaldoDevedor > 0) {
+                const totalCaixa = operacoesPgto
+                    .filter(p => !p.escritorioResponsavel)
+                    .reduce((s, p) => s + Number(p.valor), 0);
+
+                if (totalCaixa >= valorSaldoDevedor - 0.05) {
+                    const conta = await tx.contaReceber.findFirst({
+                        where: { pedidoId: id },
+                        include: { parcelas: { where: { status: { not: 'CANCELADO' } } } }
+                    });
+                    if (conta) {
+                        const hoje = new Date();
+                        const forma = operacoesPgto.filter(p => !p.escritorioResponsavel)[0]?.formaPagamentoNome || 'Dinheiro';
+                        for (const parcela of conta.parcelas) {
+                            if (parcela.status === 'PAGO') continue;
+                            await tx.parcela.update({
+                                where: { id: parcela.id },
+                                data: {
+                                    status: 'PAGO',
+                                    valorPago: Number(parcela.valor),
+                                    formaPagamento: forma,
+                                    dataPagamento: hoje,
+                                    baixadoPorId: req.user.id,
+                                    observacao: 'Baixa automática — pagamento registrado na entrega'
+                                }
+                            });
+                        }
+                        await tx.contaReceber.update({ where: { id: conta.id }, data: { status: 'QUITADO' } });
+                    }
+                }
             }
         });
 

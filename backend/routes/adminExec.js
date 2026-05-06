@@ -510,4 +510,169 @@ router.get('/debug-charge/:pedidoId', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/export-full-db
+// Exporta todas as tabelas como JSON para backup/sync local.
+// Query param opcional: ?skip=sync_logs,ia_analise_logs
+router.get('/export-full-db', async (req, res) => {
+    const skip = (req.query.skip || '').split(',').filter(Boolean);
+
+    const ALL_TABLES = [
+        'categorias_produto', 'categorias_estoque', 'categorias_cliente',
+        'condicoes_pagamento', 'tabela_precos', 'contas_financeiras',
+        'formas_pagamento_entrega', 'delivery_categorias',
+        'app_configs', 'conta_azul_config',
+        'vendedores', 'veiculos',
+        'produtos', 'produto_imagens',
+        'clientes', 'cliente_arquivos',
+        'leads', 'embarques',
+        'amostras', 'amostra_itens',
+        'pedidos', 'pedido_itens', 'pedido_pagamentos_reais',
+        'entrega_itens_devolvidos', 'movimentacoes_estoque',
+        'atendimentos',
+        'devolucoes', 'devolucao_itens',
+        'diario_vendedor', 'despesas',
+        'caixa_diario', 'caixa_entrega_conferida',
+        'contas_receber', 'parcelas',
+        'promocoes', 'promocao_condicao_grupos', 'promocao_condicoes',
+        'cliente_insights', 'ia_analise_logs',
+        'roteirizacoes',
+        'meta_mensal_vendedor', 'meta_produtos', 'meta_promocoes',
+        'delivery_status', 'delivery_permissoes', 'delivery_webhook_logs',
+        'audit_logs', 'manutencao_alertas',
+        'itens_pcp', 'receitas', 'receita_itens', 'receita_versao_log',
+        'ordens_producao', 'ordens_consumo', 'agenda_producao',
+        'movimentacoes_pcp', 'sugestoes_producao',
+        'sync_logs',
+    ];
+
+    const tables = ALL_TABLES.filter(t => !skip.includes(t));
+
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="backup.json"');
+
+    res.write('{"_exportedAt":"' + new Date().toISOString() + '"');
+
+    for (const table of tables) {
+        try {
+            const rows = await prisma.$queryRawUnsafe(
+                `SELECT row_to_json(t)::text AS r FROM (SELECT * FROM "${table}") t`
+            );
+            const parsed = rows.map(r => { try { return JSON.parse(r.r); } catch { return r.r; } });
+            res.write(',\n"' + table + '":' + JSON.stringify(parsed));
+            console.log(`[export-full-db] ${table}: ${rows.length} rows`);
+        } catch (e) {
+            console.error(`[export-full-db] Erro em ${table}:`, e.message);
+            res.write(',\n"' + table + '_error":"' + e.message.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"');
+        }
+    }
+
+    res.end('\n}');
+});
+
+// GET /api/admin-exec/especiais-abertos — lista pedidos especiais entregues com conta ainda aberta
+router.get('/especiais-abertos', async (req, res) => {
+    try {
+        const contas = await prisma.contaReceber.findMany({
+            where: {
+                status: { in: ['ABERTO', 'PARCIAL'] },
+                pedido: {
+                    especial: true,
+                    statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL'] }
+                }
+            },
+            include: {
+                cliente: { select: { NomeFantasia: true, Nome: true } },
+                pedido: {
+                    select: {
+                        numero: true, statusEntrega: true, dataEntrega: true,
+                        pagamentosReais: { where: { valor: { gt: 0 } }, select: { formaPagamentoNome: true, valor: true, escritorioResponsavel: true } }
+                    }
+                },
+                parcelas: { where: { status: { not: 'CANCELADO' } }, select: { id: true, numeroParcela: true, status: true, valor: true } }
+            }
+        });
+
+        const resultado = contas.map(c => {
+            const pgtos = c.pedido?.pagamentosReais || [];
+            const totalCaixa = pgtos.filter(p => !p.escritorioResponsavel).reduce((s, p) => s + Number(p.valor), 0);
+            const totalParcelas = c.parcelas.filter(p => p.status !== 'PAGO').reduce((s, p) => s + Number(p.valor), 0);
+            return {
+                contaId: c.id,
+                pedidoNumero: c.pedido?.numero,
+                cliente: c.cliente?.NomeFantasia || c.cliente?.Nome,
+                statusEntrega: c.pedido?.statusEntrega,
+                dataEntrega: c.pedido?.dataEntrega,
+                totalCaixa,
+                totalParcelasAbertas: totalParcelas,
+                cobreTotal: totalCaixa >= totalParcelas - 0.05,
+                pagamentos: pgtos,
+                parcelas: c.parcelas
+            };
+        });
+
+        res.json({ total: resultado.length, casos: resultado });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/admin-exec/corrigir-especiais-abertos — baixa automaticamente as contas elegíveis
+router.post('/corrigir-especiais-abertos', async (req, res) => {
+    try {
+        const { executar = false } = req.body;
+        const contas = await prisma.contaReceber.findMany({
+            where: {
+                status: { in: ['ABERTO', 'PARCIAL'] },
+                pedido: { especial: true, statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL'] } }
+            },
+            include: {
+                pedido: { select: { numero: true, vendedorId: true, pagamentosReais: { where: { valor: { gt: 0 } } } } },
+                parcelas: { where: { status: { not: 'CANCELADO' } } }
+            }
+        });
+
+        const elegíveis = contas.filter(c => {
+            const pgtos = c.pedido?.pagamentosReais || [];
+            const totalCaixa = pgtos.filter(p => !p.escritorioResponsavel).reduce((s, p) => s + Number(p.valor), 0);
+            const totalAberto = c.parcelas.filter(p => p.status !== 'PAGO').reduce((s, p) => s + Number(p.valor), 0);
+            return totalAberto > 0 && totalCaixa >= totalAberto - 0.05;
+        });
+
+        if (!executar) {
+            return res.json({ simulacao: true, totalElegíveis: elegíveis.length, pedidos: elegíveis.map(c => c.pedido?.numero) });
+        }
+
+        let corrigidos = 0;
+        for (const conta of elegíveis) {
+            const pgtos = conta.pedido?.pagamentosReais || [];
+            const forma = pgtos.filter(p => !p.escritorioResponsavel)[0]?.formaPagamentoNome || 'Dinheiro';
+            const baixadoPorId = conta.pedido?.vendedorId;
+            const hoje = new Date();
+
+            await prisma.$transaction(async (tx) => {
+                for (const parcela of conta.parcelas) {
+                    if (parcela.status === 'PAGO') continue;
+                    await tx.parcela.update({
+                        where: { id: parcela.id },
+                        data: {
+                            status: 'PAGO',
+                            valorPago: Number(parcela.valor),
+                            formaPagamento: forma,
+                            dataPagamento: hoje,
+                            baixadoPorId: baixadoPorId || null,
+                            observacao: 'Correção retroativa — pagamento já registrado na entrega'
+                        }
+                    });
+                }
+                await tx.contaReceber.update({ where: { id: conta.id }, data: { status: 'QUITADO' } });
+            });
+            corrigidos++;
+        }
+
+        res.json({ corrigidos, pedidos: elegíveis.map(c => c.pedido?.numero) });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;
