@@ -937,6 +937,7 @@ model MetaMensalVendedor {
   vendedor       Vendedor       @relation(fields: [vendedorId], references: [id])
   metasProdutos  MetaProduto[]
   metasPromocoes MetaPromocao[]
+  metasCidades   MetaCidade[]
 
   @@unique([vendedorId, mesReferencia])
   @@index([vendedorId])
@@ -974,6 +975,22 @@ model MetaPromocao {
 
   @@unique([metaMensalVendedorId, promocaoId])
   @@map("meta_promocoes")
+}
+
+model MetaCidade {
+  id                   String  @id @default(uuid())
+  metaMensalVendedorId String  @map("meta_mensal_vendedor_id")
+  cidade               String
+  valor                Decimal @db.Decimal(12, 2)
+
+  metaMensalVendedor MetaMensalVendedor @relation(fields: [metaMensalVendedorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([metaMensalVendedorId, cidade])
+  @@index([metaMensalVendedorId])
+  @@map("meta_cidades")
 }
 
 // =============================================
