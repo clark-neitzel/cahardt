@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowUpCircle, ArrowDownCircle, Filter, ChevronLeft, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, Filter, ChevronLeft, Loader2, AlertCircle, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import estoqueService from '../../services/estoqueService';
 
@@ -60,6 +60,8 @@ export default function HistoricoEstoque() {
     const [loading, setLoading] = useState(false);
     const [erro, setErro] = useState(null);
     const [showFiltros, setShowFiltros] = useState(false);
+
+    const [busca, setBusca] = useState('');
 
     const [filtros, setFiltros] = useState({
         tipo: '',
@@ -124,8 +126,13 @@ export default function HistoricoEstoque() {
     const temMais = items.length < total;
     const temFiltros = Object.keys(filtrosAplicados).length > 0;
 
-    const entradas = items.filter(i => i.tipo === 'ENTRADA');
-    const saidas = items.filter(i => i.tipo === 'SAIDA');
+    const buscaLower = busca.toLowerCase();
+    const itemsFiltrados = buscaLower
+        ? items.filter(i => i.produto?.nome?.toLowerCase().includes(buscaLower))
+        : items;
+
+    const entradas = itemsFiltrados.filter(i => i.tipo === 'ENTRADA');
+    const saidas = itemsFiltrados.filter(i => i.tipo === 'SAIDA');
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-6">
@@ -137,6 +144,21 @@ export default function HistoricoEstoque() {
                 <div className="flex-1">
                     <h1 className="text-xl font-bold text-gray-900">Histórico de Estoque</h1>
                     <p className="text-xs text-gray-500">{total} movimentações</p>
+                </div>
+                <div className="relative flex-1 max-w-xs">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                    <input
+                        type="text"
+                        placeholder="Buscar produto..."
+                        value={busca}
+                        onChange={e => setBusca(e.target.value)}
+                        className="w-full pl-8 pr-7 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    {busca && (
+                        <button onClick={() => setBusca('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            <X className="h-3.5 w-3.5" />
+                        </button>
+                    )}
                 </div>
                 <button
                     onClick={() => setShowFiltros(!showFiltros)}
@@ -257,7 +279,7 @@ export default function HistoricoEstoque() {
 
             {/* ── Mobile: lista única ── */}
             <div className="md:hidden space-y-2">
-                {items.map(item => (
+                {itemsFiltrados.map(item => (
                     <MovimentacaoCard key={item.id} item={item} />
                 ))}
             </div>
