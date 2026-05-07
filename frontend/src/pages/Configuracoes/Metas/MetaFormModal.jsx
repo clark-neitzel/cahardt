@@ -215,6 +215,10 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
             });
             setSugestao(res.data);
             setSugestaoAberta(true);
+            // Preenche o valor automaticamente se o campo estiver vazio
+            if (!formData.valorMensal || Number(formData.valorMensal) === 0) {
+                setFormData(f => ({ ...f, valorMensal: res.data.valorSugerido.toString() }));
+            }
         } catch (e) {
             toast.error(e.response?.data?.error || "Erro ao calcular sugestão");
         } finally {
