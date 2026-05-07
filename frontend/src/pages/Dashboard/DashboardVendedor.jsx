@@ -15,7 +15,12 @@ import DashboardAdminSection from './DashboardAdminSection';
 dayjs.locale('pt-br');
 
 const fmt = (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmtInt = (v) => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const fmtK = (v) => {
+    const n = Number(v);
+    if (n >= 1000) return `R$ ${(n / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k`;
+    return `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+};
+const fmtQtd = (v) => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
 const ProgressBar = ({ percent, size = 'md' }) => {
     let color = 'bg-red-500';
@@ -30,14 +35,22 @@ const ProgressBar = ({ percent, size = 'md' }) => {
     );
 };
 
-const StatusProgressBar = ({ current, target, label, suffix = '', hidePercent = false, formatFn = fmt }) => {
+const PercentBadge = ({ percent }) => {
+    let cls = 'bg-red-50 text-red-600';
+    if (percent >= 100) cls = 'bg-green-50 text-green-700';
+    else if (percent >= 80) cls = 'bg-yellow-50 text-yellow-700';
+    else if (percent >= 50) cls = 'bg-blue-50 text-blue-700';
+    return <span className={`text-xs font-bold px-2 py-0.5 rounded-full tabular-nums ${cls}`}>{percent.toFixed(0)}%</span>;
+};
+
+const StatusProgressBar = ({ current, target, label, hidePercent = false }) => {
     const percent = target > 0 ? Math.min((current / target) * 100, 100) : 0;
     return (
         <div className="mb-4">
             <div className="flex justify-between items-end mb-1">
                 <span className="text-sm font-medium text-gray-700">{label}</span>
                 <span className="text-sm font-bold text-gray-900">
-                    {formatFn(current)} <span className="text-xs text-gray-400 font-normal">/ {formatFn(target)} {suffix}</span>
+                    {fmt(current)} <span className="text-xs text-gray-400 font-normal">/ {fmt(target)}</span>
                 </span>
             </div>
             <ProgressBar percent={percent} />
@@ -46,44 +59,78 @@ const StatusProgressBar = ({ current, target, label, suffix = '', hidePercent = 
     );
 };
 
-// Linha individual de produto/cidade com barra compacta
-const MetaRow = ({ label, sublabel, realizado, meta, formatFn = fmtInt, unidade = '' }) => {
+// Linha com colunas alinhadas: Nome | Realizado | Meta | Projeção | %
+const MetaRow = ({ label, sublabel, realizado, meta, projecao, formatFn, unidade = '' }) => {
     const percent = meta > 0 ? (realizado / meta) * 100 : 0;
-    let statusColor = 'text-red-600 bg-red-50';
-    if (percent >= 100) statusColor = 'text-green-700 bg-green-50';
-    else if (percent >= 80) statusColor = 'text-yellow-700 bg-yellow-50';
-    else if (percent >= 50) statusColor = 'text-blue-700 bg-blue-50';
+    const projPercent = meta > 0 ? (projecao / meta) * 100 : 0;
+    const projOk = projecao >= meta;
 
     return (
         <div className="py-3 border-b border-gray-50 last:border-0">
-            <div className="flex items-center justify-between mb-1.5">
-                <div className="min-w-0 flex-1">
-                    <span className="text-sm font-medium text-gray-800 truncate block">{label}</span>
-                    {sublabel && <span className="text-xs text-gray-400">{sublabel}</span>}
+            <div className="grid items-center gap-x-3" style={{ gridTemplateColumns: '1fr 7rem 7rem 6rem 3rem' }}>
+                <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{label}</p>
+                    {sublabel && <p className="text-xs text-gray-400">{sublabel}</p>}
                 </div>
-                <div className="flex items-center gap-2 ml-3 shrink-0">
-                    <span className="text-sm text-gray-600">
-                        {formatFn(realizado)}{unidade} <span className="text-gray-400">/ {formatFn(meta)}{unidade}</span>
-                    </span>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusColor}`}>
-                        {percent.toFixed(0)}%
-                    </span>
+                <div className="text-right">
+                    <p className="text-sm font-semibold text-gray-800 tabular-nums">{formatFn(realizado)}{unidade}</p>
+                    <p className="text-xs text-gray-400">realizado</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-sm text-gray-500 tabular-nums">{formatFn(meta)}{unidade}</p>
+                    <p className="text-xs text-gray-400">meta</p>
+                </div>
+                <div className="text-right">
+                    <p className={`text-sm font-semibold tabular-nums ${projOk ? 'text-green-600' : 'text-amber-600'}`}>
+                        {formatFn(projecao)}{unidade}
+                    </p>
+                    <p className="text-xs text-gray-400">projeção</p>
+                </div>
+                <div className="flex justify-end">
+                    <PercentBadge percent={percent} />
                 </div>
             </div>
-            <ProgressBar percent={percent} size="sm" />
+            <div className="mt-2 relative">
+                <ProgressBar percent={percent} size="sm" />
+                {/* marcador de projeção */}
+                {projPercent > 0 && projPercent <= 110 && (
+                    <div
+                        className="absolute top-0 h-1.5 w-0.5 bg-gray-500 opacity-60 rounded"
+                        style={{ left: `${Math.min(projPercent, 100)}%` }}
+                        title={`Projeção: ${projPercent.toFixed(0)}%`}
+                    />
+                )}
+            </div>
+            {projecao > 0 && (
+                <p className="text-xs text-right mt-1">
+                    {projOk
+                        ? <span className="text-green-600 font-medium">✓ No ritmo para bater a meta</span>
+                        : <span className="text-amber-600">Projeção {projPercent.toFixed(0)}% da meta</span>
+                    }
+                </p>
+            )}
         </div>
     );
 };
 
-const ColapsableCard = ({ title, icon: Icon, iconColor, count, children, defaultOpen = false }) => {
+// Cabeçalho das colunas
+const MetaTableHeader = () => (
+    <div className="grid gap-x-3 pb-2 mb-1 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wide"
+        style={{ gridTemplateColumns: '1fr 7rem 7rem 6rem 3rem' }}>
+        <span>Item</span>
+        <span className="text-right">Realizado</span>
+        <span className="text-right">Meta</span>
+        <span className="text-right">Projeção</span>
+        <span className="text-right">%</span>
+    </div>
+);
+
+const ColapsableCard = ({ title, icon: Icon, iconColor, count, children, defaultOpen = true }) => {
     const [open, setOpen] = useState(defaultOpen);
     return (
         <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-            <button
-                type="button"
-                onClick={() => setOpen(v => !v)}
-                className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
-            >
+            <button type="button" onClick={() => setOpen(v => !v)}
+                className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-2">
                     <Icon size={18} className={iconColor} />
                     <span className="font-bold text-gray-800">{title}</span>
@@ -93,7 +140,7 @@ const ColapsableCard = ({ title, icon: Icon, iconColor, count, children, default
                 </div>
                 {open ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
             </button>
-            {open && <div className="px-5 pb-4">{children}</div>}
+            {open && <div className="px-5 pb-5">{children}</div>}
         </div>
     );
 };
@@ -106,6 +153,7 @@ const DashboardVendedor = () => {
     const [vendedorSelecionado, setVendedorSelecionado] = useState('');
 
     const isAdmin = user?.permissoes?.admin ||
+        user?.permissoes?.Pode_Gerenciar_Metas ||
         user?.permissoes?.pedidos?.clientes === 'todos' ||
         user?.login?.toLowerCase().includes('clark') ||
         user?.email === 'clarksonneitzel@gmail.com';
@@ -148,9 +196,23 @@ const DashboardVendedor = () => {
         );
     }
 
-    const progressoProdutos = data?.progressoProdutos || [];
-    const progressoCidades = data?.progressoCidades || [];
+    const diasTrabalhados = data?.resumoCalendario?.diasTrabalhadosMesAteHoje || 1;
+    const totalDias = data?.resumoCalendario?.totalDiasMes || 1;
+    const fatorProjecao = totalDias / Math.max(diasTrabalhados, 1);
+
+    const progressoProdutos = (data?.progressoProdutos || []).map(p => ({
+        ...p,
+        projecao: Math.round(p.realizado * fatorProjecao * 100) / 100
+    }));
+    const progressoCidades = (data?.progressoCidades || []).map(c => ({
+        ...c,
+        projecao: Math.round(c.realizado * fatorProjecao)
+    }));
     const progressoPromocoes = data?.progressoPromocoes || [];
+
+    const nomeVendedor = vendedorSelecionado
+        ? vendedores.find(v => v.id === vendedorSelecionado)?.nome || ''
+        : user?.nome?.split(' ')[0];
 
     return (
         <div className="max-w-4xl mx-auto py-6 px-4">
@@ -158,9 +220,13 @@ const DashboardVendedor = () => {
             <div className="mb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Olá, {user?.nome?.split(' ')[0]}!</h1>
+                        <h1 className="text-2xl font-bold text-gray-800">
+                            Olá, {user?.nome?.split(' ')[0]}!
+                        </h1>
                         <p className="text-gray-500 text-sm mt-0.5">
-                            Acompanhe {isAdmin && vendedorSelecionado ? 'o desempenho' : 'seu desempenho'} e metas de {dayjs().format('MMMM/YYYY')}.
+                            {vendedorSelecionado
+                                ? `Vendo dashboard de ${nomeVendedor} — ${dayjs().format('MMMM/YYYY')}`
+                                : `Acompanhe seu desempenho e metas de ${dayjs().format('MMMM/YYYY')}.`}
                         </p>
                     </div>
                     {isAdmin && vendedores.length > 0 && (
@@ -179,7 +245,8 @@ const DashboardVendedor = () => {
                 </div>
             </div>
 
-            {podeVerDashboardAdmin && <DashboardAdminSection />}
+            {/* Painel Admin — só mostra quando não está visualizando um vendedor específico */}
+            {podeVerDashboardAdmin && !vendedorSelecionado && <DashboardAdminSection />}
 
             {/* Atalhos */}
             <h2 className="text-xs uppercase font-bold text-gray-400 tracking-wider mb-3">Ações Rápidas</h2>
@@ -189,7 +256,7 @@ const DashboardVendedor = () => {
                     { to: '/pedidos', icon: ShoppingCart, label: 'Pedidos', bg: 'bg-green-50', color: 'text-green-600', hover: 'hover:border-green-400' },
                     { to: '/caixa', icon: Wallet, label: 'Caixa Diário', bg: 'bg-amber-50', color: 'text-amber-600', hover: 'hover:border-amber-400' },
                 ].map(({ to, icon: Icon, label, bg, color, hover }) => (
-                    <Link key={to} to={to} className={`bg-white border ${hover} hover:shadow-sm transition-all rounded-xl p-4 flex flex-col items-center gap-2 group`}>
+                    <Link key={to} to={to} className={`bg-white border ${hover} hover:shadow-sm transition-all rounded-xl p-4 flex flex-col items-center gap-2`}>
                         <div className={`${bg} ${color} p-3 rounded-full`}><Icon size={22} /></div>
                         <span className="text-sm font-medium text-gray-700">{label}</span>
                     </Link>
@@ -205,7 +272,11 @@ const DashboardVendedor = () => {
                         <Target size={32} className="text-gray-300" />
                     </div>
                     <h3 className="text-lg font-bold text-gray-700 mb-1">Sem metas para este mês</h3>
-                    <p className="text-gray-400 text-sm">O administrador ainda não configurou as suas metas para o mês atual.</p>
+                    <p className="text-gray-400 text-sm">
+                        {vendedorSelecionado
+                            ? `Nenhuma meta definida para ${nomeVendedor} em ${dayjs().format('MMMM/YYYY')}.`
+                            : 'O administrador ainda não configurou as suas metas para o mês atual.'}
+                    </p>
                 </div>
             ) : (
                 <div className="space-y-4">
@@ -217,14 +288,14 @@ const DashboardVendedor = () => {
                                 <p className="text-blue-200 text-sm font-medium mb-1">Média Diária de Vendas Atual</p>
                                 <h2 className="text-3xl font-bold">{fmt(data.realizado.mediaDiariaAtual)}</h2>
                                 <p className="text-sm text-blue-200 mt-2 flex items-center gap-1">
-                                    <Calendar size={13} /> Baseado em {data.resumoCalendario.diasTrabalhadosMesAteHoje} dias trabalhados
+                                    <Calendar size={13} /> Baseado em {diasTrabalhados} de {totalDias} dias trabalhados
                                 </p>
                             </div>
                             <TrendingUp size={44} className="text-white/20 hidden sm:block" />
                         </div>
                     </div>
 
-                    {/* Objetivo Mensal + Semana */}
+                    {/* Mensal + Semanal */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="bg-white rounded-xl border p-5 shadow-sm">
                             <div className="flex items-center gap-2 mb-4">
@@ -259,7 +330,7 @@ const DashboardVendedor = () => {
                                 </div>
                             </div>
                             <div className="mt-4 pt-4 border-t border-gray-100">
-                                <div className="flex justify-between items-center bg-gray-50 rounded-lg p-2.5">
+                                <div className="flex justify-between items-center bg-gray-50 rounded-lg px-3 py-2.5">
                                     <span className="text-sm font-medium text-gray-600">Meta Padrão do Dia</span>
                                     <span className="font-bold text-gray-800">{fmt(data.metasAlvo.diaria)}</span>
                                 </div>
@@ -280,64 +351,45 @@ const DashboardVendedor = () => {
 
                     {/* Progresso por Produto */}
                     {progressoProdutos.length > 0 && (
-                        <ColapsableCard
-                            title="Meta por Produto"
-                            icon={Package}
-                            iconColor="text-green-600"
-                            count={progressoProdutos.length}
-                            defaultOpen={true}
-                        >
-                            <div>
-                                {progressoProdutos.map(p => (
-                                    <MetaRow
-                                        key={p.produtoId}
-                                        label={p.nome}
-                                        sublabel={p.codigo}
-                                        realizado={p.realizado}
-                                        meta={p.meta}
-                                        formatFn={fmtInt}
-                                        unidade=" un"
-                                    />
-                                ))}
-                            </div>
+                        <ColapsableCard title="Meta por Produto" icon={Package} iconColor="text-green-600" count={progressoProdutos.length}>
+                            <MetaTableHeader />
+                            {progressoProdutos.map(p => (
+                                <MetaRow
+                                    key={p.produtoId}
+                                    label={p.nome}
+                                    sublabel={p.codigo}
+                                    realizado={p.realizado}
+                                    meta={p.meta}
+                                    projecao={p.projecao}
+                                    formatFn={fmtQtd}
+                                    unidade=" un"
+                                />
+                            ))}
                         </ColapsableCard>
                     )}
 
                     {/* Progresso por Cidade */}
                     {progressoCidades.length > 0 && (
-                        <ColapsableCard
-                            title="Meta por Cidade"
-                            icon={MapPin}
-                            iconColor="text-orange-500"
-                            count={progressoCidades.length}
-                            defaultOpen={true}
-                        >
-                            <div>
-                                {progressoCidades
-                                    .slice()
-                                    .sort((a, b) => b.meta - a.meta)
-                                    .map(c => (
-                                        <MetaRow
-                                            key={c.cidade}
-                                            label={c.cidade}
-                                            realizado={c.realizado}
-                                            meta={c.meta}
-                                            formatFn={(v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-                                        />
-                                    ))}
-                            </div>
+                        <ColapsableCard title="Meta por Cidade" icon={MapPin} iconColor="text-orange-500" count={progressoCidades.length}>
+                            <MetaTableHeader />
+                            {progressoCidades
+                                .slice().sort((a, b) => b.meta - a.meta)
+                                .map(c => (
+                                    <MetaRow
+                                        key={c.cidade}
+                                        label={c.cidade}
+                                        realizado={c.realizado}
+                                        meta={c.meta}
+                                        projecao={c.projecao}
+                                        formatFn={fmtK}
+                                    />
+                                ))}
                         </ColapsableCard>
                     )}
 
-                    {/* Promoções (só meta, sem progresso ainda) */}
+                    {/* Promoções */}
                     {progressoPromocoes.length > 0 && (
-                        <ColapsableCard
-                            title="Meta de Promoções"
-                            icon={Tag}
-                            iconColor="text-purple-600"
-                            count={progressoPromocoes.length}
-                            defaultOpen={false}
-                        >
+                        <ColapsableCard title="Meta de Promoções" icon={Tag} iconColor="text-purple-600" count={progressoPromocoes.length} defaultOpen={false}>
                             <div className="space-y-2">
                                 {progressoPromocoes.map(p => (
                                     <div key={p.promocaoId} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">

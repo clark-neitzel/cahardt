@@ -83,7 +83,9 @@ const metaController = {
                 return res.status(401).json({ error: "Usuário não autenticado." });
             }
 
-            const isAdmin = req.user?.permissoes?.pedidos?.clientes === 'todos';
+            const isAdmin = req.user?.permissoes?.admin ||
+                req.user?.permissoes?.Pode_Gerenciar_Metas ||
+                req.user?.permissoes?.pedidos?.clientes === 'todos';
             const vendedorId = (isAdmin && req.query.vendedorId) ? req.query.vendedorId : userId;
             const dataAtual = req.query.dataAtual || null;
 
