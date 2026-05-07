@@ -501,7 +501,7 @@ const ContasReceberTabela = () => {
                     <span class="dim">${fmtData(p.dataVenda)}</span>
                     <span class="subtotal">R$ ${fmt(p.subtotal)}</span>
                 </div>
-                <table><thead><tr>
+                <table><colgroup><col class="c-produto"><col class="c-qtd"><col class="c-unit"><col class="c-total"></colgroup><thead><tr>
                     <th>Produto</th><th class="r">Qtd</th><th class="r">Valor Unit.</th><th class="r">Total</th>
                 </tr></thead><tbody>
                 ${(p.itens || []).length === 0
@@ -518,7 +518,7 @@ const ContasReceberTabela = () => {
         const corpoGrupos = relatorioAgrupamento === 'pedido'
             ? tabelaItens(grupos[0].pedidos, true, true)
             : relatorioAgrupamento === 'nenhum'
-            ? `<table class="flat"><thead><tr>
+            ? `<table class="flat"><colgroup><col style="width:55px"><col style="width:auto"><col style="width:auto"><col style="width:70px"><col style="width:auto"><col style="width:55px"><col style="width:90px"><col style="width:90px"></colgroup><thead><tr>
                 <th>Pedido</th><th>Cliente</th><th>Vendedor</th><th>Data</th>
                 <th>Produto</th><th class="r">Qtd</th><th class="r">Val. Unit.</th><th class="r">Total</th>
                </tr></thead><tbody>
@@ -553,10 +553,14 @@ const ContasReceberTabela = () => {
             .pedido-num { font-weight: bold; font-family: monospace; }
             .dim { color: #6b7280; }
             .subtotal { margin-left: auto; font-weight: bold; }
-            table { width: 100%; border-collapse: collapse; font-size: 10px; }
+            table { width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; }
             table.flat { border: 1px solid #d1d5db; border-radius: 4px; overflow: hidden; }
             th { background: #f9fafb; padding: 3px 6px; text-align: left; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #374151; }
-            td { padding: 3px 6px; border-bottom: 1px solid #f3f4f6; }
+            td { padding: 3px 6px; border-bottom: 1px solid #f3f4f6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            col.c-produto { width: auto; }
+            col.c-qtd { width: 55px; }
+            col.c-unit { width: 90px; }
+            col.c-total { width: 90px; }
             .r { text-align: right; }
             .bold { font-weight: bold; }
             .sem-itens { text-align: center; color: #9ca3af; font-style: italic; padding: 6px; }
