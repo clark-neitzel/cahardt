@@ -221,8 +221,9 @@ const metaService = {
         const meta = await prisma.metaMensalVendedor.findUnique({
             where: { vendedorId_mesReferencia: { vendedorId, mesReferencia } },
             include: {
-                metasProdutos: { include: { produto: { select: { nome: true } } } },
-                metasPromocoes: { include: { promocao: { select: { nome: true } } } }
+                metasProdutos: { include: { produto: { select: { nome: true, codigo: true } } } },
+                metasPromocoes: { include: { promocao: { select: { nome: true } } } },
+                metasCidades: true
             }
         });
 
@@ -270,12 +271,17 @@ const metaService = {
                 situacaoCA: 'FATURADO',
                 bonificacao: false,
             },
-            include: { itens: true }
+            include: {
+                itens: true,
+                cliente: { select: { End_Cidade: true } }
+            }
         });
 
         let totalVendidoMes = 0;
         let totalVendidoSemana = 0;
         let flexUtilizadoMes = 0;
+        const qtdVendidaPorProduto = {};
+        const valorVendidoPorCidade = {};
 
         pedidosMes.forEach(p => {
             const valorPedido = p.itens.reduce((acc, item) => acc + (Number(item.valor) * Number(item.quantidade)), 0);
@@ -284,6 +290,16 @@ const metaService = {
             if (dayjs(p.dataVenda).isBetween(inicioSemana, fimSemana, 'day', '[]')) {
                 totalVendidoSemana += valorPedido;
             }
+
+            // Progresso por produto
+            p.itens.forEach(item => {
+                if (!item.produtoId) return;
+                qtdVendidaPorProduto[item.produtoId] = (qtdVendidaPorProduto[item.produtoId] || 0) + Number(item.quantidade);
+            });
+
+            // Progresso por cidade
+            const cidade = p.cliente?.End_Cidade || 'Sem cidade';
+            valorVendidoPorCidade[cidade] = (valorVendidoPorCidade[cidade] || 0) + valorPedido;
         });
 
         const hojeEhDiaTrabalho = diasTrabalhoMes.some(d => dayjs(d).isSame(dataAtual, 'day'));
@@ -317,10 +333,24 @@ const metaService = {
                 mediaDiariaAtual: mediaDiariaRealizadaMes
             },
             projecoes: { mensal: projecaoMensal, semanal: projecaoSemanal },
-            detalhesMetasEspeciais: {
-                produtos: meta.metasProdutos,
-                promocoes: meta.metasPromocoes
-            }
+            progressoProdutos: meta.metasProdutos.map(mp => ({
+                produtoId: mp.produtoId,
+                nome: mp.produto?.nome || '',
+                codigo: mp.produto?.codigo || '',
+                meta: Number(mp.quantidade),
+                realizado: qtdVendidaPorProduto[mp.produtoId] || 0
+            })),
+            progressoCidades: meta.metasCidades.map(mc => ({
+                cidade: mc.cidade,
+                meta: Number(mc.valor),
+                realizado: valorVendidoPorCidade[mc.cidade] || 0
+            })),
+            progressoPromocoes: meta.metasPromocoes.map(mp => ({
+                promocaoId: mp.promocaoId,
+                nome: mp.promocao?.nome || '',
+                meta: mp.quantidadePedidos,
+                realizado: null // rastreamento futuro
+            }))
         };
     }
 };
