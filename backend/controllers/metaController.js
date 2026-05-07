@@ -76,6 +76,24 @@ const metaController = {
         }
     },
 
+    obterMetaHoje: async (req, res) => {
+        try {
+            const userId = req.user?.id;
+            if (!userId) return res.status(401).json({ error: "Usuário não autenticado." });
+
+            const isAdmin = req.user?.permissoes?.admin ||
+                req.user?.permissoes?.Pode_Gerenciar_Metas ||
+                req.user?.permissoes?.pedidos?.clientes === 'todos';
+            const vendedorId = (isAdmin && req.query.vendedorId) ? req.query.vendedorId : userId;
+
+            const resultado = await metaService.calcularMetaHoje(vendedorId);
+            res.status(200).json(resultado);
+        } catch (error) {
+            console.error("[MetaController - obterMetaHoje]", error);
+            res.status(500).json({ error: "Erro interno ao calcular meta de hoje." });
+        }
+    },
+
     obterDashboardVendedor: async (req, res) => {
         try {
             const userId = req.user?.id;

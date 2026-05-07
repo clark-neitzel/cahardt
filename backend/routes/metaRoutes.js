@@ -22,6 +22,9 @@ router.delete('/:id', metaController.excluir);
 // Deve vir antes de /dashboard para não conflitar
 router.get('/sugestao', metaController.obterSugestaoMeta);
 
+// GET /api/metas/meta-hoje
+router.get('/meta-hoje', metaController.obterMetaHoje);
+
 // GET /api/metas/dashboard
 router.get('/dashboard', metaController.obterDashboardVendedor);
 

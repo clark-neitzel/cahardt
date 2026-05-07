@@ -23,6 +23,7 @@ import CheckoutEntregaModal from '../Motorista/Entregas/CheckoutEntregaModal';
 import ClientePopup from './ClientePopup';
 import roteirizacaoService from '../../services/roteirizacaoService';
 import api from '../../services/api';
+import MetaCidadeHojeBanner from '../../components/Rota/MetaCidadeHojeBanner';
 
 const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'N/D'];
 
@@ -1578,6 +1579,17 @@ const RotaLeads = () => {
 
     const vendedorId = user?.id;
     const formasVisiveis = user?.formasAtendimentoVisiveis || [];
+
+    const [metaCidadesHoje, setMetaCidadesHoje] = useState([]);
+    useEffect(() => {
+        if (!vendedorId) return;
+        const fetch = () => api.get('/metas/meta-hoje').then(r => {
+            setMetaCidadesHoje(r.data?.cidadesDeHoje || []);
+        }).catch(() => {});
+        fetch();
+        const timer = setInterval(fetch, 60 * 60 * 1000);
+        return () => clearInterval(timer);
+    }, [vendedorId]);
     const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
     // Pode filtrar entregas por motorista = mesma regra do backend (admin ou Pode_Ver_Todas_Entregas)
     const podeVerTodasEntregas = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ver_Todas_Entregas);
@@ -2293,17 +2305,20 @@ const RotaLeads = () => {
                 ) : (
                     <>
                         {aba === 'atendimento' && (
-                            itensParaAtender.length === 0 ? (
-                                <div className="text-center py-12 text-gray-500">
-                                    <CheckCircle className="h-10 w-10 text-green-500 mx-auto mb-2" />
-                                    <p className="font-bold text-gray-700">Tudo atendido hoje!</p>
-                                    <p className="text-[13px]">Nenhum item pendente na sua rota.</p>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 lg:gap-3">
-                                    {itensParaAtender.map(renderItem)}
-                                </div>
-                            )
+                            <>
+                                <MetaCidadeHojeBanner cidadesDeHoje={metaCidadesHoje} />
+                                {itensParaAtender.length === 0 ? (
+                                    <div className="text-center py-12 text-gray-500">
+                                        <CheckCircle className="h-10 w-10 text-green-500 mx-auto mb-2" />
+                                        <p className="font-bold text-gray-700">Tudo atendido hoje!</p>
+                                        <p className="text-[13px]">Nenhum item pendente na sua rota.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 lg:gap-3">
+                                        {itensParaAtender.map(renderItem)}
+                                    </div>
+                                )}
+                            </>
                         )}
 
                         {aba === 'atendidos' && (
