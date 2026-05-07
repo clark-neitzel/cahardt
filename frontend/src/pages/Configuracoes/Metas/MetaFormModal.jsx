@@ -566,9 +566,17 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                             {/* PRODUTOS */}
                             {activeTab === 'produtos' && (
                                 <div>
-                                    <div className="mb-4">
-                                        <h3 className="font-semibold text-gray-800 mb-1">Meta de Produtos</h3>
-                                        <p className="text-xs text-gray-500">Quantidade mínima a vender por produto no mês.</p>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div>
+                                            <h3 className="font-semibold text-gray-800 mb-1">Meta de Produtos</h3>
+                                            <p className="text-xs text-gray-500">Quantidade mínima a vender por produto no mês.</p>
+                                        </div>
+                                        {metasProdutos.length > 0 && (
+                                            <button type="button" onClick={() => setMetasProdutos([])}
+                                                className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded flex items-center gap-1">
+                                                <Trash2 size={12} /> Limpar tudo
+                                            </button>
+                                        )}
                                     </div>
 
                                     <div className="relative mb-4">
@@ -632,11 +640,19 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                             {/* CIDADES */}
                             {activeTab === 'cidades' && (
                                 <div>
-                                    <div className="mb-4">
-                                        <h3 className="font-semibold text-gray-800 mb-1">Meta por Cidade</h3>
-                                        <p className="text-xs text-gray-500">
-                                            Opcional. Cidades sem meta aqui ainda compõem o valor total — só não terão rastreamento individual.
-                                        </p>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div>
+                                            <h3 className="font-semibold text-gray-800 mb-1">Meta por Cidade</h3>
+                                            <p className="text-xs text-gray-500">
+                                                Opcional. Cidades sem meta aqui ainda compõem o valor total — só não terão rastreamento individual.
+                                            </p>
+                                        </div>
+                                        {metasCidades.length > 0 && (
+                                            <button type="button" onClick={() => setMetasCidades([])}
+                                                className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded flex items-center gap-1 shrink-0 ml-4">
+                                                <Trash2 size={12} /> Limpar tudo
+                                            </button>
+                                        )}
                                     </div>
 
                                     <div className="flex gap-2 mb-4">
@@ -709,9 +725,17 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                             {/* PROMOÇÕES */}
                             {activeTab === 'promocoes' && (
                                 <div>
-                                    <div className="mb-4">
-                                        <h3 className="font-semibold text-gray-800 mb-1">Meta de Promoções</h3>
-                                        <p className="text-xs text-gray-500">Número de pedidos com adesão a cada promoção.</p>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div>
+                                            <h3 className="font-semibold text-gray-800 mb-1">Meta de Promoções</h3>
+                                            <p className="text-xs text-gray-500">Número de pedidos com adesão a cada promoção.</p>
+                                        </div>
+                                        {metasPromocoes.length > 0 && (
+                                            <button type="button" onClick={() => setMetasPromocoes([])}
+                                                className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded flex items-center gap-1 shrink-0 ml-4">
+                                                <Trash2 size={12} /> Limpar tudo
+                                            </button>
+                                        )}
                                     </div>
 
                                     {promocoesAtivas.length > 0 ? (
