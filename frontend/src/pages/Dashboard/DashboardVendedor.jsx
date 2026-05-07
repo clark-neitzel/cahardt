@@ -387,21 +387,6 @@ const DashboardVendedor = () => {
             {/* Painel Admin — só mostra quando não está visualizando um vendedor específico */}
             {podeVerDashboardAdmin && !vendedorSelecionado && <DashboardAdminSection />}
 
-            {/* Atalhos */}
-            <h2 className="text-xs uppercase font-bold text-gray-400 tracking-wider mb-3">Ações Rápidas</h2>
-            <div className="grid grid-cols-3 gap-3 mb-8">
-                {[
-                    { to: '/rota', icon: MapIcon, label: 'Rotas e Leads', bg: 'bg-blue-50', color: 'text-blue-600', hover: 'hover:border-blue-400' },
-                    { to: '/pedidos', icon: ShoppingCart, label: 'Pedidos', bg: 'bg-green-50', color: 'text-green-600', hover: 'hover:border-green-400' },
-                    { to: '/caixa', icon: Wallet, label: 'Caixa Diário', bg: 'bg-amber-50', color: 'text-amber-600', hover: 'hover:border-amber-400' },
-                ].map(({ to, icon: Icon, label, bg, color, hover }) => (
-                    <Link key={to} to={to} className={`bg-white border ${hover} hover:shadow-sm transition-all rounded-xl p-4 flex flex-col items-center gap-2`}>
-                        <div className={`${bg} ${color} p-3 rounded-full`}><Icon size={22} /></div>
-                        <span className="text-sm font-medium text-gray-700">{label}</span>
-                    </Link>
-                ))}
-            </div>
-
             {/* Painel de Metas */}
             <h2 className="text-xs uppercase font-bold text-gray-400 tracking-wider mb-3">Painel de Metas</h2>
 
@@ -433,6 +418,73 @@ const DashboardVendedor = () => {
                             <TrendingUp size={44} className="text-white/20 hidden sm:block" />
                         </div>
                     </div>
+
+                    {/* Progresso por Cidade — logo abaixo do hero */}
+                    {todasCidades.length > 0 && (() => {
+                        const noRitmo = progressoCidades.filter(c => c.projecao >= c.meta).length;
+                        const atrasadas = progressoCidades.length - noRitmo;
+                        const titulo = mostrarSoCidadesDeHoje
+                            ? `Cidades de Hoje (${progressoCidades.length})`
+                            : `Meta por Cidade`;
+
+                        return (
+                            <ColapsableCard
+                                title={titulo}
+                                icon={MapPin}
+                                iconColor="text-orange-500"
+                                count={mostrarSoCidadesDeHoje ? 0 : progressoCidades.length}
+                                extra={mostrarSoCidadesDeHoje ? (
+                                    <div className="flex gap-2">
+                                        {noRitmo > 0 && <span className="text-xs bg-green-50 text-green-700 font-semibold px-2 py-0.5 rounded-full">🟢 {noRitmo} no ritmo</span>}
+                                        {atrasadas > 0 && <span className="text-xs bg-red-50 text-red-700 font-semibold px-2 py-0.5 rounded-full">🔴 {atrasadas} atrasada{atrasadas !== 1 ? 's' : ''}</span>}
+                                    </div>
+                                ) : null}
+                            >
+                                {progressoCidades.length === 0 ? (
+                                    <p className="text-sm text-gray-400 py-2">Nenhuma cidade com meta configurada para hoje.</p>
+                                ) : (
+                                    <div className="space-y-1">
+                                        {progressoCidades.slice().sort((a, b) => b.meta - a.meta).map(c => {
+                                            const pct = c.meta > 0 ? Math.min((c.realizado / c.meta) * 100, 100) : 0;
+                                            const onRitmo = c.projecao >= c.meta;
+                                            return (
+                                                <button
+                                                    key={c.cidade}
+                                                    type="button"
+                                                    onClick={() => setCidadeDetalhe(c)}
+                                                    className="w-full text-left py-3 border-b border-gray-50 last:border-0 hover:bg-orange-50 -mx-5 px-5 transition-colors rounded"
+                                                >
+                                                    <div className="flex items-center gap-2 mb-1.5">
+                                                        <span className="text-sm font-medium text-gray-800 flex-1 truncate">{c.cidade}</span>
+                                                        <span className={`text-xs font-bold tabular-nums ${onRitmo ? 'text-green-600' : 'text-amber-600'}`}>{pct.toFixed(0)}%</span>
+                                                        <ChevronRight size={14} className="text-gray-300 shrink-0" />
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                                            <div
+                                                                className={`h-1.5 rounded-full ${pct >= 100 ? 'bg-green-500' : pct >= 80 ? 'bg-yellow-400' : pct >= 50 ? 'bg-blue-400' : 'bg-red-400'}`}
+                                                                style={{ width: `${pct}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-xs text-gray-400 tabular-nums shrink-0">{fmtK(c.realizado)} / {fmtK(c.meta)}</span>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                {mostrarSoCidadesDeHoje && todasCidades.length > progressoCidades.length && (
+                                    <button
+                                        type="button"
+                                        onClick={() => { /* TODO: show all */ }}
+                                        className="mt-3 text-xs text-orange-600 hover:underline"
+                                    >
+                                        Ver todas as {todasCidades.length} cidades →
+                                    </button>
+                                )}
+                            </ColapsableCard>
+                        );
+                    })()}
 
                     {/* Mensal + Semanal */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -507,73 +559,6 @@ const DashboardVendedor = () => {
                         </ColapsableCard>
                     )}
 
-                    {/* Progresso por Cidade */}
-                    {todasCidades.length > 0 && (() => {
-                        const noRitmo = progressoCidades.filter(c => c.projecao >= c.meta).length;
-                        const atrasadas = progressoCidades.length - noRitmo;
-                        const titulo = mostrarSoCidadesDeHoje
-                            ? `Cidades de Hoje (${progressoCidades.length})`
-                            : `Meta por Cidade`;
-
-                        return (
-                            <ColapsableCard
-                                title={titulo}
-                                icon={MapPin}
-                                iconColor="text-orange-500"
-                                count={mostrarSoCidadesDeHoje ? 0 : progressoCidades.length}
-                                extra={mostrarSoCidadesDeHoje ? (
-                                    <div className="flex gap-2">
-                                        {noRitmo > 0 && <span className="text-xs bg-green-50 text-green-700 font-semibold px-2 py-0.5 rounded-full">🟢 {noRitmo} no ritmo</span>}
-                                        {atrasadas > 0 && <span className="text-xs bg-red-50 text-red-700 font-semibold px-2 py-0.5 rounded-full">🔴 {atrasadas} atrasada{atrasadas !== 1 ? 's' : ''}</span>}
-                                    </div>
-                                ) : null}
-                            >
-                                {progressoCidades.length === 0 ? (
-                                    <p className="text-sm text-gray-400 py-2">Nenhuma cidade com meta configurada para hoje.</p>
-                                ) : (
-                                    <div className="space-y-1">
-                                        {progressoCidades.slice().sort((a, b) => b.meta - a.meta).map(c => {
-                                            const pct = c.meta > 0 ? Math.min((c.realizado / c.meta) * 100, 100) : 0;
-                                            const onRitmo = c.projecao >= c.meta;
-                                            return (
-                                                <button
-                                                    key={c.cidade}
-                                                    type="button"
-                                                    onClick={() => setCidadeDetalhe(c)}
-                                                    className="w-full text-left py-3 border-b border-gray-50 last:border-0 hover:bg-orange-50 -mx-5 px-5 transition-colors rounded"
-                                                >
-                                                    <div className="flex items-center gap-2 mb-1.5">
-                                                        <span className="text-sm font-medium text-gray-800 flex-1 truncate">{c.cidade}</span>
-                                                        <span className={`text-xs font-bold tabular-nums ${onRitmo ? 'text-green-600' : 'text-amber-600'}`}>{pct.toFixed(0)}%</span>
-                                                        <ChevronRight size={14} className="text-gray-300 shrink-0" />
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                                            <div
-                                                                className={`h-1.5 rounded-full ${pct >= 100 ? 'bg-green-500' : pct >= 80 ? 'bg-yellow-400' : pct >= 50 ? 'bg-blue-400' : 'bg-red-400'}`}
-                                                                style={{ width: `${pct}%` }}
-                                                            />
-                                                        </div>
-                                                        <span className="text-xs text-gray-400 tabular-nums shrink-0">{fmtK(c.realizado)} / {fmtK(c.meta)}</span>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                                {mostrarSoCidadesDeHoje && todasCidades.length > progressoCidades.length && (
-                                    <button
-                                        type="button"
-                                        onClick={() => { /* TODO: show all */ }}
-                                        className="mt-3 text-xs text-orange-600 hover:underline"
-                                    >
-                                        Ver todas as {todasCidades.length} cidades →
-                                    </button>
-                                )}
-                            </ColapsableCard>
-                        );
-                    })()}
-
                     {/* Promoções */}
                     {progressoPromocoes.length > 0 && (
                         <ColapsableCard title="Meta de Promoções" icon={Tag} iconColor="text-purple-600" count={progressoPromocoes.length} defaultOpen={false}>
@@ -592,6 +577,21 @@ const DashboardVendedor = () => {
 
                 </div>
             )}
+
+            {/* Atalhos — no final da página */}
+            <h2 className="text-xs uppercase font-bold text-gray-400 tracking-wider mb-3 mt-8">Ações Rápidas</h2>
+            <div className="grid grid-cols-3 gap-3 mb-6">
+                {[
+                    { to: '/rota', icon: MapIcon, label: 'Rotas e Leads', bg: 'bg-blue-50', color: 'text-blue-600', hover: 'hover:border-blue-400' },
+                    { to: '/pedidos', icon: ShoppingCart, label: 'Pedidos', bg: 'bg-green-50', color: 'text-green-600', hover: 'hover:border-green-400' },
+                    { to: '/caixa', icon: Wallet, label: 'Caixa Diário', bg: 'bg-amber-50', color: 'text-amber-600', hover: 'hover:border-amber-400' },
+                ].map(({ to, icon: Icon, label, bg, color, hover }) => (
+                    <Link key={to} to={to} className={`bg-white border ${hover} hover:shadow-sm transition-all rounded-xl p-4 flex flex-col items-center gap-2`}>
+                        <div className={`${bg} ${color} p-3 rounded-full`}><Icon size={22} /></div>
+                        <span className="text-sm font-medium text-gray-700">{label}</span>
+                    </Link>
+                ))}
+            </div>
 
             {cidadeDetalhe && (
                 <CidadeDetalheDrawer
