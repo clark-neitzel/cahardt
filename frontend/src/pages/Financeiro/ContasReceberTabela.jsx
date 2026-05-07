@@ -565,13 +565,24 @@ const ContasReceberTabela = () => {
             .bold { font-weight: bold; }
             .sem-itens { text-align: center; color: #9ca3af; font-style: italic; padding: 6px; }
             .grand-total { margin-top: 12px; padding: 6px 10px; background: #f3f4f6; border-radius: 4px; display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; }
-            @media print { body { margin: 10mm; } }
+            thead { display: table-header-group; }
+            @media print {
+                @page { size: A4 portrait; margin: 10mm 10mm 12mm 10mm; }
+                body { margin: 0; padding-top: 28px; }
+                .relatorio-header { position: fixed; top: 0; left: 0; right: 0; background: white; padding: 3px 0 4px; border-bottom: 1px solid #d1d5db; }
+                .grupo-bloco { page-break-inside: avoid; }
+                .grupo-bloco + .grupo-bloco { page-break-before: always; }
+                .pedido-bloco { page-break-inside: avoid; }
+                .grand-total { page-break-inside: avoid; }
+            }
         </style></head><body>
-        <h1>Relatório de Itens por Pedido</h1>
-        <div class="sub">
-            Agrupamento: ${labelAgrup[relatorioAgrupamento]} &nbsp;|&nbsp;
-            ${relatorioFiltros.vencDe || relatorioFiltros.vencAte ? `Venc. ${relatorioFiltros.vencDe || '...'} até ${relatorioFiltros.vencAte || '...'} &nbsp;|&nbsp;` : ''}
-            Gerado em: ${new Date().toLocaleString('pt-BR')}
+        <div class="relatorio-header">
+            <h1 style="font-size:14px;margin:0 0 1px;">Relatório de Itens por Pedido</h1>
+            <div class="sub" style="margin:0;">
+                Agrupamento: ${labelAgrup[relatorioAgrupamento]} &nbsp;|&nbsp;
+                ${relatorioFiltros.vencDe || relatorioFiltros.vencAte ? `Venc. ${relatorioFiltros.vencDe || '...'} até ${relatorioFiltros.vencAte || '...'} &nbsp;|&nbsp;` : ''}
+                Gerado em: ${new Date().toLocaleString('pt-BR')}
+            </div>
         </div>
         ${corpoGrupos}
         <div class="grand-total">
