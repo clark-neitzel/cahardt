@@ -274,6 +274,8 @@ const DashboardVendedor = () => {
     const [vendedores, setVendedores] = useState([]);
     const [vendedorSelecionado, setVendedorSelecionado] = useState('');
     const [cidadeDetalhe, setCidadeDetalhe] = useState(null);
+    const [cidadesHojeAdmin, setCidadesHojeAdmin] = useState([]);
+    const [loadingCidadesAdmin, setLoadingCidadesAdmin] = useState(false);
 
     useEffect(() => {
         const onKey = (e) => { if (e.key === 'Escape') setCidadeDetalhe(null); };
@@ -299,6 +301,14 @@ const DashboardVendedor = () => {
             }).catch(() => { });
         }
     }, [isAdmin]);
+
+    useEffect(() => {
+        if (!podeVerDashboardAdmin || vendedorSelecionado) return;
+        setLoadingCidadesAdmin(true);
+        api.get('/metas/cidades-hoje-todos').then(res => {
+            setCidadesHojeAdmin(Array.isArray(res.data) ? res.data : []);
+        }).catch(() => {}).finally(() => setLoadingCidadesAdmin(false));
+    }, [podeVerDashboardAdmin, vendedorSelecionado]);
 
     useEffect(() => {
         const fetchDashboard = async () => {
@@ -386,6 +396,58 @@ const DashboardVendedor = () => {
 
             {/* Painel Admin — só mostra quando não está visualizando um vendedor específico */}
             {podeVerDashboardAdmin && !vendedorSelecionado && <DashboardAdminSection />}
+
+            {/* Cidades de hoje — admin view */}
+            {podeVerDashboardAdmin && !vendedorSelecionado && (cidadesHojeAdmin.length > 0 || loadingCidadesAdmin) && (
+                <div className="mb-6">
+                    <h2 className="text-xs uppercase font-bold text-gray-400 tracking-wider mb-3 flex items-center gap-2">
+                        <MapPin size={13} className="text-orange-500" /> Cidades de hoje
+                    </h2>
+                    {loadingCidadesAdmin ? (
+                        <div className="bg-white rounded-xl border p-4 text-center text-gray-400 text-sm">Carregando...</div>
+                    ) : (
+                        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                            {cidadesHojeAdmin.map((c, idx) => {
+                                const pct = c.totalMetaDia > 0 ? Math.min((c.totalVendidoHoje / c.totalMetaDia) * 100, 100) : 0;
+                                const superou = c.totalVendidoHoje >= c.totalMetaDia;
+                                return (
+                                    <div key={c.cidade} className={`px-5 py-3.5 ${idx > 0 ? 'border-t border-gray-50' : ''}`}>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <span className="text-sm font-semibold text-gray-800 flex-1">{c.cidade}</span>
+                                            <span className={`text-xs font-bold tabular-nums ${superou ? 'text-green-600' : 'text-amber-600'}`}>{pct.toFixed(0)}%</span>
+                                            <span className="text-xs text-gray-500 tabular-nums">{fmtK(c.totalVendidoHoje)} / {fmtK(c.totalMetaDia)}</span>
+                                        </div>
+                                        <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mb-2">
+                                            <div
+                                                className={`h-1.5 rounded-full ${superou ? 'bg-green-500' : pct >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
+                                                style={{ width: `${pct}%` }}
+                                            />
+                                        </div>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {c.vendedores.map(v => {
+                                                const vPct = v.metaDia > 0 ? Math.min((v.vendidoHoje / v.metaDia) * 100, 100) : 0;
+                                                const vOk = v.vendidoHoje >= v.metaDia;
+                                                return (
+                                                    <button
+                                                        key={v.vendedorId}
+                                                        type="button"
+                                                        onClick={() => setVendedorSelecionado(v.vendedorId)}
+                                                        className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium transition-colors hover:shadow-sm ${vOk ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700'}`}
+                                                        title={`Ver dashboard de ${v.nome}`}
+                                                    >
+                                                        {vOk ? '✅' : '⚡'} {v.nome.split(' ')[0]}
+                                                        <span className="tabular-nums opacity-70">{vPct.toFixed(0)}%</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Painel de Metas */}
             <h2 className="text-xs uppercase font-bold text-gray-400 tracking-wider mb-3">Painel de Metas</h2>

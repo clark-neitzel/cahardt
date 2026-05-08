@@ -76,6 +76,20 @@ const metaController = {
         }
     },
 
+    obterCidadesHojeAdmin: async (req, res) => {
+        try {
+            const permissoes = req.user?.permissoes || {};
+            if (!permissoes.admin && !permissoes.Pode_Gerenciar_Metas) {
+                return res.status(403).json({ error: 'Acesso negado.' });
+            }
+            const dados = await metaService.calcularCidadesHojeAdmin();
+            res.status(200).json(dados);
+        } catch (error) {
+            console.error('[MetaController - obterCidadesHojeAdmin]', error);
+            res.status(500).json({ error: 'Erro interno.' });
+        }
+    },
+
     obterMetaHoje: async (req, res) => {
         try {
             const userId = req.user?.id;

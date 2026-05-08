@@ -390,6 +390,92 @@ const metaService = {
         };
     },
 
+    calcularCidadesHojeAdmin: async () => {
+        const dataAtual = dayjs();
+        const mesReferencia = dataAtual.format('YYYY-MM');
+        const DIAS_SIGLA_LIST = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+        const diaHojeSigla = DIAS_SIGLA_LIST[dataAtual.day()];
+
+        // Busca todas as metas do mês com metasCidades e vendedor
+        const metas = await prisma.metaMensalVendedor.findMany({
+            where: { mesReferencia },
+            include: {
+                metasCidades: true,
+                vendedor: { select: { id: true, nome: true } }
+            }
+        });
+
+        if (!metas.length) return [];
+
+        // Map: vendedorId -> totalDiasMes
+        const totalDiasPorVendedor = {};
+        for (const m of metas) {
+            let dias = [];
+            try { dias = typeof m.diasTrabalho === 'string' ? JSON.parse(m.diasTrabalho) : (m.diasTrabalho || []); } catch (e) { /* */ }
+            totalDiasPorVendedor[m.vendedorId] = dias.length;
+        }
+
+        // Clientes que visitam hoje (para todos os vendedores)
+        const clientesHoje = await prisma.cliente.findMany({
+            where: { Dia_de_venda: { contains: diaHojeSigla } },
+            select: { End_Cidade: true, idVendedor: true }
+        });
+
+        // Map: vendedorId -> Set<cidade>
+        const cidadesPorVendedor = {};
+        for (const c of clientesHoje) {
+            if (!c.idVendedor || !c.End_Cidade) continue;
+            if (!cidadesPorVendedor[c.idVendedor]) cidadesPorVendedor[c.idVendedor] = new Set();
+            cidadesPorVendedor[c.idVendedor].add(c.End_Cidade);
+        }
+
+        // Pedidos de hoje (todos os vendedores)
+        const inicioDia = dataAtual.startOf('day').toDate();
+        const fimDia = dataAtual.endOf('day').toDate();
+        const pedidosHoje = await prisma.pedido.findMany({
+            where: { dataVenda: { gte: inicioDia, lte: fimDia }, bonificacao: false, NOT: { situacaoCA: 'CANCELADO' } },
+            include: { itens: true, cliente: { select: { End_Cidade: true } } }
+        });
+
+        // Map: `vendedorId|cidade` -> vendidoHoje
+        const vendidoMap = {};
+        for (const p of pedidosHoje) {
+            const cidade = p.cliente?.End_Cidade;
+            if (!cidade) continue;
+            const valor = p.itens.reduce((acc, item) => acc + Number(item.valor) * Number(item.quantidade), 0);
+            const key = `${p.vendedorId}|${cidade}`;
+            vendidoMap[key] = (vendidoMap[key] || 0) + valor;
+        }
+
+        // Agrega por cidade → vendedores
+        const porCidadeMap = {};
+        for (const meta of metas) {
+            const cidadesHoje = cidadesPorVendedor[meta.vendedorId];
+            if (!cidadesHoje?.size) continue;
+            const totalDias = totalDiasPorVendedor[meta.vendedorId] || 1;
+
+            for (const mc of meta.metasCidades) {
+                if (!cidadesHoje.has(mc.cidade)) continue;
+                const metaDia = Math.round((Number(mc.valor) / totalDias) * 100) / 100;
+                const vendidoHoje = Math.round((vendidoMap[`${meta.vendedorId}|${mc.cidade}`] || 0) * 100) / 100;
+
+                if (!porCidadeMap[mc.cidade]) {
+                    porCidadeMap[mc.cidade] = { cidade: mc.cidade, totalMetaDia: 0, totalVendidoHoje: 0, vendedores: [] };
+                }
+                porCidadeMap[mc.cidade].totalMetaDia += metaDia;
+                porCidadeMap[mc.cidade].totalVendidoHoje += vendidoHoje;
+                porCidadeMap[mc.cidade].vendedores.push({
+                    vendedorId: meta.vendedorId,
+                    nome: meta.vendedor?.nome || '',
+                    metaDia,
+                    vendidoHoje
+                });
+            }
+        }
+
+        return Object.values(porCidadeMap).sort((a, b) => b.totalMetaDia - a.totalMetaDia);
+    },
+
     calcularMetaHoje: async (vendedorId) => {
         const dataAtual = dayjs();
         const mesReferencia = dataAtual.format('YYYY-MM');

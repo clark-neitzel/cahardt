@@ -25,6 +25,9 @@ router.get('/sugestao', metaController.obterSugestaoMeta);
 // GET /api/metas/meta-hoje
 router.get('/meta-hoje', metaController.obterMetaHoje);
 
+// GET /api/metas/cidades-hoje-todos (admin)
+router.get('/cidades-hoje-todos', metaController.obterCidadesHojeAdmin);
+
 // GET /api/metas/dashboard
 router.get('/dashboard', metaController.obterDashboardVendedor);
 
