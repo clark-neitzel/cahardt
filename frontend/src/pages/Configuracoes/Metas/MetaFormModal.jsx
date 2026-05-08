@@ -456,11 +456,19 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                                             {sugestao.porCidade.length > 0 && (
                                                 <div>
                                                     <div className="text-xs font-semibold text-gray-500 mb-1">Por cidade</div>
-                                                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                                                    <div className="space-y-1 max-h-40 overflow-y-auto">
                                                         {sugestao.porCidade.map(c => (
-                                                            <div key={c.cidade} className="flex justify-between text-xs bg-white rounded px-2 py-1 border border-gray-100">
-                                                                <span className="text-gray-700 truncate">{c.cidade}</span>
-                                                                <span className="font-semibold text-gray-800 ml-2 shrink-0">{fmt(c.valor)}</span>
+                                                            <div key={c.cidade} className="text-xs bg-white rounded px-2 py-1.5 border border-gray-100">
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-gray-700 truncate font-medium">{c.cidade}</span>
+                                                                    <span className="font-semibold text-gray-800 ml-2 shrink-0">{fmt(c.valor)}</span>
+                                                                </div>
+                                                                {c.vezesSemanais > 0 && (
+                                                                    <div className="flex items-center gap-1 mt-0.5">
+                                                                        <span className="text-orange-600 font-semibold">{c.vezesSemanais}x/sem</span>
+                                                                        <span className="text-gray-400">({c.diasVisita?.join(', ')})</span>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         ))}
                                                     </div>
@@ -689,10 +697,17 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                                     ) : (
                                         <>
                                             <div className="space-y-2">
-                                                {metasCidades.map((mc, idx) => (
+                                                {metasCidades.map((mc, idx) => {
+                                                    const info = sugestao?.porCidade?.find(c => c.cidade.toLowerCase() === mc.cidade.toLowerCase());
+                                                    return (
                                                     <div key={mc.cidade} className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg px-3 py-2">
                                                         <MapPin size={14} className="text-orange-400 shrink-0" />
-                                                        <span className="flex-1 text-sm font-medium text-gray-800">{mc.cidade}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <span className="text-sm font-medium text-gray-800">{mc.cidade}</span>
+                                                            {info?.vezesSemanais > 0 && (
+                                                                <span className="ml-2 text-xs text-orange-600 font-semibold">{info.vezesSemanais}x/sem</span>
+                                                            )}
+                                                        </div>
                                                         <input
                                                             type="number"
                                                             step="0.01"
@@ -705,7 +720,8 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                                                             <Trash2 size={15} />
                                                         </button>
                                                     </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                             <div className="mt-3 text-right text-sm text-gray-500">
                                                 Total cidades: <span className="font-semibold text-gray-800">

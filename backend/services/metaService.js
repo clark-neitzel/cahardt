@@ -90,7 +90,7 @@ const metaService = {
                         produto: { select: { id: true, nome: true, codigo: true } }
                     }
                 },
-                cliente: { select: { UUID: true, Nome: true, NomeFantasia: true, End_Cidade: true } }
+                cliente: { select: { UUID: true, Nome: true, NomeFantasia: true, End_Cidade: true, Dia_de_venda: true } }
             },
             orderBy: { dataVenda: 'desc' }
         });
@@ -146,9 +146,13 @@ const metaService = {
                 valorEstimado: Math.round(valorEsperado * 100) / 100
             });
 
-            if (!porCidadeMap[cidade]) porCidadeMap[cidade] = { cidade, valor: 0, clientes: 0 };
+            if (!porCidadeMap[cidade]) porCidadeMap[cidade] = { cidade, valor: 0, clientes: 0, diasSet: new Set() };
             porCidadeMap[cidade].valor += valorEsperado;
             porCidadeMap[cidade].clientes++;
+            if (cliente?.Dia_de_venda) {
+                cliente.Dia_de_venda.split(',').map(d => d.trim()).filter(Boolean)
+                    .forEach(d => porCidadeMap[cidade].diasSet.add(d));
+            }
 
             // Produtos: média por pedido × pedidos estimados no mês
             const qtdPedidos = ultimos.length;
@@ -190,8 +194,18 @@ const metaService = {
             }
         }
 
+        const ORDEM_DIAS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
         const porCidade = Object.values(porCidadeMap)
-            .map(c => ({ ...c, valor: Math.round(c.valor * 100) / 100 }))
+            .map(c => {
+                const diasVisita = [...(c.diasSet || new Set())].sort((a, b) => ORDEM_DIAS.indexOf(a) - ORDEM_DIAS.indexOf(b));
+                return {
+                    cidade: c.cidade,
+                    valor: Math.round(c.valor * 100) / 100,
+                    clientes: c.clientes,
+                    diasVisita,
+                    vezesSemanais: diasVisita.length
+                };
+            })
             .sort((a, b) => b.valor - a.valor);
 
         const porProduto = Object.values(porProdutoMap)
@@ -497,6 +511,12 @@ const metaService = {
         } catch (e) { /* ignore */ }
         const totalDiasMes = diasTrabalhoMes.length;
 
+        const inicioSemana = dataAtual.startOf('week');
+        const fimSemana = dataAtual.endOf('week');
+        const diasTrabalhoSemana = diasTrabalhoMes.filter(d =>
+            dayjs(d).isBetween(inicioSemana, fimSemana, 'day', '[]')
+        ).length;
+
         const clientesHoje = await prisma.cliente.findMany({
             where: { idVendedor: vendedorId, Dia_de_venda: { contains: diaHojeSigla } },
             select: { End_Cidade: true }
@@ -511,15 +531,16 @@ const metaService = {
         const inicioDia = dataAtual.startOf('day').toDate();
         const fimDia = dataAtual.endOf('day').toDate();
 
-        const pedidosHoje = await prisma.pedido.findMany({
-            where: {
-                vendedorId,
-                dataVenda: { gte: inicioDia, lte: fimDia },
-                bonificacao: false,
-                NOT: { situacaoCA: 'CANCELADO' }
-            },
-            include: { itens: true, cliente: { select: { End_Cidade: true } } }
-        });
+        const [pedidosHoje, pedidosSemana] = await Promise.all([
+            prisma.pedido.findMany({
+                where: { vendedorId, dataVenda: { gte: inicioDia, lte: fimDia }, bonificacao: false, NOT: { situacaoCA: 'CANCELADO' } },
+                include: { itens: true, cliente: { select: { End_Cidade: true } } }
+            }),
+            prisma.pedido.findMany({
+                where: { vendedorId, dataVenda: { gte: inicioSemana.toDate(), lte: fimSemana.toDate() }, bonificacao: false, NOT: { situacaoCA: 'CANCELADO' } },
+                include: { itens: true, cliente: { select: { End_Cidade: true } } }
+            })
+        ]);
 
         const vendidoHojePorCidade = {};
         for (const p of pedidosHoje) {
@@ -529,11 +550,20 @@ const metaService = {
             vendidoHojePorCidade[cidade] = (vendidoHojePorCidade[cidade] || 0) + valor;
         }
 
+        const vendidoSemanaPorCidade = {};
+        for (const p of pedidosSemana) {
+            const cidade = p.cliente?.End_Cidade;
+            if (!cidade) continue;
+            const valor = p.itens.reduce((acc, item) => acc + Number(item.valor) * Number(item.quantidade), 0);
+            vendidoSemanaPorCidade[cidade] = (vendidoSemanaPorCidade[cidade] || 0) + valor;
+        }
+
         const cidadesDeHoje = metasCidadesHoje.map(mc => ({
             cidade: mc.cidade,
             metaMensal: Number(mc.valor),
-            metaDia: totalDiasMes > 0 ? Math.round((Number(mc.valor) / totalDiasMes) * 100) / 100 : 0,
-            vendidoHoje: Math.round((vendidoHojePorCidade[mc.cidade] || 0) * 100) / 100
+            metaSemana: totalDiasMes > 0 ? Math.round((Number(mc.valor) * diasTrabalhoSemana / totalDiasMes) * 100) / 100 : 0,
+            vendidoHoje: Math.round((vendidoHojePorCidade[mc.cidade] || 0) * 100) / 100,
+            vendidoSemana: Math.round((vendidoSemanaPorCidade[mc.cidade] || 0) * 100) / 100
         }));
 
         return { temMeta: true, cidadesDeHoje };
