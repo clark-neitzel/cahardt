@@ -102,7 +102,11 @@ const clienteController = {
                     where: {
                         clienteId: { in: clienteIds },
                         status: { in: ['ABERTO', 'PARCIAL'] },
-                        parcelas: { some: { status: 'PENDENTE', dataVencimento: { lt: hoje } } }
+                        parcelas: { some: { status: 'PENDENTE', dataVencimento: { lt: hoje } } },
+                        NOT: [
+                            { pedido: { statusEnvio: 'EXCLUIDO' } },
+                            { pedido: { situacaoCA: 'CANCELADO' } }
+                        ]
                     },
                     select: {
                         clienteId: true,
@@ -301,7 +305,11 @@ const clienteController = {
             const contas = await prisma.contaReceber.findMany({
                 where: {
                     clienteId: uuid,
-                    status: { in: ['ABERTO', 'PARCIAL'] }
+                    status: { in: ['ABERTO', 'PARCIAL'] },
+                    NOT: [
+                        { pedido: { statusEnvio: 'EXCLUIDO' } },
+                        { pedido: { situacaoCA: 'CANCELADO' } }
+                    ]
                 },
                 include: {
                     pedido: {

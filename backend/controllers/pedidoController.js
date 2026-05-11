@@ -124,7 +124,11 @@ const pedidoController = {
                         dataVencimento: { lt: hoje },
                         contaReceber: {
                             clienteId: dadosPedido.clienteId,
-                            status: { in: ['ABERTO', 'PARCIAL'] }
+                            status: { in: ['ABERTO', 'PARCIAL'] },
+                            NOT: [
+                                { pedido: { statusEnvio: 'EXCLUIDO' } },
+                                { pedido: { situacaoCA: 'CANCELADO' } }
+                            ]
                         }
                     },
                     select: { valor: true }
