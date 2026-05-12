@@ -302,6 +302,8 @@ const metaService = {
         const valorVendidoPorCidade = {};
         const valorVendidoPorCidadeSemana = {};
         const vendaPorCidadeEDia = {}; // { cidade: { diaSemana(0-6): { total, pedidos } } }
+        const clientesMesPorCidadeVend = {};
+        const clientesSemanaPorCidadeVend = {};
 
         pedidosMes.forEach(p => {
             const valorPedido = p.itens.reduce((acc, item) => acc + (Number(item.valor) * Number(item.quantidade)), 0);
@@ -325,12 +327,35 @@ const metaService = {
                 valorVendidoPorCidadeSemana[cidade] = (valorVendidoPorCidadeSemana[cidade] || 0) + valorPedido;
             }
 
+            // Rastreia clientes únicos por cidade
+            if (p.clienteId) {
+                if (!clientesMesPorCidadeVend[cidade]) clientesMesPorCidadeVend[cidade] = new Set();
+                clientesMesPorCidadeVend[cidade].add(p.clienteId);
+                if (naSemana) {
+                    if (!clientesSemanaPorCidadeVend[cidade]) clientesSemanaPorCidadeVend[cidade] = new Set();
+                    clientesSemanaPorCidadeVend[cidade].add(p.clienteId);
+                }
+            }
+
             const diaSemana = dayjs(p.dataVenda).day();
             if (!vendaPorCidadeEDia[cidade]) vendaPorCidadeEDia[cidade] = {};
             if (!vendaPorCidadeEDia[cidade][diaSemana]) vendaPorCidadeEDia[cidade][diaSemana] = { total: 0, pedidos: 0 };
             vendaPorCidadeEDia[cidade][diaSemana].total += valorPedido;
             vendaPorCidadeEDia[cidade][diaSemana].pedidos++;
         });
+
+        // Conta clientes ativos por cidade para este vendedor
+        const clientesTotaisPorCidadeVend = {};
+        try {
+            const clientesVend = await prisma.cliente.findMany({
+                where: { idVendedor: vendedorId, Ativo: true, End_Cidade: { not: null } },
+                select: { End_Cidade: true }
+            });
+            for (const cl of clientesVend) {
+                if (!cl.End_Cidade) continue;
+                clientesTotaisPorCidadeVend[cl.End_Cidade] = (clientesTotaisPorCidadeVend[cl.End_Cidade] || 0) + 1;
+            }
+        } catch (e) { /* não bloqueia se falhar */ }
 
         const hojeEhDiaTrabalho = diasTrabalhoMes.some(d => dayjs(d).isSame(dataAtual, 'day'));
 
@@ -429,7 +454,10 @@ const metaService = {
                     realizadoSemana: Math.round((valorVendidoPorCidadeSemana[mc.cidade] || 0) * 100) / 100,
                     diasRestantesMes,
                     proximosDias,
-                    mediasPorDiaSemana
+                    mediasPorDiaSemana,
+                    totalClientes: clientesTotaisPorCidadeVend[mc.cidade] || 0,
+                    clientesComPedidoSemana: clientesSemanaPorCidadeVend[mc.cidade]?.size || 0,
+                    clientesComPedidoMes: clientesMesPorCidadeVend[mc.cidade]?.size || 0
                 };
             }),
             progressoPromocoes: meta.metasPromocoes.map(mp => ({
