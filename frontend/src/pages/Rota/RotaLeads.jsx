@@ -24,6 +24,7 @@ import ClientePopup from './ClientePopup';
 import roteirizacaoService from '../../services/roteirizacaoService';
 import api from '../../services/api';
 import MetaCidadeHojeBanner from '../../components/Rota/MetaCidadeHojeBanner';
+import MetaAdminHojeBanner from '../../components/Rota/MetaAdminHojeBanner';
 
 const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'N/D'];
 
@@ -1593,6 +1594,18 @@ const RotaLeads = () => {
         return () => clearInterval(timer);
     }, [vendedorId]);
     const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
+
+    const [metaAdminHoje, setMetaAdminHoje] = useState([]);
+    useEffect(() => {
+        if (!podeEscolherVendedor) return;
+        const fetchAdmin = () => api.get('/metas/cidades-hoje-todos').then(r => {
+            setMetaAdminHoje(Array.isArray(r.data) ? r.data : []);
+        }).catch(() => {});
+        fetchAdmin();
+        const timer = setInterval(fetchAdmin, 60 * 60 * 1000);
+        return () => clearInterval(timer);
+    }, [podeEscolherVendedor]);
+
     // Pode filtrar entregas por motorista = mesma regra do backend (admin ou Pode_Ver_Todas_Entregas)
     const podeVerTodasEntregas = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ver_Todas_Entregas);
     const podeEntregas = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Executar_Entregas);
@@ -2308,7 +2321,10 @@ const RotaLeads = () => {
                     <>
                         {aba === 'atendimento' && (
                             <>
-                                <MetaCidadeHojeBanner cidadesDeHoje={metaCidadesHoje} conversaoHoje={metaConversaoHoje} />
+                                {podeEscolherVendedor
+                                    ? <MetaAdminHojeBanner cidadesHoje={metaAdminHoje} />
+                                    : <MetaCidadeHojeBanner cidadesDeHoje={metaCidadesHoje} conversaoHoje={metaConversaoHoje} />
+                                }
                                 {itensParaAtender.length === 0 ? (
                                     <div className="text-center py-12 text-gray-500">
                                         <CheckCircle className="h-10 w-10 text-green-500 mx-auto mb-2" />
