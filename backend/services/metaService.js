@@ -42,7 +42,8 @@ const metaService = {
                 data: metasCidades.map(mc => ({
                     metaMensalVendedorId: metaSalva.id,
                     cidade: mc.cidade,
-                    valor: mc.valor
+                    valor: mc.valor,
+                    diasSemana: mc.diasSemana || null
                 }))
             });
         }
@@ -282,8 +283,11 @@ const metaService = {
             where: {
                 vendedorId,
                 dataVenda: { gte: dataInicioMesDb, lte: dataFimMesDb },
-                situacaoCA: 'FATURADO',
                 bonificacao: false,
+                OR: [
+                    { situacaoCA: { notIn: ['CANCELADO', 'DEVOLVIDO'] } },
+                    { situacaoCA: null }
+                ]
             },
             include: {
                 itens: true,
@@ -296,13 +300,15 @@ const metaService = {
         let flexUtilizadoMes = 0;
         const qtdVendidaPorProduto = {};
         const valorVendidoPorCidade = {};
+        const valorVendidoPorCidadeSemana = {};
         const vendaPorCidadeEDia = {}; // { cidade: { diaSemana(0-6): { total, pedidos } } }
 
         pedidosMes.forEach(p => {
             const valorPedido = p.itens.reduce((acc, item) => acc + (Number(item.valor) * Number(item.quantidade)), 0);
             totalVendidoMes += valorPedido;
             flexUtilizadoMes += Number(p.flexTotal || 0);
-            if (dayjs(p.dataVenda).isBetween(inicioSemana, fimSemana, 'day', '[]')) {
+            const naSemana = dayjs(p.dataVenda).isBetween(inicioSemana, fimSemana, 'day', '[]');
+            if (naSemana) {
                 totalVendidoSemana += valorPedido;
             }
 
@@ -315,6 +321,9 @@ const metaService = {
             // Progresso por cidade
             const cidade = p.cliente?.End_Cidade || 'Sem cidade';
             valorVendidoPorCidade[cidade] = (valorVendidoPorCidade[cidade] || 0) + valorPedido;
+            if (naSemana) {
+                valorVendidoPorCidadeSemana[cidade] = (valorVendidoPorCidadeSemana[cidade] || 0) + valorPedido;
+            }
 
             const diaSemana = dayjs(p.dataVenda).day();
             if (!vendaPorCidadeEDia[cidade]) vendaPorCidadeEDia[cidade] = {};
@@ -331,11 +340,21 @@ const metaService = {
         const diasRestantesMes = diasRestantesMesArr.length;
         const proximosDias = diasRestantesMesArr.slice(0, 5).map(d => dayjs(d).format('YYYY-MM-DD'));
 
-        const clientesHoje = await prisma.cliente.findMany({
-            where: { idVendedor: vendedorId, Dia_de_venda: { contains: diaHojeSigla } },
-            select: { End_Cidade: true }
-        });
-        const cidadesDeHoje = [...new Set(clientesHoje.map(c => c.End_Cidade).filter(Boolean))];
+        // cidadesDeHoje: cidades com diasSemana configurado incluindo hoje
+        // (fallback para detecção automática se nenhuma cidade tiver diasSemana)
+        const cidadesComConfig = meta.metasCidades.filter(mc => mc.diasSemana);
+        let cidadesDeHoje;
+        if (cidadesComConfig.length > 0) {
+            cidadesDeHoje = cidadesComConfig
+                .filter(mc => mc.diasSemana.split(',').map(d => d.trim().toUpperCase()).includes(diaHojeSigla))
+                .map(mc => mc.cidade);
+        } else {
+            const clientesHoje = await prisma.cliente.findMany({
+                where: { idVendedor: vendedorId, Dia_de_venda: { contains: diaHojeSigla } },
+                select: { End_Cidade: true }
+            });
+            cidadesDeHoje = [...new Set(clientesHoje.map(c => c.End_Cidade).filter(Boolean))];
+        }
 
         const divisorDiasMes = Math.max(qtdDiasTrabalhadosMesAteHoje, 1);
         const mediaDiariaRealizadaMes = totalVendidoMes / divisorDiasMes;
@@ -386,10 +405,28 @@ const metaService = {
                         media: d.pedidos > 0 ? Math.round((d.total / d.pedidos) * 100) / 100 : 0
                     };
                 });
+
+                const diasConfig = mc.diasSemana ? mc.diasSemana.split(',').map(d => d.trim().toUpperCase()) : [];
+                const totalVisitasMes = diasConfig.length > 0
+                    ? diasTrabalhoMes.filter(d => diasConfig.includes(DIAS_SIGLA_LIST[dayjs(d).day()])).length
+                    : totalDiasMes;
+                const visitasSemanaCount = diasConfig.length > 0
+                    ? diasTrabalhoMes.filter(d =>
+                        dayjs(d).isBetween(inicioSemana, fimSemana, 'day', '[]') &&
+                        diasConfig.includes(DIAS_SIGLA_LIST[dayjs(d).day()])
+                    ).length
+                    : totalDiasSemana;
+                const metaSemana = totalVisitasMes > 0
+                    ? Math.round((Number(mc.valor) * visitasSemanaCount / totalVisitasMes) * 100) / 100
+                    : 0;
+
                 return {
                     cidade: mc.cidade,
                     meta: Number(mc.valor),
+                    metaSemana,
+                    diasSemana: diasConfig,
                     realizado: valorVendidoPorCidade[mc.cidade] || 0,
+                    realizadoSemana: Math.round((valorVendidoPorCidadeSemana[mc.cidade] || 0) * 100) / 100,
                     diasRestantesMes,
                     proximosDias,
                     mediasPorDiaSemana
@@ -409,8 +446,9 @@ const metaService = {
         const mesReferencia = dataAtual.format('YYYY-MM');
         const DIAS_SIGLA_LIST = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
         const diaHojeSigla = DIAS_SIGLA_LIST[dataAtual.day()];
+        const inicioSemana = dataAtual.startOf('week');
+        const fimSemana = dataAtual.endOf('week');
 
-        // Busca todas as metas do mês com metasCidades e vendedor
         const metas = await prisma.metaMensalVendedor.findMany({
             where: { mesReferencia },
             include: {
@@ -421,73 +459,114 @@ const metaService = {
 
         if (!metas.length) return [];
 
-        // Map: vendedorId -> totalDiasMes
-        const totalDiasPorVendedor = {};
+        // Map: vendedorId -> diasTrabalhoMes[]
+        const diasTrabalhoPorVendedor = {};
         for (const m of metas) {
             let dias = [];
             try { dias = typeof m.diasTrabalho === 'string' ? JSON.parse(m.diasTrabalho) : (m.diasTrabalho || []); } catch (e) { /* */ }
-            totalDiasPorVendedor[m.vendedorId] = dias.length;
+            diasTrabalhoPorVendedor[m.vendedorId] = dias;
         }
 
-        // Clientes que visitam hoje (para todos os vendedores)
-        const clientesHoje = await prisma.cliente.findMany({
-            where: { Dia_de_venda: { contains: diaHojeSigla } },
-            select: { End_Cidade: true, idVendedor: true }
-        });
+        // Uma query mensal com o filtro padrão: todos exceto cancelado, devolvido e bonificação
+        const vendedorIds = metas.map(m => m.vendedorId);
+        const inicioMes = dataAtual.startOf('month').toDate();
+        const fimMes = dataAtual.endOf('month').toDate();
 
-        // Map: vendedorId -> Set<cidade>
-        const cidadesPorVendedor = {};
-        for (const c of clientesHoje) {
-            if (!c.idVendedor || !c.End_Cidade) continue;
-            if (!cidadesPorVendedor[c.idVendedor]) cidadesPorVendedor[c.idVendedor] = new Set();
-            cidadesPorVendedor[c.idVendedor].add(c.End_Cidade);
-        }
-
-        // Pedidos de hoje (todos os vendedores)
-        const inicioDia = dataAtual.startOf('day').toDate();
-        const fimDia = dataAtual.endOf('day').toDate();
-        const pedidosHoje = await prisma.pedido.findMany({
-            where: { dataVenda: { gte: inicioDia, lte: fimDia }, bonificacao: false, NOT: { situacaoCA: 'CANCELADO' } },
+        const pedidosMes = await prisma.pedido.findMany({
+            where: {
+                vendedorId: { in: vendedorIds },
+                dataVenda: { gte: inicioMes, lte: fimMes },
+                bonificacao: false,
+                OR: [
+                    { situacaoCA: { notIn: ['CANCELADO', 'DEVOLVIDO'] } },
+                    { situacaoCA: null }
+                ]
+            },
             include: { itens: true, cliente: { select: { End_Cidade: true } } }
         });
 
-        // Map: `vendedorId|cidade` -> vendidoHoje
-        const vendidoMap = {};
-        for (const p of pedidosHoje) {
+        // Deriva semana e hoje a partir do mês
+        const vendidoMesMap = {};
+        const vendidoSemanaMap = {};
+        const vendidoHojeMap = {};
+        for (const p of pedidosMes) {
             const cidade = p.cliente?.End_Cidade;
             if (!cidade) continue;
             const valor = p.itens.reduce((acc, item) => acc + Number(item.valor) * Number(item.quantidade), 0);
             const key = `${p.vendedorId}|${cidade}`;
-            vendidoMap[key] = (vendidoMap[key] || 0) + valor;
+            vendidoMesMap[key] = (vendidoMesMap[key] || 0) + valor;
+            if (dayjs(p.dataVenda).isBetween(inicioSemana, fimSemana, 'day', '[]')) {
+                vendidoSemanaMap[key] = (vendidoSemanaMap[key] || 0) + valor;
+            }
+            if (dayjs(p.dataVenda).isSame(dataAtual, 'day')) {
+                vendidoHojeMap[key] = (vendidoHojeMap[key] || 0) + valor;
+            }
         }
 
         // Agrega por cidade → vendedores
         const porCidadeMap = {};
         for (const meta of metas) {
-            const cidadesHoje = cidadesPorVendedor[meta.vendedorId];
-            if (!cidadesHoje?.size) continue;
-            const totalDias = totalDiasPorVendedor[meta.vendedorId] || 1;
+            const diasTrabalhoMes = diasTrabalhoPorVendedor[meta.vendedorId] || [];
+            const totalDiasMes = diasTrabalhoMes.length;
+            if (totalDiasMes === 0) continue;
 
             for (const mc of meta.metasCidades) {
-                if (!cidadesHoje.has(mc.cidade)) continue;
-                const metaDia = Math.round((Number(mc.valor) / totalDias) * 100) / 100;
-                const vendidoHoje = Math.round((vendidoMap[`${meta.vendedorId}|${mc.cidade}`] || 0) * 100) / 100;
+                const diasConfig = mc.diasSemana
+                    ? mc.diasSemana.split(',').map(d => d.trim().toUpperCase()).filter(Boolean)
+                    : [];
+
+                // Verifica se hoje é dia de atendimento desta cidade
+                const ehHoje = diasConfig.length > 0
+                    ? diasConfig.includes(diaHojeSigla)
+                    : true; // sem config, sempre aparece
+                if (!ehHoje) continue;
+
+                // Calcula metaSemana pelo mesmo critério de calcularMetaHoje
+                const totalVisitasMes = diasConfig.length > 0
+                    ? diasTrabalhoMes.filter(d => diasConfig.includes(DIAS_SIGLA_LIST[dayjs(d).day()])).length
+                    : totalDiasMes;
+
+                const visitasSemana = diasConfig.length > 0
+                    ? diasTrabalhoMes.filter(d =>
+                        dayjs(d).isBetween(inicioSemana, fimSemana, 'day', '[]') &&
+                        diasConfig.includes(DIAS_SIGLA_LIST[dayjs(d).day()])
+                    ).length
+                    : diasTrabalhoMes.filter(d => dayjs(d).isBetween(inicioSemana, fimSemana, 'day', '[]')).length;
+
+                const metaSemana = totalVisitasMes > 0
+                    ? Math.round((Number(mc.valor) * visitasSemana / totalVisitasMes) * 100) / 100
+                    : 0;
+
+                const key = `${meta.vendedorId}|${mc.cidade}`;
+                const vendidoHoje = Math.round((vendidoHojeMap[key] || 0) * 100) / 100;
+                const vendidoSemana = Math.round((vendidoSemanaMap[key] || 0) * 100) / 100;
+                const vendidoMes = Math.round((vendidoMesMap[key] || 0) * 100) / 100;
+                const metaMensal = Number(mc.valor);
 
                 if (!porCidadeMap[mc.cidade]) {
-                    porCidadeMap[mc.cidade] = { cidade: mc.cidade, totalMetaDia: 0, totalVendidoHoje: 0, vendedores: [] };
+                    porCidadeMap[mc.cidade] = {
+                        cidade: mc.cidade,
+                        totalMetaSemana: 0, totalVendidoSemana: 0,
+                        totalMetaMensal: 0, totalVendidoMes: 0,
+                        totalVendidoHoje: 0, vendedores: []
+                    };
                 }
-                porCidadeMap[mc.cidade].totalMetaDia += metaDia;
+                porCidadeMap[mc.cidade].totalMetaSemana += metaSemana;
+                porCidadeMap[mc.cidade].totalVendidoSemana += vendidoSemana;
+                porCidadeMap[mc.cidade].totalMetaMensal += metaMensal;
+                porCidadeMap[mc.cidade].totalVendidoMes += vendidoMes;
                 porCidadeMap[mc.cidade].totalVendidoHoje += vendidoHoje;
                 porCidadeMap[mc.cidade].vendedores.push({
                     vendedorId: meta.vendedorId,
                     nome: meta.vendedor?.nome || '',
-                    metaDia,
+                    metaSemana, vendidoSemana,
+                    metaMensal, vendidoMes,
                     vendidoHoje
                 });
             }
         }
 
-        return Object.values(porCidadeMap).sort((a, b) => b.totalMetaDia - a.totalMetaDia);
+        return Object.values(porCidadeMap).sort((a, b) => b.totalMetaSemana - a.totalMetaSemana);
     },
 
     calcularMetaHoje: async (vendedorId) => {
@@ -517,13 +596,14 @@ const metaService = {
             dayjs(d).isBetween(inicioSemana, fimSemana, 'day', '[]')
         ).length;
 
-        const clientesHoje = await prisma.cliente.findMany({
-            where: { idVendedor: vendedorId, Dia_de_venda: { contains: diaHojeSigla } },
-            select: { End_Cidade: true }
+        // Filtra cidades que têm hoje como dia de atendimento (diasSemana configurado)
+        // Fallback: cidades sem diasSemana configurado aparecem sempre
+        const metasCidadesHoje = meta.metasCidades.filter(mc => {
+            if (!mc.diasSemana) return true; // sem configuração, aparece sempre
+            const dias = mc.diasSemana.split(',').map(d => d.trim().toUpperCase());
+            return dias.includes(diaHojeSigla);
         });
-        const cidadesHoje = [...new Set(clientesHoje.map(c => c.End_Cidade).filter(Boolean))];
 
-        const metasCidadesHoje = meta.metasCidades.filter(mc => cidadesHoje.includes(mc.cidade));
         if (metasCidadesHoje.length === 0) {
             return { temMeta: true, cidadesDeHoje: [] };
         }
@@ -531,13 +611,21 @@ const metaService = {
         const inicioDia = dataAtual.startOf('day').toDate();
         const fimDia = dataAtual.endOf('day').toDate();
 
+        const filtroValido = {
+            bonificacao: false,
+            OR: [
+                { situacaoCA: { notIn: ['CANCELADO', 'DEVOLVIDO'] } },
+                { situacaoCA: null }
+            ]
+        };
+
         const [pedidosHoje, pedidosSemana] = await Promise.all([
             prisma.pedido.findMany({
-                where: { vendedorId, dataVenda: { gte: inicioDia, lte: fimDia }, bonificacao: false, NOT: { situacaoCA: 'CANCELADO' } },
+                where: { vendedorId, dataVenda: { gte: inicioDia, lte: fimDia }, ...filtroValido },
                 include: { itens: true, cliente: { select: { End_Cidade: true } } }
             }),
             prisma.pedido.findMany({
-                where: { vendedorId, dataVenda: { gte: inicioSemana.toDate(), lte: fimSemana.toDate() }, bonificacao: false, NOT: { situacaoCA: 'CANCELADO' } },
+                where: { vendedorId, dataVenda: { gte: inicioSemana.toDate(), lte: fimSemana.toDate() }, ...filtroValido },
                 include: { itens: true, cliente: { select: { End_Cidade: true } } }
             })
         ]);
@@ -558,13 +646,59 @@ const metaService = {
             vendidoSemanaPorCidade[cidade] = (vendidoSemanaPorCidade[cidade] || 0) + valor;
         }
 
-        const cidadesDeHoje = metasCidadesHoje.map(mc => ({
-            cidade: mc.cidade,
-            metaMensal: Number(mc.valor),
-            metaSemana: totalDiasMes > 0 ? Math.round((Number(mc.valor) * diasTrabalhoSemana / totalDiasMes) * 100) / 100 : 0,
-            vendidoHoje: Math.round((vendidoHojePorCidade[mc.cidade] || 0) * 100) / 100,
-            vendidoSemana: Math.round((vendidoSemanaPorCidade[mc.cidade] || 0) * 100) / 100
-        }));
+        // Mapa: diaSigla → índice dayjs (0=Dom..6=Sab)
+        const SIGLA_TO_DAY = { DOM: 0, SEG: 1, TER: 2, QUA: 3, QUI: 4, SEX: 5, SAB: 6 };
+
+        const cidadesDeHoje = metasCidadesHoje.map(mc => {
+            const diasConfig = mc.diasSemana
+                ? mc.diasSemana.split(',').map(d => d.trim().toUpperCase()).filter(Boolean)
+                : [];
+
+            // Total de dias de visita no mês (diasTrabalhoMes que batem com diasConfig)
+            const totalVisitasMes = diasConfig.length > 0
+                ? diasTrabalhoMes.filter(d => {
+                    const diaSigla = DIAS_SIGLA_LIST[dayjs(d).day()];
+                    return diasConfig.includes(diaSigla);
+                }).length
+                : totalDiasMes;
+
+            // Visitas desta semana (diasTrabalhoMes que estão na semana e batem com diasConfig)
+            const visitasSemana = diasConfig.length > 0
+                ? diasTrabalhoMes.filter(d => {
+                    if (!dayjs(d).isBetween(inicioSemana, fimSemana, 'day', '[]')) return false;
+                    const diaSigla = DIAS_SIGLA_LIST[dayjs(d).day()];
+                    return diasConfig.includes(diaSigla);
+                })
+                : diasTrabalhoMes.filter(d => dayjs(d).isBetween(inicioSemana, fimSemana, 'day', '[]'));
+
+            const metaSemana = totalVisitasMes > 0
+                ? Math.round((Number(mc.valor) * visitasSemana.length / totalVisitasMes) * 100) / 100
+                : 0;
+
+            // Visitas restantes na semana (a partir de amanhã)
+            const visitasRestantesSemana = visitasSemana
+                .filter(d => dayjs(d).isAfter(dataAtual, 'day'))
+                .map(d => dayjs(d).format('YYYY-MM-DD'));
+
+            const vendidoSemana = Math.round((vendidoSemanaPorCidade[mc.cidade] || 0) * 100) / 100;
+            const faltaSemana = Math.max(metaSemana - vendidoSemana, 0);
+            const porVisita = visitasRestantesSemana.length > 0
+                ? Math.round((faltaSemana / visitasRestantesSemana.length) * 100) / 100
+                : faltaSemana;
+
+            return {
+                cidade: mc.cidade,
+                diasSemana: diasConfig,
+                metaMensal: Number(mc.valor),
+                metaSemana,
+                visitasSemana: visitasSemana.map(d => dayjs(d).format('YYYY-MM-DD')),
+                visitasRestantesSemana,
+                vendidoHoje: Math.round((vendidoHojePorCidade[mc.cidade] || 0) * 100) / 100,
+                vendidoSemana,
+                faltaSemana,
+                porVisita
+            };
+        });
 
         return { temMeta: true, cidadesDeHoje };
     }

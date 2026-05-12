@@ -982,6 +982,7 @@ model MetaCidade {
   metaMensalVendedorId String  @map("meta_mensal_vendedor_id")
   cidade               String
   valor                Decimal @db.Decimal(12, 2)
+  diasSemana           String? @map("dias_semana") // Ex: "SEG,QUI" — dias de entrega configurados pelo admin
 
   metaMensalVendedor MetaMensalVendedor @relation(fields: [metaMensalVendedorId], references: [id], onDelete: Cascade)
 

@@ -148,14 +148,34 @@ const ColapsableCard = ({ title, icon: Icon, iconColor, count, extra, children, 
 
 const NOMES_DIA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+const SIGLA_TO_DOW = { DOM: 0, SEG: 1, TER: 2, QUA: 3, QUI: 4, SEX: 5, SAB: 6 };
+
 const CidadeDetalheDrawer = ({ cidade: cidadeData, totalDias, diasTrabalhados, onClose }) => {
     if (!cidadeData) return null;
-    const { cidade, meta, realizado, diasRestantesMes, proximosDias, mediasPorDiaSemana } = cidadeData;
+    const { cidade, meta, realizado, proximosDias, mediasPorDiaSemana } = cidadeData;
     const faltam = Math.max(meta - realizado, 0);
-    const porDia = diasRestantesMes > 0 ? faltam / diasRestantesMes : 0;
     const percent = meta > 0 ? Math.min((realizado / meta) * 100, 100) : 0;
     const projecao = diasTrabalhados > 0 ? (realizado / diasTrabalhados) * totalDias : 0;
     const projOk = projecao >= meta;
+
+    // Remaining visit days from today to end of month, filtered by diasSemana config
+    const diasSemanaConfig = cidadeData.diasSemana || [];
+    const visitDaysSet = new Set(diasSemanaConfig.map(s => SIGLA_TO_DOW[s]).filter(d => d !== undefined));
+    const temDiasConfig = visitDaysSet.size > 0;
+    let visitasRestantesMes = 0;
+    const proximasVisitas = [];
+    const hoje = dayjs();
+    const fimMes = hoje.endOf('month');
+    let dCursor = hoje;
+    while (!dCursor.isAfter(fimMes)) {
+        const dow = dCursor.day();
+        if (temDiasConfig ? visitDaysSet.has(dow) : (dow >= 1 && dow <= 5)) {
+            visitasRestantesMes++;
+            if (proximasVisitas.length < 5) proximasVisitas.push(dCursor.format('YYYY-MM-DD'));
+        }
+        dCursor = dCursor.add(1, 'day');
+    }
+    const porVisita = visitasRestantesMes > 0 ? faltam / visitasRestantesMes : 0;
 
     const diasComVenda = (mediasPorDiaSemana || []).filter(d => d.pedidos > 0).sort((a, b) => b.media - a.media);
     const maxMedia = diasComVenda[0]?.media || 1;
@@ -219,20 +239,33 @@ const CidadeDetalheDrawer = ({ cidade: cidadeData, totalDias, diasTrabalhados, o
                     </div>
 
                     {/* Para bater a meta */}
-                    {diasRestantesMes > 0 && faltam > 0 && (
+                    {faltam > 0 && visitasRestantesMes > 0 && (
                         <div className="bg-blue-50 rounded-xl px-4 py-3">
                             <p className="text-xs text-blue-500 font-semibold uppercase tracking-wide mb-1">Para bater a meta</p>
-                            <p className="text-lg font-bold text-blue-700">{fmtK(porDia)}<span className="text-sm font-normal text-blue-500"> / dia</span></p>
-                            <p className="text-xs text-blue-500 mt-0.5">{diasRestantesMes} dia{diasRestantesMes !== 1 ? 's' : ''} úteis restantes</p>
+                            <p className="text-lg font-bold text-blue-700">
+                                {fmtK(porVisita)}
+                                <span className="text-sm font-normal text-blue-500"> / visita</span>
+                            </p>
+                            {temDiasConfig ? (
+                                <p className="text-xs text-blue-500 mt-0.5">
+                                    {visitasRestantesMes} visita{visitasRestantesMes !== 1 ? 's' : ''} restantes ({diasSemanaConfig.join(', ')})
+                                </p>
+                            ) : (
+                                <p className="text-xs text-blue-500 mt-0.5">
+                                    {visitasRestantesMes} dia{visitasRestantesMes !== 1 ? 's' : ''} úteis restantes
+                                </p>
+                            )}
                         </div>
                     )}
 
-                    {/* Próximos dias */}
-                    {proximosDias?.length > 0 && (
+                    {/* Próximas visitas */}
+                    {proximasVisitas.length > 0 && (
                         <div>
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Próximos dias na rota</p>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                                {temDiasConfig ? 'Próximas visitas' : 'Próximos dias na rota'}
+                            </p>
                             <div className="flex flex-wrap gap-2">
-                                {proximosDias.map(d => (
+                                {proximasVisitas.map(d => (
                                     <span key={d} className="text-xs bg-gray-100 text-gray-700 font-medium px-2.5 py-1 rounded-lg">
                                         {dayjs(d).format('ddd DD/MM')}
                                     </span>
@@ -276,6 +309,7 @@ const DashboardVendedor = () => {
     const [cidadeDetalhe, setCidadeDetalhe] = useState(null);
     const [cidadesHojeAdmin, setCidadesHojeAdmin] = useState([]);
     const [loadingCidadesAdmin, setLoadingCidadesAdmin] = useState(false);
+    const [mostrarTodasCidades, setMostrarTodasCidades] = useState(false);
 
     useEffect(() => {
         const onKey = (e) => { if (e.key === 'Escape') setCidadeDetalhe(null); };
@@ -352,7 +386,7 @@ const DashboardVendedor = () => {
 
     // Filtra para cidades do dia (exceto quando admin visualizando outro vendedor)
     const cidadesDeHoje = data?.cidadesDeHoje || [];
-    const mostrarSoCidadesDeHoje = !vendedorSelecionado && cidadesDeHoje.length > 0;
+    const mostrarSoCidadesDeHoje = !vendedorSelecionado && cidadesDeHoje.length > 0 && !mostrarTodasCidades;
     const progressoCidades = mostrarSoCidadesDeHoje
         ? todasCidades.filter(c => cidadesDeHoje.includes(c.cidade))
         : todasCidades;
@@ -408,35 +442,51 @@ const DashboardVendedor = () => {
                     ) : (
                         <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                             {cidadesHojeAdmin.map((c, idx) => {
-                                const pct = c.totalMetaDia > 0 ? Math.min((c.totalVendidoHoje / c.totalMetaDia) * 100, 100) : 0;
-                                const superou = c.totalVendidoHoje >= c.totalMetaDia;
+                                const pctSem = c.totalMetaSemana > 0 ? Math.min((c.totalVendidoSemana / c.totalMetaSemana) * 100, 100) : 0;
+                                const pctMes = c.totalMetaMensal > 0 ? Math.min((c.totalVendidoMes / c.totalMetaMensal) * 100, 100) : 0;
+                                const superouSem = c.totalVendidoSemana >= c.totalMetaSemana;
                                 return (
                                     <div key={c.cidade} className={`px-5 py-3.5 ${idx > 0 ? 'border-t border-gray-50' : ''}`}>
-                                        <div className="flex items-center gap-3 mb-2">
+                                        <div className="flex items-center gap-3 mb-1">
                                             <span className="text-sm font-semibold text-gray-800 flex-1">{c.cidade}</span>
-                                            <span className={`text-xs font-bold tabular-nums ${superou ? 'text-green-600' : 'text-amber-600'}`}>{pct.toFixed(0)}%</span>
-                                            <span className="text-xs text-gray-500 tabular-nums">{fmtK(c.totalVendidoHoje)} / {fmtK(c.totalMetaDia)}</span>
+                                            <div className="text-right shrink-0">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-gray-400">sem</span>
+                                                    <span className={`text-xs font-bold tabular-nums ${superouSem ? 'text-green-600' : 'text-amber-600'}`}>{pctSem.toFixed(0)}%</span>
+                                                    <span className="text-xs text-gray-500 tabular-nums">{fmtK(c.totalVendidoSemana)} / {fmtK(c.totalMetaSemana)}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 justify-end mt-0.5">
+                                                    <span className="text-xs text-gray-400">mês</span>
+                                                    <span className="text-xs font-semibold tabular-nums text-gray-500">{pctMes.toFixed(0)}%</span>
+                                                    <span className="text-xs text-gray-400 tabular-nums">{fmtK(c.totalVendidoMes)} / {fmtK(c.totalMetaMensal)}</span>
+                                                </div>
+                                            </div>
                                         </div>
+                                        {c.totalVendidoHoje > 0 && (
+                                            <p className="text-xs text-gray-400 mb-1">hoje: {fmtK(c.totalVendidoHoje)}</p>
+                                        )}
                                         <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mb-2">
                                             <div
-                                                className={`h-1.5 rounded-full ${superou ? 'bg-green-500' : pct >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
-                                                style={{ width: `${pct}%` }}
+                                                className={`h-1.5 rounded-full ${superouSem ? 'bg-green-500' : pctSem >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
+                                                style={{ width: `${pctSem}%` }}
                                             />
                                         </div>
                                         <div className="flex flex-wrap gap-1.5">
                                             {c.vendedores.map(v => {
-                                                const vPct = v.metaDia > 0 ? Math.min((v.vendidoHoje / v.metaDia) * 100, 100) : 0;
-                                                const vOk = v.vendidoHoje >= v.metaDia;
+                                                const vPctSem = v.metaSemana > 0 ? Math.min((v.vendidoSemana / v.metaSemana) * 100, 100) : 0;
+                                                const vPctMes = v.metaMensal > 0 ? Math.min((v.vendidoMes / v.metaMensal) * 100, 100) : 0;
+                                                const vOk = v.vendidoSemana >= v.metaSemana;
                                                 return (
                                                     <button
                                                         key={v.vendedorId}
                                                         type="button"
                                                         onClick={() => setVendedorSelecionado(v.vendedorId)}
                                                         className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium transition-colors hover:shadow-sm ${vOk ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700'}`}
-                                                        title={`Ver dashboard de ${v.nome}`}
+                                                        title={`Semana: ${vPctSem.toFixed(0)}% | Mês: ${vPctMes.toFixed(0)}%`}
                                                     >
                                                         {vOk ? '✅' : '⚡'} {v.nome.split(' ')[0]}
-                                                        <span className="tabular-nums opacity-70">{vPct.toFixed(0)}%</span>
+                                                        <span className="tabular-nums opacity-70">{vPctSem.toFixed(0)}%</span>
+                                                        <span className="tabular-nums opacity-40 text-xs">{vPctMes.toFixed(0)}%m</span>
                                                     </button>
                                                 );
                                             })}
@@ -483,7 +533,9 @@ const DashboardVendedor = () => {
 
                     {/* Progresso por Cidade — logo abaixo do hero */}
                     {todasCidades.length > 0 && (() => {
-                        const noRitmo = progressoCidades.filter(c => c.projecao >= c.meta).length;
+                        const noRitmo = mostrarSoCidadesDeHoje
+                            ? progressoCidades.filter(c => (c.metaSemana > 0 ? c.realizadoSemana >= c.metaSemana : c.projecao >= c.meta)).length
+                            : progressoCidades.filter(c => c.projecao >= c.meta).length;
                         const atrasadas = progressoCidades.length - noRitmo;
                         const titulo = mostrarSoCidadesDeHoje
                             ? `Cidades de Hoje (${progressoCidades.length})`
@@ -506,9 +558,14 @@ const DashboardVendedor = () => {
                                     <p className="text-sm text-gray-400 py-2">Nenhuma cidade com meta configurada para hoje.</p>
                                 ) : (
                                     <div className="space-y-1">
-                                        {progressoCidades.slice().sort((a, b) => b.meta - a.meta).map(c => {
-                                            const pct = c.meta > 0 ? Math.min((c.realizado / c.meta) * 100, 100) : 0;
-                                            const onRitmo = c.projecao >= c.meta;
+                                        {progressoCidades.slice().sort((a, b) =>
+                                            mostrarSoCidadesDeHoje ? b.metaSemana - a.metaSemana : b.meta - a.meta
+                                        ).map(c => {
+                                            const usarSemana = mostrarSoCidadesDeHoje && c.metaSemana > 0;
+                                            const valorRef = usarSemana ? c.realizadoSemana : c.realizado;
+                                            const metaRef = usarSemana ? c.metaSemana : c.meta;
+                                            const pct = metaRef > 0 ? Math.min((valorRef / metaRef) * 100, 100) : 0;
+                                            const onRitmo = usarSemana ? valorRef >= metaRef : c.projecao >= c.meta;
                                             return (
                                                 <button
                                                     key={c.cidade}
@@ -528,21 +585,34 @@ const DashboardVendedor = () => {
                                                                 style={{ width: `${pct}%` }}
                                                             />
                                                         </div>
-                                                        <span className="text-xs text-gray-400 tabular-nums shrink-0">{fmtK(c.realizado)} / {fmtK(c.meta)}</span>
+                                                        <span className="text-xs text-gray-400 tabular-nums shrink-0">
+                                                            {fmtK(valorRef)} / {fmtK(metaRef)}
+                                                            {usarSemana && <span className="ml-1 opacity-60">sem</span>}
+                                                        </span>
                                                     </div>
                                                 </button>
                                             );
                                         })}
                                     </div>
                                 )}
-                                {mostrarSoCidadesDeHoje && todasCidades.length > progressoCidades.length && (
-                                    <button
-                                        type="button"
-                                        onClick={() => { /* TODO: show all */ }}
-                                        className="mt-3 text-xs text-orange-600 hover:underline"
-                                    >
-                                        Ver todas as {todasCidades.length} cidades →
-                                    </button>
+                                {!vendedorSelecionado && cidadesDeHoje.length > 0 && (
+                                    mostrarTodasCidades ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => setMostrarTodasCidades(false)}
+                                            className="mt-3 text-xs text-gray-400 hover:text-orange-600 hover:underline"
+                                        >
+                                            ← Ver só as cidades de hoje ({cidadesDeHoje.length})
+                                        </button>
+                                    ) : todasCidades.length > progressoCidades.length ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => setMostrarTodasCidades(true)}
+                                            className="mt-3 text-xs text-orange-600 hover:underline"
+                                        >
+                                            Ver todas as {todasCidades.length} cidades →
+                                        </button>
+                                    ) : null
                                 )}
                             </ColapsableCard>
                         );

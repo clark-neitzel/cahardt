@@ -7,6 +7,7 @@ import produtoService from '../../../services/produtoService';
 import promocaoService from '../../../services/promocaoService';
 
 const STORAGE_KEY_FATOR = 'meta_fator_crescimento';
+const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
 
 const fmt = (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 const fmtDec = (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
@@ -37,6 +38,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
     const [metasCidades, setMetasCidades] = useState([]);
     const [novaCidade, setNovaCidade] = useState('');
     const [novaCidadeValor, setNovaCidadeValor] = useState('');
+    const [novaCidadeDias, setNovaCidadeDias] = useState([]);
 
     const [activeTab, setActiveTab] = useState('calendario');
     const [loading, setLoading] = useState(false);
@@ -108,7 +110,8 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
             if (metaData.metasCidades?.length > 0) {
                 setMetasCidades(metaData.metasCidades.map(mc => ({
                     cidade: mc.cidade,
-                    valor: Number(mc.valor).toString()
+                    valor: Number(mc.valor).toString(),
+                    diasSemana: mc.diasSemana ? mc.diasSemana.split(',').map(d => d.trim()).filter(Boolean) : []
                 })));
             }
         } else {
@@ -187,9 +190,22 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
             toast.error("Cidade já adicionada");
             return;
         }
-        setMetasCidades([...metasCidades, { cidade: cidadeNorm, valor: novaCidadeValor }]);
+        setMetasCidades([...metasCidades, { cidade: cidadeNorm, valor: novaCidadeValor, diasSemana: [...novaCidadeDias] }]);
         setNovaCidade('');
         setNovaCidadeValor('');
+        setNovaCidadeDias([]);
+    };
+
+    const toggleNovaCidadeDia = (dia) => {
+        setNovaCidadeDias(prev => prev.includes(dia) ? prev.filter(d => d !== dia) : [...prev, dia]);
+    };
+
+    const toggleDiaCidade = (idx, dia) => {
+        setMetasCidades(prev => prev.map((mc, i) => {
+            if (i !== idx) return mc;
+            const dias = mc.diasSemana || [];
+            return { ...mc, diasSemana: dias.includes(dia) ? dias.filter(d => d !== dia) : [...dias, dia] };
+        }));
     };
 
     const atualizarValorCidade = (index, valor) => {
@@ -234,7 +250,11 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
 
     const preencherCidadesDoSugestao = () => {
         if (!sugestao?.porCidade?.length) return;
-        setMetasCidades(sugestao.porCidade.map(c => ({ cidade: c.cidade, valor: c.valor.toString() })));
+        setMetasCidades(sugestao.porCidade.map(c => ({
+            cidade: c.cidade,
+            valor: c.valor.toString(),
+            diasSemana: c.diasVisita || []
+        })));
         setActiveTab('cidades');
         toast.success(`${sugestao.porCidade.length} cidades preenchidas`);
     };
@@ -287,7 +307,11 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                 ...formData,
                 metasProdutos: metasProdutos.map(mp => ({ produtoId: mp.produtoId, quantidade: Number(mp.quantidade) })),
                 metasPromocoes: metasPromocoes.map(mp => ({ promocaoId: mp.promocaoId, quantidadePedidos: Number(mp.quantidadePedidos) })),
-                metasCidades: metasCidades.map(mc => ({ cidade: mc.cidade, valor: Number(mc.valor) }))
+                metasCidades: metasCidades.map(mc => ({
+                    cidade: mc.cidade,
+                    valor: Number(mc.valor),
+                    diasSemana: mc.diasSemana?.length > 0 ? mc.diasSemana.join(',') : null
+                }))
             };
             await api.post('/metas', payload);
             toast.success("Meta gravada com sucesso!");
@@ -663,31 +687,50 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                                         )}
                                     </div>
 
-                                    <div className="flex gap-2 mb-4">
-                                        <input
-                                            type="text"
-                                            value={novaCidade}
-                                            onChange={(e) => setNovaCidade(e.target.value)}
-                                            placeholder="Nome da cidade"
-                                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                                            onKeyDown={(e) => e.key === 'Enter' && adicionarCidade()}
-                                        />
-                                        <input
-                                            type="number"
-                                            value={novaCidadeValor}
-                                            onChange={(e) => setNovaCidadeValor(e.target.value)}
-                                            placeholder="R$ Meta"
-                                            className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                                            onKeyDown={(e) => e.key === 'Enter' && adicionarCidade()}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={adicionarCidade}
-                                            disabled={!novaCidade.trim() || !novaCidadeValor}
-                                            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-sm font-semibold rounded-lg"
-                                        >
-                                            + Adicionar
-                                        </button>
+                                    <div className="mb-4 border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2">
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={novaCidade}
+                                                onChange={(e) => setNovaCidade(e.target.value)}
+                                                placeholder="Nome da cidade"
+                                                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                                                onKeyDown={(e) => e.key === 'Enter' && adicionarCidade()}
+                                            />
+                                            <input
+                                                type="number"
+                                                value={novaCidadeValor}
+                                                onChange={(e) => setNovaCidadeValor(e.target.value)}
+                                                placeholder="R$ Meta mensal"
+                                                className="w-36 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                                                onKeyDown={(e) => e.key === 'Enter' && adicionarCidade()}
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-xs text-gray-500 font-medium">Dias de entrega:</span>
+                                            {DIAS_SEMANA.map(dia => (
+                                                <button
+                                                    key={dia}
+                                                    type="button"
+                                                    onClick={() => toggleNovaCidadeDia(dia)}
+                                                    className={`text-xs px-2 py-0.5 rounded-full font-semibold border transition-colors ${
+                                                        novaCidadeDias.includes(dia)
+                                                            ? 'bg-orange-500 border-orange-500 text-white'
+                                                            : 'bg-white border-gray-300 text-gray-500 hover:border-orange-400'
+                                                    }`}
+                                                >
+                                                    {dia}
+                                                </button>
+                                            ))}
+                                            <button
+                                                type="button"
+                                                onClick={adicionarCidade}
+                                                disabled={!novaCidade.trim() || !novaCidadeValor}
+                                                className="ml-auto px-4 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-sm font-semibold rounded-lg"
+                                            >
+                                                + Adicionar
+                                            </button>
+                                        </div>
                                     </div>
 
                                     {metasCidades.length === 0 ? (
@@ -700,25 +743,42 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                                                 {metasCidades.map((mc, idx) => {
                                                     const info = sugestao?.porCidade?.find(c => c.cidade.toLowerCase() === mc.cidade.toLowerCase());
                                                     return (
-                                                    <div key={mc.cidade} className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg px-3 py-2">
-                                                        <MapPin size={14} className="text-orange-400 shrink-0" />
-                                                        <div className="flex-1 min-w-0">
-                                                            <span className="text-sm font-medium text-gray-800">{mc.cidade}</span>
+                                                    <div key={mc.cidade} className="bg-white border border-gray-200 rounded-lg px-3 py-2 space-y-1.5">
+                                                        <div className="flex items-center gap-2">
+                                                            <MapPin size={14} className="text-orange-400 shrink-0" />
+                                                            <span className="text-sm font-medium text-gray-800 flex-1 truncate">{mc.cidade}</span>
                                                             {info?.vezesSemanais > 0 && (
-                                                                <span className="ml-2 text-xs text-orange-600 font-semibold">{info.vezesSemanais}x/sem</span>
+                                                                <span className="text-xs text-orange-600 font-semibold shrink-0">{info.vezesSemanais}x/sem</span>
                                                             )}
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                value={mc.valor}
+                                                                onChange={(e) => atualizarValorCidade(idx, e.target.value)}
+                                                                placeholder="Valor"
+                                                                className="w-32 border border-gray-300 rounded-lg px-2 py-1 text-sm text-right shrink-0"
+                                                            />
+                                                            <button type="button" onClick={() => removerCidade(idx)} className="text-red-400 hover:text-red-600 p-1 shrink-0">
+                                                                <Trash2 size={15} />
+                                                            </button>
                                                         </div>
-                                                        <input
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={mc.valor}
-                                                            onChange={(e) => atualizarValorCidade(idx, e.target.value)}
-                                                            placeholder="Valor"
-                                                            className="w-36 border border-gray-300 rounded-lg px-2 py-1 text-sm text-right"
-                                                        />
-                                                        <button type="button" onClick={() => removerCidade(idx)} className="text-red-400 hover:text-red-600 p-1 shrink-0">
-                                                            <Trash2 size={15} />
-                                                        </button>
+                                                        <div className="flex items-center gap-1.5 flex-wrap pl-5">
+                                                            <span className="text-xs text-gray-400">Dias:</span>
+                                                            {DIAS_SEMANA.map(dia => (
+                                                                <button
+                                                                    key={dia}
+                                                                    type="button"
+                                                                    onClick={() => toggleDiaCidade(idx, dia)}
+                                                                    className={`text-xs px-2 py-0.5 rounded-full font-semibold border transition-colors ${
+                                                                        mc.diasSemana?.includes(dia)
+                                                                            ? 'bg-orange-500 border-orange-500 text-white'
+                                                                            : 'bg-white border-gray-200 text-gray-400 hover:border-orange-400 hover:text-orange-500'
+                                                                    }`}
+                                                                >
+                                                                    {dia}
+                                                                </button>
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                     );
                                                 })}
