@@ -1462,12 +1462,17 @@ router.post('/quitar-ca', async (req, res) => {
                         continue;
                     }
 
-                    // Separar: DINHEIRO → baixa (caixinha), PIX → alterar condição na parcela
+                    // Separar: DINHEIRO → baixa (caixinha), PIX/Cartão → alterar condição ou baixa com desconto
                     const grupos = pedido._gruposPagamento;
                     const detalhePgtos = Object.entries(grupos)
                         .map(([metodo, g]) => `${g.formaNome}: R$ ${g.valor.toFixed(2)}`)
                         .join(', ');
                     const obsBase = `Motorista: ${motorista} | Caixa: ${dataPgto} | Solicitante: ${solicitante?.nome || req.user.id} | Pgto: ${detalhePgtos}`;
+
+                    // Calcular devolução antes de qualquer baixa: diferença entre parcela CA e valor recebido
+                    const parcelaPreBaixa = await contaAzulService.buscarParcelaDetalhe(parcela.id);
+                    const valorParcelaTotal = Math.round((parcelaPreBaixa.composicao_valor?.valor_bruto || 0) * 100) / 100;
+                    const valorDevolvido = Math.max(0, Math.round((valorParcelaTotal - pedido._valorElegivel) * 100) / 100);
 
                     const acoes = [];
                     let valorBaixado = 0;
@@ -1475,34 +1480,56 @@ router.post('/quitar-ca', async (req, res) => {
                     // 1. DINHEIRO → criar baixa no CA (caixinha)
                     if (grupos['DINHEIRO']) {
                         const valorDinheiro = Math.round(grupos['DINHEIRO'].valor * 100) / 100;
+                        const formasNaoDinheiro = Object.entries(grupos).filter(([m]) => m !== 'DINHEIRO');
+                        // Se não há outras formas de pagamento, incluir desconto de devolução aqui mesmo
+                        const descontoDinheiro = formasNaoDinheiro.length === 0 ? valorDevolvido : 0;
                         const baixaPayload = {
                             data_pagamento: dataPgto,
                             composicao_valor: {
                                 valor_bruto: valorDinheiro,
-                                multa: 0, juros: 0, desconto: 0, taxa: 0
+                                multa: 0, juros: 0, desconto: descontoDinheiro, taxa: 0
                             },
                             conta_financeira: contaCaixinha.id,
                             metodo_pagamento: 'DINHEIRO',
                             observacao: obsBase
                         };
-                        const baixaCA = await contaAzulService.criarBaixa(parcela.id, baixaPayload);
-                        acoes.push(`Baixa dinheiro: R$ ${valorDinheiro.toFixed(2)}`);
+                        await contaAzulService.criarBaixa(parcela.id, baixaPayload);
+                        acoes.push(`Baixa dinheiro: R$ ${valorDinheiro.toFixed(2)}${descontoDinheiro > 0 ? ` + Dev: R$ ${descontoDinheiro.toFixed(2)}` : ''}`);
                         valorBaixado = valorDinheiro;
                     }
 
-                    // 2. Formas não-dinheiro (PIX, Cartão) → alterar metodo_pagamento na parcela (sem baixar)
-                    const formasCondição = Object.entries(grupos).filter(([m]) => m !== 'DINHEIRO');
-                    if (formasCondição.length > 0) {
-                        // Usar a forma de maior valor como condição principal da parcela
-                        const [metodoMaior, grupoMaior] = formasCondição.reduce((a, b) => b[1].valor > a[1].valor ? b : a);
-                        const detalheFormas = formasCondição.map(([m, g]) => `${g.formaNome}: R$ ${g.valor.toFixed(2)}`).join(', ');
-                        const parcelaAtual = await contaAzulService.buscarParcelaDetalhe(parcela.id);
-                        await contaAzulService.atualizarParcela(parcela.id, {
-                            versao: parcelaAtual.versao,
-                            metodo_pagamento: metodoMaior,
-                            nota: `${detalheFormas} | ${obsBase}`
-                        });
-                        acoes.push(`Condição alterada para ${grupoMaior.formaNome}: ${detalheFormas}`);
+                    // 2. Formas não-dinheiro (PIX, Cartão)
+                    // Com devolução → criar baixa com desconto para fechar a parcela residual
+                    // Sem devolução → apenas alterar metodo_pagamento na parcela (sem baixar)
+                    const formasCondicao = Object.entries(grupos).filter(([m]) => m !== 'DINHEIRO');
+                    if (formasCondicao.length > 0) {
+                        const [metodoMaior, grupoMaior] = formasCondicao.reduce((a, b) => b[1].valor > a[1].valor ? b : a);
+                        const valorNaoDinheiro = Math.round(formasCondicao.reduce((s, [, g]) => s + g.valor, 0) * 100) / 100;
+                        const detalheFormas = formasCondicao.map(([m, g]) => `${g.formaNome}: R$ ${g.valor.toFixed(2)}`).join(', ');
+
+                        if (valorDevolvido > 0.01) {
+                            // Devolução pendente: criar baixa com desconto que fecha o restante da parcela CA
+                            await contaAzulService.criarBaixa(parcela.id, {
+                                data_pagamento: dataPgto,
+                                composicao_valor: {
+                                    valor_bruto: valorNaoDinheiro,
+                                    multa: 0, juros: 0, desconto: valorDevolvido, taxa: 0
+                                },
+                                conta_financeira: contaCaixinha.id,
+                                metodo_pagamento: metodoMaior,
+                                observacao: `${detalheFormas} | Dev: R$ ${valorDevolvido.toFixed(2)} | ${obsBase}`
+                            });
+                            acoes.push(`Baixa ${grupoMaior.formaNome} R$ ${valorNaoDinheiro.toFixed(2)} + Dev R$ ${valorDevolvido.toFixed(2)}`);
+                        } else {
+                            // Sem devolução: apenas alterar método na parcela
+                            const parcelaAtual = await contaAzulService.buscarParcelaDetalhe(parcela.id);
+                            await contaAzulService.atualizarParcela(parcela.id, {
+                                versao: parcelaAtual.versao,
+                                metodo_pagamento: metodoMaior,
+                                nota: `${detalheFormas} | ${obsBase}`
+                            });
+                            acoes.push(`Condição alterada para ${grupoMaior.formaNome}: ${detalheFormas}`);
+                        }
                     }
 
                     // Marcar localmente que a baixa foi realizada
