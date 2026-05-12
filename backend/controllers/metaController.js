@@ -82,7 +82,8 @@ const metaController = {
             if (!permissoes.admin && !permissoes.Pode_Gerenciar_Metas) {
                 return res.status(403).json({ error: 'Acesso negado.' });
             }
-            const dados = await metaService.calcularCidadesHojeAdmin();
+            const dia = req.query.dia || null;
+            const dados = await metaService.calcularCidadesHojeAdmin(dia);
             res.status(200).json(dados);
         } catch (error) {
             console.error('[MetaController - obterCidadesHojeAdmin]', error);
@@ -99,8 +100,9 @@ const metaController = {
                 req.user?.permissoes?.Pode_Gerenciar_Metas ||
                 req.user?.permissoes?.pedidos?.clientes === 'todos';
             const vendedorId = (isAdmin && req.query.vendedorId) ? req.query.vendedorId : userId;
+            const dia = req.query.dia || null;
 
-            const resultado = await metaService.calcularMetaHoje(vendedorId);
+            const resultado = await metaService.calcularMetaHoje(vendedorId, dia);
             res.status(200).json(resultado);
         } catch (error) {
             console.error("[MetaController - obterMetaHoje]", error);

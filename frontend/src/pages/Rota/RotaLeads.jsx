@@ -1617,23 +1617,24 @@ const RotaLeads = () => {
 
     useEffect(() => {
         if (!vendedorId) return;
+        const dia = diaSemanaFiltro || '';
         const fetchMeta = () => {
             if (podeEscolherVendedor) {
                 if (vendedorFiltro === 'todos') {
-                    api.get('/metas/cidades-hoje-todos').then(r => {
+                    api.get(`/metas/cidades-hoje-todos${dia ? `?dia=${dia}` : ''}`).then(r => {
                         setMetaAdminHoje(Array.isArray(r.data) ? r.data : []);
                         setMetaCidadesHoje([]);
                         setMetaConversaoHoje(null);
                     }).catch(() => {});
                 } else {
-                    api.get(`/metas/meta-hoje?vendedorId=${vendedorFiltro}`).then(r => {
+                    api.get(`/metas/meta-hoje?vendedorId=${vendedorFiltro}${dia ? `&dia=${dia}` : ''}`).then(r => {
                         setMetaCidadesHoje(r.data?.cidadesDeHoje || []);
                         setMetaConversaoHoje(r.data?.conversaoHoje || null);
                         setMetaAdminHoje([]);
                     }).catch(() => {});
                 }
             } else {
-                api.get('/metas/meta-hoje').then(r => {
+                api.get(`/metas/meta-hoje${dia ? `?dia=${dia}` : ''}`).then(r => {
                     setMetaCidadesHoje(r.data?.cidadesDeHoje || []);
                     setMetaConversaoHoje(r.data?.conversaoHoje || null);
                 }).catch(() => {});
@@ -1642,7 +1643,7 @@ const RotaLeads = () => {
         fetchMeta();
         const timer = setInterval(fetchMeta, 60 * 60 * 1000);
         return () => clearInterval(timer);
-    }, [vendedorId, podeEscolherVendedor, vendedorFiltro]);
+    }, [vendedorId, podeEscolherVendedor, vendedorFiltro, diaSemanaFiltro]);
 
     const carregar = useCallback(async () => {
         try {

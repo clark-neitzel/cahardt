@@ -441,11 +441,13 @@ const metaService = {
         };
     },
 
-    calcularCidadesHojeAdmin: async () => {
+    calcularCidadesHojeAdmin: async (diaSiglaParam) => {
         const dataAtual = dayjs();
         const mesReferencia = dataAtual.format('YYYY-MM');
         const DIAS_SIGLA_LIST = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-        const diaHojeSigla = DIAS_SIGLA_LIST[dataAtual.day()];
+        const diaHojeSigla = diaSiglaParam
+            ? diaSiglaParam.toUpperCase()
+            : DIAS_SIGLA_LIST[dataAtual.day()];
         const inicioSemana = dataAtual.startOf('week');
         const fimSemana = dataAtual.endOf('week');
 
@@ -569,11 +571,13 @@ const metaService = {
         return Object.values(porCidadeMap).sort((a, b) => b.totalMetaSemana - a.totalMetaSemana);
     },
 
-    calcularMetaHoje: async (vendedorId) => {
+    calcularMetaHoje: async (vendedorId, diaSiglaParam) => {
         const dataAtual = dayjs();
         const mesReferencia = dataAtual.format('YYYY-MM');
         const DIAS_SIGLA_LIST = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-        const diaHojeSigla = DIAS_SIGLA_LIST[dataAtual.day()];
+        const diaHojeSigla = diaSiglaParam
+            ? diaSiglaParam.toUpperCase()
+            : DIAS_SIGLA_LIST[dataAtual.day()];
 
         const meta = await prisma.metaMensalVendedor.findUnique({
             where: { vendedorId_mesReferencia: { vendedorId, mesReferencia } },
@@ -630,7 +634,7 @@ const metaService = {
             }),
             prisma.pedido.findMany({
                 where: { vendedorId, dataVenda: { gte: inicioSemana.toDate(), lte: fimSemana.toDate() }, ...filtroValido },
-                include: { itens: true, cliente: { select: { id: true, End_Cidade: true } } }
+                include: { itens: true, cliente: { select: { End_Cidade: true } } }
             }),
             prisma.pedido.findMany({
                 where: { vendedorId, dataVenda: { gte: inicioMes, lte: fimMes }, ...filtroValido },
@@ -642,7 +646,7 @@ const metaService = {
                     Dia_de_venda: { contains: diaHojeSigla },
                     End_Cidade: { in: cidadesHojeNomes }
                 },
-                select: { id: true, End_Cidade: true }
+                select: { UUID: true, End_Cidade: true }
             })
         ]);
 
@@ -673,7 +677,7 @@ const metaService = {
         }
 
         const totalClientesHoje = clientesDeHoje.length;
-        const comPedidoHoje = clientesDeHoje.filter(c => clientesComPedidoSemana.has(c.id)).length;
+        const comPedidoHoje = clientesDeHoje.filter(c => clientesComPedidoSemana.has(c.UUID)).length;
 
         // Mapa: diaSigla → índice dayjs (0=Dom..6=Sab)
         const SIGLA_TO_DAY = { DOM: 0, SEG: 1, TER: 2, QUA: 3, QUI: 4, SEX: 5, SAB: 6 };
