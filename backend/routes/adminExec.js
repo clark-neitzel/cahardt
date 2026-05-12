@@ -536,7 +536,7 @@ router.get('/export-full-db', async (req, res) => {
         'promocoes', 'promocao_condicao_grupos', 'promocao_condicoes',
         'cliente_insights', 'ia_analise_logs',
         'roteirizacoes',
-        'meta_mensal_vendedor', 'meta_produtos', 'meta_promocoes',
+        'meta_mensal_vendedor', 'meta_cidades', 'meta_produtos', 'meta_promocoes',
         'delivery_status', 'delivery_permissoes', 'delivery_webhook_logs',
         'audit_logs', 'manutencao_alertas',
         'itens_pcp', 'receitas', 'receita_itens', 'receita_versao_log',
