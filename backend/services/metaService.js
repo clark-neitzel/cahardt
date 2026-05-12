@@ -490,14 +490,14 @@ const metaService = {
             prisma.cliente.findMany({
                 where: {
                     idVendedor: { in: vendedorIds },
-                    Dia_de_venda: { contains: diaHojeSigla },
-                    End_Cidade: { not: null }
+                    End_Cidade: { not: null },
+                    Ativo: true
                 },
                 select: { UUID: true, End_Cidade: true }
             })
         ]);
 
-        // Total de clientes por cidade no dia
+        // Total de clientes ativos por cidade (todos, sem filtro de dia)
         const totalClientesPorCidade = {};
         for (const cl of clientesDoDia) {
             const cidade = cl.End_Cidade;
