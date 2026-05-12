@@ -1583,28 +1583,8 @@ const RotaLeads = () => {
 
     const [metaCidadesHoje, setMetaCidadesHoje] = useState([]);
     const [metaConversaoHoje, setMetaConversaoHoje] = useState(null);
-    useEffect(() => {
-        if (!vendedorId) return;
-        const fetch = () => api.get('/metas/meta-hoje').then(r => {
-            setMetaCidadesHoje(r.data?.cidadesDeHoje || []);
-            setMetaConversaoHoje(r.data?.conversaoHoje || null);
-        }).catch(() => {});
-        fetch();
-        const timer = setInterval(fetch, 60 * 60 * 1000);
-        return () => clearInterval(timer);
-    }, [vendedorId]);
-    const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
-
     const [metaAdminHoje, setMetaAdminHoje] = useState([]);
-    useEffect(() => {
-        if (!podeEscolherVendedor) return;
-        const fetchAdmin = () => api.get('/metas/cidades-hoje-todos').then(r => {
-            setMetaAdminHoje(Array.isArray(r.data) ? r.data : []);
-        }).catch(() => {});
-        fetchAdmin();
-        const timer = setInterval(fetchAdmin, 60 * 60 * 1000);
-        return () => clearInterval(timer);
-    }, [podeEscolherVendedor]);
+    const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
 
     // Pode filtrar entregas por motorista = mesma regra do backend (admin ou Pode_Ver_Todas_Entregas)
     const podeVerTodasEntregas = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ver_Todas_Entregas);
@@ -1634,6 +1614,35 @@ const RotaLeads = () => {
         setVendedorFiltro(val);
         localStorage.setItem('rota_vendedorFiltro', val);
     };
+
+    useEffect(() => {
+        if (!vendedorId) return;
+        const fetchMeta = () => {
+            if (podeEscolherVendedor) {
+                if (vendedorFiltro === 'todos') {
+                    api.get('/metas/cidades-hoje-todos').then(r => {
+                        setMetaAdminHoje(Array.isArray(r.data) ? r.data : []);
+                        setMetaCidadesHoje([]);
+                        setMetaConversaoHoje(null);
+                    }).catch(() => {});
+                } else {
+                    api.get(`/metas/meta-hoje?vendedorId=${vendedorFiltro}`).then(r => {
+                        setMetaCidadesHoje(r.data?.cidadesDeHoje || []);
+                        setMetaConversaoHoje(r.data?.conversaoHoje || null);
+                        setMetaAdminHoje([]);
+                    }).catch(() => {});
+                }
+            } else {
+                api.get('/metas/meta-hoje').then(r => {
+                    setMetaCidadesHoje(r.data?.cidadesDeHoje || []);
+                    setMetaConversaoHoje(r.data?.conversaoHoje || null);
+                }).catch(() => {});
+            }
+        };
+        fetchMeta();
+        const timer = setInterval(fetchMeta, 60 * 60 * 1000);
+        return () => clearInterval(timer);
+    }, [vendedorId, podeEscolherVendedor, vendedorFiltro]);
 
     const carregar = useCallback(async () => {
         try {
@@ -2321,7 +2330,7 @@ const RotaLeads = () => {
                     <>
                         {aba === 'atendimento' && (
                             <>
-                                {podeEscolherVendedor
+                                {podeEscolherVendedor && vendedorFiltro === 'todos'
                                     ? <MetaAdminHojeBanner cidadesHoje={metaAdminHoje} />
                                     : <MetaCidadeHojeBanner cidadesDeHoje={metaCidadesHoje} conversaoHoje={metaConversaoHoje} />
                                 }
