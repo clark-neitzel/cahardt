@@ -396,9 +396,10 @@ const DashboardVendedor = () => {
     const nomeVendedor = vendedorSelecionado
         ? vendedores.find(v => v.id === vendedorSelecionado)?.nome || ''
         : user?.nome?.split(' ')[0];
+    const usarLayoutAmploAdmin = podeVerDashboardAdmin && !vendedorSelecionado;
 
     return (
-        <div className="max-w-4xl mx-auto py-6 px-4">
+        <div className={`mx-auto py-6 px-4 lg:px-6 ${usarLayoutAmploAdmin ? 'max-w-[1650px]' : 'max-w-4xl'}`}>
             {/* Cabeçalho */}
             <div className="mb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -464,6 +465,23 @@ const DashboardVendedor = () => {
                                         </div>
                                         {c.totalVendidoHoje > 0 && (
                                             <p className="text-xs text-gray-400 mb-1">hoje: {fmtK(c.totalVendidoHoje)}</p>
+                                        )}
+                                        {c.totalClientesDia > 0 && (
+                                            <div className="flex items-center gap-3 mb-1.5">
+                                                <span className="text-xs text-gray-400">
+                                                    <span className="font-semibold text-gray-700">{c.clientesComPedidoSemana}</span>/{c.totalClientesDia} clientes semana
+                                                    <span className={`ml-1 font-bold ${c.clientesComPedidoSemana / c.totalClientesDia >= 0.6 ? 'text-green-600' : c.clientesComPedidoSemana / c.totalClientesDia >= 0.35 ? 'text-amber-600' : 'text-red-500'}`}>
+                                                        ({Math.round(c.clientesComPedidoSemana / c.totalClientesDia * 100)}%)
+                                                    </span>
+                                                </span>
+                                                <span className="text-xs text-gray-300">·</span>
+                                                <span className="text-xs text-gray-400">
+                                                    <span className="font-semibold text-gray-700">{c.clientesComPedidoMes}</span>/{c.totalClientesDia} mês
+                                                    <span className={`ml-1 font-bold ${c.clientesComPedidoMes / c.totalClientesDia >= 0.6 ? 'text-green-600' : c.clientesComPedidoMes / c.totalClientesDia >= 0.35 ? 'text-amber-600' : 'text-red-500'}`}>
+                                                        ({Math.round(c.clientesComPedidoMes / c.totalClientesDia * 100)}%)
+                                                    </span>
+                                                </span>
+                                            </div>
                                         )}
                                         <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mb-2">
                                             <div
