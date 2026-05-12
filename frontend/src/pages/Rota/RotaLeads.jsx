@@ -1581,10 +1581,12 @@ const RotaLeads = () => {
     const formasVisiveis = user?.formasAtendimentoVisiveis || [];
 
     const [metaCidadesHoje, setMetaCidadesHoje] = useState([]);
+    const [metaConversaoHoje, setMetaConversaoHoje] = useState(null);
     useEffect(() => {
         if (!vendedorId) return;
         const fetch = () => api.get('/metas/meta-hoje').then(r => {
             setMetaCidadesHoje(r.data?.cidadesDeHoje || []);
+            setMetaConversaoHoje(r.data?.conversaoHoje || null);
         }).catch(() => {});
         fetch();
         const timer = setInterval(fetch, 60 * 60 * 1000);
@@ -2306,7 +2308,7 @@ const RotaLeads = () => {
                     <>
                         {aba === 'atendimento' && (
                             <>
-                                <MetaCidadeHojeBanner cidadesDeHoje={metaCidadesHoje} />
+                                <MetaCidadeHojeBanner cidadesDeHoje={metaCidadesHoje} conversaoHoje={metaConversaoHoje} />
                                 {itensParaAtender.length === 0 ? (
                                     <div className="text-center py-12 text-gray-500">
                                         <CheckCircle className="h-10 w-10 text-green-500 mx-auto mb-2" />

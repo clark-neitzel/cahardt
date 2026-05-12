@@ -605,11 +605,13 @@ const metaService = {
         });
 
         if (metasCidadesHoje.length === 0) {
-            return { temMeta: true, cidadesDeHoje: [] };
+            return { temMeta: true, cidadesDeHoje: [], conversaoHoje: { totalClientes: 0, comPedido: 0 } };
         }
 
         const inicioDia = dataAtual.startOf('day').toDate();
         const fimDia = dataAtual.endOf('day').toDate();
+        const inicioMes = dataAtual.startOf('month').toDate();
+        const fimMes = dataAtual.endOf('month').toDate();
 
         const filtroValido = {
             bonificacao: false,
@@ -619,14 +621,28 @@ const metaService = {
             ]
         };
 
-        const [pedidosHoje, pedidosSemana] = await Promise.all([
+        const cidadesHojeNomes = metasCidadesHoje.map(mc => mc.cidade);
+
+        const [pedidosHoje, pedidosSemana, pedidosMes, clientesDeHoje] = await Promise.all([
             prisma.pedido.findMany({
                 where: { vendedorId, dataVenda: { gte: inicioDia, lte: fimDia }, ...filtroValido },
                 include: { itens: true, cliente: { select: { End_Cidade: true } } }
             }),
             prisma.pedido.findMany({
                 where: { vendedorId, dataVenda: { gte: inicioSemana.toDate(), lte: fimSemana.toDate() }, ...filtroValido },
+                include: { itens: true, cliente: { select: { id: true, End_Cidade: true } } }
+            }),
+            prisma.pedido.findMany({
+                where: { vendedorId, dataVenda: { gte: inicioMes, lte: fimMes }, ...filtroValido },
                 include: { itens: true, cliente: { select: { End_Cidade: true } } }
+            }),
+            prisma.cliente.findMany({
+                where: {
+                    idVendedor: vendedorId,
+                    Dia_de_venda: { contains: diaHojeSigla },
+                    End_Cidade: { in: cidadesHojeNomes }
+                },
+                select: { id: true, End_Cidade: true }
             })
         ]);
 
@@ -639,12 +655,25 @@ const metaService = {
         }
 
         const vendidoSemanaPorCidade = {};
+        const clientesComPedidoSemana = new Set();
         for (const p of pedidosSemana) {
             const cidade = p.cliente?.End_Cidade;
             if (!cidade) continue;
             const valor = p.itens.reduce((acc, item) => acc + Number(item.valor) * Number(item.quantidade), 0);
             vendidoSemanaPorCidade[cidade] = (vendidoSemanaPorCidade[cidade] || 0) + valor;
+            if (p.clienteId) clientesComPedidoSemana.add(p.clienteId);
         }
+
+        const vendidoMesPorCidade = {};
+        for (const p of pedidosMes) {
+            const cidade = p.cliente?.End_Cidade;
+            if (!cidade) continue;
+            const valor = p.itens.reduce((acc, item) => acc + Number(item.valor) * Number(item.quantidade), 0);
+            vendidoMesPorCidade[cidade] = (vendidoMesPorCidade[cidade] || 0) + valor;
+        }
+
+        const totalClientesHoje = clientesDeHoje.length;
+        const comPedidoHoje = clientesDeHoje.filter(c => clientesComPedidoSemana.has(c.id)).length;
 
         // Mapa: diaSigla → índice dayjs (0=Dom..6=Sab)
         const SIGLA_TO_DAY = { DOM: 0, SEG: 1, TER: 2, QUA: 3, QUI: 4, SEX: 5, SAB: 6 };
@@ -695,12 +724,17 @@ const metaService = {
                 visitasRestantesSemana,
                 vendidoHoje: Math.round((vendidoHojePorCidade[mc.cidade] || 0) * 100) / 100,
                 vendidoSemana,
+                realizadoMes: Math.round((vendidoMesPorCidade[mc.cidade] || 0) * 100) / 100,
                 faltaSemana,
                 porVisita
             };
         });
 
-        return { temMeta: true, cidadesDeHoje };
+        return {
+            temMeta: true,
+            cidadesDeHoje,
+            conversaoHoje: { totalClientes: totalClientesHoje, comPedido: comPedidoHoje }
+        };
     }
 };
 
