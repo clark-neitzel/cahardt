@@ -11,6 +11,7 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import DashboardAdminSection from './DashboardAdminSection';
+import DashboardAdminSectionClassic from './DashboardAdminSectionClassic';
 
 dayjs.locale('pt-br');
 
@@ -310,6 +311,7 @@ const DashboardVendedor = () => {
     const [cidadesHojeAdmin, setCidadesHojeAdmin] = useState([]);
     const [loadingCidadesAdmin, setLoadingCidadesAdmin] = useState(false);
     const [mostrarTodasCidades, setMostrarTodasCidades] = useState(false);
+    const [abaPainelAdmin, setAbaPainelAdmin] = useState('classico');
 
     useEffect(() => {
         const onKey = (e) => { if (e.key === 'Escape') setCidadeDetalhe(null); };
@@ -430,7 +432,37 @@ const DashboardVendedor = () => {
             </div>
 
             {/* Painel Admin — só mostra quando não está visualizando um vendedor específico */}
-            {podeVerDashboardAdmin && !vendedorSelecionado && <DashboardAdminSection />}
+            {podeVerDashboardAdmin && !vendedorSelecionado && (
+                <div className="mb-4">
+                    <div className="bg-white border rounded-xl p-1 inline-flex gap-1">
+                        <button
+                            type="button"
+                            onClick={() => setAbaPainelAdmin('classico')}
+                            className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors ${abaPainelAdmin === 'classico'
+                                ? 'bg-slate-900 text-white shadow'
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                                }`}
+                        >
+                            Painel clássico
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setAbaPainelAdmin('cockpit')}
+                            className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors ${abaPainelAdmin === 'cockpit'
+                                ? 'bg-slate-900 text-white shadow'
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                                }`}
+                        >
+                            Novo cockpit
+                        </button>
+                    </div>
+                </div>
+            )}
+            {podeVerDashboardAdmin && !vendedorSelecionado && (
+                abaPainelAdmin === 'classico'
+                    ? <DashboardAdminSectionClassic />
+                    : <DashboardAdminSection />
+            )}
 
             {/* Cidades de hoje — admin view */}
             {podeVerDashboardAdmin && !vendedorSelecionado && (cidadesHojeAdmin.length > 0 || loadingCidadesAdmin) && (
