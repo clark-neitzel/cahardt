@@ -274,7 +274,7 @@ const Layout = ({ children }) => {
       {/* ═══════════════════════════════════════════ */}
       <div className="flex-1 md:ml-16 flex flex-col min-h-screen min-w-0">
         {/* ── Mobile top bar ── */}
-        <nav className="md:hidden bg-white shadow-sm sticky top-0 z-50">
+        <nav className="md:hidden bg-white shadow-sm fixed top-0 left-0 right-0 z-50">
           <div className="px-4 flex justify-between h-14 items-center">
             <Link to="/" className="flex items-center text-primary font-bold text-lg tracking-tight">
               Hardt App
@@ -298,6 +298,9 @@ const Layout = ({ children }) => {
             </div>
           </div>
         </nav>
+
+        {/* Espaçador para compensar a nav fixed no mobile */}
+        <div className="md:hidden h-14 shrink-0" />
 
         {/* ── Mobile drawer overlay ── */}
         {isMobileMenuOpen && (
