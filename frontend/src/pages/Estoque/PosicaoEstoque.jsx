@@ -758,23 +758,9 @@ export default function PosicaoEstoque() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <div className="max-w-5xl mx-auto px-4 py-6">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-900">Posição de Estoque</h1>
-                        <p className="text-sm text-gray-500 mt-0.5">Produção / Posição</p>
-                    </div>
-                    {abaixoMinimo > 0 && abaAtiva === 'posicao' && (
-                        <div className="flex items-center gap-1.5 bg-amber-100 text-amber-700 text-sm font-medium px-3 py-1.5 rounded-full">
-                            <AlertTriangle className="h-4 w-4" />
-                            {abaixoMinimo} abaixo do mínimo
-                        </div>
-                    )}
-                </div>
-
+            <div className="max-w-5xl mx-auto px-4">
                 {/* ─── ÁREA STICKY: tabs + filtros ─── */}
-                <div className="sticky top-0 z-20 bg-gray-50 -mx-4 px-4 pt-2 pb-3 border-b border-gray-200/60">
+                <div className="sticky top-0 z-20 bg-gray-50 -mx-4 px-4 pt-3 pb-3 border-b border-gray-200/60">
 
                     {/* Toggle de abas */}
                     <div className="flex gap-1 p-1 bg-gray-100 rounded-lg mb-3 w-fit">
