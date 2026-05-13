@@ -284,11 +284,11 @@ function ProdutoCard({ produto, isAdmin, onMinimoSalvo }) {
 }
 
 const TENDENCIA_CONFIG = {
-    ALTA:         { cor: 'text-red-600',   bg: 'bg-red-50 border-red-200',     texto: (v) => `↑ +${v}%` },
-    NOVA_DEMANDA: { cor: 'text-blue-600',  bg: 'bg-blue-50 border-blue-200',   texto: () => '✦ nova' },
-    ESTAVEL:      { cor: 'text-gray-600',  bg: 'bg-gray-100 border-gray-200',  texto: (v) => v >= 0 ? `→ +${v}%` : `→ ${v}%` },
-    QUEDA:        { cor: 'text-green-700', bg: 'bg-green-50 border-green-200', texto: (v) => `↓ ${v}%` },
-    SEM_MOVIMENTO:{ cor: 'text-gray-300',  bg: 'bg-gray-50 border-gray-100',   texto: () => '— sem mov.' },
+    ALTA:         { cor: 'text-red-600',   bg: 'bg-red-50 border-red-200',     fundo: 'bg-red-400',      texto: (v) => `↑ +${v}%` },
+    NOVA_DEMANDA: { cor: 'text-blue-600',  bg: 'bg-blue-50 border-blue-200',   fundo: 'bg-blue-400',     texto: () => '✦ nova' },
+    ESTAVEL:      { cor: 'text-gray-500',  bg: 'bg-gray-100 border-gray-200',  fundo: 'bg-gray-300',     texto: (v) => v >= 0 ? `→ +${v}%` : `→ ${v}%` },
+    QUEDA:        { cor: 'text-green-700', bg: 'bg-green-50 border-green-200', fundo: 'bg-green-400',    texto: (v) => `↓ ${v}%` },
+    SEM_MOVIMENTO:{ cor: 'text-gray-300',  bg: 'bg-gray-50 border-gray-100',   fundo: 'bg-transparent',  texto: () => '— sem mov.' },
 };
 
 // Linha de demanda — tabela desktop
@@ -324,19 +324,22 @@ function DemandaRow({ item, isAdmin, onMinimoSalvo }) {
     };
 
     return (
-        <tr className={`border-b border-gray-100 hover:bg-gray-50/70 transition-colors ${!temMovimento ? 'opacity-40' : ''}`}>
+        <tr className={`border-b border-gray-100 hover:bg-gray-50/60 transition-colors ${!temMovimento ? 'opacity-40' : ''}`}>
+            {/* Indicador de tendência — faixa colorida */}
+            <td className={`w-1 p-0 ${tc.fundo}`} />
+
             {/* Produto */}
-            <td className="pl-4 pr-3 py-3">
+            <td className="pl-3 pr-3 py-2.5">
                 <p className="text-sm font-medium text-gray-900 leading-snug">{item.nome}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
                     {item.categoria || '—'}
-                    {item.categoriaProduto && <span className="ml-2 text-gray-300">·</span>}
-                    {item.categoriaProduto && <span className="ml-2">{item.categoriaProduto.nome}</span>}
+                    {item.categoriaProduto && <span className="ml-1.5 text-gray-300">·</span>}
+                    {item.categoriaProduto && <span className="ml-1.5">{item.categoriaProduto.nome}</span>}
                 </p>
             </td>
 
             {/* Estoque disponível */}
-            <td className="px-3 py-3 text-right">
+            <td className="px-3 py-2.5 text-right">
                 <span className={`text-sm font-bold tabular-nums ${disp < 0 ? 'text-red-600' : 'text-gray-700'}`}>
                     {disp.toFixed(0)}
                 </span>
@@ -344,43 +347,45 @@ function DemandaRow({ item, isAdmin, onMinimoSalvo }) {
             </td>
 
             {/* Saída 15d (atual) */}
-            <td className="px-3 py-3 text-right">
-                <span className="text-sm font-semibold tabular-nums text-gray-800">
+            <td className="px-3 py-2.5 text-right">
+                <span className="text-sm font-bold tabular-nums text-gray-800">
                     {item.saidaAtual.toFixed(0)}
                 </span>
                 <span className="text-xs text-gray-400 ml-1">{item.unidade || 'un'}</span>
             </td>
 
             {/* Saída anterior */}
-            <td className="px-3 py-3 text-right hidden lg:table-cell">
-                <span className="text-sm tabular-nums text-gray-500">
+            <td className="px-3 py-2.5 text-right hidden lg:table-cell">
+                <span className="text-sm tabular-nums text-gray-400">
                     {item.saidaAnterior.toFixed(0)}
                 </span>
-                <span className="text-xs text-gray-400 ml-1">{item.unidade || 'un'}</span>
+                <span className="text-xs text-gray-300 ml-1">{item.unidade || 'un'}</span>
             </td>
 
             {/* Tendência */}
-            <td className="px-3 py-3 text-center">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${tc.bg} ${tc.cor}`}>
+            <td className="px-3 py-2.5 text-center">
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${tc.bg} ${tc.cor}`}>
                     {tc.texto(item.variacaoPercent)}
                 </span>
             </td>
 
             {/* Mínimo sugerido 7d / 15d */}
-            <td className="px-3 py-3 text-right hidden xl:table-cell">
+            <td className="px-3 py-2.5 text-right hidden xl:table-cell">
                 {temMovimento ? (
-                    <div className="space-y-0.5">
-                        <div className="text-xs text-gray-400 tabular-nums">
-                            7d: <span className="font-medium text-gray-600">{item.minimoSugerido7d}</span>
+                    <div className="space-y-1">
+                        <div className="flex items-center justify-end gap-2 text-xs text-gray-400 tabular-nums">
+                            <span>7d</span>
+                            <span className="font-semibold text-gray-600 w-8 text-right">{item.minimoSugerido7d}</span>
                         </div>
-                        <div className="flex items-center justify-end gap-1.5">
-                            <span className="text-xs text-gray-400 tabular-nums">
-                                15d: <span className={`font-semibold ${abaixoSugerido ? 'text-amber-600' : 'text-gray-700'}`}>{item.minimoSugerido15d}</span>
+                        <div className="flex items-center justify-end gap-2 text-xs">
+                            <span className="text-gray-400">15d</span>
+                            <span className={`font-bold tabular-nums w-8 text-right ${abaixoSugerido ? 'text-amber-600' : 'text-gray-700'}`}>
+                                {item.minimoSugerido15d}
                             </span>
                             {isAdmin && (
                                 <button
                                     onClick={() => handleEdit(item.minimoSugerido15d)}
-                                    className="text-xs text-blue-400 hover:text-blue-600 underline whitespace-nowrap"
+                                    className="text-blue-400 hover:text-blue-600 text-[10px] font-medium underline whitespace-nowrap leading-none"
                                     title="Usar como mínimo atual"
                                 >
                                     aplicar
@@ -389,12 +394,12 @@ function DemandaRow({ item, isAdmin, onMinimoSalvo }) {
                         </div>
                     </div>
                 ) : (
-                    <span className="text-gray-300 text-xs">—</span>
+                    <span className="text-gray-200 text-xs">—</span>
                 )}
             </td>
 
             {/* Mínimo atual */}
-            <td className="px-3 py-3 text-right">
+            <td className="px-3 py-2.5 text-right">
                 {editando ? (
                     <div className="flex items-center justify-end gap-1">
                         <input
@@ -415,8 +420,8 @@ function DemandaRow({ item, isAdmin, onMinimoSalvo }) {
                     </div>
                 ) : (
                     <div className="flex items-center justify-end gap-1.5">
-                        <span className={`text-sm tabular-nums ${abaixoSugerido ? 'text-amber-600 font-medium' : 'text-gray-500'}`}>
-                            {item.estoqueMinimo > 0 ? item.estoqueMinimo.toFixed(0) : <span className="text-gray-300">—</span>}
+                        <span className={`text-sm font-semibold tabular-nums ${abaixoSugerido ? 'text-amber-600' : 'text-gray-600'}`}>
+                            {item.estoqueMinimo > 0 ? item.estoqueMinimo.toFixed(0) : <span className="text-gray-300 font-normal">—</span>}
                         </span>
                         {isAdmin && (
                             <button
@@ -443,6 +448,7 @@ function DemandaCard({ item, isAdmin, onMinimoSalvo }) {
     const disp = item.estoqueDisponivel;
     const abaixoSugerido = item.minimoSugerido15d > 0 && disp < item.minimoSugerido15d;
     const tc = TENDENCIA_CONFIG[item.tendencia] || TENDENCIA_CONFIG.SEM_MOVIMENTO;
+    const temMovimento = item.tendencia !== 'SEM_MOVIMENTO';
 
     const handleSalvar = async (valorOverride) => {
         const val = valorOverride !== undefined ? parseFloat(valorOverride) : parseFloat(minimo);
@@ -461,74 +467,100 @@ function DemandaCard({ item, isAdmin, onMinimoSalvo }) {
     };
 
     return (
-        <div className={`rounded-xl border p-4 bg-white ${item.tendencia === 'SEM_MOVIMENTO' ? 'opacity-50' : ''}`}>
-            <div className="flex items-start justify-between gap-2 mb-3">
-                <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 leading-snug">{item.nome}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{item.categoria || '—'}</p>
-                </div>
-                <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${tc.bg} ${tc.cor}`}>
-                    {tc.texto(item.variacaoPercent)}
-                </span>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center mb-3">
-                <div>
-                    <p className="text-xs text-gray-500">Estoque</p>
-                    <p className={`text-sm font-bold ${disp < 0 ? 'text-red-600' : 'text-gray-800'}`}>{disp.toFixed(0)}</p>
-                </div>
-                <div>
-                    <p className="text-xs text-gray-500">Saída 15d</p>
-                    <p className="text-sm font-bold text-gray-800">{item.saidaAtual.toFixed(0)}</p>
-                </div>
-                <div>
-                    <p className="text-xs text-gray-500">Saída ant.</p>
-                    <p className="text-sm text-gray-500">{item.saidaAnterior.toFixed(0)}</p>
-                </div>
-            </div>
-            {item.tendencia !== 'SEM_MOVIMENTO' && (
-                <div className="bg-gray-50 rounded-lg px-3 py-2 flex items-center justify-between text-xs mb-2">
-                    <span className="text-gray-500">Mín. sugerido</span>
-                    <span className="text-gray-700 font-medium">7d: {item.minimoSugerido7d} · 15d: <span className={abaixoSugerido ? 'text-amber-600 font-semibold' : ''}>{item.minimoSugerido15d}</span></span>
-                </div>
-            )}
-            <div className="flex items-center justify-between border-t border-gray-100 pt-2.5">
-                <span className="text-xs text-gray-500">Mínimo atual:</span>
-                {editando ? (
-                    <div className="flex items-center gap-1">
-                        <input
-                            type="number"
-                            value={minimo}
-                            onChange={e => setMinimo(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') handleSalvar(); if (e.key === 'Escape') setEditando(false); }}
-                            autoFocus
-                            className="w-20 px-2 py-1 text-sm border border-blue-400 rounded-lg text-right focus:outline-none"
-                            min="0" step="1" inputMode="decimal" disabled={salvando}
-                        />
-                        <button onClick={() => handleSalvar()} disabled={salvando} className="text-green-600 p-0.5">
-                            {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                        </button>
-                        <button onClick={() => setEditando(false)} className="text-gray-400 p-0.5"><X className="h-4 w-4" /></button>
+        <div className={`rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm ${!temMovimento ? 'opacity-50' : ''}`}>
+            {/* Faixa colorida de tendência no topo */}
+            <div className={`h-1.5 ${tc.fundo}`} />
+
+            <div className="p-4">
+                {/* Nome + badge */}
+                <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 leading-snug">{item.nome}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                            {item.categoria || '—'}
+                            {item.categoriaProduto ? ` · ${item.categoriaProduto.nome}` : ''}
+                        </p>
                     </div>
-                ) : (
-                    <div className="flex items-center gap-2">
-                        <span className={`text-sm font-medium tabular-nums ${abaixoSugerido ? 'text-amber-600' : 'text-gray-600'}`}>
-                            {item.estoqueMinimo > 0 ? `${item.estoqueMinimo.toFixed(0)} ${item.unidade || 'un'}` : '—'}
-                        </span>
-                        {isAdmin && item.tendencia !== 'SEM_MOVIMENTO' && (
-                            <button
-                                onClick={() => { setMinimo(String(item.minimoSugerido15d)); handleSalvar(item.minimoSugerido15d); }}
-                                className="text-xs text-blue-500 hover:text-blue-700 underline"
-                            >
-                                usar 15d
-                            </button>
-                        )}
-                        {isAdmin && (
-                            <button onClick={() => { setMinimo(String(item.estoqueMinimo ?? '0')); setEditando(true); }} className="text-gray-400 hover:text-blue-500 p-0.5">
-                                <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                        )}
+                    <span className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${tc.bg} ${tc.cor}`}>
+                        {tc.texto(item.variacaoPercent)}
+                    </span>
+                </div>
+
+                {/* Comparativo: saída atual vs anterior */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                    <div className="bg-gray-50 rounded-lg py-2.5 px-2 text-center">
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Estoque</p>
+                        <p className={`text-base font-bold tabular-nums ${disp < 0 ? 'text-red-600' : 'text-gray-800'}`}>{disp.toFixed(0)}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{item.unidade || 'un'}</p>
+                    </div>
+                    <div className="bg-blue-50/60 rounded-lg py-2.5 px-2 text-center">
+                        <p className="text-[10px] text-blue-500 uppercase tracking-wide mb-1">Saída 15d</p>
+                        <p className="text-base font-bold tabular-nums text-gray-900">{item.saidaAtual.toFixed(0)}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{item.unidade || 'un'}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg py-2.5 px-2 text-center">
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Anterior</p>
+                        <p className="text-base font-bold tabular-nums text-gray-400">{item.saidaAnterior.toFixed(0)}</p>
+                        <p className="text-[10px] text-gray-300 mt-0.5">{item.unidade || 'un'}</p>
+                    </div>
+                </div>
+
+                {/* Mínimo sugerido */}
+                {temMovimento && (
+                    <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 mb-3">
+                        <span className="text-xs text-gray-500">Mín. sugerido</span>
+                        <div className="flex items-center gap-3 text-xs">
+                            <span className="text-gray-500">7d: <strong className="text-gray-700">{item.minimoSugerido7d}</strong></span>
+                            <span className={abaixoSugerido ? 'text-amber-600' : 'text-gray-500'}>
+                                15d: <strong className={abaixoSugerido ? 'text-amber-600' : 'text-gray-700'}>{item.minimoSugerido15d}</strong>
+                            </span>
+                        </div>
                     </div>
                 )}
+
+                {/* Mínimo atual + ações */}
+                <div className="flex items-center justify-between border-t border-gray-100 pt-2.5">
+                    <span className="text-xs text-gray-500">Mínimo atual</span>
+                    {editando ? (
+                        <div className="flex items-center gap-1">
+                            <input
+                                type="number"
+                                value={minimo}
+                                onChange={e => setMinimo(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') handleSalvar(); if (e.key === 'Escape') setEditando(false); }}
+                                autoFocus
+                                className="w-20 px-2 py-1 text-sm border border-blue-400 rounded-lg text-right focus:outline-none"
+                                min="0" step="1" inputMode="decimal" disabled={salvando}
+                            />
+                            <button onClick={() => handleSalvar()} disabled={salvando} className="text-green-600 p-0.5">
+                                {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                            </button>
+                            <button onClick={() => setEditando(false)} className="text-gray-400 p-0.5"><X className="h-4 w-4" /></button>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            <span className={`text-sm font-bold tabular-nums ${abaixoSugerido ? 'text-amber-600' : 'text-gray-700'}`}>
+                                {item.estoqueMinimo > 0
+                                    ? `${item.estoqueMinimo.toFixed(0)} ${item.unidade || 'un'}`
+                                    : <span className="text-gray-300 font-normal text-xs">não definido</span>
+                                }
+                            </span>
+                            {isAdmin && temMovimento && (
+                                <button
+                                    onClick={() => handleSalvar(item.minimoSugerido15d)}
+                                    className="text-xs text-blue-500 hover:text-blue-700 font-medium underline"
+                                >
+                                    usar 15d
+                                </button>
+                            )}
+                            {isAdmin && (
+                                <button onClick={() => { setMinimo(String(item.estoqueMinimo ?? '0')); setEditando(true); }} className="text-gray-300 hover:text-blue-500 p-0.5">
+                                    <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -953,13 +985,20 @@ export default function PosicaoEstoque() {
                                             <table className="w-full">
                                                 <thead>
                                                     <tr className="bg-gray-50 border-b border-gray-200">
-                                                        <th className="pl-4 pr-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</th>
+                                                        <th className="w-1 p-0" />
+                                                        <th className="pl-3 pr-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</th>
                                                         <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Estoque</th>
                                                         <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                                            Saída <span className="text-gray-400 font-normal normal-case">{fmtData(demanda.periodoAtual.de)}–{fmtData(demanda.periodoAtual.ate)}</span>
+                                                            Saída 15d
+                                                            <span className="block text-[10px] text-gray-400 font-normal normal-case tracking-normal">
+                                                                {fmtData(demanda.periodoAtual.de)}–{fmtData(demanda.periodoAtual.ate)}
+                                                            </span>
                                                         </th>
                                                         <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">
-                                                            Anterior <span className="text-gray-400 font-normal normal-case">{fmtData(demanda.periodoAnterior.de)}–{fmtData(demanda.periodoAnterior.ate)}</span>
+                                                            Anterior
+                                                            <span className="block text-[10px] text-gray-400 font-normal normal-case tracking-normal">
+                                                                {fmtData(demanda.periodoAnterior.de)}–{fmtData(demanda.periodoAnterior.ate)}
+                                                            </span>
                                                         </th>
                                                         <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Tendência</th>
                                                         <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide hidden xl:table-cell">Mín. sugerido</th>
