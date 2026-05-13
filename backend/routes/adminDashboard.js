@@ -1148,4 +1148,127 @@ router.get('/', verificarAuth, async (req, res) => {
     }
 });
 
+// ─── Aba Visitas ─────────────────────────────────────────────────────────────
+
+const TIPOS_PRESENCIAL = ['VISITA', 'AMOSTRA'];
+const TIPOS_WHATSAPP = ['WHATSAPP'];
+
+function haversineMetros(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function parseGpsStr(str) {
+    if (!str || typeof str !== 'string') return null;
+    const parts = str.split(',');
+    if (parts.length !== 2) return null;
+    const lat = parseFloat(parts[0]);
+    const lng = parseFloat(parts[1]);
+    if (isNaN(lat) || isNaN(lng)) return null;
+    return { lat, lng };
+}
+
+router.get('/visitas', verificarAuth, async (req, res) => {
+    try {
+        const { podeVerVendas } = await carregarPermissoesUsuario(req.user.id);
+        if (!podeVerVendas) return res.status(403).json({ error: 'Acesso negado.' });
+
+        const dataISO = isISODate(req.query.data) ? req.query.data : isoNowTZ();
+        const vendedorIdFiltro = req.query.vendedorId?.trim() || null;
+
+        const start = dateFromISOStart(dataISO);
+        const end = dateFromISOEnd(dataISO);
+
+        const atendimentos = await prisma.atendimento.findMany({
+            where: {
+                criadoEm: { gte: start, lte: end },
+                ...(vendedorIdFiltro ? { idVendedor: vendedorIdFiltro } : {}),
+            },
+            include: {
+                vendedor: { select: { id: true, nome: true } },
+                cliente: { select: { UUID: true, Nome: true, NomeFantasia: true, Ponto_GPS: true } },
+                lead: { select: { id: true, nomeEstabelecimento: true, pontoGps: true } },
+            },
+            orderBy: { criadoEm: 'asc' },
+        });
+
+        const vendedoresMap = new Map();
+
+        for (const at of atendimentos) {
+            const vid = at.idVendedor;
+            if (!vendedoresMap.has(vid)) {
+                vendedoresMap.set(vid, {
+                    vendedorId: vid,
+                    vendedorNome: at.vendedor?.nome || 'Desconhecido',
+                    presencialTotal: 0,
+                    presencialConfirmado: 0,
+                    presencialNaoConfirmado: 0,
+                    presencialSemGpsCliente: 0,
+                    whatsappTotal: 0,
+                    outrosTotal: 0,
+                    detalhes: {
+                        presencialConfirmado: [],
+                        presencialNaoConfirmado: [],
+                        presencialSemGpsCliente: [],
+                        whatsapp: [],
+                        outros: [],
+                    },
+                });
+            }
+
+            const v = vendedoresMap.get(vid);
+            const nomeCliente = at.cliente
+                ? (at.cliente.NomeFantasia || at.cliente.Nome)
+                : (at.lead?.nomeEstabelecimento || 'Desconhecido');
+            const hora = at.criadoEm.toLocaleTimeString('pt-BR', {
+                hour: '2-digit', minute: '2-digit', timeZone: TZ,
+            });
+
+            if (TIPOS_PRESENCIAL.includes(at.tipo)) {
+                v.presencialTotal++;
+                const gpsVend = parseGpsStr(at.gpsVendedor);
+                const gpsCli = parseGpsStr(at.cliente?.Ponto_GPS || at.lead?.pontoGps);
+
+                if (!gpsCli) {
+                    v.presencialSemGpsCliente++;
+                    v.detalhes.presencialSemGpsCliente.push({ nomeCliente, tipo: at.tipo, hora });
+                } else if (!gpsVend) {
+                    v.presencialNaoConfirmado++;
+                    v.detalhes.presencialNaoConfirmado.push({ nomeCliente, tipo: at.tipo, hora, distancia: null, semGpsVendedor: true });
+                } else {
+                    const dist = Math.round(haversineMetros(gpsVend.lat, gpsVend.lng, gpsCli.lat, gpsCli.lng));
+                    if (dist <= 50) {
+                        v.presencialConfirmado++;
+                        v.detalhes.presencialConfirmado.push({ nomeCliente, tipo: at.tipo, hora, distancia: dist });
+                    } else {
+                        v.presencialNaoConfirmado++;
+                        v.detalhes.presencialNaoConfirmado.push({ nomeCliente, tipo: at.tipo, hora, distancia: dist });
+                    }
+                }
+            } else if (TIPOS_WHATSAPP.includes(at.tipo)) {
+                v.whatsappTotal++;
+                v.detalhes.whatsapp.push({ nomeCliente, hora });
+            } else {
+                v.outrosTotal++;
+                v.detalhes.outros.push({ nomeCliente, tipo: at.tipo, hora });
+            }
+        }
+
+        res.json({
+            data: dataISO,
+            vendedores: Array.from(vendedoresMap.values()).sort((a, b) =>
+                a.vendedorNome.localeCompare(b.vendedorNome)
+            ),
+        });
+    } catch (error) {
+        console.error('Erro em /visitas:', error);
+        res.status(500).json({ error: 'Erro ao buscar dados de visitas.' });
+    }
+});
+
 module.exports = router;

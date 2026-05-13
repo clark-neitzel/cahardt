@@ -52,6 +52,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
     });
     const [gps, setGps] = useState(null);
     const [loadingGps, setLoadingGps] = useState(false);
+    const [gpsFailed, setGpsFailed] = useState(false);
     const [saving, setSaving] = useState(false);
 
     // Ação selecionada (objeto completo com configurações)
@@ -163,22 +164,25 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
     );
 
     // GPS
-    useEffect(() => {
-        if (navigator.geolocation) {
-            setLoadingGps(true);
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    setGps(`${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`);
-                    setLoadingGps(false);
-                },
-                () => {
-                    setLoadingGps(false);
-                    toast.error('Não foi possível capturar o GPS. Permita a localização.', { duration: 4000 });
-                },
-                { enableHighAccuracy: true, timeout: 8000 }
-            );
-        }
-    }, []);
+    const capturarGps = () => {
+        if (!navigator.geolocation) return;
+        setLoadingGps(true);
+        setGpsFailed(false);
+        setGps(null);
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setGps(`${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`);
+                setLoadingGps(false);
+            },
+            () => {
+                setLoadingGps(false);
+                setGpsFailed(true);
+            },
+            { enableHighAccuracy: true, timeout: 8000 }
+        );
+    };
+
+    useEffect(() => { capturarGps(); }, []);
 
     // Modo da transferência: fixo (tem responsável pré-definido) ou escolhe (vendedor decide)
     const modoTransferencia = acaoSelecionada?.transfereAtendimento
@@ -221,6 +225,10 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
     const handleSalvar = async () => {
         if (!form.tipoAtendimento) {
             toast.error('Selecione o tipo de atendimento.');
+            return;
+        }
+        if (!gps) {
+            toast.error('GPS obrigatório. Aguarde a captura ou tente novamente.');
             return;
         }
         // Validações dinâmicas por ação
@@ -327,10 +335,26 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
 
                 <div className="px-4 py-4 space-y-4">
                     {/* GPS Status */}
-                    <div className={`flex items-center gap-2 text-[12px] rounded-lg px-3 py-2 ${gps ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'}`}>
-                        {loadingGps ? <Loader className="h-3.5 w-3.5 animate-spin" /> : <Navigation className="h-3.5 w-3.5" />}
-                        {loadingGps ? 'Capturando localização...' : gps ? `GPS capturado: ${gps}` : 'GPS não disponível'}
-                    </div>
+                    {gpsFailed ? (
+                        <div className="flex items-center justify-between gap-2 text-[12px] rounded-lg px-3 py-2 bg-red-50 border border-red-200">
+                            <div className="flex items-center gap-2 text-red-700 font-semibold">
+                                <Navigation className="h-3.5 w-3.5 flex-shrink-0" />
+                                GPS obrigatório — não foi possível capturar. Permita a localização no navegador.
+                            </div>
+                            <button
+                                type="button"
+                                onClick={capturarGps}
+                                className="text-red-700 underline font-bold whitespace-nowrap"
+                            >
+                                Tentar novamente
+                            </button>
+                        </div>
+                    ) : (
+                        <div className={`flex items-center gap-2 text-[12px] rounded-lg px-3 py-2 ${gps ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'}`}>
+                            {loadingGps ? <Loader className="h-3.5 w-3.5 animate-spin" /> : <Navigation className="h-3.5 w-3.5" />}
+                            {loadingGps ? 'Capturando localização...' : `GPS capturado: ${gps}`}
+                        </div>
+                    )}
 
                     {/* Tipo */}
                     <div>
@@ -501,11 +525,11 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
                     {/* Botão */}
                     <button
                         onClick={handleSalvar}
-                        disabled={saving}
-                        className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl text-[15px] flex items-center justify-center gap-2 mt-2 disabled:opacity-70"
+                        disabled={saving || loadingGps || !gps}
+                        className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl text-[15px] flex items-center justify-center gap-2 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {saving ? <Loader className="h-5 w-5 animate-spin" /> : null}
-                        {saving ? 'Salvando...' : acaoSelecionada?.abrePedidoAmostra ? 'Prosseguir para Amostra' : 'Confirmar Atendimento'}
+                        {saving ? <Loader className="h-5 w-5 animate-spin" /> : loadingGps ? <Loader className="h-5 w-5 animate-spin" /> : null}
+                        {saving ? 'Salvando...' : loadingGps ? 'Aguardando GPS...' : !gps ? 'GPS necessário para continuar' : acaoSelecionada?.abrePedidoAmostra ? 'Prosseguir para Amostra' : 'Confirmar Atendimento'}
                     </button>
 
                     <div className="h-4" />

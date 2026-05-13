@@ -8,10 +8,13 @@ import {
     BarChart2,
     Calendar,
     CheckSquare,
+    ChevronDown,
+    ChevronRight,
     Crown,
     Flame,
     Lock,
     MapPin,
+    MessageCircle,
     Package,
     PieChart,
     ShieldCheck,
@@ -223,6 +226,16 @@ const DashboardAdminSection = () => {
     const [weeklyVendedores, setWeeklyVendedores] = useState([]);
     const [weeklyVendedoresCarregados, setWeeklyVendedoresCarregados] = useState(false);
 
+    // Aba Visitas
+    const [visitasData, setVisitasData] = useState(null);
+    const [visitasLoading, setVisitasLoading] = useState(false);
+    const [visitasCarregadas, setVisitasCarregadas] = useState(false);
+    const [visitasData_filtro, setVisitasData_filtro] = useState(hojeISO());
+    const [visitasVendedorId, setVisitasVendedorId] = useState('');
+    const [visitasVendedores, setVisitasVendedores] = useState([]);
+    const [visitasVendedoresCarregados, setVisitasVendedoresCarregados] = useState(false);
+    const [visitasExpandido, setVisitasExpandido] = useState({});
+
     const podeVerVendas = !!user?.permissoes?.admin
         || !!user?.permissoes?.Pode_Ver_Dashboard_Admin
         || !!user?.permissoes?.Pode_Ver_Dashboard_Vendas;
@@ -249,6 +262,7 @@ const DashboardAdminSection = () => {
         setAbaAtiva(aba);
         if (aba === 'vendedores' && !acessosCarregados) setLoadingAcessos(true);
         if (aba === 'reuniao') setWeeklyLoading(true);
+        if (aba === 'visitas') setVisitasLoading(true);
     };
 
     const handleTrocaDataSemanal = (novaData) => {
@@ -338,6 +352,29 @@ const DashboardAdminSection = () => {
             })
             .finally(() => setWeeklyVendedoresCarregados(true));
     }, [abaAtiva, weeklyVendedoresCarregados]);
+
+    // Carregar dados de Visitas
+    useEffect(() => {
+        if (abaAtiva !== 'visitas' || !visitasLoading) return;
+        const params = { data: visitasData_filtro };
+        if (visitasVendedorId) params.vendedorId = visitasVendedorId;
+        api.get('/admin-dashboard/visitas', { params })
+            .then((res) => setVisitasData(res.data))
+            .catch(() => setVisitasData(null))
+            .finally(() => { setVisitasLoading(false); setVisitasCarregadas(true); });
+    }, [abaAtiva, visitasLoading, visitasData_filtro, visitasVendedorId]);
+
+    // Carregar lista de vendedores para filtro Visitas
+    useEffect(() => {
+        if (abaAtiva !== 'visitas' || visitasVendedoresCarregados) return;
+        api.get('/vendedores', { params: { ativo: 'true' } })
+            .then((res) => {
+                const lista = Array.isArray(res.data) ? res.data : (res.data?.vendedores || []);
+                setVisitasVendedores(lista.map(v => ({ id: v.id, nome: v.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
+            })
+            .catch(() => setVisitasVendedores([]))
+            .finally(() => setVisitasVendedoresCarregados(true));
+    }, [abaAtiva, visitasVendedoresCarregados]);
 
     if (loading) {
         return (
@@ -445,6 +482,12 @@ const DashboardAdminSection = () => {
                     label="Reunião Semanal"
                     onClick={() => handleTrocaAba('reuniao')}
                     badge={rankingSemanal.length || null}
+                />
+                <TabButton
+                    active={abaAtiva === 'visitas'}
+                    icon={MapPin}
+                    label="Visitas"
+                    onClick={() => handleTrocaAba('visitas')}
                 />
             </div>
 
@@ -1265,6 +1308,287 @@ const DashboardAdminSection = () => {
                                 </div>
                             </div>
                         </>
+                    )}
+                </div>
+            )}
+
+            {/* ─── Aba Visitas ─────────────────────────────────────────── */}
+            {abaAtiva === 'visitas' && (
+                <div className="space-y-5">
+                    {/* Filtros */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</label>
+                            <input
+                                type="date"
+                                value={visitasData_filtro}
+                                max={hojeISO()}
+                                onChange={e => {
+                                    setVisitasData_filtro(e.target.value || hojeISO());
+                                    setVisitasLoading(true);
+                                }}
+                                className="border rounded px-2 py-1 text-xs"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vendedor</label>
+                            <select
+                                value={visitasVendedorId}
+                                onChange={e => {
+                                    setVisitasVendedorId(e.target.value);
+                                    setVisitasLoading(true);
+                                }}
+                                className="border rounded px-2 py-1 text-xs"
+                            >
+                                <option value="">Todos</option>
+                                {visitasVendedores.map(v => (
+                                    <option key={v.id} value={v.id}>{v.nome}</option>
+                                ))}
+                            </select>
+                        </div>
+                        {visitasLoading && <span className="text-xs text-gray-400">Carregando...</span>}
+                    </div>
+
+                    {/* Cards por vendedor */}
+                    {!visitasLoading && visitasData && (
+                        visitasData.vendedores.length === 0 ? (
+                            <div className="text-sm text-gray-400 py-8 text-center">Nenhum atendimento registrado nesta data.</div>
+                        ) : (
+                            visitasData.vendedores.map(vend => {
+                                const key = vend.vendedorId;
+                                const exp = visitasExpandido[key] || {};
+                                const toggle = (sec) => setVisitasExpandido(prev => ({
+                                    ...prev,
+                                    [key]: { ...(prev[key] || {}), [sec]: !((prev[key] || {})[sec]) },
+                                }));
+
+                                return (
+                                    <div key={key} className="bg-white border rounded-xl overflow-hidden shadow-sm">
+                                        {/* Header vendedor */}
+                                        <div className="px-4 py-3 bg-slate-50 border-b flex items-center justify-between">
+                                            <span className="font-bold text-sm text-slate-800">{vend.vendedorNome}</span>
+                                            <div className="flex items-center gap-3 text-xs text-gray-500">
+                                                <span className="flex items-center gap-1">
+                                                    <MapPin size={11} className="text-indigo-500" />
+                                                    {vend.presencialTotal} presencial
+                                                </span>
+                                                <span className="flex items-center gap-1">
+                                                    <MessageCircle size={11} className="text-green-500" />
+                                                    {vend.whatsappTotal} WhatsApp
+                                                </span>
+                                                {vend.outrosTotal > 0 && (
+                                                    <span>{vend.outrosTotal} outros</span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Métricas presencial */}
+                                        {vend.presencialTotal > 0 && (
+                                            <div className="px-4 py-3 space-y-2">
+                                                {/* Confirmados */}
+                                                <button
+                                                    onClick={() => toggle('confirmado')}
+                                                    className="w-full flex items-center justify-between text-left"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                                                        <span className="text-sm font-semibold text-emerald-700">
+                                                            {vend.presencialConfirmado} no cliente (≤50m)
+                                                        </span>
+                                                    </div>
+                                                    {vend.presencialConfirmado > 0 && (exp.confirmado ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />)}
+                                                </button>
+                                                {exp.confirmado && vend.detalhes.presencialConfirmado.length > 0 && (
+                                                    <ul className="ml-5 space-y-1">
+                                                        {vend.detalhes.presencialConfirmado.map((d, i) => (
+                                                            <li key={i} className="text-xs text-gray-700 flex items-center justify-between">
+                                                                <span>{d.nomeCliente} <span className="text-gray-400">({d.tipo})</span></span>
+                                                                <span className="text-gray-400 flex gap-2">
+                                                                    <span className="text-emerald-600">{d.distancia}m</span>
+                                                                    {d.hora}
+                                                                </span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+
+                                                {/* Não confirmados */}
+                                                <button
+                                                    onClick={() => toggle('naoConfirmado')}
+                                                    className="w-full flex items-center justify-between text-left"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-2.5 h-2.5 rounded-full bg-red-400 flex-shrink-0" />
+                                                        <span className="text-sm font-semibold text-red-600">
+                                                            {vend.presencialNaoConfirmado} longe do cliente (&gt;50m)
+                                                        </span>
+                                                    </div>
+                                                    {vend.presencialNaoConfirmado > 0 && (exp.naoConfirmado ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />)}
+                                                </button>
+                                                {exp.naoConfirmado && vend.detalhes.presencialNaoConfirmado.length > 0 && (
+                                                    <ul className="ml-5 space-y-1">
+                                                        {vend.detalhes.presencialNaoConfirmado.map((d, i) => (
+                                                            <li key={i} className="text-xs text-gray-700 flex items-center justify-between">
+                                                                <span>{d.nomeCliente} <span className="text-gray-400">({d.tipo})</span></span>
+                                                                <span className="text-gray-400 flex gap-2">
+                                                                    {d.semGpsVendedor
+                                                                        ? <span className="text-amber-500">sem GPS registrado</span>
+                                                                        : <span className="text-red-500">{d.distancia}m</span>
+                                                                    }
+                                                                    {d.hora}
+                                                                </span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+
+                                                {/* Sem GPS cadastrado no cliente */}
+                                                {vend.presencialSemGpsCliente > 0 && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => toggle('semGps')}
+                                                            className="w-full flex items-center justify-between text-left"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="w-2.5 h-2.5 rounded-full bg-gray-300 flex-shrink-0" />
+                                                                <span className="text-sm font-semibold text-gray-500">
+                                                                    {vend.presencialSemGpsCliente} sem ponto GPS cadastrado no cliente
+                                                                </span>
+                                                            </div>
+                                                            {exp.semGps ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+                                                        </button>
+                                                        {exp.semGps && (
+                                                            <ul className="ml-5 space-y-1">
+                                                                {vend.detalhes.presencialSemGpsCliente.map((d, i) => (
+                                                                    <li key={i} className="text-xs text-gray-700 flex items-center justify-between">
+                                                                        <span>{d.nomeCliente} <span className="text-gray-400">({d.tipo})</span></span>
+                                                                        <span className="text-gray-400">{d.hora}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </>
+                                                )}
+
+                                                {/* WhatsApp */}
+                                                {vend.whatsappTotal > 0 && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => toggle('whatsapp')}
+                                                            className="w-full flex items-center justify-between text-left"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="w-2.5 h-2.5 rounded-full bg-green-400 flex-shrink-0" />
+                                                                <span className="text-sm font-semibold text-green-700">
+                                                                    {vend.whatsappTotal} WhatsApp
+                                                                </span>
+                                                            </div>
+                                                            {exp.whatsapp ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+                                                        </button>
+                                                        {exp.whatsapp && (
+                                                            <ul className="ml-5 space-y-1">
+                                                                {vend.detalhes.whatsapp.map((d, i) => (
+                                                                    <li key={i} className="text-xs text-gray-700 flex items-center justify-between">
+                                                                        <span>{d.nomeCliente}</span>
+                                                                        <span className="text-gray-400">{d.hora}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </>
+                                                )}
+
+                                                {/* Outros */}
+                                                {vend.outrosTotal > 0 && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => toggle('outros')}
+                                                            className="w-full flex items-center justify-between text-left"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="w-2.5 h-2.5 rounded-full bg-gray-400 flex-shrink-0" />
+                                                                <span className="text-sm font-semibold text-gray-600">
+                                                                    {vend.outrosTotal} outros (ligação, etc.)
+                                                                </span>
+                                                            </div>
+                                                            {exp.outros ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+                                                        </button>
+                                                        {exp.outros && (
+                                                            <ul className="ml-5 space-y-1">
+                                                                {vend.detalhes.outros.map((d, i) => (
+                                                                    <li key={i} className="text-xs text-gray-700 flex items-center justify-between">
+                                                                        <span>{d.nomeCliente} <span className="text-gray-400">({d.tipo})</span></span>
+                                                                        <span className="text-gray-400">{d.hora}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Caso só tenha WhatsApp/Outros sem presencial */}
+                                        {vend.presencialTotal === 0 && (
+                                            <div className="px-4 py-3 space-y-2">
+                                                {vend.whatsappTotal > 0 && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => toggle('whatsapp')}
+                                                            className="w-full flex items-center justify-between text-left"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="w-2.5 h-2.5 rounded-full bg-green-400 flex-shrink-0" />
+                                                                <span className="text-sm font-semibold text-green-700">
+                                                                    {vend.whatsappTotal} WhatsApp
+                                                                </span>
+                                                            </div>
+                                                            {exp.whatsapp ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+                                                        </button>
+                                                        {exp.whatsapp && (
+                                                            <ul className="ml-5 space-y-1">
+                                                                {vend.detalhes.whatsapp.map((d, i) => (
+                                                                    <li key={i} className="text-xs text-gray-700 flex items-center justify-between">
+                                                                        <span>{d.nomeCliente}</span>
+                                                                        <span className="text-gray-400">{d.hora}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </>
+                                                )}
+                                                {vend.outrosTotal > 0 && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => toggle('outros')}
+                                                            className="w-full flex items-center justify-between text-left"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="w-2.5 h-2.5 rounded-full bg-gray-400 flex-shrink-0" />
+                                                                <span className="text-sm font-semibold text-gray-600">
+                                                                    {vend.outrosTotal} outros
+                                                                </span>
+                                                            </div>
+                                                            {exp.outros ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+                                                        </button>
+                                                        {exp.outros && (
+                                                            <ul className="ml-5 space-y-1">
+                                                                {vend.detalhes.outros.map((d, i) => (
+                                                                    <li key={i} className="text-xs text-gray-700 flex items-center justify-between">
+                                                                        <span>{d.nomeCliente} <span className="text-gray-400">({d.tipo})</span></span>
+                                                                        <span className="text-gray-400">{d.hora}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        )
                     )}
                 </div>
             )}
