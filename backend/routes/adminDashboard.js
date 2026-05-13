@@ -1201,6 +1201,31 @@ router.get('/visitas', verificarAuth, async (req, res) => {
 
         const vendedoresMap = new Map();
 
+        const novoVendedorEntry = (id, nome) => ({
+            vendedorId: id,
+            vendedorNome: nome,
+            presencialTotal: 0,
+            presencialConfirmado: 0,
+            presencialNaoConfirmado: 0,
+            presencialSemGpsCliente: 0,
+            whatsappTotal: 0,
+            outrosTotal: 0,
+            entregasTotal: 0,
+            entregasConfirmadas: 0,
+            entregasNaoConfirmadas: 0,
+            entregasSemGpsCliente: 0,
+            detalhes: {
+                presencialConfirmado: [],
+                presencialNaoConfirmado: [],
+                presencialSemGpsCliente: [],
+                whatsapp: [],
+                outros: [],
+                entregasConfirmadas: [],
+                entregasNaoConfirmadas: [],
+                entregasSemGpsCliente: [],
+            },
+        });
+
         for (const at of atendimentos) {
             const vid = at.idVendedor;
             if (!vendedoresMap.has(vid)) {
@@ -1213,12 +1238,19 @@ router.get('/visitas', verificarAuth, async (req, res) => {
                     presencialSemGpsCliente: 0,
                     whatsappTotal: 0,
                     outrosTotal: 0,
+                    entregasTotal: 0,
+                    entregasConfirmadas: 0,
+                    entregasNaoConfirmadas: 0,
+                    entregasSemGpsCliente: 0,
                     detalhes: {
                         presencialConfirmado: [],
                         presencialNaoConfirmado: [],
                         presencialSemGpsCliente: [],
                         whatsapp: [],
                         outros: [],
+                        entregasConfirmadas: [],
+                        entregasNaoConfirmadas: [],
+                        entregasSemGpsCliente: [],
                     },
                 });
             }
@@ -1265,75 +1297,62 @@ router.get('/visitas', verificarAuth, async (req, res) => {
             }
         }
 
-        // ── Entregas do dia ────────────────────────────────────────────────────
+        // ── Entregas do dia — mescladas no card do vendedor/motorista ──────────
         const pedidosEntregues = await prisma.pedido.findMany({
             where: {
                 dataEntrega: { gte: start, lte: end },
                 statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL'] },
             },
             select: {
-                id: true,
-                numero: true,
-                gpsEntrega: true,
-                dataEntrega: true,
-                statusEntrega: true,
+                id: true, numero: true, gpsEntrega: true, dataEntrega: true, statusEntrega: true,
                 cliente: { select: { UUID: true, Nome: true, NomeFantasia: true, Ponto_GPS: true } },
                 embarque: { select: { id: true, responsavelId: true } },
             },
             orderBy: { dataEntrega: 'asc' },
         });
 
-        // Buscar nomes dos motoristas
-        const motoristaIds = [...new Set(
-            pedidosEntregues.map(p => p.embarque?.responsavelId).filter(Boolean)
+        // Nomes dos motoristas que ainda não estão no vendedoresMap
+        const motoristaIdsNovos = [...new Set(
+            pedidosEntregues.map(p => p.embarque?.responsavelId).filter(id => id && !vendedoresMap.has(id))
         )];
-        const motoristasDb = motoristaIds.length > 0
-            ? await prisma.vendedor.findMany({ where: { id: { in: motoristaIds } }, select: { id: true, nome: true } })
-            : [];
-        const motoristaNomeMap = new Map(motoristasDb.map(m => [m.id, m.nome]));
+        if (motoristaIdsNovos.length > 0) {
+            const novosMot = await prisma.vendedor.findMany({
+                where: { id: { in: motoristaIdsNovos } },
+                select: { id: true, nome: true },
+            });
+            for (const m of novosMot) vendedoresMap.set(m.id, novoVendedorEntry(m.id, m.nome));
+        }
 
-        const motoristasMap = new Map();
         for (const ped of pedidosEntregues) {
             const mid = ped.embarque?.responsavelId;
             if (!mid) continue;
             if (vendedorIdFiltro && mid !== vendedorIdFiltro) continue;
+            if (!vendedoresMap.has(mid)) continue;
 
-            if (!motoristasMap.has(mid)) {
-                motoristasMap.set(mid, {
-                    motoristaId: mid,
-                    motoristaNome: motoristaNomeMap.get(mid) || 'Desconhecido',
-                    entregasTotal: 0,
-                    entregasConfirmadas: 0,
-                    entregasNaoConfirmadas: 0,
-                    entregasSemGpsCliente: 0,
-                    detalhes: { confirmadas: [], naoConfirmadas: [], semGpsCliente: [] },
-                });
-            }
-
-            const m = motoristasMap.get(mid);
+            const v = vendedoresMap.get(mid);
             const nomeCliente = ped.cliente ? (ped.cliente.NomeFantasia || ped.cliente.Nome) : 'Desconhecido';
             const hora = ped.dataEntrega
                 ? new Date(ped.dataEntrega).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: TZ })
                 : '--:--';
 
-            m.entregasTotal++;
+            v.entregasTotal++;
             const gpsEnt = parseGpsStr(ped.gpsEntrega);
             const gpsCli = parseGpsStr(ped.cliente?.Ponto_GPS);
 
             if (!gpsCli) {
-                m.entregasSemGpsCliente++;
-                m.detalhes.semGpsCliente.push({ nomeCliente, hora, status: ped.statusEntrega });
+                v.entregasSemGpsCliente++;
+                v.detalhes.entregasSemGpsCliente.push({ nomeCliente, hora });
             } else if (!gpsEnt) {
-                m.entregasNaoConfirmadas++;
-                m.detalhes.naoConfirmadas.push({ nomeCliente, hora, distancia: null, semGpsEntrega: true, status: ped.statusEntrega });
+                v.entregasNaoConfirmadas++;
+                v.detalhes.entregasNaoConfirmadas.push({ nomeCliente, hora, distancia: null, semGpsEntrega: true });
             } else {
                 const dist = Math.round(haversineMetros(gpsEnt.lat, gpsEnt.lng, gpsCli.lat, gpsCli.lng));
                 if (dist <= 50) {
-                    m.entregasConfirmadas++;
-                    m.detalhes.confirmadas.push({ nomeCliente, hora, distancia: dist, status: ped.statusEntrega });
+                    v.entregasConfirmadas++;
+                    v.detalhes.entregasConfirmadas.push({ nomeCliente, hora, distancia: dist });
                 } else {
-                    m.entregasNaoConfirmadas++;
-                    m.detalhes.naoConfirmadas.push({ nomeCliente, hora, distancia: dist, status: ped.statusEntrega });
+                    v.entregasNaoConfirmadas++;
+                    v.detalhes.entregasNaoConfirmadas.push({ nomeCliente, hora, distancia: dist });
                 }
             }
         }
@@ -1342,9 +1361,6 @@ router.get('/visitas', verificarAuth, async (req, res) => {
             data: dataISO,
             vendedores: Array.from(vendedoresMap.values()).sort((a, b) =>
                 a.vendedorNome.localeCompare(b.vendedorNome)
-            ),
-            motoristas: Array.from(motoristasMap.values()).sort((a, b) =>
-                a.motoristaNome.localeCompare(b.motoristaNome)
             ),
         });
     } catch (error) {
