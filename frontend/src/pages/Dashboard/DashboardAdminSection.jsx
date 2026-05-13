@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import {
     Activity,
     AlertCircle,
-    AlertTriangle,
     ArrowDownRight,
     ArrowUpRight,
     BarChart2,
@@ -1060,7 +1059,7 @@ const DashboardAdminSection = () => {
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
                                 <div className="bg-white border rounded-xl p-5 xl:col-span-3">
                                     <SectionHeader
                                         icon={MapPin}
@@ -1169,17 +1168,6 @@ const DashboardAdminSection = () => {
                                     </div>
                                 </div>
 
-                                <div className="bg-white border rounded-xl p-5">
-                                    <SectionHeader icon={AlertTriangle} title="Alertas Críticos" />
-                                    <div className="space-y-2 text-sm">
-                                        <div className="flex items-center justify-between"><span>Inadimplência</span><strong>{fmtBRLcompact(alertasSemanal.inadimplencia?.total)}</strong></div>
-                                        <div className="flex items-center justify-between"><span>Erros ERP</span><strong>{fmtNum(alertasSemanal.errosErp?.total)}</strong></div>
-                                        <div className="flex items-center justify-between"><span>Especiais pendentes</span><strong>{fmtNum(alertasSemanal.pedidosEspeciais?.total)}</strong></div>
-                                        <div className="flex items-center justify-between"><span>Transferências pendentes</span><strong>{fmtNum(alertasSemanal.transferenciasPendentes?.total)}</strong></div>
-                                        <div className="flex items-center justify-between"><span>Pendências abertas</span><strong>{fmtNum(alertasSemanal.pendenciasAbertas?.total)}</strong></div>
-                                        <div className="flex items-center justify-between"><span>Caixas a conferir</span><strong>{fmtNum(alertasSemanal.caixasAConferir?.total)}</strong></div>
-                                    </div>
-                                </div>
                             </div>
 
                             <div className="bg-white border rounded-xl p-5">
