@@ -1134,7 +1134,10 @@ const DashboardAdminSection = () => {
                                                 <div className="min-w-0">
                                                     <div className="font-semibold text-sm text-gray-900 truncate">{produto.nome}</div>
                                                     <div className="text-[11px] text-gray-500">
-                                                        {fmtNum(produto.quantidadeSemanaAtual)} un · {fmtBRL(produto.vendasSemanaAnterior)} na semana anterior
+                                                        {fmtNum(produto.quantidadeSemanaAtual)} un agora · {fmtNum(produto.quantidadeSemanaAnterior)} un antes
+                                                    </div>
+                                                    <div className="text-[11px] text-gray-500">
+                                                        {fmtBRL(produto.vendasSemanaAnterior)} na semana anterior
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
