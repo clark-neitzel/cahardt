@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, AlertTriangle, CheckCircle, Package, X, ChevronDown, Pencil, Check, Loader2, TrendingDown, PackageX } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Search, AlertTriangle, CheckCircle, Package, X, ChevronDown, Pencil, Check, Loader2, TrendingDown, PackageX, TrendingUp, BarChart2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import estoqueService from '../../services/estoqueService';
 import categoriaProdutoService from '../../services/categoriaProdutoService';
@@ -124,14 +124,11 @@ function ProdutoRow({ produto, isAdmin, onMinimoSalvo }) {
 
     return (
         <tr className={`border-b border-gray-100 hover:bg-gray-50/70 transition-colors ${abaixo ? 'bg-amber-50/40' : ''}`}>
-            {/* Indicador visual */}
             <td className="pl-4 pr-2 py-3 w-6">
                 {abaixo && <AlertTriangle className="h-4 w-4 text-amber-500" />}
                 {ok && <CheckCircle className="h-4 w-4 text-green-500" />}
                 {!abaixo && !ok && <span className="block h-4 w-4" />}
             </td>
-
-            {/* Produto */}
             <td className="px-3 py-3">
                 <p className="text-sm font-medium text-gray-900 leading-snug">{produto.nome}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
@@ -140,30 +137,22 @@ function ProdutoRow({ produto, isAdmin, onMinimoSalvo }) {
                     {produto.categoriaProduto && <span className="ml-2">{produto.categoriaProduto.nome}</span>}
                 </p>
             </td>
-
-            {/* Disponível */}
             <td className="px-3 py-3 text-right">
                 <span className={`text-base font-bold tabular-nums ${abaixo ? 'text-amber-600' : 'text-gray-800'}`}>
                     {disp.toFixed(0)}
                 </span>
                 <span className="text-xs text-gray-400 ml-1">{produto.unidade || 'un'}</span>
             </td>
-
-            {/* Reservado */}
             <td className="px-3 py-3 text-right hidden sm:table-cell">
                 <span className="text-sm text-orange-500 tabular-nums font-medium">
                     {parseFloat(produto.estoqueReservado || 0).toFixed(0)}
                 </span>
             </td>
-
-            {/* Total */}
             <td className="px-3 py-3 text-right hidden md:table-cell">
                 <span className="text-sm text-gray-600 tabular-nums">
                     {parseFloat(produto.estoqueTotal || 0).toFixed(0)}
                 </span>
             </td>
-
-            {/* Mínimo */}
             <td className="px-3 py-3 text-right">
                 {editando ? (
                     <div className="flex items-center justify-end gap-1">
@@ -294,26 +283,293 @@ function ProdutoCard({ produto, isAdmin, onMinimoSalvo }) {
     );
 }
 
+const TENDENCIA_CONFIG = {
+    ALTA:         { cor: 'text-red-600',   bg: 'bg-red-50 border-red-200',     texto: (v) => `↑ +${v}%` },
+    NOVA_DEMANDA: { cor: 'text-blue-600',  bg: 'bg-blue-50 border-blue-200',   texto: () => '✦ nova' },
+    ESTAVEL:      { cor: 'text-gray-600',  bg: 'bg-gray-100 border-gray-200',  texto: (v) => v >= 0 ? `→ +${v}%` : `→ ${v}%` },
+    QUEDA:        { cor: 'text-green-700', bg: 'bg-green-50 border-green-200', texto: (v) => `↓ ${v}%` },
+    SEM_MOVIMENTO:{ cor: 'text-gray-300',  bg: 'bg-gray-50 border-gray-100',   texto: () => '— sem mov.' },
+};
+
+// Linha de demanda — tabela desktop
+function DemandaRow({ item, isAdmin, onMinimoSalvo }) {
+    const [editando, setEditando] = useState(false);
+    const [minimo, setMinimo] = useState('');
+    const [salvando, setSalvando] = useState(false);
+
+    const disp = item.estoqueDisponivel;
+    const abaixoSugerido = item.minimoSugerido15d > 0 && disp < item.minimoSugerido15d;
+    const temMovimento = item.tendencia !== 'SEM_MOVIMENTO';
+    const tc = TENDENCIA_CONFIG[item.tendencia] || TENDENCIA_CONFIG.SEM_MOVIMENTO;
+
+    const handleEdit = (valorInicial) => {
+        setMinimo(String(valorInicial ?? item.estoqueMinimo ?? '0'));
+        setEditando(true);
+    };
+    const handleCancel = () => setEditando(false);
+    const handleSalvar = async () => {
+        const val = parseFloat(minimo);
+        if (isNaN(val) || val < 0) return toast.error('Valor inválido.');
+        setSalvando(true);
+        try {
+            const res = await estoqueService.atualizarMinimo(item.id, val);
+            onMinimoSalvo(item.id, res.estoqueMinimo);
+            setEditando(false);
+            toast.success('Mínimo atualizado.');
+        } catch {
+            toast.error('Erro ao salvar.');
+        } finally {
+            setSalvando(false);
+        }
+    };
+
+    return (
+        <tr className={`border-b border-gray-100 hover:bg-gray-50/70 transition-colors ${!temMovimento ? 'opacity-40' : ''}`}>
+            {/* Produto */}
+            <td className="pl-4 pr-3 py-3">
+                <p className="text-sm font-medium text-gray-900 leading-snug">{item.nome}</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                    {item.categoria || '—'}
+                    {item.categoriaProduto && <span className="ml-2 text-gray-300">·</span>}
+                    {item.categoriaProduto && <span className="ml-2">{item.categoriaProduto.nome}</span>}
+                </p>
+            </td>
+
+            {/* Estoque disponível */}
+            <td className="px-3 py-3 text-right">
+                <span className={`text-sm font-bold tabular-nums ${disp < 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                    {disp.toFixed(0)}
+                </span>
+                <span className="text-xs text-gray-400 ml-1">{item.unidade || 'un'}</span>
+            </td>
+
+            {/* Saída 15d (atual) */}
+            <td className="px-3 py-3 text-right">
+                <span className="text-sm font-semibold tabular-nums text-gray-800">
+                    {item.saidaAtual.toFixed(0)}
+                </span>
+                <span className="text-xs text-gray-400 ml-1">{item.unidade || 'un'}</span>
+            </td>
+
+            {/* Saída anterior */}
+            <td className="px-3 py-3 text-right hidden lg:table-cell">
+                <span className="text-sm tabular-nums text-gray-500">
+                    {item.saidaAnterior.toFixed(0)}
+                </span>
+                <span className="text-xs text-gray-400 ml-1">{item.unidade || 'un'}</span>
+            </td>
+
+            {/* Tendência */}
+            <td className="px-3 py-3 text-center">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${tc.bg} ${tc.cor}`}>
+                    {tc.texto(item.variacaoPercent)}
+                </span>
+            </td>
+
+            {/* Mínimo sugerido 7d / 15d */}
+            <td className="px-3 py-3 text-right hidden xl:table-cell">
+                {temMovimento ? (
+                    <div className="space-y-0.5">
+                        <div className="text-xs text-gray-400 tabular-nums">
+                            7d: <span className="font-medium text-gray-600">{item.minimoSugerido7d}</span>
+                        </div>
+                        <div className="flex items-center justify-end gap-1.5">
+                            <span className="text-xs text-gray-400 tabular-nums">
+                                15d: <span className={`font-semibold ${abaixoSugerido ? 'text-amber-600' : 'text-gray-700'}`}>{item.minimoSugerido15d}</span>
+                            </span>
+                            {isAdmin && (
+                                <button
+                                    onClick={() => handleEdit(item.minimoSugerido15d)}
+                                    className="text-xs text-blue-400 hover:text-blue-600 underline whitespace-nowrap"
+                                    title="Usar como mínimo atual"
+                                >
+                                    aplicar
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <span className="text-gray-300 text-xs">—</span>
+                )}
+            </td>
+
+            {/* Mínimo atual */}
+            <td className="px-3 py-3 text-right">
+                {editando ? (
+                    <div className="flex items-center justify-end gap-1">
+                        <input
+                            type="number"
+                            value={minimo}
+                            onChange={e => setMinimo(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleSalvar(); if (e.key === 'Escape') handleCancel(); }}
+                            autoFocus
+                            className="w-20 px-2 py-1 text-sm border border-blue-400 rounded-lg text-right focus:outline-none"
+                            min="0" step="1" inputMode="decimal" disabled={salvando}
+                        />
+                        <button onClick={handleSalvar} disabled={salvando} className="text-green-600 hover:text-green-700 p-0.5">
+                            {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                        </button>
+                        <button onClick={handleCancel} className="text-gray-400 hover:text-gray-600 p-0.5">
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-end gap-1.5">
+                        <span className={`text-sm tabular-nums ${abaixoSugerido ? 'text-amber-600 font-medium' : 'text-gray-500'}`}>
+                            {item.estoqueMinimo > 0 ? item.estoqueMinimo.toFixed(0) : <span className="text-gray-300">—</span>}
+                        </span>
+                        {isAdmin && (
+                            <button
+                                onClick={() => handleEdit(item.estoqueMinimo)}
+                                className="text-gray-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                                title="Editar mínimo"
+                            >
+                                <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                        )}
+                    </div>
+                )}
+            </td>
+        </tr>
+    );
+}
+
+// Card de demanda — mobile
+function DemandaCard({ item, isAdmin, onMinimoSalvo }) {
+    const [editando, setEditando] = useState(false);
+    const [minimo, setMinimo] = useState('');
+    const [salvando, setSalvando] = useState(false);
+
+    const disp = item.estoqueDisponivel;
+    const abaixoSugerido = item.minimoSugerido15d > 0 && disp < item.minimoSugerido15d;
+    const tc = TENDENCIA_CONFIG[item.tendencia] || TENDENCIA_CONFIG.SEM_MOVIMENTO;
+
+    const handleSalvar = async (valorOverride) => {
+        const val = valorOverride !== undefined ? parseFloat(valorOverride) : parseFloat(minimo);
+        if (isNaN(val) || val < 0) return toast.error('Valor inválido.');
+        setSalvando(true);
+        try {
+            const res = await estoqueService.atualizarMinimo(item.id, val);
+            onMinimoSalvo(item.id, res.estoqueMinimo);
+            setEditando(false);
+            toast.success('Mínimo atualizado.');
+        } catch {
+            toast.error('Erro ao salvar.');
+        } finally {
+            setSalvando(false);
+        }
+    };
+
+    return (
+        <div className={`rounded-xl border p-4 bg-white ${item.tendencia === 'SEM_MOVIMENTO' ? 'opacity-50' : ''}`}>
+            <div className="flex items-start justify-between gap-2 mb-3">
+                <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 leading-snug">{item.nome}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{item.categoria || '—'}</p>
+                </div>
+                <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${tc.bg} ${tc.cor}`}>
+                    {tc.texto(item.variacaoPercent)}
+                </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                <div>
+                    <p className="text-xs text-gray-500">Estoque</p>
+                    <p className={`text-sm font-bold ${disp < 0 ? 'text-red-600' : 'text-gray-800'}`}>{disp.toFixed(0)}</p>
+                </div>
+                <div>
+                    <p className="text-xs text-gray-500">Saída 15d</p>
+                    <p className="text-sm font-bold text-gray-800">{item.saidaAtual.toFixed(0)}</p>
+                </div>
+                <div>
+                    <p className="text-xs text-gray-500">Saída ant.</p>
+                    <p className="text-sm text-gray-500">{item.saidaAnterior.toFixed(0)}</p>
+                </div>
+            </div>
+            {item.tendencia !== 'SEM_MOVIMENTO' && (
+                <div className="bg-gray-50 rounded-lg px-3 py-2 flex items-center justify-between text-xs mb-2">
+                    <span className="text-gray-500">Mín. sugerido</span>
+                    <span className="text-gray-700 font-medium">7d: {item.minimoSugerido7d} · 15d: <span className={abaixoSugerido ? 'text-amber-600 font-semibold' : ''}>{item.minimoSugerido15d}</span></span>
+                </div>
+            )}
+            <div className="flex items-center justify-between border-t border-gray-100 pt-2.5">
+                <span className="text-xs text-gray-500">Mínimo atual:</span>
+                {editando ? (
+                    <div className="flex items-center gap-1">
+                        <input
+                            type="number"
+                            value={minimo}
+                            onChange={e => setMinimo(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleSalvar(); if (e.key === 'Escape') setEditando(false); }}
+                            autoFocus
+                            className="w-20 px-2 py-1 text-sm border border-blue-400 rounded-lg text-right focus:outline-none"
+                            min="0" step="1" inputMode="decimal" disabled={salvando}
+                        />
+                        <button onClick={() => handleSalvar()} disabled={salvando} className="text-green-600 p-0.5">
+                            {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                        </button>
+                        <button onClick={() => setEditando(false)} className="text-gray-400 p-0.5"><X className="h-4 w-4" /></button>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2">
+                        <span className={`text-sm font-medium tabular-nums ${abaixoSugerido ? 'text-amber-600' : 'text-gray-600'}`}>
+                            {item.estoqueMinimo > 0 ? `${item.estoqueMinimo.toFixed(0)} ${item.unidade || 'un'}` : '—'}
+                        </span>
+                        {isAdmin && item.tendencia !== 'SEM_MOVIMENTO' && (
+                            <button
+                                onClick={() => { setMinimo(String(item.minimoSugerido15d)); handleSalvar(item.minimoSugerido15d); }}
+                                className="text-xs text-blue-500 hover:text-blue-700 underline"
+                            >
+                                usar 15d
+                            </button>
+                        )}
+                        {isAdmin && (
+                            <button onClick={() => { setMinimo(String(item.estoqueMinimo ?? '0')); setEditando(true); }} className="text-gray-400 hover:text-blue-500 p-0.5">
+                                <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function fmtData(dateStr) {
+    if (!dateStr) return '';
+    const [, m, d] = dateStr.split('-');
+    return `${d}/${m}`;
+}
+
 export default function PosicaoEstoque() {
     const { user } = useAuth();
     const isAdmin = user?.permissoes?.admin === true;
 
     const [filtros, setFiltros] = useLocalStorage(STORAGE_KEY, {
         search: '',
-        categorias: [],        // categorias de estoque (produto.categoria)
-        categoriasComerciais: [], // IDs de CategoriaProduto
-        atalho: null             // null | 'abaixo' | 'zero'
+        categorias: [],
+        categoriasComerciais: [],
+        atalho: null
     });
 
+    // Aba ativa
+    const [abaAtiva, setAbaAtiva] = useState('posicao');
+
+    // Estado da aba posição
     const [produtos, setProdutos] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Estado da aba demanda
+    const [demanda, setDemanda] = useState(null);
+    const [loadingDemanda, setLoadingDemanda] = useState(false);
+    const [filtroTendencia, setFiltroTendencia] = useState(null);
+
     const [categoriasEstoque, setCategoriasEstoque] = useState([]);
     const [categoriasComerciais, setCategoriasComerciais] = useState([]);
     const [filtrosAbertos, setFiltrosAbertos] = useState(false);
     const filtrosRef = useRef(null);
     const searchTimeout = useRef(null);
+    const demandaTimeout = useRef(null);
 
-    // Fecha painel de filtros ao clicar fora
     useEffect(() => {
         if (!filtrosAbertos) return;
         const handler = (e) => {
@@ -323,7 +579,6 @@ export default function PosicaoEstoque() {
         return () => document.removeEventListener('mousedown', handler);
     }, [filtrosAbertos]);
 
-    // Carrega listas de opções de filtro
     useEffect(() => {
         Promise.all([
             api.get('/categorias-estoque').then(r => r.data),
@@ -334,7 +589,7 @@ export default function PosicaoEstoque() {
         }).catch(() => {});
     }, []);
 
-    // Busca produtos com debounce no search
+    // Carrega posição com debounce no search
     useEffect(() => {
         clearTimeout(searchTimeout.current);
         searchTimeout.current = setTimeout(() => {
@@ -342,6 +597,16 @@ export default function PosicaoEstoque() {
         }, filtros.search ? 350 : 0);
         return () => clearTimeout(searchTimeout.current);
     }, [filtros.search, filtros.categorias, filtros.categoriasComerciais]);
+
+    // Carrega demanda quando a aba está ativa ou filtros mudam
+    useEffect(() => {
+        if (abaAtiva !== 'demanda') return;
+        clearTimeout(demandaTimeout.current);
+        demandaTimeout.current = setTimeout(() => {
+            carregarDemanda();
+        }, filtros.search ? 350 : 0);
+        return () => clearTimeout(demandaTimeout.current);
+    }, [abaAtiva, filtros.search, filtros.categorias, filtros.categoriasComerciais]);
 
     const carregar = async () => {
         setLoading(true);
@@ -360,10 +625,35 @@ export default function PosicaoEstoque() {
         }
     };
 
+    const carregarDemanda = async () => {
+        setLoadingDemanda(true);
+        try {
+            const params = {};
+            if (filtros.search?.trim()) params.search = filtros.search.trim();
+            if (filtros.categorias?.length > 0) params.categorias = filtros.categorias.join(',');
+            if (filtros.categoriasComerciais?.length > 0) params.categoriasComerciais = filtros.categoriasComerciais.join(',');
+
+            const data = await estoqueService.getAnaliseDemanda(params);
+            setDemanda(data);
+        } catch {
+            toast.error('Erro ao carregar análise de demanda.');
+        } finally {
+            setLoadingDemanda(false);
+        }
+    };
+
     const handleMinimoSalvo = (produtoId, novoMinimo) => {
         setProdutos(prev => prev.map(p =>
             p.id === produtoId ? { ...p, estoqueMinimo: novoMinimo } : p
         ));
+    };
+
+    const handleDemandaMinimoSalvo = (produtoId, novoMinimo) => {
+        setDemanda(prev => prev ? {
+            ...prev,
+            produtos: prev.produtos.map(p => p.id === produtoId ? { ...p, estoqueMinimo: novoMinimo } : p)
+        } : prev);
+        setProdutos(prev => prev.map(p => p.id === produtoId ? { ...p, estoqueMinimo: novoMinimo } : p));
     };
 
     const limparFiltros = () => setFiltros({ search: '', categorias: [], categoriasComerciais: [], atalho: null });
@@ -388,21 +678,66 @@ export default function PosicaoEstoque() {
 
     const toggleAtalho = (a) => setFiltros({ ...filtros, atalho: filtros.atalho === a ? null : a });
 
+    // Itens da demanda com filtro de tendência aplicado
+    const itensDemandaFiltrados = useMemo(() => {
+        if (!demanda?.produtos) return [];
+        const items = demanda.produtos;
+        if (filtroTendencia === 'crescente') return items.filter(p => p.tendencia === 'ALTA' || p.tendencia === 'NOVA_DEMANDA');
+        if (filtroTendencia === 'queda') return items.filter(p => p.tendencia === 'QUEDA');
+        if (filtroTendencia === 'abaixo_sugerido') return items.filter(p => p.minimoSugerido15d > 0 && p.estoqueDisponivel < p.minimoSugerido15d);
+        if (filtroTendencia === 'com_movimento') return items.filter(p => p.tendencia !== 'SEM_MOVIMENTO');
+        return items;
+    }, [demanda, filtroTendencia]);
+
+    const demandaResumo = useMemo(() => {
+        if (!demanda?.produtos) return { crescente: 0, abaixoSugerido: 0 };
+        return {
+            crescente: demanda.produtos.filter(p => p.tendencia === 'ALTA' || p.tendencia === 'NOVA_DEMANDA').length,
+            abaixoSugerido: demanda.produtos.filter(p => p.minimoSugerido15d > 0 && p.estoqueDisponivel < p.minimoSugerido15d).length,
+        };
+    }, [demanda]);
+
+    const toggleFiltroTendencia = (v) => setFiltroTendencia(prev => prev === v ? null : v);
+
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-5xl mx-auto px-4 py-6">
                 {/* Header */}
-                <div className="flex items-start justify-between mb-5">
+                <div className="flex items-start justify-between mb-4">
                     <div>
                         <h1 className="text-xl font-bold text-gray-900">Posição de Estoque</h1>
                         <p className="text-sm text-gray-500 mt-0.5">Produção / Posição</p>
                     </div>
-                    {abaixoMinimo > 0 && (
+                    {abaixoMinimo > 0 && abaAtiva === 'posicao' && (
                         <div className="flex items-center gap-1.5 bg-amber-100 text-amber-700 text-sm font-medium px-3 py-1.5 rounded-full">
                             <AlertTriangle className="h-4 w-4" />
                             {abaixoMinimo} abaixo do mínimo
                         </div>
                     )}
+                </div>
+
+                {/* Toggle de abas */}
+                <div className="flex gap-1 p-1 bg-gray-100 rounded-lg mb-4 w-fit">
+                    <button
+                        type="button"
+                        onClick={() => setAbaAtiva('posicao')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                            abaAtiva === 'posicao' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        <Package className="h-3.5 w-3.5" />
+                        Posição
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setAbaAtiva('demanda')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                            abaAtiva === 'demanda' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        <BarChart2 className="h-3.5 w-3.5" />
+                        Análise de Demanda
+                    </button>
                 </div>
 
                 {/* Barra fixa: busca + atalhos */}
@@ -423,32 +758,63 @@ export default function PosicaoEstoque() {
                         )}
                     </div>
 
-                    {/* Atalhos em forma de chip */}
+                    {/* Chips de atalho — variam por aba */}
                     <div className="flex flex-wrap items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() => toggleAtalho('abaixo')}
-                            title="Abaixo do mínimo"
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtros.atalho === 'abaixo' ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-white border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600'}`}
-                        >
-                            <TrendingDown className="h-3.5 w-3.5" />
-                            <span>Abaixo do mínimo</span>
-                            <span className={`tabular-nums ${filtros.atalho === 'abaixo' ? 'text-amber-700' : 'text-gray-400'}`}>({abaixoMinimo})</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => toggleAtalho('zero')}
-                            title="Estoque zero ou negativo"
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtros.atalho === 'zero' ? 'bg-red-100 border-red-300 text-red-700' : 'bg-white border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-600'}`}
-                        >
-                            <PackageX className="h-3.5 w-3.5" />
-                            <span>Estoque zero ou negativo</span>
-                            <span className={`tabular-nums ${filtros.atalho === 'zero' ? 'text-red-700' : 'text-gray-400'}`}>({zeroOuNegativo})</span>
-                        </button>
+                        {abaAtiva === 'posicao' && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => toggleAtalho('abaixo')}
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtros.atalho === 'abaixo' ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-white border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600'}`}
+                                >
+                                    <TrendingDown className="h-3.5 w-3.5" />
+                                    <span>Abaixo do mínimo</span>
+                                    <span className={`tabular-nums ${filtros.atalho === 'abaixo' ? 'text-amber-700' : 'text-gray-400'}`}>({abaixoMinimo})</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => toggleAtalho('zero')}
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtros.atalho === 'zero' ? 'bg-red-100 border-red-300 text-red-700' : 'bg-white border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-600'}`}
+                                >
+                                    <PackageX className="h-3.5 w-3.5" />
+                                    <span>Estoque zero ou negativo</span>
+                                    <span className={`tabular-nums ${filtros.atalho === 'zero' ? 'text-red-700' : 'text-gray-400'}`}>({zeroOuNegativo})</span>
+                                </button>
+                            </>
+                        )}
+                        {abaAtiva === 'demanda' && demanda && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => toggleFiltroTendencia('crescente')}
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtroTendencia === 'crescente' ? 'bg-red-100 border-red-300 text-red-700' : 'bg-white border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-600'}`}
+                                >
+                                    <TrendingUp className="h-3.5 w-3.5" />
+                                    <span>Demanda crescente</span>
+                                    <span className="tabular-nums text-gray-400">({demandaResumo.crescente})</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => toggleFiltroTendencia('abaixo_sugerido')}
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtroTendencia === 'abaixo_sugerido' ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-white border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600'}`}
+                                >
+                                    <AlertTriangle className="h-3.5 w-3.5" />
+                                    <span>Abaixo do mínimo sugerido 15d</span>
+                                    <span className="tabular-nums text-gray-400">({demandaResumo.abaixoSugerido})</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => toggleFiltroTendencia('com_movimento')}
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtroTendencia === 'com_movimento' ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-white border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600'}`}
+                                >
+                                    <span>Com movimento</span>
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
 
-                {/* Filtros de categoria — colapsável, fecha ao clicar fora */}
+                {/* Filtros de categoria — compartilhados entre abas */}
                 <div ref={filtrosRef} className="bg-white rounded-xl border border-gray-200 shadow-sm mb-5">
                     <button
                         type="button"
@@ -477,7 +843,6 @@ export default function PosicaoEstoque() {
                                     onChange={v => setFiltros({ ...filtros, categorias: v })}
                                     placeholder="Todas"
                                 />
-
                                 <MultiSelect
                                     label="Categoria comercial"
                                     options={categoriasComerciais}
@@ -486,10 +851,14 @@ export default function PosicaoEstoque() {
                                     placeholder="Todas"
                                 />
                             </div>
-
                             {temFiltro && (
                                 <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                                    <p className="text-xs text-gray-500">{produtosFiltrados.length} produto{produtosFiltrados.length !== 1 ? 's' : ''} encontrado{produtosFiltrados.length !== 1 ? 's' : ''}</p>
+                                    <p className="text-xs text-gray-500">
+                                        {abaAtiva === 'posicao'
+                                            ? `${produtosFiltrados.length} produto${produtosFiltrados.length !== 1 ? 's' : ''} encontrado${produtosFiltrados.length !== 1 ? 's' : ''}`
+                                            : `${itensDemandaFiltrados.length} produto${itensDemandaFiltrados.length !== 1 ? 's' : ''} encontrado${itensDemandaFiltrados.length !== 1 ? 's' : ''}`
+                                        }
+                                    </p>
                                     <button onClick={limparFiltros} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
                                         <X className="h-3 w-3" /> Limpar filtros
                                     </button>
@@ -499,49 +868,126 @@ export default function PosicaoEstoque() {
                     )}
                 </div>
 
-                {/* Conteúdo */}
-                {loading ? (
-                    <div className="flex items-center justify-center py-20">
-                        <Loader2 className="h-7 w-7 text-blue-500 animate-spin" />
-                    </div>
-                ) : produtosFiltrados.length === 0 ? (
-                    <div className="text-center py-20 text-gray-400">
-                        <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                        <p className="text-sm">{temFiltro ? 'Nenhum produto para os filtros selecionados.' : 'Nenhum produto cadastrado.'}</p>
-                    </div>
-                ) : (
+                {/* ─── ABA: POSIÇÃO ─── */}
+                {abaAtiva === 'posicao' && (
                     <>
-                        {/* Tabela — desktop */}
-                        <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="bg-gray-50 border-b border-gray-200">
-                                        <th className="pl-4 pr-2 py-3 w-6" />
-                                        <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</th>
-                                        <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Disponível</th>
-                                        <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Reservado</th>
-                                        <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</th>
-                                        <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                            Mínimo {isAdmin && <span className="text-gray-300 normal-case font-normal">(clique p/ editar)</span>}
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="group">
+                        {loading ? (
+                            <div className="flex items-center justify-center py-20">
+                                <Loader2 className="h-7 w-7 text-blue-500 animate-spin" />
+                            </div>
+                        ) : produtosFiltrados.length === 0 ? (
+                            <div className="text-center py-20 text-gray-400">
+                                <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                                <p className="text-sm">{temFiltro ? 'Nenhum produto para os filtros selecionados.' : 'Nenhum produto cadastrado.'}</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="bg-gray-50 border-b border-gray-200">
+                                                <th className="pl-4 pr-2 py-3 w-6" />
+                                                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</th>
+                                                <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Disponível</th>
+                                                <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Reservado</th>
+                                                <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</th>
+                                                <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                                    Mínimo {isAdmin && <span className="text-gray-300 normal-case font-normal">(clique p/ editar)</span>}
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="group">
+                                            {produtosFiltrados.map(p => (
+                                                <ProdutoRow key={p.id} produto={p} isAdmin={isAdmin} onMinimoSalvo={handleMinimoSalvo} />
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="md:hidden space-y-3">
                                     {produtosFiltrados.map(p => (
-                                        <ProdutoRow key={p.id} produto={p} isAdmin={isAdmin} onMinimoSalvo={handleMinimoSalvo} />
+                                        <ProdutoCard key={p.id} produto={p} isAdmin={isAdmin} onMinimoSalvo={handleMinimoSalvo} />
                                     ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                </div>
+                                <p className="text-xs text-center text-gray-400 mt-4">{produtosFiltrados.length} produto{produtosFiltrados.length !== 1 ? 's' : ''}</p>
+                            </>
+                        )}
+                    </>
+                )}
 
-                        {/* Cards — mobile */}
-                        <div className="md:hidden space-y-3">
-                            {produtosFiltrados.map(p => (
-                                <ProdutoCard key={p.id} produto={p} isAdmin={isAdmin} onMinimoSalvo={handleMinimoSalvo} />
-                            ))}
-                        </div>
+                {/* ─── ABA: ANÁLISE DE DEMANDA ─── */}
+                {abaAtiva === 'demanda' && (
+                    <>
+                        {loadingDemanda ? (
+                            <div className="flex items-center justify-center py-20">
+                                <Loader2 className="h-7 w-7 text-blue-500 animate-spin" />
+                            </div>
+                        ) : !demanda ? null : (
+                            <>
+                                {/* Cabeçalho informativo */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                                    <p className="text-xs text-gray-500">
+                                        Saída líquida (descontando devoluções) —{' '}
+                                        <span className="font-medium text-gray-700">{fmtData(demanda.periodoAtual.de)}–{fmtData(demanda.periodoAtual.ate)}</span>
+                                        {' '}vs{' '}
+                                        <span className="font-medium text-gray-700">{fmtData(demanda.periodoAnterior.de)}–{fmtData(demanda.periodoAnterior.ate)}</span>
+                                    </p>
+                                    {filtroTendencia && (
+                                        <button
+                                            onClick={() => setFiltroTendencia(null)}
+                                            className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
+                                        >
+                                            <X className="h-3 w-3" /> Limpar filtro
+                                        </button>
+                                    )}
+                                </div>
 
-                        <p className="text-xs text-center text-gray-400 mt-4">{produtosFiltrados.length} produto{produtosFiltrados.length !== 1 ? 's' : ''}</p>
+                                {itensDemandaFiltrados.length === 0 ? (
+                                    <div className="text-center py-20 text-gray-400">
+                                        <BarChart2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                                        <p className="text-sm">Nenhum produto para os filtros selecionados.</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Tabela — desktop */}
+                                        <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                                            <table className="w-full">
+                                                <thead>
+                                                    <tr className="bg-gray-50 border-b border-gray-200">
+                                                        <th className="pl-4 pr-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</th>
+                                                        <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Estoque</th>
+                                                        <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                                            Saída <span className="text-gray-400 font-normal normal-case">{fmtData(demanda.periodoAtual.de)}–{fmtData(demanda.periodoAtual.ate)}</span>
+                                                        </th>
+                                                        <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">
+                                                            Anterior <span className="text-gray-400 font-normal normal-case">{fmtData(demanda.periodoAnterior.de)}–{fmtData(demanda.periodoAnterior.ate)}</span>
+                                                        </th>
+                                                        <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Tendência</th>
+                                                        <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide hidden xl:table-cell">Mín. sugerido</th>
+                                                        <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                                            Mín. atual {isAdmin && <span className="text-gray-300 normal-case font-normal">(clique p/ editar)</span>}
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="group">
+                                                    {itensDemandaFiltrados.map(item => (
+                                                        <DemandaRow key={item.id} item={item} isAdmin={isAdmin} onMinimoSalvo={handleDemandaMinimoSalvo} />
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        {/* Cards — mobile */}
+                                        <div className="md:hidden space-y-3">
+                                            {itensDemandaFiltrados.map(item => (
+                                                <DemandaCard key={item.id} item={item} isAdmin={isAdmin} onMinimoSalvo={handleDemandaMinimoSalvo} />
+                                            ))}
+                                        </div>
+
+                                        <p className="text-xs text-center text-gray-400 mt-4">{itensDemandaFiltrados.length} produto{itensDemandaFiltrados.length !== 1 ? 's' : ''}</p>
+                                    </>
+                                )}
+                            </>
+                        )}
                     </>
                 )}
             </div>

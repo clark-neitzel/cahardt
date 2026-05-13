@@ -357,6 +357,167 @@ const estoqueService = {
         }
     },
 
+    // Análise de demanda: compara saída líquida (descontando devoluções) dos últimos 15 dias
+    // com a mesma quinzena do mês anterior. Calcula mínimo sugerido para 7d e 15d.
+    getAnaliseDemanda: async ({ search, categorias, categoriasComerciais, permissoes }) => {
+        function subtractOneMonth(date) {
+            const d = new Date(date);
+            const day = d.getDate();
+            d.setDate(1);
+            d.setMonth(d.getMonth() - 1);
+            const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+            d.setDate(Math.min(day, daysInMonth));
+            return d;
+        }
+
+        const hoje = new Date();
+        const inicioAtual = new Date(hoje);
+        inicioAtual.setDate(inicioAtual.getDate() - 15);
+
+        const fimAnterior = subtractOneMonth(hoje);
+        const inicioAnterior = subtractOneMonth(inicioAtual);
+
+        const periodoAtualDe = new Date(inicioAtual); periodoAtualDe.setHours(0, 0, 0, 0);
+        const periodoAtualAte = new Date(hoje); periodoAtualAte.setHours(23, 59, 59, 999);
+        const periodoAnteriorDe = new Date(inicioAnterior); periodoAnteriorDe.setHours(0, 0, 0, 0);
+        const periodoAnteriorAte = new Date(fimAnterior); periodoAnteriorAte.setHours(23, 59, 59, 999);
+
+        function fmt(d) { return d.toISOString().split('T')[0]; }
+
+        function getCategoriasPermitidas() {
+            if (!permissoes || permissoes.admin) return null;
+            const regras = Array.isArray(permissoes.estoque) ? permissoes.estoque : [];
+            if (regras.length === 0) return [];
+            if (regras.some(r => !r.categoria)) return null;
+            return [...new Set(regras.map(r => r.categoria).filter(Boolean))];
+        }
+
+        const catPermitidas = getCategoriasPermitidas();
+        const whereProduto = { ativo: true };
+
+        const periodoInfo = {
+            periodoAtual: { de: fmt(periodoAtualDe), ate: fmt(hoje) },
+            periodoAnterior: { de: fmt(periodoAnteriorDe), ate: fmt(fimAnterior) }
+        };
+
+        if (catPermitidas !== null) {
+            if (catPermitidas.length === 0) return { ...periodoInfo, produtos: [] };
+            whereProduto.categoria = { in: catPermitidas };
+        }
+
+        if (search?.trim()) {
+            whereProduto.OR = [
+                { nome: { contains: search.trim(), mode: 'insensitive' } },
+                { codigo: { contains: search.trim(), mode: 'insensitive' } }
+            ];
+        }
+
+        if (categorias) {
+            const cats = categorias.split(',').map(c => c.trim()).filter(Boolean);
+            if (cats.length > 0) {
+                if (catPermitidas !== null) {
+                    const filtradas = cats.filter(c => new Set(catPermitidas).has(c));
+                    if (filtradas.length === 0) return { ...periodoInfo, produtos: [] };
+                    whereProduto.categoria = { in: filtradas };
+                } else {
+                    whereProduto.categoria = { in: cats };
+                }
+            }
+        }
+
+        if (categoriasComerciais) {
+            const cats = categoriasComerciais.split(',').map(c => c.trim()).filter(Boolean);
+            if (cats.length > 0) whereProduto.categoriaProdutoId = { in: cats };
+        }
+
+        const produtos = await prisma.produto.findMany({
+            where: whereProduto,
+            select: {
+                id: true, nome: true, codigo: true, unidade: true, categoria: true,
+                estoqueDisponivel: true, estoqueMinimo: true,
+                categoriaProduto: { select: { id: true, nome: true } }
+            },
+            orderBy: [{ categoria: 'asc' }, { nome: 'asc' }]
+        });
+
+        if (produtos.length === 0) return { ...periodoInfo, produtos: [] };
+
+        const produtoIds = produtos.map(p => p.id);
+        const MOTIVOS_SAIDA = ['FATURAMENTO', 'PEDIDO_ESPECIAL', 'PEDIDO_BONIFICACAO'];
+
+        // 4 queries em paralelo: saídas e devoluções de cada período
+        const [movsAtual, movsAnterior, devsAtual, devsAnterior] = await Promise.all([
+            prisma.movimentacaoEstoque.groupBy({
+                by: ['produtoId'],
+                where: { produtoId: { in: produtoIds }, tipo: 'SAIDA', motivo: { in: MOTIVOS_SAIDA }, createdAt: { gte: periodoAtualDe, lte: periodoAtualAte } },
+                _sum: { quantidade: true }
+            }),
+            prisma.movimentacaoEstoque.groupBy({
+                by: ['produtoId'],
+                where: { produtoId: { in: produtoIds }, tipo: 'SAIDA', motivo: { in: MOTIVOS_SAIDA }, createdAt: { gte: periodoAnteriorDe, lte: periodoAnteriorAte } },
+                _sum: { quantidade: true }
+            }),
+            prisma.movimentacaoEstoque.groupBy({
+                by: ['produtoId'],
+                where: { produtoId: { in: produtoIds }, tipo: 'ENTRADA', motivo: 'DEVOLUCAO', createdAt: { gte: periodoAtualDe, lte: periodoAtualAte } },
+                _sum: { quantidade: true }
+            }),
+            prisma.movimentacaoEstoque.groupBy({
+                by: ['produtoId'],
+                where: { produtoId: { in: produtoIds }, tipo: 'ENTRADA', motivo: 'DEVOLUCAO', createdAt: { gte: periodoAnteriorDe, lte: periodoAnteriorAte } },
+                _sum: { quantidade: true }
+            })
+        ]);
+
+        const toMap = (arr) => Object.fromEntries(arr.map(m => [m.produtoId, parseFloat(m._sum.quantidade || 0)]));
+        const mapSaidaAtual = toMap(movsAtual);
+        const mapSaidaAnterior = toMap(movsAnterior);
+        const mapDevAtual = toMap(devsAtual);
+        const mapDevAnterior = toMap(devsAnterior);
+
+        const resultado = produtos.map(p => {
+            const saidaAtual = Math.max(0, (mapSaidaAtual[p.id] || 0) - (mapDevAtual[p.id] || 0));
+            const saidaAnterior = Math.max(0, (mapSaidaAnterior[p.id] || 0) - (mapDevAnterior[p.id] || 0));
+
+            const mediaDiaria = saidaAtual / 15;
+            const minimoSugerido7d = Math.ceil(mediaDiaria * 7);
+            const minimoSugerido15d = Math.ceil(saidaAtual);
+
+            let variacaoPercent = null;
+            let tendencia = 'SEM_MOVIMENTO';
+
+            if (saidaAtual === 0 && saidaAnterior === 0) {
+                tendencia = 'SEM_MOVIMENTO';
+            } else if (saidaAnterior === 0 && saidaAtual > 0) {
+                tendencia = 'NOVA_DEMANDA';
+            } else {
+                variacaoPercent = Math.round(((saidaAtual - saidaAnterior) / saidaAnterior) * 100);
+                if (variacaoPercent > 10) tendencia = 'ALTA';
+                else if (variacaoPercent < -10) tendencia = 'QUEDA';
+                else tendencia = 'ESTAVEL';
+            }
+
+            return {
+                id: p.id, nome: p.nome, codigo: p.codigo, unidade: p.unidade,
+                categoria: p.categoria, categoriaProduto: p.categoriaProduto,
+                estoqueDisponivel: parseFloat(p.estoqueDisponivel || 0),
+                estoqueMinimo: parseFloat(p.estoqueMinimo || 0),
+                saidaAtual, saidaAnterior, variacaoPercent,
+                mediaDiariaAtual: parseFloat(mediaDiaria.toFixed(2)),
+                minimoSugerido7d, minimoSugerido15d, tendencia
+            };
+        });
+
+        const ordemTendencia = { ALTA: 0, NOVA_DEMANDA: 1, ESTAVEL: 2, QUEDA: 3, SEM_MOVIMENTO: 4 };
+        resultado.sort((a, b) => {
+            const diff = (ordemTendencia[a.tendencia] ?? 5) - (ordemTendencia[b.tendencia] ?? 5);
+            if (diff !== 0) return diff;
+            return (b.variacaoPercent ?? 0) - (a.variacaoPercent ?? 0);
+        });
+
+        return { ...periodoInfo, produtos: resultado };
+    },
+
     // Listagem de movimentações com filtros e paginação
     listarMovimentacoes: async ({ produtoId, vendedorId, motivo, tipo, dataInicio, dataFim, pagina = 1, tamanhoPagina = 50 }) => {
         const where = {};

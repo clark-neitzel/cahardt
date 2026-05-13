@@ -144,6 +144,19 @@ router.get('/posicao', async (req, res) => {
     }
 });
 
+// GET /api/estoque/analise-demanda — comparativo de saída líquida entre quinzenas
+router.get('/analise-demanda', async (req, res) => {
+    try {
+        const { search, categorias, categoriasComerciais } = req.query;
+        const permissoes = await getPermsFromDB(req.user.id);
+        const resultado = await estoqueService.getAnaliseDemanda({ search, categorias, categoriasComerciais, permissoes });
+        return res.json(resultado);
+    } catch (err) {
+        console.error('[Estoque] Erro análise demanda:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/estoque/historico — listagem de movimentações
 router.get('/historico', async (req, res) => {
     try {
