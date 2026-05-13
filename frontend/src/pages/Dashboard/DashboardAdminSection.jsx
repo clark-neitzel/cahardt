@@ -39,6 +39,7 @@ const fmtBRLcompact = (v) => {
     return fmtBRL(n);
 };
 const fmtNum = (v) => Number(v || 0).toLocaleString('pt-BR');
+const fmtDist = (m) => m == null ? '—' : m >= 1000 ? `${(m / 1000).toFixed(1)}km` : `${m}m`;
 const fmtPct = (v, signed = true) => (v == null ? '—' : `${signed && v >= 0 ? '+' : ''}${v.toFixed(1)}%`);
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('pt-BR') : '—');
 const fmtDateISO = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR') : '—');
@@ -1404,7 +1405,7 @@ const DashboardAdminSection = () => {
                                                             <li key={i} className="text-xs text-gray-700 flex items-center justify-between">
                                                                 <span>{d.nomeCliente} <span className="text-gray-400">({d.tipo})</span></span>
                                                                 <span className="text-gray-400 flex gap-2">
-                                                                    <span className="text-emerald-600">{d.distancia}m</span>
+                                                                    <span className="text-emerald-600">{fmtDist(d.distancia)}</span>
                                                                     {d.hora}
                                                                 </span>
                                                             </li>
@@ -1433,7 +1434,7 @@ const DashboardAdminSection = () => {
                                                                 <span className="text-gray-400 flex gap-2">
                                                                     {d.semGpsVendedor
                                                                         ? <span className="text-amber-500">sem GPS registrado</span>
-                                                                        : <span className="text-red-500">{d.distancia}m</span>
+                                                                        : <span className="text-red-500">{fmtDist(d.distancia)}</span>
                                                                     }
                                                                     {d.hora}
                                                                 </span>
@@ -1589,6 +1590,91 @@ const DashboardAdminSection = () => {
                                 );
                             })
                         )
+                    )}
+
+                    {/* ── Seção de Entregas ───────────────────────────── */}
+                    {!visitasLoading && visitasData?.motoristas?.length > 0 && (
+                        <div className="space-y-3">
+                            <h3 className="text-xs uppercase font-bold text-gray-500 tracking-wider flex items-center gap-2 mt-4">
+                                <MapPin size={13} /> Entregas do dia
+                            </h3>
+                            {visitasData.motoristas.map(mot => {
+                                const key = `mot_${mot.motoristaId}`;
+                                const exp = visitasExpandido[key] || {};
+                                const toggle = (sec) => setVisitasExpandido(prev => ({
+                                    ...prev,
+                                    [key]: { ...(prev[key] || {}), [sec]: !((prev[key] || {})[sec]) },
+                                }));
+
+                                return (
+                                    <div key={key} className="bg-white border rounded-xl overflow-hidden shadow-sm">
+                                        <div className="px-4 py-3 bg-slate-50 border-b flex items-center justify-between">
+                                            <span className="font-bold text-sm text-slate-800">{mot.motoristaNome}</span>
+                                            <span className="text-xs text-gray-500">{mot.entregasTotal} entrega{mot.entregasTotal !== 1 ? 's' : ''}</span>
+                                        </div>
+                                        <div className="px-4 py-3 space-y-2">
+                                            {/* Confirmadas */}
+                                            <button onClick={() => toggle('conf')} className="w-full flex items-center justify-between text-left">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                                                    <span className="text-sm font-semibold text-emerald-700">{mot.entregasConfirmadas} no cliente (≤50m)</span>
+                                                </div>
+                                                {mot.entregasConfirmadas > 0 && (exp.conf ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />)}
+                                            </button>
+                                            {exp.conf && mot.detalhes.confirmadas.map((d, i) => (
+                                                <li key={i} className="ml-5 text-xs text-gray-700 flex items-center justify-between list-none">
+                                                    <span>{d.nomeCliente}</span>
+                                                    <span className="flex gap-2 text-gray-400">
+                                                        <span className="text-emerald-600">{fmtDist(d.distancia)}</span>
+                                                        {d.hora}
+                                                    </span>
+                                                </li>
+                                            ))}
+
+                                            {/* Não confirmadas */}
+                                            <button onClick={() => toggle('nconf')} className="w-full flex items-center justify-between text-left">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-red-400 flex-shrink-0" />
+                                                    <span className="text-sm font-semibold text-red-600">{mot.entregasNaoConfirmadas} longe do cliente (&gt;50m)</span>
+                                                </div>
+                                                {mot.entregasNaoConfirmadas > 0 && (exp.nconf ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />)}
+                                            </button>
+                                            {exp.nconf && mot.detalhes.naoConfirmadas.map((d, i) => (
+                                                <li key={i} className="ml-5 text-xs text-gray-700 flex items-center justify-between list-none">
+                                                    <span>{d.nomeCliente}</span>
+                                                    <span className="flex gap-2 text-gray-400">
+                                                        {d.semGpsEntrega
+                                                            ? <span className="text-amber-500">sem GPS de entrega</span>
+                                                            : <span className="text-red-500">{fmtDist(d.distancia)}</span>
+                                                        }
+                                                        {d.hora}
+                                                    </span>
+                                                </li>
+                                            ))}
+
+                                            {/* Sem GPS cliente */}
+                                            {mot.entregasSemGpsCliente > 0 && (
+                                                <>
+                                                    <button onClick={() => toggle('sgps')} className="w-full flex items-center justify-between text-left">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-2.5 h-2.5 rounded-full bg-gray-300 flex-shrink-0" />
+                                                            <span className="text-sm font-semibold text-gray-500">{mot.entregasSemGpsCliente} sem ponto GPS cadastrado no cliente</span>
+                                                        </div>
+                                                        {exp.sgps ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+                                                    </button>
+                                                    {exp.sgps && mot.detalhes.semGpsCliente.map((d, i) => (
+                                                        <li key={i} className="ml-5 text-xs text-gray-700 flex items-center justify-between list-none">
+                                                            <span>{d.nomeCliente}</span>
+                                                            <span className="text-gray-400">{d.hora}</span>
+                                                        </li>
+                                                    ))}
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
             )}
