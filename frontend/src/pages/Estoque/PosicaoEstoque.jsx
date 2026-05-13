@@ -373,9 +373,18 @@ function DemandaRow({ item, isAdmin, onMinimoSalvo }) {
             <td className="px-3 py-2.5 text-right hidden xl:table-cell">
                 {temMovimento ? (
                     <div className="space-y-1">
-                        <div className="flex items-center justify-end gap-2 text-xs text-gray-400 tabular-nums">
-                            <span>7d</span>
-                            <span className="font-semibold text-gray-600 w-8 text-right">{item.minimoSugerido7d}</span>
+                        <div className="flex items-center justify-end gap-2 text-xs">
+                            <span className="text-gray-400">7d</span>
+                            <span className="font-semibold text-gray-600 tabular-nums w-8 text-right">{item.minimoSugerido7d}</span>
+                            {isAdmin && (
+                                <button
+                                    onClick={() => handleEdit(item.minimoSugerido7d)}
+                                    className="text-blue-400 hover:text-blue-600 text-[10px] font-medium underline whitespace-nowrap leading-none"
+                                    title="Usar mínimo de 7 dias"
+                                >
+                                    aplicar
+                                </button>
+                            )}
                         </div>
                         <div className="flex items-center justify-end gap-2 text-xs">
                             <span className="text-gray-400">15d</span>
@@ -386,7 +395,7 @@ function DemandaRow({ item, isAdmin, onMinimoSalvo }) {
                                 <button
                                     onClick={() => handleEdit(item.minimoSugerido15d)}
                                     className="text-blue-400 hover:text-blue-600 text-[10px] font-medium underline whitespace-nowrap leading-none"
-                                    title="Usar como mínimo atual"
+                                    title="Usar mínimo de 15 dias"
                                 >
                                     aplicar
                                 </button>
@@ -546,12 +555,20 @@ function DemandaCard({ item, isAdmin, onMinimoSalvo }) {
                                 }
                             </span>
                             {isAdmin && temMovimento && (
-                                <button
-                                    onClick={() => handleSalvar(item.minimoSugerido15d)}
-                                    className="text-xs text-blue-500 hover:text-blue-700 font-medium underline"
-                                >
-                                    usar 15d
-                                </button>
+                                <>
+                                    <button
+                                        onClick={() => handleSalvar(item.minimoSugerido7d)}
+                                        className="text-xs text-blue-400 hover:text-blue-600 font-medium underline"
+                                    >
+                                        usar 7d
+                                    </button>
+                                    <button
+                                        onClick={() => handleSalvar(item.minimoSugerido15d)}
+                                        className="text-xs text-blue-500 hover:text-blue-700 font-medium underline"
+                                    >
+                                        usar 15d
+                                    </button>
+                                </>
                             )}
                             {isAdmin && (
                                 <button onClick={() => { setMinimo(String(item.estoqueMinimo ?? '0')); setEditando(true); }} className="text-gray-300 hover:text-blue-500 p-0.5">
