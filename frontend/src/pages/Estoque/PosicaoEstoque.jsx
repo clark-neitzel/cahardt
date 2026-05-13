@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Search, AlertTriangle, CheckCircle, Package, X, ChevronDown, Pencil, Check, Loader2, TrendingDown, PackageX, TrendingUp, BarChart2 } from 'lucide-react';
+import { Search, AlertTriangle, CheckCircle, Package, X, ChevronDown, Pencil, Check, Loader2, TrendingDown, PackageX, TrendingUp, BarChart2, SlidersHorizontal } from 'lucide-react';
 import toast from 'react-hot-toast';
 import estoqueService from '../../services/estoqueService';
 import categoriaProdutoService from '../../services/categoriaProdutoService';
@@ -615,6 +615,7 @@ export default function PosicaoEstoque() {
     const [categoriasEstoque, setCategoriasEstoque] = useState([]);
     const [categoriasComerciais, setCategoriasComerciais] = useState([]);
     const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+    const [filtrosMobileAbertos, setFiltrosMobileAbertos] = useState(false);
     const filtrosRef = useRef(null);
     const searchTimeout = useRef(null);
     const demandaTimeout = useRef(null);
@@ -748,6 +749,13 @@ export default function PosicaoEstoque() {
 
     const toggleFiltroTendencia = (v) => setFiltroTendencia(prev => prev === v ? null : v);
 
+    const activeFilterCount = (filtros.categorias?.length || 0)
+        + (filtros.categoriasComerciais?.length || 0)
+        + (abaAtiva === 'posicao' && filtros.atalho ? 1 : 0)
+        + (abaAtiva === 'demanda' && filtroTendencia ? 1 : 0);
+
+    const trocarAba = (aba) => { setAbaAtiva(aba); setFiltrosMobileAbertos(false); };
+
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-5xl mx-auto px-4 py-6">
@@ -765,157 +773,227 @@ export default function PosicaoEstoque() {
                     )}
                 </div>
 
-                {/* Toggle de abas */}
-                <div className="flex gap-1 p-1 bg-gray-100 rounded-lg mb-4 w-fit">
-                    <button
-                        type="button"
-                        onClick={() => setAbaAtiva('posicao')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                            abaAtiva === 'posicao' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        <Package className="h-3.5 w-3.5" />
-                        Posição
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setAbaAtiva('demanda')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                            abaAtiva === 'demanda' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        <BarChart2 className="h-3.5 w-3.5" />
-                        Análise de Demanda
-                    </button>
-                </div>
+                {/* ─── ÁREA STICKY: tabs + filtros ─── */}
+                <div className="sticky top-0 z-20 bg-gray-50 -mx-4 px-4 pt-2 pb-3 border-b border-gray-200/60">
 
-                {/* Barra fixa: busca + atalhos */}
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-3 p-3 space-y-3">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                        <input
-                            type="text"
-                            value={filtros.search}
-                            onChange={e => setFiltros({ ...filtros, search: e.target.value })}
-                            placeholder="Buscar por nome ou código..."
-                            className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        {filtros.search && (
-                            <button onClick={() => setFiltros({ ...filtros, search: '' })} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                <X className="h-3.5 w-3.5" />
-                            </button>
-                        )}
+                    {/* Toggle de abas */}
+                    <div className="flex gap-1 p-1 bg-gray-100 rounded-lg mb-3 w-fit">
+                        <button
+                            type="button"
+                            onClick={() => trocarAba('posicao')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                                abaAtiva === 'posicao' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            <Package className="h-3.5 w-3.5" />
+                            Posição
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => trocarAba('demanda')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                                abaAtiva === 'demanda' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            <BarChart2 className="h-3.5 w-3.5" />
+                            Análise de Demanda
+                        </button>
                     </div>
 
-                    {/* Chips de atalho — variam por aba */}
-                    <div className="flex flex-wrap items-center gap-2">
-                        {abaAtiva === 'posicao' && (
-                            <>
-                                <button
-                                    type="button"
-                                    onClick={() => toggleAtalho('abaixo')}
-                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtros.atalho === 'abaixo' ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-white border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600'}`}
-                                >
-                                    <TrendingDown className="h-3.5 w-3.5" />
-                                    <span>Abaixo do mínimo</span>
-                                    <span className={`tabular-nums ${filtros.atalho === 'abaixo' ? 'text-amber-700' : 'text-gray-400'}`}>({abaixoMinimo})</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => toggleAtalho('zero')}
-                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtros.atalho === 'zero' ? 'bg-red-100 border-red-300 text-red-700' : 'bg-white border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-600'}`}
-                                >
-                                    <PackageX className="h-3.5 w-3.5" />
-                                    <span>Estoque zero ou negativo</span>
-                                    <span className={`tabular-nums ${filtros.atalho === 'zero' ? 'text-red-700' : 'text-gray-400'}`}>({zeroOuNegativo})</span>
-                                </button>
-                            </>
-                        )}
-                        {abaAtiva === 'demanda' && demanda && (
-                            <>
-                                <button
-                                    type="button"
-                                    onClick={() => toggleFiltroTendencia('crescente')}
-                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtroTendencia === 'crescente' ? 'bg-red-100 border-red-300 text-red-700' : 'bg-white border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-600'}`}
-                                >
-                                    <TrendingUp className="h-3.5 w-3.5" />
-                                    <span>Demanda crescente</span>
-                                    <span className="tabular-nums text-gray-400">({demandaResumo.crescente})</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => toggleFiltroTendencia('abaixo_sugerido')}
-                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtroTendencia === 'abaixo_sugerido' ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-white border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600'}`}
-                                >
-                                    <AlertTriangle className="h-3.5 w-3.5" />
-                                    <span>Abaixo do mínimo sugerido 15d</span>
-                                    <span className="tabular-nums text-gray-400">({demandaResumo.abaixoSugerido})</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => toggleFiltroTendencia('com_movimento')}
-                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtroTendencia === 'com_movimento' ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-white border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600'}`}
-                                >
-                                    <span>Com movimento</span>
-                                </button>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {/* Filtros de categoria — compartilhados entre abas */}
-                <div ref={filtrosRef} className="bg-white rounded-xl border border-gray-200 shadow-sm mb-5">
-                    <button
-                        type="button"
-                        onClick={() => setFiltrosAbertos(o => !o)}
-                        className="w-full flex items-center justify-between px-4 py-3"
-                    >
-                        <div className="flex items-center gap-2">
-                            <Search className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm font-medium text-gray-700">Filtros por categoria</span>
-                            {temFiltroCategoria && (
-                                <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">
-                                    {(filtros.categorias?.length || 0) + (filtros.categoriasComerciais?.length || 0)} ativo{((filtros.categorias?.length || 0) + (filtros.categoriasComerciais?.length || 0)) !== 1 ? 's' : ''}
-                                </span>
-                            )}
-                        </div>
-                        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {filtrosAbertos && (
-                        <div className="px-4 pb-4 border-t border-gray-100">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
-                                <MultiSelect
-                                    label="Categoria de estoque"
-                                    options={categoriasEstoque}
-                                    selected={filtros.categorias || []}
-                                    onChange={v => setFiltros({ ...filtros, categorias: v })}
-                                    placeholder="Todas"
+                    {/* ── MOBILE: busca compacta + painel expansível ── */}
+                    <div className="md:hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div className="flex items-center gap-2 p-2.5">
+                            {/* Busca */}
+                            <div className="relative flex-1">
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                                <input
+                                    type="text"
+                                    value={filtros.search}
+                                    onChange={e => setFiltros({ ...filtros, search: e.target.value })}
+                                    placeholder="Buscar..."
+                                    className="w-full pl-8 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-                                <MultiSelect
-                                    label="Categoria comercial"
-                                    options={categoriasComerciais}
-                                    selected={filtros.categoriasComerciais || []}
-                                    onChange={v => setFiltros({ ...filtros, categoriasComerciais: v })}
-                                    placeholder="Todas"
-                                />
-                            </div>
-                            {temFiltro && (
-                                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                                    <p className="text-xs text-gray-500">
-                                        {abaAtiva === 'posicao'
-                                            ? `${produtosFiltrados.length} produto${produtosFiltrados.length !== 1 ? 's' : ''} encontrado${produtosFiltrados.length !== 1 ? 's' : ''}`
-                                            : `${itensDemandaFiltrados.length} produto${itensDemandaFiltrados.length !== 1 ? 's' : ''} encontrado${itensDemandaFiltrados.length !== 1 ? 's' : ''}`
-                                        }
-                                    </p>
-                                    <button onClick={limparFiltros} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
-                                        <X className="h-3 w-3" /> Limpar filtros
+                                {filtros.search && (
+                                    <button onClick={() => setFiltros({ ...filtros, search: '' })} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+                                        <X className="h-3.5 w-3.5" />
                                     </button>
+                                )}
+                            </div>
+                            {/* Botão de filtros */}
+                            <button
+                                type="button"
+                                onClick={() => setFiltrosMobileAbertos(o => !o)}
+                                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors shrink-0 ${
+                                    filtrosMobileAbertos || activeFilterCount > 0
+                                        ? 'bg-blue-50 border-blue-300 text-blue-700'
+                                        : 'bg-gray-50 border-gray-200 text-gray-600'
+                                }`}
+                            >
+                                <SlidersHorizontal className="h-4 w-4" />
+                                {activeFilterCount > 0 && (
+                                    <span className="bg-blue-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                                        {activeFilterCount}
+                                    </span>
+                                )}
+                                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${filtrosMobileAbertos ? 'rotate-180' : ''}`} />
+                            </button>
+                        </div>
+
+                        {/* Painel expansível */}
+                        {filtrosMobileAbertos && (
+                            <div className="border-t border-gray-100 p-3 space-y-3">
+                                {/* Chips por aba */}
+                                <div className="flex flex-wrap gap-2">
+                                    {abaAtiva === 'posicao' && (
+                                        <>
+                                            <button type="button" onClick={() => toggleAtalho('abaixo')}
+                                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtros.atalho === 'abaixo' ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-white border-gray-200 text-gray-500'}`}>
+                                                <TrendingDown className="h-3.5 w-3.5" />Abaixo do mínimo <span className="text-gray-400">({abaixoMinimo})</span>
+                                            </button>
+                                            <button type="button" onClick={() => toggleAtalho('zero')}
+                                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtros.atalho === 'zero' ? 'bg-red-100 border-red-300 text-red-700' : 'bg-white border-gray-200 text-gray-500'}`}>
+                                                <PackageX className="h-3.5 w-3.5" />Estoque zero <span className="text-gray-400">({zeroOuNegativo})</span>
+                                            </button>
+                                        </>
+                                    )}
+                                    {abaAtiva === 'demanda' && demanda && (
+                                        <>
+                                            <button type="button" onClick={() => toggleFiltroTendencia('crescente')}
+                                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtroTendencia === 'crescente' ? 'bg-red-100 border-red-300 text-red-700' : 'bg-white border-gray-200 text-gray-500'}`}>
+                                                <TrendingUp className="h-3.5 w-3.5" />Crescente <span className="text-gray-400">({demandaResumo.crescente})</span>
+                                            </button>
+                                            <button type="button" onClick={() => toggleFiltroTendencia('abaixo_sugerido')}
+                                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtroTendencia === 'abaixo_sugerido' ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-white border-gray-200 text-gray-500'}`}>
+                                                <AlertTriangle className="h-3.5 w-3.5" />Abaixo sugerido <span className="text-gray-400">({demandaResumo.abaixoSugerido})</span>
+                                            </button>
+                                            <button type="button" onClick={() => toggleFiltroTendencia('com_movimento')}
+                                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtroTendencia === 'com_movimento' ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-white border-gray-200 text-gray-500'}`}>
+                                                Com movimento
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Categorias */}
+                                <div className="space-y-2">
+                                    <MultiSelect label="Categoria de estoque" options={categoriasEstoque} selected={filtros.categorias || []}
+                                        onChange={v => setFiltros({ ...filtros, categorias: v })} placeholder="Todas" />
+                                    <MultiSelect label="Categoria comercial" options={categoriasComerciais} selected={filtros.categoriasComerciais || []}
+                                        onChange={v => setFiltros({ ...filtros, categoriasComerciais: v })} placeholder="Todas" />
+                                </div>
+
+                                {activeFilterCount > 0 && (
+                                    <button onClick={limparFiltros} className="w-full text-xs text-red-500 hover:text-red-700 flex items-center justify-center gap-1 pt-1">
+                                        <X className="h-3 w-3" /> Limpar {activeFilterCount} filtro{activeFilterCount !== 1 ? 's' : ''}
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ── DESKTOP: layout original ── */}
+                    <div className="hidden md:block space-y-3">
+                        {/* Busca + chips */}
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 space-y-3">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                                <input
+                                    type="text"
+                                    value={filtros.search}
+                                    onChange={e => setFiltros({ ...filtros, search: e.target.value })}
+                                    placeholder="Buscar por nome ou código..."
+                                    className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                {filtros.search && (
+                                    <button onClick={() => setFiltros({ ...filtros, search: '' })} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                {abaAtiva === 'posicao' && (
+                                    <>
+                                        <button type="button" onClick={() => toggleAtalho('abaixo')}
+                                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtros.atalho === 'abaixo' ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-white border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600'}`}>
+                                            <TrendingDown className="h-3.5 w-3.5" />
+                                            <span>Abaixo do mínimo</span>
+                                            <span className={`tabular-nums ${filtros.atalho === 'abaixo' ? 'text-amber-700' : 'text-gray-400'}`}>({abaixoMinimo})</span>
+                                        </button>
+                                        <button type="button" onClick={() => toggleAtalho('zero')}
+                                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtros.atalho === 'zero' ? 'bg-red-100 border-red-300 text-red-700' : 'bg-white border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-600'}`}>
+                                            <PackageX className="h-3.5 w-3.5" />
+                                            <span>Estoque zero ou negativo</span>
+                                            <span className={`tabular-nums ${filtros.atalho === 'zero' ? 'text-red-700' : 'text-gray-400'}`}>({zeroOuNegativo})</span>
+                                        </button>
+                                    </>
+                                )}
+                                {abaAtiva === 'demanda' && demanda && (
+                                    <>
+                                        <button type="button" onClick={() => toggleFiltroTendencia('crescente')}
+                                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtroTendencia === 'crescente' ? 'bg-red-100 border-red-300 text-red-700' : 'bg-white border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-600'}`}>
+                                            <TrendingUp className="h-3.5 w-3.5" />
+                                            <span>Demanda crescente</span>
+                                            <span className="tabular-nums text-gray-400">({demandaResumo.crescente})</span>
+                                        </button>
+                                        <button type="button" onClick={() => toggleFiltroTendencia('abaixo_sugerido')}
+                                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtroTendencia === 'abaixo_sugerido' ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-white border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600'}`}>
+                                            <AlertTriangle className="h-3.5 w-3.5" />
+                                            <span>Abaixo do mínimo sugerido 15d</span>
+                                            <span className="tabular-nums text-gray-400">({demandaResumo.abaixoSugerido})</span>
+                                        </button>
+                                        <button type="button" onClick={() => toggleFiltroTendencia('com_movimento')}
+                                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border transition-colors ${filtroTendencia === 'com_movimento' ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-white border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600'}`}>
+                                            <span>Com movimento</span>
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Filtros de categoria */}
+                        <div ref={filtrosRef} className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                            <button type="button" onClick={() => setFiltrosAbertos(o => !o)}
+                                className="w-full flex items-center justify-between px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                    <Search className="h-4 w-4 text-gray-400" />
+                                    <span className="text-sm font-medium text-gray-700">Filtros por categoria</span>
+                                    {temFiltroCategoria && (
+                                        <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                                            {(filtros.categorias?.length || 0) + (filtros.categoriasComerciais?.length || 0)} ativo{((filtros.categorias?.length || 0) + (filtros.categoriasComerciais?.length || 0)) !== 1 ? 's' : ''}
+                                        </span>
+                                    )}
+                                </div>
+                                <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`} />
+                            </button>
+                            {filtrosAbertos && (
+                                <div className="px-4 pb-4 border-t border-gray-100">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
+                                        <MultiSelect label="Categoria de estoque" options={categoriasEstoque} selected={filtros.categorias || []}
+                                            onChange={v => setFiltros({ ...filtros, categorias: v })} placeholder="Todas" />
+                                        <MultiSelect label="Categoria comercial" options={categoriasComerciais} selected={filtros.categoriasComerciais || []}
+                                            onChange={v => setFiltros({ ...filtros, categoriasComerciais: v })} placeholder="Todas" />
+                                    </div>
+                                    {temFiltro && (
+                                        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                                            <p className="text-xs text-gray-500">
+                                                {abaAtiva === 'posicao'
+                                                    ? `${produtosFiltrados.length} produto${produtosFiltrados.length !== 1 ? 's' : ''} encontrado${produtosFiltrados.length !== 1 ? 's' : ''}`
+                                                    : `${itensDemandaFiltrados.length} produto${itensDemandaFiltrados.length !== 1 ? 's' : ''} encontrado${itensDemandaFiltrados.length !== 1 ? 's' : ''}`
+                                                }
+                                            </p>
+                                            <button onClick={limparFiltros} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
+                                                <X className="h-3 w-3" /> Limpar filtros
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
-                    )}
+                    </div>
                 </div>
+
+                {/* Espaço para compensar a sticky bar no conteúdo */}
+                <div className="pt-4" />
 
                 {/* ─── ABA: POSIÇÃO ─── */}
                 {abaAtiva === 'posicao' && (
