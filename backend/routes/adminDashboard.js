@@ -1195,7 +1195,6 @@ router.get('/visitas', verificarAuth, async (req, res) => {
                 vendedor: { select: { id: true, nome: true } },
                 cliente: { select: { UUID: true, Nome: true, NomeFantasia: true, Ponto_GPS: true } },
                 lead: { select: { id: true, nomeEstabelecimento: true, pontoGps: true } },
-                pedido: { select: { id: true } },
             },
             orderBy: { criadoEm: 'asc' },
         });
@@ -1234,7 +1233,7 @@ router.get('/visitas', verificarAuth, async (req, res) => {
             const hora = at.criadoEm.toLocaleTimeString('pt-BR', {
                 hour: '2-digit', minute: '2-digit', timeZone: TZ,
             });
-            const temPedido = !!at.pedido;
+            const temPedido = !!at.pedidoId;
 
             if (TIPOS_PRESENCIAL.includes(tipoUp) || temPedido) {
                 v.presencialTotal++;
