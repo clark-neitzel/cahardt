@@ -499,24 +499,33 @@ const DashboardVendedor = () => {
                                             <p className="text-xs text-gray-400 mb-1">hoje: {fmtK(c.totalVendidoHoje)}</p>
                                         )}
                                         {c.totalClientesDia > 0 && (
-                                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                                <span className="text-xs text-gray-400 flex items-center gap-1">
-                                                    <Users size={11} className="text-gray-300" />
-                                                    clientes:
-                                                </span>
-                                                <span className="text-xs text-gray-500">
-                                                    <span className="font-semibold text-gray-700">{c.clientesComPedidoSemana}</span>/{c.totalClientesDia} sem
-                                                    <span className={`ml-1 font-bold ${c.clientesComPedidoSemana / c.totalClientesDia >= 0.6 ? 'text-green-600' : c.clientesComPedidoSemana / c.totalClientesDia >= 0.35 ? 'text-amber-600' : 'text-red-500'}`}>
-                                                        ({Math.round(c.clientesComPedidoSemana / c.totalClientesDia * 100)}%)
-                                                    </span>
-                                                </span>
-                                                <span className="text-xs text-gray-300">·</span>
-                                                <span className="text-xs text-gray-500">
-                                                    <span className="font-semibold text-gray-700">{c.clientesComPedidoMes}</span>/{c.totalClientesDia} mês
-                                                    <span className={`ml-1 font-bold ${c.clientesComPedidoMes / c.totalClientesDia >= 0.6 ? 'text-green-600' : c.clientesComPedidoMes / c.totalClientesDia >= 0.35 ? 'text-amber-600' : 'text-red-500'}`}>
-                                                        ({Math.round(c.clientesComPedidoMes / c.totalClientesDia * 100)}%)
-                                                    </span>
-                                                </span>
+                                            <div className="mb-1.5 space-y-0.5">
+                                                {c.clientesComPedidoSemana === c.totalClientesDia ? (
+                                                    <p className="text-xs text-green-600 font-semibold">🎉 Todos os {c.totalClientesDia} clientes pediram esta semana!</p>
+                                                ) : (
+                                                    <p className="text-xs text-gray-500">
+                                                        <span className={`font-semibold ${c.clientesComPedidoSemana / c.totalClientesDia >= 0.6 ? 'text-green-600' : c.clientesComPedidoSemana / c.totalClientesDia >= 0.35 ? 'text-amber-600' : 'text-red-500'}`}>
+                                                            {c.clientesComPedidoSemana} de {c.totalClientesDia}
+                                                        </span>
+                                                        {' '}clientes pediram esta semana
+                                                        <span className={`ml-1 ${c.clientesComPedidoSemana / c.totalClientesDia >= 0.6 ? 'text-green-600' : c.clientesComPedidoSemana / c.totalClientesDia >= 0.35 ? 'text-amber-600' : 'text-red-500'}`}>
+                                                            ({Math.round(c.clientesComPedidoSemana / c.totalClientesDia * 100)}%)
+                                                        </span>
+                                                    </p>
+                                                )}
+                                                {c.clientesComPedidoMes === c.totalClientesDia ? (
+                                                    <p className="text-xs text-green-600 font-semibold">🎉 Todos os {c.totalClientesDia} clientes pediram no mês!</p>
+                                                ) : (
+                                                    <p className="text-xs text-gray-500">
+                                                        <span className={`font-semibold ${c.clientesComPedidoMes / c.totalClientesDia >= 0.6 ? 'text-green-600' : c.clientesComPedidoMes / c.totalClientesDia >= 0.35 ? 'text-amber-600' : 'text-red-500'}`}>
+                                                            {c.clientesComPedidoMes} de {c.totalClientesDia}
+                                                        </span>
+                                                        {' '}clientes pediram no mês
+                                                        <span className={`ml-1 ${c.clientesComPedidoMes / c.totalClientesDia >= 0.6 ? 'text-green-600' : c.clientesComPedidoMes / c.totalClientesDia >= 0.35 ? 'text-amber-600' : 'text-red-500'}`}>
+                                                            ({Math.round(c.clientesComPedidoMes / c.totalClientesDia * 100)}%)
+                                                        </span>
+                                                    </p>
+                                                )}
                                             </div>
                                         )}
                                         <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mb-2">
@@ -645,24 +654,33 @@ const DashboardVendedor = () => {
                                                         </span>
                                                     </div>
                                                     {c.totalClientes > 0 && (
-                                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                            <span className="text-xs text-gray-400 flex items-center gap-1">
-                                                                <Users size={11} className="text-gray-300" />
-                                                                clientes:
-                                                            </span>
-                                                            <span className="text-xs text-gray-500">
-                                                                <span className="font-semibold text-gray-700">{c.clientesComPedidoSemana}</span>/{c.totalClientes} sem
-                                                                <span className={`ml-1 font-bold ${c.clientesComPedidoSemana / c.totalClientes >= 0.6 ? 'text-green-600' : c.clientesComPedidoSemana / c.totalClientes >= 0.35 ? 'text-amber-600' : 'text-red-500'}`}>
-                                                                    ({Math.round(c.clientesComPedidoSemana / c.totalClientes * 100)}%)
-                                                                </span>
-                                                            </span>
-                                                            <span className="text-xs text-gray-300">·</span>
-                                                            <span className="text-xs text-gray-500">
-                                                                <span className="font-semibold text-gray-700">{c.clientesComPedidoMes}</span>/{c.totalClientes} mês
-                                                                <span className={`ml-1 font-bold ${c.clientesComPedidoMes / c.totalClientes >= 0.6 ? 'text-green-600' : c.clientesComPedidoMes / c.totalClientes >= 0.35 ? 'text-amber-600' : 'text-red-500'}`}>
-                                                                    ({Math.round(c.clientesComPedidoMes / c.totalClientes * 100)}%)
-                                                                </span>
-                                                            </span>
+                                                        <div className="mt-1.5 space-y-0.5">
+                                                            {c.clientesComPedidoSemana === c.totalClientes ? (
+                                                                <p className="text-xs text-green-600 font-semibold">🎉 Todos os {c.totalClientes} clientes pediram esta semana!</p>
+                                                            ) : (
+                                                                <p className="text-xs text-gray-500">
+                                                                    <span className={`font-semibold ${c.clientesComPedidoSemana / c.totalClientes >= 0.6 ? 'text-green-600' : c.clientesComPedidoSemana / c.totalClientes >= 0.35 ? 'text-amber-600' : 'text-red-500'}`}>
+                                                                        {c.clientesComPedidoSemana} de {c.totalClientes}
+                                                                    </span>
+                                                                    {' '}clientes pediram esta semana
+                                                                    <span className={`ml-1 ${c.clientesComPedidoSemana / c.totalClientes >= 0.6 ? 'text-green-600' : c.clientesComPedidoSemana / c.totalClientes >= 0.35 ? 'text-amber-600' : 'text-red-500'}`}>
+                                                                        ({Math.round(c.clientesComPedidoSemana / c.totalClientes * 100)}%)
+                                                                    </span>
+                                                                </p>
+                                                            )}
+                                                            {c.clientesComPedidoMes === c.totalClientes ? (
+                                                                <p className="text-xs text-green-600 font-semibold">🎉 Todos os {c.totalClientes} clientes pediram no mês!</p>
+                                                            ) : (
+                                                                <p className="text-xs text-gray-500">
+                                                                    <span className={`font-semibold ${c.clientesComPedidoMes / c.totalClientes >= 0.6 ? 'text-green-600' : c.clientesComPedidoMes / c.totalClientes >= 0.35 ? 'text-amber-600' : 'text-red-500'}`}>
+                                                                        {c.clientesComPedidoMes} de {c.totalClientes}
+                                                                    </span>
+                                                                    {' '}clientes pediram no mês
+                                                                    <span className={`ml-1 ${c.clientesComPedidoMes / c.totalClientes >= 0.6 ? 'text-green-600' : c.clientesComPedidoMes / c.totalClientes >= 0.35 ? 'text-amber-600' : 'text-red-500'}`}>
+                                                                        ({Math.round(c.clientesComPedidoMes / c.totalClientes * 100)}%)
+                                                                    </span>
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </button>
