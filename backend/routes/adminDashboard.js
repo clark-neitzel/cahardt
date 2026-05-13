@@ -1150,8 +1150,9 @@ router.get('/', verificarAuth, async (req, res) => {
 
 // ─── Aba Visitas ─────────────────────────────────────────────────────────────
 
-const TIPOS_PRESENCIAL = ['VISITA', 'AMOSTRA'];
+const TIPOS_PRESENCIAL = ['VISITA', 'AMOSTRA', 'PRESENCIAL'];
 const TIPOS_WHATSAPP = ['WHATSAPP'];
+const TIPOS_IGNORAR = ['FINANCEIRO'];
 
 function haversineMetros(lat1, lng1, lat2, lng2) {
     const R = 6371000;
@@ -1220,6 +1221,8 @@ router.get('/visitas', verificarAuth, async (req, res) => {
                     },
                 });
             }
+
+            if (TIPOS_IGNORAR.includes(at.tipo)) continue;
 
             const v = vendedoresMap.get(vid);
             const nomeCliente = at.cliente
