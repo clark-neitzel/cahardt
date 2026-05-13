@@ -58,6 +58,11 @@ const parseJsonArray = (val) => {
     }
     return [];
 };
+const normalizeCidade = (cidade) => {
+    if (typeof cidade !== 'string') return 'Sem cidade';
+    const limpa = cidade.trim();
+    return limpa || 'Sem cidade';
+};
 
 async function carregarPermissoesUsuario(userId) {
     const user = await prisma.vendedor.findUnique({ where: { id: userId } });
@@ -121,7 +126,7 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
             ...(vendedorIdFiltro ? { pedidoOriginal: { vendedorId: vendedorIdFiltro } } : {}),
         };
 
-        const [pedidosAtual, pedidosAnterior, devolucaoAtualAgg, devolucaoAnteriorAgg, devolucoesAtualPorVendedor, devolucoesAnteriorPorVendedor, itensDevolucaoAtual, itensDevolucaoAnterior, devolucaoClienteAtual, metasSemana, inadimplencia, pedidosComErro, pedidosEspeciais, transferenciasPendentes, pendenciasAbertas, caixasAConferir] = await Promise.all([
+        const [pedidosAtual, pedidosAnterior, devolucaoAtualAgg, devolucaoAnteriorAgg, devolucoesAtualPorVendedor, devolucoesAnteriorPorVendedor, itensDevolucaoAtual, itensDevolucaoAnterior, devolucaoClienteAtual, devolucaoClienteAnterior, metasSemana, inadimplencia, pedidosComErro, pedidosEspeciais, transferenciasPendentes, pendenciasAbertas, caixasAConferir] = await Promise.all([
             prisma.pedido.findMany({
                 where: wherePedidoAtual,
                 select: {
@@ -129,7 +134,7 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
                     vendedorId: true,
                     clienteId: true,
                     vendedor: { select: { nome: true } },
-                    cliente: { select: { Nome: true, NomeFantasia: true, Codigo: true } },
+                    cliente: { select: { Nome: true, NomeFantasia: true, Codigo: true, End_Cidade: true } },
                     itens: { select: { produtoId: true, valor: true, quantidade: true, produto: { select: { nome: true, codigo: true } } } },
                 },
             }),
@@ -138,7 +143,9 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
                 select: {
                     id: true,
                     vendedorId: true,
+                    clienteId: true,
                     vendedor: { select: { nome: true } },
+                    cliente: { select: { Nome: true, NomeFantasia: true, Codigo: true, End_Cidade: true } },
                     itens: { select: { produtoId: true, valor: true, quantidade: true, produto: { select: { nome: true, codigo: true } } } },
                 },
             }),
@@ -146,11 +153,27 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
             prisma.devolucao.aggregate({ _sum: { valorTotal: true }, where: whereDevolucaoAnterior }),
             prisma.devolucao.findMany({
                 where: whereDevolucaoAtual,
-                select: { valorTotal: true, pedidoOriginal: { select: { vendedorId: true } } },
+                select: {
+                    valorTotal: true,
+                    pedidoOriginal: {
+                        select: {
+                            vendedorId: true,
+                            cliente: { select: { End_Cidade: true } },
+                        },
+                    },
+                },
             }),
             prisma.devolucao.findMany({
                 where: whereDevolucaoAnterior,
-                select: { valorTotal: true, pedidoOriginal: { select: { vendedorId: true } } },
+                select: {
+                    valorTotal: true,
+                    pedidoOriginal: {
+                        select: {
+                            vendedorId: true,
+                            cliente: { select: { End_Cidade: true } },
+                        },
+                    },
+                },
             }),
             prisma.devolucaoItem.findMany({
                 where: { devolucao: whereDevolucaoAtual },
@@ -164,6 +187,11 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
                 by: ['clienteId'],
                 _sum: { valorTotal: true },
                 where: whereDevolucaoAtual,
+            }),
+            prisma.devolucao.groupBy({
+                by: ['clienteId'],
+                _sum: { valorTotal: true },
+                where: whereDevolucaoAnterior,
             }),
             prisma.metaMensalVendedor.findMany({
                 where: {
@@ -207,10 +235,12 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
             vendedores: new Map(),
             produtos: new Map(),
             clientes: new Map(),
+            cidades: new Map(),
         };
         for (const p of pedidosAtual) {
             const valorPed = valorPedido(p);
             aggAtual.bruto += valorPed;
+            const cidade = normalizeCidade(p.cliente?.End_Cidade);
 
             if (p.vendedorId) {
                 const vend = aggAtual.vendedores.get(p.vendedorId) || {
@@ -237,6 +267,31 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
                 aggAtual.clientes.set(p.clienteId, cli);
             }
 
+            const cidadeAtual = aggAtual.cidades.get(cidade) || {
+                cidade,
+                valor: 0,
+                pedidos: 0,
+                clientes: new Set(),
+                vendedores: new Map(),
+            };
+            cidadeAtual.valor += valorPed;
+            cidadeAtual.pedidos += 1;
+            if (p.clienteId) cidadeAtual.clientes.add(p.clienteId);
+            if (p.vendedorId) {
+                const vendCidade = cidadeAtual.vendedores.get(p.vendedorId) || {
+                    vendedorId: p.vendedorId,
+                    nome: p.vendedor?.nome || 'Sem vendedor',
+                    valor: 0,
+                    pedidos: 0,
+                    clientes: new Set(),
+                };
+                vendCidade.valor += valorPed;
+                vendCidade.pedidos += 1;
+                if (p.clienteId) vendCidade.clientes.add(p.clienteId);
+                cidadeAtual.vendedores.set(p.vendedorId, vendCidade);
+            }
+            aggAtual.cidades.set(cidade, cidadeAtual);
+
             for (const it of p.itens) {
                 const valorItem = num(it.valor) * num(it.quantidade);
                 const prod = aggAtual.produtos.get(it.produtoId) || {
@@ -257,10 +312,13 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
             pedidos: pedidosAnterior.length,
             vendedores: new Map(),
             produtos: new Map(),
+            clientes: new Map(),
+            cidades: new Map(),
         };
         for (const p of pedidosAnterior) {
             const valorPed = valorPedido(p);
             aggAnterior.bruto += valorPed;
+            const cidade = normalizeCidade(p.cliente?.End_Cidade);
 
             if (p.vendedorId) {
                 const vend = aggAnterior.vendedores.get(p.vendedorId) || {
@@ -273,6 +331,30 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
                 vend.pedidos += 1;
                 aggAnterior.vendedores.set(p.vendedorId, vend);
             }
+
+            if (p.clienteId) {
+                const cli = aggAnterior.clientes.get(p.clienteId) || {
+                    clienteId: p.clienteId,
+                    nome: p.cliente?.NomeFantasia || p.cliente?.Nome || 'Cliente sem nome',
+                    codigo: p.cliente?.Codigo || null,
+                    valor: 0,
+                    pedidos: 0,
+                };
+                cli.valor += valorPed;
+                cli.pedidos += 1;
+                aggAnterior.clientes.set(p.clienteId, cli);
+            }
+
+            const cidadeAnterior = aggAnterior.cidades.get(cidade) || {
+                cidade,
+                valor: 0,
+                pedidos: 0,
+                clientes: new Set(),
+            };
+            cidadeAnterior.valor += valorPed;
+            cidadeAnterior.pedidos += 1;
+            if (p.clienteId) cidadeAnterior.clientes.add(p.clienteId);
+            aggAnterior.cidades.set(cidade, cidadeAnterior);
 
             for (const it of p.itens) {
                 const valorItem = num(it.valor) * num(it.quantidade);
@@ -290,16 +372,22 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
         }
 
         const devolucaoVendAtualMap = new Map();
+        const devolucaoCidadeAtualMap = new Map();
         for (const dev of devolucoesAtualPorVendedor) {
             const vendId = dev.pedidoOriginal?.vendedorId;
             if (!vendId) continue;
             devolucaoVendAtualMap.set(vendId, (devolucaoVendAtualMap.get(vendId) || 0) + num(dev.valorTotal));
+            const cidade = normalizeCidade(dev.pedidoOriginal?.cliente?.End_Cidade);
+            devolucaoCidadeAtualMap.set(cidade, (devolucaoCidadeAtualMap.get(cidade) || 0) + num(dev.valorTotal));
         }
         const devolucaoVendAnteriorMap = new Map();
+        const devolucaoCidadeAnteriorMap = new Map();
         for (const dev of devolucoesAnteriorPorVendedor) {
             const vendId = dev.pedidoOriginal?.vendedorId;
             if (!vendId) continue;
             devolucaoVendAnteriorMap.set(vendId, (devolucaoVendAnteriorMap.get(vendId) || 0) + num(dev.valorTotal));
+            const cidade = normalizeCidade(dev.pedidoOriginal?.cliente?.End_Cidade);
+            devolucaoCidadeAnteriorMap.set(cidade, (devolucaoCidadeAnteriorMap.get(cidade) || 0) + num(dev.valorTotal));
         }
 
         for (const item of itensDevolucaoAtual) {
@@ -314,6 +402,19 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
         for (const dev of devolucaoClienteAtual) {
             const cli = aggAtual.clientes.get(dev.clienteId);
             if (cli) cli.valor -= num(dev._sum.valorTotal);
+        }
+        for (const dev of devolucaoClienteAnterior) {
+            const cli = aggAnterior.clientes.get(dev.clienteId);
+            if (cli) cli.valor -= num(dev._sum.valorTotal);
+        }
+
+        for (const [cidade, valorDevolvido] of devolucaoCidadeAtualMap.entries()) {
+            const cidadeAtual = aggAtual.cidades.get(cidade);
+            if (cidadeAtual) cidadeAtual.valor -= valorDevolvido;
+        }
+        for (const [cidade, valorDevolvido] of devolucaoCidadeAnteriorMap.entries()) {
+            const cidadeAnterior = aggAnterior.cidades.get(cidade);
+            if (cidadeAnterior) cidadeAnterior.valor -= valorDevolvido;
         }
 
         const devolucaoAtual = num(devolucaoAtualAgg._sum.valorTotal);
@@ -382,8 +483,13 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
             .map((prod) => {
                 const prev = aggAnterior.produtos.get(prod.produtoId);
                 const valorAnterior = prev?.valorLiquido || 0;
+                const quantidadeAnterior = prev?.quantidade || 0;
                 return {
                     ...prod,
+                    vendasSemanaAtual: prod.valorLiquido,
+                    vendasSemanaAnterior: valorAnterior,
+                    quantidadeSemanaAtual: prod.quantidade,
+                    quantidadeSemanaAnterior: quantidadeAnterior,
                     variacaoPct: valorAnterior > 0 ? ((prod.valorLiquido - valorAnterior) / valorAnterior) * 100 : null,
                 };
             })
@@ -403,6 +509,8 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
                     codigo: atual?.codigo || prev?.codigo || null,
                     vendasSemanaAnterior: valorAnterior,
                     vendasSemanaAtual: valorAtual,
+                    quantidadeSemanaAnterior: prev?.quantidade || 0,
+                    quantidadeSemanaAtual: atual?.quantidade || 0,
                     variacaoPct,
                 };
             })
@@ -410,9 +518,64 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
             .sort((a, b) => a.variacaoPct - b.variacaoPct)
             .slice(0, 10);
 
-        const topClientes = [...aggAtual.clientes.values()]
+        const topClientes = [...new Set([...aggAtual.clientes.keys(), ...aggAnterior.clientes.keys()])]
+            .map((clienteId) => {
+                const atual = aggAtual.clientes.get(clienteId);
+                const anterior = aggAnterior.clientes.get(clienteId);
+                const valorAtual = atual?.valor || 0;
+                const valorAnterior = anterior?.valor || 0;
+                return {
+                    clienteId,
+                    nome: atual?.nome || anterior?.nome || 'Cliente sem nome',
+                    codigo: atual?.codigo || anterior?.codigo || null,
+                    valor: valorAtual,
+                    valorAnterior,
+                    pedidos: atual?.pedidos || 0,
+                    pedidosAnterior: anterior?.pedidos || 0,
+                    variacaoPct: valorAnterior > 0 ? ((valorAtual - valorAnterior) / valorAnterior) * 100 : null,
+                };
+            })
             .sort((a, b) => b.valor - a.valor)
             .slice(0, 10);
+
+        const cidades = [...new Set([
+            ...aggAtual.cidades.keys(),
+            ...aggAnterior.cidades.keys(),
+        ])]
+            .map((cidade) => {
+                const atual = aggAtual.cidades.get(cidade);
+                const anterior = aggAnterior.cidades.get(cidade);
+                const vendasAtual = atual?.valor || 0;
+                const vendasAnterior = anterior?.valor || 0;
+                const clientesComPedidoAtual = atual?.clientes?.size || 0;
+                const clientesComPedidoAnterior = anterior?.clientes?.size || 0;
+                return {
+                    cidade,
+                    clientesComPedidoAtual,
+                    clientesComPedidoAnterior,
+                    pedidosAtual: atual?.pedidos || 0,
+                    pedidosAnterior: anterior?.pedidos || 0,
+                    vendasAtual,
+                    vendasAnterior,
+                    ticketAtual: (atual?.pedidos || 0) > 0 ? vendasAtual / atual.pedidos : 0,
+                    ticketAnterior: (anterior?.pedidos || 0) > 0 ? vendasAnterior / anterior.pedidos : 0,
+                    variacaoPct: vendasAnterior > 0 ? ((vendasAtual - vendasAnterior) / vendasAnterior) * 100 : null,
+                    vendedores: [...(atual?.vendedores?.values() || [])]
+                        .map((vend) => ({
+                            vendedorId: vend.vendedorId,
+                            nome: vend.nome,
+                            vendasAtual: vend.valor,
+                            pedidosAtual: vend.pedidos,
+                            clientesComPedidoAtual: vend.clientes.size,
+                        }))
+                        .sort((a, b) => b.vendasAtual - a.vendasAtual),
+                };
+            })
+            .sort((a, b) => {
+                if (b.vendasAtual !== a.vendasAtual) return b.vendasAtual - a.vendasAtual;
+                if (b.totalClientes !== a.totalClientes) return b.totalClientes - a.totalClientes;
+                return a.cidade.localeCompare(b.cidade, 'pt-BR');
+            });
 
         const metaSemanalTotal = [...metasSemanaMap.values()].reduce((sum, item) => sum + num(item.metaSemanal), 0);
 
@@ -449,6 +612,7 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
             },
             rankingVendedores,
             insights: {
+                cidades,
                 topProdutos,
                 produtosEmQueda,
                 topClientes,

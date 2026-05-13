@@ -12,6 +12,7 @@ import {
     Crown,
     Flame,
     Lock,
+    MapPin,
     Package,
     PieChart,
     ShieldCheck,
@@ -380,13 +381,14 @@ const DashboardAdminSection = () => {
     const rankingSemanal = weeklyData?.rankingVendedores || [];
     const insightsSemanal = weeklyData?.insights || {};
     const alertasSemanal = insightsSemanal.alertas || {};
+    const cidadesSemanais = insightsSemanal.cidades || [];
     const topProdutosSemanal = insightsSemanal.topProdutos || [];
     const produtosQuedaSemanal = insightsSemanal.produtosEmQueda || [];
     const topClientesSemanal = insightsSemanal.topClientes || [];
-    const topProdutosPositivos = [...topProdutosSemanal]
-        .sort((a, b) => Number(b.valorLiquido || 0) - Number(a.valorLiquido || 0))
-        .slice(0, 3);
-    const topRiscosSemana = [...produtosQuedaSemanal].slice(0, 3);
+    const topProdutosMaisVendidos = [...topProdutosSemanal].slice(0, 10);
+    const topProdutosPrint = [...topProdutosSemanal].slice(0, 3);
+    const topRiscosSemana = [...produtosQuedaSemanal].slice(0, 10);
+    const topRiscosPrint = [...produtosQuedaSemanal].slice(0, 3);
     const periodoAtualSemanal = weeklyData?.periodoAtual || null;
     const periodoAnteriorSemanal = weeklyData?.periodoAnterior || null;
 
@@ -1059,32 +1061,105 @@ const DashboardAdminSection = () => {
                             </div>
 
                             <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                                <div className="bg-white border rounded-xl p-5 xl:col-span-3">
+                                    <SectionHeader
+                                        icon={MapPin}
+                                        title={weeklyVendedorId ? 'Cidades do vendedor no período' : 'Cidades da equipe no período'}
+                                        right={<span className="text-[11px] text-gray-400">{fmtNum(cidadesSemanais.length)} cidades</span>}
+                                    />
+                                    {cidadesSemanais.length > 0 ? (
+                                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                                            {cidadesSemanais.map((cidade) => {
+                                                const baseClientes = Math.max(cidade.clientesComPedidoAtual || 0, cidade.clientesComPedidoAnterior || 0, 1);
+                                                const pctClientes = ((cidade.clientesComPedidoAtual || 0) / baseClientes) * 100;
+                                                const variacaoSubiu = cidade.variacaoPct != null && cidade.variacaoPct >= 0;
+                                                const variacaoClientes = cidade.clientesComPedidoAnterior > 0
+                                                    ? ((cidade.clientesComPedidoAtual - cidade.clientesComPedidoAnterior) / cidade.clientesComPedidoAnterior) * 100
+                                                    : null;
+                                                return (
+                                                    <div key={cidade.cidade} className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                                                        <div className="flex items-start justify-between gap-3">
+                                                            <div className="min-w-0">
+                                                                <div className="font-semibold text-sm text-gray-900 truncate">{cidade.cidade}</div>
+                                                                <div className="text-xs text-gray-500 mt-1">
+                                                                    {fmtNum(cidade.clientesComPedidoAtual)} clientes no período atual · {fmtNum(cidade.clientesComPedidoAnterior)} no anterior
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right shrink-0">
+                                                                <div className="text-sm font-bold text-gray-900">{fmtBRL(cidade.vendasAtual)}</div>
+                                                                <div className={`text-[11px] mt-1 font-semibold ${cidade.variacaoPct == null ? 'text-gray-500' : variacaoSubiu ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                                    {cidade.variacaoPct == null ? 'Sem base anterior' : `${variacaoSubiu ? 'Maior' : 'Menor'} · ${fmtPct(cidade.variacaoPct)}`}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-3">
+                                                            <MeterBar value={pctClientes} color={pctClientes >= 60 ? 'bg-emerald-500' : pctClientes >= 35 ? 'bg-amber-400' : 'bg-red-400'} />
+                                                        </div>
+                                                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
+                                                            <span>{fmtNum(cidade.pedidosAtual)} pedidos</span>
+                                                            <span>ticket {fmtBRL(cidade.ticketAtual)}</span>
+                                                            <span>anterior {fmtBRL(cidade.vendasAnterior)}</span>
+                                                            <span className={variacaoClientes == null ? 'text-gray-400' : variacaoClientes >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                                                                clientes {variacaoClientes == null ? 'sem base' : fmtPct(variacaoClientes)}
+                                                            </span>
+                                                        </div>
+                                                        {!weeklyVendedorId && cidade.vendedores?.length > 0 && (
+                                                            <div className="mt-3 flex flex-wrap gap-1.5">
+                                                                {cidade.vendedores.map((vendedor) => (
+                                                                    <span
+                                                                        key={`${cidade.cidade}-${vendedor.vendedorId}`}
+                                                                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600"
+                                                                    >
+                                                                        <span className="font-semibold text-slate-700">{vendedor.nome.split(' ')[0]}</span>
+                                                                        <span>{fmtBRLcompact(vendedor.vendasAtual)}</span>
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-gray-400">Nenhuma cidade encontrada para o período selecionado.</div>
+                                    )}
+                                </div>
+
                                 <div className="bg-white border rounded-xl p-5">
-                                    <SectionHeader icon={Package} title="Top Ganhos (Produtos)" />
+                                    <SectionHeader icon={Package} title="Top 10 Produtos Vendidos" right={<span className="text-[11px] text-gray-400">vs semana anterior</span>} />
                                     <div className="space-y-2">
-                                        {topProdutosPositivos.map((produto) => (
-                                            <div key={produto.produtoId} className="flex items-center justify-between gap-3 py-1 border-b last:border-0">
+                                        {topProdutosMaisVendidos.map((produto) => {
+                                            const subiu = produto.variacaoPct != null && produto.variacaoPct >= 0;
+                                            return (
+                                            <div key={produto.produtoId} className="flex items-center justify-between gap-3 py-2 border-b last:border-0">
                                                 <div className="min-w-0">
                                                     <div className="font-semibold text-sm text-gray-900 truncate">{produto.nome}</div>
-                                                    <div className="text-[11px] text-gray-500">{fmtNum(produto.quantidade)} un</div>
+                                                    <div className="text-[11px] text-gray-500">
+                                                        {fmtNum(produto.quantidadeSemanaAtual)} un · {fmtBRL(produto.vendasSemanaAnterior)} na semana anterior
+                                                    </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <div className="text-sm font-bold text-gray-900">{fmtBRL(produto.valorLiquido)}</div>
-                                                    <div className={`text-[11px] ${produto.variacaoPct >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{fmtPct(produto.variacaoPct)}</div>
+                                                    <div className="text-sm font-bold text-gray-900">{fmtBRL(produto.vendasSemanaAtual)}</div>
+                                                    <div className={`text-[11px] font-semibold ${produto.variacaoPct == null ? 'text-gray-500' : subiu ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                        {produto.variacaoPct == null ? 'Sem base anterior' : `${subiu ? 'Maior' : 'Menor'} · ${fmtPct(produto.variacaoPct)}`}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        ))}
-                                        {topProdutosPositivos.length === 0 && <div className="text-sm text-gray-400">Sem produtos com ganho na semana.</div>}
+                                        )})}
+                                        {topProdutosMaisVendidos.length === 0 && <div className="text-sm text-gray-400">Sem produtos vendidos na semana.</div>}
                                     </div>
                                 </div>
 
                                 <div className="bg-white border rounded-xl p-5">
-                                    <SectionHeader icon={TrendingDown} title="Top Riscos (Queda)" />
+                                    <SectionHeader icon={TrendingDown} title="Produtos com Maior Queda" right={<span className="text-[11px] text-gray-400">vs semana anterior</span>} />
                                     <div className="space-y-2">
                                         {topRiscosSemana.map((produto) => (
-                                            <div key={produto.produtoId} className="flex items-center justify-between gap-3 py-1 border-b last:border-0">
+                                            <div key={produto.produtoId} className="flex items-center justify-between gap-3 py-2 border-b last:border-0">
                                                 <div className="min-w-0">
                                                     <div className="font-semibold text-sm text-gray-900 truncate">{produto.nome}</div>
+                                                    <div className="text-[11px] text-gray-500">
+                                                        {fmtNum(produto.quantidadeSemanaAtual)} un agora · {fmtNum(produto.quantidadeSemanaAnterior)} un antes
+                                                    </div>
                                                     <div className="text-[11px] text-gray-500">{fmtBRL(produto.vendasSemanaAnterior)} → {fmtBRL(produto.vendasSemanaAtual)}</div>
                                                 </div>
                                                 <div className="text-sm font-bold text-red-700">{fmtPct(produto.variacaoPct)}</div>
@@ -1108,13 +1183,18 @@ const DashboardAdminSection = () => {
                             </div>
 
                             <div className="bg-white border rounded-xl p-5">
-                                <SectionHeader icon={Crown} title="Top Clientes da Semana" />
+                                <SectionHeader icon={Crown} title="Top Clientes do Período" right={<span className="text-[11px] text-gray-400">vs período anterior</span>} />
                                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                                     {topClientesSemanal.slice(0, 6).map((cliente) => (
                                         <div key={cliente.clienteId} className="border rounded-lg p-3">
                                             <div className="font-semibold text-sm text-gray-900 truncate">{cliente.nome}</div>
-                                            <div className="text-xs text-gray-500 mt-1">{fmtNum(cliente.pedidos)} pedidos</div>
+                                            <div className="text-xs text-gray-500 mt-1">
+                                                {fmtNum(cliente.pedidos)} pedidos agora · {fmtNum(cliente.pedidosAnterior)} antes
+                                            </div>
                                             <div className="text-sm font-bold text-amber-700 mt-1">{fmtBRL(cliente.valor)}</div>
+                                            <div className={`text-[11px] mt-1 font-semibold ${cliente.variacaoPct == null ? 'text-gray-500' : cliente.variacaoPct >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                {cliente.variacaoPct == null ? `Sem base anterior · ${fmtBRL(cliente.valorAnterior)}` : `${cliente.variacaoPct >= 0 ? 'Maior' : 'Menor'} · ${fmtPct(cliente.variacaoPct)}`}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -1170,15 +1250,15 @@ const DashboardAdminSection = () => {
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                                     <div>
                                         <h3 style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700 }}>Top 3 positivos</h3>
-                                        {(topProdutosPositivos || []).map((produto) => (
+                                        {(topProdutosPrint || []).map((produto) => (
                                             <div key={`print-pos-${produto.produtoId}`} style={{ fontSize: 10, marginBottom: 3 }}>
-                                                {produto.nome} — {fmtBRL(produto.valorLiquido)}
+                                                {produto.nome} — {fmtBRL(produto.vendasSemanaAtual)}
                                             </div>
                                         ))}
                                     </div>
                                     <div>
                                         <h3 style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700 }}>Top 3 riscos</h3>
-                                        {(topRiscosSemana || []).map((produto) => (
+                                        {(topRiscosPrint || []).map((produto) => (
                                             <div key={`print-risk-${produto.produtoId}`} style={{ fontSize: 10, marginBottom: 3 }}>
                                                 {produto.nome} — {fmtPct(produto.variacaoPct)}
                                             </div>
