@@ -502,7 +502,7 @@ const metaService = {
         const inicioMes = dataAtual.startOf('month').toDate();
         const fimMes = dataAtual.endOf('month').toDate();
 
-        const [pedidosMes, clientesDoDia] = await Promise.all([
+        const [pedidosMes, clientesDoDia, clientesVisitamHoje] = await Promise.all([
             prisma.pedido.findMany({
                 where: {
                     vendedorId: { in: vendedorIds },
@@ -522,6 +522,14 @@ const metaService = {
                     Ativo: true
                 },
                 select: { UUID: true, End_Cidade: true }
+            }),
+            prisma.cliente.findMany({
+                where: {
+                    idVendedor: { in: vendedorIds },
+                    Dia_de_venda: { contains: diaHojeSigla },
+                    End_Cidade: { not: null }
+                },
+                select: { idVendedor: true, End_Cidade: true }
             })
         ]);
 
@@ -531,6 +539,14 @@ const metaService = {
             const cidade = cl.End_Cidade;
             if (!cidade) continue;
             totalClientesPorCidade[cidade] = (totalClientesPorCidade[cidade] || 0) + 1;
+        }
+
+        // Cidades que cada vendedor visita no dia selecionado (baseado em Dia_de_venda dos clientes)
+        const cidadesHojePorVendedor = {};
+        for (const cl of clientesVisitamHoje) {
+            if (!cl.idVendedor || !cl.End_Cidade) continue;
+            if (!cidadesHojePorVendedor[cl.idVendedor]) cidadesHojePorVendedor[cl.idVendedor] = new Set();
+            cidadesHojePorVendedor[cl.idVendedor].add(cl.End_Cidade);
         }
 
         // Deriva semana e hoje a partir do mês; rastreia clientes únicos por cidade
@@ -573,11 +589,9 @@ const metaService = {
                     ? mc.diasSemana.split(',').map(d => d.trim().toUpperCase()).filter(Boolean)
                     : [];
 
-                // Verifica se hoje é dia de atendimento desta cidade
-                const ehHoje = diasConfig.length > 0
-                    ? diasConfig.includes(diaHojeSigla)
-                    : true; // sem config, sempre aparece
-                if (!ehHoje) continue;
+                // Mostra cidade se o vendedor tem clientes com Dia_de_venda = hoje nessa cidade
+                const cidadesVendedorHoje = cidadesHojePorVendedor[meta.vendedorId] || new Set();
+                if (!cidadesVendedorHoje.has(mc.cidade)) continue;
 
                 // Calcula metaSemana pelo mesmo critério de calcularMetaHoje
                 const totalVisitasMes = diasConfig.length > 0
@@ -659,13 +673,14 @@ const metaService = {
             dayjs(d).isBetween(inicioSemana, fimSemana, 'day', '[]')
         ).length;
 
-        // Filtra cidades que têm hoje como dia de atendimento (diasSemana configurado)
-        // Fallback: cidades sem diasSemana configurado aparecem sempre
-        const metasCidadesHoje = meta.metasCidades.filter(mc => {
-            if (!mc.diasSemana) return true; // sem configuração, aparece sempre
-            const dias = mc.diasSemana.split(',').map(d => d.trim().toUpperCase());
-            return dias.includes(diaHojeSigla);
+        // Filtra cidades pelo Dia_de_venda dos clientes — igual ao filtro da lista Rota
+        const clientesVisitamHoje = await prisma.cliente.findMany({
+            where: { idVendedor: vendedorId, Dia_de_venda: { contains: diaHojeSigla } },
+            select: { End_Cidade: true }
         });
+        const cidadesComClientesHoje = new Set(clientesVisitamHoje.map(c => c.End_Cidade).filter(Boolean));
+
+        const metasCidadesHoje = meta.metasCidades.filter(mc => cidadesComClientesHoje.has(mc.cidade));
 
         if (metasCidadesHoje.length === 0) {
             return { temMeta: true, cidadesDeHoje: [], conversaoHoje: { totalClientes: 0, comPedido: 0 } };
