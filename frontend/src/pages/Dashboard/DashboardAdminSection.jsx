@@ -22,6 +22,7 @@ import {
     UserX,
     Users,
     Wallet,
+    Printer,
     Zap,
 } from 'lucide-react';
 import api from '../../services/api';
@@ -37,6 +38,8 @@ const fmtBRLcompact = (v) => {
 const fmtNum = (v) => Number(v || 0).toLocaleString('pt-BR');
 const fmtPct = (v, signed = true) => (v == null ? '—' : `${signed && v >= 0 ? '+' : ''}${v.toFixed(1)}%`);
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('pt-BR') : '—');
+const fmtDateISO = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR') : '—');
+const fmtDateTime = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR') : '—');
 const clamp = (v, min = 0, max = 100) => Math.min(max, Math.max(min, Number(v || 0)));
 const hojeISO = () => {
     const d = new Date();
@@ -44,6 +47,28 @@ const hojeISO = () => {
 };
 
 const diasSem = (d) => (d ? Math.floor((Date.now() - new Date(d).getTime()) / 86400000) : null);
+const semaforoAtingimento = (pct) => {
+    if (pct == null) return { texto: 'Sem meta', className: 'bg-gray-100 text-gray-600' };
+    if (pct >= 90) return { texto: 'Verde', className: 'bg-emerald-100 text-emerald-700' };
+    if (pct >= 70) return { texto: 'Amarelo', className: 'bg-amber-100 text-amber-700' };
+    return { texto: 'Vermelho', className: 'bg-red-100 text-red-700' };
+};
+
+const WEEKLY_PRINT_CSS = `
+@media print {
+  @page { size: A4 portrait; margin: 8mm; }
+  body * { visibility: hidden !important; }
+  #weekly-brief-print, #weekly-brief-print * { visibility: visible !important; }
+  #weekly-brief-print {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    color: #0f172a !important;
+    font-family: Inter, Arial, sans-serif !important;
+  }
+}
+`;
 
 const corPct = (pct) => {
     if (pct == null) return 'bg-gray-300';
@@ -190,6 +215,13 @@ const DashboardAdminSection = () => {
     const [acessosDashboard, setAcessosDashboard] = useState([]);
     const [loadingAcessos, setLoadingAcessos] = useState(false);
     const [acessosCarregados, setAcessosCarregados] = useState(false);
+    const [weeklyData, setWeeklyData] = useState(null);
+    const [weeklyLoading, setWeeklyLoading] = useState(false);
+    const [weeklyError, setWeeklyError] = useState('');
+    const [weeklyBaseDate, setWeeklyBaseDate] = useState(hojeISO());
+    const [weeklyVendedorId, setWeeklyVendedorId] = useState('');
+    const [weeklyVendedores, setWeeklyVendedores] = useState([]);
+    const [weeklyVendedoresCarregados, setWeeklyVendedoresCarregados] = useState(false);
 
     const podeVerVendas = !!user?.permissoes?.admin
         || !!user?.permissoes?.Pode_Ver_Dashboard_Admin
@@ -216,6 +248,17 @@ const DashboardAdminSection = () => {
     const handleTrocaAba = (aba) => {
         setAbaAtiva(aba);
         if (aba === 'vendedores' && !acessosCarregados) setLoadingAcessos(true);
+        if (aba === 'reuniao') setWeeklyLoading(true);
+    };
+
+    const handleTrocaDataSemanal = (novaData) => {
+        setWeeklyLoading(true);
+        setWeeklyBaseDate(novaData || hojeISO());
+    };
+
+    const handleTrocaVendedorSemanal = (novoVendedorId) => {
+        setWeeklyLoading(true);
+        setWeeklyVendedorId(novoVendedorId || '');
     };
 
     useEffect(() => {
@@ -262,6 +305,40 @@ const DashboardAdminSection = () => {
             });
     }, [abaAtiva, acessosCarregados]);
 
+    useEffect(() => {
+        if (abaAtiva !== 'reuniao') return;
+        const params = { dataBase: weeklyBaseDate || hojeISO() };
+        if (weeklyVendedorId) params.vendedorId = weeklyVendedorId;
+        api.get('/admin-dashboard/weekly-brief', { params })
+            .then((res) => {
+                setWeeklyData(res.data || null);
+                setWeeklyError('');
+            })
+            .catch((err) => {
+                console.error('Erro weekly-brief', err);
+                setWeeklyData(null);
+                setWeeklyError('Não foi possível carregar o resumo semanal.');
+            })
+            .finally(() => setWeeklyLoading(false));
+    }, [abaAtiva, weeklyBaseDate, weeklyVendedorId]);
+
+    useEffect(() => {
+        if (abaAtiva !== 'reuniao' || weeklyVendedoresCarregados) return;
+        api.get('/vendedores', { params: { ativo: 'true' } })
+            .then((res) => {
+                const lista = Array.isArray(res.data) ? res.data : (res.data?.vendedores || []);
+                const normalizados = lista
+                    .map((vendedor) => ({ id: vendedor.id, nome: vendedor.nome }))
+                    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+                setWeeklyVendedores(normalizados);
+            })
+            .catch((err) => {
+                console.error('Erro ao carregar vendedores para weekly-brief:', err);
+                setWeeklyVendedores([]);
+            })
+            .finally(() => setWeeklyVendedoresCarregados(true));
+    }, [abaAtiva, weeklyVendedoresCarregados]);
+
     if (loading) {
         return (
             <div className="animate-pulse my-6 space-y-4">
@@ -299,6 +376,19 @@ const DashboardAdminSection = () => {
     const fecData = (fec.data || d.dataReferencia)
         ? new Date((fec.data || d.dataReferencia) + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' })
         : 'hoje';
+    const resumoSemanal = weeklyData?.resumoEquipe || {};
+    const rankingSemanal = weeklyData?.rankingVendedores || [];
+    const insightsSemanal = weeklyData?.insights || {};
+    const alertasSemanal = insightsSemanal.alertas || {};
+    const topProdutosSemanal = insightsSemanal.topProdutos || [];
+    const produtosQuedaSemanal = insightsSemanal.produtosEmQueda || [];
+    const topClientesSemanal = insightsSemanal.topClientes || [];
+    const topProdutosPositivos = [...topProdutosSemanal]
+        .sort((a, b) => Number(b.valorLiquido || 0) - Number(a.valorLiquido || 0))
+        .slice(0, 3);
+    const topRiscosSemana = [...produtosQuedaSemanal].slice(0, 3);
+    const periodoAtualSemanal = weeklyData?.periodoAtual || null;
+    const periodoAnteriorSemanal = weeklyData?.periodoAnterior || null;
 
     return (
         <div className="mb-8 w-full">
@@ -347,6 +437,13 @@ const DashboardAdminSection = () => {
                     label="Vendedores"
                     onClick={() => handleTrocaAba('vendedores')}
                     badge={vendedoresMeta.length || null}
+                />
+                <TabButton
+                    active={abaAtiva === 'reuniao'}
+                    icon={Calendar}
+                    label="Reunião Semanal"
+                    onClick={() => handleTrocaAba('reuniao')}
+                    badge={rankingSemanal.length || null}
                 />
             </div>
 
@@ -831,6 +928,273 @@ const DashboardAdminSection = () => {
                             )}
                         </div>
                     </div>
+                </div>
+            )}
+
+            {abaAtiva === 'reuniao' && (
+                <div className="space-y-6">
+                    <style>{WEEKLY_PRINT_CSS}</style>
+
+                    <div className="bg-white border rounded-xl p-4">
+                        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 flex-1">
+                                <div>
+                                    <label className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Semana de referência</label>
+                                    <input
+                                        type="date"
+                                        value={weeklyBaseDate}
+                                        max={hojeISO()}
+                                        onChange={(e) => handleTrocaDataSemanal(e.target.value)}
+                                        className="mt-1 w-full border rounded px-2 py-2 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Vendedor (opcional)</label>
+                                    <select
+                                        value={weeklyVendedorId}
+                                        onChange={(e) => handleTrocaVendedorSemanal(e.target.value)}
+                                        className="mt-1 w-full border rounded px-2 py-2 text-sm"
+                                    >
+                                        <option value="">Todos da equipe</option>
+                                        {weeklyVendedores.map((vendedor) => (
+                                            <option key={vendedor.id} value={vendedor.id}>{vendedor.nome}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="sm:col-span-2 lg:col-span-1">
+                                    <label className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Período</label>
+                                    <div className="mt-1 border rounded px-3 py-2 text-sm bg-gray-50 text-gray-700">
+                                        {periodoAtualSemanal
+                                            ? `${fmtDateISO(periodoAtualSemanal.inicio)} a ${fmtDateISO(periodoAtualSemanal.janelaFim)}`
+                                            : 'Carregando...'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => window.print()}
+                                disabled={!weeklyData || weeklyLoading}
+                                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Printer size={16} />
+                                Gerar PDF da Reunião
+                            </button>
+                        </div>
+                    </div>
+
+                    {weeklyLoading && (
+                        <div className="bg-white border rounded-xl p-8 text-center text-sm text-gray-500">
+                            Carregando resumo semanal...
+                        </div>
+                    )}
+
+                    {!weeklyLoading && weeklyError && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-sm text-red-700">
+                            {weeklyError}
+                        </div>
+                    )}
+
+                    {!weeklyLoading && !weeklyError && weeklyData && (
+                        <>
+                            <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
+                                <div className="bg-white border rounded-xl p-4">
+                                    <StatPill label="Vendas Líquidas" value={fmtBRL(resumoSemanal.vendasLiquidas)} color="indigo" />
+                                </div>
+                                <div className="bg-white border rounded-xl p-4">
+                                    <StatPill label="Variação" value={fmtPct(resumoSemanal.variacaoPct)} sub="vs semana anterior" color={resumoSemanal.variacaoPct >= 0 ? 'emerald' : 'red'} />
+                                </div>
+                                <div className="bg-white border rounded-xl p-4">
+                                    <StatPill label="Pedidos" value={fmtNum(resumoSemanal.pedidos)} color="blue" />
+                                </div>
+                                <div className="bg-white border rounded-xl p-4">
+                                    <StatPill label="Ticket Médio" value={fmtBRL(resumoSemanal.ticketMedio)} color="gray" />
+                                </div>
+                                <div className="bg-white border rounded-xl p-4">
+                                    <StatPill label="Meta Semanal" value={fmtBRL(resumoSemanal.metaSemanal)} color="amber" />
+                                </div>
+                                <div className="bg-white border rounded-xl p-4">
+                                    <StatPill
+                                        label="Atingimento"
+                                        value={fmtPct(resumoSemanal.atingimentoPct, false)}
+                                        sub={`proj. ${fmtPct(resumoSemanal.projecaoSemanal && resumoSemanal.metaSemanal > 0 ? (resumoSemanal.projecaoSemanal / resumoSemanal.metaSemanal) * 100 : null, false)}`}
+                                        color={resumoSemanal.atingimentoPct >= 90 ? 'emerald' : resumoSemanal.atingimentoPct >= 70 ? 'amber' : 'red'}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="bg-white border rounded-xl overflow-hidden">
+                                <div className="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-50 text-[10px] uppercase tracking-wider font-bold text-gray-500">
+                                    <div className="col-span-3">Vendedor</div>
+                                    <div className="col-span-2 text-right">Meta semana</div>
+                                    <div className="col-span-2 text-right">Realizado</div>
+                                    <div className="col-span-2 text-right">Proj. semana</div>
+                                    <div className="col-span-1 text-right">Δ Anterior</div>
+                                    <div className="col-span-1 text-right">Pedidos</div>
+                                    <div className="col-span-1 text-right">Semáforo</div>
+                                </div>
+                                {rankingSemanal.map((linha) => {
+                                    const semaforo = semaforoAtingimento(linha.pctAtingimento);
+                                    return (
+                                        <div key={linha.vendedorId} className="grid grid-cols-12 gap-3 px-4 py-3 border-t items-center text-sm">
+                                            <div className="col-span-3 font-semibold text-gray-900 truncate">{linha.nome}</div>
+                                            <div className="col-span-2 text-right">{fmtBRL(linha.metaSemanal)}</div>
+                                            <div className="col-span-2 text-right font-semibold">{fmtBRL(linha.realizado)}</div>
+                                            <div className="col-span-2 text-right">{fmtBRL(linha.projecaoSemanal)}</div>
+                                            <div className={`col-span-1 text-right font-semibold ${linha.deltaSemanaAnteriorPct >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                                                {fmtPct(linha.deltaSemanaAnteriorPct)}
+                                            </div>
+                                            <div className="col-span-1 text-right">{fmtNum(linha.pedidos)}</div>
+                                            <div className="col-span-1 text-right">
+                                                <span className={`inline-flex items-center justify-center px-2 py-1 rounded-full text-[10px] font-bold ${semaforo.className}`}>
+                                                    {semaforo.texto}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {rankingSemanal.length === 0 && (
+                                    <div className="p-6 text-center text-sm text-gray-400">Sem dados de vendas para a semana selecionada.</div>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                                <div className="bg-white border rounded-xl p-5">
+                                    <SectionHeader icon={Package} title="Top Ganhos (Produtos)" />
+                                    <div className="space-y-2">
+                                        {topProdutosPositivos.map((produto) => (
+                                            <div key={produto.produtoId} className="flex items-center justify-between gap-3 py-1 border-b last:border-0">
+                                                <div className="min-w-0">
+                                                    <div className="font-semibold text-sm text-gray-900 truncate">{produto.nome}</div>
+                                                    <div className="text-[11px] text-gray-500">{fmtNum(produto.quantidade)} un</div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-sm font-bold text-gray-900">{fmtBRL(produto.valorLiquido)}</div>
+                                                    <div className={`text-[11px] ${produto.variacaoPct >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{fmtPct(produto.variacaoPct)}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {topProdutosPositivos.length === 0 && <div className="text-sm text-gray-400">Sem produtos com ganho na semana.</div>}
+                                    </div>
+                                </div>
+
+                                <div className="bg-white border rounded-xl p-5">
+                                    <SectionHeader icon={TrendingDown} title="Top Riscos (Queda)" />
+                                    <div className="space-y-2">
+                                        {topRiscosSemana.map((produto) => (
+                                            <div key={produto.produtoId} className="flex items-center justify-between gap-3 py-1 border-b last:border-0">
+                                                <div className="min-w-0">
+                                                    <div className="font-semibold text-sm text-gray-900 truncate">{produto.nome}</div>
+                                                    <div className="text-[11px] text-gray-500">{fmtBRL(produto.vendasSemanaAnterior)} → {fmtBRL(produto.vendasSemanaAtual)}</div>
+                                                </div>
+                                                <div className="text-sm font-bold text-red-700">{fmtPct(produto.variacaoPct)}</div>
+                                            </div>
+                                        ))}
+                                        {topRiscosSemana.length === 0 && <div className="text-sm text-gray-400">Sem quedas relevantes na semana.</div>}
+                                    </div>
+                                </div>
+
+                                <div className="bg-white border rounded-xl p-5">
+                                    <SectionHeader icon={AlertTriangle} title="Alertas Críticos" />
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex items-center justify-between"><span>Inadimplência</span><strong>{fmtBRLcompact(alertasSemanal.inadimplencia?.total)}</strong></div>
+                                        <div className="flex items-center justify-between"><span>Erros ERP</span><strong>{fmtNum(alertasSemanal.errosErp?.total)}</strong></div>
+                                        <div className="flex items-center justify-between"><span>Especiais pendentes</span><strong>{fmtNum(alertasSemanal.pedidosEspeciais?.total)}</strong></div>
+                                        <div className="flex items-center justify-between"><span>Transferências pendentes</span><strong>{fmtNum(alertasSemanal.transferenciasPendentes?.total)}</strong></div>
+                                        <div className="flex items-center justify-between"><span>Pendências abertas</span><strong>{fmtNum(alertasSemanal.pendenciasAbertas?.total)}</strong></div>
+                                        <div className="flex items-center justify-between"><span>Caixas a conferir</span><strong>{fmtNum(alertasSemanal.caixasAConferir?.total)}</strong></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white border rounded-xl p-5">
+                                <SectionHeader icon={Crown} title="Top Clientes da Semana" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                    {topClientesSemanal.slice(0, 6).map((cliente) => (
+                                        <div key={cliente.clienteId} className="border rounded-lg p-3">
+                                            <div className="font-semibold text-sm text-gray-900 truncate">{cliente.nome}</div>
+                                            <div className="text-xs text-gray-500 mt-1">{fmtNum(cliente.pedidos)} pedidos</div>
+                                            <div className="text-sm font-bold text-amber-700 mt-1">{fmtBRL(cliente.valor)}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {topClientesSemanal.length === 0 && (
+                                    <div className="text-sm text-gray-400">Sem clientes relevantes na semana.</div>
+                                )}
+                            </div>
+
+                            <div id="weekly-brief-print" className="hidden print:block">
+                                <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Resumo Semanal — Reunião de Vendas</h1>
+                                <p style={{ margin: '6px 0 10px', fontSize: 12, color: '#475569' }}>
+                                    Período atual: {periodoAtualSemanal ? `${fmtDateISO(periodoAtualSemanal.inicio)} a ${fmtDateISO(periodoAtualSemanal.janelaFim)}` : '—'} | Semana anterior: {periodoAnteriorSemanal ? `${fmtDateISO(periodoAnteriorSemanal.inicio)} a ${fmtDateISO(periodoAnteriorSemanal.janelaFim)}` : '—'}
+                                </p>
+                                <p style={{ margin: '0 0 10px', fontSize: 12, color: '#475569' }}>
+                                    Gerado em: {fmtDateTime(weeklyData.geradoEm)} | Responsável: {weeklyData.responsavel?.nome || '—'}
+                                </p>
+
+                                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 10 }}>
+                                    <tbody>
+                                        <tr>
+                                            <td style={{ border: '1px solid #cbd5e1', padding: 6, fontSize: 11 }}><strong>Vendas líquidas</strong><br />{fmtBRL(resumoSemanal.vendasLiquidas)}</td>
+                                            <td style={{ border: '1px solid #cbd5e1', padding: 6, fontSize: 11 }}><strong>Variação</strong><br />{fmtPct(resumoSemanal.variacaoPct)}</td>
+                                            <td style={{ border: '1px solid #cbd5e1', padding: 6, fontSize: 11 }}><strong>Pedidos</strong><br />{fmtNum(resumoSemanal.pedidos)}</td>
+                                            <td style={{ border: '1px solid #cbd5e1', padding: 6, fontSize: 11 }}><strong>Ticket</strong><br />{fmtBRL(resumoSemanal.ticketMedio)}</td>
+                                            <td style={{ border: '1px solid #cbd5e1', padding: 6, fontSize: 11 }}><strong>Meta</strong><br />{fmtBRL(resumoSemanal.metaSemanal)}</td>
+                                            <td style={{ border: '1px solid #cbd5e1', padding: 6, fontSize: 11 }}><strong>Atingimento</strong><br />{fmtPct(resumoSemanal.atingimentoPct, false)}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <h2 style={{ margin: '4px 0', fontSize: 13, fontWeight: 700 }}>Ranking (resumido)</h2>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 10 }}>
+                                    <thead>
+                                        <tr>
+                                            <th style={{ border: '1px solid #cbd5e1', padding: 5, fontSize: 10, textAlign: 'left' }}>Vendedor</th>
+                                            <th style={{ border: '1px solid #cbd5e1', padding: 5, fontSize: 10, textAlign: 'right' }}>Realizado</th>
+                                            <th style={{ border: '1px solid #cbd5e1', padding: 5, fontSize: 10, textAlign: 'right' }}>% Meta</th>
+                                            <th style={{ border: '1px solid #cbd5e1', padding: 5, fontSize: 10, textAlign: 'right' }}>Δ Anterior</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {rankingSemanal.slice(0, 8).map((linha) => (
+                                            <tr key={`print-${linha.vendedorId}`}>
+                                                <td style={{ border: '1px solid #cbd5e1', padding: 5, fontSize: 10 }}>{linha.nome}</td>
+                                                <td style={{ border: '1px solid #cbd5e1', padding: 5, fontSize: 10, textAlign: 'right' }}>{fmtBRL(linha.realizado)}</td>
+                                                <td style={{ border: '1px solid #cbd5e1', padding: 5, fontSize: 10, textAlign: 'right' }}>{fmtPct(linha.pctAtingimento, false)}</td>
+                                                <td style={{ border: '1px solid #cbd5e1', padding: 5, fontSize: 10, textAlign: 'right' }}>{fmtPct(linha.deltaSemanaAnteriorPct)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                                    <div>
+                                        <h3 style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700 }}>Top 3 positivos</h3>
+                                        {(topProdutosPositivos || []).map((produto) => (
+                                            <div key={`print-pos-${produto.produtoId}`} style={{ fontSize: 10, marginBottom: 3 }}>
+                                                {produto.nome} — {fmtBRL(produto.valorLiquido)}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div>
+                                        <h3 style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700 }}>Top 3 riscos</h3>
+                                        {(topRiscosSemana || []).map((produto) => (
+                                            <div key={`print-risk-${produto.produtoId}`} style={{ fontSize: 10, marginBottom: 3 }}>
+                                                {produto.nome} — {fmtPct(produto.variacaoPct)}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div>
+                                        <h3 style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700 }}>Alertas</h3>
+                                        <div style={{ fontSize: 10, marginBottom: 3 }}>Inadimplência: {fmtBRLcompact(alertasSemanal.inadimplencia?.total)}</div>
+                                        <div style={{ fontSize: 10, marginBottom: 3 }}>Erros ERP: {fmtNum(alertasSemanal.errosErp?.total)}</div>
+                                        <div style={{ fontSize: 10, marginBottom: 3 }}>Pendências: {fmtNum(alertasSemanal.pendenciasAbertas?.total)}</div>
+                                        <div style={{ fontSize: 10, marginBottom: 3 }}>Transferências: {fmtNum(alertasSemanal.transferenciasPendentes?.total)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
         </div>

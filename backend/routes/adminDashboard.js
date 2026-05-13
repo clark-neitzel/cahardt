@@ -4,6 +4,60 @@ const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 
 const num = (v) => Number(v || 0);
+const TZ = 'America/Sao_Paulo';
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+const isISODate = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+const isoNowTZ = () => new Date().toLocaleDateString('en-CA', { timeZone: TZ });
+const dateFromISOStart = (iso) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d, 0, 0, 0, 0);
+};
+const dateFromISOEnd = (iso) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d, 23, 59, 59, 999);
+};
+const toISODate = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+const addDays = (d, n) => {
+    const next = new Date(d);
+    next.setDate(next.getDate() + n);
+    return next;
+};
+const startOfWeekMonday = (date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const dow = d.getDay(); // 0=dom..6=sab
+    const diffSeg = dow === 0 ? -6 : 1 - dow;
+    d.setDate(d.getDate() + diffSeg);
+    return d;
+};
+const listIsoDays = (startDate, endDate) => {
+    const dias = [];
+    const cur = new Date(startDate);
+    cur.setHours(0, 0, 0, 0);
+    while (cur <= endDate) {
+        dias.push(toISODate(cur));
+        cur.setDate(cur.getDate() + 1);
+    }
+    return dias;
+};
+const parseJsonArray = (val) => {
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') {
+        try {
+            const parsed = JSON.parse(val);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+    return [];
+};
 
 async function carregarPermissoesUsuario(userId) {
     const user = await prisma.vendedor.findUnique({ where: { id: userId } });
@@ -24,6 +78,403 @@ async function carregarPermissoesUsuario(userId) {
 function valorPedido(p) {
     return p.itens.reduce((s, it) => s + num(it.valor) * num(it.quantidade), 0);
 }
+
+router.get('/weekly-brief', verificarAuth, async (req, res) => {
+    try {
+        const { user, podeVerVendas } = await carregarPermissoesUsuario(req.user.id);
+        if (!podeVerVendas) return res.status(403).json({ error: 'Acesso negado.' });
+
+        const dataBaseISO = isISODate(req.query.dataBase) ? req.query.dataBase : isoNowTZ();
+        const vendedorIdFiltro = typeof req.query.vendedorId === 'string' && req.query.vendedorId.trim()
+            ? req.query.vendedorId.trim()
+            : null;
+
+        const dataBaseStart = dateFromISOStart(dataBaseISO);
+        const dataBaseEnd = dateFromISOEnd(dataBaseISO);
+
+        const semanaAtualInicio = startOfWeekMonday(dataBaseStart);
+        const semanaAtualFim = dateFromISOEnd(toISODate(addDays(semanaAtualInicio, 6)));
+        const janelaAtualFim = dataBaseEnd < semanaAtualFim ? dataBaseEnd : semanaAtualFim;
+        const diasJanela = Math.max(1, Math.floor((janelaAtualFim - semanaAtualInicio) / ONE_DAY_MS) + 1);
+
+        const semanaAnteriorInicio = addDays(semanaAtualInicio, -7);
+        semanaAnteriorInicio.setHours(0, 0, 0, 0);
+        const semanaAnteriorFim = dateFromISOEnd(toISODate(addDays(semanaAnteriorInicio, 6)));
+        const janelaAnteriorFim = dateFromISOEnd(toISODate(addDays(semanaAnteriorInicio, diasJanela - 1)));
+
+        const baseWherePedido = {
+            situacaoCA: 'FATURADO',
+            bonificacao: false,
+            ...(vendedorIdFiltro ? { vendedorId: vendedorIdFiltro } : {}),
+        };
+        const wherePedidoAtual = { ...baseWherePedido, dataVenda: { gte: semanaAtualInicio, lte: janelaAtualFim } };
+        const wherePedidoAnterior = { ...baseWherePedido, dataVenda: { gte: semanaAnteriorInicio, lte: janelaAnteriorFim } };
+
+        const whereDevolucaoAtual = {
+            status: 'ATIVA',
+            dataDevolucao: { gte: semanaAtualInicio, lte: janelaAtualFim },
+            ...(vendedorIdFiltro ? { pedidoOriginal: { vendedorId: vendedorIdFiltro } } : {}),
+        };
+        const whereDevolucaoAnterior = {
+            status: 'ATIVA',
+            dataDevolucao: { gte: semanaAnteriorInicio, lte: janelaAnteriorFim },
+            ...(vendedorIdFiltro ? { pedidoOriginal: { vendedorId: vendedorIdFiltro } } : {}),
+        };
+
+        const [pedidosAtual, pedidosAnterior, devolucaoAtualAgg, devolucaoAnteriorAgg, devolucoesAtualPorVendedor, devolucoesAnteriorPorVendedor, itensDevolucaoAtual, itensDevolucaoAnterior, devolucaoClienteAtual, metasSemana, inadimplencia, pedidosComErro, pedidosEspeciais, transferenciasPendentes, pendenciasAbertas, caixasAConferir] = await Promise.all([
+            prisma.pedido.findMany({
+                where: wherePedidoAtual,
+                select: {
+                    id: true,
+                    vendedorId: true,
+                    clienteId: true,
+                    vendedor: { select: { nome: true } },
+                    cliente: { select: { Nome: true, NomeFantasia: true, Codigo: true } },
+                    itens: { select: { produtoId: true, valor: true, quantidade: true, produto: { select: { nome: true, codigo: true } } } },
+                },
+            }),
+            prisma.pedido.findMany({
+                where: wherePedidoAnterior,
+                select: {
+                    id: true,
+                    vendedorId: true,
+                    vendedor: { select: { nome: true } },
+                    itens: { select: { produtoId: true, valor: true, quantidade: true, produto: { select: { nome: true, codigo: true } } } },
+                },
+            }),
+            prisma.devolucao.aggregate({ _sum: { valorTotal: true }, where: whereDevolucaoAtual }),
+            prisma.devolucao.aggregate({ _sum: { valorTotal: true }, where: whereDevolucaoAnterior }),
+            prisma.devolucao.findMany({
+                where: whereDevolucaoAtual,
+                select: { valorTotal: true, pedidoOriginal: { select: { vendedorId: true } } },
+            }),
+            prisma.devolucao.findMany({
+                where: whereDevolucaoAnterior,
+                select: { valorTotal: true, pedidoOriginal: { select: { vendedorId: true } } },
+            }),
+            prisma.devolucaoItem.findMany({
+                where: { devolucao: whereDevolucaoAtual },
+                select: { produtoId: true, valorTotal: true },
+            }),
+            prisma.devolucaoItem.findMany({
+                where: { devolucao: whereDevolucaoAnterior },
+                select: { produtoId: true, valorTotal: true },
+            }),
+            prisma.devolucao.groupBy({
+                by: ['clienteId'],
+                _sum: { valorTotal: true },
+                where: whereDevolucaoAtual,
+            }),
+            prisma.metaMensalVendedor.findMany({
+                where: {
+                    mesReferencia: {
+                        in: [...new Set(listIsoDays(semanaAtualInicio, semanaAtualFim).map((d) => d.slice(0, 7)))],
+                    },
+                    ...(vendedorIdFiltro ? { vendedorId: vendedorIdFiltro } : {}),
+                },
+                include: { vendedor: { select: { id: true, nome: true } } },
+            }),
+            prisma.parcela.aggregate({
+                _sum: { valor: true },
+                _count: { _all: true },
+                where: {
+                    status: 'PENDENTE',
+                    dataVencimento: { lt: dateFromISOStart(isoNowTZ()) },
+                    ...(vendedorIdFiltro ? { contaReceber: { pedido: { vendedorId: vendedorIdFiltro } } } : {}),
+                },
+            }),
+            prisma.pedido.count({ where: { statusEnvio: 'ERRO', ...(vendedorIdFiltro ? { vendedorId: vendedorIdFiltro } : {}) } }),
+            prisma.pedido.count({ where: { especial: true, statusEnvio: { in: ['ABERTO', 'ENVIAR'] }, ...(vendedorIdFiltro ? { vendedorId: vendedorIdFiltro } : {}) } }),
+            prisma.atendimento.count({
+                where: {
+                    transferidoParaId: { not: null },
+                    transferenciaFinalizada: false,
+                    ...(vendedorIdFiltro ? { OR: [{ idVendedor: vendedorIdFiltro }, { transferidoParaId: vendedorIdFiltro }] } : {}),
+                },
+            }),
+            prisma.atendimento.count({
+                where: {
+                    OR: [{ alertaVisualAtivo: true }, { dataRetorno: { lte: semanaAtualFim } }],
+                    ...(vendedorIdFiltro ? { idVendedor: vendedorIdFiltro } : {}),
+                },
+            }),
+            prisma.caixaDiario.count({ where: { status: 'CONFERIDO', ...(vendedorIdFiltro ? { vendedorId: vendedorIdFiltro } : {}) } }),
+        ]);
+
+        const aggAtual = {
+            bruto: 0,
+            pedidos: pedidosAtual.length,
+            vendedores: new Map(),
+            produtos: new Map(),
+            clientes: new Map(),
+        };
+        for (const p of pedidosAtual) {
+            const valorPed = valorPedido(p);
+            aggAtual.bruto += valorPed;
+
+            if (p.vendedorId) {
+                const vend = aggAtual.vendedores.get(p.vendedorId) || {
+                    vendedorId: p.vendedorId,
+                    nome: p.vendedor?.nome || 'Sem vendedor',
+                    bruto: 0,
+                    pedidos: 0,
+                };
+                vend.bruto += valorPed;
+                vend.pedidos += 1;
+                aggAtual.vendedores.set(p.vendedorId, vend);
+            }
+
+            if (p.clienteId) {
+                const cli = aggAtual.clientes.get(p.clienteId) || {
+                    clienteId: p.clienteId,
+                    nome: p.cliente?.NomeFantasia || p.cliente?.Nome || 'Cliente sem nome',
+                    codigo: p.cliente?.Codigo || null,
+                    valor: 0,
+                    pedidos: 0,
+                };
+                cli.valor += valorPed;
+                cli.pedidos += 1;
+                aggAtual.clientes.set(p.clienteId, cli);
+            }
+
+            for (const it of p.itens) {
+                const valorItem = num(it.valor) * num(it.quantidade);
+                const prod = aggAtual.produtos.get(it.produtoId) || {
+                    produtoId: it.produtoId,
+                    nome: it.produto?.nome || 'Produto sem nome',
+                    codigo: it.produto?.codigo || null,
+                    valorLiquido: 0,
+                    quantidade: 0,
+                };
+                prod.valorLiquido += valorItem;
+                prod.quantidade += num(it.quantidade);
+                aggAtual.produtos.set(it.produtoId, prod);
+            }
+        }
+
+        const aggAnterior = {
+            bruto: 0,
+            pedidos: pedidosAnterior.length,
+            vendedores: new Map(),
+            produtos: new Map(),
+        };
+        for (const p of pedidosAnterior) {
+            const valorPed = valorPedido(p);
+            aggAnterior.bruto += valorPed;
+
+            if (p.vendedorId) {
+                const vend = aggAnterior.vendedores.get(p.vendedorId) || {
+                    vendedorId: p.vendedorId,
+                    nome: p.vendedor?.nome || 'Sem vendedor',
+                    bruto: 0,
+                    pedidos: 0,
+                };
+                vend.bruto += valorPed;
+                vend.pedidos += 1;
+                aggAnterior.vendedores.set(p.vendedorId, vend);
+            }
+
+            for (const it of p.itens) {
+                const valorItem = num(it.valor) * num(it.quantidade);
+                const prod = aggAnterior.produtos.get(it.produtoId) || {
+                    produtoId: it.produtoId,
+                    nome: it.produto?.nome || 'Produto sem nome',
+                    codigo: it.produto?.codigo || null,
+                    valorLiquido: 0,
+                    quantidade: 0,
+                };
+                prod.valorLiquido += valorItem;
+                prod.quantidade += num(it.quantidade);
+                aggAnterior.produtos.set(it.produtoId, prod);
+            }
+        }
+
+        const devolucaoVendAtualMap = new Map();
+        for (const dev of devolucoesAtualPorVendedor) {
+            const vendId = dev.pedidoOriginal?.vendedorId;
+            if (!vendId) continue;
+            devolucaoVendAtualMap.set(vendId, (devolucaoVendAtualMap.get(vendId) || 0) + num(dev.valorTotal));
+        }
+        const devolucaoVendAnteriorMap = new Map();
+        for (const dev of devolucoesAnteriorPorVendedor) {
+            const vendId = dev.pedidoOriginal?.vendedorId;
+            if (!vendId) continue;
+            devolucaoVendAnteriorMap.set(vendId, (devolucaoVendAnteriorMap.get(vendId) || 0) + num(dev.valorTotal));
+        }
+
+        for (const item of itensDevolucaoAtual) {
+            const prod = aggAtual.produtos.get(item.produtoId);
+            if (prod) prod.valorLiquido -= num(item.valorTotal);
+        }
+        for (const item of itensDevolucaoAnterior) {
+            const prod = aggAnterior.produtos.get(item.produtoId);
+            if (prod) prod.valorLiquido -= num(item.valorTotal);
+        }
+
+        for (const dev of devolucaoClienteAtual) {
+            const cli = aggAtual.clientes.get(dev.clienteId);
+            if (cli) cli.valor -= num(dev._sum.valorTotal);
+        }
+
+        const devolucaoAtual = num(devolucaoAtualAgg._sum.valorTotal);
+        const devolucaoAnterior = num(devolucaoAnteriorAgg._sum.valorTotal);
+        const vendasLiquidasAtual = aggAtual.bruto - devolucaoAtual;
+        const vendasLiquidasAnterior = aggAnterior.bruto - devolucaoAnterior;
+
+        const diasSemanaDecorridos = Math.max(1, Math.floor((janelaAtualFim - semanaAtualInicio) / ONE_DAY_MS) + 1);
+        const diasSemanaTotal = 7;
+
+        const diasSemanaAtualISO = listIsoDays(semanaAtualInicio, semanaAtualFim);
+        const metasSemanaMap = new Map();
+        for (const meta of metasSemana) {
+            const diasTrabalho = parseJsonArray(meta.diasTrabalho).map(String);
+            if (!Array.isArray(diasTrabalho) || diasTrabalho.length === 0) continue;
+            const diasTrabalhoSet = new Set(diasTrabalho);
+            const diasSemanaAtivos = diasSemanaAtualISO.filter((dia) => diasTrabalhoSet.has(dia)).length;
+            const valorDia = num(meta.valorMensal) / diasTrabalho.length;
+            const metaSemana = valorDia * diasSemanaAtivos;
+
+            const current = metasSemanaMap.get(meta.vendedorId) || {
+                vendedorId: meta.vendedorId,
+                nome: meta.vendedor?.nome || 'Sem nome',
+                metaSemanal: 0,
+            };
+            current.metaSemanal += metaSemana;
+            metasSemanaMap.set(meta.vendedorId, current);
+        }
+
+        const allVendedoresIds = new Set([
+            ...aggAtual.vendedores.keys(),
+            ...aggAnterior.vendedores.keys(),
+            ...metasSemanaMap.keys(),
+        ]);
+
+        const rankingVendedores = [...allVendedoresIds].map((vendId) => {
+            const atual = aggAtual.vendedores.get(vendId);
+            const anterior = aggAnterior.vendedores.get(vendId);
+            const metaSemanal = metasSemanaMap.get(vendId)?.metaSemanal || 0;
+
+            const brutoAtual = atual?.bruto || 0;
+            const brutoAnterior = anterior?.bruto || 0;
+            const devAtualVend = devolucaoVendAtualMap.get(vendId) || 0;
+            const devAnteriorVend = devolucaoVendAnteriorMap.get(vendId) || 0;
+            const realizadoAtual = brutoAtual - devAtualVend;
+            const realizadoAnterior = brutoAnterior - devAnteriorVend;
+            const pedidosAtualVend = atual?.pedidos || 0;
+            const ticketAtualVend = pedidosAtualVend > 0 ? realizadoAtual / pedidosAtualVend : 0;
+
+            return {
+                vendedorId: vendId,
+                nome: atual?.nome || anterior?.nome || metasSemanaMap.get(vendId)?.nome || 'Sem nome',
+                metaSemanal,
+                realizado: realizadoAtual,
+                pctAtingimento: metaSemanal > 0 ? (realizadoAtual / metaSemanal) * 100 : null,
+                projecaoSemanal: diasSemanaDecorridos > 0 ? (realizadoAtual / diasSemanaDecorridos) * diasSemanaTotal : 0,
+                deltaSemanaAnteriorPct: realizadoAnterior > 0
+                    ? ((realizadoAtual - realizadoAnterior) / realizadoAnterior) * 100
+                    : null,
+                pedidos: pedidosAtualVend,
+                ticketMedio: ticketAtualVend,
+            };
+        }).sort((a, b) => b.realizado - a.realizado);
+
+        const topProdutos = [...aggAtual.produtos.values()]
+            .map((prod) => {
+                const prev = aggAnterior.produtos.get(prod.produtoId);
+                const valorAnterior = prev?.valorLiquido || 0;
+                return {
+                    ...prod,
+                    variacaoPct: valorAnterior > 0 ? ((prod.valorLiquido - valorAnterior) / valorAnterior) * 100 : null,
+                };
+            })
+            .sort((a, b) => b.valorLiquido - a.valorLiquido)
+            .slice(0, 10);
+
+        const produtosEmQueda = [...new Set([...aggAnterior.produtos.keys(), ...aggAtual.produtos.keys()])]
+            .map((produtoId) => {
+                const prev = aggAnterior.produtos.get(produtoId);
+                const atual = aggAtual.produtos.get(produtoId);
+                const valorAnterior = prev?.valorLiquido || 0;
+                const valorAtual = atual?.valorLiquido || 0;
+                const variacaoPct = valorAnterior > 0 ? ((valorAtual - valorAnterior) / valorAnterior) * 100 : null;
+                return {
+                    produtoId,
+                    nome: atual?.nome || prev?.nome || 'Produto sem nome',
+                    codigo: atual?.codigo || prev?.codigo || null,
+                    vendasSemanaAnterior: valorAnterior,
+                    vendasSemanaAtual: valorAtual,
+                    variacaoPct,
+                };
+            })
+            .filter((p) => p.variacaoPct != null && p.variacaoPct < 0)
+            .sort((a, b) => a.variacaoPct - b.variacaoPct)
+            .slice(0, 10);
+
+        const topClientes = [...aggAtual.clientes.values()]
+            .sort((a, b) => b.valor - a.valor)
+            .slice(0, 10);
+
+        const metaSemanalTotal = [...metasSemanaMap.values()].reduce((sum, item) => sum + num(item.metaSemanal), 0);
+
+        const periodoAtual = {
+            inicio: toISODate(semanaAtualInicio),
+            fim: toISODate(semanaAtualFim),
+            janelaFim: toISODate(janelaAtualFim),
+            diasJanela,
+        };
+        const periodoAnterior = {
+            inicio: toISODate(semanaAnteriorInicio),
+            fim: toISODate(semanaAnteriorFim),
+            janelaFim: toISODate(janelaAnteriorFim),
+            diasJanela,
+        };
+
+        res.json({
+            dataBase: dataBaseISO,
+            filtroVendedorId: vendedorIdFiltro,
+            periodoAtual,
+            periodoAnterior,
+            resumoEquipe: {
+                vendasLiquidas: vendasLiquidasAtual,
+                devolucoes: devolucaoAtual,
+                pedidos: aggAtual.pedidos,
+                ticketMedio: aggAtual.pedidos > 0 ? vendasLiquidasAtual / aggAtual.pedidos : 0,
+                variacaoPct: vendasLiquidasAnterior > 0
+                    ? ((vendasLiquidasAtual - vendasLiquidasAnterior) / vendasLiquidasAnterior) * 100
+                    : null,
+                metaSemanal: metaSemanalTotal,
+                atingimentoPct: metaSemanalTotal > 0 ? (vendasLiquidasAtual / metaSemanalTotal) * 100 : null,
+                projecaoSemanal: diasSemanaDecorridos > 0 ? (vendasLiquidasAtual / diasSemanaDecorridos) * diasSemanaTotal : 0,
+                semanaAnteriorLiquida: vendasLiquidasAnterior,
+            },
+            rankingVendedores,
+            insights: {
+                topProdutos,
+                produtosEmQueda,
+                topClientes,
+                alertas: {
+                    inadimplencia: {
+                        total: num(inadimplencia._sum.valor),
+                        parcelas: inadimplencia._count._all,
+                    },
+                    errosErp: { total: pedidosComErro },
+                    pedidosEspeciais: { total: pedidosEspeciais },
+                    transferenciasPendentes: { total: transferenciasPendentes },
+                    pendenciasAbertas: { total: pendenciasAbertas },
+                    caixasAConferir: { total: caixasAConferir },
+                },
+            },
+            responsavel: {
+                id: user?.id || null,
+                nome: user?.nome || user?.login || 'Usuário',
+            },
+            geradoEm: new Date().toISOString(),
+        });
+    } catch (error) {
+        console.error('Erro no weekly-brief:', error);
+        res.status(500).json({ error: 'Erro ao gerar resumo semanal.' });
+    }
+});
 
 router.get('/', verificarAuth, async (req, res) => {
     try {
