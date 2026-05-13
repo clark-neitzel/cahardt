@@ -1150,6 +1150,7 @@ router.get('/', verificarAuth, async (req, res) => {
 
 // ─── Aba Visitas ─────────────────────────────────────────────────────────────
 
+// Comparações em uppercase para ser case-insensitive (banco pode ter 'Presencial', 'PRESENCIAL', etc.)
 const TIPOS_PRESENCIAL = ['VISITA', 'AMOSTRA', 'PRESENCIAL'];
 const TIPOS_WHATSAPP = ['WHATSAPP'];
 const TIPOS_IGNORAR = ['FINANCEIRO'];
@@ -1194,6 +1195,7 @@ router.get('/visitas', verificarAuth, async (req, res) => {
                 vendedor: { select: { id: true, nome: true } },
                 cliente: { select: { UUID: true, Nome: true, NomeFantasia: true, Ponto_GPS: true } },
                 lead: { select: { id: true, nomeEstabelecimento: true, pontoGps: true } },
+                pedido: { select: { id: true } },
             },
             orderBy: { criadoEm: 'asc' },
         });
@@ -1222,7 +1224,8 @@ router.get('/visitas', verificarAuth, async (req, res) => {
                 });
             }
 
-            if (TIPOS_IGNORAR.includes(at.tipo)) continue;
+            const tipoUp = (at.tipo || '').toUpperCase();
+            if (TIPOS_IGNORAR.includes(tipoUp)) continue;
 
             const v = vendedoresMap.get(vid);
             const nomeCliente = at.cliente
@@ -1231,8 +1234,9 @@ router.get('/visitas', verificarAuth, async (req, res) => {
             const hora = at.criadoEm.toLocaleTimeString('pt-BR', {
                 hour: '2-digit', minute: '2-digit', timeZone: TZ,
             });
+            const temPedido = !!at.pedido;
 
-            if (TIPOS_PRESENCIAL.includes(at.tipo)) {
+            if (TIPOS_PRESENCIAL.includes(tipoUp) || temPedido) {
                 v.presencialTotal++;
                 const gpsVend = parseGpsStr(at.gpsVendedor);
                 const gpsCli = parseGpsStr(at.cliente?.Ponto_GPS || at.lead?.pontoGps);
@@ -1253,7 +1257,7 @@ router.get('/visitas', verificarAuth, async (req, res) => {
                         v.detalhes.presencialNaoConfirmado.push({ nomeCliente, tipo: at.tipo, hora, distancia: dist });
                     }
                 }
-            } else if (TIPOS_WHATSAPP.includes(at.tipo)) {
+            } else if (TIPOS_WHATSAPP.includes(tipoUp)) {
                 v.whatsappTotal++;
                 v.detalhes.whatsapp.push({ nomeCliente, hora });
             } else {
