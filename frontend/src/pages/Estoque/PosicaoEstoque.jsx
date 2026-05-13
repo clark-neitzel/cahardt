@@ -617,6 +617,8 @@ export default function PosicaoEstoque() {
     const [filtrosAbertos, setFiltrosAbertos] = useState(false);
     const [filtrosMobileAbertos, setFiltrosMobileAbertos] = useState(false);
     const filtrosRef = useRef(null);
+    const filterBarRef = useRef(null);
+    const [filterBarHeight, setFilterBarHeight] = useState(0);
     const searchTimeout = useRef(null);
     const demandaTimeout = useRef(null);
 
@@ -628,6 +630,18 @@ export default function PosicaoEstoque() {
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, [filtrosAbertos]);
+
+    // Mede altura da barra de filtros para compensar o fixed no mobile
+    useEffect(() => {
+        const el = filterBarRef.current;
+        if (!el) return;
+        const ro = new ResizeObserver(() => {
+            setFilterBarHeight(el.getBoundingClientRect().height);
+        });
+        ro.observe(el);
+        setFilterBarHeight(el.getBoundingClientRect().height);
+        return () => ro.disconnect();
+    }, []);
 
     useEffect(() => {
         Promise.all([
@@ -760,7 +774,8 @@ export default function PosicaoEstoque() {
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-5xl mx-auto px-4">
                 {/* ─── ÁREA STICKY: tabs + filtros ─── */}
-                <div className="sticky top-0 z-20 bg-gray-50 -mx-4 px-4 pt-3 pb-3 border-b border-gray-200/60">
+                {/* Mobile: fixed abaixo da nav (top-14=56px); Desktop: sticky topo */}
+                <div ref={filterBarRef} className="fixed top-14 inset-x-0 z-20 bg-gray-50 px-4 pt-3 pb-3 border-b border-gray-200/60 md:sticky md:top-0 md:inset-x-auto md:-mx-4">
 
                     {/* Toggle de abas */}
                     <div className="flex gap-1 p-1 bg-gray-100 rounded-lg mb-3 w-fit">
@@ -978,7 +993,8 @@ export default function PosicaoEstoque() {
                     </div>
                 </div>
 
-                {/* Espaço para compensar a sticky bar no conteúdo */}
+                {/* Espaço para compensar o fixed bar no mobile */}
+                <div className="md:hidden" style={{ height: filterBarHeight }} />
                 <div className="pt-4" />
 
                 {/* ─── ABA: POSIÇÃO ─── */}
