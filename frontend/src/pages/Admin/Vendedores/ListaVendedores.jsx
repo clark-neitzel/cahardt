@@ -163,10 +163,6 @@ const ListaVendedores = () => {
                                 <tr key={vendedor.id} className="bg-blue-50">
                                     <td className="px-3 py-3 text-sm font-medium text-gray-900">
                                         <div className="font-bold truncate">{vendedor.nome}</div>
-                                        <div className="flex gap-2 mt-2">
-                                            <button onClick={() => handleSave(vendedor.id)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700"><Save className="h-3.5 w-3.5" /> Salvar</button>
-                                            <button onClick={handleCancel} className="inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-100"><X className="h-3.5 w-3.5" /> Cancelar</button>
-                                        </div>
                                     </td>
                                     <td className="px-3 py-3 text-sm text-gray-500">
                                         <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" />
@@ -199,7 +195,12 @@ const ListaVendedores = () => {
                                             })}
                                         </div>
                                     </td>
-                                    <td></td>
+                                    <td className="px-3 py-3 whitespace-nowrap text-right">
+                                        <div className="flex justify-end gap-1.5">
+                                            <button onClick={() => handleSave(vendedor.id)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700"><Save className="h-3.5 w-3.5" /> Salvar</button>
+                                            <button onClick={handleCancel} className="inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-100"><X className="h-3.5 w-3.5" /> Cancelar</button>
+                                        </div>
+                                    </td>
                                 </tr>
                             ) : (
                             <tr key={vendedor.id} className={vendedor.ativo === false ? 'bg-gray-50 opacity-60' : ''}>
