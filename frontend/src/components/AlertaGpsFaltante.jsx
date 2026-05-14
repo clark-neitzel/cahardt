@@ -1,48 +1,7 @@
-import React, { useState } from 'react';
-import { MapPin, Loader, CheckCircle, X } from 'lucide-react';
-import clienteService from '../services/clienteService';
-import leadService from '../services/leadService';
-import toast from 'react-hot-toast';
+import React from 'react';
+import { MapPin, AlertTriangle } from 'lucide-react';
 
-const AlertaGpsFaltante = ({ tipo, clienteId, nomeCliente, onContinuar, onAtualizado }) => {
-    const [salvando, setSalvando] = useState(false);
-    const [sucesso, setSucesso] = useState(false);
-
-    const handleAtualizar = () => {
-        if (!navigator.geolocation) {
-            toast.error('Geolocalização não suportada neste dispositivo.');
-            return;
-        }
-        setSalvando(true);
-        navigator.geolocation.getCurrentPosition(
-            async (pos) => {
-                const gps = `${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
-                try {
-                    if (tipo === 'lead') {
-                        await leadService.atualizar(clienteId, { pontoGps: gps });
-                    } else {
-                        await clienteService.atualizar(clienteId, { Ponto_GPS: gps });
-                    }
-                    setSucesso(true);
-                    toast.success('Ponto de GPS salvo!');
-                    setTimeout(() => {
-                        if (onAtualizado) onAtualizado(gps);
-                    }, 800);
-                } catch (e) {
-                    console.error(e);
-                    toast.error('Erro ao salvar GPS.');
-                } finally {
-                    setSalvando(false);
-                }
-            },
-            () => {
-                setSalvando(false);
-                toast.error('Não foi possível capturar localização. Permita o acesso no navegador.');
-            },
-            { enableHighAccuracy: true, timeout: 10000 }
-        );
-    };
-
+const AlertaGpsFaltante = ({ nomeCliente, onAbrirClientePopup, onContinuar }) => {
     return (
         <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center px-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
@@ -56,35 +15,29 @@ const AlertaGpsFaltante = ({ tipo, clienteId, nomeCliente, onContinuar, onAtuali
                             O cliente <span className="font-semibold text-gray-700">{nomeCliente}</span> não tem ponto de GPS registrado. Atualize para melhorar a verificação de visitas.
                         </p>
                     </div>
+                    <div className="flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2.5 text-left w-full">
+                        <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+                        <p className="text-[12px] text-orange-700 leading-snug font-medium">
+                            Atualize o GPS somente se você estiver fisicamente no local do cliente agora. O ponto registrado será usado para verificar visitas futuras.
+                        </p>
+                    </div>
                 </div>
 
-                {sucesso ? (
-                    <div className="mt-5 flex items-center justify-center gap-2 text-green-700 font-semibold text-sm">
-                        <CheckCircle className="h-5 w-5" />
-                        GPS salvo com sucesso!
-                    </div>
-                ) : (
-                    <div className="mt-5 flex flex-col gap-2">
-                        <button
-                            onClick={handleAtualizar}
-                            disabled={salvando}
-                            className="w-full bg-blue-600 active:bg-blue-700 text-white font-bold py-3 rounded-xl text-[14px] disabled:opacity-60 flex items-center justify-center gap-2 transition-colors"
-                        >
-                            {salvando ? (
-                                <><Loader className="h-4 w-4 animate-spin" /> Capturando...</>
-                            ) : (
-                                <><MapPin className="h-4 w-4" /> Atualizar agora</>
-                            )}
-                        </button>
-                        <button
-                            onClick={onContinuar}
-                            disabled={salvando}
-                            className="w-full bg-gray-100 active:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl text-[14px] disabled:opacity-60 transition-colors"
-                        >
-                            Continuar sem atualizar
-                        </button>
-                    </div>
-                )}
+                <div className="mt-4 flex flex-col gap-2">
+                    <button
+                        onClick={onAbrirClientePopup}
+                        className="w-full bg-blue-600 active:bg-blue-700 text-white font-bold py-3 rounded-xl text-[14px] flex items-center justify-center gap-2 transition-colors"
+                    >
+                        <MapPin className="h-4 w-4" />
+                        Atualizar GPS do cliente
+                    </button>
+                    <button
+                        onClick={onContinuar}
+                        className="w-full bg-gray-100 active:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl text-[14px] transition-colors"
+                    >
+                        Continuar sem atualizar
+                    </button>
+                </div>
             </div>
         </div>
     );

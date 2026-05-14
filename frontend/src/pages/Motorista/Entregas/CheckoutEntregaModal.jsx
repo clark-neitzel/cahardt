@@ -6,12 +6,14 @@ import formasPagamentoService from '../../../services/formasPagamentoService';
 import tabelaPrecoService from '../../../services/tabelaPrecoService';
 import { useAuth } from '../../../contexts/AuthContext';
 import AlertaGpsFaltante from '../../../components/AlertaGpsFaltante';
+import ClientePopup from '../../Rota/ClientePopup';
 
 const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     const { user } = useAuth();
     const [step, setStep] = useState(1); // 1 = Status Físico, 2 = Devoluções (Se Parcial), 3 = Caixa (Dinheiro), 4 = GPS e Conclusão
     const [statusFinal, setStatusFinal] = useState(''); // ENTREGUE, ENTREGUE_PARCIAL, DEVOLVIDO
     const [alertaGpsDismissed, setAlertaGpsDismissed] = useState(false);
+    const [showClientePopupGps, setShowClientePopupGps] = useState(false);
 
     // Carrinho Reverso
     const [itensDevolvidos, setItensDevolvidos] = useState([]);
@@ -393,11 +395,16 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
         <>
         {!pedido.cliente?.Ponto_GPS && !alertaGpsDismissed && (
             <AlertaGpsFaltante
-                tipo="cliente"
-                clienteId={pedido.cliente?.uuid || pedido.cliente?.UUID}
                 nomeCliente={pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}
+                onAbrirClientePopup={() => { setAlertaGpsDismissed(true); setShowClientePopupGps(true); }}
                 onContinuar={() => setAlertaGpsDismissed(true)}
-                onAtualizado={() => setAlertaGpsDismissed(true)}
+            />
+        )}
+        {showClientePopupGps && pedido.cliente && (
+            <ClientePopup
+                cliente={pedido.cliente}
+                onClose={() => setShowClientePopupGps(false)}
+                onAtualizado={() => setShowClientePopupGps(false)}
             />
         )}
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-95 p-2">

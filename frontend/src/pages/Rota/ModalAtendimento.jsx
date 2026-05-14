@@ -4,6 +4,7 @@ import atendimentoService from '../../services/atendimentoService';
 import configService from '../../services/configService';
 import toast from 'react-hot-toast';
 import AlertaGpsFaltante from '../../components/AlertaGpsFaltante';
+import ClientePopup from './ClientePopup';
 
 const TIPOS_PADRAO = [
     { value: 'VISITA', label: 'Visita Presencial' },
@@ -57,6 +58,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
     const [saving, setSaving] = useState(false);
     const semGpsCliente = isLead ? !item.pontoGps : !item.Ponto_GPS;
     const [alertaGpsDismissed, setAlertaGpsDismissed] = useState(false);
+    const [showClientePopupGps, setShowClientePopupGps] = useState(false);
 
     // Ação selecionada (objeto completo com configurações)
     const acaoSelecionada = acoes.find(a => a.value === form.acaoAtendimento) || null;
@@ -324,11 +326,16 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
         <>
         {semGpsCliente && !alertaGpsDismissed && (
             <AlertaGpsFaltante
-                tipo={isLead ? 'lead' : 'cliente'}
-                clienteId={isLead ? item.id : item.uuid}
                 nomeCliente={isLead ? (item.nomeEstabelecimento || `Lead #${item.numero}`) : (item.NomeFantasia || item.Nome)}
+                onAbrirClientePopup={() => { setAlertaGpsDismissed(true); setShowClientePopupGps(true); }}
                 onContinuar={() => setAlertaGpsDismissed(true)}
-                onAtualizado={() => setAlertaGpsDismissed(true)}
+            />
+        )}
+        {showClientePopupGps && (
+            <ClientePopup
+                cliente={item}
+                onClose={() => setShowClientePopupGps(false)}
+                onAtualizado={() => setShowClientePopupGps(false)}
             />
         )}
         <div className="fixed inset-0 z-50 bg-black/50 flex items-end">

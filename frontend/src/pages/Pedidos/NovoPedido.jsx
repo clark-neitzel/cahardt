@@ -1800,11 +1800,9 @@ const NovoPedido = () => {
             {/* Alerta de GPS faltante no cliente */}
             {clienteSelecionado && !clienteSelecionado.Ponto_GPS && !alertaGpsDismissed && (
                 <AlertaGpsFaltante
-                    tipo="cliente"
-                    clienteId={clienteSelecionado.UUID}
                     nomeCliente={clienteSelecionado.NomeFantasia || clienteSelecionado.Nome}
+                    onAbrirClientePopup={() => { setAlertaGpsDismissed(true); setShowClientePopup(true); }}
                     onContinuar={() => setAlertaGpsDismissed(true)}
-                    onAtualizado={() => setAlertaGpsDismissed(true)}
                 />
             )}
 
