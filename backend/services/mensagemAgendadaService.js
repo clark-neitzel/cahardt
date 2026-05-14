@@ -9,6 +9,11 @@ dayjs.extend(timezone);
 
 const SP_TZ = 'America/Sao_Paulo';
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const gerarBarra = (pct) => {
+    const total = 10;
+    const cheios = Math.min(Math.round((pct / 100) * total), total);
+    return '▓'.repeat(cheios) + '░'.repeat(total - cheios) + ` ${pct}%`;
+};
 
 const gerarMensagemMeta = async (vendedor, dataAtual) => {
     const hoje = dataAtual || dayjs().tz(SP_TZ).format('YYYY-MM-DD');
@@ -18,25 +23,22 @@ const gerarMensagemMeta = async (vendedor, dataAtual) => {
 
     const dashboard = await metaService.calcularDashboardVendedor(vendedor.id, hoje);
 
-    // Sem meta cadastrada — mensagem simplificada
     if (!dashboard.temMeta) {
-        const partes = [
-            `📊 *RELATÓRIO DE META — ${vendedor.nome}*`,
+        return [
+            `📊 *RELATÓRIO DE META*`,
+            `*${vendedor.nome}*`,
             `_${dayjs.tz(hoje, SP_TZ).format('DD/MM/YYYY')}_`,
             '',
             '⚠️ Nenhuma meta cadastrada para este mês.',
-        ];
-        return partes.join('\n');
+        ].join('\n');
     }
 
     const { metasAlvo, realizado, projecoes, resumoCalendario, progressoCidades, cidadesDeHoje } = dashboard;
 
-    // Meta do dia = saldo restante ÷ dias úteis restantes
     const saldoRestante = Math.max(metasAlvo.mensal - realizado.totalVendidoMes, 0);
     const diasRestantes = Math.max(resumoCalendario.totalDiasMes - resumoCalendario.diasTrabalhadosMesAteHoje, 1);
     const metaDoDia = saldoRestante / diasRestantes;
 
-    // Vendido hoje
     const inicioDia = dayjs.tz(hoje, SP_TZ).startOf('day').toDate();
     const fimDia = dayjs.tz(hoje, SP_TZ).endOf('day').toDate();
     const pedidosHoje = await prisma.pedido.findMany({
@@ -51,7 +53,6 @@ const gerarMensagemMeta = async (vendedor, dataAtual) => {
     const vendidoHoje = pedidosHoje.reduce((s, p) =>
         s + p.itens.reduce((si, i) => si + Number(i.valor || 0) * Number(i.quantidade || 0), 0), 0);
 
-    // Clientes agendados hoje (por Dia_de_venda) — total e por cidade
     const [clientesAgendadosHoje, clientesAgendadosPorCidade] = await Promise.all([
         prisma.cliente.count({
             where: { idVendedor: vendedor.id, Ativo: true, Dia_de_venda: { contains: siglaDia } }
@@ -61,15 +62,12 @@ const gerarMensagemMeta = async (vendedor, dataAtual) => {
             select: { End_Cidade: true }
         })
     ]);
-    const clientesAgendados = clientesAgendadosHoje;
 
-    // Agendados por cidade hoje
     const agendadosPorCidade = {};
     clientesAgendadosPorCidade.forEach(c => {
         agendadosPorCidade[c.End_Cidade] = (agendadosPorCidade[c.End_Cidade] || 0) + 1;
     });
 
-    // Cidades de hoje: meta vs realizado hoje + clientes
     const cidadesDeHojeSet = new Set(cidadesDeHoje || []);
     const realizadoHojePorCidade = {};
     const clientesComPedidoHojePorCidade = {};
@@ -89,33 +87,35 @@ const gerarMensagemMeta = async (vendedor, dataAtual) => {
         ? Math.round((realizado.totalVendidoMes / metasAlvo.mensal) * 100)
         : 0;
 
+    const barMes = gerarBarra(pct);
+    const metaOk = vendidoHoje >= metaDoDia;
+
     const linhas = [
-        `📊 *RELATÓRIO DE META — ${vendedor.nome}*`,
+        `📊 *RELATÓRIO DE META*`,
+        `*${vendedor.nome}*`,
         `_${dayjs.tz(hoje, SP_TZ).locale('pt-br').format('dddd, DD/MM/YYYY').replace(/^\w/, c => c.toUpperCase())}_`,
         '',
         '━━━━━━━━━━━━━━━━━━━━',
         '🎯 *META DO MÊS*',
         `Meta: R$ ${fmt(metasAlvo.mensal)}`,
-        `Vendido: R$ ${fmt(realizado.totalVendidoMes)} (${pct}%)`,
+        `Vendido: R$ ${fmt(realizado.totalVendidoMes)} *(${pct}%)*`,
+        barMes,
         `Projeção: R$ ${fmt(projecoes.mensal)}`,
         '',
         '📌 *META DE HOJE*',
-        `Meta do dia: R$ ${fmt(metaDoDia)}`,
-        `Vendido hoje: R$ ${fmt(vendidoHoje)}`,
+        `Precisa vender: R$ ${fmt(metaDoDia)}`,
+        `Vendido: R$ ${fmt(vendidoHoje)} ${metaOk ? '✅' : '⏳'}`,
         '',
         '👥 *CLIENTES DE HOJE*',
-        `Agendados: ${clientesAgendados} clientes`,
-        `Com pedido: ${clientesComPedido} clientes`,
+        `Agendados: ${clientesAgendadosHoje} | Com pedido: ${clientesComPedido}`,
     ];
 
-    // Cidades de hoje
-    const cidadesLinhas = [];
     if (cidadesDeHoje && cidadesDeHoje.length > 0) {
         const cidadesComMeta = progressoCidades.filter(pc => cidadesDeHojeSet.has(pc.cidade));
         const cidadesSemMeta = cidadesDeHoje.filter(c => !progressoCidades.find(pc => pc.cidade === c));
 
         if (cidadesComMeta.length > 0 || cidadesSemMeta.length > 0) {
-            cidadesLinhas.push('', '🏙️ *CIDADES DE HOJE*');
+            linhas.push('', '🏙️ *CIDADES DE HOJE*');
             for (const pc of cidadesComMeta) {
                 const realHoje = realizadoHojePorCidade[pc.cidade] || 0;
                 const totalVisitasMes = Math.max(pc.diasSemana?.length > 0
@@ -125,29 +125,123 @@ const gerarMensagemMeta = async (vendedor, dataAtual) => {
                 const pctMes = pc.meta > 0 ? Math.round((pc.realizado / pc.meta) * 100) : 0;
                 const agendados = agendadosPorCidade[pc.cidade] || 0;
                 const comPedidoHoje = clientesComPedidoHojePorCidade[pc.cidade]?.size || 0;
-                cidadesLinhas.push(
+                const cidadeOk = realHoje >= metaCidadeHoje;
+                linhas.push(
+                    '',
                     `📍 *${pc.cidade}*`,
-                    `  Hoje: meta R$ ${fmt(metaCidadeHoje)} — vendido R$ ${fmt(realHoje)}`,
-                    `  Mês: R$ ${fmt(pc.realizado)} / R$ ${fmt(pc.meta)} (${pctMes}%)`,
-                    `  Clientes: ${comPedidoHoje} com pedido de ${agendados} agendados`
+                    `Hoje: R$ ${fmt(realHoje)} de R$ ${fmt(metaCidadeHoje)} ${cidadeOk ? '✅' : '⏳'}`,
+                    `Mês: R$ ${fmt(pc.realizado)} de R$ ${fmt(pc.meta)} *(${pctMes}%)*`,
+                    `Clientes: ${comPedidoHoje} de ${agendados} fizeram pedido`
                 );
             }
             for (const cidade of cidadesSemMeta) {
                 const realHoje = realizadoHojePorCidade[cidade] || 0;
                 const agendados = agendadosPorCidade[cidade] || 0;
                 const comPedidoHoje = clientesComPedidoHojePorCidade[cidade]?.size || 0;
-                cidadesLinhas.push(
+                linhas.push(
+                    '',
                     `📍 *${cidade}*`,
-                    `  Hoje: vendido R$ ${fmt(realHoje)}`,
-                    `  Clientes: ${comPedidoHoje} com pedido de ${agendados} agendados`
+                    `Hoje: R$ ${fmt(realHoje)}`,
+                    `Clientes: ${comPedidoHoje} de ${agendados} fizeram pedido`
                 );
             }
         }
     }
 
-    linhas.push(...cidadesLinhas);
-    linhas.push('━━━━━━━━━━━━━━━━━━━━');
+    linhas.push('', '━━━━━━━━━━━━━━━━━━━━');
+    return linhas.join('\n');
+};
 
+const gerarMensagemAtendimento = async (vendedor, dataAtual) => {
+    const hoje = dataAtual || dayjs().tz(SP_TZ).format('YYYY-MM-DD');
+    const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+    const diaHoje = dayjs.tz(hoje, SP_TZ).day();
+    const siglaDia = DIAS_SIGLA[diaHoje];
+
+    const dashboard = await metaService.calcularDashboardVendedor(vendedor.id, hoje);
+
+    if (!dashboard.temMeta) {
+        return [
+            `📋 *ATENDIMENTO DE HOJE*`,
+            `*${vendedor.nome}*`,
+            `_${dayjs.tz(hoje, SP_TZ).format('DD/MM/YYYY')}_`,
+            '',
+            '⚠️ Nenhuma meta cadastrada para este mês.',
+        ].join('\n');
+    }
+
+    const { cidadesDeHoje, progressoCidades } = dashboard;
+
+    const clientesHojeRaw = await prisma.cliente.findMany({
+        where: { idVendedor: vendedor.id, Ativo: true, Dia_de_venda: { contains: siglaDia }, End_Cidade: { not: null } },
+        select: { End_Cidade: true }
+    });
+    const agendadosHojePorCidade = {};
+    clientesHojeRaw.forEach(c => {
+        agendadosHojePorCidade[c.End_Cidade] = (agendadosHojePorCidade[c.End_Cidade] || 0) + 1;
+    });
+
+    const inicioSemanaPast = dayjs.tz(hoje, SP_TZ).subtract(1, 'week').startOf('week').toDate();
+    const fimSemanaPast    = dayjs.tz(hoje, SP_TZ).subtract(1, 'week').endOf('week').toDate();
+    const pedidosSemanaPast = await prisma.pedido.findMany({
+        where: {
+            vendedorId: vendedor.id,
+            dataVenda: { gte: inicioSemanaPast, lte: fimSemanaPast },
+            bonificacao: false,
+            OR: [{ situacaoCA: { notIn: ['CANCELADO', 'DEVOLVIDO'] } }, { situacaoCA: null }]
+        },
+        include: { cliente: { select: { End_Cidade: true } } }
+    });
+    const pedidoSemanaPastPorCidade = {};
+    pedidosSemanaPast.forEach(p => {
+        const cidade = p.cliente?.End_Cidade || 'Sem cidade';
+        if (!pedidoSemanaPastPorCidade[cidade]) pedidoSemanaPastPorCidade[cidade] = new Set();
+        if (p.clienteId) pedidoSemanaPastPorCidade[cidade].add(p.clienteId);
+    });
+
+    const cidadesSet = new Set(cidadesDeHoje || []);
+    const cidadesComMeta = progressoCidades.filter(pc => cidadesSet.has(pc.cidade));
+    const cidadesSemMeta = (cidadesDeHoje || []).filter(c => !progressoCidades.find(pc => pc.cidade === c));
+
+    const linhas = [
+        `📋 *ATENDIMENTO DE HOJE*`,
+        `*${vendedor.nome}*`,
+        `_${dayjs.tz(hoje, SP_TZ).locale('pt-br').format('dddd, DD/MM/YYYY').replace(/^\w/, c => c.toUpperCase())}_`,
+        '',
+        '━━━━━━━━━━━━━━━━━━━━',
+    ];
+
+    if (cidadesComMeta.length === 0 && cidadesSemMeta.length === 0) {
+        linhas.push('Nenhuma cidade agendada para hoje.');
+    }
+
+    for (const pc of cidadesComMeta) {
+        const agendadosHoje = agendadosHojePorCidade[pc.cidade] || 0;
+        const pedidoPastSize = pedidoSemanaPastPorCidade[pc.cidade]?.size || 0;
+        const pctSemana = pc.metaSemana > 0 ? Math.round((pc.realizadoSemana / pc.metaSemana) * 100) : 0;
+        const barSemana = gerarBarra(pctSemana);
+        linhas.push(
+            '',
+            `📍 *${pc.cidade}*`,
+            `Agendados hoje: ${agendadosHoje} clientes`,
+            `Semana: R$ ${fmt(pc.realizadoSemana)} de R$ ${fmt(pc.metaSemana)}`,
+            barSemana,
+            `Sem. passada: ${pc.totalClientes} agendados | ${pedidoPastSize} pediram`
+        );
+    }
+
+    for (const cidade of cidadesSemMeta) {
+        const agendadosHoje = agendadosHojePorCidade[cidade] || 0;
+        const pedidoPastSize = pedidoSemanaPastPorCidade[cidade]?.size || 0;
+        linhas.push(
+            '',
+            `📍 *${cidade}*`,
+            `Agendados hoje: ${agendadosHoje} clientes`,
+            `Sem. passada: ${pedidoPastSize} pediram`
+        );
+    }
+
+    linhas.push('', '━━━━━━━━━━━━━━━━━━━━');
     return linhas.join('\n');
 };
 
@@ -166,10 +260,24 @@ const mensagemAgendadaService = {
         }
     },
 
-    // Usado pelo disparo manual no controller
-    gerarPreview: async (vendedorId) => {
+    enviarAtendimento: async (vendedor) => {
+        if (!vendedor.telefone) {
+            console.warn(`[MensagemAgendada] Vendedor ${vendedor.nome} sem telefone — pulando.`);
+            return { ok: false, motivo: 'Sem telefone' };
+        }
+        try {
+            const mensagem = await gerarMensagemAtendimento(vendedor);
+            return await webhookService.enviarMensagemCustom(vendedor.telefone, vendedor.nome, mensagem);
+        } catch (err) {
+            console.error(`[MensagemAgendada] Erro ao enviar atendimento para ${vendedor.nome}:`, err.message);
+            return { ok: false, motivo: err.message };
+        }
+    },
+
+    gerarPreview: async (vendedorId, tipo = 'meta') => {
         const vendedor = await prisma.vendedor.findUnique({ where: { id: vendedorId } });
         if (!vendedor) throw new Error('Vendedor não encontrado');
+        if (tipo === 'atendimento') return gerarMensagemAtendimento(vendedor);
         return gerarMensagemMeta(vendedor);
     }
 };

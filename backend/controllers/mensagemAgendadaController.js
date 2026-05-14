@@ -86,6 +86,8 @@ const mensagemAgendadaController = {
             let resultado;
             if (config.tipo === 'meta') {
                 resultado = await mensagemAgendadaService.enviarMeta(config.vendedor);
+            } else if (config.tipo === 'atendimento') {
+                resultado = await mensagemAgendadaService.enviarAtendimento(config.vendedor);
             } else {
                 return res.status(400).json({ error: `Tipo desconhecido: ${config.tipo}` });
             }
@@ -106,7 +108,8 @@ const mensagemAgendadaController = {
     preview: async (req, res) => {
         try {
             const { vendedorId } = req.params;
-            const texto = await mensagemAgendadaService.gerarPreview(vendedorId);
+            const tipo = req.query.tipo || 'meta';
+            const texto = await mensagemAgendadaService.gerarPreview(vendedorId, tipo);
             res.json({ texto });
         } catch (err) {
             res.status(500).json({ error: err.message });

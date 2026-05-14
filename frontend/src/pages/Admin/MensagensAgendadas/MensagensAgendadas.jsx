@@ -14,7 +14,10 @@ const DIAS = [
     { sigla: 'DOM', label: 'Dom' },
 ];
 
-const TIPOS = [{ value: 'meta', label: 'Meta' }];
+const TIPOS = [
+    { value: 'meta', label: 'Meta' },
+    { value: 'atendimento', label: 'Atendimento' },
+];
 
 const FORM_VAZIO = { vendedorId: '', tipo: 'meta', hora: '08:00', diasSemana: ['SEG', 'TER', 'QUA', 'QUI', 'SEX'], ativo: true };
 
@@ -151,10 +154,10 @@ export default function MensagensAgendadas() {
         }
     };
 
-    const verPreview = async (vendedorId) => {
+    const verPreview = async (vendedorId, tipo) => {
         try {
             setPreviewLoading(true);
-            const res = await mensagemAgendadaService.preview(vendedorId);
+            const res = await mensagemAgendadaService.preview(vendedorId, tipo);
             setPreviewTexto(res.texto);
         } catch {
             toast.error('Erro ao gerar preview');
@@ -233,7 +236,9 @@ export default function MensagensAgendadas() {
                                     }
                                 </td>
                                 <td className="px-4 py-3">
-                                    <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded capitalize">{c.tipo}</span>
+                                    <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded">
+                                        {TIPOS.find(t => t.value === c.tipo)?.label || c.tipo}
+                                    </span>
                                 </td>
                                 <td className="px-4 py-3 font-mono text-sm text-gray-700">{c.hora}</td>
                                 <td className="px-4 py-3"><BadgeDias dias={c.diasSemana || []} /></td>
@@ -245,7 +250,7 @@ export default function MensagensAgendadas() {
                                 </td>
                                 <td className="px-4 py-3">
                                     <div className="flex justify-end gap-2">
-                                        <button onClick={() => verPreview(c.vendedorId)} title="Ver preview" className="text-gray-400 hover:text-indigo-600" disabled={previewLoading}>
+                                        <button onClick={() => verPreview(c.vendedorId, c.tipo)} title="Ver preview" className="text-gray-400 hover:text-indigo-600" disabled={previewLoading}>
                                             <Eye className="h-4 w-4" />
                                         </button>
                                         <button onClick={() => disparar(c.id, c.vendedor?.nome)} title="Disparar agora" className="text-gray-400 hover:text-green-600" disabled={!!disparando}>
@@ -280,7 +285,7 @@ export default function MensagensAgendadas() {
                                 }
                             </div>
                             <div className="flex gap-1.5">
-                                <button onClick={() => verPreview(c.vendedorId)} className="p-1.5 bg-gray-50 text-gray-500 rounded-lg"><Eye className="h-4 w-4" /></button>
+                                <button onClick={() => verPreview(c.vendedorId, c.tipo)} className="p-1.5 bg-gray-50 text-gray-500 rounded-lg"><Eye className="h-4 w-4" /></button>
                                 <button onClick={() => disparar(c.id, c.vendedor?.nome)} className="p-1.5 bg-green-50 text-green-600 rounded-lg" disabled={!!disparando}>
                                     <Play className="h-4 w-4" />
                                 </button>
@@ -289,7 +294,7 @@ export default function MensagensAgendadas() {
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600 mb-2">
-                            <span className="font-semibold capitalize">{c.tipo}</span>
+                            <span className="font-semibold">{TIPOS.find(t => t.value === c.tipo)?.label || c.tipo}</span>
                             <span className="font-mono">{c.hora}</span>
                             <button onClick={() => toggleAtivo(c)} className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${c.ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                                 {c.ativo ? 'Ativo' : 'Inativo'}

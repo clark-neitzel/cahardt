@@ -193,6 +193,8 @@ function startSchedulers() {
                 let resultado = { ok: false, motivo: 'Tipo desconhecido' };
                 if (config.tipo === 'meta') {
                     resultado = await mensagemAgendadaService.enviarMeta(config.vendedor);
+                } else if (config.tipo === 'atendimento') {
+                    resultado = await mensagemAgendadaService.enviarAtendimento(config.vendedor);
                 }
 
                 if (resultado.ok) {

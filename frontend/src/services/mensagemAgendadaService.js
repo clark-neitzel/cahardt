@@ -7,7 +7,7 @@ const mensagemAgendadaService = {
     atualizar: (id, data) => api.put(`/mensagens-agendadas/${id}`, data).then(r => r.data),
     deletar: (id) => api.delete(`/mensagens-agendadas/${id}`).then(r => r.data),
     disparar: (id) => api.post(`/mensagens-agendadas/${id}/disparar`).then(r => r.data),
-    preview: (vendedorId) => api.get(`/mensagens-agendadas/preview/${vendedorId}`).then(r => r.data),
+    preview: (vendedorId, tipo = 'meta') => api.get(`/mensagens-agendadas/preview/${vendedorId}?tipo=${tipo}`).then(r => r.data),
 };
 
 export default mensagemAgendadaService;
