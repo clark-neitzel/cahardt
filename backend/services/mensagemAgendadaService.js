@@ -103,7 +103,7 @@ const gerarMensagemMeta = async (vendedor, dataAtual) => {
         `Projeção: R$ ${fmt(projecoes.mensal)}`,
         '',
         '📌 *META DE HOJE*',
-        `Precisa vender: R$ ${fmt(metaDoDia)}`,
+        `Compromisso: R$ ${fmt(metaDoDia)}`,
         `Vendido: R$ ${fmt(vendidoHoje)} ${metaOk ? '✅' : '⏳'}`,
         '',
         '👥 *CLIENTES DE HOJE*',
