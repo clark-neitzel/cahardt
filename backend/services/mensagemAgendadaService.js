@@ -51,25 +51,39 @@ const gerarMensagemMeta = async (vendedor, dataAtual) => {
     const vendidoHoje = pedidosHoje.reduce((s, p) =>
         s + p.itens.reduce((si, i) => si + Number(i.valor || 0) * Number(i.quantidade || 0), 0), 0);
 
-    // Clientes agendados hoje (por Dia_de_venda)
-    const [clientesAgendados, clientesComPedido] = await Promise.all([
+    // Clientes agendados hoje (por Dia_de_venda) — total e por cidade
+    const [clientesAgendadosHoje, clientesAgendadosPorCidade] = await Promise.all([
         prisma.cliente.count({
             where: { idVendedor: vendedor.id, Ativo: true, Dia_de_venda: { contains: siglaDia } }
         }),
-        (async () => {
-            const ids = [...new Set(pedidosHoje.map(p => p.clienteId).filter(Boolean))];
-            return ids.length;
-        })()
+        prisma.cliente.findMany({
+            where: { idVendedor: vendedor.id, Ativo: true, Dia_de_venda: { contains: siglaDia }, End_Cidade: { not: null } },
+            select: { End_Cidade: true }
+        })
     ]);
+    const clientesAgendados = clientesAgendadosHoje;
 
-    // Cidades de hoje: meta vs realizado hoje
+    // Agendados por cidade hoje
+    const agendadosPorCidade = {};
+    clientesAgendadosPorCidade.forEach(c => {
+        agendadosPorCidade[c.End_Cidade] = (agendadosPorCidade[c.End_Cidade] || 0) + 1;
+    });
+
+    // Cidades de hoje: meta vs realizado hoje + clientes
     const cidadesDeHojeSet = new Set(cidadesDeHoje || []);
     const realizadoHojePorCidade = {};
+    const clientesComPedidoHojePorCidade = {};
     pedidosHoje.forEach(p => {
         const cidade = p.cliente?.End_Cidade || 'Sem cidade';
         const valor = p.itens.reduce((s, i) => s + Number(i.valor || 0) * Number(i.quantidade || 0), 0);
         realizadoHojePorCidade[cidade] = (realizadoHojePorCidade[cidade] || 0) + valor;
+        if (p.clienteId) {
+            if (!clientesComPedidoHojePorCidade[cidade]) clientesComPedidoHojePorCidade[cidade] = new Set();
+            clientesComPedidoHojePorCidade[cidade].add(p.clienteId);
+        }
     });
+
+    const clientesComPedido = [...new Set(pedidosHoje.map(p => p.clienteId).filter(Boolean))].length;
 
     const pct = metasAlvo.mensal > 0
         ? Math.round((realizado.totalVendidoMes / metasAlvo.mensal) * 100)
@@ -85,7 +99,7 @@ const gerarMensagemMeta = async (vendedor, dataAtual) => {
         `Vendido: R$ ${fmt(realizado.totalVendidoMes)} (${pct}%)`,
         `Projeção: R$ ${fmt(projecoes.mensal)}`,
         '',
-        '📌 *HOJE VOCÊ PRECISA VENDER*',
+        '📌 *META DE HOJE*',
         `Meta do dia: R$ ${fmt(metaDoDia)}`,
         `Vendido hoje: R$ ${fmt(vendidoHoje)}`,
         '',
@@ -104,16 +118,29 @@ const gerarMensagemMeta = async (vendedor, dataAtual) => {
             cidadesLinhas.push('', '🏙️ *CIDADES DE HOJE*');
             for (const pc of cidadesComMeta) {
                 const realHoje = realizadoHojePorCidade[pc.cidade] || 0;
-                // Meta da cidade para hoje = meta total ÷ total visitas no mês × 1
                 const totalVisitasMes = Math.max(pc.diasSemana?.length > 0
                     ? pc.diasSemana.length * Math.ceil(resumoCalendario.totalDiasMes / 7)
                     : resumoCalendario.totalDiasMes, 1);
                 const metaCidadeHoje = pc.meta / totalVisitasMes;
-                cidadesLinhas.push(`• ${pc.cidade}: meta R$ ${fmt(metaCidadeHoje)} — vendido R$ ${fmt(realHoje)}`);
+                const pctMes = pc.meta > 0 ? Math.round((pc.realizado / pc.meta) * 100) : 0;
+                const agendados = agendadosPorCidade[pc.cidade] || 0;
+                const comPedidoHoje = clientesComPedidoHojePorCidade[pc.cidade]?.size || 0;
+                cidadesLinhas.push(
+                    `📍 *${pc.cidade}*`,
+                    `  Hoje: meta R$ ${fmt(metaCidadeHoje)} — vendido R$ ${fmt(realHoje)}`,
+                    `  Mês: R$ ${fmt(pc.realizado)} / R$ ${fmt(pc.meta)} (${pctMes}%)`,
+                    `  Clientes: ${comPedidoHoje} com pedido de ${agendados} agendados`
+                );
             }
             for (const cidade of cidadesSemMeta) {
                 const realHoje = realizadoHojePorCidade[cidade] || 0;
-                cidadesLinhas.push(`• ${cidade}: vendido R$ ${fmt(realHoje)}`);
+                const agendados = agendadosPorCidade[cidade] || 0;
+                const comPedidoHoje = clientesComPedidoHojePorCidade[cidade]?.size || 0;
+                cidadesLinhas.push(
+                    `📍 *${cidade}*`,
+                    `  Hoje: vendido R$ ${fmt(realHoje)}`,
+                    `  Clientes: ${comPedidoHoje} com pedido de ${agendados} agendados`
+                );
             }
         }
     }
