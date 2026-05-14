@@ -220,12 +220,15 @@ const gerarMensagemAtendimento = async (vendedor, dataAtual) => {
         const pedidoPastSize = pedidoSemanaPastPorCidade[pc.cidade]?.size || 0;
         const pctSemana = pc.metaSemana > 0 ? Math.round((pc.realizadoSemana / pc.metaSemana) * 100) : 0;
         const barSemana = gerarBarra(pctSemana);
+        const saldoSemana = Math.max(pc.metaSemana - pc.realizadoSemana, 0);
+        const metaAtingida = pc.metaSemana > 0 && pc.realizadoSemana >= pc.metaSemana;
         linhas.push(
             '',
             `📍 *${pc.cidade}*`,
             `Agendados hoje: ${agendadosHoje} clientes`,
-            `Semana: R$ ${fmt(pc.realizadoSemana)} de R$ ${fmt(pc.metaSemana)}`,
+            `Vendido semana: R$ ${fmt(pc.realizadoSemana)} de R$ ${fmt(pc.metaSemana)}`,
             barSemana,
+            metaAtingida ? `*Meta da semana atingida ✅*` : `*Falta: R$ ${fmt(saldoSemana)}*`,
             `Sem. passada: ${pc.totalClientes} agendados | ${pedidoPastSize} pediram`
         );
     }
