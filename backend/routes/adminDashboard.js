@@ -63,6 +63,18 @@ const normalizeCidade = (cidade) => {
     const limpa = cidade.trim();
     return limpa || 'Sem cidade';
 };
+const parseConfigArray = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+    return [];
+};
 
 async function carregarPermissoesUsuario(userId) {
     const user = await prisma.vendedor.findUnique({ where: { id: userId } });
@@ -126,7 +138,7 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
             ...(vendedorIdFiltro ? { pedidoOriginal: { vendedorId: vendedorIdFiltro } } : {}),
         };
 
-        const [pedidosAtual, pedidosAnterior, devolucaoAtualAgg, devolucaoAnteriorAgg, devolucoesAtualPorVendedor, devolucoesAnteriorPorVendedor, itensDevolucaoAtual, itensDevolucaoAnterior, devolucaoClienteAtual, devolucaoClienteAnterior, metasSemana, inadimplencia, pedidosComErro, pedidosEspeciais, transferenciasPendentes, pendenciasAbertas, caixasAConferir] = await Promise.all([
+        const [pedidosAtual, pedidosAnterior, devolucaoAtualAgg, devolucaoAnteriorAgg, devolucoesAtualPorVendedor, devolucoesAnteriorPorVendedor, itensDevolucaoAtual, itensDevolucaoAnterior, devolucaoClienteAtual, devolucaoClienteAnterior, metasSemana, categoriasVendasConfig, inadimplencia, pedidosComErro, pedidosEspeciais, transferenciasPendentes, pendenciasAbertas, caixasAConferir] = await Promise.all([
             prisma.pedido.findMany({
                 where: wherePedidoAtual,
                 select: {
@@ -135,7 +147,7 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
                     clienteId: true,
                     vendedor: { select: { nome: true } },
                     cliente: { select: { Nome: true, NomeFantasia: true, Codigo: true, End_Cidade: true } },
-                    itens: { select: { produtoId: true, valor: true, quantidade: true, produto: { select: { nome: true, codigo: true } } } },
+                    itens: { select: { produtoId: true, valor: true, quantidade: true, produto: { select: { nome: true, codigo: true, categoria: true, ativo: true } } } },
                 },
             }),
             prisma.pedido.findMany({
@@ -146,7 +158,7 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
                     clienteId: true,
                     vendedor: { select: { nome: true } },
                     cliente: { select: { Nome: true, NomeFantasia: true, Codigo: true, End_Cidade: true } },
-                    itens: { select: { produtoId: true, valor: true, quantidade: true, produto: { select: { nome: true, codigo: true } } } },
+                    itens: { select: { produtoId: true, valor: true, quantidade: true, produto: { select: { nome: true, codigo: true, categoria: true, ativo: true } } } },
                 },
             }),
             prisma.devolucao.aggregate({ _sum: { valorTotal: true }, where: whereDevolucaoAtual }),
@@ -201,6 +213,10 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
                     ...(vendedorIdFiltro ? { vendedorId: vendedorIdFiltro } : {}),
                 },
                 include: { vendedor: { select: { id: true, nome: true } } },
+            }),
+            prisma.appConfig.findUnique({
+                where: { key: 'categorias_vendas' },
+                select: { value: true },
             }),
             prisma.parcela.aggregate({
                 _sum: { valor: true },
@@ -298,6 +314,8 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
                     produtoId: it.produtoId,
                     nome: it.produto?.nome || 'Produto sem nome',
                     codigo: it.produto?.codigo || null,
+                    categoria: it.produto?.categoria || null,
+                    ativo: it.produto?.ativo !== false,
                     valorLiquido: 0,
                     quantidade: 0,
                 };
@@ -362,6 +380,8 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
                     produtoId: it.produtoId,
                     nome: it.produto?.nome || 'Produto sem nome',
                     codigo: it.produto?.codigo || null,
+                    categoria: it.produto?.categoria || null,
+                    ativo: it.produto?.ativo !== false,
                     valorLiquido: 0,
                     quantidade: 0,
                 };
@@ -479,7 +499,18 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
             };
         }).sort((a, b) => b.realizado - a.realizado);
 
+        const categoriasCatalogo = parseConfigArray(categoriasVendasConfig?.value)
+            .map((categoria) => (typeof categoria === 'string' ? categoria.trim() : ''))
+            .filter(Boolean);
+        const categoriasCatalogoSet = new Set(categoriasCatalogo);
+        const produtoElegivelCatalogo = (produto) => {
+            if (!produto || produto.ativo === false) return false;
+            if (categoriasCatalogoSet.size === 0) return true;
+            return categoriasCatalogoSet.has(produto.categoria || '');
+        };
+
         const topProdutos = [...aggAtual.produtos.values()]
+            .filter(produtoElegivelCatalogo)
             .map((prod) => {
                 const prev = aggAnterior.produtos.get(prod.produtoId);
                 const valorAnterior = prev?.valorLiquido || 0;
@@ -514,6 +545,7 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
                     variacaoPct,
                 };
             })
+            .filter((produto) => produtoElegivelCatalogo(aggAtual.produtos.get(produto.produtoId) || aggAnterior.produtos.get(produto.produtoId)))
             .filter((p) => p.variacaoPct != null && p.variacaoPct < 0)
             .sort((a, b) => a.variacaoPct - b.variacaoPct)
             .slice(0, 10);
