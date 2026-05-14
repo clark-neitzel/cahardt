@@ -115,6 +115,9 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                 todasFormas = todasFormas.filter(f => {
                     if (f._grupo !== 'Condições de Pagamento') return true;
                     if (selectIdPedido && f._selectId === selectIdPedido) return true;
+                    const tabelaItem = tabelaForms.find(t => 'tabela_' + t.idCondicao === f._selectId);
+                    if (pedido.especial && tabelaItem && !tabelaItem.permiteEspecial) return false;
+                    if (pedido.bonificacao && tabelaItem && !tabelaItem.permiteBonificacao) return false;
                     const nomeLower = f.nome.toLowerCase();
                     if (pedidoEhBoleto) return nomeLower.includes('boleto');
                     return !nomeLower.includes('boleto');

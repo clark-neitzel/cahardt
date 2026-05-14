@@ -5,8 +5,8 @@ description: "📚 DICIONÁRIO COMPLETO CONTA AZUL. Consulte para ver payloads, 
 
 # 05 CA API REFERENCIA — Documentação Completa
 
-> ⚠️ **DOCUMENTO MESTRE** — Atualizado em Abr/2026 com toda a documentação oficial do Portal do Desenvolvedor Conta Azul.
-> Organizado por área: [Autenticação](#-autenticação-oauth-20) | [Pessoas/Clientes](#-pessoas-clientes-e-fornecedores) | [Produtos](#-produtos-e-estoque) | [Vendas](#-vendas) | [Financeiro](#-financeiro) | [Notas Fiscais](#-notas-fiscais) | [Contratos](#-contratos)
+> ⚠️ **DOCUMENTO MESTRE** — Atualizado em Mai/2026 com toda a documentação oficial do Portal do Desenvolvedor Conta Azul.
+> Organizado por área: [Autenticação](#-autenticação-oauth-20) | [Pessoas/Clientes](#-pessoas-clientes-e-fornecedores) | [Produtos](#-produtos-e-estoque) | [Vendas](#-vendas) | [Orçamentos](#-orçamentos-propostas-comerciais) | [Financeiro](#-financeiro) | [Notas Fiscais](#-notas-fiscais) | [Contratos](#-contratos)
 
 ---
 
@@ -705,6 +705,74 @@ Campos extendidos no banco local (não existem na API CA):
 
 ---
 
+## 📝 ORÇAMENTOS (Propostas Comerciais)
+
+**Base URL:** `https://api-v2.contaazul.com/v1/orcamentos`
+
+> Adicionado Mai/2026. Orçamentos são propostas/cotações que ainda **não geram financeiro** — diferem de vendas (`/v1/venda`) que já nascem aprovadas. O App Hardt **não usa orçamentos** (cria vendas diretamente com `situacao: APROVADO`). Esta seção existe como referência para uso futuro.
+
+### POST /v1/orcamentos — Criar Orçamento
+
+Retorna `201 Created` com `{ "id": "uuid" }`.
+
+```bash
+curl -X POST 'https://api-v2.contaazul.com/v1/orcamentos' \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "composicao_de_valor": {
+      "desconto": { "tipo": "VALOR", "valor": 10 },
+      "frete": 5
+    },
+    "data_orcamento": "2026-05-01",
+    "data_validade": "2026-05-15",
+    "descricao": "Proposta comercial referente ao mês de maio",
+    "id_cliente": "bbaa4b1b-631b-4f47-949a-3e56384e00cb",
+    "id_vendedor": "8cc4ff03-e8c6-4d7e-8c41-4245f55f8612",
+    "itens": [
+      {
+        "id": "623ef303-54df-4df6-b816-69416f29e093",
+        "quantidade": 1,
+        "valor": 10,
+        "valor_custo": 8
+      }
+    ],
+    "observacoes": "Cliente solicitou entrega rápida",
+    "observacoes_pagamento": "Pagamento em até 30 dias após aprovação",
+    "previsao_entrega": "Entrega em até 10 dias úteis"
+  }'
+```
+
+**Campos do payload:**
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id_cliente` | string (UUID) | Cliente do CA |
+| `id_vendedor` | string (UUID) | Vendedor do CA |
+| `data_orcamento` | string | Data do orçamento (`YYYY-MM-DD`) |
+| `data_validade` | string | Validade da proposta (`YYYY-MM-DD`) |
+| `descricao` | string | Título/descrição do orçamento |
+| `itens` | array | Lista de produtos: `id`, `quantidade`, `valor`, `valor_custo` |
+| `composicao_de_valor` | object | `desconto` (tipo `VALOR` ou `PERCENTUAL` + valor) e `frete` |
+| `observacoes` | string | Observações gerais |
+| `observacoes_pagamento` | string | Condições de pagamento em texto livre |
+| `previsao_entrega` | string | Texto livre sobre prazo de entrega |
+
+---
+
+### DELETE /v1/orcamentos — Excluir Orçamentos em Lote
+
+Remove múltiplos orçamentos de uma só vez. Retorna `204 No Content`.
+
+```bash
+curl -X DELETE 'https://api-v2.contaazul.com/v1/orcamentos' \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{ "ids": ["2a5209e2-dacc-4050-8a93-a90e4f7c7c21"] }'
+```
+
+---
+
 ## 💰 FINANCEIRO
 
 **Base URL:** `https://api-v2.contaazul.com`
@@ -1166,6 +1234,7 @@ curl -X POST 'https://api-v2.contaazul.com/v1/contratos' \
 
 | Versão | Data | O que mudou |
 |--------|------|-------------|
+| Mai/2026 | 2026-05-04 | Novos endpoints de orçamentos: `POST /v1/orcamentos` (criar proposta comercial) e `DELETE /v1/orcamentos` (excluir em lote por lista de IDs). App Hardt não usa — cria vendas aprovadas direto |
 | Abr/2026 | 2026-04-24 | Gerar cobrança: campo `maximo_parcelas` no body (`POST /v1/financeiro/eventos-financeiros/contas-a-receber/gerar-cobranca`) |
 | Abr/2026 | 2026-04-17 | Contratos: parâmetros `tipo_pagamento` e `status` no filtro; objeto `conta_financeira`, objeto `termos` (data_fim, tipo_expiracao, vigencia_atual, vigencia_total), campos `tipo_pagamento`, `total` e `total_proximo_vencimento` no retorno; novo endpoint `POST /v1/contratos/{id}/encerrar`; novo endpoint `DELETE /v1/contratos/{id}` |
 | Abr/2026 | 2026-04-16 | Contratos: novo endpoint `GET /v1/contratos/{id}` |

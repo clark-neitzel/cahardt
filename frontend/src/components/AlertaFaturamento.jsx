@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AlertTriangle, X, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import pedidoService from '../services/pedidoService';
 import { useNavigate } from 'react-router-dom';
 
 const INTERVALO_MS = 10 * 60 * 1000; // 10 minutos
+const DELAY_INICIAL_MS = 5000; // 5s de delay para não bloquear o carregamento inicial
 
 const AlertaFaturamento = () => {
     const { user } = useAuth();
@@ -12,48 +13,44 @@ const AlertaFaturamento = () => {
     const [pedidos, setPedidos] = useState([]);
     const [visivel, setVisivel] = useState(false);
     const [dismissedAt, setDismissedAt] = useState(null);
+    const dismissedAtRef = useRef(null);
 
     const verificar = useCallback(async () => {
         try {
             const data = await pedidoService.pendenteFaturamento();
             if (data.total > 0) {
                 setPedidos(data.pedidos);
-                // Só mostra se não foi fechado nesta rodada
-                if (!dismissedAt) {
+                if (!dismissedAtRef.current) {
                     setVisivel(true);
                 }
             } else {
                 setPedidos([]);
                 setVisivel(false);
-                setDismissedAt(null);
             }
         } catch (error) {
             console.error('Erro ao verificar pedidos pendentes de faturamento:', error);
         }
+    }, []);
+
+    useEffect(() => {
+        dismissedAtRef.current = dismissedAt;
     }, [dismissedAt]);
 
     useEffect(() => {
-        // Só ativa se o usuário tem alertaFaturamento ligado
         if (!user || user.alertaFaturamento === false) return;
 
-        // Verifica imediatamente
-        verificar();
+        // Delay inicial para não bloquear o carregamento da tela
+        const timer = setTimeout(() => verificar(), DELAY_INICIAL_MS);
 
         // Depois a cada 10 minutos
         const interval = setInterval(() => {
-            setDismissedAt(null); // Reseta dismiss para mostrar novamente
+            dismissedAtRef.current = null;
+            setDismissedAt(null);
             verificar();
         }, INTERVALO_MS);
 
-        return () => clearInterval(interval);
-    }, [user]);
-
-    // Re-verifica quando dismissedAt muda para null (nova rodada do intervalo)
-    useEffect(() => {
-        if (dismissedAt === null && user && user.alertaFaturamento !== false) {
-            verificar();
-        }
-    }, [dismissedAt, verificar, user]);
+        return () => { clearTimeout(timer); clearInterval(interval); };
+    }, [user, verificar]);
 
     const handleDismiss = () => {
         setVisivel(false);
@@ -70,7 +67,7 @@ const AlertaFaturamento = () => {
 
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-[95vw] max-w-lg mx-4 overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-[95vw] max-w-lg mx-4 overflow-hidden">
                 {/* Header */}
                 <div className="bg-amber-500 px-5 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
