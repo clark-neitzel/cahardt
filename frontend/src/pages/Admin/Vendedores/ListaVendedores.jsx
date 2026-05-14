@@ -66,6 +66,7 @@ const ListaVendedores = () => {
         setEditingId(vendedor.id);
         setEditForm({
             email: vendedor.email || '',
+            telefone: vendedor.telefone || '',
             flexMensal: vendedor.flexMensal || 0,
             flexDisponivel: vendedor.flexDisponivel || 0,
             maxDescontoFlex: vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100
@@ -142,12 +143,13 @@ const ListaVendedores = () => {
                 <table className="w-full table-fixed divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="w-[14%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
-                            <th className="w-[22%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">E-mail</th>
-                            <th className="w-[10%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flex Mensal</th>
-                            <th className="w-[8%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">% Desc.</th>
-                            <th className="w-[10%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flex Disp.</th>
-                            <th className="w-[24%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Formas Visíveis</th>
+                            <th className="w-[13%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                            <th className="w-[18%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">E-mail</th>
+                            <th className="w-[12%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Telefone</th>
+                            <th className="w-[9%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flex Mensal</th>
+                            <th className="w-[7%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">% Desc.</th>
+                            <th className="w-[9%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flex Disp.</th>
+                            <th className="w-[20%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Formas Visíveis</th>
                             <th className="w-[12%] px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                         </tr>
                     </thead>
@@ -168,6 +170,9 @@ const ListaVendedores = () => {
                                     </td>
                                     <td className="px-3 py-3 text-sm text-gray-500">
                                         <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" />
+                                    </td>
+                                    <td className="px-3 py-3 text-sm text-gray-500">
+                                        <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: e.target.value })} type="tel" placeholder="(xx) xxxxx-xxxx" />
                                     </td>
                                     <td className="px-3 py-3 text-sm text-gray-500">
                                         <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.flexMensal} onChange={e => setEditForm({ ...editForm, flexMensal: e.target.value })} type="number" step="0.01" />
@@ -209,6 +214,12 @@ const ListaVendedores = () => {
                                     <div className="flex items-center truncate">
                                         <Mail className="h-3.5 w-3.5 mr-1.5 text-gray-400 shrink-0" />
                                         <span className="truncate text-xs">{vendedor.email || <span className="text-gray-300 italic">Sem e-mail</span>}</span>
+                                    </div>
+                                </td>
+                                <td className="px-3 py-3 text-sm text-gray-500">
+                                    <div className="flex items-center truncate">
+                                        <Phone className="h-3.5 w-3.5 mr-1.5 text-gray-400 shrink-0" />
+                                        <span className="truncate text-xs">{vendedor.telefone || <span className="text-gray-300 italic">Sem telefone</span>}</span>
                                     </div>
                                 </td>
                                 <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
@@ -283,6 +294,7 @@ const ListaVendedores = () => {
                         {editingId === vendedor.id ? (
                             <div className="space-y-2 pt-2 border-t border-gray-100">
                                 <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] bg-white text-gray-900" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" placeholder="E-mail" />
+                                <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] bg-white text-gray-900" value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: e.target.value })} type="tel" placeholder="Telefone (xx) xxxxx-xxxx" />
                                 <div className="grid grid-cols-3 gap-2">
                                     <div>
                                         <label className="text-[10px] text-gray-500 block">Flex Mensal</label>
@@ -306,6 +318,7 @@ const ListaVendedores = () => {
                             <>
                                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-500">
                                     <span className="flex items-center gap-0.5"><Mail className="h-3 w-3" /> {vendedor.email || 'Sem e-mail'}</span>
+                                    {vendedor.telefone && <span className="flex items-center gap-0.5"><Phone className="h-3 w-3" /> {vendedor.telefone}</span>}
                                     <span>Flex: R$ {Number(vendedor.flexMensal).toFixed(2)}</span>
                                     <span>Desc: {Number(vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100).toFixed(0)}%</span>
                                     <span className="font-semibold text-green-700">Disp: R$ {Number(vendedor.flexDisponivel).toFixed(2)}</span>

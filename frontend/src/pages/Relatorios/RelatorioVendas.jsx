@@ -21,6 +21,7 @@ const COLUNAS = [
     { id: 'cidade',   label: 'Cidade',    field: 'cidade',                tipo: 'texto',  filtravel: true  },
     { id: 'bairro',   label: 'Bairro',    field: 'bairro',                tipo: 'texto',  filtravel: true  },
     { id: 'vendedor', label: 'Vendedor',  field: 'vendedorNome',          tipo: 'texto',  filtravel: true  },
+    { id: 'vendedorTel', label: 'Tel Vendedor', field: 'vendedorTelefone', tipo: 'texto', filtravel: false },
     { id: 'indicacao',label: 'Indicação', field: 'indicacao',             tipo: 'texto',  filtravel: true  },
 ];
 

@@ -37,11 +37,12 @@ const vendedorController = {
     atualizar: async (req, res) => {
         try {
             const { id } = req.params;
-            const { email, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento } = req.body;
+            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento } = req.body;
 
             // Prepara objeto de atualização (ignora undefined)
             const dataToUpdate = {};
             if (email !== undefined) dataToUpdate.email = email;
+            if (telefone !== undefined) dataToUpdate.telefone = telefone;
             if (flexMensal !== undefined) dataToUpdate.flexMensal = flexMensal;
             if (flexDisponivel !== undefined) dataToUpdate.flexDisponivel = flexDisponivel;
             if (maxDescontoFlex !== undefined) dataToUpdate.maxDescontoFlex = maxDescontoFlex;

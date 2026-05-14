@@ -642,7 +642,7 @@ const pedidoController = {
                             indicacao: { select: { Nome: true, NomeFantasia: true } }
                         }
                     },
-                    vendedor: { select: { nome: true } },
+                    vendedor: { select: { nome: true, telefone: true } },
                     itens: {
                         select: {
                             id: true,
@@ -672,7 +672,8 @@ const pedidoController = {
                     cidade: p.cliente?.End_Cidade || 'Não informada',
                     bairro: p.cliente?.End_Bairro || 'Não informado',
                     indicacao: p.cliente?.indicacao?.NomeFantasia || p.cliente?.indicacao?.Nome || '',
-                    vendedorNome: p.vendedor?.nome || '-'
+                    vendedorNome: p.vendedor?.nome || '-',
+                    vendedorTelefone: p.vendedor?.telefone || ''
                 };
                 if (p.itens.length === 0) {
                     registros.push({ ...base, id: p.id, produto: '-', quantidade: 0, valorUnit: 0, valorTotal: 0 });
