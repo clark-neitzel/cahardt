@@ -16,6 +16,7 @@ import vendedorService from '../../services/vendedorService';
 import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import ClientePopup from '../Rota/ClientePopup';
+import AlertaGpsFaltante from '../../components/AlertaGpsFaltante';
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
@@ -163,6 +164,7 @@ const NovoPedido = () => {
     // Computed/Derived
     const [condicoesPermitidas, setCondicoesPermitidas] = useState([]);
     const [clienteSelecionado, setClienteSelecionado] = useState(null);
+    const [alertaGpsDismissed, setAlertaGpsDismissed] = useState(false);
     const [inadimplenciaCliente, setInadimplenciaCliente] = useState(null); // null | { inadimplente, totalVencido, parcelasVencidas }
     const [vendedorSelecionado, setVendedorSelecionado] = useState(null);
     const [condicaoSelecionada, setCondicaoSelecionada] = useState(null);
@@ -372,6 +374,7 @@ const NovoPedido = () => {
                 setClienteId(''); setClienteSearchText(''); return;
             }
             setClienteSelecionado(cliente);
+            setAlertaGpsDismissed(false);
             setVendedorId(cliente.idVendedor);
             setVendedorSelecionado(vendedorDoCliente || null);
             setClienteSearchText(cliente.NomeFantasia || cliente.Nome);
@@ -1791,6 +1794,17 @@ const NovoPedido = () => {
                 <ClientePopup
                     cliente={clienteSelecionado}
                     onClose={() => setShowClientePopup(false)}
+                />
+            )}
+
+            {/* Alerta de GPS faltante no cliente */}
+            {clienteSelecionado && !clienteSelecionado.Ponto_GPS && !alertaGpsDismissed && (
+                <AlertaGpsFaltante
+                    tipo="cliente"
+                    clienteId={clienteSelecionado.UUID}
+                    nomeCliente={clienteSelecionado.NomeFantasia || clienteSelecionado.Nome}
+                    onContinuar={() => setAlertaGpsDismissed(true)}
+                    onAtualizado={() => setAlertaGpsDismissed(true)}
                 />
             )}
 
