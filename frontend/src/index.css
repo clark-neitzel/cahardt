@@ -49,6 +49,10 @@ html, body {
   animation: pulse-border 2s ease-in-out infinite;
 }
 
+@media print {
+  .no-print { display: none !important; }
+}
+
 @layer utilities {
   .hide-scrollbar {
     -ms-overflow-style: none;  /* IE and Edge */

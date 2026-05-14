@@ -274,7 +274,7 @@ const Layout = ({ children }) => {
       {/* ═══════════════════════════════════════════ */}
       <div className="flex-1 md:ml-16 flex flex-col min-h-screen min-w-0">
         {/* ── Mobile top bar ── */}
-        <nav className="md:hidden bg-white shadow-sm fixed top-0 left-0 right-0 z-50">
+        <nav className="no-print md:hidden bg-white shadow-sm fixed top-0 left-0 right-0 z-50">
           <div className="px-4 flex justify-between h-14 items-center">
             <Link to="/" className="flex items-center text-primary font-bold text-lg tracking-tight">
               Hardt App
@@ -300,17 +300,17 @@ const Layout = ({ children }) => {
         </nav>
 
         {/* Espaçador para compensar a nav fixed no mobile */}
-        <div className="md:hidden h-14 shrink-0" />
+        <div className="no-print md:hidden h-14 shrink-0" />
 
         {/* ── Mobile drawer overlay ── */}
         {isMobileMenuOpen && (
-          <div className="md:hidden fixed inset-0 z-[60]" onClick={closeMobile}>
+          <div className="no-print md:hidden fixed inset-0 z-[60]" onClick={closeMobile}>
             <div className="absolute inset-0 bg-black/40" />
           </div>
         )}
 
         {/* ── Mobile drawer ── */}
-        <div className={`md:hidden fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className={`no-print md:hidden fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           {/* Drawer header */}
           <div className="flex items-center justify-between px-4 h-14 border-b border-gray-100 shrink-0">
             <span className="text-primary font-bold text-lg">Menu</span>
