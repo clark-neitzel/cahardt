@@ -158,6 +158,56 @@ function startSchedulers() {
         }, msToTarget);
     };
     scheduleIANoturna();
+
+    // === 7. MENSAGENS AGENDADAS ===
+    // Verifica a cada minuto se há mensagens para enviar (horário SP).
+    console.log('⏰ Iniciando sistema de Mensagens Agendadas...');
+    const prisma = require('../config/database');
+    const mensagemAgendadaService = require('../services/mensagemAgendadaService');
+    const DIAS_SIGLA_MSG = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+
+    setInterval(async () => {
+        try {
+            // Horário atual em SP (process.env.TZ já é 'America/Sao_Paulo')
+            const agora = new Date();
+            const hh = String(agora.getHours()).padStart(2, '0');
+            const mm = String(agora.getMinutes()).padStart(2, '0');
+            const horaAtual = `${hh}:${mm}`;
+            const siglaDia = DIAS_SIGLA_MSG[agora.getDay()];
+
+            const configs = await prisma.mensagemAgendada.findMany({
+                where: { ativo: true, hora: horaAtual, diasSemana: { has: siglaDia } },
+                include: { vendedor: true }
+            });
+
+            for (const config of configs) {
+                // Previne reenvio se já foi enviado neste mesmo minuto hoje
+                if (config.ultimoEnvio) {
+                    const ultimo = new Date(config.ultimoEnvio);
+                    const mesmoDia = ultimo.toDateString() === agora.toDateString();
+                    const mesmaHora = `${String(ultimo.getHours()).padStart(2,'0')}:${String(ultimo.getMinutes()).padStart(2,'0')}` === horaAtual;
+                    if (mesmoDia && mesmaHora) continue;
+                }
+
+                console.log(`[MensagemAgendada] Disparando tipo=${config.tipo} para ${config.vendedor.nome} (${horaAtual})`);
+                let resultado = { ok: false, motivo: 'Tipo desconhecido' };
+                if (config.tipo === 'meta') {
+                    resultado = await mensagemAgendadaService.enviarMeta(config.vendedor);
+                }
+
+                if (resultado.ok) {
+                    await prisma.mensagemAgendada.update({
+                        where: { id: config.id },
+                        data: { ultimoEnvio: agora }
+                    });
+                } else {
+                    console.warn(`[MensagemAgendada] Falha para ${config.vendedor.nome}: ${resultado.motivo}`);
+                }
+            }
+        } catch (e) {
+            console.error('[MensagemAgendada] Erro no scheduler:', e.message);
+        }
+    }, 60 * 1000); // a cada 1 minuto
 }
 
 module.exports = { startSchedulers };

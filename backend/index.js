@@ -47,6 +47,7 @@ const pcpSugestaoRoutes = require('./routes/pcpSugestaoRoutes'); // PCP: Sugest�
 const devolucaoRoutes = require('./routes/devolucaoRoutes'); // Devoluções
 const deliveryRoutes = require('./routes/deliveryRoutes'); // Delivery (Kit Festa)
 const iaLogsRoutes = require('./routes/iaLogs'); // Logs de Análise IA
+const mensagemAgendadaRoutes = require('./routes/mensagemAgendadaRoutes'); // Mensagens Agendadas
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -113,6 +114,7 @@ app.use('/api/devolucoes', authMiddleware, devolucaoRoutes); // Devoluções
 app.use('/api/delivery', authMiddleware, deliveryRoutes); // Delivery (Kit Festa)
 app.use('/api/ia-logs', iaLogsRoutes); // Logs de Análise IA (auth interno)
 
+app.use('/api/mensagens-agendadas', authMiddleware, mensagemAgendadaRoutes); // Mensagens Agendadas
 app.use('/api/migrations', authMiddleware, migrationRoutes); // Migration endpoint (protegido)
 
 // Rota base

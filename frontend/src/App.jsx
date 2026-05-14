@@ -53,6 +53,7 @@ import DeliveryKanban from './pages/Delivery/DeliveryKanban';
 import DeliveryConfig from './pages/Delivery/DeliveryConfig';
 import PainelAtendimentos from './pages/Atendimentos/PainelAtendimentos';
 import PainelAnaliseIA from './pages/AnaliseIA/PainelAnaliseIA';
+import MensagensAgendadas from './pages/Admin/MensagensAgendadas/MensagensAgendadas';
 
 import {
   Menu, X, LogOut, ChevronDown,
@@ -60,7 +61,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -211,6 +212,7 @@ const Layout = ({ children }) => {
           {showAdmin && <SidebarSection label="Admin" />}
           {hasPermission('produtos') && <SidebarItem to="/admin/produtos" icon={Box} label="Produtos" />}
           {hasPermission('vendedores') && <SidebarItem to="/admin/vendedores" icon={UserCog} label="Vendedores" />}
+          {isAdmin && <SidebarItem to="/admin/mensagens" icon={BellRing} label="Mensagens" />}
           {(user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && <SidebarItem to="/admin/veiculos" icon={Car} label="Veículos" />}
           {hasPermission('sync') && <SidebarItem to="/admin/sync" icon={RefreshCw} label="Sincronizar" />}
 
@@ -364,6 +366,7 @@ const Layout = ({ children }) => {
               <MobileMenuSection label="Administração" icon={UserCog}>
                 {hasPermission('produtos') && <NavLink to="/admin/produtos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Produtos</NavLink>}
                 {hasPermission('vendedores') && <NavLink to="/admin/vendedores" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Vendedores</NavLink>}
+                {isAdmin && <NavLink to="/admin/mensagens" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Mensagens Agendadas</NavLink>}
                 {(user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && <NavLink to="/admin/veiculos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Veículos</NavLink>}
                 {hasPermission('sync') && <NavLink to="/admin/sync" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Sincronizar</NavLink>}
               </MobileMenuSection>
@@ -529,6 +532,7 @@ function App() {
               <Route path="/admin/auditoria-entregas" element={<PrivateRoute tab="Pode_Ver_Todas_Entregas"><AuditoriaEntregas /></PrivateRoute>} />
               <Route path="/admin/sync" element={<PrivateRoute tab="sync"><PainelSync /></PrivateRoute>} />
               <Route path="/admin/vendedores" element={<PrivateRoute tab="vendedores"><ListaVendedores /></PrivateRoute>} />
+              <Route path="/admin/mensagens" element={<PrivateRoute><MensagensAgendadas /></PrivateRoute>} />
               <Route path="/admin/veiculos" element={<PrivateRoute tab="Pode_Acessar_Veiculos"><Veiculos /></PrivateRoute>} />
               <Route path="/admin/config" element={<PrivateRoute tab="configuracoes"><Configuracoes /></PrivateRoute>} />
               <Route path="/config/tabela-precos" element={<PrivateRoute tab="configuracoes"><TabelaPrecos /></PrivateRoute>} />

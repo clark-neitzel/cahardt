@@ -223,6 +223,28 @@ const webhookService = {
      * Envia pro Bot interno (se configurado em delivery_bot_phone)
      * e pro cliente via WhatsApp. Log salvo em delivery_webhook_logs.
      */
+    /**
+     * Envia mensagem customizada (não de pedido) via BotConversa.
+     * Usado para mensagens agendadas (ex: relatório de meta).
+     */
+    enviarMensagemCustom: async (phoneRaw, nome, mensagem) => {
+        try {
+            const webhookUrl = await getWebhookUrl();
+            if (!webhookUrl) return { ok: false, motivo: 'URL do webhook não configurada' };
+
+            let phone = (phoneRaw || '').replace(/\D/g, '');
+            if (phone.length < 10) return { ok: false, motivo: 'Telefone inválido' };
+            if (!phone.startsWith('55')) phone = '55' + phone;
+
+            await enviarWebhook(webhookUrl, { phone, nome, mensagem });
+            console.log(`[Webhook] Mensagem custom enviada para ${nome} (${phone})`);
+            return { ok: true };
+        } catch (error) {
+            console.error('[Webhook] Erro mensagem custom:', error.message);
+            return { ok: false, motivo: error.message };
+        }
+    },
+
     notificarDelivery: async (pedidoId, novaEtapa) => {
         const ETAPAS_LABEL = {
             PEDIDO: 'Pedido Criado',

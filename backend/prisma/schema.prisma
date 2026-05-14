@@ -360,7 +360,25 @@ model Vendedor {
   devolucoesRevertidas  Devolucao[] @relation("DevolucaoRevertida")
   devolucoesMotorista   Devolucao[] @relation("DevolucaoMotorista")
 
+  mensagensAgendadas MensagemAgendada[]
+
   @@map("vendedores")
+}
+
+model MensagemAgendada {
+  id          String    @id @default(uuid())
+  vendedorId  String    @map("vendedor_id")
+  tipo        String    // "meta"
+  hora        String    // "08:00" (horário SP)
+  diasSemana  String[]  @map("dias_semana")
+  ativo       Boolean   @default(true)
+  ultimoEnvio DateTime? @map("ultimo_envio")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  vendedor Vendedor @relation(fields: [vendedorId], references: [id])
+
+  @@map("mensagens_agendadas")
 }
 
 model MovimentacaoEstoque {
