@@ -933,7 +933,7 @@ const STATUS_ENTREGA_CORES = {
     DEVOLVIDO: 'bg-red-100 text-red-700',
 };
 
-const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, onTogglePrioridade }) => {
+const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, onTogglePrioridade, semRounded }) => {
     const totalValor = pedido.itens?.reduce((s, i) => s + (Number(i.valor) * Number(i.quantidade)), 0) || 0;
     const motoristaNome = pedido.embarque?.responsavel?.nome;
     const vendedorNome = pedido.vendedor?.nome;
@@ -947,7 +947,7 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, o
         window.open(`https://maps.google.com/?q=${lat},${lng}`);
     };
     return (
-        <div className={`bg-white rounded-xl border shadow-sm overflow-hidden mb-2 ${pedido.prioridadeEntrega ? 'border-amber-400 ring-1 ring-amber-300' : 'border-sky-400/50 ring-1 ring-sky-500/20'}`}>
+        <div className={`bg-white border shadow-sm overflow-hidden mb-2 ${semRounded ? 'rounded-b-xl' : 'rounded-xl'} ${pedido.prioridadeEntrega ? 'border-amber-400 ring-1 ring-amber-300' : 'border-sky-400/50 ring-1 ring-sky-500/20'}`}>
             <div className="p-3 md:p-4">
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -1019,7 +1019,7 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, o
 // ================================================
 // Card de Amostra Pendente (Motorista)
 // ================================================
-const CardAmostraEntrega = ({ amostra, onEntregarAmostra, podeCheckout }) => {
+const CardAmostraEntrega = ({ amostra, onEntregarAmostra, podeCheckout, semRounded }) => {
     const motoristaNome = amostra.embarque?.responsavel?.nome;
     const vendedorNome = amostra.solicitadoPor?.nome;
     const abrirMaps = () => {
@@ -1028,7 +1028,7 @@ const CardAmostraEntrega = ({ amostra, onEntregarAmostra, podeCheckout }) => {
         window.open(`https://maps.google.com/?q=${lat},${lng}`);
     };
     return (
-        <div className="bg-white rounded-xl border border-orange-400/50 ring-1 ring-orange-500/20 shadow-sm overflow-hidden mb-2">
+        <div className={`bg-white border border-orange-400/50 ring-1 ring-orange-500/20 shadow-sm overflow-hidden mb-2 ${semRounded ? 'rounded-b-xl' : 'rounded-xl'}`}>
             <div className="p-3 md:p-4">
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -2466,22 +2466,17 @@ const RotaLeads = () => {
                                         <p className="text-[13px]">Todas as entregas do seu roteiro estão concluídas.</p>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
                                         {entregasPendentesOrdenadas.map(p => {
                                             const rotaInfo = mapaRota[p.id];
                                             return (
-                                                <div key={p.id} className="relative">
-                                                    {/* Badge de sequência */}
+                                                <div key={p.id}>
+                                                    {/* ETA com badge de sequência embutido (sem position absolute) */}
                                                     {rotaInfo && (
-                                                        <div className="absolute -top-1.5 -left-1.5 z-10 flex items-center gap-1">
-                                                            <span className="bg-sky-700 text-white text-[11px] font-extrabold w-6 h-6 rounded-full flex items-center justify-center shadow-md">
+                                                        <div className="bg-sky-50 border border-sky-100 border-b-0 rounded-t-lg px-2 py-1.5 flex items-center gap-2 text-[10px] text-sky-700 font-semibold">
+                                                            <span className="bg-sky-700 text-white text-[11px] font-extrabold w-6 h-6 rounded-full flex items-center justify-center shadow-md flex-shrink-0">
                                                                 {rotaInfo.sequencia}
                                                             </span>
-                                                        </div>
-                                                    )}
-                                                    {/* ETA abaixo do badge */}
-                                                    {rotaInfo && (
-                                                        <div className="bg-sky-50 border border-sky-100 rounded-t-lg px-3 py-1.5 flex items-center gap-3 text-[10px] text-sky-700 font-semibold">
                                                             <span className="flex items-center gap-0.5">
                                                                 <Clock className="h-3 w-3" /> Chegada: {rotaInfo.previsaoChegada}
                                                             </span>
@@ -2496,6 +2491,7 @@ const RotaLeads = () => {
                                                             amostra={p}
                                                             onEntregarAmostra={handleEntregarAmostra}
                                                             podeCheckout={podeEntregas}
+                                                            semRounded={!!rotaInfo}
                                                         />
                                                     ) : (
                                                         <CardEntregaPendente
@@ -2504,6 +2500,7 @@ const RotaLeads = () => {
                                                             podeCheckout={podeEntregas}
                                                             onVerCliente={setClientePopupItem}
                                                             onTogglePrioridade={handleTogglePrioridade}
+                                                            semRounded={!!rotaInfo}
                                                         />
                                                     )}
                                                 </div>
