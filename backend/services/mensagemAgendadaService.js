@@ -172,13 +172,31 @@ const gerarMensagemAtendimento = async (vendedor, dataAtual) => {
 
     const { cidadesDeHoje, progressoCidades } = dashboard;
 
-    const clientesHojeRaw = await prisma.cliente.findMany({
-        where: { idVendedor: vendedor.id, Ativo: true, Dia_de_venda: { contains: siglaDia }, End_Cidade: { not: null } },
-        select: { End_Cidade: true }
-    });
+    const [clientesHojeRaw, leadsHojeRaw] = await Promise.all([
+        prisma.cliente.findMany({
+            where: { idVendedor: vendedor.id, Ativo: true, Dia_de_venda: { contains: siglaDia }, End_Cidade: { not: null } },
+            select: { End_Cidade: true }
+        }),
+        prisma.lead.findMany({
+            where: {
+                idVendedor: vendedor.id,
+                etapa: { notIn: ['CONVERTIDO', 'PERDIDO'] },
+                diasVisita: { contains: siglaDia }
+            },
+            select: { cidade: true }
+        })
+    ]);
+
     const agendadosHojePorCidade = {};
     clientesHojeRaw.forEach(c => {
         agendadosHojePorCidade[c.End_Cidade] = (agendadosHojePorCidade[c.End_Cidade] || 0) + 1;
+    });
+
+    const totalLeadsHoje = leadsHojeRaw.length;
+    const leadsPorCidade = {};
+    leadsHojeRaw.forEach(l => {
+        const cidade = l.cidade || 'Sem cidade';
+        leadsPorCidade[cidade] = (leadsPorCidade[cidade] || 0) + 1;
     });
 
     const inicioSemanaPast = dayjs.tz(hoje, SP_TZ).subtract(1, 'week').startOf('week').toDate();
@@ -211,21 +229,29 @@ const gerarMensagemAtendimento = async (vendedor, dataAtual) => {
         '━━━━━━━━━━━━━━━━━━━━',
     ];
 
+    if (totalLeadsHoje > 0) {
+        linhas.push(`🎯 Leads para visitar hoje: ${totalLeadsHoje}`);
+    }
+
     if (cidadesComMeta.length === 0 && cidadesSemMeta.length === 0) {
         linhas.push('Nenhuma cidade agendada para hoje.');
     }
 
     for (const pc of cidadesComMeta) {
         const agendadosHoje = agendadosHojePorCidade[pc.cidade] || 0;
+        const leadsHoje = leadsPorCidade[pc.cidade] || 0;
         const pedidoPastSize = pedidoSemanaPastPorCidade[pc.cidade]?.size || 0;
         const pctSemana = pc.metaSemana > 0 ? Math.round((pc.realizadoSemana / pc.metaSemana) * 100) : 0;
         const barSemana = gerarBarra(pctSemana);
         const saldoSemana = Math.max(pc.metaSemana - pc.realizadoSemana, 0);
         const metaAtingida = pc.metaSemana > 0 && pc.realizadoSemana >= pc.metaSemana;
+        const clientesLinha = leadsHoje > 0
+            ? `Clientes: ${agendadosHoje} | Leads: ${leadsHoje}`
+            : `Clientes: ${agendadosHoje}`;
         linhas.push(
             '',
             `📍 *${pc.cidade}*`,
-            `Agendados hoje: ${agendadosHoje} clientes`,
+            clientesLinha,
             `Vendido semana: R$ ${fmt(pc.realizadoSemana)} de R$ ${fmt(pc.metaSemana)}`,
             barSemana,
             metaAtingida ? `*Meta da semana atingida ✅*` : `*Falta: R$ ${fmt(saldoSemana)}*`,
@@ -235,11 +261,15 @@ const gerarMensagemAtendimento = async (vendedor, dataAtual) => {
 
     for (const cidade of cidadesSemMeta) {
         const agendadosHoje = agendadosHojePorCidade[cidade] || 0;
+        const leadsHoje = leadsPorCidade[cidade] || 0;
         const pedidoPastSize = pedidoSemanaPastPorCidade[cidade]?.size || 0;
+        const clientesLinha = leadsHoje > 0
+            ? `Clientes: ${agendadosHoje} | Leads: ${leadsHoje}`
+            : `Clientes: ${agendadosHoje}`;
         linhas.push(
             '',
             `📍 *${cidade}*`,
-            `Agendados hoje: ${agendadosHoje} clientes`,
+            clientesLinha,
             `Sem. passada: ${pedidoPastSize} pediram`
         );
     }
