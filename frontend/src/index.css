@@ -40,13 +40,17 @@ html, body {
   }
 }
 
-/* Alerta visual pulsante nos cards */
+/* Alerta visual pulsante nos cards
+   IMPORTANTE: box-shadow NÃO é GPU-composited. Animar box-shadow força repaint em cada frame
+   e causa artefatos visuais de scroll no Android Chrome. A animação usa opacity em vez disso,
+   que é GPU-composited (junto com transform). O ring estático vem da classe Tailwind ring-2. */
 @keyframes pulse-border {
-  0%, 100% { box-shadow: 0 0 0 0 var(--alerta-cor, #ef4444); }
-  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--alerta-cor, #ef4444) 30%, transparent); }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 .animate-pulse-border {
   animation: pulse-border 2s ease-in-out infinite;
+  will-change: opacity;
 }
 
 @media print {

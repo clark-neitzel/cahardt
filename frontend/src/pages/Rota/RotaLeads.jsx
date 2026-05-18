@@ -64,10 +64,10 @@ const gerarMotivoInsight = (insight) => {
             return dias != null ? `1 compra · ${dias}d sem retorno` : '1 compra · sem retorno';
         case 'REGULAR':
         case 'REGULAR_NO_PRAZO':
-            return dias != null ? `${dias}d sem comprar · ciclo ${ciclo}d` : 'Comprando no prazo';
+            return dias != null ? `${dias}d sem comprar${ciclo != null ? ` · ciclo ${ciclo}d` : ''}` : 'Comprando no prazo';
         case 'ATENCAO':
         case 'EM_ATENCAO':
-            return dias != null ? `${dias}d sem comprar (ciclo ${ciclo}d)` : 'Compra atrasando';
+            return dias != null ? `${dias}d sem comprar${ciclo != null ? ` (ciclo ${ciclo}d)` : ''}` : 'Compra atrasando';
         case 'ATRASADO':
             return dias != null ? `Atrasado ${dias}d · ~2 ciclos` : 'Atrasado 2 ciclos';
         case 'PARADO':
