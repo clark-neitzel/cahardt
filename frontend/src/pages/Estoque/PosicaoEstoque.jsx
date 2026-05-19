@@ -59,7 +59,10 @@ function MultiSelect({ label, options, selected, onChange, placeholder = 'Todos'
                 <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
             {open && (
-                <div className="absolute z-30 mt-1 w-full min-w-[180px] bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                <div
+                    className="absolute z-30 mt-1 w-full min-w-[180px] bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto"
+                    onTouchMove={e => e.stopPropagation()}
+                >
                     {options.length === 0 && (
                         <p className="px-3 py-2 text-xs text-gray-400">Nenhuma opção</p>
                     )}
@@ -370,7 +373,7 @@ function DemandaRow({ item, isAdmin, onMinimoSalvo }) {
             </td>
 
             {/* Mínimo sugerido 7d / 15d */}
-            <td className="px-3 py-2.5 text-right hidden xl:table-cell">
+            <td className="px-3 py-2.5 text-right hidden lg:table-cell">
                 {temMovimento ? (
                     <div className="space-y-1">
                         <div className="flex items-center justify-end gap-2 text-xs">
@@ -707,17 +710,19 @@ export default function PosicaoEstoque() {
     };
 
     const handleMinimoSalvo = (produtoId, novoMinimo) => {
+        const val = parseFloat(novoMinimo);
         setProdutos(prev => prev.map(p =>
-            p.id === produtoId ? { ...p, estoqueMinimo: novoMinimo } : p
+            p.id === produtoId ? { ...p, estoqueMinimo: val } : p
         ));
     };
 
     const handleDemandaMinimoSalvo = (produtoId, novoMinimo) => {
+        const val = parseFloat(novoMinimo);
         setDemanda(prev => prev ? {
             ...prev,
-            produtos: prev.produtos.map(p => p.id === produtoId ? { ...p, estoqueMinimo: novoMinimo } : p)
+            produtos: prev.produtos.map(p => p.id === produtoId ? { ...p, estoqueMinimo: val } : p)
         } : prev);
-        setProdutos(prev => prev.map(p => p.id === produtoId ? { ...p, estoqueMinimo: novoMinimo } : p));
+        setProdutos(prev => prev.map(p => p.id === produtoId ? { ...p, estoqueMinimo: val } : p));
     };
 
     const limparFiltros = () => setFiltros({ search: '', categorias: [], categoriasComerciais: [], atalho: null });
@@ -802,7 +807,7 @@ export default function PosicaoEstoque() {
                     </div>
 
                     {/* ── MOBILE: busca compacta + painel expansível ── */}
-                    <div className="md:hidden bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="md:hidden bg-white rounded-xl border border-gray-200 shadow-sm">
                         <div className="flex items-center gap-2 p-2.5">
                             {/* Busca */}
                             <div className="relative flex-1">
@@ -1098,7 +1103,7 @@ export default function PosicaoEstoque() {
                                                             </span>
                                                         </th>
                                                         <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Tendência</th>
-                                                        <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide hidden xl:table-cell">Mín. sugerido</th>
+                                                        <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">Mín. sugerido</th>
                                                         <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
                                                             Mín. atual {isAdmin && <span className="text-gray-300 normal-case font-normal">(clique p/ editar)</span>}
                                                         </th>
