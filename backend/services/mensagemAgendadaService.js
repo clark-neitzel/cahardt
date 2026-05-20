@@ -44,7 +44,7 @@ const gerarMensagemMeta = async (vendedor, dataAtual) => {
     const pedidosHoje = await prisma.pedido.findMany({
         where: {
             vendedorId: vendedor.id,
-            dataVenda: { gte: inicioDia, lte: fimDia },
+            createdAt: { gte: inicioDia, lte: fimDia },
             bonificacao: false,
             OR: [{ situacaoCA: { notIn: ['CANCELADO', 'DEVOLVIDO'] } }, { situacaoCA: null }]
         },
