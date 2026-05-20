@@ -170,6 +170,14 @@ const NovoPedido = () => {
     const [condicaoSelecionada, setCondicaoSelecionada] = useState(null);
     const [flexTotal, setFlexTotal] = useState(0);
 
+    // Detecção de pedido duplicado
+    const [pedidosDuplicados, setPedidosDuplicados] = useState([]);
+    const [showModalDuplicata, setShowModalDuplicata] = useState(false);
+    const [duplicataConfirmada, setDuplicataConfirmada] = useState(false);
+    const duplicataConfirmadaRef = useRef(false);
+    const [duplicataAceitouResponsabilidade, setDuplicataAceitouResponsabilidade] = useState(false);
+    const [pendingSalvarStatus, setPendingSalvarStatus] = useState(null);
+
     const carregouDraftRef = useRef(false);
     const isRestoringDraftRef = useRef(false);
     const searchInputRef = useRef(null);
@@ -449,6 +457,17 @@ const NovoPedido = () => {
     useEffect(() => {
         if (clienteSelecionado) verificarDataEntrega(dataEntrega, clienteSelecionado);
     }, [dataEntrega]);
+
+    // Verifica se já existe pedido para este cliente+data ao alterar data ou cliente
+    useEffect(() => {
+        if (!clienteId || !dataEntrega || editId) return;
+        duplicataConfirmadaRef.current = false;
+        setDuplicataConfirmada(false);
+        setDuplicataAceitouResponsabilidade(false);
+        pedidoService.verificarDuplicata(clienteId, dataEntrega).then(lista => {
+            setPedidosDuplicados(lista || []);
+        }).catch(() => setPedidosDuplicados([]));
+    }, [clienteId, dataEntrega]);
 
     const verificarDataEntrega = (dataStr, cliente) => {
         if (!dataStr || !cliente) return;
@@ -773,6 +792,14 @@ const NovoPedido = () => {
     };
 
     const handleSalvar = (statusEnvio) => {
+        // Aviso de pedido duplicado — exige confirmação explícita
+        if (pedidosDuplicados.length > 0 && !duplicataConfirmadaRef.current) {
+            setPendingSalvarStatus(statusEnvio);
+            setDuplicataAceitouResponsabilidade(false);
+            setShowModalDuplicata(true);
+            return;
+        }
+
         // Bloquear venda para cliente inadimplente sem permissão
         if (inadimplenciaCliente?.inadimplente) {
             const perms = user?.permissoes || {};
@@ -1559,6 +1586,31 @@ const NovoPedido = () => {
                                             <p className="text-xs text-gray-400 mt-1">Dias do cliente: <b>{clienteSelecionado.Dia_de_entrega}</b></p>
                                         )}
 
+                                        {/* Aviso inline de pedido duplicado */}
+                                        {pedidosDuplicados.length > 0 && !duplicataConfirmada && (
+                                            <button
+                                                type="button"
+                                                onClick={() => { setDuplicataAceitouResponsabilidade(false); setShowModalDuplicata(true); }}
+                                                className="w-full mt-2 flex items-start gap-2 bg-orange-50 border border-orange-300 rounded-lg px-3 py-2.5 text-left active:bg-orange-100"
+                                            >
+                                                <AlertCircle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+                                                <div>
+                                                    <p className="text-xs font-bold text-orange-700">
+                                                        {pedidosDuplicados.length === 1
+                                                            ? 'Já existe 1 pedido para esta data!'
+                                                            : `Já existem ${pedidosDuplicados.length} pedidos para esta data!`}
+                                                    </p>
+                                                    <p className="text-[11px] text-orange-600 mt-0.5">Toque para ver o resumo e confirmar sua responsabilidade.</p>
+                                                </div>
+                                            </button>
+                                        )}
+                                        {pedidosDuplicados.length > 0 && duplicataConfirmada && (
+                                            <div className="w-full mt-2 flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                                                <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                                                <p className="text-xs font-semibold text-green-700">Duplicata reconhecida — responsabilidade aceita.</p>
+                                            </div>
+                                        )}
+
                                         <div className="mt-3">
                                             <label className="text-xs text-gray-500 font-medium">Frete <span className="text-gray-400">(opcional)</span></label>
                                             <div className="relative mt-0.5">
@@ -1875,6 +1927,109 @@ const NovoPedido = () => {
                                     <p className="text-[13px] mt-1 text-gray-400">Tente buscar de outra forma ou pelo CNPJ.</p>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ===== MODAL: AVISO DE PEDIDO DUPLICADO ===== */}
+            {showModalDuplicata && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4">
+                    <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
+                        {/* Header */}
+                        <div className="bg-orange-500 rounded-t-2xl sm:rounded-t-2xl px-4 py-3 flex items-start gap-3">
+                            <AlertCircle className="h-6 w-6 text-white shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-white font-bold text-base leading-tight">Pedido duplicado detectado!</p>
+                                <p className="text-orange-100 text-xs mt-0.5">
+                                    Já existe {pedidosDuplicados.length === 1 ? 'um pedido' : `${pedidosDuplicados.length} pedidos`} para este cliente nesta data de entrega.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Corpo — lista de pedidos existentes */}
+                        <div className="overflow-y-auto flex-1 px-4 py-3 space-y-3">
+                            {pedidosDuplicados.map((ped, idx) => (
+                                <div key={ped.id} className="border border-orange-200 rounded-lg bg-orange-50 p-3">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span className="font-bold text-orange-800 text-sm">
+                                            {ped.especial ? 'Especial' : ped.bonificacao ? 'Bonificação' : 'Pedido'}
+                                            {ped.numero ? ` #${ped.numero}` : ' (rascunho)'}
+                                        </span>
+                                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                                            ped.statusEnvio === 'ENVIAR' || ped.statusEnvio === 'RECEBIDO' ? 'bg-green-100 text-green-700' :
+                                            ped.statusEnvio === 'SINCRONIZANDO' ? 'bg-blue-100 text-blue-700' :
+                                            'bg-gray-100 text-gray-600'
+                                        }`}>
+                                            {ped.statusEnvio === 'ABERTO' ? 'Rascunho' :
+                                             ped.statusEnvio === 'ENVIAR' ? 'Enviado' :
+                                             ped.statusEnvio === 'SINCRONIZANDO' ? 'Sincronizando' :
+                                             ped.statusEnvio === 'RECEBIDO' ? 'Recebido CA' :
+                                             ped.statusEnvio}
+                                        </span>
+                                    </div>
+                                    {ped.vendedorNome && (
+                                        <p className="text-xs text-gray-500 mb-1.5">Vendedor: <b>{ped.vendedorNome}</b></p>
+                                    )}
+                                    {ped.nomeCondicaoPagamento && (
+                                        <p className="text-xs text-gray-500 mb-1.5">Condição: <b>{ped.nomeCondicaoPagamento}</b></p>
+                                    )}
+                                    <div className="space-y-0.5">
+                                        {ped.itens.map((item, i) => (
+                                            <div key={i} className="flex justify-between text-xs text-gray-700">
+                                                <span className="truncate mr-2 flex-1">{item.nome}</span>
+                                                <span className="shrink-0 text-gray-500">{item.quantidade} × R$ {item.valor.toFixed(2).replace('.', ',')}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-2 pt-2 border-t border-orange-200 flex justify-between text-sm font-bold text-orange-800">
+                                        <span>Total</span>
+                                        <span>R$ {ped.total.toFixed(2).replace('.', ',')}</span>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {/* Checkbox de responsabilidade */}
+                            <label className="flex items-start gap-3 cursor-pointer bg-red-50 border border-red-200 rounded-lg p-3 mt-1">
+                                <input
+                                    type="checkbox"
+                                    className="mt-0.5 w-5 h-5 accent-red-600 shrink-0"
+                                    checked={duplicataAceitouResponsabilidade}
+                                    onChange={e => setDuplicataAceitouResponsabilidade(e.target.checked)}
+                                />
+                                <span className="text-sm text-red-800 font-semibold leading-snug">
+                                    Estou ciente que este é um pedido duplicado e assumo total responsabilidade por pedidos e devoluções decorrentes desta ação.
+                                </span>
+                            </label>
+                        </div>
+
+                        {/* Botões */}
+                        <div className="px-4 py-3 border-t border-gray-100 flex gap-2">
+                            <button
+                                onClick={() => { setShowModalDuplicata(false); setPendingSalvarStatus(null); }}
+                                className="flex-1 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-semibold text-sm"
+                            >
+                                Voltar e corrigir
+                            </button>
+                            <button
+                                disabled={!duplicataAceitouResponsabilidade}
+                                onClick={() => {
+                                    duplicataConfirmadaRef.current = true;
+                                    setDuplicataConfirmada(true);
+                                    setShowModalDuplicata(false);
+                                    const status = pendingSalvarStatus;
+                                    setPendingSalvarStatus(null);
+                                    // Chama handleSalvar diretamente — ref já está true, sem problema de closure
+                                    handleSalvar(status);
+                                }}
+                                className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-colors ${
+                                    duplicataAceitouResponsabilidade
+                                        ? 'bg-orange-500 text-white'
+                                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                }`}
+                            >
+                                Confirmar e continuar
+                            </button>
                         </div>
                     </div>
                 </div>

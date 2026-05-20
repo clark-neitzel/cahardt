@@ -8,6 +8,9 @@ router.get('/ultimo-preco', pedidoController.obterUltimoPreco);
 // Buscar histórico de compras por cliente (para novo pedido mobile)
 router.get('/historico-cliente', pedidoController.historicoComprasCliente);
 
+// Verificar pedidos duplicados (mesmo cliente + mesma data de entrega)
+router.get('/verificar-duplicata', pedidoController.verificarDuplicata);
+
 // Resumo de pendências (contagens por tipo e status)
 router.get('/resumo-pendencias', pedidoController.resumoPendencias);
 

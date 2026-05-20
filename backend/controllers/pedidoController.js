@@ -957,6 +957,56 @@ const pedidoController = {
             console.error('Erro ao buscar cobranças CA:', error.message);
             res.status(500).json({ error: error.message || 'Erro ao buscar cobranças' });
         }
+    },
+
+    verificarDuplicata: async (req, res) => {
+        try {
+            const { clienteId, dataVenda } = req.query;
+            if (!clienteId || !dataVenda) {
+                return res.status(400).json({ error: 'clienteId e dataVenda são obrigatórios' });
+            }
+
+            const dataStr = dataVenda.split('T')[0];
+            const inicioDia = new Date(dataStr + 'T00:00:00Z');
+            const fimDia = new Date(dataStr + 'T23:59:59Z');
+
+            const pedidos = await prisma.pedido.findMany({
+                where: {
+                    clienteId,
+                    dataVenda: { gte: inicioDia, lte: fimDia },
+                    statusEnvio: { not: 'EXCLUIDO' }
+                },
+                include: {
+                    itens: {
+                        include: { produto: { select: { nome: true } } }
+                    },
+                    vendedor: { select: { nome: true } }
+                },
+                orderBy: { createdAt: 'asc' }
+            });
+
+            const resultado = pedidos.map(p => ({
+                id: p.id,
+                numero: p.numero,
+                statusEnvio: p.statusEnvio,
+                situacaoCA: p.situacaoCA,
+                especial: p.especial,
+                bonificacao: p.bonificacao,
+                vendedorNome: p.vendedor?.nome || null,
+                nomeCondicaoPagamento: p.nomeCondicaoPagamento,
+                total: p.itens.reduce((s, i) => s + Number(i.quantidade) * Number(i.valor), 0),
+                itens: p.itens.map(i => ({
+                    nome: i.produto?.nome || i.produtoId,
+                    quantidade: Number(i.quantidade),
+                    valor: Number(i.valor)
+                }))
+            }));
+
+            res.json(resultado);
+        } catch (error) {
+            console.error('Erro ao verificar duplicata:', error);
+            res.status(500).json({ error: 'Erro ao verificar pedidos duplicados' });
+        }
     }
 };
 

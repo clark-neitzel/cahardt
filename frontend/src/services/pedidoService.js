@@ -17,6 +17,14 @@ const pedidoService = {
         return response.data;
     },
 
+    // Verificar pedidos duplicados para mesmo cliente + data de entrega
+    verificarDuplicata: async (clienteId, dataVenda) => {
+        const response = await api.get('/pedidos/verificar-duplicata', {
+            params: { clienteId, dataVenda }
+        });
+        return response.data;
+    },
+
 
 
     // Resumo de pendências (contagens por tipo e status)
