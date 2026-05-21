@@ -127,18 +127,23 @@ async function salvar(req, res) {
     outrasExperiencias: outrasExperiencias?.trim() || null,
   };
 
-  const existente = await prisma.curriculo.findUnique({ where: { cpf: cpfLimpo } });
+  try {
+    const existente = await prisma.curriculo.findUnique({ where: { cpf: cpfLimpo } });
 
-  if (existente) {
-    const atualizado = await prisma.curriculo.update({
-      where: { cpf: cpfLimpo },
-      data: { ...dados, atualizadoEm: new Date() },
-    });
-    return res.json({ curriculo: atualizado, editado: true });
+    if (existente) {
+      const atualizado = await prisma.curriculo.update({
+        where: { cpf: cpfLimpo },
+        data: { ...dados, atualizadoEm: new Date() },
+      });
+      return res.json({ curriculo: atualizado, editado: true });
+    }
+
+    const novo = await prisma.curriculo.create({ data: { ...dados, status: 'Novo' } });
+    return res.status(201).json({ curriculo: novo, editado: false });
+  } catch (err) {
+    console.error('[salvar curriculo]', err);
+    return res.status(500).json({ erro: err.message || 'Erro interno ao salvar currículo' });
   }
-
-  const novo = await prisma.curriculo.create({ data: { ...dados, status: 'Novo' } });
-  return res.status(201).json({ curriculo: novo, editado: false });
 }
 
 // ─── PUBLIC: Upload de foto ─────────────────────────────────────────────────

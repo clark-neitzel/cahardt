@@ -82,6 +82,7 @@ export default function Candidatura() {
   const [fotoPreview, setFotoPreview] = useState(null);
   const [uploadandoFoto, setUploadandoFoto] = useState(false);
   const [curriculoId, setCurriculoId] = useState(null);
+  const [temExperiencia, setTemExperiencia] = useState(null); // null | true | false
 
   const fileInputRef = useRef();
   const videoRef = useRef();
@@ -112,6 +113,7 @@ export default function Candidatura() {
           outrasExperiencias: c.outrasExperiencias || '',
         });
         if (c.foto) setFotoPreview(`${import.meta.env.VITE_API_URL || ''}/uploads/${c.foto}`);
+        if (c.empregosRegistrados || c.empregosSemRegistro || c.outrasExperiencias) setTemExperiencia(true);
         setEditando(true);
       } else {
         setForm({ ...INICIAL, cpf: formatarCPF(cpfLimpo) });
@@ -157,6 +159,9 @@ export default function Candidatura() {
         cpf: form.cpf.replace(/\D/g, ''),
         whatsapp: form.whatsapp.replace(/\D/g, ''),
         endereco: partes.join(', ') || undefined,
+        empregosRegistrados: temExperiencia ? form.empregosRegistrados : '',
+        empregosSemRegistro: temExperiencia ? form.empregosSemRegistro : '',
+        outrasExperiencias: temExperiencia ? form.outrasExperiencias : '',
       };
       const res = await salvarCurriculo(payload);
       setCurriculoId(res.curriculo.id);
@@ -462,26 +467,52 @@ export default function Candidatura() {
             {/* Experiência */}
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide border-b pb-1 pt-2">Experiência profissional</h2>
 
-            <Campo id="empregosRegistrados" label={CAMPO_LABEL.empregosRegistrados}>
-              <textarea value={form.empregosRegistrados}
-                onChange={e => setForm(f => ({ ...f, empregosRegistrados: e.target.value }))}
-                rows={3} placeholder="Empresa, cargo, período e motivo da saída"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
-            </Campo>
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-3">Já trabalhou em alguma empresa ou lugar?</p>
+              <div className="flex gap-3">
+                <button type="button"
+                  onClick={() => setTemExperiencia(true)}
+                  className={`flex-1 py-2.5 rounded-lg border text-sm font-medium transition ${temExperiencia === true ? 'bg-orange-500 text-white border-orange-500' : 'border-gray-300 text-gray-700 hover:border-orange-400'}`}>
+                  Sim
+                </button>
+                <button type="button"
+                  onClick={() => setTemExperiencia(false)}
+                  className={`flex-1 py-2.5 rounded-lg border text-sm font-medium transition ${temExperiencia === false ? 'bg-orange-500 text-white border-orange-500' : 'border-gray-300 text-gray-700 hover:border-orange-400'}`}>
+                  Não
+                </button>
+              </div>
+            </div>
 
-            <Campo id="empregosSemRegistro" label={CAMPO_LABEL.empregosSemRegistro}>
-              <textarea value={form.empregosSemRegistro}
-                onChange={e => setForm(f => ({ ...f, empregosSemRegistro: e.target.value }))}
-                rows={2} placeholder="Trabalhos informais relevantes"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
-            </Campo>
+            {temExperiencia === true && (
+              <>
+                <Campo id="empregosRegistrados" label={CAMPO_LABEL.empregosRegistrados}>
+                  <textarea value={form.empregosRegistrados}
+                    onChange={e => setForm(f => ({ ...f, empregosRegistrados: e.target.value }))}
+                    rows={3} placeholder="Empresa, cargo, período e motivo da saída"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
+                </Campo>
 
-            <Campo id="outrasExperiencias" label={CAMPO_LABEL.outrasExperiencias}>
-              <textarea value={form.outrasExperiencias}
-                onChange={e => setForm(f => ({ ...f, outrasExperiencias: e.target.value }))}
-                rows={2} placeholder="Cursos, habilidades ou outras informações relevantes"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
-            </Campo>
+                <Campo id="empregosSemRegistro" label={CAMPO_LABEL.empregosSemRegistro}>
+                  <textarea value={form.empregosSemRegistro}
+                    onChange={e => setForm(f => ({ ...f, empregosSemRegistro: e.target.value }))}
+                    rows={2} placeholder="Trabalhos informais relevantes"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
+                </Campo>
+
+                <Campo id="outrasExperiencias" label={CAMPO_LABEL.outrasExperiencias}>
+                  <textarea value={form.outrasExperiencias}
+                    onChange={e => setForm(f => ({ ...f, outrasExperiencias: e.target.value }))}
+                    rows={2} placeholder="Cursos, habilidades ou outras informações relevantes"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
+                </Campo>
+              </>
+            )}
+
+            {temExperiencia === false && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 text-sm text-orange-700">
+                Tudo bem! Estamos abertos a candidatos sem experiência prévia.
+              </div>
+            )}
 
             {erros.geral && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{erros.geral}</div>
