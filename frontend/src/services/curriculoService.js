@@ -1,9 +1,7 @@
 import axios from 'axios';
-import api from './api';
+import api, { API_URL } from './api';
 
-const API_URL = import.meta.env.VITE_API_URL || '';
-
-// API pública (sem token)
+// API pública (sem token) — usa o mesmo domínio de produção que api.js
 const apiPublica = axios.create({ baseURL: `${API_URL}/api` });
 
 // ─── Públicas ───────────────────────────────────────────────────────────────
