@@ -127,14 +127,41 @@ export default function Candidatura() {
     }
   }
 
-  // ─── Validação do formulário ────────────────────────────────────────────────
+  // ─── Validação campo a campo (onBlur) ──────────────────────────────────────
+  function validarCampo(campo, valor) {
+    let erro = '';
+    if (campo === 'nome') {
+      const v = (valor || '').trim();
+      if (!v) erro = 'Nome obrigatório';
+      else if (v.split(/\s+/).length < 2) erro = 'Informe nome e sobrenome completos';
+    }
+    if (campo === 'whatsapp') {
+      const n = (valor || '').replace(/\D/g, '');
+      if (!n) erro = 'WhatsApp obrigatório';
+      else if (n.length < 10 || n.length > 11) erro = 'Número inválido — use DDD + número (ex: 47 99999-9999)';
+    }
+    if (campo === 'email' && valor) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor.trim()))
+        erro = 'E-mail inválido — verifique e corrija';
+    }
+    if (campo === 'dataNascimento') {
+      if (!valor) erro = 'Data de nascimento obrigatória';
+      else if (calcularIdade(valor) < 18) erro = 'É necessário ter ao menos 18 anos';
+      else if (calcularIdade(valor) > 80) erro = 'Verifique a data informada';
+    }
+    setErros(prev => ({ ...prev, [campo]: erro || undefined }));
+    return !erro;
+  }
+
+  // ─── Validação do formulário completo (ao submeter) ─────────────────────────
   function validar() {
     const e = {};
     if (!form.nome.trim() || form.nome.trim().split(/\s+/).length < 2)
-      e.nome = 'Informe nome e sobrenome';
+      e.nome = 'Informe nome e sobrenome completos';
     const wa = form.whatsapp.replace(/\D/g, '');
-    if (wa.length < 10 || wa.length > 11) e.whatsapp = 'WhatsApp inválido';
-    if (!validarCPF(form.cpf.replace(/\D/g, ''))) e.cpf = 'CPF inválido';
+    if (!wa || wa.length < 10 || wa.length > 11) e.whatsapp = 'WhatsApp inválido — use DDD + número';
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
+      e.email = 'E-mail inválido — verifique e corrija';
     if (!form.dataNascimento) e.dataNascimento = 'Data de nascimento obrigatória';
     else if (calcularIdade(form.dataNascimento) < 18) e.dataNascimento = 'É necessário ter ao menos 18 anos';
     if (!form.areaInteresse) e.areaInteresse = 'Selecione uma área de interesse';
@@ -319,9 +346,11 @@ export default function Candidatura() {
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide border-b pb-1">Dados pessoais</h2>
 
             <Campo id="nome" label={CAMPO_LABEL.nome} obrigatorio erro={erros.nome}>
-              <input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))}
+              <input value={form.nome}
+                onChange={e => setForm(f => ({ ...f, nome: e.target.value }))}
+                onBlur={e => validarCampo('nome', e.target.value)}
                 placeholder="Nome e sobrenome"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                className={`w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 ${erros.nome ? 'border-red-400 bg-red-50' : 'border-gray-300'}`} />
             </Campo>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -332,7 +361,8 @@ export default function Candidatura() {
               <Campo id="dataNascimento" label={CAMPO_LABEL.dataNascimento} obrigatorio erro={erros.dataNascimento}>
                 <input type="date" value={form.dataNascimento}
                   onChange={e => setForm(f => ({ ...f, dataNascimento: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                  onBlur={e => validarCampo('dataNascimento', e.target.value)}
+                  className={`w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 ${erros.dataNascimento ? 'border-red-400 bg-red-50' : 'border-gray-300'}`} />
               </Campo>
             </div>
 
@@ -340,14 +370,16 @@ export default function Candidatura() {
               <Campo id="whatsapp" label={CAMPO_LABEL.whatsapp} obrigatorio erro={erros.whatsapp}>
                 <input type="tel" value={form.whatsapp} inputMode="numeric" maxLength={15}
                   onChange={e => setForm(f => ({ ...f, whatsapp: formatarWhatsApp(e.target.value) }))}
+                  onBlur={e => validarCampo('whatsapp', e.target.value)}
                   placeholder="(47) 99999-9999"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                  className={`w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 ${erros.whatsapp ? 'border-red-400 bg-red-50' : 'border-gray-300'}`} />
               </Campo>
-              <Campo id="email" label={CAMPO_LABEL.email}>
+              <Campo id="email" label={CAMPO_LABEL.email} erro={erros.email}>
                 <input type="email" value={form.email}
                   onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  onBlur={e => validarCampo('email', e.target.value)}
                   placeholder="seu@email.com"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                  className={`w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400 ${erros.email ? 'border-red-400 bg-red-50' : 'border-gray-300'}`} />
               </Campo>
             </div>
 
