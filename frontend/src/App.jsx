@@ -54,6 +54,9 @@ import DeliveryConfig from './pages/Delivery/DeliveryConfig';
 import PainelAtendimentos from './pages/Atendimentos/PainelAtendimentos';
 import PainelAnaliseIA from './pages/AnaliseIA/PainelAnaliseIA';
 import MensagensAgendadas from './pages/Admin/MensagensAgendadas/MensagensAgendadas';
+import Candidatura from './pages/Candidatura/Candidatura';
+import ListaCurriculos from './pages/RH/ListaCurriculos';
+import DetalheCurriculo from './pages/RH/DetalheCurriculo';
 
 import {
   Menu, X, LogOut, ChevronDown,
@@ -61,7 +64,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -163,6 +166,7 @@ const Layout = ({ children }) => {
   const showPcp = isAdmin || Object.values(pcpPerms).some(Boolean);
   const canPcp = (key) => isAdmin || !!pcpPerms[key];
   const showConfig = hasPermission('configuracoes');
+  const showRH = isAdmin || hasPermission('Pode_Ver_RH') || hasPermission('Pode_Editar_RH');
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -215,6 +219,10 @@ const Layout = ({ children }) => {
           {isAdmin && <SidebarItem to="/admin/mensagens" icon={BellRing} label="Mensagens" />}
           {(user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && <SidebarItem to="/admin/veiculos" icon={Car} label="Veículos" />}
           {hasPermission('sync') && <SidebarItem to="/admin/sync" icon={RefreshCw} label="Sincronizar" />}
+
+          {/* RH */}
+          {showRH && <SidebarSection label="RH" />}
+          {showRH && <SidebarItem to="/rh/curriculos" icon={UserCheck} label="Currículos" />}
 
           {/* PCP */}
           {showPcp && <SidebarSection label="PCP" />}
@@ -372,6 +380,13 @@ const Layout = ({ children }) => {
               </MobileMenuSection>
             )}
 
+            {/* RH */}
+            {showRH && (
+              <MobileMenuSection label="RH" icon={UserCheck}>
+                <NavLink to="/rh/curriculos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Currículos</NavLink>
+              </MobileMenuSection>
+            )}
+
             {/* PCP */}
             {showPcp && (
               <MobileMenuSection label="PCP" icon={Factory}>
@@ -454,6 +469,9 @@ function App() {
         <DiarioProvider>
           <Layout>
             <Routes>
+              {/* Página pública de candidatura (sem autenticação) */}
+              <Route path="/candidatura" element={<Candidatura />} />
+
               <Route path="/login" element={<Login />} />
 
               {/* Dashboard / Tela Inicial */}
@@ -542,6 +560,10 @@ function App() {
               <Route path="/config/categorias-produto" element={<PrivateRoute tab="configuracoes"><CategoriasProduto /></PrivateRoute>} />
               <Route path="/config/categorias-cliente" element={<PrivateRoute tab="configuracoes"><CategoriasCliente /></PrivateRoute>} />
               <Route path="/config/categorias-estoque" element={<PrivateRoute tab="configuracoes"><CategoriasEstoque /></PrivateRoute>} />
+
+              {/* RH — Currículos */}
+              <Route path="/rh/curriculos" element={<PrivateRoute tab="Pode_Ver_RH"><ListaCurriculos /></PrivateRoute>} />
+              <Route path="/rh/curriculos/:id" element={<PrivateRoute tab="Pode_Ver_RH"><DetalheCurriculo /></PrivateRoute>} />
             </Routes>
           </Layout>
           <Toaster position="top-right" />

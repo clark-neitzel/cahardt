@@ -48,6 +48,8 @@ const devolucaoRoutes = require('./routes/devolucaoRoutes'); // Devoluções
 const deliveryRoutes = require('./routes/deliveryRoutes'); // Delivery (Kit Festa)
 const iaLogsRoutes = require('./routes/iaLogs'); // Logs de Análise IA
 const mensagemAgendadaRoutes = require('./routes/mensagemAgendadaRoutes'); // Mensagens Agendadas
+const curriculoRoutes = require('./routes/curriculos'); // Módulo RH: Currículos (público)
+const rhRoutes = require('./routes/rh'); // Módulo RH: Painel interno
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -116,6 +118,8 @@ app.use('/api/ia-logs', iaLogsRoutes); // Logs de Análise IA (auth interno)
 
 app.use('/api/mensagens-agendadas', authMiddleware, mensagemAgendadaRoutes); // Mensagens Agendadas
 app.use('/api/migrations', authMiddleware, migrationRoutes); // Migration endpoint (protegido)
+app.use('/api/curriculos', curriculoRoutes); // RH: Submissão pública de currículos
+app.use('/api/rh', authMiddleware, rhRoutes); // RH: Painel interno (protegido)
 
 // Rota base
 app.get('/', (req, res) => {

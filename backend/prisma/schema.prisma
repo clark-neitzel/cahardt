@@ -362,6 +362,9 @@ model Vendedor {
 
   mensagensAgendadas MensagemAgendada[]
 
+  curriculoAcessos   CurriculoAcesso[]
+  curriculoHistorico CurriculoHistorico[]
+
   @@map("vendedores")
 }
 
@@ -1494,4 +1497,74 @@ model IaAnaliseLog {
   @@index([vendedorId])
   @@index([disparadoPor])
   @@map("ia_analise_logs")
+}
+
+model Curriculo {
+  id                  Int      @id @default(autoincrement())
+  criadoEm           DateTime @default(now()) @map("criado_em")
+  atualizadoEm       DateTime @updatedAt @map("atualizado_em")
+
+  // Dados pessoais
+  nome                String
+  email               String?
+  whatsapp            String
+  cpf                 String   @unique
+  dataNascimento      DateTime @map("data_nascimento")
+  estadoCivil         String?  @map("estado_civil")
+  temFilhos           String?  @map("tem_filhos")
+  naturalidade        String?
+  endereco            String?
+  foto                String?
+
+  // Disponibilidade
+  areaInteresse       String   @map("area_interesse")
+  horarioInicio       String?  @map("horario_inicio")
+  horasExtras         String?  @map("horas_extras")
+  disponibilidade     String?
+
+  // Histórico profissional
+  empregosRegistrados   String? @db.Text @map("empregos_registrados")
+  empregosSemRegistro   String? @db.Text @map("empregos_sem_registro")
+  outrasExperiencias    String? @db.Text @map("outras_experiencias")
+
+  // Campos RH (preenchidos internamente)
+  status              String   @default("Novo")
+  observacao          String?  @db.Text
+  dataAlteracao       DateTime? @map("data_alteracao")
+
+  // Relações
+  acessos    CurriculoAcesso[]
+  historico  CurriculoHistorico[]
+
+  @@map("curriculos")
+}
+
+model CurriculoAcesso {
+  id          Int      @id @default(autoincrement())
+  curriculoId Int      @map("curriculo_id")
+  vendedorId  String   @map("vendedor_id")
+  acessadoEm DateTime @default(now()) @map("acessado_em")
+
+  curriculo Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+  vendedor  Vendedor  @relation(fields: [vendedorId], references: [id])
+
+  @@index([curriculoId])
+  @@index([vendedorId])
+  @@map("curriculo_acessos")
+}
+
+model CurriculoHistorico {
+  id          Int      @id @default(autoincrement())
+  curriculoId Int      @map("curriculo_id")
+  vendedorId  String   @map("vendedor_id")
+  campo       String
+  valorAntes  String?  @db.Text @map("valor_antes")
+  valorDepois String?  @db.Text @map("valor_depois")
+  criadoEm   DateTime @default(now()) @map("criado_em")
+
+  curriculo Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+  vendedor  Vendedor  @relation(fields: [vendedorId], references: [id])
+
+  @@index([curriculoId])
+  @@map("curriculo_historico")
 }
