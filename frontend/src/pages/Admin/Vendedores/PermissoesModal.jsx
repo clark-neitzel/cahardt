@@ -102,6 +102,7 @@ const DEFAULT_PERMISSIONS = {
     // Módulo RH — Currículos
     Pode_Ver_RH: false,
     Pode_Editar_RH: false,
+    Pode_Excluir_RH: false,
     // Tela inicial preferida
     telaInicial: '/',
 };
@@ -833,7 +834,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
 
                     {/* ── RH ── */}
                     <DeptSection label="RH — Currículos" icon={Users} color="indigo"
-                        badge={`${[permissoes.Pode_Ver_RH, permissoes.Pode_Editar_RH].filter(Boolean).length} ativo${[permissoes.Pode_Ver_RH, permissoes.Pode_Editar_RH].filter(Boolean).length !== 1 ? 's' : ''}`}>
+                        badge={`${[permissoes.Pode_Ver_RH, permissoes.Pode_Editar_RH, permissoes.Pode_Excluir_RH].filter(Boolean).length} ativo${[permissoes.Pode_Ver_RH, permissoes.Pode_Editar_RH, permissoes.Pode_Excluir_RH].filter(Boolean).length !== 1 ? 's' : ''}`}>
                         <Toggle
                             checked={!!permissoes.Pode_Ver_RH}
                             onChange={v => setPermissoes(p => ({ ...p, Pode_Ver_RH: v }))}
@@ -847,6 +848,15 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 onChange={v => setPermissoes(p => ({ ...p, Pode_Editar_RH: v }))}
                                 label="Editar Currículos"
                                 sublabel="Pode alterar status, adicionar observações e convidar via WhatsApp"
+                                icon={Users}
+                            />
+                        )}
+                        {permissoes.Pode_Editar_RH && (
+                            <Toggle
+                                checked={!!permissoes.Pode_Excluir_RH}
+                                onChange={v => setPermissoes(p => ({ ...p, Pode_Excluir_RH: v }))}
+                                label="Excluir Currículos"
+                                sublabel="Pode excluir permanentemente um currículo e sua foto"
                                 icon={Users}
                             />
                         )}

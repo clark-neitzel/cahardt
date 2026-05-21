@@ -339,6 +339,24 @@ async function linkWhatsapp(req, res) {
   return res.json({ ok: true, mensagem });
 }
 
+// ─── RH: Excluir currículo ────────────────────────────────────────────────
+async function excluir(req, res) {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ erro: 'ID inválido' });
+
+  const curriculo = await prisma.curriculo.findUnique({ where: { id }, select: { id: true, foto: true } });
+  if (!curriculo) return res.status(404).json({ erro: 'Currículo não encontrado' });
+
+  // Remove arquivo de foto se existir
+  if (curriculo.foto) {
+    const fotoPath = path.join(__dirname, '..', 'uploads', curriculo.foto);
+    if (fs.existsSync(fotoPath)) fs.unlinkSync(fotoPath);
+  }
+
+  await prisma.curriculo.delete({ where: { id } });
+  return res.json({ ok: true });
+}
+
 // ─── RH: Contagem por status (dashboard) ─────────────────────────────────
 async function contagens(req, res) {
   const grupos = await prisma.curriculo.groupBy({
@@ -363,5 +381,6 @@ module.exports = {
   detalhe,
   atualizar,
   linkWhatsapp,
+  excluir,
   contagens,
 };

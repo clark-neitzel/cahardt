@@ -52,6 +52,11 @@ export async function gerarLinkWhatsapp(id) {
   return data;
 }
 
+export async function excluirCurriculo(id) {
+  const { data } = await api.delete(`/rh/curriculos/${id}`);
+  return data;
+}
+
 export async function obterContagens() {
   const { data } = await api.get('/rh/curriculos/contagens');
   return data;

@@ -23,10 +23,19 @@ function checkEditRH(req, res, next) {
   next();
 }
 
+function checkDeleteRH(req, res, next) {
+  const p = req.user?.permissoes || {};
+  if (!isAdmin(p) && !p.Pode_Excluir_RH) {
+    return res.status(403).json({ erro: 'Sem permissão para excluir currículos' });
+  }
+  next();
+}
+
 router.get('/curriculos/contagens', checkRH, ctrl.contagens);
 router.get('/curriculos', checkRH, ctrl.listar);
 router.get('/curriculos/:id', checkRH, ctrl.detalhe);
 router.put('/curriculos/:id', checkEditRH, ctrl.atualizar);
 router.get('/curriculos/:id/whatsapp', checkEditRH, ctrl.linkWhatsapp);
+router.delete('/curriculos/:id', checkDeleteRH, ctrl.excluir);
 
 module.exports = router;

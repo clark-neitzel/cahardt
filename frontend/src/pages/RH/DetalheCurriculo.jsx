@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, MessageCircle, Clock, User, Check, AlertCircle, X } from 'lucide-react';
-import { obterCurriculo, atualizarCurriculo, gerarLinkWhatsapp } from '../../services/curriculoService';
+import { ChevronLeft, MessageCircle, Clock, User, Check, AlertCircle, X, Trash2 } from 'lucide-react';
+import { obterCurriculo, atualizarCurriculo, gerarLinkWhatsapp, excluirCurriculo } from '../../services/curriculoService';
 import { API_URL } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 const STATUS_OPCOES = [
@@ -64,6 +65,8 @@ function Campo({ label, valor }) {
 export default function DetalheCurriculo() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const podeExcluir = hasPermission('Pode_Excluir_RH');
   const [curriculo, setCurriculo] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -71,6 +74,7 @@ export default function DetalheCurriculo() {
   const [observacao, setObservacao] = useState('');
   const [observacaoEditando, setObservacaoEditando] = useState(false);
   const [fotoAmpliada, setFotoAmpliada] = useState(false);
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
 
   useEffect(() => {
     obterCurriculo(id)
@@ -106,6 +110,17 @@ export default function DetalheCurriculo() {
     setSalvando(false);
   }
 
+  async function handleExcluir() {
+    setSalvando(true);
+    try {
+      await excluirCurriculo(id);
+      toast.success('Currículo excluído');
+      navigate('/rh/curriculos');
+    } catch { toast.error('Erro ao excluir currículo'); }
+    setSalvando(false);
+    setConfirmandoExclusao(false);
+  }
+
   async function handleWhatsApp() {
     setSalvando(true);
     try {
@@ -136,6 +151,36 @@ export default function DetalheCurriculo() {
           </button>
         </div>
       )}
+      {/* Modal confirmação de exclusão */}
+      {confirmandoExclusao && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <Trash2 size={18} className="text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">Excluir currículo</h3>
+                <p className="text-sm text-gray-500">Esta ação não pode ser desfeita.</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-700">
+              Tem certeza que deseja excluir o currículo de <span className="font-medium">{curriculo.nome}</span>?
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmandoExclusao(false)} disabled={salvando}
+                className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50">
+                Cancelar
+              </button>
+              <button onClick={handleExcluir} disabled={salvando}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+                {salvando ? 'Excluindo...' : 'Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
         <button onClick={() => navigate('/rh/curriculos')} className="text-gray-400 hover:text-gray-600">
@@ -145,7 +190,12 @@ export default function DetalheCurriculo() {
           <h1 className="text-xl font-bold text-gray-800">{curriculo.nome}</h1>
           <p className="text-sm text-gray-500">{curriculo.areaInteresse} · {formatarData(curriculo.criadoEm)}</p>
         </div>
-        {/* Botão WhatsApp */}
+        {podeExcluir && (
+          <button onClick={() => setConfirmandoExclusao(true)} disabled={salvando}
+            className="flex items-center gap-1.5 border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50 px-3 py-2 rounded-lg text-sm font-medium transition">
+            <Trash2 size={15} /> Excluir
+          </button>
+        )}
         <button onClick={handleWhatsApp} disabled={salvando}
           className="flex items-center gap-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
           <MessageCircle size={16} /> Convidar para entrevista
