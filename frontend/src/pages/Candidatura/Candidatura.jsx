@@ -63,7 +63,8 @@ const CAMPO_LABEL = {
 
 const INICIAL = {
   nome: '', email: '', whatsapp: '', cpf: '', dataNascimento: '',
-  estadoCivil: '', temFilhos: '', naturalidade: '', endereco: '',
+  estadoCivil: '', temFilhos: '', naturalidade: '',
+  cep: '', rua: '', numero: '', bairro: '', cidade: '', uf: '',
   areaInteresse: '', horarioInicio: '', horasExtras: '', disponibilidade: '',
   empregosRegistrados: '', empregosSemRegistro: '', outrasExperiencias: '',
 };
@@ -102,7 +103,8 @@ export default function Candidatura() {
           nome: c.nome || '', email: c.email || '', whatsapp: formatarWhatsApp(c.whatsapp || ''),
           cpf: formatarCPF(c.cpf || ''), dataNascimento: c.dataNascimento?.split('T')[0] || '',
           estadoCivil: c.estadoCivil || '', temFilhos: c.temFilhos || '',
-          naturalidade: c.naturalidade || '', endereco: c.endereco || '',
+          naturalidade: c.naturalidade || '',
+          cep: '', rua: c.endereco || '', numero: '', bairro: '', cidade: '', uf: '',
           areaInteresse: c.areaInteresse || '', horarioInicio: c.horarioInicio || '',
           horasExtras: c.horasExtras || '', disponibilidade: c.disponibilidade || '',
           empregosRegistrados: c.empregosRegistrados || '',
@@ -143,10 +145,18 @@ export default function Candidatura() {
     if (!validar()) return;
     setSalvando(true);
     try {
+      const partes = [
+        form.rua,
+        form.numero,
+        form.bairro,
+        form.cidade && form.uf ? `${form.cidade}/${form.uf}` : form.cidade || form.uf,
+        form.cep ? `CEP ${form.cep.replace(/\D/g, '').replace(/(\d{5})(\d{3})/, '$1-$2')}` : '',
+      ].filter(Boolean);
       const payload = {
         ...form,
         cpf: form.cpf.replace(/\D/g, ''),
         whatsapp: form.whatsapp.replace(/\D/g, ''),
+        endereco: partes.join(', ') || undefined,
       };
       const res = await salvarCurriculo(payload);
       setCurriculoId(res.curriculo.id);
@@ -208,6 +218,30 @@ export default function Candidatura() {
       setUploadandoFoto(false);
     }
     setEtapa('sucesso');
+  }
+
+  // ─── Busca CEP ───────────────────────────────────────────────────────────────
+  const [cepCarregando, setCepCarregando] = useState(false);
+  const [cepErro, setCepErro] = useState('');
+
+  async function buscarCep(cepRaw) {
+    const cep = cepRaw.replace(/\D/g, '');
+    if (cep.length !== 8) return;
+    setCepCarregando(true);
+    setCepErro('');
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await res.json();
+      if (data.erro) { setCepErro('CEP não encontrado'); return; }
+      setForm(f => ({
+        ...f,
+        rua: data.logradouro || f.rua,
+        bairro: data.bairro || f.bairro,
+        cidade: data.localidade || f.cidade,
+        uf: data.uf || f.uf,
+      }));
+    } catch { setCepErro('Erro ao buscar CEP'); }
+    finally { setCepCarregando(false); }
   }
 
   function pularFoto() { setEtapa('sucesso'); }
@@ -335,11 +369,55 @@ export default function Candidatura() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400" />
             </Campo>
 
-            <Campo id="endereco" label={CAMPO_LABEL.endereco}>
-              <input value={form.endereco} onChange={e => setForm(f => ({ ...f, endereco: e.target.value }))}
-                placeholder="Rua, número, bairro, cidade e CEP"
+            {/* CEP com busca automática */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Campo id="cep" label="CEP">
+                <div className="relative">
+                  <input
+                    value={form.cep}
+                    onChange={e => {
+                      const v = e.target.value.replace(/\D/g, '').replace(/(\d{5})(\d{1,3})/, '$1-$2').slice(0, 9);
+                      setForm(f => ({ ...f, cep: v }));
+                      if (v.replace(/\D/g, '').length === 8) buscarCep(v);
+                    }}
+                    placeholder="00000-000"
+                    inputMode="numeric"
+                    maxLength={9}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  />
+                  {cepCarregando && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">buscando...</span>}
+                </div>
+                {cepErro && <p className="text-red-500 text-xs mt-1">{cepErro}</p>}
+              </Campo>
+              <Campo id="numero" label="Número">
+                <input value={form.numero} onChange={e => setForm(f => ({ ...f, numero: e.target.value }))}
+                  placeholder="Ex: 123"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              </Campo>
+              <Campo id="uf" label="UF">
+                <input value={form.uf} onChange={e => setForm(f => ({ ...f, uf: e.target.value.toUpperCase().slice(0, 2) }))}
+                  placeholder="SC"
+                  maxLength={2}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              </Campo>
+            </div>
+            <Campo id="rua" label="Rua / Logradouro">
+              <input value={form.rua} onChange={e => setForm(f => ({ ...f, rua: e.target.value }))}
+                placeholder="Preenchido automaticamente pelo CEP"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400" />
             </Campo>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Campo id="bairro" label="Bairro">
+                <input value={form.bairro} onChange={e => setForm(f => ({ ...f, bairro: e.target.value }))}
+                  placeholder="Preenchido pelo CEP"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              </Campo>
+              <Campo id="cidade" label="Cidade">
+                <input value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))}
+                  placeholder="Preenchido pelo CEP"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              </Campo>
+            </div>
 
             {/* Disponibilidade */}
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide border-b pb-1 pt-2">Disponibilidade</h2>
