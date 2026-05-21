@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, MessageCircle, Clock, User, Check, AlertCircle } from 'lucide-react';
 import { obterCurriculo, atualizarCurriculo, gerarLinkWhatsapp } from '../../services/curriculoService';
+import { API_URL } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const STATUS_OPCOES = [
@@ -117,7 +118,6 @@ export default function DetalheCurriculo() {
   if (carregando) return <div className="p-8 text-center text-gray-400">Carregando...</div>;
   if (!curriculo) return <div className="p-8 text-center text-red-500">Currículo não encontrado.</div>;
 
-  const API_URL = import.meta.env.VITE_API_URL || '';
 
   return (
     <div className="p-4 lg:p-6 max-w-4xl mx-auto space-y-4">

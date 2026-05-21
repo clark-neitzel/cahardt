@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Users, TrendingUp, ChevronRight, RefreshCw } from 'lucide-react';
 import { listarCurriculos, obterContagens } from '../../services/curriculoService';
+import { API_URL } from '../../services/api';
 
 const AREAS = ['', 'Produção', 'Entrega', 'Vendas', 'Administrativo', 'Outros'];
 const STATUS_LISTA = [
@@ -152,7 +153,7 @@ export default function ListaCurriculos() {
                 {/* Foto */}
                 <div className="shrink-0">
                   {c.foto
-                    ? <img src={`${import.meta.env.VITE_API_URL || ''}/uploads/${c.foto}`} alt={c.nome}
+                    ? <img src={`${API_URL}/uploads/${c.foto}`} alt={c.nome}
                         className="w-10 h-10 rounded-full object-cover border border-gray-200" />
                     : <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-semibold text-sm">
                         {c.nome.charAt(0).toUpperCase()}
