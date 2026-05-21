@@ -99,6 +99,9 @@ const DEFAULT_PERMISSIONS = {
     horarioLimiteAmanha: '18:00',
     horarioLimiteHoje: '12:00',
     Pode_Entregar_Fim_Semana: false,
+    // Módulo RH — Currículos
+    Pode_Ver_RH: false,
+    Pode_Editar_RH: false,
     // Tela inicial preferida
     telaInicial: '/',
 };
@@ -826,6 +829,27 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         <MenuToggle icon={Warehouse} label="Estoque PCP" checked={!!pcpPerms.estoque} onChange={() => togglePcp('estoque')} />
                         <MenuToggle icon={Lightbulb} label="Sugestoes de Producao" checked={!!pcpPerms.sugestoes} onChange={() => togglePcp('sugestoes')} />
                         <MenuToggle icon={BarChart3} label="Dashboard PCP" checked={!!pcpPerms.sugestoes} onChange={() => togglePcp('sugestoes')} />
+                    </DeptSection>
+
+                    {/* ── RH ── */}
+                    <DeptSection label="RH — Currículos" icon={Users} color="indigo"
+                        badge={`${[permissoes.Pode_Ver_RH, permissoes.Pode_Editar_RH].filter(Boolean).length} ativo${[permissoes.Pode_Ver_RH, permissoes.Pode_Editar_RH].filter(Boolean).length !== 1 ? 's' : ''}`}>
+                        <Toggle
+                            checked={!!permissoes.Pode_Ver_RH}
+                            onChange={v => setPermissoes(p => ({ ...p, Pode_Ver_RH: v }))}
+                            label="Ver Currículos"
+                            sublabel="Acessa o painel /rh/curriculos e detalhe de candidatos"
+                            icon={Users}
+                        />
+                        {permissoes.Pode_Ver_RH && (
+                            <Toggle
+                                checked={!!permissoes.Pode_Editar_RH}
+                                onChange={v => setPermissoes(p => ({ ...p, Pode_Editar_RH: v }))}
+                                label="Editar Currículos"
+                                sublabel="Pode alterar status, adicionar observações e convidar via WhatsApp"
+                                icon={Users}
+                            />
+                        )}
                     </DeptSection>
 
                     {/* ── CONFIGURAÇÕES ── */}

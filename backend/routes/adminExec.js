@@ -675,4 +675,36 @@ router.post('/corrigir-especiais-abertos', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/db-push — executa prisma db push (cria tabelas novas sem migration)
+router.post('/db-push', async (req, res) => {
+    const { execSync } = require('child_process');
+    try {
+        const out = execSync('npx prisma db push --skip-generate --accept-data-loss 2>&1', {
+            cwd: process.cwd(),
+            timeout: 60000,
+            env: { ...process.env },
+        }).toString();
+        res.json({ ok: true, output: out });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message, output: e.stdout?.toString() });
+    }
+});
+
+// POST /api/admin-exec/import-curriculos — importa os currículos do CSV incluído no repositório
+router.post('/import-curriculos', async (req, res) => {
+    const { execSync } = require('child_process');
+    const path = require('path');
+    const csvPath = path.join(process.cwd(), 'scripts', 'Curriculos.csv');
+    try {
+        const out = execSync(`node scripts/importarCurriculos.js "${csvPath}" 2>&1`, {
+            cwd: process.cwd(),
+            timeout: 120000,
+            env: { ...process.env },
+        }).toString();
+        res.json({ ok: true, output: out });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message, output: e.stdout?.toString() });
+    }
+});
+
 module.exports = router;
