@@ -39,6 +39,18 @@ const FILHOS = ['Não', 'Sim, 1', 'Sim, 2 ou mais'];
 const HORARIOS_INICIO = ['05:00', '06:00', '07:30'];
 const DISPONIBILIDADES = ['Integral (horário comercial)', 'Somente pela manhã', 'Somente pela tarde', 'Somente a Noite'];
 
+function Campo({ id, label, obrigatorio, children, erro }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label}{obrigatorio && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      {children}
+      {erro && <p className="text-red-500 text-xs mt-1">{erro}</p>}
+    </div>
+  );
+}
+
 const CAMPO_LABEL = {
   nome: 'Nome completo', email: 'E-mail', whatsapp: 'WhatsApp', cpf: 'CPF',
   dataNascimento: 'Data de nascimento', estadoCivil: 'Estado civil',
@@ -199,18 +211,6 @@ export default function Candidatura() {
   }
 
   function pularFoto() { setEtapa('sucesso'); }
-
-  function Campo({ id, label, obrigatorio, children, erro }) {
-    return (
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {label}{obrigatorio && <span className="text-red-500 ml-0.5">*</span>}
-        </label>
-        {children}
-        {erro && <p className="text-red-500 text-xs mt-1">{erro}</p>}
-      </div>
-    );
-  }
 
   // ─── Render: CPF ───────────────────────────────────────────────────────────
   if (etapa === 'cpf') return (
