@@ -154,6 +154,17 @@ async function main() {
 
   for (const r of registros) {
     // Pegar as colunas pelo nome (podem ter espaços extras)
+    const carimboBruto = r['Carimbo de data/hora'] || '';
+    let criadoEm = null;
+    if (carimboBruto) {
+      // Formato: DD/MM/YYYY HH:MM:SS
+      const m = carimboBruto.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?/);
+      if (m) {
+        const d = new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:${m[6] || '00'}.000Z`);
+        if (!isNaN(d.getTime())) criadoEm = d;
+      }
+    }
+
     const nome = norm(r['Nome completo']);
     const email = norm(r['Endereço de e-mail']);
     const whatsappRaw = r['WhatsApp para contato\n'] || r['WhatsApp para contato'] || '';
@@ -205,6 +216,7 @@ async function main() {
       email,
       whatsapp,
       dataNascimento,
+      ...(criadoEm ? { criadoEm } : {}),
       estadoCivil,
       temFilhos,
       naturalidade,
