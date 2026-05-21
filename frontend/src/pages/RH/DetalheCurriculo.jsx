@@ -107,13 +107,14 @@ export default function DetalheCurriculo() {
   }
 
   async function handleWhatsApp() {
+    setSalvando(true);
     try {
-      const { link, mensagem } = await gerarLinkWhatsapp(id);
+      await gerarLinkWhatsapp(id);
       setStatus('Entrevista');
       setCurriculo(c => ({ ...c, status: 'Entrevista' }));
-      window.open(link, '_blank');
-      toast.success('Status atualizado para Entrevista');
-    } catch { toast.error('Erro ao gerar link WhatsApp'); }
+      toast.success('Convite enviado via WhatsApp!');
+    } catch { toast.error('Erro ao enviar convite'); }
+    setSalvando(false);
   }
 
   if (carregando) return <div className="p-8 text-center text-gray-400">Carregando...</div>;
@@ -145,8 +146,8 @@ export default function DetalheCurriculo() {
           <p className="text-sm text-gray-500">{curriculo.areaInteresse} · {formatarData(curriculo.criadoEm)}</p>
         </div>
         {/* Botão WhatsApp */}
-        <button onClick={handleWhatsApp}
-          className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+        <button onClick={handleWhatsApp} disabled={salvando}
+          className="flex items-center gap-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
           <MessageCircle size={16} /> Convidar para entrevista
         </button>
       </div>

@@ -2,6 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const webhookService = require('../services/webhookService');
 
 const prisma = new PrismaClient();
 
@@ -298,7 +299,7 @@ async function atualizar(req, res) {
   return res.json(atualizado);
 }
 
-// ─── RH: Gerar link WhatsApp para convite de entrevista ──────────────────
+// ─── RH: Enviar convite de entrevista via BotConversa ────────────────────
 async function linkWhatsapp(req, res) {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ erro: 'ID inválido' });
@@ -310,13 +311,11 @@ async function linkWhatsapp(req, res) {
   if (!curriculo) return res.status(404).json({ erro: 'Currículo não encontrado' });
 
   const primeiroNome = curriculo.nome.split(' ')[0];
-  const mensagem = `Olá ${primeiroNome}! Seu currículo foi analisado e você foi selecionado(a) para uma entrevista na Hardt Salgados. Se ainda tiver interesse, entre em contato para agendarmos seu horário. Atendemos de segunda a sexta, das 08:00 às 11:30 e das 13:30 às 17:30. Aguardamos seu retorno!`;
-
-  const numero = `55${curriculo.whatsapp}`;
-  const link = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
+  const mensagem = `Olá *${primeiroNome}*! 👋\n\nSeu currículo foi analisado e você foi selecionado(a) para uma entrevista na *Hardt Salgados*. 🎉\n\nSe ainda tiver interesse, entre em contato para agendarmos seu horário.\n\n🕐 Atendemos de segunda a sexta, das *08:00 às 11:30* e das *13:30 às 17:30*.\n\nAguardamos seu retorno!`;
 
   // Atualiza status para Entrevista se ainda não estiver
-  if (!['Entrevista', 'Agendado', 'Entrevistado', 'Aprovado', 'Contratado'].includes(curriculo.status)) {
+  const statusNaoMudar = ['Entrevista', 'Agendado', 'Entrevistado', 'Aprovado', 'Contratado'];
+  if (!statusNaoMudar.includes(curriculo.status)) {
     await prisma.curriculo.update({
       where: { id },
       data: { status: 'Entrevista', dataAlteracao: new Date() },
@@ -332,7 +331,12 @@ async function linkWhatsapp(req, res) {
     });
   }
 
-  return res.json({ link, mensagem });
+  const resultado = await webhookService.enviarMensagemCustom(curriculo.whatsapp, primeiroNome, mensagem);
+  if (!resultado.ok) {
+    return res.status(500).json({ erro: resultado.motivo || 'Erro ao enviar mensagem' });
+  }
+
+  return res.json({ ok: true, mensagem });
 }
 
 // ─── RH: Contagem por status (dashboard) ─────────────────────────────────
