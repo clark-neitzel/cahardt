@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, MessageCircle, Clock, User, Check, AlertCircle } from 'lucide-react';
+import { ChevronLeft, MessageCircle, Clock, User, Check, AlertCircle, X } from 'lucide-react';
 import { obterCurriculo, atualizarCurriculo, gerarLinkWhatsapp } from '../../services/curriculoService';
 import { API_URL } from '../../services/api';
 import toast from 'react-hot-toast';
@@ -70,6 +70,7 @@ export default function DetalheCurriculo() {
   const [status, setStatus] = useState('');
   const [observacao, setObservacao] = useState('');
   const [observacaoEditando, setObservacaoEditando] = useState(false);
+  const [fotoAmpliada, setFotoAmpliada] = useState(false);
 
   useEffect(() => {
     obterCurriculo(id)
@@ -121,6 +122,19 @@ export default function DetalheCurriculo() {
 
   return (
     <div className="p-4 lg:p-6 max-w-4xl mx-auto space-y-4">
+      {/* Lightbox foto */}
+      {fotoAmpliada && curriculo.foto && (
+        <div onClick={() => setFotoAmpliada(false)}
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out">
+          <img src={`${API_URL}/uploads/${curriculo.foto}`} alt={curriculo.nome}
+            className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
+            onClick={e => e.stopPropagation()} />
+          <button onClick={() => setFotoAmpliada(false)}
+            className="absolute top-4 right-4 text-white bg-black/50 rounded-full p-2 hover:bg-black/80">
+            <X size={20} />
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
         <button onClick={() => navigate('/rh/curriculos')} className="text-gray-400 hover:text-gray-600">
@@ -144,8 +158,10 @@ export default function DetalheCurriculo() {
           <Secao titulo="Dados pessoais">
             <div className="flex gap-4 items-start">
               {curriculo.foto
-                ? <img src={`${API_URL}/uploads/${curriculo.foto}`} alt={curriculo.nome}
-                    className="w-20 h-20 rounded-xl object-cover border border-gray-200 shrink-0" />
+                ? <button onClick={() => setFotoAmpliada(true)} className="shrink-0 focus:outline-none group">
+                    <img src={`${API_URL}/uploads/${curriculo.foto}`} alt={curriculo.nome}
+                      className="w-20 h-20 rounded-xl object-cover border border-gray-200 group-hover:opacity-80 transition cursor-zoom-in" />
+                  </button>
                 : <div className="w-20 h-20 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-2xl shrink-0">
                     {curriculo.nome.charAt(0).toUpperCase()}
                   </div>
