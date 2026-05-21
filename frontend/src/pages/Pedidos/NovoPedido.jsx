@@ -1444,7 +1444,7 @@ const NovoPedido = () => {
 
                         {/* Formulário expandido com etapas */}
                         {mostrarFormulario && (
-                            <div className="px-3 pb-3 pt-1 space-y-3 border-t border-gray-100">
+                            <div className={`px-3 pt-1 space-y-3 border-t border-gray-100 ${itensMap.size > 0 ? 'pb-36' : 'pb-3'}`}>
 
                                 {/* ── ETAPA 1: Tipo de Pedido ── */}
                                 <div className="pt-2">
