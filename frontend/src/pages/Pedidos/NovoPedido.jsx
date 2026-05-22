@@ -3,8 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
     ArrowLeft, Save, User, ChevronDown, ChevronUp, Calendar,
     FileText, AlertCircle, X, CheckCircle, Minus, Plus, Clock,
-    ShoppingBag, Search, Trash2, Package, Tag, Phone, Mic, MicOff,
-    MessageCircle
+    ShoppingBag, Search, Trash2, Package, Tag, Phone, Mic, MicOff
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clienteService from '../../services/clienteService';
@@ -1934,30 +1933,6 @@ const NovoPedido = () => {
 
                         {/* Footer */}
                         <div className="px-5 py-4 border-t border-gray-100 flex items-center gap-2">
-                            <button
-                                onClick={() => {
-                                    const nomeCliente = clienteSelecionado?.NomeFantasia || clienteSelecionado?.Nome || '';
-                                    const dataFormatada = dataEntrega ? new Date(dataEntrega + 'T12:00:00').toLocaleDateString('pt-BR') : '';
-                                    let msg = `*Pedido — ${nomeCliente}*\n`;
-                                    msg += `Entrega: ${dataFormatada}\n`;
-                                    if (condicaoSelecionada?.nomeCondicao) msg += `Pagamento: ${condicaoSelecionada.nomeCondicao}\n`;
-                                    msg += `\n*Itens:*\n`;
-                                    Array.from(itensMap.entries()).forEach(([pid, item]) => {
-                                        const prod = produtos.find(p => p.id === pid);
-                                        const sub = Number(item.valorUnitario) * Number(item.quantidade);
-                                        msg += `• ${prod?.nome || pid} — ${Number(item.quantidade)} un × R$ ${Number(item.valorUnitario).toFixed(2).replace('.', ',')} = R$ ${sub.toFixed(2).replace('.', ',')}\n`;
-                                    });
-                                    if (valorFrete !== '' && Number(valorFrete) > 0) msg += `\nFrete: R$ ${Number(valorFrete).toFixed(2).replace('.', ',')}`;
-                                    msg += `\n*Total: R$ ${bonificacao ? '0,00' : vTotal.toFixed(2).replace('.', ',')}*`;
-                                    if (isEncaixe) msg += `\n\nENCaixe DE ENTREGA`;
-                                    if (observacoes) msg += `\nObs: ${observacoes}`;
-                                    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-                                }}
-                                className="p-2.5 border border-green-300 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:bg-green-200 transition-colors"
-                                title="Enviar via WhatsApp"
-                            >
-                                <MessageCircle className="h-5 w-5" />
-                            </button>
                             <button
                                 onClick={() => setShowConfirmacaoPedido(false)}
                                 className="flex-1 border border-gray-300 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors"
