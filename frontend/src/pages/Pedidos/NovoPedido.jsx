@@ -4,7 +4,7 @@ import {
     ArrowLeft, Save, User, ChevronDown, ChevronUp, Calendar,
     FileText, AlertCircle, X, CheckCircle, Minus, Plus, Clock,
     ShoppingBag, Search, Trash2, Package, Tag, Phone, Mic, MicOff,
-    MessageCircle, Printer
+    MessageCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clienteService from '../../services/clienteService';
@@ -1957,24 +1957,6 @@ const NovoPedido = () => {
                                 title="Enviar via WhatsApp"
                             >
                                 <MessageCircle className="h-5 w-5" />
-                            </button>
-                            <button
-                                onClick={() => {
-                                    const nomeCliente = clienteSelecionado?.NomeFantasia || clienteSelecionado?.Nome || '';
-                                    const dataFormatada = dataEntrega ? new Date(dataEntrega + 'T12:00:00').toLocaleDateString('pt-BR') : '';
-                                    const itensHtml = Array.from(itensMap.entries()).map(([pid, item]) => {
-                                        const prod = produtos.find(p => p.id === pid);
-                                        const sub = Number(item.valorUnitario) * Number(item.quantidade);
-                                        return `<tr><td style="padding:6px 8px;border-bottom:1px solid #f0f0f0"><b>${prod?.nome || pid}</b><br/><small>${Number(item.quantidade)} un × R$ ${Number(item.valorUnitario).toFixed(2).replace('.', ',')}</small></td><td style="padding:6px 8px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:bold">R$ ${sub.toFixed(2).replace('.', ',')}</td></tr>`;
-                                    }).join('');
-                                    const win = window.open('', '_blank');
-                                    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pedido</title><style>body{font-family:sans-serif;padding:24px;max-width:480px}h2{margin:0 0 4px}p.sub{color:#666;margin:0 0 16px}table{width:100%;border-collapse:collapse;margin-bottom:16px}th{text-align:left;padding:6px 8px;background:#f5f5f5;font-size:11px;text-transform:uppercase;color:#888}.total{display:flex;justify-content:space-between;padding-top:12px;border-top:2px solid #eee;font-size:18px;font-weight:bold}.total span{color:#1d4ed8}@media print{button{display:none}}</style></head><body><h2>${bonificacao ? 'Bonificação' : 'Pedido'}</h2><p class="sub">${nomeCliente}</p><p style="font-size:13px;color:#555;margin-bottom:16px">Entrega: ${dataFormatada} &nbsp;|&nbsp; Pagamento: ${condicaoSelecionada?.nomeCondicao || '—'}</p><table><thead><tr><th>Produto</th><th style="text-align:right">Total</th></tr></thead><tbody>${itensHtml}</tbody></table><div class="total"><span>Total Geral</span><span>R$ ${bonificacao ? '0,00' : vTotal.toFixed(2).replace('.', ',')}</span></div><br/><button onclick="window.print()">Imprimir</button></body></html>`);
-                                    win.document.close();
-                                }}
-                                className="p-2.5 border border-purple-300 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 active:bg-purple-200 transition-colors"
-                                title="Imprimir"
-                            >
-                                <Printer className="h-5 w-5" />
                             </button>
                             <button
                                 onClick={() => setShowConfirmacaoPedido(false)}
