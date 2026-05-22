@@ -3,7 +3,8 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
     ArrowLeft, Save, User, ChevronDown, ChevronUp, Calendar,
     FileText, AlertCircle, X, CheckCircle, Minus, Plus, Clock,
-    ShoppingBag, Search, Trash2, Package, Tag, Phone, Mic, MicOff
+    ShoppingBag, Search, Trash2, Package, Tag, Phone, Mic, MicOff,
+    MessageCircle, Printer
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clienteService from '../../services/clienteService';
@@ -177,6 +178,7 @@ const NovoPedido = () => {
     const duplicataConfirmadaRef = useRef(false);
     const [duplicataAceitouResponsabilidade, setDuplicataAceitouResponsabilidade] = useState(false);
     const [pendingSalvarStatus, setPendingSalvarStatus] = useState(null);
+    const [showConfirmacaoPedido, setShowConfirmacaoPedido] = useState(false);
 
     const carregouDraftRef = useRef(false);
     const isRestoringDraftRef = useRef(false);
@@ -1830,7 +1832,7 @@ const NovoPedido = () => {
 
                         return (
                             <button
-                                onClick={() => handleSalvar('ENVIAR')}
+                                onClick={() => setShowConfirmacaoPedido(true)}
                                 disabled={saving}
                                 className="w-full bg-green-600 active:bg-green-700 text-white font-bold py-3.5 rounded-lg shadow-sm text-[15px] disabled:opacity-50 transition-colors flex items-center justify-center gap-2 tracking-wide"
                             >
@@ -1841,6 +1843,158 @@ const NovoPedido = () => {
                     })()}
                 </div>
             )}
+            {/* Modal de Confirmação do Pedido */}
+            {showConfirmacaoPedido && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
+                    <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col max-h-[90vh]">
+                        {/* Header */}
+                        <div className="flex items-start justify-between px-5 pt-5 pb-3 border-b border-gray-100">
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-900">
+                                    {bonificacao ? 'Confirmar Bonificação' : 'Confirmar Pedido'}
+                                </h2>
+                                <p className="text-sm text-gray-500 mt-0.5">
+                                    {clienteSelecionado?.NomeFantasia || clienteSelecionado?.Nome}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowConfirmacaoPedido(false)}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 active:bg-gray-200 mt-0.5"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="overflow-y-auto flex-1 px-5 py-4">
+                            {/* Datas e pagamento */}
+                            <div className="grid grid-cols-3 gap-3 mb-5">
+                                <div>
+                                    <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide mb-1">Entrega</p>
+                                    <p className="text-sm font-semibold text-gray-900">
+                                        {dataEntrega ? new Date(dataEntrega + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide mb-1">Emissão</p>
+                                    <p className="text-sm font-semibold text-gray-900">{new Date().toLocaleDateString('pt-BR')}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide mb-1">Pagamento</p>
+                                    <p className="text-sm font-semibold text-gray-900 leading-tight">{condicaoSelecionada?.nomeCondicao || '—'}</p>
+                                </div>
+                            </div>
+
+                            {/* Itens */}
+                            <div className="border border-gray-100 rounded-lg overflow-hidden mb-4">
+                                <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide px-3 pt-3 pb-2">Itens</p>
+                                <div className="divide-y divide-gray-50">
+                                    {Array.from(itensMap.entries()).map(([produtoId, item]) => {
+                                        const produto = produtos.find(p => p.id === produtoId);
+                                        const subtotal = Number(item.valorUnitario) * Number(item.quantidade);
+                                        return (
+                                            <div key={produtoId} className="flex items-center justify-between px-3 py-2.5">
+                                                <div className="flex-1 min-w-0 pr-3">
+                                                    <p className="text-sm font-semibold text-gray-800 leading-tight">{produto?.nome || produtoId}</p>
+                                                    <p className="text-xs text-gray-400 mt-0.5">{Number(item.quantidade)} un × R$ {Number(item.valorUnitario).toFixed(2).replace('.', ',')}</p>
+                                                </div>
+                                                <p className="text-sm font-bold text-gray-900 shrink-0">R$ {subtotal.toFixed(2).replace('.', ',')}</p>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Frete */}
+                            {valorFrete !== '' && Number(valorFrete) > 0 && (
+                                <div className="flex justify-between items-center text-sm px-1 mb-3">
+                                    <span className="text-gray-500">Frete</span>
+                                    <span className="font-semibold text-gray-700">R$ {Number(valorFrete).toFixed(2).replace('.', ',')}</span>
+                                </div>
+                            )}
+
+                            {/* Observações */}
+                            {(observacoes || isEncaixe) && (
+                                <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2.5 mb-4">
+                                    <p className="text-[10px] text-amber-700 uppercase font-semibold tracking-wide mb-1">Observações</p>
+                                    <p className="text-sm text-gray-700 italic whitespace-pre-line">
+                                        {isEncaixe ? `ENCAIXE DE ENTREGA${observacoes ? `\n${observacoes}` : ''}` : observacoes}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Total */}
+                            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                                <p className="text-xs text-gray-500 uppercase font-semibold tracking-wide">Total Geral</p>
+                                <p className="text-2xl font-extrabold text-blue-700">
+                                    R$ {bonificacao ? '0,00' : vTotal.toFixed(2).replace('.', ',')}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-5 py-4 border-t border-gray-100 flex items-center gap-2">
+                            <button
+                                onClick={() => {
+                                    const nomeCliente = clienteSelecionado?.NomeFantasia || clienteSelecionado?.Nome || '';
+                                    const dataFormatada = dataEntrega ? new Date(dataEntrega + 'T12:00:00').toLocaleDateString('pt-BR') : '';
+                                    let msg = `*Pedido — ${nomeCliente}*\n`;
+                                    msg += `Entrega: ${dataFormatada}\n`;
+                                    if (condicaoSelecionada?.nomeCondicao) msg += `Pagamento: ${condicaoSelecionada.nomeCondicao}\n`;
+                                    msg += `\n*Itens:*\n`;
+                                    Array.from(itensMap.entries()).forEach(([pid, item]) => {
+                                        const prod = produtos.find(p => p.id === pid);
+                                        const sub = Number(item.valorUnitario) * Number(item.quantidade);
+                                        msg += `• ${prod?.nome || pid} — ${Number(item.quantidade)} un × R$ ${Number(item.valorUnitario).toFixed(2).replace('.', ',')} = R$ ${sub.toFixed(2).replace('.', ',')}\n`;
+                                    });
+                                    if (valorFrete !== '' && Number(valorFrete) > 0) msg += `\nFrete: R$ ${Number(valorFrete).toFixed(2).replace('.', ',')}`;
+                                    msg += `\n*Total: R$ ${bonificacao ? '0,00' : vTotal.toFixed(2).replace('.', ',')}*`;
+                                    if (isEncaixe) msg += `\n\nENCaixe DE ENTREGA`;
+                                    if (observacoes) msg += `\nObs: ${observacoes}`;
+                                    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                                }}
+                                className="p-2.5 border border-green-300 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 active:bg-green-200 transition-colors"
+                                title="Enviar via WhatsApp"
+                            >
+                                <MessageCircle className="h-5 w-5" />
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const nomeCliente = clienteSelecionado?.NomeFantasia || clienteSelecionado?.Nome || '';
+                                    const dataFormatada = dataEntrega ? new Date(dataEntrega + 'T12:00:00').toLocaleDateString('pt-BR') : '';
+                                    const itensHtml = Array.from(itensMap.entries()).map(([pid, item]) => {
+                                        const prod = produtos.find(p => p.id === pid);
+                                        const sub = Number(item.valorUnitario) * Number(item.quantidade);
+                                        return `<tr><td style="padding:6px 8px;border-bottom:1px solid #f0f0f0"><b>${prod?.nome || pid}</b><br/><small>${Number(item.quantidade)} un × R$ ${Number(item.valorUnitario).toFixed(2).replace('.', ',')}</small></td><td style="padding:6px 8px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:bold">R$ ${sub.toFixed(2).replace('.', ',')}</td></tr>`;
+                                    }).join('');
+                                    const win = window.open('', '_blank');
+                                    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pedido</title><style>body{font-family:sans-serif;padding:24px;max-width:480px}h2{margin:0 0 4px}p.sub{color:#666;margin:0 0 16px}table{width:100%;border-collapse:collapse;margin-bottom:16px}th{text-align:left;padding:6px 8px;background:#f5f5f5;font-size:11px;text-transform:uppercase;color:#888}.total{display:flex;justify-content:space-between;padding-top:12px;border-top:2px solid #eee;font-size:18px;font-weight:bold}.total span{color:#1d4ed8}@media print{button{display:none}}</style></head><body><h2>${bonificacao ? 'Bonificação' : 'Pedido'}</h2><p class="sub">${nomeCliente}</p><p style="font-size:13px;color:#555;margin-bottom:16px">Entrega: ${dataFormatada} &nbsp;|&nbsp; Pagamento: ${condicaoSelecionada?.nomeCondicao || '—'}</p><table><thead><tr><th>Produto</th><th style="text-align:right">Total</th></tr></thead><tbody>${itensHtml}</tbody></table><div class="total"><span>Total Geral</span><span>R$ ${bonificacao ? '0,00' : vTotal.toFixed(2).replace('.', ',')}</span></div><br/><button onclick="window.print()">Imprimir</button></body></html>`);
+                                    win.document.close();
+                                }}
+                                className="p-2.5 border border-purple-300 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 active:bg-purple-200 transition-colors"
+                                title="Imprimir"
+                            >
+                                <Printer className="h-5 w-5" />
+                            </button>
+                            <button
+                                onClick={() => setShowConfirmacaoPedido(false)}
+                                className="flex-1 border border-gray-300 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                            >
+                                Não
+                            </button>
+                            <button
+                                onClick={() => { setShowConfirmacaoPedido(false); handleSalvar('ENVIAR'); }}
+                                disabled={saving}
+                                className="flex-1 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 active:bg-green-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <CheckCircle className="h-4 w-4" />
+                                {saving ? 'Enviando...' : 'Sim, Enviar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Popup de info do cliente (read-only) */}
             {showClientePopup && clienteSelecionado && (
                 <ClientePopup
