@@ -5,8 +5,10 @@ import produtoService from '../../services/produtoService';
 import configService from '../../services/configService'; // Import Service
 import ProductCard from '../../components/ProductCard';
 import { Search } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Catalogo = () => {
+    const { user } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
 
     const initialSearch = searchParams.get('search') || '';
@@ -55,6 +57,12 @@ const Catalogo = () => {
             // Apply Category Filter if configured
             if (configuredCategories.length > 0) {
                 params.categorias = configuredCategories.join(',');
+            }
+
+            // Filtro de Categorias Comerciais permitidas ao vendedor (vazio = todas)
+            const catsComerciais = user?.permissoes?.categoriasComerciais;
+            if (Array.isArray(catsComerciais) && catsComerciais.length > 0) {
+                params.categoriaProdutoIds = catsComerciais.join(',');
             }
 
             const data = await produtoService.listar(params);

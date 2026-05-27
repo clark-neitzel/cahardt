@@ -189,9 +189,17 @@ const NovoPedido = () => {
 
     useEffect(() => { carregarDadosBase(); }, []);
 
+    // Categorias Comerciais permitidas ao vendedor (vazio/ausente = todas).
+    // Aplicado a Pedido Normal, Especial, Bonificação e Catálogo — NÃO afeta Devolução.
+    const categoriasComerciaisPermitidas = (() => {
+        const arr = user?.permissoes?.categoriasComerciais;
+        return Array.isArray(arr) && arr.length > 0 ? arr : null;
+    })();
+
     const recarregarProdutos = async (cats) => {
         const paramsProd = { limit: 1000, ativo: true };
         if (Array.isArray(cats) && cats.length > 0) paramsProd.categorias = cats.join(',');
+        if (categoriasComerciaisPermitidas) paramsProd.categoriaProdutoIds = categoriasComerciaisPermitidas.join(',');
         const produtosData = await produtoService.listar(paramsProd);
         const listaProdutos = produtosData.data || produtosData || [];
         setProdutos(listaProdutos);
@@ -205,6 +213,7 @@ const NovoPedido = () => {
 
             const paramsProd = { limit: 1000, ativo: true };
             if (Array.isArray(cats) && cats.length > 0) paramsProd.categorias = cats.join(',');
+            if (categoriasComerciaisPermitidas) paramsProd.categoriaProdutoIds = categoriasComerciaisPermitidas.join(',');
 
             const [clientesData, produtosData, condicoesData, vendedoresData] = await Promise.all([
                 clienteService.listar({ limit: 2000 }),
@@ -493,6 +502,7 @@ const NovoPedido = () => {
                 const cats = catsEspecial;
                 (async () => {
                     const paramsProd = { limit: 1000, ativo: true, categorias: cats.join(',') };
+                    if (categoriasComerciaisPermitidas) paramsProd.categoriaProdutoIds = categoriasComerciaisPermitidas.join(',');
                     const produtosData = await produtoService.listar(paramsProd);
                     const listaProdutos = produtosData.data || produtosData || [];
                     setProdutos(listaProdutos);
@@ -505,6 +515,7 @@ const NovoPedido = () => {
                 (async () => {
                     const paramsProd = { limit: 1000, ativo: true };
                     if (cats.length > 0) paramsProd.categorias = cats.join(',');
+                    if (categoriasComerciaisPermitidas) paramsProd.categoriaProdutoIds = categoriasComerciaisPermitidas.join(',');
                     const produtosData = await produtoService.listar(paramsProd);
                     const listaProdutos = produtosData.data || produtosData || [];
                     setProdutos(listaProdutos);

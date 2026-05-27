@@ -11,6 +11,7 @@ import {
 import vendedorService from '../../../services/vendedorService';
 import configService from '../../../services/configService';
 import tabelaPrecoService from '../../../services/tabelaPrecoService';
+import categoriaProdutoService from '../../../services/categoriaProdutoService';
 import toast from 'react-hot-toast';
 
 const DEFAULT_PERMISSIONS = {
@@ -66,6 +67,8 @@ const DEFAULT_PERMISSIONS = {
     Pode_Reverter_Especial: false,
     categoriasEspeciais: [],
     condicoesEspeciais: [],
+    // Categorias Comerciais visíveis em vendas/catálogo (vazio = todas)
+    categoriasComerciais: [],
     // Pedidos Bonificação
     Pode_Criar_Bonificacao: false,
     Pode_Aprovar_Bonificacao: false,
@@ -209,6 +212,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     const [clonando, setClonando] = useState(false);
     const [todasCategorias, setTodasCategorias] = useState([]);
     const [todasCondicoes, setTodasCondicoes] = useState([]);
+    const [todasCategoriasComerciais, setTodasCategoriasComerciais] = useState([]);
 
     useEffect(() => {
         if (vendedor) {
@@ -228,6 +232,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
         }
         configService.getCategorias().then(cats => setTodasCategorias(cats || [])).catch(() => {});
         tabelaPrecoService.listar(true).then(conds => setTodasCondicoes(conds || [])).catch(() => {});
+        categoriaProdutoService.listar().then(cats => setTodasCategoriasComerciais((cats || []).filter(c => c.ativo !== false))).catch(() => {});
         vendedorService.listar().then(data => {
             const list = Array.isArray(data) ? data : (data?.vendedores || []);
             setTodosVendedores(list.filter(v => v.id !== vendedor?.id && v.ativo !== false));
@@ -497,6 +502,31 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                             onChange={e => changeClientesScope(e.target.value)} />
                                         <span>Apenas Vinculados</span>
                                     </label>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Categorias Comerciais — filtro de produtos visíveis em pedidos e catálogo */}
+                        {(permissoes.pedidos?.view || permissoes.catalogo?.view) && todasCategoriasComerciais.length > 0 && (
+                            <div className="border-t mt-3 pt-3">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Categorias Comerciais</p>
+                                <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
+                                    <h5 className="text-xs font-bold text-blue-900 mb-1">Produtos visíveis em pedidos e catálogo</h5>
+                                    <p className="text-[10px] text-blue-700 mb-2">Se nenhuma for selecionada, todas ficam disponíveis. Devoluções não são afetadas.</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto">
+                                        {todasCategoriasComerciais.map(cat => (
+                                            <label key={cat.id} className="flex items-center gap-1.5 text-xs cursor-pointer p-1 hover:bg-blue-100 rounded">
+                                                <input type="checkbox" className="rounded border-blue-300 text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
+                                                    checked={(permissoes.categoriasComerciais || []).includes(cat.id)}
+                                                    onChange={(e) => {
+                                                        const current = permissoes.categoriasComerciais || [];
+                                                        const updated = e.target.checked ? [...current, cat.id] : current.filter(c => c !== cat.id);
+                                                        setPermissoes(prev => ({ ...prev, categoriasComerciais: updated }));
+                                                    }} />
+                                                <span className="text-blue-800">{cat.nome}</span>
+                                            </label>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}
