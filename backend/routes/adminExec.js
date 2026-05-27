@@ -10,6 +10,7 @@ const router = express.Router();
 const prisma = require('../config/database');
 const clienteInsightService = require('../services/clienteInsightService');
 const orientacaoService = require('../services/orientacaoService');
+const estoqueService = require('../services/estoqueService');
 
 // Middleware: valida ADMIN_SECRET
 router.use((req, res, next) => {
@@ -859,6 +860,48 @@ router.get('/estoque-status', async (req, res) => {
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
+});
+
+// POST /api/admin-exec/estoque-ajuste-batch — aplica ajustes manuais em lote
+// Body: { ajustes: [{ nomeProduto, quantidade, tipo, observacao }] }
+router.post('/estoque-ajuste-batch', async (req, res) => {
+    const { ajustes } = req.body;
+    if (!Array.isArray(ajustes) || ajustes.length === 0) {
+        return res.status(400).json({ error: 'ajustes deve ser um array não vazio.' });
+    }
+    const resultados = [];
+    const erros = [];
+
+    for (const aj of ajustes) {
+        try {
+            const produto = await prisma.produto.findFirst({
+                where: { nome: aj.nomeProduto },
+                select: { id: true, nome: true }
+            });
+            if (!produto) {
+                erros.push({ nomeProduto: aj.nomeProduto, erro: 'Produto não encontrado' });
+                continue;
+            }
+            const qtd = parseFloat(aj.quantidade);
+            if (!qtd || qtd <= 0) {
+                erros.push({ nomeProduto: aj.nomeProduto, erro: 'Quantidade inválida' });
+                continue;
+            }
+            const resultado = await estoqueService.ajustar({
+                produtoId: produto.id,
+                vendedorId: null,
+                tipo: aj.tipo || 'ENTRADA',
+                quantidade: qtd,
+                motivo: 'AJUSTE_MANUAL',
+                observacao: aj.observacao || 'Correção de estoque via admin'
+            });
+            resultados.push({ nomeProduto: produto.nome, tipo: aj.tipo || 'ENTRADA', quantidade: qtd, estoqueDepois: resultado.estoqueDepois });
+        } catch (err) {
+            erros.push({ nomeProduto: aj.nomeProduto, erro: err.message });
+        }
+    }
+
+    return res.json({ ok: true, aplicados: resultados.length, erros: erros.length, resultados, erros });
 });
 
 module.exports = router;
