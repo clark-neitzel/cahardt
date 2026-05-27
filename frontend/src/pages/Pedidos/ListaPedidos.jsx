@@ -1376,6 +1376,81 @@ const ListaPedidos = () => {
                                 >
                                     {getWsStatus(selectedPedido.id) === 'enviando' ? <Loader2 className="h-5 w-5 animate-spin" /> : getWsStatus(selectedPedido.id) === 'ok' ? <CheckCircle className="h-5 w-5" /> : getWsStatus(selectedPedido.id) === 'erro' ? <XCircle className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
                                 </button>
+                                {selectedPedido.idVendaContaAzul && (
+                                    <button
+                                        onClick={() => handleConsultarCA(selectedPedido)}
+                                        disabled={consultandoCA.has(selectedPedido.id)}
+                                        className="sm:hidden p-2 border border-blue-300 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 disabled:opacity-50 flex items-center gap-1.5"
+                                        title="Consultar situação no Conta Azul"
+                                    >
+                                        {consultandoCA.has(selectedPedido.id) ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
+                                    </button>
+                                )}
+                                {selectedPedido.idVendaContaAzul && (
+                                    <div className="relative sm:hidden">
+                                        <button
+                                            onClick={() => handleBuscarCobrancasCA(selectedPedido)}
+                                            disabled={cobrancasCA[selectedPedido.id]?.loading}
+                                            className={`p-2 border rounded flex items-center gap-1.5 disabled:opacity-50 ${cobrancasCA[selectedPedido.id]?.open ? 'border-indigo-400 bg-indigo-100 text-indigo-700' : 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}`}
+                                            title="Links de cobrança (PIX/Boleto) no CA"
+                                        >
+                                            {cobrancasCA[selectedPedido.id]?.loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CircleDollarSign className="h-5 w-5" />}
+                                        </button>
+                                        {cobrancasCA[selectedPedido.id]?.open && (
+                                            <div
+                                                className="absolute right-0 bottom-full mb-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-20 min-w-[180px]"
+                                                onClick={e => e.stopPropagation()}
+                                            >
+                                                {(() => {
+                                                    const links = cobrancasCA[selectedPedido.id].links || [];
+                                                    const comUrl = links.filter(c => c.url);
+                                                    const valorTotal = Number((selectedPedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0) + Number(selectedPedido.valorFrete || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                                                    const linhasCob = comUrl.length === 1
+                                                        ? `Cobrança - ${comUrl[0].url}`
+                                                        : comUrl.map((c, i) => `Cobrança ${i + 1} - ${c.url}`).join('\n');
+                                                    const textoParaCopiar = `Pedido #${selectedPedido.numero} - R$ ${valorTotal}\n${linhasCob}`;
+                                                    return (
+                                                        <>
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <p className="text-[10px] font-bold text-gray-500 uppercase">Cobranças CA</p>
+                                                                {comUrl.length > 0 && (
+                                                                    <button
+                                                                        onClick={() => { navigator.clipboard.writeText(textoParaCopiar); }}
+                                                                        className="text-[10px] text-indigo-500 hover:text-indigo-700 font-medium ml-2"
+                                                                        title="Copiar links"
+                                                                    >Copiar</button>
+                                                                )}
+                                                            </div>
+                                                            {links.length === 0 ? (
+                                                                <p className="text-[11px] text-gray-400">Sem cobranças ativas</p>
+                                                            ) : (
+                                                                links.map(cob => (
+                                                                    cob.url ? (
+                                                                        <a
+                                                                            key={cob.label}
+                                                                            href={cob.url}
+                                                                            target="_blank"
+                                                                            rel="noreferrer"
+                                                                            onClick={() => setClickedCobrancaLinks(prev => new Set(prev).add(`${selectedPedido.id}-${cob.label}`))}
+                                                                            className={`flex items-center gap-1.5 text-[11px] hover:underline py-0.5 ${clickedCobrancaLinks.has(`${selectedPedido.id}-${cob.label}`) ? 'text-green-600 hover:text-green-800' : 'text-indigo-600 hover:text-indigo-800'}`}
+                                                                        >
+                                                                            <ExternalLink className="h-3 w-3 shrink-0" />
+                                                                            {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''}
+                                                                        </a>
+                                                                    ) : (
+                                                                        <span key={cob.label} className="flex items-center gap-1.5 text-[11px] text-gray-400 py-0.5">
+                                                                            {cob.label}{cob.tipo ? ` (${cob.tipo})` : ''} — sem link
+                                                                        </span>
+                                                                    )
+                                                                ))
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 {selectedPedido.situacaoCA === 'FATURADO' && (
                                     <button onClick={() => handlePrintPedido(selectedPedido)} className="p-2 border border-purple-300 bg-purple-50 text-purple-700 rounded hover:bg-purple-100 flex items-center gap-1.5"><Printer className="h-5 w-5" /></button>
                                 )}
