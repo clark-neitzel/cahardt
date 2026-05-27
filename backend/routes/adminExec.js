@@ -707,6 +707,114 @@ router.post('/import-curriculos', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/estoque-reconciliacao — reconciliação completa por produto desde uma data
+// Query param: ?desde=2026-04-01
+router.get('/estoque-reconciliacao', async (req, res) => {
+    try {
+        const desde = req.query.desde || '2026-04-01';
+
+        // Primeira movimentação de cada produto ANTES de 'desde' → estoque inicial do período
+        const iniciais = await prisma.$queryRawUnsafe(`
+            SELECT DISTINCT ON (produto_id)
+                produto_id,
+                estoque_antes AS estoque_inicial
+            FROM movimentacoes_estoque
+            WHERE created_at < $1::timestamp
+            ORDER BY produto_id, created_at DESC
+        `, desde + 'T00:00:00');
+
+        // Se produto não tem movimento antes de 'desde', pegar estoque_antes do primeiro movimento no período
+        const primeiros = await prisma.$queryRawUnsafe(`
+            SELECT DISTINCT ON (produto_id)
+                produto_id,
+                estoque_antes AS estoque_inicial
+            FROM movimentacoes_estoque
+            WHERE created_at >= $1::timestamp
+            ORDER BY produto_id, created_at ASC
+        `, desde + 'T00:00:00');
+
+        // Movimentos por produto/tipo/motivo NO período
+        const movimentos = await prisma.$queryRawUnsafe(`
+            SELECT
+                m.produto_id,
+                p.nome AS produto_nome,
+                m.tipo,
+                m.motivo,
+                SUM(m.quantidade) AS total_qtd,
+                COUNT(*) AS num_movs
+            FROM movimentacoes_estoque m
+            JOIN produtos p ON p.id = m.produto_id
+            WHERE m.created_at >= $1::timestamp
+            GROUP BY m.produto_id, p.nome, m.tipo, m.motivo
+            ORDER BY p.nome, m.tipo, m.motivo
+        `, desde + 'T00:00:00');
+
+        // Estoque atual (último movimento de todos os tempos)
+        const atuais = await prisma.$queryRawUnsafe(`
+            SELECT DISTINCT ON (produto_id)
+                produto_id,
+                estoque_depois AS estoque_atual,
+                created_at AS ultima_mov
+            FROM movimentacoes_estoque
+            ORDER BY produto_id, created_at DESC
+        `);
+
+        // Montar mapa
+        const mapaInicial = {};
+        for (const r of iniciais) mapaInicial[r.produto_id] = Number(r.estoque_inicial);
+        for (const r of primeiros) {
+            if (mapaInicial[r.produto_id] === undefined)
+                mapaInicial[r.produto_id] = Number(r.estoque_inicial);
+        }
+        const mapaAtual = {};
+        for (const r of atuais) mapaAtual[r.produto_id] = { estoque: Number(r.estoque_atual), ultimaMov: r.ultima_mov };
+
+        // Agrupar por produto
+        const porProduto = {};
+        for (const m of movimentos) {
+            const pid = m.produto_id;
+            if (!porProduto[pid]) {
+                porProduto[pid] = {
+                    nome: m.produto_nome,
+                    estoqueInicial: mapaInicial[pid] ?? 0,
+                    estoqueAtual: mapaAtual[pid]?.estoque ?? 0,
+                    ultimaMov: mapaAtual[pid]?.ultimaMov,
+                    entradas: {},
+                    saidas: {},
+                    totalEntradas: 0,
+                    totalSaidas: 0,
+                };
+            }
+            const qtd = Number(m.total_qtd);
+            if (m.tipo === 'ENTRADA') {
+                porProduto[pid].entradas[m.motivo] = (porProduto[pid].entradas[m.motivo] || 0) + qtd;
+                porProduto[pid].totalEntradas += qtd;
+            } else {
+                porProduto[pid].saidas[m.motivo] = (porProduto[pid].saidas[m.motivo] || 0) + qtd;
+                porProduto[pid].totalSaidas += qtd;
+            }
+        }
+
+        // Verificar equação: inicial + entradas - saidas = atual
+        const resultado = Object.values(porProduto).map(p => {
+            const calculado = p.estoqueInicial + p.totalEntradas - p.totalSaidas;
+            return {
+                ...p,
+                calculado,
+                bate: Math.abs(calculado - p.estoqueAtual) < 0.001,
+                diferenca: p.estoqueAtual - calculado,
+            };
+        });
+
+        const inconsistentes = resultado.filter(p => !p.bate);
+        const negativos = resultado.filter(p => p.estoqueAtual < 0);
+
+        res.json({ desde, totalProdutos: resultado.length, inconsistentes: inconsistentes.length, negativos: negativos.length, produtos: resultado });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/admin-exec/estoque-status — resumo do estoque atual (último movimento por produto)
 router.get('/estoque-status', async (req, res) => {
     try {
