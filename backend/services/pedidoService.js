@@ -666,6 +666,49 @@ const pedidoService = {
             : (await prisma.pedidoItem.findMany({ where: { pedidoId: id }, select: { produtoId: true } })).map(i => i.produtoId);
 
         const resultado = await prisma.$transaction(async (tx) => {
+            // Busca movimentações de SAIDA deste pedido para criar entradas compensatórias
+            const saidaMovs = await tx.movimentacaoEstoque.findMany({
+                where: { pedidoId: id, tipo: 'SAIDA' },
+                select: { produtoId: true, quantidade: true }
+            });
+
+            // Acumula quantidade por produto
+            const qtdPorProduto = new Map();
+            for (const mov of saidaMovs) {
+                const atual = qtdPorProduto.get(mov.produtoId) || 0;
+                qtdPorProduto.set(mov.produtoId, atual + parseFloat(mov.quantidade || 0));
+            }
+
+            // Cria entradas compensatórias e restaura estoqueTotal
+            // (sem pedidoId para não ser deletado junto com as movimentações do pedido)
+            for (const [produtoId, qtd] of qtdPorProduto) {
+                if (qtd <= 0) continue;
+                const prod = await tx.produto.findUnique({
+                    where: { id: produtoId },
+                    select: { estoqueTotal: true }
+                });
+                const totalAntes = parseFloat(prod?.estoqueTotal || 0);
+                const totalDepois = totalAntes + qtd;
+
+                await tx.produto.update({
+                    where: { id: produtoId },
+                    data: { estoqueTotal: totalDepois }
+                });
+
+                await tx.movimentacaoEstoque.create({
+                    data: {
+                        produtoId,
+                        tipo: 'ENTRADA',
+                        quantidade: qtd,
+                        motivo: 'EXCLUSAO',
+                        observacao: `Estorno por exclusão do pedido #${pedido.numero || id}`,
+                        estoqueAntes: totalAntes,
+                        estoqueDepois: totalDepois,
+                        sincCA: false,
+                    }
+                });
+            }
+
             // Remove dependências
             await tx.entregaItemDevolvido.deleteMany({ where: { pedidoId: id } });
             await tx.pedidoPagamentoReal.deleteMany({ where: { pedidoId: id } });
@@ -683,11 +726,13 @@ const pedidoService = {
             return await tx.pedido.delete({ where: { id } });
         });
 
-        // Recalcula estoque dos produtos afetados (a reserva cai porque os itens foram excluídos)
+        // Recalcula estoqueReservado/estoqueDisponivel dos produtos afetados
         for (const produtoId of produtosAfetados) {
-            estoqueService.recalcularEstoqueProduto(produtoId).catch(err =>
-                console.error(`[Estoque] Falha ao recalcular produto ${produtoId} após exclusão do pedido ${id}:`, err.message)
-            );
+            try {
+                await estoqueService.recalcularEstoqueProduto(produtoId);
+            } catch (err) {
+                console.error(`[Estoque] Falha ao recalcular produto ${produtoId} após exclusão do pedido ${id}:`, err.message);
+            }
         }
 
         return resultado;
