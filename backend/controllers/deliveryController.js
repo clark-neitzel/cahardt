@@ -104,6 +104,21 @@ module.exports = {
         }
     },
 
+    setSilenciarWhatsapp: async (req, res) => {
+        try {
+            const { silenciar } = req.body;
+            const out = await deliveryService.setSilenciarWhatsapp({
+                pedidoId: req.params.pedidoId,
+                silenciar: !!silenciar,
+                user: req.user
+            });
+            res.json(out);
+        } catch (err) {
+            console.error('[Delivery] setSilenciarWhatsapp:', err.message);
+            res.status(400).json({ error: err.message });
+        }
+    },
+
     moverEtapa: async (req, res) => {
         try {
             const { novaEtapa } = req.body;

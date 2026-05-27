@@ -221,6 +221,7 @@ const deliveryService = {
                 numero: p.numero,
                 etapa: st?.etapa || 'PEDIDO',
                 etapaAt: st?.etapaAt,
+                silenciarWhatsapp: !!st?.silenciarWhatsapp,
                 dataVenda: p.dataVenda,
                 cliente: p.cliente,
                 vendedor: p.vendedor,
@@ -282,9 +283,11 @@ const deliveryService = {
         });
 
         // Dispara webhook bot + WhatsApp cliente (detached, não trava a resposta)
+        // Cliente é silenciado quando o card foi marcado para não notificar.
+        const skipWhatsapp = !!atual.silenciarWhatsapp;
         setTimeout(() => {
             const webhookService = require('./webhookService');
-            webhookService.notificarDelivery(pedidoId, novaEtapa)
+            webhookService.notificarDelivery(pedidoId, novaEtapa, { skipWhatsapp })
                 .catch(err => console.error('[Delivery] webhook falhou:', err.message));
         }, 0);
 
@@ -298,7 +301,19 @@ const deliveryService = {
         const status = await prisma.deliveryStatus.findUnique({ where: { pedidoId } });
         if (!status) throw new Error('Pedido não está no fluxo.');
         const webhookService = require('./webhookService');
-        return await webhookService.notificarDelivery(pedidoId, status.etapa);
+        return await webhookService.notificarDelivery(pedidoId, status.etapa, { skipWhatsapp: !!status.silenciarWhatsapp });
+    },
+
+    // Marca/desmarca o card pra não notificar o cliente via WhatsApp.
+    setSilenciarWhatsapp: async ({ pedidoId, silenciar, user }) => {
+        const perm = await deliveryService.permissaoDoUsuario(user);
+        if (!perm.podeVer) throw new Error('Sem permissão para Delivery.');
+        const status = await prisma.deliveryStatus.findUnique({ where: { pedidoId } });
+        if (!status) throw new Error('Pedido não está no fluxo de Delivery.');
+        return await prisma.deliveryStatus.update({
+            where: { pedidoId },
+            data: { silenciarWhatsapp: !!silenciar }
+        });
     },
 
     // Diagnóstico: por que esse pedido aparece (ou não) no Kanban?

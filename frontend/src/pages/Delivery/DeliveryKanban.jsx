@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { MessageCircle, ArrowRight, ArrowLeft, Settings, RefreshCw, Send } from 'lucide-react';
+import { MessageCircle, ArrowLeft, Settings, RefreshCw, Send, MessageSquareOff, MessageSquare, Search, ChevronDown, Move } from 'lucide-react';
 import deliveryService from '../../services/deliveryService';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -23,13 +23,21 @@ const whatsappLink = (telefone) => {
     return `https://wa.me/${full}`;
 };
 
-const proximaEtapa = (etapa) => {
-    const idx = ETAPAS.indexOf(etapa);
-    return idx >= 0 && idx < ETAPAS.length - 1 ? ETAPAS[idx + 1] : null;
-};
 const etapaAnterior = (etapa) => {
     const idx = ETAPAS.indexOf(etapa);
     return idx > 0 ? ETAPAS[idx - 1] : null;
+};
+// Etapas à direita da etapa atual (destinos possíveis pra avançar)
+const etapasAFrente = (etapa) => {
+    const idx = ETAPAS.indexOf(etapa);
+    return idx >= 0 ? ETAPAS.slice(idx + 1) : [];
+};
+
+const sameDateISO = (date, isoYmd) => {
+    if (!date || !isoYmd) return false;
+    const d = new Date(date);
+    const ymd = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+    return ymd === isoYmd;
 };
 
 export default function DeliveryKanban() {
@@ -38,6 +46,10 @@ export default function DeliveryKanban() {
     const [perm, setPerm] = useState({ podeVer: false, etapasPermitidas: [], admin: false });
     const [loading, setLoading] = useState(true);
     const [moving, setMoving] = useState(null);
+
+    // Filtros
+    const [busca, setBusca] = useState('');
+    const [dataEntrega, setDataEntrega] = useState('');
 
     const isAdmin = user?.permissoes?.admin;
 
@@ -88,9 +100,50 @@ export default function DeliveryKanban() {
         }
     };
 
+    const toggleSilenciar = async (card) => {
+        const novoEstado = !card.silenciarWhatsapp;
+        // Atualização otimista — atualiza o card local antes do round-trip
+        setBuckets(prev => {
+            const copy = { ...prev };
+            for (const k of Object.keys(copy)) {
+                copy[k] = copy[k].map(c => c.id === card.id ? { ...c, silenciarWhatsapp: novoEstado } : c);
+            }
+            return copy;
+        });
+        try {
+            await deliveryService.setSilenciarWhatsapp(card.id, novoEstado);
+            toast.success(novoEstado ? 'WhatsApp silenciado para este pedido' : 'WhatsApp reativado para este pedido');
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao atualizar.');
+            await carregar();
+        }
+    };
+
+    // Aplica filtros texto + data nas 4 colunas
+    const filtrados = useMemo(() => {
+        const termo = busca.trim().toLowerCase();
+        const out = {};
+        for (const etapa of ETAPAS) {
+            const lista = buckets[etapa] || [];
+            out[etapa] = lista.filter(card => {
+                if (termo) {
+                    const nome = (card.cliente?.NomeFantasia || card.cliente?.Nome || '').toLowerCase();
+                    const numero = String(card.numero || '');
+                    if (!nome.includes(termo) && !numero.includes(termo)) return false;
+                }
+                if (dataEntrega && !sameDateISO(card.dataVenda, dataEntrega)) return false;
+                return true;
+            });
+        }
+        return out;
+    }, [buckets, busca, dataEntrega]);
+
+    const totalFiltrado = ETAPAS.reduce((s, e) => s + (filtrados[e]?.length || 0), 0);
+    const filtroAtivo = !!(busca.trim() || dataEntrega);
+
     return (
         <div className="p-4 md:p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                 <div>
                     <h1 className="text-2xl font-bold">Delivery — Kit Festa</h1>
                     <p className="text-sm text-gray-500">Kanban de pedidos de entrega</p>
@@ -107,6 +160,43 @@ export default function DeliveryKanban() {
                 </div>
             </div>
 
+            {perm.podeVer && (
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    <div className="relative flex-1 min-w-[200px] max-w-xs">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                            type="text"
+                            value={busca}
+                            onChange={e => setBusca(e.target.value)}
+                            placeholder="Buscar por cliente ou nº pedido…"
+                            className="w-full pl-8 pr-3 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        />
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <label className="text-xs text-gray-500">Entrega:</label>
+                        <input
+                            type="date"
+                            value={dataEntrega}
+                            onChange={e => setDataEntrega(e.target.value)}
+                            className="px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        />
+                    </div>
+                    {filtroAtivo && (
+                        <button
+                            onClick={() => { setBusca(''); setDataEntrega(''); }}
+                            className="text-xs text-gray-500 hover:text-gray-800 underline"
+                        >
+                            Limpar
+                        </button>
+                    )}
+                    {filtroAtivo && (
+                        <span className="text-xs text-gray-500 ml-auto">
+                            {totalFiltrado} pedido{totalFiltrado !== 1 ? 's' : ''} no filtro
+                        </span>
+                    )}
+                </div>
+            )}
+
             {!perm.podeVer && !loading && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
                     Você não tem permissão para visualizar o Delivery. Peça ao admin pra liberar.
@@ -119,10 +209,10 @@ export default function DeliveryKanban() {
                         <div key={etapa} className={`rounded-lg border-2 ${COL_COLORS[etapa]} min-h-[200px] flex flex-col`}>
                             <div className="px-3 py-2 border-b border-black/5 flex items-center justify-between">
                                 <span className="font-semibold text-sm">{LABELS[etapa]}</span>
-                                <span className="text-xs bg-white px-2 py-0.5 rounded-full">{(buckets[etapa] || []).length}</span>
+                                <span className="text-xs bg-white px-2 py-0.5 rounded-full">{(filtrados[etapa] || []).length}</span>
                             </div>
-                            <div className="p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-220px)]">
-                                {(buckets[etapa] || []).map(card => (
+                            <div className="p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-280px)]">
+                                {(filtrados[etapa] || []).map(card => (
                                     <Card
                                         key={card.id}
                                         card={card}
@@ -130,10 +220,13 @@ export default function DeliveryKanban() {
                                         moving={moving === card.id}
                                         onMover={mover}
                                         onReenviar={reenviar}
+                                        onToggleSilenciar={toggleSilenciar}
                                     />
                                 ))}
-                                {!(buckets[etapa] || []).length && (
-                                    <div className="text-center text-xs text-gray-400 py-4">Nenhum pedido</div>
+                                {!(filtrados[etapa] || []).length && (
+                                    <div className="text-center text-xs text-gray-400 py-4">
+                                        {filtroAtivo ? 'Sem resultados' : 'Nenhum pedido'}
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -144,7 +237,7 @@ export default function DeliveryKanban() {
     );
 }
 
-function Card({ card, perm, moving, onMover, onReenviar }) {
+function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar }) {
     const tel = card.cliente?.Telefone_Celular || card.cliente?.Telefone;
     const wa = whatsappLink(tel);
     const end = [
@@ -154,10 +247,19 @@ function Card({ card, perm, moving, onMover, onReenviar }) {
         card.cliente?.End_Cidade
     ].filter(Boolean).join(', ');
 
-    const prox = proximaEtapa(card.etapa);
     const ant = etapaAnterior(card.etapa);
-    const podeAvancar = prox && (perm.admin || perm.etapasPermitidas?.includes(prox));
+    const destinos = etapasAFrente(card.etapa);
+    const destinosPermitidos = destinos.filter(e => perm.admin || perm.etapasPermitidas?.includes(e));
     const podeVoltar = ant && (perm.admin || perm.etapasPermitidas?.includes(ant));
+
+    const [menuAberto, setMenuAberto] = useState(false);
+    const menuRef = useRef(null);
+    useEffect(() => {
+        if (!menuAberto) return;
+        const fechar = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuAberto(false); };
+        document.addEventListener('mousedown', fechar);
+        return () => document.removeEventListener('mousedown', fechar);
+    }, [menuAberto]);
 
     const dataVenda = card.dataVenda ? new Date(card.dataVenda) : null;
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
@@ -169,8 +271,10 @@ function Card({ card, perm, moving, onMover, onReenviar }) {
         ABERTO: 'bg-red-100 text-red-800'
     }[card.statusPagamento];
 
+    const silenciado = !!card.silenciarWhatsapp;
+
     return (
-        <div className={`bg-white rounded-md shadow-sm border p-3 text-xs space-y-2 ${atrasado ? 'ring-2 ring-red-400' : ''}`}>
+        <div className={`bg-white rounded-md shadow-sm border p-3 text-xs space-y-2 ${atrasado ? 'ring-2 ring-red-400' : ''} ${silenciado ? 'border-l-4 border-l-gray-400' : ''}`}>
             <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                     <div className="font-semibold text-sm truncate">
@@ -180,6 +284,15 @@ function Card({ card, perm, moving, onMover, onReenviar }) {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                     <button
+                        onClick={() => onToggleSilenciar(card)}
+                        title={silenciado ? 'WhatsApp silenciado — clique para reativar' : 'Clique para NÃO enviar WhatsApp neste pedido'}
+                        className={`${silenciado ? 'text-gray-400 hover:text-gray-600' : 'text-emerald-600 hover:text-emerald-700'}`}
+                    >
+                        {silenciado
+                            ? <MessageSquareOff className="h-4 w-4" />
+                            : <MessageSquare className="h-4 w-4" />}
+                    </button>
+                    <button
                         onClick={() => onReenviar(card)}
                         disabled={moving}
                         title="Reenviar mensagem da etapa atual"
@@ -188,12 +301,18 @@ function Card({ card, perm, moving, onMover, onReenviar }) {
                         <Send className="h-4 w-4" />
                     </button>
                     {wa && (
-                        <a href={wa} target="_blank" rel="noreferrer" className="text-green-600 hover:text-green-700">
+                        <a href={wa} target="_blank" rel="noreferrer" className="text-green-600 hover:text-green-700" title="Abrir conversa no WhatsApp">
                             <MessageCircle className="h-4 w-4" />
                         </a>
                     )}
                 </div>
             </div>
+
+            {silenciado && (
+                <div className="text-[10px] font-medium text-gray-500 bg-gray-100 rounded px-1.5 py-0.5 inline-block">
+                    🔕 Cliente não receberá WhatsApp
+                </div>
+            )}
 
             {end && <div className="text-gray-600 text-[11px] leading-tight">{end}</div>}
             {tel && <div className="text-gray-500 text-[11px]">{tel}</div>}
@@ -240,16 +359,42 @@ function Card({ card, perm, moving, onMover, onReenviar }) {
                         <ArrowLeft className="h-3 w-3" />
                     </button>
                 )}
-                {prox ? (
-                    <button
-                        onClick={() => onMover(card, prox)}
-                        disabled={!podeAvancar || moving}
-                        className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                            podeAvancar ? 'bg-primary text-white hover:opacity-90' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        }`}
-                    >
-                        {moving ? '...' : <>→ {LABELS[prox]} <ArrowRight className="h-3 w-3" /></>}
-                    </button>
+                {destinos.length > 0 ? (
+                    <div className="relative flex-1" ref={menuRef}>
+                        <button
+                            onClick={() => setMenuAberto(o => !o)}
+                            disabled={destinosPermitidos.length === 0 || moving}
+                            className={`w-full flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                                destinosPermitidos.length > 0
+                                    ? 'bg-primary text-white hover:opacity-90'
+                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            }`}
+                        >
+                            {moving ? '...' : <><Move className="h-3 w-3" /> Movimentar <ChevronDown className="h-3 w-3" /></>}
+                        </button>
+                        {menuAberto && destinosPermitidos.length > 0 && (
+                            <div className="absolute z-10 right-0 mt-1 w-44 bg-white border rounded-md shadow-lg overflow-hidden">
+                                {destinos.map(et => {
+                                    const liberado = destinosPermitidos.includes(et);
+                                    return (
+                                        <button
+                                            key={et}
+                                            onClick={() => { setMenuAberto(false); if (liberado) onMover(card, et); }}
+                                            disabled={!liberado}
+                                            className={`w-full text-left px-3 py-2 text-xs ${
+                                                liberado
+                                                    ? 'hover:bg-gray-100 text-gray-800'
+                                                    : 'text-gray-300 cursor-not-allowed'
+                                            }`}
+                                            title={liberado ? '' : 'Sem permissão para esta etapa'}
+                                        >
+                                            → {LABELS[et]}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 ) : (
                     <div className="flex-1 text-center text-[11px] text-green-700 font-semibold py-1.5">Entregue ✓</div>
                 )}

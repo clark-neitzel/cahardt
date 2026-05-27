@@ -1108,6 +1108,8 @@ model DeliveryStatus {
   pedidoId   String   @unique @map("pedido_id")
   etapa      String   @default("PEDIDO") // PEDIDO | PRODUCAO | SAINDO | ENTREGUE
   etapaAt    DateTime @default(now()) @map("etapa_at")
+  // Quando true, movimentações não disparam WhatsApp para o cliente (bot interno continua).
+  silenciarWhatsapp Boolean @default(false) @map("silenciar_whatsapp")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 

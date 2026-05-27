@@ -245,7 +245,8 @@ const webhookService = {
         }
     },
 
-    notificarDelivery: async (pedidoId, novaEtapa) => {
+    notificarDelivery: async (pedidoId, novaEtapa, opcoes = {}) => {
+        const { skipWhatsapp = false } = opcoes;
         const ETAPAS_LABEL = {
             PEDIDO: 'Pedido Criado',
             PRODUCAO: 'Em Produção',
@@ -326,7 +327,9 @@ const webhookService = {
             // ── CLIENTE ──
             // PRODUCAO: mensagem com resumo + data entrega
             // SAINDO / ENTREGUE: só numero do pedido + etapa
-            if (novaEtapa !== 'PEDIDO') {
+            if (skipWhatsapp) {
+                await registrarLog('WHATSAPP', 'OK', `Etapa ${novaEtapa} — silenciado por configuração do card`);
+            } else if (novaEtapa !== 'PEDIDO') {
                 const phone = formatPhone(pedido.cliente);
                 if (phone && pedido.cliente.recebeAvisoPedido !== false) {
                     const numeroPedido = pedido.numero || pedidoId.slice(0, 8);
