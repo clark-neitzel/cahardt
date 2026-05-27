@@ -519,9 +519,10 @@ const estoqueService = {
     },
 
     // Listagem de movimentações com filtros e paginação
-    listarMovimentacoes: async ({ produtoId, vendedorId, motivo, tipo, dataInicio, dataFim, pagina = 1, tamanhoPagina = 50 }) => {
+    listarMovimentacoes: async ({ produtoId, nomeProduto, vendedorId, motivo, tipo, dataInicio, dataFim, pagina = 1, tamanhoPagina = 50 }) => {
         const where = {};
         if (produtoId) where.produtoId = produtoId;
+        if (nomeProduto) where.produto = { nome: { contains: nomeProduto, mode: 'insensitive' } };
         if (vendedorId) where.vendedorId = vendedorId;
         if (motivo) where.motivo = motivo;
         if (tipo) where.tipo = tipo;

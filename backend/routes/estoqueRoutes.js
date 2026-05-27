@@ -160,9 +160,10 @@ router.get('/analise-demanda', async (req, res) => {
 // GET /api/estoque/historico — listagem de movimentações
 router.get('/historico', async (req, res) => {
     try {
-        const { produtoId, vendedorId, motivo, tipo, dataInicio, dataFim, pagina, tamanhoPagina } = req.query;
+        const { produtoId, nomeProduto, vendedorId, motivo, tipo, dataInicio, dataFim, pagina, tamanhoPagina } = req.query;
         const resultado = await estoqueService.listarMovimentacoes({
             produtoId,
+            nomeProduto,
             vendedorId,
             motivo,
             tipo,

@@ -707,4 +707,50 @@ router.post('/import-curriculos', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/estoque-status — resumo do estoque atual (último movimento por produto)
+router.get('/estoque-status', async (req, res) => {
+    try {
+        const rows = await prisma.$queryRawUnsafe(`
+            SELECT
+                p.nome,
+                p.id AS produto_id,
+                m.tipo,
+                m.motivo,
+                m.estoque_depois AS estoque_atual,
+                m.created_at AS ultima_mov,
+                tot.total_entradas,
+                tot.total_saidas
+            FROM (
+                SELECT DISTINCT ON (produto_id)
+                    produto_id, tipo, motivo,
+                    estoque_depois,
+                    created_at
+                FROM movimentacoes_estoque
+                ORDER BY produto_id, created_at DESC
+            ) m
+            JOIN produtos p ON p.id = m.produto_id
+            LEFT JOIN (
+                SELECT
+                    produto_id,
+                    SUM(CASE WHEN tipo = 'ENTRADA' THEN quantidade ELSE 0 END) AS total_entradas,
+                    SUM(CASE WHEN tipo = 'SAIDA'   THEN quantidade ELSE 0 END) AS total_saidas
+                FROM movimentacoes_estoque
+                GROUP BY produto_id
+            ) tot ON tot.produto_id = m.produto_id
+            ORDER BY p.nome
+        `);
+        const resultado = rows.map(r => ({
+            nome: r.nome,
+            estoqueAtual: Number(r.estoque_atual),
+            ultimaMov: r.ultima_mov,
+            totalEntradas: Number(r.total_entradas || 0),
+            totalSaidas: Number(r.total_saidas || 0),
+        }));
+        const negativos = resultado.filter(r => r.estoqueAtual < 0);
+        res.json({ total: resultado.length, negativos: negativos.length, produtos: resultado });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowUpCircle, ArrowDownCircle, Filter, ChevronLeft, Loader2, AlertCircle, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import estoqueService from '../../services/estoqueService';
@@ -62,6 +62,8 @@ export default function HistoricoEstoque() {
     const [showFiltros, setShowFiltros] = useState(false);
 
     const [busca, setBusca] = useState('');
+    const [buscaServer, setBuscaServer] = useState('');
+    const debounceRef = useRef(null);
 
     const [filtros, setFiltros] = useState({
         tipo: '',
@@ -73,7 +75,7 @@ export default function HistoricoEstoque() {
 
     const tamanhoPagina = 60;
 
-    const carregar = useCallback(async (pg = 1, filtrosAtivos = {}) => {
+    const carregar = useCallback(async (pg = 1, filtrosAtivos = {}, busca = '') => {
         setLoading(true);
         setErro(null);
         try {
@@ -81,6 +83,7 @@ export default function HistoricoEstoque() {
                 pagina: pg,
                 tamanhoPagina,
                 ...filtrosAtivos,
+                ...(busca ? { nomeProduto: busca } : {}),
             });
             if (pg === 1) {
                 setItems(data.items || []);
@@ -96,8 +99,17 @@ export default function HistoricoEstoque() {
     }, []);
 
     useEffect(() => {
-        carregar(1, filtrosAplicados);
-    }, [carregar, filtrosAplicados]);
+        carregar(1, filtrosAplicados, buscaServer);
+    }, [carregar, filtrosAplicados, buscaServer]);
+
+    const handleBuscaChange = (valor) => {
+        setBusca(valor);
+        clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+            setBuscaServer(valor.trim());
+            setPagina(1);
+        }, 400);
+    };
 
     const aplicarFiltros = () => {
         const ativos = {};
@@ -113,6 +125,8 @@ export default function HistoricoEstoque() {
     const limparFiltros = () => {
         setFiltros({ tipo: '', motivo: '', dataInicio: '', dataFim: '' });
         setFiltrosAplicados({});
+        setBusca('');
+        setBuscaServer('');
         setPagina(1);
         setShowFiltros(false);
     };
@@ -120,19 +134,15 @@ export default function HistoricoEstoque() {
     const carregarMais = () => {
         const nova = pagina + 1;
         setPagina(nova);
-        carregar(nova, filtrosAplicados);
+        carregar(nova, filtrosAplicados, buscaServer);
     };
 
     const temMais = items.length < total;
-    const temFiltros = Object.keys(filtrosAplicados).length > 0;
+    const numFiltrosAtivos = Object.keys(filtrosAplicados).length + (buscaServer ? 1 : 0);
+    const temFiltros = numFiltrosAtivos > 0;
 
-    const buscaLower = busca.toLowerCase();
-    const itemsFiltrados = buscaLower
-        ? items.filter(i => i.produto?.nome?.toLowerCase().includes(buscaLower))
-        : items;
-
-    const entradas = itemsFiltrados.filter(i => i.tipo === 'ENTRADA');
-    const saidas = itemsFiltrados.filter(i => i.tipo === 'SAIDA');
+    const entradas = items.filter(i => i.tipo === 'ENTRADA');
+    const saidas = items.filter(i => i.tipo === 'SAIDA');
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-6">
@@ -151,11 +161,11 @@ export default function HistoricoEstoque() {
                         type="text"
                         placeholder="Buscar produto..."
                         value={busca}
-                        onChange={e => setBusca(e.target.value)}
+                        onChange={e => handleBuscaChange(e.target.value)}
                         className="w-full pl-8 pr-7 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     {busca && (
-                        <button onClick={() => setBusca('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        <button onClick={() => handleBuscaChange('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                             <X className="h-3.5 w-3.5" />
                         </button>
                     )}
@@ -165,7 +175,7 @@ export default function HistoricoEstoque() {
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${temFiltros ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                     <Filter className="h-3.5 w-3.5" />
-                    Filtros{temFiltros ? ` (${Object.keys(filtrosAplicados).length})` : ''}
+                    Filtros{temFiltros ? ` (${numFiltrosAtivos})` : ''}
                 </button>
             </div>
 
@@ -279,7 +289,7 @@ export default function HistoricoEstoque() {
 
             {/* ── Mobile: lista única ── */}
             <div className="md:hidden space-y-2">
-                {itemsFiltrados.map(item => (
+                {items.map(item => (
                     <MovimentacaoCard key={item.id} item={item} />
                 ))}
             </div>
