@@ -713,11 +713,11 @@ router.get('/estoque-reconciliacao', async (req, res) => {
     try {
         const desde = req.query.desde || '2026-04-01';
 
-        // Primeira movimentação de cada produto ANTES de 'desde' → estoque inicial do período
+        // Última movimentação ANTES de 'desde' → estoque_depois é o saldo inicial do período
         const iniciais = await prisma.$queryRawUnsafe(`
             SELECT DISTINCT ON (produto_id)
                 produto_id,
-                estoque_antes AS estoque_inicial
+                estoque_depois AS estoque_inicial
             FROM movimentacoes_estoque
             WHERE created_at < $1::timestamp
             ORDER BY produto_id, created_at DESC
