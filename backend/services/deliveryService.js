@@ -26,11 +26,20 @@ const deliveryService = {
         return [...cadastradas, ...extras].sort((a, b) => a.nome.localeCompare(b.nome));
     },
 
-    salvarCategoria: async (nome, ativo) => {
+    // Aceita: salvarCategoria(nome, true) | salvarCategoria(nome, { ativo, categoriasComerciaisIds })
+    salvarCategoria: async (nome, payload) => {
+        const obj = typeof payload === 'object' && payload !== null ? payload : { ativo: !!payload };
+        const data = {};
+        if (typeof obj.ativo === 'boolean') data.ativo = obj.ativo;
+        if (obj.categoriasComerciaisIds !== undefined) {
+            data.categoriasComerciaisIds = Array.isArray(obj.categoriasComerciaisIds) && obj.categoriasComerciaisIds.length > 0
+                ? obj.categoriasComerciaisIds
+                : null;
+        }
         return await prisma.deliveryCategoria.upsert({
             where: { nome },
-            update: { ativo },
-            create: { nome, ativo }
+            update: data,
+            create: { nome, ativo: data.ativo ?? true, categoriasComerciaisIds: data.categoriasComerciaisIds ?? null }
         });
     },
 
@@ -99,17 +108,33 @@ const deliveryService = {
         return cats.map(c => c.nome);
     },
 
+    // Filtros ativos como cláusulas Prisma sobre produto.
+    // Retorna [{ categoria: 'X' }] ou [{ categoria: 'X', categoriaProdutoId: { in: [...] } }, ...]
+    // Quando vazio: nenhuma categoria ativa.
+    _produtoWhereFiltros: async () => {
+        const cats = await prisma.deliveryCategoria.findMany({
+            where: { ativo: true },
+            select: { nome: true, categoriasComerciaisIds: true }
+        });
+        return cats.map(c => {
+            const ids = Array.isArray(c.categoriasComerciaisIds) ? c.categoriasComerciaisIds : [];
+            return ids.length > 0
+                ? { categoria: c.nome, categoriaProdutoId: { in: ids } }
+                : { categoria: c.nome };
+        });
+    },
+
     // Backfill: cria delivery_status em PEDIDO para todos os pedidos elegiveis
     // (item de categoria ativa) que ainda não têm registro.
     backfillStatus: async () => {
-        const categoriasAtivas = await deliveryService._categoriasAtivasNomes();
-        if (!categoriasAtivas.length) return 0;
+        const filtros = await deliveryService._produtoWhereFiltros();
+        if (!filtros.length) return 0;
 
         const [elegiveis, comStatus] = await Promise.all([
             prisma.pedido.findMany({
                 where: {
                     situacaoCA: 'FATURADO',
-                    itens: { some: { produto: { categoria: { in: categoriasAtivas } } } }
+                    itens: { some: { OR: filtros.map(f => ({ produto: f })) } }
                 },
                 select: { id: true }
             }),
@@ -131,8 +156,8 @@ const deliveryService = {
     //   - etapa ENTREGUE: mais recentes primeiro (scroll, limitado a 10)
     //   - demais: data do pedido (dataVenda) — atrasados/hoje primeiro, futuros crescentes
     listarPedidos: async () => {
-        const categoriasAtivas = await deliveryService._categoriasAtivasNomes();
-        if (!categoriasAtivas.length) {
+        const filtros = await deliveryService._produtoWhereFiltros();
+        if (!filtros.length) {
             return { PEDIDO: [], PRODUCAO: [], SAINDO: [], ENTREGUE: [] };
         }
 
@@ -150,7 +175,7 @@ const deliveryService = {
             where: {
                 id: { in: pedidoIds },
                 situacaoCA: 'FATURADO',
-                itens: { some: { produto: { categoria: { in: categoriasAtivas } } } }
+                itens: { some: { OR: filtros.map(f => ({ produto: f })) } }
             },
             include: {
                 cliente: {
@@ -284,24 +309,32 @@ const deliveryService = {
         const pedido = await prisma.pedido.findFirst({
             where: whereId,
             include: {
-                itens: { include: { produto: { select: { nome: true, categoria: true } } } }
+                itens: { include: { produto: { select: { nome: true, categoria: true, categoriaProdutoId: true } } } }
             }
         });
         if (!pedido) return { encontrado: false, motivo: 'Pedido não encontrado' };
 
-        const categoriasAtivas = await deliveryService._categoriasAtivasNomes();
+        const filtros = await deliveryService._produtoWhereFiltros();
         const status = await prisma.deliveryStatus.findUnique({ where: { pedidoId: pedido.id } });
         const itensCategorias = pedido.itens.map(i => ({
             produto: i.produto?.nome,
-            categoria: i.produto?.categoria
+            categoria: i.produto?.categoria,
+            categoriaProdutoId: i.produto?.categoriaProdutoId
         }));
-        const temItemElegivel = pedido.itens.some(i => categoriasAtivas.includes(i.produto?.categoria));
+        const matchItem = (item) => filtros.some(f => {
+            if (item.produto?.categoria !== f.categoria) return false;
+            if (f.categoriaProdutoId?.in) {
+                return f.categoriaProdutoId.in.includes(item.produto?.categoriaProdutoId);
+            }
+            return true;
+        });
+        const temItemElegivel = pedido.itens.some(matchItem);
 
         return {
             encontrado: true,
             pedidoId: pedido.id,
             numero: pedido.numero,
-            categoriasAtivas,
+            filtrosAtivos: filtros,
             itensCategorias,
             temItemElegivel,
             deliveryStatus: status,
@@ -311,13 +344,13 @@ const deliveryService = {
 
     // ── Trigger: ao criar pedido, se tiver item de categoria ativa, cria delivery_status ──
     garantirStatusParaPedido: async (pedidoId) => {
-        const categoriasAtivas = await deliveryService._categoriasAtivasNomes();
-        if (!categoriasAtivas.length) return null;
+        const filtros = await deliveryService._produtoWhereFiltros();
+        if (!filtros.length) return null;
 
         const tem = await prisma.pedidoItem.findFirst({
             where: {
                 pedidoId,
-                produto: { categoria: { in: categoriasAtivas } }
+                OR: filtros.map(f => ({ produto: f }))
             },
             select: { id: true }
         });

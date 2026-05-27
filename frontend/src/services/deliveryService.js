@@ -10,8 +10,11 @@ const deliveryService = {
     },
 
     listarCategorias: async () => (await api.get('/delivery/config/categorias')).data,
-    salvarCategoria: async (nome, ativo) =>
-        (await api.patch(`/delivery/config/categorias/${encodeURIComponent(nome)}`, { ativo })).data,
+    // payload: { ativo?: boolean, categoriasComerciaisIds?: string[] | null }
+    salvarCategoria: async (nome, payload) => {
+        const body = typeof payload === 'object' && payload !== null ? payload : { ativo: !!payload };
+        return (await api.patch(`/delivery/config/categorias/${encodeURIComponent(nome)}`, body)).data;
+    },
 
     listarPermissoes: async () => (await api.get('/delivery/config/permissoes')).data,
     salvarPermissao: async (vendedorId, dados) =>

@@ -17,11 +17,21 @@ module.exports = {
     salvarCategoria: async (req, res) => {
         try {
             if (!isAdmin(req)) return res.status(403).json({ error: 'Apenas administradores.' });
-            const { ativo } = req.body;
-            if (typeof ativo !== 'boolean') {
-                return res.status(400).json({ error: 'ativo deve ser true ou false.' });
+            const { ativo, categoriasComerciaisIds } = req.body;
+            const payload = {};
+            if (ativo !== undefined) {
+                if (typeof ativo !== 'boolean') {
+                    return res.status(400).json({ error: 'ativo deve ser true ou false.' });
+                }
+                payload.ativo = ativo;
             }
-            const out = await deliveryService.salvarCategoria(decodeURIComponent(req.params.nome), ativo);
+            if (categoriasComerciaisIds !== undefined) {
+                if (categoriasComerciaisIds !== null && !Array.isArray(categoriasComerciaisIds)) {
+                    return res.status(400).json({ error: 'categoriasComerciaisIds deve ser array ou null.' });
+                }
+                payload.categoriasComerciaisIds = categoriasComerciaisIds;
+            }
+            const out = await deliveryService.salvarCategoria(decodeURIComponent(req.params.nome), payload);
             res.json(out);
         } catch (err) {
             console.error('[Delivery] salvarCategoria:', err.message);

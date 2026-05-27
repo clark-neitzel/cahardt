@@ -1096,6 +1096,8 @@ model DeliveryCategoria {
   id        String   @id @default(uuid())
   nome      String   @unique
   ativo     Boolean  @default(true)
+  // IDs de CategoriaProduto (sub-filtro). Vazio/null = aceita todos os produtos da categoria CA.
+  categoriasComerciaisIds Json? @map("categorias_comerciais_ids")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("delivery_categorias")

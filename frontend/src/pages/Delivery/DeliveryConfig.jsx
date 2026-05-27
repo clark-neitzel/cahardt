@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import deliveryService from '../../services/deliveryService';
+import categoriaProdutoService from '../../services/categoriaProdutoService';
 
 const { ETAPAS, LABELS } = deliveryService;
 
@@ -35,13 +36,19 @@ function TabBtn({ active, onClick, children }) {
 
 function CategoriasTab() {
     const [lista, setLista] = useState([]);
+    const [comerciais, setComerciais] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(null);
 
     const carregar = async () => {
         setLoading(true);
         try {
-            setLista(await deliveryService.listarCategorias());
+            const [cats, coms] = await Promise.all([
+                deliveryService.listarCategorias(),
+                categoriaProdutoService.listar().catch(() => [])
+            ]);
+            setLista(cats);
+            setComerciais((coms || []).filter(c => c.ativo !== false));
         } catch (e) {
             toast.error('Erro ao carregar categorias.');
         } finally {
@@ -51,10 +58,26 @@ function CategoriasTab() {
 
     useEffect(() => { carregar(); }, []);
 
-    const toggle = async (cat) => {
+    const toggleAtivo = async (cat) => {
         setSaving(cat.nome);
         try {
-            await deliveryService.salvarCategoria(cat.nome, !cat.ativo);
+            await deliveryService.salvarCategoria(cat.nome, { ativo: !cat.ativo });
+            await carregar();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao salvar.');
+        } finally {
+            setSaving(null);
+        }
+    };
+
+    const toggleComercial = async (cat, comId) => {
+        const atuais = Array.isArray(cat.categoriasComerciaisIds) ? cat.categoriasComerciaisIds : [];
+        const novos = atuais.includes(comId)
+            ? atuais.filter(id => id !== comId)
+            : [...atuais, comId];
+        setSaving(cat.nome);
+        try {
+            await deliveryService.salvarCategoria(cat.nome, { categoriasComerciaisIds: novos.length > 0 ? novos : null });
             await carregar();
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao salvar.');
@@ -72,23 +95,53 @@ function CategoriasTab() {
                 Apenas pedidos com pelo menos 1 item destas categorias entram no Kanban.
             </p>
             <div className="bg-white rounded-lg border divide-y">
-                {lista.map(cat => (
-                    <div key={cat.nome} className="flex items-center justify-between px-4 py-3">
-                        <div>
-                            <div className="font-medium">{cat.nome}</div>
-                            {cat.naoSalva && <div className="text-xs text-gray-400">Detectada nos produtos — ainda não configurada</div>}
+                {lista.map(cat => {
+                    const selecionadas = Array.isArray(cat.categoriasComerciaisIds) ? cat.categoriasComerciaisIds : [];
+                    return (
+                        <div key={cat.nome} className="px-4 py-3">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="font-medium">{cat.nome}</div>
+                                    {cat.naoSalva && <div className="text-xs text-gray-400">Detectada nos produtos — ainda não configurada</div>}
+                                </div>
+                                <button
+                                    onClick={() => toggleAtivo(cat)}
+                                    disabled={saving === cat.nome}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                        cat.ativo ? 'bg-green-500' : 'bg-gray-300'
+                                    } ${saving === cat.nome ? 'opacity-50' : ''}`}
+                                >
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${cat.ativo ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
+                            </div>
+
+                            {cat.ativo && comerciais.length > 0 && (
+                                <div className="mt-3 ml-1 pl-3 border-l-2 border-blue-200 bg-blue-50/50 rounded-r-md py-2">
+                                    <p className="text-xs text-blue-800 mb-2 font-medium">
+                                        Filtrar por categoria comercial (opcional)
+                                    </p>
+                                    <p className="text-[11px] text-blue-600 mb-2">
+                                        Se nada for marcado, todos os produtos desta categoria entram. Marque pra restringir.
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
+                                        {comerciais.map(com => (
+                                            <label key={com.id} className="flex items-center gap-2 text-sm cursor-pointer p-1 hover:bg-blue-100 rounded">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded border-blue-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                                                    checked={selecionadas.includes(com.id)}
+                                                    onChange={() => toggleComercial(cat, com.id)}
+                                                    disabled={saving === cat.nome}
+                                                />
+                                                <span className="text-blue-900">{com.nome}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        <button
-                            onClick={() => toggle(cat)}
-                            disabled={saving === cat.nome}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                cat.ativo ? 'bg-green-500' : 'bg-gray-300'
-                            } ${saving === cat.nome ? 'opacity-50' : ''}`}
-                        >
-                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${cat.ativo ? 'translate-x-6' : 'translate-x-1'}`} />
-                        </button>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
