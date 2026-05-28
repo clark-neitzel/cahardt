@@ -7,13 +7,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 const STATUS_OPCOES = [
-  'Novo', 'Em Análise', 'Entrevista', 'Agendado',
+  'Novo', 'Editado', 'Em Análise', 'Entrevista', 'Agendado',
   'Entrevistado', 'Aprovado', 'Contratado',
   'Não Qualificado', 'Rejeitado', 'Desistiu', 'Não Disponível',
 ];
 
 const STATUS_COR = {
   'Novo': 'bg-blue-100 text-blue-700 border-blue-200',
+  'Editado': 'bg-amber-100 text-amber-700 border-amber-200',
   'Em Análise': 'bg-yellow-100 text-yellow-700 border-yellow-200',
   'Entrevista': 'bg-purple-100 text-purple-700 border-purple-200',
   'Agendado': 'bg-indigo-100 text-indigo-700 border-indigo-200',

@@ -29,6 +29,7 @@ const upload = multer({
 // ─── Status permitidos ──────────────────────────────────────────────────────
 const STATUS_VALIDOS = [
   'Novo',
+  'Editado',
   'Em Análise',
   'Entrevista',
   'Agendado',
@@ -132,9 +133,15 @@ async function salvar(req, res) {
     const existente = await prisma.curriculo.findUnique({ where: { cpf: cpfLimpo } });
 
     if (existente) {
+      const agora = new Date();
       const atualizado = await prisma.curriculo.update({
         where: { cpf: cpfLimpo },
-        data: { ...dados, atualizadoEm: new Date() },
+        data: {
+          ...dados,
+          status: 'Editado',
+          criadoEm: agora,
+          atualizadoEm: agora,
+        },
       });
       return res.json({ curriculo: atualizado, editado: true });
     }
@@ -180,7 +187,11 @@ async function listar(req, res) {
   const take = parseInt(limite);
 
   const where = {};
-  if (status) where.status = status;
+  if (status) {
+    const arr = String(status).split(',').map(s => s.trim()).filter(Boolean);
+    if (arr.length === 1) where.status = arr[0];
+    else if (arr.length > 1) where.status = { in: arr };
+  }
   if (areaInteresse) where.areaInteresse = areaInteresse;
   if (busca) {
     where.OR = [
@@ -239,8 +250,8 @@ async function detalhe(req, res) {
     data: { curriculoId: id, vendedorId: req.user.id },
   });
 
-  // Se ainda for "Novo", muda para "Em Análise" automaticamente
-  if (curriculo.status === 'Novo') {
+  // Se ainda for "Novo" ou "Editado", muda para "Em Análise" automaticamente
+  if (curriculo.status === 'Novo' || curriculo.status === 'Editado') {
     await prisma.curriculo.update({ where: { id }, data: { status: 'Em Análise' } });
     curriculo.status = 'Em Análise';
   }

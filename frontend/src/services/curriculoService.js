@@ -28,7 +28,10 @@ export async function uploadFotoCurriculo(cpf, arquivo) {
 // ─── Painel RH (protegidas) ─────────────────────────────────────────────────
 export async function listarCurriculos(filtros = {}) {
   const params = new URLSearchParams();
-  if (filtros.status) params.set('status', filtros.status);
+  if (filtros.status) {
+    const s = Array.isArray(filtros.status) ? filtros.status.join(',') : filtros.status;
+    if (s) params.set('status', s);
+  }
   if (filtros.areaInteresse) params.set('areaInteresse', filtros.areaInteresse);
   if (filtros.busca) params.set('busca', filtros.busca);
   if (filtros.pagina) params.set('pagina', filtros.pagina);
