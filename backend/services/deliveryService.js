@@ -171,10 +171,11 @@ const deliveryService = {
 
         const pedidoIds = statusTodos.map(s => s.pedidoId);
 
+        // Lista todos os pedidos com delivery_status (incluindo não-faturados, que
+        // aparecem em cinza no Kanban e não podem ser movimentados).
         const pedidos = await prisma.pedido.findMany({
             where: {
                 id: { in: pedidoIds },
-                situacaoCA: 'FATURADO',
                 itens: { some: { OR: filtros.map(f => ({ produto: f })) } }
             },
             include: {
@@ -222,6 +223,8 @@ const deliveryService = {
                 etapa: st?.etapa || 'PEDIDO',
                 etapaAt: st?.etapaAt,
                 silenciarWhatsapp: !!st?.silenciarWhatsapp,
+                situacaoCA: p.situacaoCA,
+                statusEnvio: p.statusEnvio,
                 dataVenda: p.dataVenda,
                 cliente: p.cliente,
                 vendedor: p.vendedor,
@@ -276,6 +279,15 @@ const deliveryService = {
         const atual = await prisma.deliveryStatus.findUnique({ where: { pedidoId } });
         if (!atual) throw new Error('Pedido não está no fluxo de Delivery.');
         if (atual.etapa === novaEtapa) return atual;
+
+        // Pedido precisa estar faturado no Conta Azul antes de mover no Kanban.
+        const pedido = await prisma.pedido.findUnique({
+            where: { id: pedidoId },
+            select: { situacaoCA: true }
+        });
+        if (pedido?.situacaoCA !== 'FATURADO') {
+            throw new Error('Pedido ainda não foi faturado no Conta Azul. Fature primeiro para movimentar no Delivery.');
+        }
 
         const atualizado = await prisma.deliveryStatus.update({
             where: { pedidoId },

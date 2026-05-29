@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { MessageCircle, ArrowLeft, Settings, RefreshCw, Send, MessageSquareOff, MessageSquare, Search, ChevronDown, Move } from 'lucide-react';
+import { MessageCircle, ArrowLeft, Settings, RefreshCw, Send, MessageSquareOff, MessageSquare, Search, ChevronDown, Move, X, AlertCircle } from 'lucide-react';
 import deliveryService from '../../services/deliveryService';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -51,6 +51,9 @@ export default function DeliveryKanban() {
     const [busca, setBusca] = useState('');
     const [dataEntrega, setDataEntrega] = useState('');
 
+    // Modal de detalhes
+    const [pedidoDetalhe, setPedidoDetalhe] = useState(null);
+
     const isAdmin = user?.permissoes?.admin;
 
     const carregar = async () => {
@@ -75,6 +78,13 @@ export default function DeliveryKanban() {
 
     const mover = async (card, novaEtapa) => {
         if (!novaEtapa) return;
+        if (card.situacaoCA !== 'FATURADO') {
+            toast.error('Este pedido ainda não foi faturado no Conta Azul. Fature primeiro para movimentar no Delivery.', {
+                duration: 5000,
+                style: { maxWidth: '480px' }
+            });
+            return;
+        }
         setMoving(card.id);
         try {
             await deliveryService.moverEtapa(card.id, novaEtapa);
@@ -203,6 +213,10 @@ export default function DeliveryKanban() {
                 </div>
             )}
 
+            {pedidoDetalhe && (
+                <ModalDetalhes card={pedidoDetalhe} onClose={() => setPedidoDetalhe(null)} />
+            )}
+
             {perm.podeVer && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                     {ETAPAS.map(etapa => (
@@ -221,6 +235,7 @@ export default function DeliveryKanban() {
                                         onMover={mover}
                                         onReenviar={reenviar}
                                         onToggleSilenciar={toggleSilenciar}
+                                        onAbrirDetalhes={() => setPedidoDetalhe(card)}
                                     />
                                 ))}
                                 {!(filtrados[etapa] || []).length && (
@@ -237,7 +252,7 @@ export default function DeliveryKanban() {
     );
 }
 
-function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar }) {
+function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAbrirDetalhes }) {
     const tel = card.cliente?.Telefone_Celular || card.cliente?.Telefone;
     const wa = whatsappLink(tel);
     const end = [
@@ -247,6 +262,7 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar }) {
         card.cliente?.End_Cidade
     ].filter(Boolean).join(', ');
 
+    const naoFaturado = card.situacaoCA !== 'FATURADO';
     const ant = etapaAnterior(card.etapa);
     const destinos = etapasAFrente(card.etapa);
     const destinosPermitidos = destinos.filter(e => perm.admin || perm.etapasPermitidas?.includes(e));
@@ -273,8 +289,27 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar }) {
 
     const silenciado = !!card.silenciarWhatsapp;
 
+    const handleCardClick = (e) => {
+        // Não abre detalhes se o clique veio de um botão/link interno
+        if (e.target.closest('button, a')) return;
+        onAbrirDetalhes && onAbrirDetalhes();
+    };
+
     return (
-        <div className={`bg-white rounded-md shadow-sm border p-3 text-xs space-y-2 ${atrasado ? 'ring-2 ring-red-400' : ''} ${silenciado ? 'border-l-4 border-l-gray-400' : ''}`}>
+        <div
+            onClick={handleCardClick}
+            className={`rounded-md shadow-sm border p-3 text-xs space-y-2 cursor-pointer transition-colors ${
+                naoFaturado
+                    ? 'bg-gray-100 border-gray-300 opacity-90 hover:bg-gray-50'
+                    : 'bg-white hover:bg-gray-50'
+            } ${atrasado && !naoFaturado ? 'ring-2 ring-red-400' : ''} ${silenciado ? 'border-l-4 border-l-gray-400' : ''}`}
+        >
+            {naoFaturado && (
+                <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 rounded px-1.5 py-1">
+                    <AlertCircle className="h-3 w-3 shrink-0" />
+                    <span>Não faturado no CA — não pode movimentar</span>
+                </div>
+            )}
             <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                     <div className="font-semibold text-sm truncate">
@@ -350,10 +385,14 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar }) {
                 {ant && (
                     <button
                         onClick={() => onMover(card, ant)}
-                        disabled={!podeVoltar || moving}
-                        title={`Voltar para ${LABELS[ant]}`}
+                        disabled={!naoFaturado && (!podeVoltar || moving)}
+                        title={naoFaturado ? 'Fature o pedido no CA para movimentar' : `Voltar para ${LABELS[ant]}`}
                         className={`px-2 py-1.5 rounded-md text-xs transition-colors ${
-                            podeVoltar ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                            naoFaturado
+                                ? 'bg-gray-50 text-gray-400 border border-dashed border-gray-400'
+                                : podeVoltar
+                                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    : 'bg-gray-50 text-gray-300 cursor-not-allowed'
                         }`}
                     >
                         <ArrowLeft className="h-3 w-3" />
@@ -362,17 +401,26 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar }) {
                 {destinos.length > 0 ? (
                     <div className="relative flex-1" ref={menuRef}>
                         <button
-                            onClick={() => setMenuAberto(o => !o)}
-                            disabled={destinosPermitidos.length === 0 || moving}
+                            onClick={() => {
+                                if (naoFaturado) {
+                                    onMover(card, destinos[0]); // dispara o aviso "não faturado" no parent
+                                    return;
+                                }
+                                setMenuAberto(o => !o);
+                            }}
+                            disabled={!naoFaturado && (destinosPermitidos.length === 0 || moving)}
                             className={`w-full flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                                destinosPermitidos.length > 0
-                                    ? 'bg-primary text-white hover:opacity-90'
-                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                naoFaturado
+                                    ? 'bg-gray-200 text-gray-500 hover:bg-gray-300 border border-dashed border-gray-400'
+                                    : destinosPermitidos.length > 0
+                                        ? 'bg-primary text-white hover:opacity-90'
+                                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                             }`}
+                            title={naoFaturado ? 'Fature o pedido no CA para movimentar' : ''}
                         >
                             {moving ? '...' : <><Move className="h-3 w-3" /> Movimentar <ChevronDown className="h-3 w-3" /></>}
                         </button>
-                        {menuAberto && destinosPermitidos.length > 0 && (
+                        {menuAberto && !naoFaturado && destinosPermitidos.length > 0 && (
                             <div className="absolute z-10 right-0 mt-1 w-44 bg-white border rounded-md shadow-lg overflow-hidden">
                                 {destinos.map(et => {
                                     const liberado = destinosPermitidos.includes(et);
@@ -398,6 +446,151 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar }) {
                 ) : (
                     <div className="flex-1 text-center text-[11px] text-green-700 font-semibold py-1.5">Entregue ✓</div>
                 )}
+            </div>
+        </div>
+    );
+}
+
+function ModalDetalhes({ card, onClose }) {
+    const cliente = card.cliente || {};
+    const tel = cliente.Telefone_Celular || cliente.Telefone;
+    const wa = whatsappLink(tel);
+    const end = [
+        cliente.End_Logradouro && `${cliente.End_Logradouro}${cliente.End_Numero ? ', ' + cliente.End_Numero : ''}`,
+        cliente.End_Complemento,
+        cliente.End_Bairro,
+        cliente.End_Cidade && `${cliente.End_Cidade}${cliente.End_Estado ? '/' + cliente.End_Estado : ''}`,
+        cliente.End_CEP && `CEP ${cliente.End_CEP}`
+    ].filter(Boolean).join(' — ');
+    const dataVenda = card.dataVenda ? new Date(card.dataVenda) : null;
+    const dataVendaStr = dataVenda
+        ? dataVenda.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+        : '-';
+    const totalItens = (card.itens || []).reduce((s, i) => s + Number(i.quantidade), 0);
+    const naoFaturado = card.situacaoCA !== 'FATURADO';
+
+    return (
+        <div
+            onClick={onClose}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto"
+        >
+            <div
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col"
+            >
+                <div className="px-5 py-3 border-b flex items-center justify-between">
+                    <div className="min-w-0">
+                        <h3 className="text-lg font-bold text-gray-900 truncate">
+                            {cliente.NomeFantasia || cliente.Nome || 'Pedido'}
+                        </h3>
+                        <p className="text-xs text-gray-500">
+                            Pedido #{card.numero || '—'} · Entrega {dataVendaStr} · {LABELS[card.etapa]}
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-700 shrink-0 ml-2">
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div className="px-5 py-4 overflow-y-auto space-y-3 text-sm">
+                    {naoFaturado && (
+                        <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-md p-2 text-xs text-amber-900">
+                            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                            <div>
+                                <strong>Pedido ainda não foi faturado no Conta Azul.</strong> Fature primeiro para movimentar pelo Delivery.
+                            </div>
+                        </div>
+                    )}
+
+                    {end && (
+                        <div>
+                            <p className="text-[10px] uppercase font-semibold text-gray-400 mb-0.5">Endereço</p>
+                            <p className="text-gray-800">{end}</p>
+                        </div>
+                    )}
+
+                    {tel && (
+                        <div className="flex items-center gap-3">
+                            <div>
+                                <p className="text-[10px] uppercase font-semibold text-gray-400 mb-0.5">Telefone</p>
+                                <p className="text-gray-800">{tel}</p>
+                            </div>
+                            {wa && (
+                                <a href={wa} target="_blank" rel="noreferrer" className="ml-auto inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-800 underline">
+                                    <MessageCircle className="h-3.5 w-3.5" /> Abrir WhatsApp
+                                </a>
+                            )}
+                        </div>
+                    )}
+
+                    {card.vendedor?.nome && (
+                        <div>
+                            <p className="text-[10px] uppercase font-semibold text-gray-400 mb-0.5">Vendedor</p>
+                            <p className="text-gray-800">{card.vendedor.nome}</p>
+                        </div>
+                    )}
+
+                    <div>
+                        <p className="text-[10px] uppercase font-semibold text-gray-400 mb-1">
+                            Itens ({totalItens} {totalItens === 1 ? 'un' : 'un'})
+                        </p>
+                        <div className="border rounded-md divide-y">
+                            {(card.itens || []).map(i => (
+                                <div key={i.id} className="px-2.5 py-1.5 flex justify-between gap-2 text-xs">
+                                    <span className="text-gray-800">
+                                        <span className="font-medium">{i.quantidade}×</span> {i.produto?.nome}
+                                    </span>
+                                    <span className="text-gray-600 shrink-0">
+                                        {fmtBRL(i.valor)} <span className="text-gray-400">·</span> {fmtBRL(i.quantidade * i.valor)}
+                                    </span>
+                                </div>
+                            ))}
+                            {card.frete > 0 && (
+                                <div className="px-2.5 py-1.5 flex justify-between text-xs">
+                                    <span className="text-gray-700">Frete</span>
+                                    <span className="text-gray-700">{fmtBRL(card.frete)}</span>
+                                </div>
+                            )}
+                            <div className="px-2.5 py-1.5 flex justify-between text-sm font-semibold bg-gray-50">
+                                <span>Total</span>
+                                <span>{fmtBRL(card.totalPedido)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <p className="text-[10px] uppercase font-semibold text-gray-400 mb-0.5">Pagamento</p>
+                            <p className="text-gray-800">
+                                {card.statusPagamento === 'QUITADO' && <span className="text-green-700 font-semibold">Quitado</span>}
+                                {card.statusPagamento === 'PARCIAL' && <span className="text-amber-700 font-semibold">Parcial — falta {fmtBRL(card.aberto)}</span>}
+                                {card.statusPagamento === 'ABERTO' && <span className="text-red-700 font-semibold">Em aberto</span>}
+                            </p>
+                            {card.totalPago > 0 && (
+                                <p className="text-[11px] text-gray-500">Pago: {fmtBRL(card.totalPago)}</p>
+                            )}
+                        </div>
+                        <div>
+                            <p className="text-[10px] uppercase font-semibold text-gray-400 mb-0.5">Situação CA</p>
+                            <p className={naoFaturado ? 'text-amber-700 font-semibold' : 'text-green-700 font-semibold'}>
+                                {card.situacaoCA || '—'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {card.observacoes && (
+                        <div>
+                            <p className="text-[10px] uppercase font-semibold text-gray-400 mb-0.5">Observações</p>
+                            <p className="text-gray-800 whitespace-pre-wrap text-xs bg-gray-50 border rounded p-2">{card.observacoes}</p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="px-5 py-3 border-t bg-gray-50 flex justify-end">
+                    <button onClick={onClose} className="px-4 py-1.5 text-sm border rounded-md bg-white hover:bg-gray-100">
+                        Fechar
+                    </button>
+                </div>
             </div>
         </div>
     );
