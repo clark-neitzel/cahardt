@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { MessageCircle, ArrowLeft, Settings, RefreshCw, Send, MessageSquareOff, MessageSquare, Search, ChevronDown, Move, X, AlertCircle } from 'lucide-react';
+import { MessageCircle, ArrowLeft, Settings, RefreshCw, Send, MessageSquareOff, MessageSquare, Search, ChevronDown, Move, X, AlertCircle, Calendar } from 'lucide-react';
 import deliveryService from '../../services/deliveryService';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -38,6 +38,25 @@ const sameDateISO = (date, isoYmd) => {
     const d = new Date(date);
     const ymd = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
     return ymd === isoYmd;
+};
+
+// Classifica a data de entrega em relação a hoje.
+// → { label: 'Hoje'|'Amanhã'|'Atrasado'|'Futuro', dias: number, dataStr: 'dd/mm' }
+const classificarEntrega = (dataVenda) => {
+    if (!dataVenda) return null;
+    const d = new Date(dataVenda);
+    // Compara dia-a-dia em UTC, já que dataVenda é armazenado como yyyy-mm-ddT00:00:00Z
+    const ent = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    const agora = new Date();
+    const hoje = new Date(Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate()));
+    const diffMs = ent.getTime() - hoje.getTime();
+    const diffDias = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    const dataStr = `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+    let label = 'Futuro';
+    if (diffDias < 0) label = 'Atrasado';
+    else if (diffDias === 0) label = 'Hoje';
+    else if (diffDias === 1) label = 'Amanhã';
+    return { label, dias: diffDias, dataStr };
 };
 
 export default function DeliveryKanban() {
@@ -277,9 +296,23 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAb
         return () => document.removeEventListener('mousedown', fechar);
     }, [menuAberto]);
 
-    const dataVenda = card.dataVenda ? new Date(card.dataVenda) : null;
-    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-    const atrasado = dataVenda && dataVenda < hoje && card.etapa !== 'ENTREGUE';
+    const entrega = classificarEntrega(card.dataVenda);
+    const atrasado = entrega?.label === 'Atrasado' && card.etapa !== 'ENTREGUE';
+
+    const entregaBadgeCls = entrega ? ({
+        Atrasado: 'bg-red-100 text-red-800 border-red-300',
+        Hoje: 'bg-orange-100 text-orange-800 border-orange-300',
+        'Amanhã': 'bg-blue-100 text-blue-800 border-blue-300',
+        Futuro: 'bg-gray-100 text-gray-700 border-gray-300'
+    }[entrega.label] || 'bg-gray-100 text-gray-700 border-gray-300') : '';
+
+    const entregaTexto = entrega
+        ? entrega.label === 'Atrasado'
+            ? `${entrega.dataStr} · Atrasado ${Math.abs(entrega.dias)}d`
+            : entrega.label === 'Futuro'
+                ? entrega.dataStr
+                : `${entrega.dataStr} · ${entrega.label}`
+        : null;
 
     const pagBadge = {
         QUITADO: 'bg-green-100 text-green-800',
@@ -316,6 +349,12 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAb
                         {card.cliente?.NomeFantasia || card.cliente?.Nome}
                     </div>
                     {card.numero && <div className="text-[10px] text-gray-400">Pedido #{card.numero}</div>}
+                    {entregaTexto && (
+                        <div className={`mt-1 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded border ${entregaBadgeCls}`}>
+                            <Calendar className="h-3 w-3" />
+                            {entregaTexto}
+                        </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                     <button
@@ -378,7 +417,6 @@ function Card({ card, perm, moving, onMover, onReenviar, onToggleSilenciar, onAb
                         ? `Falta ${fmtBRL(card.aberto)}`
                         : card.statusPagamento === 'QUITADO' ? 'Quitado' : 'Em aberto'}
                 </span>
-                {atrasado && <span className="text-[10px] font-bold text-red-600">ATRASADO</span>}
             </div>
 
             <div className="flex gap-1 pt-1 border-t">
