@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, MessageCircle, Clock, User, Check, AlertCircle, X, Trash2 } from 'lucide-react';
+import { ChevronLeft, MessageCircle, Clock, User, Check, AlertCircle, X, Trash2, Pencil } from 'lucide-react';
 import { obterCurriculo, atualizarCurriculo, gerarLinkWhatsapp, excluirCurriculo } from '../../services/curriculoService';
 import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -68,6 +68,7 @@ export default function DetalheCurriculo() {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const podeExcluir = hasPermission('Pode_Excluir_RH');
+  const podeEditar = hasPermission('Pode_Editar_RH');
   const [curriculo, setCurriculo] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -76,6 +77,7 @@ export default function DetalheCurriculo() {
   const [observacaoEditando, setObservacaoEditando] = useState(false);
   const [fotoAmpliada, setFotoAmpliada] = useState(false);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const [editandoDados, setEditandoDados] = useState(false);
 
   useEffect(() => {
     obterCurriculo(id)
@@ -191,6 +193,12 @@ export default function DetalheCurriculo() {
           <h1 className="text-xl font-bold text-gray-800">{curriculo.nome}</h1>
           <p className="text-sm text-gray-500">{curriculo.areaInteresse} · {formatarData(curriculo.criadoEm)}</p>
         </div>
+        {podeEditar && (
+          <button onClick={() => setEditandoDados(true)} disabled={salvando}
+            className="flex items-center gap-1.5 border border-orange-200 text-orange-600 hover:bg-orange-50 disabled:opacity-50 px-3 py-2 rounded-lg text-sm font-medium transition">
+            <Pencil size={15} /> Editar dados
+          </button>
+        )}
         {podeExcluir && (
           <button onClick={() => setConfirmandoExclusao(true)} disabled={salvando}
             className="flex items-center gap-1.5 border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50 px-3 py-2 rounded-lg text-sm font-medium transition">
@@ -202,6 +210,18 @@ export default function DetalheCurriculo() {
           <MessageCircle size={16} /> Convidar para entrevista
         </button>
       </div>
+
+      {/* Modal de edição de dados */}
+      {editandoDados && (
+        <EditarDadosModal
+          curriculo={curriculo}
+          onClose={() => setEditandoDados(false)}
+          onSaved={atualizado => {
+            setCurriculo(c => ({ ...c, ...atualizado }));
+            setStatus(atualizado.status);
+          }}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Coluna principal */}
@@ -335,6 +355,10 @@ export default function DetalheCurriculo() {
                         <ChevronRight size={10} />
                         <span className="font-medium text-gray-700">{h.valorDepois}</span>
                       </div>
+                    ) : h.campo === 'dados' ? (
+                      <div className="text-gray-500 mt-0.5">
+                        Dados editados <span className="text-gray-400">({h.valorDepois})</span>
+                      </div>
                     ) : (
                       <div className="text-gray-500 mt-0.5">
                         Observação {h.valorDepois ? 'atualizada' : 'removida'}
@@ -353,4 +377,180 @@ export default function DetalheCurriculo() {
 
 function ChevronRight({ size }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>;
+}
+
+const AREAS_EDIT = ['Produção', 'Entrega', 'Vendas', 'Administrativo', 'Outros'];
+const ESTADOS_CIVIS = ['Solteiro(a)', 'Casado(a)', 'União estável', 'Divorciado(a)', 'Viúvo(a)'];
+const SIM_NAO = ['Sim', 'Não'];
+const HORARIOS_INICIO = ['Imediato', 'Em 1 semana', 'Em 15 dias', 'Em 1 mês', 'Mais de 1 mês'];
+const HORAS_EXTRAS_OPCOES = ['Sim', 'Não', 'Eventualmente'];
+const DISPONIBILIDADE_OPCOES = ['Integral (horário comercial)', 'Somente pela manhã', 'Somente pela tarde', 'Somente à noite', 'Aos finais de semana', 'Horário flexível'];
+
+function EditField({ label, children }) {
+  return (
+    <div>
+      <label className="text-xs font-medium text-gray-600 block mb-1">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function EditarDadosModal({ curriculo, onClose, onSaved }) {
+  const initial = {
+    nome: curriculo.nome || '',
+    email: curriculo.email || '',
+    whatsapp: curriculo.whatsapp || '',
+    dataNascimento: curriculo.dataNascimento ? new Date(curriculo.dataNascimento).toISOString().slice(0, 10) : '',
+    estadoCivil: curriculo.estadoCivil || '',
+    temFilhos: curriculo.temFilhos || '',
+    naturalidade: curriculo.naturalidade || '',
+    endereco: curriculo.endereco || '',
+    areaInteresse: curriculo.areaInteresse || '',
+    horarioInicio: curriculo.horarioInicio || '',
+    horasExtras: curriculo.horasExtras || '',
+    disponibilidade: curriculo.disponibilidade || '',
+    empregosRegistrados: curriculo.empregosRegistrados || '',
+    empregosSemRegistro: curriculo.empregosSemRegistro || '',
+    outrasExperiencias: curriculo.outrasExperiencias || '',
+  };
+  const [form, setForm] = useState(initial);
+  const [salvando, setSalvando] = useState(false);
+
+  function update(k, v) { setForm(f => ({ ...f, [k]: v })); }
+
+  async function salvar() {
+    if (!form.nome || form.nome.trim().split(/\s+/).length < 2) {
+      toast.error('Informe nome e sobrenome');
+      return;
+    }
+    const w = form.whatsapp.replace(/\D/g, '');
+    if (w.length < 10 || w.length > 11) {
+      toast.error('WhatsApp inválido');
+      return;
+    }
+    if (!form.areaInteresse) {
+      toast.error('Área de interesse é obrigatória');
+      return;
+    }
+    setSalvando(true);
+    try {
+      const atualizado = await atualizarCurriculo(curriculo.id, form);
+      toast.success('Currículo atualizado');
+      onSaved(atualizado);
+      onClose();
+    } catch (e) {
+      toast.error(e?.response?.data?.erro || 'Erro ao salvar');
+    }
+    setSalvando(false);
+  }
+
+  const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400';
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h2 className="font-semibold text-gray-800">Editar dados do candidato</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Dados pessoais */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Dados pessoais</h3>
+            <EditField label="Nome completo">
+              <input type="text" value={form.nome} onChange={e => update('nome', e.target.value)} className={inputCls} />
+            </EditField>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <EditField label="WhatsApp">
+                <input type="tel" value={form.whatsapp} onChange={e => update('whatsapp', e.target.value)} className={inputCls} />
+              </EditField>
+              <EditField label="E-mail">
+                <input type="email" value={form.email} onChange={e => update('email', e.target.value)} className={inputCls} />
+              </EditField>
+              <EditField label="Data de nascimento">
+                <input type="date" value={form.dataNascimento} onChange={e => update('dataNascimento', e.target.value)} className={inputCls} />
+              </EditField>
+              <EditField label="Estado civil">
+                <select value={form.estadoCivil} onChange={e => update('estadoCivil', e.target.value)} className={inputCls}>
+                  <option value="">—</option>
+                  {ESTADOS_CIVIS.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </EditField>
+              <EditField label="Tem filhos?">
+                <select value={form.temFilhos} onChange={e => update('temFilhos', e.target.value)} className={inputCls}>
+                  <option value="">—</option>
+                  {SIM_NAO.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </EditField>
+              <EditField label="Naturalidade">
+                <input type="text" value={form.naturalidade} onChange={e => update('naturalidade', e.target.value)} className={inputCls} />
+              </EditField>
+            </div>
+            <EditField label="Endereço">
+              <input type="text" value={form.endereco} onChange={e => update('endereco', e.target.value)} className={inputCls} />
+            </EditField>
+          </div>
+
+          {/* Disponibilidade */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Disponibilidade</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <EditField label="Área de interesse">
+                <select value={form.areaInteresse} onChange={e => update('areaInteresse', e.target.value)} className={inputCls}>
+                  <option value="">Selecione</option>
+                  {AREAS_EDIT.map(a => <option key={a}>{a}</option>)}
+                </select>
+              </EditField>
+              <EditField label="Horário de início">
+                <select value={form.horarioInicio} onChange={e => update('horarioInicio', e.target.value)} className={inputCls}>
+                  <option value="">—</option>
+                  {HORARIOS_INICIO.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </EditField>
+              <EditField label="Horas extras">
+                <select value={form.horasExtras} onChange={e => update('horasExtras', e.target.value)} className={inputCls}>
+                  <option value="">—</option>
+                  {HORAS_EXTRAS_OPCOES.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </EditField>
+              <EditField label="Disponibilidade">
+                <select value={form.disponibilidade} onChange={e => update('disponibilidade', e.target.value)} className={inputCls}>
+                  <option value="">—</option>
+                  {DISPONIBILIDADE_OPCOES.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </EditField>
+            </div>
+          </div>
+
+          {/* Experiência */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Experiência profissional</h3>
+            <EditField label="Empregos com registro">
+              <textarea rows={3} value={form.empregosRegistrados} onChange={e => update('empregosRegistrados', e.target.value)} className={`${inputCls} resize-none`} />
+            </EditField>
+            <EditField label="Trabalhos sem registro">
+              <textarea rows={3} value={form.empregosSemRegistro} onChange={e => update('empregosSemRegistro', e.target.value)} className={`${inputCls} resize-none`} />
+            </EditField>
+            <EditField label="Outras experiências">
+              <textarea rows={3} value={form.outrasExperiencias} onChange={e => update('outrasExperiencias', e.target.value)} className={`${inputCls} resize-none`} />
+            </EditField>
+          </div>
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-200 flex gap-2 justify-end bg-gray-50 rounded-b-xl">
+          <button onClick={onClose} disabled={salvando}
+            className="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-white disabled:opacity-50">
+            Cancelar
+          </button>
+          <button onClick={salvar} disabled={salvando}
+            className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+            {salvando ? 'Salvando...' : 'Salvar alterações'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

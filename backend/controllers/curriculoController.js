@@ -259,48 +259,97 @@ async function detalhe(req, res) {
   return res.json(curriculo);
 }
 
-// ─── RH: Atualizar status / observação ────────────────────────────────────
+// ─── RH: Atualizar status / observação / dados do candidato ──────────────
+const CAMPOS_DADOS = [
+  'nome', 'email', 'whatsapp', 'dataNascimento', 'estadoCivil', 'temFilhos',
+  'naturalidade', 'endereco', 'areaInteresse', 'horarioInicio', 'horasExtras',
+  'disponibilidade', 'empregosRegistrados', 'empregosSemRegistro', 'outrasExperiencias',
+];
+
 async function atualizar(req, res) {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ erro: 'ID inválido' });
 
   const { status, observacao } = req.body;
-
   const curriculo = await prisma.curriculo.findUnique({ where: { id } });
   if (!curriculo) return res.status(404).json({ erro: 'Currículo não encontrado' });
 
   if (status && !STATUS_VALIDOS.includes(status))
     return res.status(400).json({ erro: 'Status inválido' });
 
+  // Validações dos dados (só quando fornecidos)
+  if (req.body.nome !== undefined) {
+    if (!req.body.nome || req.body.nome.trim().split(/\s+/).length < 2)
+      return res.status(400).json({ erro: 'Informe nome e sobrenome' });
+  }
+  if (req.body.whatsapp !== undefined) {
+    const w = (req.body.whatsapp || '').replace(/\D/g, '');
+    if (w.length < 10 || w.length > 11)
+      return res.status(400).json({ erro: 'WhatsApp inválido' });
+  }
+  if (req.body.dataNascimento !== undefined && req.body.dataNascimento) {
+    const d = new Date(req.body.dataNascimento);
+    if (isNaN(d.getTime())) return res.status(400).json({ erro: 'Data de nascimento inválida' });
+  }
+  if (req.body.areaInteresse !== undefined && !req.body.areaInteresse) {
+    return res.status(400).json({ erro: 'Área de interesse obrigatória' });
+  }
+
   const historicos = [];
+  const dataToUpdate = { dataAlteracao: new Date() };
 
   if (status && status !== curriculo.status) {
     historicos.push({
-      curriculoId: id,
-      vendedorId: req.user.id,
-      campo: 'status',
-      valorAntes: curriculo.status,
-      valorDepois: status,
+      curriculoId: id, vendedorId: req.user.id, campo: 'status',
+      valorAntes: curriculo.status, valorDepois: status,
     });
+    dataToUpdate.status = status;
   }
 
   if (observacao !== undefined && observacao !== curriculo.observacao) {
     historicos.push({
-      curriculoId: id,
-      vendedorId: req.user.id,
-      campo: 'observacao',
-      valorAntes: curriculo.observacao,
-      valorDepois: observacao,
+      curriculoId: id, vendedorId: req.user.id, campo: 'observacao',
+      valorAntes: curriculo.observacao, valorDepois: observacao,
+    });
+    dataToUpdate.observacao = observacao;
+  }
+
+  // Atualiza campos do candidato (apenas os enviados)
+  const camposAlterados = [];
+  for (const k of CAMPOS_DADOS) {
+    if (req.body[k] === undefined) continue;
+    let novo = req.body[k];
+    if (typeof novo === 'string') novo = novo.trim();
+    let valor = novo;
+    let antigoCmp = curriculo[k];
+    if (k === 'whatsapp') {
+      valor = (novo || '').replace(/\D/g, '');
+    } else if (k === 'dataNascimento') {
+      valor = novo ? new Date(novo) : curriculo.dataNascimento;
+      const novoStr = valor ? new Date(valor).toISOString().slice(0, 10) : null;
+      const antigoStr = curriculo.dataNascimento ? new Date(curriculo.dataNascimento).toISOString().slice(0, 10) : null;
+      if (novoStr !== antigoStr) camposAlterados.push(k);
+      dataToUpdate[k] = valor;
+      continue;
+    } else if (['email', 'naturalidade', 'endereco', 'estadoCivil', 'temFilhos',
+                'horarioInicio', 'horasExtras', 'disponibilidade',
+                'empregosRegistrados', 'empregosSemRegistro', 'outrasExperiencias'].includes(k)) {
+      valor = valor || null;
+    }
+    if ((valor || null) !== (antigoCmp || null)) camposAlterados.push(k);
+    dataToUpdate[k] = valor;
+  }
+
+  if (camposAlterados.length > 0) {
+    historicos.push({
+      curriculoId: id, vendedorId: req.user.id, campo: 'dados',
+      valorAntes: null, valorDepois: camposAlterados.join(', '),
     });
   }
 
   const atualizado = await prisma.curriculo.update({
     where: { id },
-    data: {
-      ...(status ? { status } : {}),
-      ...(observacao !== undefined ? { observacao } : {}),
-      dataAlteracao: new Date(),
-    },
+    data: dataToUpdate,
   });
 
   if (historicos.length > 0) {
