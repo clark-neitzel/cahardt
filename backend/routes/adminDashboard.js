@@ -1401,4 +1401,151 @@ router.get('/visitas', verificarAuth, async (req, res) => {
     }
 });
 
+// ─── Cidades distintas de clientes ativos (para filtro de Recompra) ──────────
+router.get('/clientes-cidades', verificarAuth, async (req, res) => {
+    try {
+        const { podeVerVendas } = await carregarPermissoesUsuario(req.user.id);
+        if (!podeVerVendas) return res.status(403).json({ error: 'Acesso negado.' });
+
+        const linhas = await prisma.cliente.findMany({
+            where: { Ativo: true, End_Cidade: { not: null } },
+            select: { End_Cidade: true },
+            distinct: ['End_Cidade'],
+            orderBy: { End_Cidade: 'asc' },
+        });
+        const cidades = linhas
+            .map((l) => (l.End_Cidade || '').trim())
+            .filter(Boolean);
+        res.json(cidades);
+    } catch (error) {
+        console.error('Erro em /clientes-cidades:', error);
+        res.status(500).json({ error: 'Erro ao buscar cidades.' });
+    }
+});
+
+// ─── Clientes que pararam de comprar há X dias (Recompra) ────────────────────
+// Considera "compra" os pedidos com statusEnvio em ENVIAR/RECEBIDO (mesma regra
+// do motor de insights), usando createdAt como data de referência.
+router.get('/clientes-sem-comprar', verificarAuth, async (req, res) => {
+    try {
+        const { podeVerVendas } = await carregarPermissoesUsuario(req.user.id);
+        if (!podeVerVendas) return res.status(403).json({ error: 'Acesso negado.' });
+
+        const STATUS_VALIDO = ['ENVIAR', 'RECEBIDO'];
+
+        const dias = Math.max(1, parseInt(req.query.dias, 10) || 30);
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 25));
+        const skip = (page - 1) * limit;
+
+        const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+        const vendedorId = typeof req.query.vendedorId === 'string' && req.query.vendedorId.trim()
+            ? req.query.vendedorId.trim() : null;
+        const cidade = typeof req.query.cidade === 'string' && req.query.cidade.trim()
+            ? req.query.cidade.trim() : null;
+        const categorias = typeof req.query.categorias === 'string' && req.query.categorias.trim()
+            ? req.query.categorias.split(',').map((c) => c.trim()).filter(Boolean) : [];
+
+        const agora = Date.now();
+        const corte = new Date(agora - dias * ONE_DAY_MS);
+
+        // Where base do cliente
+        const whereCliente = { Ativo: true };
+        if (search) {
+            whereCliente.OR = [
+                { Nome: { contains: search, mode: 'insensitive' } },
+                { NomeFantasia: { contains: search, mode: 'insensitive' } },
+                { Documento: { contains: search, mode: 'insensitive' } },
+                { End_Cidade: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+        if (vendedorId) whereCliente.idVendedor = vendedorId;
+        if (cidade) whereCliente.End_Cidade = cidade;
+
+        // Filtro por categoria comercial de produto: clientes que JÁ compraram
+        // produtos das categorias selecionadas (em algum pedido válido).
+        if (categorias.length > 0) {
+            const comprasCategoria = await prisma.pedido.findMany({
+                where: {
+                    statusEnvio: { in: STATUS_VALIDO },
+                    itens: { some: { produto: { categoriaProdutoId: { in: categorias } } } },
+                },
+                select: { clienteId: true },
+                distinct: ['clienteId'],
+            });
+            const idsCategoria = comprasCategoria.map((p) => p.clienteId);
+            if (idsCategoria.length === 0) {
+                return res.json({ data: [], meta: { total: 0, page, limit, totalPages: 0, dias } });
+            }
+            whereCliente.UUID = { in: idsCategoria };
+        }
+
+        // Candidatos (apenas UUIDs) + último pedido válido por cliente
+        const [candidatos, grupos] = await Promise.all([
+            prisma.cliente.findMany({ where: whereCliente, select: { UUID: true } }),
+            prisma.pedido.groupBy({
+                by: ['clienteId'],
+                where: { statusEnvio: { in: STATUS_VALIDO } },
+                _max: { createdAt: true },
+            }),
+        ]);
+
+        const ultimoPorCliente = new Map(grupos.map((g) => [g.clienteId, g._max.createdAt]));
+
+        // Qualificados: têm histórico de compra e o último pedido é anterior ao corte
+        const qualificados = [];
+        for (const c of candidatos) {
+            const ultimo = ultimoPorCliente.get(c.UUID);
+            if (ultimo && new Date(ultimo) < corte) {
+                qualificados.push({
+                    UUID: c.UUID,
+                    ultimoPedido: ultimo,
+                    diasSemComprar: Math.floor((agora - new Date(ultimo).getTime()) / ONE_DAY_MS),
+                });
+            }
+        }
+        // Mais atrasados primeiro
+        qualificados.sort((a, b) => new Date(a.ultimoPedido) - new Date(b.ultimoPedido));
+
+        const total = qualificados.length;
+        const pagina = qualificados.slice(skip, skip + limit);
+        const idsPagina = pagina.map((q) => q.UUID);
+
+        let clientes = [];
+        if (idsPagina.length > 0) {
+            const registros = await prisma.cliente.findMany({
+                where: { UUID: { in: idsPagina } },
+                select: {
+                    UUID: true,
+                    Nome: true,
+                    NomeFantasia: true,
+                    Documento: true,
+                    End_Cidade: true,
+                    End_Estado: true,
+                    Telefone: true,
+                    Telefone_Celular: true,
+                    Dia_de_venda: true,
+                    vendedor: { select: { id: true, nome: true } },
+                },
+            });
+            const porId = new Map(registros.map((r) => [r.UUID, r]));
+            clientes = pagina
+                .map((q) => {
+                    const r = porId.get(q.UUID);
+                    if (!r) return null;
+                    return { ...r, ultimoPedido: q.ultimoPedido, diasSemComprar: q.diasSemComprar };
+                })
+                .filter(Boolean);
+        }
+
+        res.json({
+            data: clientes,
+            meta: { total, page, limit, totalPages: Math.ceil(total / limit), dias },
+        });
+    } catch (error) {
+        console.error('Erro em /clientes-sem-comprar:', error);
+        res.status(500).json({ error: 'Erro ao buscar clientes sem comprar.' });
+    }
+});
+
 module.exports = router;

@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
     Activity,
     AlertCircle,
@@ -10,13 +9,16 @@ import {
     CheckSquare,
     ChevronDown,
     ChevronRight,
+    Clock,
     Crown,
     Flame,
     Lock,
     MapPin,
     MessageCircle,
     Package,
+    Phone,
     PieChart,
+    Search,
     ShieldCheck,
     ShieldX,
     Target,
@@ -26,9 +28,12 @@ import {
     Users,
     Wallet,
     Printer,
+    X,
     Zap,
 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import MultiSelect from '../../components/MultiSelect';
 import { useAuth } from '../../contexts/AuthContext';
 
 const fmtBRL = (v) =>
@@ -210,8 +215,26 @@ const RankingRow = ({ rank, title, subtitle, value, pct, accent, right }) => (
     </div>
 );
 
+// Persistência de filtros da aba Recompra (clientes sem comprar)
+const RECOMPRA_PREFIX = 'dashRecompra_';
+const getRecompraSaved = (key, fallback) => {
+    try {
+        const v = localStorage.getItem(RECOMPRA_PREFIX + key);
+        return v !== null ? v : fallback;
+    } catch {
+        return fallback;
+    }
+};
+const saveRecompra = (key, val) => {
+    try {
+        if (val !== '' && val != null) localStorage.setItem(RECOMPRA_PREFIX + key, val);
+        else localStorage.removeItem(RECOMPRA_PREFIX + key);
+    } catch { /* ignore */ }
+};
+
 const DashboardAdminSection = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [d, setD] = useState(null);
     const [loading, setLoading] = useState(true);
     const [dataRef, setDataRef] = useState(hojeISO());
@@ -236,6 +259,25 @@ const DashboardAdminSection = () => {
     const [visitasVendedores, setVisitasVendedores] = useState([]);
     const [visitasVendedoresCarregados, setVisitasVendedoresCarregados] = useState(false);
     const [visitasExpandido, setVisitasExpandido] = useState({});
+
+    // Aba Recompra (clientes que pararam de comprar há X dias)
+    const [recompraSearch, setRecompraSearch] = useState(() => getRecompraSaved('search', ''));
+    const [recompraVendedorId, setRecompraVendedorId] = useState(() => getRecompraSaved('vendedorId', ''));
+    const [recompraCidade, setRecompraCidade] = useState(() => getRecompraSaved('cidade', ''));
+    const [recompraCategorias, setRecompraCategorias] = useState(() => {
+        const raw = getRecompraSaved('categorias', '');
+        return raw ? raw.split(',').filter(Boolean) : [];
+    });
+    const [recompraDias, setRecompraDias] = useState(() => parseInt(getRecompraSaved('dias', '30'), 10) || 30);
+    const [recompraPage, setRecompraPage] = useState(1);
+    const [recompraData, setRecompraData] = useState([]);
+    const [recompraMeta, setRecompraMeta] = useState({ total: 0, totalPages: 1 });
+    const [recompraLoading, setRecompraLoading] = useState(false);
+    const [recompraVendedores, setRecompraVendedores] = useState([]);
+    const [recompraCidades, setRecompraCidades] = useState([]);
+    const [recompraCategoriasOpts, setRecompraCategoriasOpts] = useState([]);
+    const [recompraAuxCarregado, setRecompraAuxCarregado] = useState(false);
+    const [recompraShowFilters, setRecompraShowFilters] = useState(false);
 
     const podeVerVendas = !!user?.permissoes?.admin
         || !!user?.permissoes?.Pode_Ver_Dashboard_Admin
@@ -264,6 +306,7 @@ const DashboardAdminSection = () => {
         if (aba === 'vendedores' && !acessosCarregados) setLoadingAcessos(true);
         if (aba === 'reuniao') setWeeklyLoading(true);
         if (aba === 'visitas') setVisitasLoading(true);
+        if (aba === 'recompra') setRecompraLoading(true);
     };
 
     const handleTrocaDataSemanal = (novaData) => {
@@ -377,6 +420,61 @@ const DashboardAdminSection = () => {
             .finally(() => setVisitasVendedoresCarregados(true));
     }, [abaAtiva, visitasVendedoresCarregados]);
 
+    // Carregar dados de apoio da aba Recompra (vendedores, cidades, categorias)
+    useEffect(() => {
+        if (abaAtiva !== 'recompra' || recompraAuxCarregado) return;
+        Promise.all([
+            api.get('/vendedores', { params: { ativo: 'true' } }).catch(() => ({ data: [] })),
+            api.get('/admin-dashboard/clientes-cidades').catch(() => ({ data: [] })),
+            api.get('/categorias-produto').catch(() => ({ data: [] })),
+        ])
+            .then(([vendsRes, cidadesRes, catsRes]) => {
+                const vends = Array.isArray(vendsRes.data) ? vendsRes.data : (vendsRes.data?.vendedores || []);
+                setRecompraVendedores(
+                    vends.map((v) => ({ id: v.id, nome: v.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+                );
+                setRecompraCidades(Array.isArray(cidadesRes.data) ? cidadesRes.data : []);
+                const cats = Array.isArray(catsRes.data) ? catsRes.data : [];
+                setRecompraCategoriasOpts(
+                    cats.filter((c) => c.ativo !== false).map((c) => ({ value: c.id, label: c.nome }))
+                );
+            })
+            .finally(() => setRecompraAuxCarregado(true));
+    }, [abaAtiva, recompraAuxCarregado]);
+
+    // Buscar clientes sem comprar (com debounce na busca textual)
+    useEffect(() => {
+        if (abaAtiva !== 'recompra') return;
+        const t = setTimeout(() => {
+            setRecompraLoading(true);
+            const params = { dias: recompraDias, page: recompraPage, limit: 25 };
+            if (recompraSearch.trim()) params.search = recompraSearch.trim();
+            if (recompraVendedorId) params.vendedorId = recompraVendedorId;
+            if (recompraCidade) params.cidade = recompraCidade;
+            if (recompraCategorias.length > 0) params.categorias = recompraCategorias.join(',');
+            api.get('/admin-dashboard/clientes-sem-comprar', { params })
+                .then((res) => {
+                    setRecompraData(res.data?.data || []);
+                    setRecompraMeta(res.data?.meta || { total: 0, totalPages: 1 });
+                })
+                .catch(() => {
+                    setRecompraData([]);
+                    setRecompraMeta({ total: 0, totalPages: 1 });
+                })
+                .finally(() => setRecompraLoading(false));
+        }, 300);
+        return () => clearTimeout(t);
+    }, [abaAtiva, recompraDias, recompraPage, recompraSearch, recompraVendedorId, recompraCidade, recompraCategorias]);
+
+    // Persistir filtros da aba Recompra
+    useEffect(() => {
+        saveRecompra('search', recompraSearch);
+        saveRecompra('vendedorId', recompraVendedorId);
+        saveRecompra('cidade', recompraCidade);
+        saveRecompra('categorias', recompraCategorias.join(','));
+        saveRecompra('dias', String(recompraDias));
+    }, [recompraSearch, recompraVendedorId, recompraCidade, recompraCategorias, recompraDias]);
+
     if (loading) {
         return (
             <div className="animate-pulse my-6 space-y-4">
@@ -489,6 +587,13 @@ const DashboardAdminSection = () => {
                     icon={MapPin}
                     label="Visitas"
                     onClick={() => handleTrocaAba('visitas')}
+                />
+                <TabButton
+                    active={abaAtiva === 'recompra'}
+                    icon={Clock}
+                    label="Recompra"
+                    onClick={() => handleTrocaAba('recompra')}
+                    badge={abaAtiva === 'recompra' ? (recompraMeta.total || null) : null}
                 />
             </div>
 
@@ -1653,6 +1758,219 @@ const DashboardAdminSection = () => {
                         )
                     )}
 
+                </div>
+            )}
+
+            {/* ─── Aba Recompra (clientes sem comprar há X dias) ──────────── */}
+            {abaAtiva === 'recompra' && (
+                <div className="space-y-4">
+                    {/* Filtros */}
+                    <div className="bg-white border rounded-xl p-3 space-y-3">
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Search className="h-4 w-4 text-gray-400" />
+                                </div>
+                                <input
+                                    type="text"
+                                    className="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary text-sm"
+                                    placeholder="Buscar por nome fantasia, razão, CNPJ ou cidade..."
+                                    value={recompraSearch}
+                                    onChange={(e) => { setRecompraSearch(e.target.value); setRecompraPage(1); }}
+                                />
+                            </div>
+                            <button
+                                onClick={() => setRecompraShowFilters((v) => !v)}
+                                className="md:hidden p-2 border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50"
+                            >
+                                <Calendar className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <div className={`grid grid-cols-2 md:grid-cols-4 gap-2 ${recompraShowFilters ? 'grid' : 'hidden md:grid'}`}>
+                            <div>
+                                <label className="block text-[11px] font-medium text-gray-500 mb-1">Sem comprar há (dias)</label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                                    value={recompraDias}
+                                    onChange={(e) => { setRecompraDias(Math.max(1, parseInt(e.target.value, 10) || 1)); setRecompraPage(1); }}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-medium text-gray-500 mb-1">Vendedor</label>
+                                <select
+                                    className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                                    value={recompraVendedorId}
+                                    onChange={(e) => { setRecompraVendedorId(e.target.value); setRecompraPage(1); }}
+                                >
+                                    <option value="">Todos os vendedores</option>
+                                    {recompraVendedores.map((v) => (
+                                        <option key={v.id} value={v.id}>{v.nome}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-medium text-gray-500 mb-1">Cidade</label>
+                                <select
+                                    className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                                    value={recompraCidade}
+                                    onChange={(e) => { setRecompraCidade(e.target.value); setRecompraPage(1); }}
+                                >
+                                    <option value="">Todas as cidades</option>
+                                    {recompraCidades.map((c) => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-medium text-gray-500 mb-1">Categoria de produto</label>
+                                <MultiSelect
+                                    options={recompraCategoriasOpts}
+                                    selected={recompraCategorias}
+                                    onChange={(sel) => { setRecompraCategorias(sel); setRecompraPage(1); }}
+                                    placeholder="Todas"
+                                    valueKey="value"
+                                    labelKey="label"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+                            <span className="text-xs text-gray-400">
+                                {recompraLoading ? 'Carregando...' : `${recompraMeta.total} cliente${recompraMeta.total !== 1 ? 's' : ''} sem comprar há ${recompraDias}+ dias`}
+                            </span>
+                            {(recompraSearch || recompraVendedorId || recompraCidade || recompraCategorias.length > 0) && (
+                                <button
+                                    onClick={() => {
+                                        setRecompraSearch(''); setRecompraVendedorId(''); setRecompraCidade('');
+                                        setRecompraCategorias([]); setRecompraPage(1);
+                                    }}
+                                    className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                                >
+                                    <X className="h-3.5 w-3.5" /> Limpar filtros
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Tabela Desktop */}
+                    <div className="hidden md:block bg-white shadow-sm overflow-hidden rounded-xl border">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Cliente</th>
+                                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Cidade</th>
+                                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Vendedor</th>
+                                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">CNPJ/CPF</th>
+                                    <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Último pedido</th>
+                                    <th className="px-3 py-2.5 text-right text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Sem comprar</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-100">
+                                {recompraLoading ? (
+                                    <tr><td colSpan="6" className="text-center py-8 text-gray-400 text-sm">Carregando...</td></tr>
+                                ) : recompraData.length === 0 ? (
+                                    <tr><td colSpan="6" className="text-center py-8 text-gray-400 text-sm">Nenhum cliente encontrado.</td></tr>
+                                ) : (
+                                    recompraData.map((c) => (
+                                        <tr
+                                            key={c.UUID}
+                                            onClick={() => navigate(`/clientes/${c.UUID}`)}
+                                            className="cursor-pointer hover:bg-gray-50 transition-colors text-sm"
+                                        >
+                                            <td className="px-3 py-2">
+                                                <div className="font-semibold text-gray-900 leading-tight">{c.NomeFantasia || c.Nome}</div>
+                                                {c.NomeFantasia && c.NomeFantasia !== c.Nome && (
+                                                    <div className="text-xs text-gray-500 truncate max-w-xs">{c.Nome}</div>
+                                                )}
+                                            </td>
+                                            <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">
+                                                {c.End_Cidade ? `${c.End_Cidade}${c.End_Estado ? '/' + c.End_Estado : ''}` : <span className="text-gray-300">—</span>}
+                                            </td>
+                                            <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">
+                                                {c.vendedor?.nome || <span className="text-gray-300">—</span>}
+                                            </td>
+                                            <td className="px-3 py-2 text-xs text-gray-500 font-mono whitespace-nowrap">
+                                                {c.Documento || <span className="text-gray-300">—</span>}
+                                            </td>
+                                            <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">{fmtDate(c.ultimoPedido)}</td>
+                                            <td className="px-3 py-2 text-right whitespace-nowrap">
+                                                <span className={`px-2 py-0.5 inline-flex items-center gap-1 text-[11px] font-bold rounded-full ${c.diasSemComprar >= 60 ? 'bg-red-100 text-red-700' : c.diasSemComprar >= 30 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                    <Clock className="h-3 w-3" />{c.diasSemComprar}d
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Lista Mobile */}
+                    <div className="md:hidden space-y-2">
+                        {recompraLoading ? (
+                            <div className="text-center py-8 text-gray-400 text-sm">Carregando...</div>
+                        ) : recompraData.length === 0 ? (
+                            <div className="text-center py-8 text-gray-400 text-sm">Nenhum cliente encontrado.</div>
+                        ) : recompraData.map((c) => (
+                            <div
+                                key={c.UUID}
+                                onClick={() => navigate(`/clientes/${c.UUID}`)}
+                                className="bg-white rounded-xl shadow-sm border p-3 flex flex-col gap-1.5"
+                            >
+                                <div className="flex items-start justify-between gap-2">
+                                    <h3 className="font-bold text-gray-900 text-sm leading-tight">{c.NomeFantasia || c.Nome}</h3>
+                                    <span className={`shrink-0 px-2 py-0.5 inline-flex items-center gap-1 text-[11px] font-bold rounded-full ${c.diasSemComprar >= 60 ? 'bg-red-100 text-red-700' : c.diasSemComprar >= 30 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                                        <Clock className="h-3 w-3" />{c.diasSemComprar}d
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1 text-[10px]">
+                                    <span className="font-mono text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">{c.Documento || 'Sem documento'}</span>
+                                    {c.End_Cidade && (
+                                        <span className="text-gray-500 flex items-center gap-0.5 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                                            <MapPin className="h-2.5 w-2.5 text-gray-400" />{c.End_Cidade}
+                                        </span>
+                                    )}
+                                    {(c.Telefone_Celular || c.Telefone) && (
+                                        <span className="text-gray-500 flex items-center gap-0.5 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                                            <Phone className="h-2.5 w-2.5 text-gray-400" />{c.Telefone_Celular || c.Telefone}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-gray-100 text-[10px]">
+                                    {c.vendedor?.nome && (
+                                        <span className="font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">{c.vendedor.nome.split(' ')[0]}</span>
+                                    )}
+                                    <span className="text-gray-500">Últ. pedido: {fmtDate(c.ultimoPedido)}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Paginação */}
+                    {recompraMeta.totalPages > 1 && (
+                        <div className="flex items-center justify-end gap-2">
+                            <button
+                                onClick={() => setRecompraPage((p) => Math.max(1, p - 1))}
+                                disabled={recompraPage === 1}
+                                className="px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40"
+                            >
+                                Anterior
+                            </button>
+                            <span className="px-3 py-1.5 text-xs text-gray-600 font-medium bg-white border border-gray-200 rounded-md">
+                                {recompraPage} / {recompraMeta.totalPages}
+                            </span>
+                            <button
+                                onClick={() => setRecompraPage((p) => Math.min(recompraMeta.totalPages, p + 1))}
+                                disabled={recompraPage >= recompraMeta.totalPages}
+                                className="px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-40"
+                            >
+                                Próximo
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
