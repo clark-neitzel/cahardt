@@ -5,7 +5,9 @@ import {
     AlignCenter,
     AlignLeft,
     AlignRight,
+    ArrowDown,
     ArrowDownRight,
+    ArrowUp,
     ArrowUpRight,
     BarChart2,
     Calendar,
@@ -220,16 +222,16 @@ const RankingRow = ({ rank, title, subtitle, value, pct, accent, right }) => (
 
 // Colunas da listagem de Recompra (alinhamento + filtro por coluna)
 const RECOMPRA_COLUNAS = [
-    { key: 'cliente', label: 'Cliente', getVal: (c) => c.NomeFantasia || c.Nome || '—' },
-    { key: 'cidade', label: 'Cidade', getVal: (c) => (c.End_Cidade ? `${c.End_Cidade}${c.End_Estado ? '/' + c.End_Estado : ''}` : '—') },
-    { key: 'vendedor', label: 'Vendedor', getVal: (c) => c.vendedor?.nome || '—' },
-    { key: 'documento', label: 'CNPJ/CPF', getVal: (c) => c.Documento || '—' },
-    { key: 'ultimoPedido', label: 'Último pedido', getVal: (c) => fmtDate(c.ultimoPedido) },
-    { key: 'dias', label: 'Sem comprar', getVal: (c) => `${c.diasSemComprar}d` },
+    { key: 'cliente', label: 'Cliente', getVal: (c) => c.NomeFantasia || c.Nome || '—', sortVal: (c) => (c.NomeFantasia || c.Nome || '').toLowerCase() },
+    { key: 'cidade', label: 'Cidade', getVal: (c) => (c.End_Cidade ? `${c.End_Cidade}${c.End_Estado ? '/' + c.End_Estado : ''}` : '—'), sortVal: (c) => (c.End_Cidade || '').toLowerCase() },
+    { key: 'vendedor', label: 'Vendedor', getVal: (c) => c.vendedor?.nome || '—', sortVal: (c) => (c.vendedor?.nome || '').toLowerCase() },
+    { key: 'documento', label: 'CNPJ/CPF', getVal: (c) => c.Documento || '—', sortVal: (c) => c.Documento || '' },
+    { key: 'ultimoPedido', label: 'Último pedido', getVal: (c) => fmtDate(c.ultimoPedido), sortVal: (c) => (c.ultimoPedido ? new Date(c.ultimoPedido).getTime() : 0) },
+    { key: 'dias', label: 'Sem comprar', getVal: (c) => `${c.diasSemComprar}d`, sortVal: (c) => c.diasSemComprar || 0 },
 ];
 
-// Cabeçalho de coluna com menu de alinhamento + busca/seleção de valores
-const HeaderColuna = ({ coluna, align, onAlign, opcoes, selecionados, onToggle, onSelecionarTodos, onLimpar }) => {
+// Cabeçalho de coluna com menu de ordenação + alinhamento + busca/seleção
+const HeaderColuna = ({ coluna, align, onAlign, sortDir, onSort, opcoes, selecionados, onToggle, onSelecionarTodos, onLimpar }) => {
     const [open, setOpen] = useState(false);
     const [q, setQ] = useState('');
     const ref = useRef(null);
@@ -241,7 +243,7 @@ const HeaderColuna = ({ coluna, align, onAlign, opcoes, selecionados, onToggle, 
         return () => document.removeEventListener('mousedown', handler);
     }, [open]);
 
-    const ativo = selecionados.length > 0;
+    const filtrando = selecionados.length > 0;
     const visiveis = opcoes.filter((o) => !q.trim() || String(o).toLowerCase().includes(q.trim().toLowerCase()));
     const justify = align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start';
 
@@ -251,15 +253,34 @@ const HeaderColuna = ({ coluna, align, onAlign, opcoes, selecionados, onToggle, 
                 <button
                     type="button"
                     onClick={() => setOpen((v) => !v)}
-                    className={`w-full flex items-center gap-1 ${justify} text-[11px] font-semibold uppercase tracking-wider transition-colors ${ativo ? 'text-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`w-full flex items-center gap-1 ${justify} text-[11px] font-semibold uppercase tracking-wider transition-colors ${(filtrando || sortDir) ? 'text-primary' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                     <span>{coluna.label}</span>
-                    {ativo && <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />}
-                    <ChevronDown className="h-3 w-3 shrink-0" />
+                    {sortDir === 'asc' && <ArrowUp className="h-3 w-3 shrink-0" />}
+                    {sortDir === 'desc' && <ArrowDown className="h-3 w-3 shrink-0" />}
+                    {filtrando && <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />}
+                    <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
                 </button>
 
                 {open && (
                     <div className={`absolute z-30 mt-1 w-60 bg-white border border-gray-200 rounded-lg shadow-xl p-2 normal-case ${align === 'right' ? 'right-0' : 'left-0'}`}>
+                        <div className="flex items-center gap-1 pb-2 mb-2 border-b border-gray-100">
+                            <button
+                                type="button"
+                                onClick={() => onSort(sortDir === 'asc' ? null : 'asc')}
+                                className={`flex-1 flex items-center justify-center gap-1 py-1 rounded text-[11px] font-medium ${sortDir === 'asc' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+                            >
+                                <ArrowUp className="h-3.5 w-3.5" /> Crescente
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onSort(sortDir === 'desc' ? null : 'desc')}
+                                className={`flex-1 flex items-center justify-center gap-1 py-1 rounded text-[11px] font-medium ${sortDir === 'desc' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+                            >
+                                <ArrowDown className="h-3.5 w-3.5" /> Decrescente
+                            </button>
+                        </div>
+
                         <div className="flex items-center gap-1 pb-2 mb-2 border-b border-gray-100">
                             <span className="text-[10px] text-gray-400 mr-1">Alinhar</span>
                             {['left', 'center', 'right'].map((a) => {
@@ -291,7 +312,7 @@ const HeaderColuna = ({ coluna, align, onAlign, opcoes, selecionados, onToggle, 
                             <button type="button" onClick={() => onSelecionarTodos(visiveis)} className="text-[10px] font-semibold text-primary hover:underline">
                                 Selecionar exibidos
                             </button>
-                            {ativo && (
+                            {filtrando && (
                                 <button type="button" onClick={onLimpar} className="text-[10px] text-gray-500 hover:underline">Limpar</button>
                             )}
                         </div>
@@ -389,6 +410,9 @@ const DashboardAdminSection = () => {
     });
     const [recompraColFiltros, setRecompraColFiltros] = useState(() => {
         try { return JSON.parse(getRecompraSaved('colFiltros', '')) || {}; } catch { return {}; }
+    });
+    const [recompraSort, setRecompraSort] = useState(() => {
+        try { return JSON.parse(getRecompraSaved('sort', '')) || null; } catch { return null; }
     });
 
     const podeVerVendas = !!user?.permissoes?.admin
@@ -589,7 +613,8 @@ const DashboardAdminSection = () => {
         saveRecompra('dias', String(recompraDias));
         saveRecompra('align', JSON.stringify(recompraAlign));
         saveRecompra('colFiltros', JSON.stringify(recompraColFiltros));
-    }, [recompraSearch, recompraVendedorId, recompraCidades, recompraCategorias, recompraCategoriasCliente, recompraDias, recompraAlign, recompraColFiltros]);
+        saveRecompra('sort', JSON.stringify(recompraSort));
+    }, [recompraSearch, recompraVendedorId, recompraCidades, recompraCategorias, recompraCategoriasCliente, recompraDias, recompraAlign, recompraColFiltros, recompraSort]);
 
     // Opções distintas por coluna (para o menu de cada cabeçalho)
     const recompraOpcoesColuna = useMemo(() => {
@@ -615,10 +640,26 @@ const DashboardAdminSection = () => {
         }));
     }, [recompraData, recompraColFiltros]);
 
+    // Ordenação por coluna (quando nenhuma escolhida, mantém o padrão do servidor:
+    // mais atrasados primeiro)
+    const recompraOrdenadas = useMemo(() => {
+        if (!recompraSort?.key) return recompraFiltradas;
+        const col = RECOMPRA_COLUNAS.find((c) => c.key === recompraSort.key);
+        if (!col) return recompraFiltradas;
+        const dir = recompraSort.dir === 'desc' ? -1 : 1;
+        return [...recompraFiltradas].sort((a, b) => {
+            const va = col.sortVal(a);
+            const vb = col.sortVal(b);
+            if (va < vb) return -1 * dir;
+            if (va > vb) return 1 * dir;
+            return 0;
+        });
+    }, [recompraFiltradas, recompraSort]);
+
     const RECOMPRA_PAGE_SIZE = 25;
-    const recompraTotalPaginas = Math.max(1, Math.ceil(recompraFiltradas.length / RECOMPRA_PAGE_SIZE));
+    const recompraTotalPaginas = Math.max(1, Math.ceil(recompraOrdenadas.length / RECOMPRA_PAGE_SIZE));
     const recompraPaginaAtual = Math.min(recompraPage, recompraTotalPaginas);
-    const recompraPaginadas = recompraFiltradas.slice(
+    const recompraPaginadas = recompraOrdenadas.slice(
         (recompraPaginaAtual - 1) * RECOMPRA_PAGE_SIZE,
         recompraPaginaAtual * RECOMPRA_PAGE_SIZE,
     );
@@ -2026,12 +2067,12 @@ const DashboardAdminSection = () => {
                             <span className="text-xs text-gray-400">
                                 {recompraLoading ? 'Carregando...' : `${recompraFiltradas.length} cliente${recompraFiltradas.length !== 1 ? 's' : ''} sem comprar há ${recompraDias}+ dias`}
                             </span>
-                            {(recompraSearch || recompraVendedorId || recompraCidades.length > 0 || recompraCategorias.length > 0 || recompraCategoriasCliente.length > 0 || recompraFiltrosColAtivos > 0) && (
+                            {(recompraSearch || recompraVendedorId || recompraCidades.length > 0 || recompraCategorias.length > 0 || recompraCategoriasCliente.length > 0 || recompraFiltrosColAtivos > 0 || recompraSort) && (
                                 <button
                                     onClick={() => {
                                         setRecompraSearch(''); setRecompraVendedorId(''); setRecompraCidades([]);
                                         setRecompraCategorias([]); setRecompraCategoriasCliente([]);
-                                        setRecompraColFiltros({}); setRecompraPage(1);
+                                        setRecompraColFiltros({}); setRecompraSort(null); setRecompraPage(1);
                                     }}
                                     className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
                                 >
@@ -2052,6 +2093,8 @@ const DashboardAdminSection = () => {
                                             coluna={col}
                                             align={recompraAlignDe(col.key)}
                                             onAlign={(a) => recompraDefinirAlign(col.key, a)}
+                                            sortDir={recompraSort?.key === col.key ? recompraSort.dir : null}
+                                            onSort={(dir) => { setRecompraSort(dir ? { key: col.key, dir } : null); setRecompraPage(1); }}
                                             opcoes={recompraOpcoesColuna[col.key] || []}
                                             selecionados={recompraColFiltros[col.key] || []}
                                             onToggle={(v) => { recompraToggleColFiltro(col.key, v); setRecompraPage(1); }}
