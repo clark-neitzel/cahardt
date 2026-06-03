@@ -1435,16 +1435,18 @@ router.get('/clientes-sem-comprar', verificarAuth, async (req, res) => {
 
         const dias = Math.max(1, parseInt(req.query.dias, 10) || 30);
         const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 25));
+        const limit = Math.min(5000, Math.max(1, parseInt(req.query.limit, 10) || 25));
         const skip = (page - 1) * limit;
+
+        const parseLista = (v) => (typeof v === 'string' && v.trim()
+            ? v.split(',').map((x) => x.trim()).filter(Boolean) : []);
 
         const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
         const vendedorId = typeof req.query.vendedorId === 'string' && req.query.vendedorId.trim()
             ? req.query.vendedorId.trim() : null;
-        const cidade = typeof req.query.cidade === 'string' && req.query.cidade.trim()
-            ? req.query.cidade.trim() : null;
-        const categorias = typeof req.query.categorias === 'string' && req.query.categorias.trim()
-            ? req.query.categorias.split(',').map((c) => c.trim()).filter(Boolean) : [];
+        const cidades = parseLista(req.query.cidades);
+        const categorias = parseLista(req.query.categorias);
+        const categoriasCliente = parseLista(req.query.categoriasCliente);
 
         const agora = Date.now();
         const corte = new Date(agora - dias * ONE_DAY_MS);
@@ -1460,7 +1462,8 @@ router.get('/clientes-sem-comprar', verificarAuth, async (req, res) => {
             ];
         }
         if (vendedorId) whereCliente.idVendedor = vendedorId;
-        if (cidade) whereCliente.End_Cidade = cidade;
+        if (cidades.length > 0) whereCliente.End_Cidade = { in: cidades };
+        if (categoriasCliente.length > 0) whereCliente.categoriaClienteId = { in: categoriasCliente };
 
         // Filtro por categoria comercial de produto: clientes que JÁ compraram
         // produtos das categorias selecionadas (em algum pedido válido).
