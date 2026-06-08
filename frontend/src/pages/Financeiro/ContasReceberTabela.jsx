@@ -190,14 +190,19 @@ const ContasReceberTabela = () => {
                 filtered = filtered.filter(l => filtros.statusParcela.includes(l.statusParcela));
             } else {
                 // Visão padrão de "Contas a Receber": mostra apenas o que falta receber.
-                // Parcelas já pagas/canceladas somem — exceto quando algum filtro mira justamente
-                // as pagas (Status Conta QUITADO/CANCELADO, data de pagamento ou forma da baixa).
-                const querPagas = filtros.status.includes('QUITADO')
-                    || filtros.status.includes('CANCELADO')
-                    || !!filtros.pagDe || !!filtros.pagAte
-                    || filtros.formaPagamento.length > 0;
-                if (!querPagas) {
-                    filtered = filtered.filter(l => l.statusParcela === 'PENDENTE' || l.statusParcela === 'VENCIDO');
+                // Os filtros de data de pagamento / forma da baixa miram justamente parcelas
+                // pagas, então quando ativos não escondemos nada (os filtros abaixo refinam).
+                const filtrandoPagas = !!filtros.pagDe || !!filtros.pagAte || filtros.formaPagamento.length > 0;
+                if (!filtrandoPagas) {
+                    filtered = filtered.filter(l => {
+                        // Sempre mostra o que ainda falta receber.
+                        if (l.statusParcela === 'PENDENTE' || l.statusParcela === 'VENCIDO') return true;
+                        // Parcela paga/cancelada só aparece se a CONTA dela tem um status que o
+                        // usuário pediu explicitamente (ex.: QUITADO mostra suas pagas; CANCELADO
+                        // mostra suas canceladas). Isso impede que escolher QUITADO/CANCELADO
+                        // ressuscite as parcelas pagas de contas ainda em aberto (PARCIAL).
+                        return filtros.status.includes(l.statusConta);
+                    });
                 }
             }
             if (filtros.formaPagamento.length) filtered = filtered.filter(l => filtros.formaPagamento.includes(l.formaPagamento || ''));
