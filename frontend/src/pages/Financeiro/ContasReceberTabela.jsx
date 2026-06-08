@@ -265,6 +265,13 @@ const ContasReceberTabela = () => {
 
     const toggleSort = (col) => setSort(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }));
 
+    // Relatório reflete a tabela: só entram pedidos com alguma parcela visível na lista atual.
+    const relatorioPedidos = useMemo(() => {
+        const pedidos = relatorioData?.pedidos || [];
+        const visiveis = new Set(linhasOrdenadas.map(l => l.pedidoId).filter(Boolean));
+        return pedidos.filter(p => visiveis.has(p.pedidoId));
+    }, [relatorioData, linhasOrdenadas]);
+
     // Seleção
     const elegivel = (l) => l.statusParcela === 'PENDENTE' || l.statusParcela === 'VENCIDO';
     const selElegiveis = linhasOrdenadas.filter(elegivel);
@@ -480,7 +487,7 @@ const ContasReceberTabela = () => {
             ? ['Pedido', 'Cliente', 'Vendedor', 'Data Venda', 'Produto', 'Qtd', 'Valor Unit.', 'Total']
             : ['Grupo', 'Pedido', 'Cliente', 'Vendedor', 'Data Venda', 'Produto', 'Qtd', 'Valor Unit.', 'Total'];
         const rows = [];
-        const grupos = gerarGrupos(relatorioData.pedidos, relatorioAgrupamento);
+        const grupos = gerarGrupos(relatorioPedidos, relatorioAgrupamento);
         grupos.forEach(g => {
             if (g.chave) rows.push([g.chave, '', '', '', '', `--- Total: R$ ${fmt(g.total)}`, '', '', '']);
             g.pedidos.forEach(p => {
@@ -510,8 +517,8 @@ const ContasReceberTabela = () => {
 
     const imprimirRelatorio = () => {
         if (!relatorioData?.pedidos) return;
-        const grupos = gerarGrupos(relatorioData.pedidos, relatorioAgrupamento);
-        const grandTotal = relatorioData.pedidos.reduce((s, p) => s + p.subtotal, 0);
+        const grupos = gerarGrupos(relatorioPedidos, relatorioAgrupamento);
+        const grandTotal = relatorioPedidos.reduce((s, p) => s + p.subtotal, 0);
         const labelAgrup = { pedido: 'Por Pedido', cliente: 'Por Cliente', vendedor: 'Por Vendedor', nenhum: 'Sem Agrupamento' };
         const tabelaItens = (pedidos, mostrarCliente, mostrarVendedor) => pedidos.map(p => `
             <div class="pedido-bloco">
@@ -607,7 +614,7 @@ const ContasReceberTabela = () => {
         </div>
         ${corpoGrupos}
         <div class="grand-total">
-            <span>${relatorioData.pedidos.length} pedido(s)</span>
+            <span>${relatorioPedidos.length} pedido(s)</span>
             <span>Total Geral: R$ ${fmt(grandTotal)}</span>
         </div>
         </body></html>`;
@@ -1593,33 +1600,14 @@ const ContasReceberTabela = () => {
                             </div>
                         </div>
 
-                        {/* Filtros do relatório */}
+                        {/* Barra do relatório — reflete os filtros e as linhas da tabela */}
                         <div className="px-4 py-2 border-b bg-gray-50 flex flex-wrap items-center gap-x-3 gap-y-2">
-                            <div className="flex items-center gap-1.5">
-                                <label className="text-xs text-gray-500 whitespace-nowrap">Venc. de</label>
-                                <input type="date" value={relatorioFiltros.vencDe}
-                                    onChange={e => setRelatorioFiltros(f => ({ ...f, vencDe: e.target.value }))}
-                                    className="border rounded px-2 py-1 text-sm" />
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <label className="text-xs text-gray-500 whitespace-nowrap">até</label>
-                                <input type="date" value={relatorioFiltros.vencAte}
-                                    onChange={e => setRelatorioFiltros(f => ({ ...f, vencAte: e.target.value }))}
-                                    className="border rounded px-2 py-1 text-sm" />
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <label className="text-xs text-gray-500 whitespace-nowrap">Categoria</label>
-                                <select value={relatorioFiltros.categoriaClienteId}
-                                    onChange={e => setRelatorioFiltros(f => ({ ...f, categoriaClienteId: e.target.value }))}
-                                    className="border rounded px-2 py-1 text-sm">
-                                    <option value="">Todas</option>
-                                    {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                                </select>
-                            </div>
-                            <button onClick={() => buscarRelatorio(relatorioFiltros)}
-                                className="text-sm px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 inline-flex items-center gap-1">
-                                <Filter className="w-3 h-3" /> Filtrar
-                            </button>
+                            <span className="text-xs text-gray-500">
+                                Reflete a tabela
+                                {(filtros.vencDe || filtros.vencAte) && (
+                                    <> · Venc. {filtros.vencDe ? filtros.vencDe.split('-').reverse().join('/') : '…'} até {filtros.vencAte ? filtros.vencAte.split('-').reverse().join('/') : '…'}</>
+                                )}
+                            </span>
                             <div className="flex items-center gap-1 ml-auto">
                                 <span className="text-xs text-gray-500 whitespace-nowrap">Agrupar:</span>
                                 {[['pedido','Por Pedido'],['cliente','Por Cliente'],['vendedor','Por Vendedor'],['nenhum','Sem Agrup.']].map(([val, label]) => (
@@ -1638,11 +1626,11 @@ const ContasReceberTabela = () => {
                                     <RefreshCw className="w-5 h-5 animate-spin mr-2" /> Gerando relatório...
                                 </div>
                             )}
-                            {!relatorioLoading && relatorioData && relatorioData.pedidos.length === 0 && (
+                            {!relatorioLoading && relatorioData && relatorioPedidos.length === 0 && (
                                 <div className="text-center py-12 text-gray-400">Nenhum pedido encontrado com os filtros atuais.</div>
                             )}
-                            {!relatorioLoading && relatorioData && relatorioData.pedidos.length > 0 && (() => {
-                                const grupos = gerarGrupos(relatorioData.pedidos, relatorioAgrupamento);
+                            {!relatorioLoading && relatorioData && relatorioPedidos.length > 0 && (() => {
+                                const grupos = gerarGrupos(relatorioPedidos, relatorioAgrupamento);
                                 const PedidoCard = ({ p, mostrarCliente = true, mostrarVendedor = true }) => (
                                     <div className="border rounded-lg overflow-hidden">
                                         <div className="bg-gray-50 px-3 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm border-b">
@@ -1680,7 +1668,7 @@ const ContasReceberTabela = () => {
                                 );
 
                                 if (relatorioAgrupamento === 'nenhum') {
-                                    const todosItens = relatorioData.pedidos.flatMap(p =>
+                                    const todosItens = relatorioPedidos.flatMap(p =>
                                         (p.itens || []).map(it => ({ ...it, pedidoNumero: p.pedidoNumero, pedidoEspecial: p.pedidoEspecial, clienteNome: p.clienteNome, vendedorNome: p.vendedorNome, dataVenda: p.dataVenda }))
                                     );
                                     return (
@@ -1743,11 +1731,11 @@ const ContasReceberTabela = () => {
                         </div>
 
                         {/* Footer — total geral */}
-                        {!relatorioLoading && relatorioData && relatorioData.pedidos.length > 0 && (() => {
-                            const grandTotal = relatorioData.pedidos.reduce((s, p) => s + p.subtotal, 0);
+                        {!relatorioLoading && relatorioData && relatorioPedidos.length > 0 && (() => {
+                            const grandTotal = relatorioPedidos.reduce((s, p) => s + p.subtotal, 0);
                             return (
                                 <div className="px-4 py-3 border-t bg-gray-50 flex items-center justify-between flex-shrink-0 text-sm">
-                                    <span className="text-gray-600">{relatorioData.pedidos.length} pedido(s)</span>
+                                    <span className="text-gray-600">{relatorioPedidos.length} pedido(s)</span>
                                     <span className="font-bold text-gray-900 tabular-nums text-base">
                                         Total Geral: R$ {fmt(grandTotal)}
                                     </span>
