@@ -796,10 +796,7 @@ const DetalheCliente = () => {
 
             {/* ============================= ABA: OPERACIONAL ============================= */}
             {abaAtiva === 'operacional' && (
-              <div className="flex flex-col xl:flex-row gap-5 pb-24 items-start">
-
-                {/* ===================== CONTEÚDO PRINCIPAL ===================== */}
-                <div className="flex-1 min-w-0 space-y-4">
+              <div className="pb-20 space-y-4">
 
                 {/* ─── CARD: VENDEDOR E INDICAÇÃO ─── */}
                 <SectionCard icon={User} title="Vendedor e Indicação">
@@ -1001,51 +998,45 @@ const DetalheCliente = () => {
 
                 {/* ─── CARD: CONTATO / FISCAL ─── */}
                 <SectionCard icon={Mail} title="Contato / Fiscal"
-                    badge={podeEditarCadastroCA && <span className="flex items-center gap-1 text-xs text-blue-500 font-normal"><RefreshCw className="h-3 w-3" /> sincroniza com o Conta Azul</span>}
+                    badge={<span className="flex items-center gap-1 text-xs text-blue-400 font-normal"><RefreshCw className="h-3 w-3" /> sincroniza com o Conta Azul ao salvar</span>}
                 >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">E-mail</label>
                             <input type="email"
-                                className={`block w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${podeEditarCadastroCA ? 'bg-white text-gray-900' : 'bg-gray-50 text-gray-700 cursor-default'}`}
+                                className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="cliente@email.com"
-                                readOnly={!podeEditarCadastroCA}
                                 value={formData.Email}
-                                onChange={(e) => podeEditarCadastroCA && setFormData({ ...formData, Email: e.target.value })}
+                                onChange={(e) => setFormData({ ...formData, Email: e.target.value })}
                             />
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Celular</label>
                             <input type="tel" inputMode="numeric" maxLength={11}
-                                className={`block w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${podeEditarCadastroCA ? 'bg-white text-gray-900' : 'bg-gray-50 text-gray-700 cursor-default'}`}
+                                className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 placeholder="47999126739"
-                                readOnly={!podeEditarCadastroCA}
                                 value={formData.Telefone_Celular}
-                                onChange={(e) => podeEditarCadastroCA && setFormData({ ...formData, Telefone_Celular: e.target.value.replace(/\D/g, '') })}
+                                onChange={(e) => setFormData({ ...formData, Telefone_Celular: e.target.value.replace(/\D/g, '') })}
                             />
-                            <p className="text-xs text-gray-400 mt-1">Só números com DDD (10–11 dígitos).</p>
+                            <p className="text-xs text-gray-400 mt-1">Com DDD, só números.</p>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Inscrição Estadual (SC)</label>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Inscrição Estadual</label>
                             <input type="text" inputMode="numeric" maxLength={9}
-                                className={`block w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${podeEditarCadastroCA ? 'bg-white text-gray-900' : 'bg-gray-50 text-gray-700 cursor-default'}`}
-                                placeholder="9 dígitos"
-                                readOnly={!podeEditarCadastroCA}
+                                className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="9 dígitos (SC)"
                                 value={formData.Inscricao_Estadual}
-                                onChange={(e) => podeEditarCadastroCA && setFormData({ ...formData, Inscricao_Estadual: e.target.value.replace(/\D/g, '') })}
+                                onChange={(e) => setFormData({ ...formData, Inscricao_Estadual: e.target.value.replace(/\D/g, '') })}
                             />
-                            {podeEditarCadastroCA && (
-                                <button type="button" onClick={abrirSintegra}
-                                    className="mt-1 inline-flex items-center text-xs text-blue-600 hover:text-blue-800 font-medium">
-                                    <ExternalLink className="h-3 w-3 mr-1" /> Consultar no Sintegra SC
-                                </button>
-                            )}
+                            <button type="button" onClick={abrirSintegra}
+                                className="mt-1 inline-flex items-center text-xs text-blue-500 hover:text-blue-700 font-medium">
+                                <ExternalLink className="h-3 w-3 mr-1" /> Consultar Sintegra SC
+                            </button>
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Indicador de IE</label>
                             <select
-                                className={`block w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${podeEditarCadastroCA ? 'bg-white text-gray-900' : 'bg-gray-50 text-gray-700 cursor-default'}`}
-                                disabled={!podeEditarCadastroCA}
+                                className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 value={formData.Indicador_Inscricao_Estadual}
                                 onChange={(e) => setFormData({ ...formData, Indicador_Inscricao_Estadual: e.target.value })}
                             >
@@ -1056,6 +1047,13 @@ const DetalheCliente = () => {
                             </select>
                         </div>
                     </div>
+                    {/* Telefone fixo (CA, somente leitura) */}
+                    {cliente.Telefone && (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                            <span className="text-xs text-gray-400 uppercase tracking-wide">Telefone fixo (Conta Azul)</span>
+                            <p className="text-sm text-gray-700 mt-0.5">{cliente.Telefone}</p>
+                        </div>
+                    )}
                 </SectionCard>
 
                 {/* ─── CARD: OBSERVAÇÕES ─── */}
@@ -1063,138 +1061,108 @@ const DetalheCliente = () => {
                     <textarea
                         className="block w-full border border-gray-200 rounded-lg p-2.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
                         rows="4"
-                        placeholder="Observações sobre o cliente (sincroniza com o Conta Azul)..."
+                        placeholder="Observações sobre o cliente..."
                         value={formData.Observacoes_Gerais}
                         onChange={(e) => setFormData({ ...formData, Observacoes_Gerais: e.target.value })}
                     />
                 </SectionCard>
 
-                {/* ─── CONTA AZUL: visível só no mobile (colapsível) ─── */}
-                <details className="xl:hidden bg-gray-50 rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    <summary className="flex items-center gap-2 px-5 py-3.5 cursor-pointer select-none">
-                        <Building className="h-4 w-4 text-gray-500 shrink-0" />
-                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Dados da Conta Azul</span>
-                        <span className="ml-2 text-xs text-gray-400">(somente leitura)</span>
-                    </summary>
-                    <div className="px-5 pb-5 space-y-3 border-t border-gray-200">
-                        <div className="grid grid-cols-2 gap-4 pt-3 text-sm">
-                            <div><span className="text-xs text-gray-400 block">Tipo Pessoa</span><span className="text-gray-900">{cliente.Tipo_Pessoa || '-'}</span></div>
-                            <div><span className="text-xs text-gray-400 block">Código</span><span className="text-gray-900">{cliente.Codigo || '-'}</span></div>
-                            <div className="col-span-2"><span className="text-xs text-gray-400 block">Email</span><span className="text-gray-900 break-all">{cliente.Email || '-'}</span></div>
-                            <div><span className="text-xs text-gray-400 block">Telefone</span><span className="text-gray-900">{cliente.Telefone || '-'}</span></div>
-                            <div><span className="text-xs text-gray-400 block">Celular (CA)</span><span className="text-gray-900">{cliente.Telefone_Celular || '-'}</span></div>
-                            <div><span className="text-xs text-gray-400 block">Inscrição Estadual</span><span className="text-gray-900">{cliente.Inscricao_Estadual || '-'}</span></div>
-                            <div><span className="text-xs text-gray-400 block">Indicador IE</span><span className="text-gray-900">{({ CONTRIBUINTE: 'Contribuinte', CONTRIBUINTE_ISENTO: 'Isento', NAO_CONTRIBUINTE: 'Não contribuinte' })[cliente.Indicador_Inscricao_Estadual] || '-'}</span></div>
+                {/* ─── CARD: INFORMAÇÕES DO CADASTRO (CA, somente leitura) ─── */}
+                <SectionCard icon={Building} title="Informações do Cadastro">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-5 text-sm">
+                        {/* Tipo + Código + Perfis */}
+                        <div>
+                            <span className="block text-xs text-gray-400 uppercase tracking-wide mb-1">Tipo Pessoa</span>
+                            <span className="font-medium text-gray-900">{cliente.Tipo_Pessoa || '-'}</span>
                         </div>
-                        <div className="text-sm"><span className="text-xs text-gray-400 block">Endereço</span>
-                            <span className="text-gray-900">{[cliente.End_Logradouro, cliente.End_Numero, cliente.End_Bairro, cliente.End_Cidade, cliente.End_Estado].filter(Boolean).join(', ')}{cliente.End_CEP ? ` — ${cliente.End_CEP}` : ''}</span>
+                        <div>
+                            <span className="block text-xs text-gray-400 uppercase tracking-wide mb-1">Código</span>
+                            <span className="font-medium text-gray-900">{cliente.Codigo || '-'}</span>
                         </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div><span className="text-xs text-gray-400 block">Atrasos Pag.</span><span className={`font-semibold ${Number(cliente.Atrasos_Pagamentos) > 0 ? 'text-red-600' : 'text-gray-900'}`}>{cliente.Atrasos_Pagamentos || '0'}</span></div>
-                            <div><span className="text-xs text-gray-400 block">Atrasos Rec.</span><span className="text-gray-900">{cliente.Atrasos_Recebimentos || '0'}</span></div>
-                        </div>
-                        <div><span className="text-xs text-gray-400 block">UUID</span><span className="text-gray-700 font-mono text-xs break-all">{cliente.UUID}</span></div>
-                    </div>
-                </details>
-
-                </div>{/* fim flex-1 */}
-
-                {/* ─── SIDEBAR: CONTA AZUL (desktop only, sticky) ─── */}
-                <aside className="hidden xl:block w-72 shrink-0 sticky top-4 self-start space-y-3">
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50">
-                            <Building className="h-4 w-4 text-gray-500" />
-                            <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Dados da Conta Azul</span>
-                            <span className="ml-auto text-xs text-gray-400">somente leitura</span>
-                        </div>
-                        <div className="p-4 space-y-4 text-sm">
-                            {/* Tipo + Perfis */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div><span className="block text-xs text-gray-400 mb-0.5">Tipo Pessoa</span><span className="font-medium text-gray-900">{cliente.Tipo_Pessoa || '-'}</span></div>
-                                <div><span className="block text-xs text-gray-400 mb-0.5">Código</span><span className="font-medium text-gray-900">{cliente.Codigo || '-'}</span></div>
+                        <div className="col-span-2">
+                            <span className="block text-xs text-gray-400 uppercase tracking-wide mb-1">Perfis</span>
+                            <div className="flex flex-wrap gap-1.5">
+                                {(() => {
+                                    let perfis = [];
+                                    try { perfis = JSON.parse(cliente.Perfis || '[]'); } catch { perfis = cliente.Perfis ? [cliente.Perfis] : []; }
+                                    if (!Array.isArray(perfis) || perfis.length === 0) return <span className="text-gray-500">-</span>;
+                                    return perfis.map((p, i) => <span key={i} className="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-100">{p}</span>);
+                                })()}
                             </div>
-                            {/* Perfis */}
-                            {cliente.Perfis && (() => {
-                                let perfis = [];
-                                try { perfis = JSON.parse(cliente.Perfis); } catch { perfis = [cliente.Perfis]; }
-                                if (!Array.isArray(perfis) || perfis.length === 0) return null;
-                                return (
-                                    <div>
-                                        <span className="block text-xs text-gray-400 mb-1.5">Perfis</span>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {perfis.map((p, i) => <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-100">{p}</span>)}
+                        </div>
+
+                        {/* Endereço — full width */}
+                        <div className="col-span-2 sm:col-span-3 lg:col-span-4 pt-4 border-t border-gray-100">
+                            <span className="block text-xs text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1"><MapPin className="h-3 w-3" /> Endereço</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <div>
+                                    <span className="block text-xs text-gray-400 mb-0.5">Logradouro</span>
+                                    <span className="text-gray-900">{[cliente.End_Logradouro, cliente.End_Numero].filter(Boolean).join(', ') || '-'}</span>
+                                    {cliente.End_Complemento && <p className="text-gray-600 text-xs">{cliente.End_Complemento}</p>}
+                                </div>
+                                <div>
+                                    <span className="block text-xs text-gray-400 mb-0.5">Bairro / Cidade</span>
+                                    <span className="text-gray-900">{[cliente.End_Bairro, cliente.End_Cidade].filter(Boolean).join(' · ') || '-'}</span>
+                                    {cliente.End_Estado && <p className="text-gray-600 text-xs">{cliente.End_Estado}</p>}
+                                </div>
+                                <div>
+                                    <span className="block text-xs text-gray-400 mb-0.5">CEP</span>
+                                    <span className="text-gray-900">{cliente.End_CEP || '-'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Financeiro */}
+                        <div className="col-span-2 sm:col-span-3 lg:col-span-4 pt-4 border-t border-gray-100">
+                            <span className="block text-xs text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1"><DollarSign className="h-3 w-3" /> Financeiro</span>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {[
+                                    { label: 'Atrasos Pag.', value: cliente.Atrasos_Pagamentos, alert: true },
+                                    { label: 'Atrasos Rec.', value: cliente.Atrasos_Recebimentos, alert: false },
+                                    { label: 'Pagamentos Mês', value: cliente.Pagamentos_Mes_Atual, alert: false },
+                                    { label: 'Recebimentos Mês', value: cliente.Recebimentos_Mes_Atual, alert: false },
+                                ].map(({ label, value, alert }) => {
+                                    const hasValue = Number(value) > 0;
+                                    const isAlert = alert && hasValue;
+                                    return (
+                                        <div key={label} className={`p-3 rounded-xl border ${isAlert ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-100'}`}>
+                                            <span className="block text-xs text-gray-400 mb-0.5">{label}</span>
+                                            <div className="flex items-center gap-1">
+                                                <span className={`font-semibold ${isAlert ? 'text-red-600' : 'text-gray-900'}`}>{value || '0'}</span>
+                                                {isAlert && <AlertTriangle className="h-3.5 w-3.5 text-red-500" />}
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })()}
-                            <div className="border-t border-gray-100 pt-3 space-y-2">
-                                <div><span className="block text-xs text-gray-400 mb-0.5">Email</span><span className="text-gray-900 break-all">{cliente.Email || '-'}</span></div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div><span className="block text-xs text-gray-400 mb-0.5">Telefone</span><span className="text-gray-900">{cliente.Telefone || '-'}</span></div>
-                                    <div><span className="block text-xs text-gray-400 mb-0.5">Celular</span><span className="text-gray-900">{cliente.Telefone_Celular || '-'}</span></div>
-                                </div>
+                                    );
+                                })}
                             </div>
-                            <div className="border-t border-gray-100 pt-3 grid grid-cols-2 gap-3">
-                                <div><span className="block text-xs text-gray-400 mb-0.5">IE</span><span className="text-gray-900">{cliente.Inscricao_Estadual || '-'}</span></div>
-                                <div><span className="block text-xs text-gray-400 mb-0.5">Indicador IE</span><span className="text-gray-900">{({ CONTRIBUINTE: 'Contribuinte', CONTRIBUINTE_ISENTO: 'Isento', NAO_CONTRIBUINTE: 'Não contrib.' })[cliente.Indicador_Inscricao_Estadual] || '-'}</span></div>
+                        </div>
+
+                        {/* Auditoria + UUID */}
+                        <div className="col-span-2 sm:col-span-3 lg:col-span-4 pt-4 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div>
+                                <span className="block text-xs text-gray-400 uppercase tracking-wide mb-0.5">Criação</span>
+                                <span className="text-gray-900">{cliente.Data_Criacao ? new Date(cliente.Data_Criacao).toLocaleDateString('pt-BR') : '-'}</span>
                             </div>
-                            <div className="border-t border-gray-100 pt-3">
-                                <span className="block text-xs text-gray-400 mb-1"><MapPin className="h-3 w-3 inline mr-0.5" />Endereço</span>
-                                <p className="text-gray-900 leading-relaxed">
-                                    {cliente.End_Logradouro}{cliente.End_Numero ? `, ${cliente.End_Numero}` : ''}
-                                    {cliente.End_Complemento ? <><br/>{cliente.End_Complemento}</> : ''}
-                                    {cliente.End_Bairro ? <><br/>{cliente.End_Bairro}</> : ''}
-                                    {(cliente.End_Cidade || cliente.End_Estado) ? <><br/>{cliente.End_Cidade}{cliente.End_Estado ? ` - ${cliente.End_Estado}` : ''}</> : ''}
-                                    {cliente.End_CEP ? <><br/><span className="text-gray-500">CEP: {cliente.End_CEP}</span></> : ''}
-                                </p>
+                            <div>
+                                <span className="block text-xs text-gray-400 uppercase tracking-wide mb-0.5">Última alteração</span>
+                                <span className="text-gray-900">{cliente.Data_Alteracao ? new Date(cliente.Data_Alteracao).toLocaleDateString('pt-BR') : '-'}</span>
                             </div>
-                            <div className="border-t border-gray-100 pt-3">
-                                <span className="block text-xs text-gray-400 mb-2"><DollarSign className="h-3 w-3 inline mr-0.5" />Financeiro</span>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className={`p-2 rounded-lg ${Number(cliente.Atrasos_Pagamentos) > 0 ? 'bg-red-50 border border-red-100' : 'bg-gray-50'}`}>
-                                        <span className="block text-xs text-gray-400">Atrasos Pag.</span>
-                                        <span className={`font-semibold ${Number(cliente.Atrasos_Pagamentos) > 0 ? 'text-red-600' : 'text-gray-900'}`}>{cliente.Atrasos_Pagamentos || '0'}</span>
-                                        {Number(cliente.Atrasos_Pagamentos) > 0 && <AlertTriangle className="h-3 w-3 text-red-500 inline ml-1" />}
-                                    </div>
-                                    <div className="p-2 rounded-lg bg-gray-50">
-                                        <span className="block text-xs text-gray-400">Pag. Mês</span>
-                                        <span className="font-semibold text-gray-900">{cliente.Pagamentos_Mes_Atual || '0'}</span>
-                                    </div>
-                                    <div className="p-2 rounded-lg bg-gray-50">
-                                        <span className="block text-xs text-gray-400">Atrasos Rec.</span>
-                                        <span className="font-semibold text-gray-900">{cliente.Atrasos_Recebimentos || '0'}</span>
-                                    </div>
-                                    <div className="p-2 rounded-lg bg-gray-50">
-                                        <span className="block text-xs text-gray-400">Rec. Mês</span>
-                                        <span className="font-semibold text-gray-900">{cliente.Recebimentos_Mes_Atual || '0'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="border-t border-gray-100 pt-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div><span className="block text-xs text-gray-400 mb-0.5">Criação</span><span className="text-gray-900">{cliente.Data_Criacao ? new Date(cliente.Data_Criacao).toLocaleDateString('pt-BR') : '-'}</span></div>
-                                    <div><span className="block text-xs text-gray-400 mb-0.5">Alteração</span><span className="text-gray-900">{cliente.Data_Alteracao ? new Date(cliente.Data_Alteracao).toLocaleDateString('pt-BR') : '-'}</span></div>
-                                </div>
-                                <div className="mt-2"><span className="block text-xs text-gray-400 mb-0.5">UUID</span><span className="text-gray-500 font-mono text-xs break-all">{cliente.UUID}</span></div>
+                            <div className="col-span-2 sm:col-span-1">
+                                <span className="block text-xs text-gray-400 uppercase tracking-wide mb-0.5">UUID</span>
+                                <span className="text-gray-500 font-mono text-xs break-all">{cliente.UUID}</span>
                             </div>
                         </div>
                     </div>
-                </aside>
+                </SectionCard>
 
                 {/* ─── BARRA DE AÇÕES (sticky rodapé) ─── */}
-                <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg px-4 py-3 flex justify-end gap-3 xl:hidden">
-                    <button onClick={handleCancel} className="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2">
+                <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-lg px-4 sm:px-6 py-3 flex justify-end gap-3">
+                    <button onClick={handleCancel}
+                        className="px-5 py-2.5 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2">
                         <X className="h-4 w-4" /> Descartar
                     </button>
-                    <button onClick={handleSave} className="px-6 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm">
-                        <Save className="h-4 w-4" /> Salvar Alterações
-                    </button>
-                </div>
-                <div className="hidden xl:flex fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg px-6 py-3 justify-end gap-3">
-                    <button onClick={handleCancel} className="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2">
-                        <X className="h-4 w-4" /> Descartar
-                    </button>
-                    <button onClick={handleSave} className="px-8 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm">
+                    <button onClick={handleSave}
+                        className="px-7 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all flex items-center gap-2 shadow-sm">
                         <Save className="h-4 w-4" /> Salvar Alterações
                     </button>
                 </div>
