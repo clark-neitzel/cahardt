@@ -13,7 +13,30 @@ import leadService from '../../services/leadService';
 import devolucaoService from '../../services/devolucaoService';
 import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink, Truck, CreditCard, AlertTriangle } from 'lucide-react';
+
+// Toggle switch inline
+const Toggle = ({ checked, onChange }) => (
+    <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${checked ? 'bg-blue-600' : 'bg-gray-200'}`}
+    >
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+    </button>
+);
+
+// Card section wrapper
+const SectionCard = ({ icon: Icon, title, badge, children }) => (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
+            <Icon className="h-4 w-4 text-blue-600 shrink-0" />
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-600">{title}</span>
+            {badge && <span className="ml-auto">{badge}</span>}
+        </div>
+        <div className="p-5">{children}</div>
+    </div>
+);
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 
@@ -773,467 +796,409 @@ const DetalheCliente = () => {
 
             {/* ============================= ABA: OPERACIONAL ============================= */}
             {abaAtiva === 'operacional' && (
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 pb-8 items-start">
-                {/* ===================== COLUNA EDITÁVEL ===================== */}
-                <div className="xl:col-span-8 bg-white rounded-xl p-5 sm:p-6 border border-gray-200 shadow-sm">
-                    <h2 className="text-lg font-semibold text-primary mb-5 flex items-center">
-                        <FileText className="h-5 w-5 mr-2" />
-                        ✏️ Dados do Cliente (Editáveis)
-                    </h2>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5">
-                        {/* Coluna 1 */}
-                        <div className="space-y-5">
-                            {/* Vendedor Responsável */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    <User className="h-4 w-4 inline mr-1" />
-                                    Vendedor Responsável
-                                </label>
-                                <select
-                                    className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                    value={formData.idVendedor}
-                                    onChange={(e) => setFormData({ ...formData, idVendedor: e.target.value })}
-                                >
-                                    <option value="">Selecione um vendedor...</option>
-                                    {vendedores.filter(v => v.ativo !== false || v.id === formData.idVendedor).map(v => (
-                                        <option key={v.id} value={v.id}>{v.nome}{v.ativo === false ? ' (INATIVO)' : ''}</option>
-                                    ))}
-                                </select>
-                            </div>
+              <div className="flex flex-col xl:flex-row gap-5 pb-24 items-start">
 
-                            {/* Indicação */}
-                            <div className="relative">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    <UserPlus className="h-4 w-4 inline mr-1" />
-                                    Indicação (quem indicou este cliente)
-                                </label>
-                                {formData.indicacaoId && indicacaoNome ? (
-                                    <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
-                                        <UserPlus className="h-4 w-4 text-green-600 shrink-0" />
-                                        <span className="text-sm font-medium text-green-800 flex-1">{indicacaoNome}</span>
-                                        <button type="button" onClick={handleLimparIndicacao} className="p-1 text-gray-400 hover:text-red-500">
-                                            <X className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <Search className="h-4 w-4 text-gray-400" />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            value={indicacaoSearch}
-                                            onChange={(e) => handleBuscarIndicacao(e.target.value)}
-                                            onFocus={() => indicacaoResultados.length > 0 && setShowIndicacaoDropdown(true)}
-                                            onBlur={() => setTimeout(() => setShowIndicacaoDropdown(false), 200)}
-                                            className="block w-full border border-gray-300 rounded-md shadow-sm pl-10 p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                            placeholder="Buscar cliente que indicou..."
-                                        />
-                                    </div>
-                                )}
-                                {showIndicacaoDropdown && indicacaoResultados.length > 0 && (
-                                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                                        {indicacaoResultados.map(cli => (
-                                            <button
-                                                key={cli.UUID}
-                                                type="button"
-                                                onMouseDown={() => handleSelecionarIndicacao(cli)}
-                                                className="w-full text-left px-4 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-0"
-                                            >
-                                                <p className="text-sm font-medium text-gray-900">{cli.NomeFantasia || cli.Nome}</p>
-                                                <p className="text-xs text-gray-500">{cli.Nome}{cli.End_Cidade ? ` · ${cli.End_Cidade}` : ''}</p>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                {/* ===================== CONTEÚDO PRINCIPAL ===================== */}
+                <div className="flex-1 min-w-0 space-y-4">
 
-                            {/* Dia de Visita/Venda */}
-                            <DayPicker
-                                label="Dia de Visita/Venda"
-                                selected={formData.Dia_de_venda}
-                                onChange={(val) => setFormData({ ...formData, Dia_de_venda: val })}
-                            />
-
-                            {/* Dia de Entrega */}
-                            <DayPicker
-                                label="Dia de Entrega"
-                                selected={formData.Dia_de_entrega}
-                                onChange={(val) => setFormData({ ...formData, Dia_de_entrega: val })}
-                            />
+                {/* ─── CARD: VENDEDOR E INDICAÇÃO ─── */}
+                <SectionCard icon={User} title="Vendedor e Indicação">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Vendedor Responsável</label>
+                            <select
+                                className="block w-full border border-gray-200 rounded-lg p-2.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                value={formData.idVendedor}
+                                onChange={(e) => setFormData({ ...formData, idVendedor: e.target.value })}
+                            >
+                                <option value="">Selecione um vendedor...</option>
+                                {vendedores.filter(v => v.ativo !== false || v.id === formData.idVendedor).map(v => (
+                                    <option key={v.id} value={v.id}>{v.nome}{v.ativo === false ? ' (INATIVO)' : ''}</option>
+                                ))}
+                            </select>
                         </div>
-                        {/* Coluna 2 */}
-                        <div className="space-y-4">
-
-                            {/* Canais de Atendimento */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    <Phone className="h-4 w-4 inline mr-1" />
-                                    Canais de Atendimento Preferenciais
-                                </label>
-                                <div className="flex flex-wrap gap-3">
-                                    {['Presencial', 'Whatsapp', 'Telefone'].map(canal => {
-                                        const isSelected = (formData.Formas_Atendimento || []).includes(canal);
-                                        return (
-                                            <button
-                                                key={canal}
-                                                type="button"
-                                                onClick={() => {
-                                                    const atuais = formData.Formas_Atendimento || [];
-                                                    const novos = isSelected
-                                                        ? atuais.filter(c => c !== canal)
-                                                        : [...atuais, canal];
-                                                    setFormData({ ...formData, Formas_Atendimento: novos });
-                                                }}
-                                                className={`px-4 py-2 rounded-md border text-sm font-medium transition-all flex items-center gap-2 ${isSelected
-                                                    ? 'bg-primary text-white border-primary shadow-sm'
-                                                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                                                    }`}
-                                            >
-                                                {canal === 'Presencial' && <User className="h-4 w-4" />}
-                                                {canal === 'Whatsapp' && <MessageCircle className="h-4 w-4" />}
-                                                {canal === 'Telefone' && <Phone className="h-4 w-4" />}
-                                                {canal}
-                                            </button>
-                                        );
-                                    })}
+                        <div className="relative">
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Indicação (quem indicou)</label>
+                            {formData.indicacaoId && indicacaoNome ? (
+                                <div className="flex items-center gap-2 p-2.5 bg-green-50 border border-green-200 rounded-lg">
+                                    <UserPlus className="h-4 w-4 text-green-600 shrink-0" />
+                                    <span className="text-sm font-medium text-green-800 flex-1">{indicacaoNome}</span>
+                                    <button type="button" onClick={handleLimparIndicacao} className="p-1 text-gray-400 hover:text-red-500">
+                                        <X className="h-4 w-4" />
+                                    </button>
                                 </div>
-                            </div>
-
-                            {/* Condição de Pagamento */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    <DollarSign className="h-4 w-4 inline mr-1" />
-                                    Condição de Pagamento Padrão
-                                </label>
-                                <select
-                                    className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary mb-4"
-                                    value={formData.Condicao_de_pagamento}
-                                    onChange={(e) => setFormData({ ...formData, Condicao_de_pagamento: e.target.value })}
-                                >
-                                    <option value="">Selecione uma condição padrão...</option>
-                                    {condicoesPagamento.map(c => (
-                                        <option key={c.id} value={c.id}>{c.nomeCondicao}</option>
-                                    ))}
-                                </select>
-
-                                <label className="block text-sm font-medium text-gray-700 mb-2 mt-4">
-                                    <DollarSign className="h-4 w-4 inline mr-1" />
-                                    Condições de Pagamento Permitidas (Flex/App)
-                                </label>
-                                <div className="border border-gray-300 rounded-md">
-                                    <MultiSelect
-                                        options={condicoesPagamento.map(c => c.nomeCondicao)}
-                                        selected={formData.condicoes_pagamento_permitidas.map(id => {
-                                            const c = condicoesPagamento.find(cond => cond.idCondicao === id);
-                                            return c ? c.nomeCondicao : id;
-                                        }).filter(Boolean)}
-                                        onChange={(selectedNames) => {
-                                            const ids = selectedNames.map(name => {
-                                                const c = condicoesPagamento.find(cond => cond.nomeCondicao === name);
-                                                return c ? c.idCondicao : null;
-                                            }).filter(Boolean);
-                                            setFormData({ ...formData, condicoes_pagamento_permitidas: ids });
-                                        }}
-                                        placeholder="Selecione as condições permitidas no App..."
-                                    />
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Selecione as condições que aparecerão no App de Vendas para este cliente.
-                                </p>
-
-                                {formData.Condicao_de_pagamento && (() => {
-                                    const selected = condicoesPagamento.find(c => c.idCondicao === formData.Condicao_de_pagamento);
-                                    if (selected) {
-                                        return (
-                                            <div className="mt-4 p-3 bg-blue-50/50 rounded-md border border-blue-100 text-sm grid grid-cols-3 gap-2">
-                                                <div>
-                                                    <span className="block text-xs text-gray-500">Parcelas (Padrão)</span>
-                                                    <span className="font-semibold text-gray-900">{selected.qtdParcelas}x</span>
-                                                </div>
-                                                <div>
-                                                    <span className="block text-xs text-gray-500">Dias</span>
-                                                    <span className="font-semibold text-gray-900">{selected.parcelasDias} dias</span>
-                                                </div>
-                                                <div>
-                                                    <span className="block text-xs text-gray-500">Acréscimo</span>
-                                                    <span className={`font-semibold ${Number(selected.acrescimoPreco) > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                                        {Number(selected.acrescimoPreco) > 0 ? `+${selected.acrescimoPreco}%` : '0%'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                })()}
-                            </div>
-
-                            {/* GPS */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    <MapPin className="h-4 w-4 inline mr-1" />
-                                    Localização GPS (lat,lng)
-                                </label>
-                                <input
-                                    type="text"
-                                    className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                    placeholder="Ex: -23.550520,-46.633308"
-                                    value={formData.Ponto_GPS}
-                                    onChange={(e) => setFormData({ ...formData, Ponto_GPS: e.target.value })}
-                                />
-                            </div>
-
-                            {/* INTELIGÊNCIA COMERCIAL */}
-                            <div className="pt-4 border-t border-gray-200">
-                                <h3 className="text-md font-semibold text-purple-700 mb-4 flex items-center">
-                                    <Sparkles className="h-4 w-4 mr-2" /> Inteligência Comercial
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Categoria (Segmento)</label>
-                                        <select
-                                            className="block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                            value={formData.categoriaClienteId}
-                                            onChange={(e) => setFormData({ ...formData, categoriaClienteId: e.target.value })}
-                                        >
-                                            <option value="">Selecione a categoria...</option>
-                                            {categoriasCliente.map(c => (
-                                                <option key={c.id} value={c.id}>{c.nome} (Ciclo: {c.cicloPadraoDias} dias)</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Sobrescrever Ciclo (Dias)</label>
-                                        <input
-                                            type="number"
-                                            className="block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                            placeholder="Ex: 5"
-                                            value={formData.cicloCompraPersonalizadoDias}
-                                            onChange={(e) => setFormData({ ...formData, cicloCompraPersonalizadoDias: e.target.value ? parseInt(e.target.value) : '' })}
-                                        />
-                                        <p className="text-xs text-gray-500 mt-1">Deixe em branco para usar o da categoria.</p>
-                                    </div>
-                                </div>
-                                <div className="mt-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Aviso Comercial Fixado</label>
-                                    <textarea
-                                        className="block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                        rows="2"
-                                        placeholder="Alerta importante sobre venda/negociação para este cliente..."
-                                        value={formData.observacaoComercialFixa}
-                                        onChange={(e) => setFormData({ ...formData, observacaoComercialFixa: e.target.value })}
-                                    />
-                                </div>
-                                <label className="flex items-center space-x-2 mt-4">
+                            ) : (
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                                     <input
-                                        type="checkbox"
-                                        checked={formData.insightAtivo}
-                                        onChange={(e) => setFormData({ ...formData, insightAtivo: e.target.checked })}
-                                        className="h-4 w-4 text-primary bg-white focus:ring-primary border-gray-300 rounded"
+                                        type="text"
+                                        value={indicacaoSearch}
+                                        onChange={(e) => handleBuscarIndicacao(e.target.value)}
+                                        onFocus={() => indicacaoResultados.length > 0 && setShowIndicacaoDropdown(true)}
+                                        onBlur={() => setTimeout(() => setShowIndicacaoDropdown(false), 200)}
+                                        className="block w-full border border-gray-200 rounded-lg pl-9 p-2.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                        placeholder="Buscar cliente que indicou..."
                                     />
-                                    <span className="text-gray-900 text-sm font-medium">Insights Ativos (Sugerir produtos na venda)</span>
-                                </label>
-                                <label className="flex items-center space-x-2 mt-3">
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.recebeAvisoPedido}
-                                        onChange={(e) => setFormData({ ...formData, recebeAvisoPedido: e.target.checked })}
-                                        className="h-4 w-4 text-green-600 bg-white focus:ring-green-500 border-gray-300 rounded"
-                                    />
-                                    <span className="text-gray-900 text-sm font-medium">Recebe aviso de pedido via WhatsApp</span>
-                                </label>
-                            </div>
-
-                            {/* Contato / Fiscal — sincronizado com o Conta Azul */}
-                            {podeEditarCadastroCA && (
-                                <div className="pt-4 border-t border-gray-200">
-                                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                                        <Building className="h-4 w-4 mr-1 text-blue-600" />
-                                        Contato / Fiscal <span className="ml-2 text-xs font-normal text-blue-600">(sincroniza com o Conta Azul)</span>
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {/* Email */}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                <Mail className="h-4 w-4 inline mr-1" /> E-mail
-                                            </label>
-                                            <input
-                                                type="email"
-                                                className="block w-full border border-gray-300 rounded-md shadow-sm p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                                placeholder="cliente@email.com"
-                                                value={formData.Email}
-                                                onChange={(e) => setFormData({ ...formData, Email: e.target.value })}
-                                            />
-                                        </div>
-
-                                        {/* Celular */}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                <Phone className="h-4 w-4 inline mr-1" /> Celular
-                                            </label>
-                                            <input
-                                                type="tel"
-                                                inputMode="numeric"
-                                                maxLength={11}
-                                                className="block w-full border border-gray-300 rounded-md shadow-sm p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                                placeholder="47999126739"
-                                                value={formData.Telefone_Celular}
-                                                onChange={(e) => setFormData({ ...formData, Telefone_Celular: e.target.value.replace(/\D/g, '') })}
-                                            />
-                                            <p className="text-xs text-gray-400 mt-1">Só números, com DDD (10 ou 11 dígitos).</p>
-                                        </div>
-
-                                        {/* Inscrição Estadual */}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                <FileText className="h-4 w-4 inline mr-1" /> Inscrição Estadual
-                                            </label>
-                                            <input
-                                                type="text"
-                                                inputMode="numeric"
-                                                maxLength={9}
-                                                className="block w-full border border-gray-300 rounded-md shadow-sm p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                                placeholder="9 dígitos (SC)"
-                                                value={formData.Inscricao_Estadual}
-                                                onChange={(e) => setFormData({ ...formData, Inscricao_Estadual: e.target.value.replace(/\D/g, '') })}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={abrirSintegra}
-                                                className="mt-1 inline-flex items-center text-xs text-blue-600 hover:text-blue-800 font-medium"
-                                            >
-                                                <ExternalLink className="h-3.5 w-3.5 mr-1" /> Consultar no Sintegra SC
-                                            </button>
-                                        </div>
-
-                                        {/* Indicador de IE */}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Indicador de IE
-                                            </label>
-                                            <select
-                                                className="block w-full border border-gray-300 rounded-md shadow-sm p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                                value={formData.Indicador_Inscricao_Estadual}
-                                                onChange={(e) => setFormData({ ...formData, Indicador_Inscricao_Estadual: e.target.value })}
-                                            >
-                                                <option value="">— Selecionar —</option>
-                                                <option value="CONTRIBUINTE">Contribuinte</option>
-                                                <option value="CONTRIBUINTE_ISENTO">Contribuinte Isento</option>
-                                                <option value="NAO_CONTRIBUINTE">Não Contribuinte</option>
-                                            </select>
-                                        </div>
-                                    </div>
                                 </div>
                             )}
-
-                            {/* Observações */}
-                            <div className="pt-4 border-t border-gray-200">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    <FileText className="h-4 w-4 inline mr-1" />
-                                    Observações Gerais (Backend)
-                                </label>
-                                <textarea
-                                    className="block w-full border border-gray-300 rounded-md shadow-sm p-3 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                    rows="4"
-                                    placeholder="Observações sobre o cliente..."
-                                    value={formData.Observacoes_Gerais}
-                                    onChange={(e) => setFormData({ ...formData, Observacoes_Gerais: e.target.value })}
-                                />
-                            </div>
-
-                            {/* Botões */}
-                            <div className="flex space-x-3 pt-4 border-t border-gray-200">
-                                <button
-                                    onClick={handleCancel}
-                                    className="flex-1 bg-gray-100 text-gray-700 px-4 py-3 rounded-md font-medium hover:bg-gray-200 transition-colors flex items-center justify-center"
-                                >
-                                    <X className="h-5 w-5 mr-2" />
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={handleSave}
-                                    className="flex-1 bg-primary text-white px-4 py-3 rounded-md font-medium hover:bg-blue-700 transition-colors flex items-center justify-center shadow-sm"
-                                >
-                                    <Save className="h-5 w-5 mr-2" />
-                                    Salvar
-                                </button>
-                            </div>
+                            {showIndicacaoDropdown && indicacaoResultados.length > 0 && (
+                                <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                    {indicacaoResultados.map(cli => (
+                                        <button key={cli.UUID} type="button" onMouseDown={() => handleSelecionarIndicacao(cli)}
+                                            className="w-full text-left px-4 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+                                            <p className="text-sm font-medium text-gray-900">{cli.NomeFantasia || cli.Nome}</p>
+                                            <p className="text-xs text-gray-500">{cli.Nome}{cli.End_Cidade ? ` · ${cli.End_Cidade}` : ''}</p>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
-                </div>
+                </SectionCard>
 
-                {/* ===================== SIDEBAR: CONTA AZUL (somente leitura) ===================== */}
-                <aside className="xl:col-span-4 xl:sticky xl:top-4">
-                    <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 shadow-sm space-y-4">
-                        <h2 className="text-base font-semibold text-gray-700 flex items-center">
-                            <Building className="h-5 w-5 mr-2 text-gray-500" />
-                            📋 Conta Azul <span className="ml-2 text-xs font-normal text-gray-400">(somente leitura)</span>
-                        </h2>
+                {/* ─── CARD: LOGÍSTICA ─── */}
+                <SectionCard icon={Truck} title="Logística">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <DayPicker label="Dia de Visita/Venda" selected={formData.Dia_de_venda} onChange={(val) => setFormData({ ...formData, Dia_de_venda: val })} />
+                        <DayPicker label="Dia de Entrega" selected={formData.Dia_de_entrega} onChange={(val) => setFormData({ ...formData, Dia_de_entrega: val })} />
+                    </div>
+                    <div className="mt-4">
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide"><MapPin className="h-3.5 w-3.5 inline mr-1" />Localização GPS (lat,lng)</label>
+                        <input type="text"
+                            className="block w-full border border-gray-200 rounded-lg p-2.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            placeholder="Ex: -23.550520,-46.633308"
+                            value={formData.Ponto_GPS}
+                            onChange={(e) => setFormData({ ...formData, Ponto_GPS: e.target.value })}
+                        />
+                    </div>
+                </SectionCard>
 
-                        {/* Identificação */}
-                        <div className="border-t border-gray-200 pt-3">
-                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Identificação</h3>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                                <div><span className="text-gray-400 block text-xs">Código</span><span className="text-gray-900">{cliente.Codigo || '-'}</span></div>
-                                <div><span className="text-gray-400 block text-xs">Tipo Pessoa</span><span className="text-gray-900">{cliente.Tipo_Pessoa || '-'}</span></div>
-                                <div className="col-span-2"><span className="text-gray-400 block text-xs">Perfis</span><span className="text-gray-900">{cliente.Perfis || '-'}</span></div>
-                                <div className="col-span-2"><span className="text-gray-400 block text-xs">UUID</span><span className="text-gray-900 font-mono text-xs break-all">{cliente.UUID}</span></div>
-                            </div>
+                {/* ─── CARD: CANAIS E PAGAMENTO ─── */}
+                <SectionCard icon={CreditCard} title="Canais e Pagamento">
+                    <div className="mb-5">
+                        <label className="block text-xs font-medium text-gray-500 mb-3 uppercase tracking-wide">Canais de Atendimento Preferenciais</label>
+                        <div className="flex flex-wrap gap-3">
+                            {[
+                                { nome: 'Presencial', icon: User },
+                                { nome: 'Whatsapp', icon: MessageCircle },
+                                { nome: 'Telefone', icon: Phone },
+                            ].map(({ nome, icon: Icon }) => {
+                                const isSelected = (formData.Formas_Atendimento || []).includes(nome);
+                                return (
+                                    <button key={nome} type="button"
+                                        onClick={() => {
+                                            const atuais = formData.Formas_Atendimento || [];
+                                            setFormData({ ...formData, Formas_Atendimento: isSelected ? atuais.filter(c => c !== nome) : [...atuais, nome] });
+                                        }}
+                                        className={`flex flex-col items-center justify-center gap-1.5 w-28 sm:w-32 py-3.5 rounded-xl border-2 text-sm font-medium transition-all ${
+                                            isSelected ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                                        }`}
+                                    >
+                                        <Icon className="h-5 w-5" />
+                                        {nome}
+                                    </button>
+                                );
+                            })}
                         </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Condição de Pagamento Padrão</label>
+                            <select
+                                className="block w-full border border-gray-200 rounded-lg p-2.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                value={formData.Condicao_de_pagamento}
+                                onChange={(e) => setFormData({ ...formData, Condicao_de_pagamento: e.target.value })}
+                            >
+                                <option value="">Selecione uma condição padrão...</option>
+                                {condicoesPagamento.map(c => (
+                                    <option key={c.id} value={c.id}>{c.nomeCondicao}</option>
+                                ))}
+                            </select>
+                            {formData.Condicao_de_pagamento && (() => {
+                                const sel = condicoesPagamento.find(c => c.idCondicao === formData.Condicao_de_pagamento);
+                                if (!sel) return null;
+                                return (
+                                    <div className="mt-2 p-2.5 bg-blue-50 rounded-lg border border-blue-100 text-xs grid grid-cols-3 gap-2">
+                                        <div><span className="block text-gray-500">Parcelas</span><span className="font-semibold text-gray-900">{sel.qtdParcelas}x</span></div>
+                                        <div><span className="block text-gray-500">Dias</span><span className="font-semibold text-gray-900">{sel.parcelasDias}d</span></div>
+                                        <div><span className="block text-gray-500">Acréscimo</span><span className={`font-semibold ${Number(sel.acrescimoPreco) > 0 ? 'text-red-600' : 'text-green-600'}`}>{Number(sel.acrescimoPreco) > 0 ? `+${sel.acrescimoPreco}%` : '0%'}</span></div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Condições Permitidas (Flex/App)</label>
+                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                <MultiSelect
+                                    options={condicoesPagamento.map(c => c.nomeCondicao)}
+                                    selected={formData.condicoes_pagamento_permitidas.map(id => {
+                                        const c = condicoesPagamento.find(cond => cond.idCondicao === id);
+                                        return c ? c.nomeCondicao : id;
+                                    }).filter(Boolean)}
+                                    onChange={(selectedNames) => {
+                                        const ids = selectedNames.map(name => {
+                                            const c = condicoesPagamento.find(cond => cond.nomeCondicao === name);
+                                            return c ? c.idCondicao : null;
+                                        }).filter(Boolean);
+                                        setFormData({ ...formData, condicoes_pagamento_permitidas: ids });
+                                    }}
+                                    placeholder="Selecione as condições..."
+                                />
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">Condições visíveis no App de Vendas.</p>
+                        </div>
+                    </div>
+                </SectionCard>
 
-                        {/* Contato */}
-                        <div className="border-t border-gray-200 pt-3">
-                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center"><Phone className="h-3.5 w-3.5 mr-1" /> Contato</h3>
-                            <div className="space-y-2 text-sm">
-                                <div><span className="text-gray-400 block text-xs">Email</span><span className="text-gray-900 break-all">{cliente.Email || '-'}</span></div>
-                                <div className="grid grid-cols-2 gap-x-4">
-                                    <div><span className="text-gray-400 block text-xs">Telefone</span><span className="text-gray-900">{cliente.Telefone || '-'}</span></div>
-                                    <div><span className="text-gray-400 block text-xs">Celular</span><span className="text-gray-900">{cliente.Telefone_Celular || '-'}</span></div>
+                {/* ─── CARD: INTELIGÊNCIA COMERCIAL ─── */}
+                <SectionCard icon={Sparkles} title="Inteligência Comercial">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Categoria (Segmento)</label>
+                            <select
+                                className="block w-full border border-gray-200 rounded-lg p-2.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                value={formData.categoriaClienteId}
+                                onChange={(e) => setFormData({ ...formData, categoriaClienteId: e.target.value })}
+                            >
+                                <option value="">Selecione a categoria...</option>
+                                {categoriasCliente.map(c => (
+                                    <option key={c.id} value={c.id}>{c.nome} (Ciclo: {c.cicloPadraoDias} dias)</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Sobrescrever Ciclo (Dias)</label>
+                            <input type="number"
+                                className="block w-full border border-gray-200 rounded-lg p-2.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                placeholder="Ex: 5"
+                                value={formData.cicloCompraPersonalizadoDias}
+                                onChange={(e) => setFormData({ ...formData, cicloCompraPersonalizadoDias: e.target.value ? parseInt(e.target.value) : '' })}
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Deixe em branco para usar o da categoria.</p>
+                        </div>
+                    </div>
+                    <div className="mt-4">
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Aviso Comercial Fixado</label>
+                        <textarea
+                            className="block w-full border border-gray-200 rounded-lg p-2.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
+                            rows="2"
+                            placeholder="Alerta importante sobre venda/negociação para este cliente..."
+                            value={formData.observacaoComercialFixa}
+                            onChange={(e) => setFormData({ ...formData, observacaoComercialFixa: e.target.value })}
+                        />
+                    </div>
+                    <div className="mt-4 space-y-3 pt-4 border-t border-gray-100">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-700">Insights Ativos (sugerir produtos na venda)</span>
+                            <Toggle checked={formData.insightAtivo} onChange={(v) => setFormData({ ...formData, insightAtivo: v })} />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-700">Recebe aviso de pedido via WhatsApp</span>
+                            <Toggle checked={formData.recebeAvisoPedido} onChange={(v) => setFormData({ ...formData, recebeAvisoPedido: v })} />
+                        </div>
+                    </div>
+                </SectionCard>
+
+                {/* ─── CARD: CONTATO / FISCAL ─── */}
+                <SectionCard icon={Mail} title="Contato / Fiscal"
+                    badge={podeEditarCadastroCA && <span className="flex items-center gap-1 text-xs text-blue-500 font-normal"><RefreshCw className="h-3 w-3" /> sincroniza com o Conta Azul</span>}
+                >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">E-mail</label>
+                            <input type="email"
+                                className={`block w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${podeEditarCadastroCA ? 'bg-white text-gray-900' : 'bg-gray-50 text-gray-700 cursor-default'}`}
+                                placeholder="cliente@email.com"
+                                readOnly={!podeEditarCadastroCA}
+                                value={formData.Email}
+                                onChange={(e) => podeEditarCadastroCA && setFormData({ ...formData, Email: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Celular</label>
+                            <input type="tel" inputMode="numeric" maxLength={11}
+                                className={`block w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${podeEditarCadastroCA ? 'bg-white text-gray-900' : 'bg-gray-50 text-gray-700 cursor-default'}`}
+                                placeholder="47999126739"
+                                readOnly={!podeEditarCadastroCA}
+                                value={formData.Telefone_Celular}
+                                onChange={(e) => podeEditarCadastroCA && setFormData({ ...formData, Telefone_Celular: e.target.value.replace(/\D/g, '') })}
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Só números com DDD (10–11 dígitos).</p>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Inscrição Estadual (SC)</label>
+                            <input type="text" inputMode="numeric" maxLength={9}
+                                className={`block w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${podeEditarCadastroCA ? 'bg-white text-gray-900' : 'bg-gray-50 text-gray-700 cursor-default'}`}
+                                placeholder="9 dígitos"
+                                readOnly={!podeEditarCadastroCA}
+                                value={formData.Inscricao_Estadual}
+                                onChange={(e) => podeEditarCadastroCA && setFormData({ ...formData, Inscricao_Estadual: e.target.value.replace(/\D/g, '') })}
+                            />
+                            {podeEditarCadastroCA && (
+                                <button type="button" onClick={abrirSintegra}
+                                    className="mt-1 inline-flex items-center text-xs text-blue-600 hover:text-blue-800 font-medium">
+                                    <ExternalLink className="h-3 w-3 mr-1" /> Consultar no Sintegra SC
+                                </button>
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Indicador de IE</label>
+                            <select
+                                className={`block w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${podeEditarCadastroCA ? 'bg-white text-gray-900' : 'bg-gray-50 text-gray-700 cursor-default'}`}
+                                disabled={!podeEditarCadastroCA}
+                                value={formData.Indicador_Inscricao_Estadual}
+                                onChange={(e) => setFormData({ ...formData, Indicador_Inscricao_Estadual: e.target.value })}
+                            >
+                                <option value="">— Selecionar —</option>
+                                <option value="CONTRIBUINTE">Contribuinte</option>
+                                <option value="CONTRIBUINTE_ISENTO">Contribuinte Isento</option>
+                                <option value="NAO_CONTRIBUINTE">Não Contribuinte</option>
+                            </select>
+                        </div>
+                    </div>
+                </SectionCard>
+
+                {/* ─── CARD: OBSERVAÇÕES ─── */}
+                <SectionCard icon={FileText} title="Observações Gerais">
+                    <textarea
+                        className="block w-full border border-gray-200 rounded-lg p-2.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
+                        rows="4"
+                        placeholder="Observações sobre o cliente (sincroniza com o Conta Azul)..."
+                        value={formData.Observacoes_Gerais}
+                        onChange={(e) => setFormData({ ...formData, Observacoes_Gerais: e.target.value })}
+                    />
+                </SectionCard>
+
+                {/* ─── CONTA AZUL: visível só no mobile (colapsível) ─── */}
+                <details className="xl:hidden bg-gray-50 rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <summary className="flex items-center gap-2 px-5 py-3.5 cursor-pointer select-none">
+                        <Building className="h-4 w-4 text-gray-500 shrink-0" />
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Dados da Conta Azul</span>
+                        <span className="ml-2 text-xs text-gray-400">(somente leitura)</span>
+                    </summary>
+                    <div className="px-5 pb-5 space-y-3 border-t border-gray-200">
+                        <div className="grid grid-cols-2 gap-4 pt-3 text-sm">
+                            <div><span className="text-xs text-gray-400 block">Tipo Pessoa</span><span className="text-gray-900">{cliente.Tipo_Pessoa || '-'}</span></div>
+                            <div><span className="text-xs text-gray-400 block">Código</span><span className="text-gray-900">{cliente.Codigo || '-'}</span></div>
+                            <div className="col-span-2"><span className="text-xs text-gray-400 block">Email</span><span className="text-gray-900 break-all">{cliente.Email || '-'}</span></div>
+                            <div><span className="text-xs text-gray-400 block">Telefone</span><span className="text-gray-900">{cliente.Telefone || '-'}</span></div>
+                            <div><span className="text-xs text-gray-400 block">Celular (CA)</span><span className="text-gray-900">{cliente.Telefone_Celular || '-'}</span></div>
+                            <div><span className="text-xs text-gray-400 block">Inscrição Estadual</span><span className="text-gray-900">{cliente.Inscricao_Estadual || '-'}</span></div>
+                            <div><span className="text-xs text-gray-400 block">Indicador IE</span><span className="text-gray-900">{({ CONTRIBUINTE: 'Contribuinte', CONTRIBUINTE_ISENTO: 'Isento', NAO_CONTRIBUINTE: 'Não contribuinte' })[cliente.Indicador_Inscricao_Estadual] || '-'}</span></div>
+                        </div>
+                        <div className="text-sm"><span className="text-xs text-gray-400 block">Endereço</span>
+                            <span className="text-gray-900">{[cliente.End_Logradouro, cliente.End_Numero, cliente.End_Bairro, cliente.End_Cidade, cliente.End_Estado].filter(Boolean).join(', ')}{cliente.End_CEP ? ` — ${cliente.End_CEP}` : ''}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div><span className="text-xs text-gray-400 block">Atrasos Pag.</span><span className={`font-semibold ${Number(cliente.Atrasos_Pagamentos) > 0 ? 'text-red-600' : 'text-gray-900'}`}>{cliente.Atrasos_Pagamentos || '0'}</span></div>
+                            <div><span className="text-xs text-gray-400 block">Atrasos Rec.</span><span className="text-gray-900">{cliente.Atrasos_Recebimentos || '0'}</span></div>
+                        </div>
+                        <div><span className="text-xs text-gray-400 block">UUID</span><span className="text-gray-700 font-mono text-xs break-all">{cliente.UUID}</span></div>
+                    </div>
+                </details>
+
+                </div>{/* fim flex-1 */}
+
+                {/* ─── SIDEBAR: CONTA AZUL (desktop only, sticky) ─── */}
+                <aside className="hidden xl:block w-72 shrink-0 sticky top-4 self-start space-y-3">
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50">
+                            <Building className="h-4 w-4 text-gray-500" />
+                            <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Dados da Conta Azul</span>
+                            <span className="ml-auto text-xs text-gray-400">somente leitura</span>
+                        </div>
+                        <div className="p-4 space-y-4 text-sm">
+                            {/* Tipo + Perfis */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div><span className="block text-xs text-gray-400 mb-0.5">Tipo Pessoa</span><span className="font-medium text-gray-900">{cliente.Tipo_Pessoa || '-'}</span></div>
+                                <div><span className="block text-xs text-gray-400 mb-0.5">Código</span><span className="font-medium text-gray-900">{cliente.Codigo || '-'}</span></div>
+                            </div>
+                            {/* Perfis */}
+                            {cliente.Perfis && (() => {
+                                let perfis = [];
+                                try { perfis = JSON.parse(cliente.Perfis); } catch { perfis = [cliente.Perfis]; }
+                                if (!Array.isArray(perfis) || perfis.length === 0) return null;
+                                return (
+                                    <div>
+                                        <span className="block text-xs text-gray-400 mb-1.5">Perfis</span>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {perfis.map((p, i) => <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-100">{p}</span>)}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                            <div className="border-t border-gray-100 pt-3 space-y-2">
+                                <div><span className="block text-xs text-gray-400 mb-0.5">Email</span><span className="text-gray-900 break-all">{cliente.Email || '-'}</span></div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div><span className="block text-xs text-gray-400 mb-0.5">Telefone</span><span className="text-gray-900">{cliente.Telefone || '-'}</span></div>
+                                    <div><span className="block text-xs text-gray-400 mb-0.5">Celular</span><span className="text-gray-900">{cliente.Telefone_Celular || '-'}</span></div>
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Fiscal */}
-                        <div className="border-t border-gray-200 pt-3">
-                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center"><FileText className="h-3.5 w-3.5 mr-1" /> Fiscal</h3>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                                <div><span className="text-gray-400 block text-xs">Inscrição Estadual</span><span className="text-gray-900">{cliente.Inscricao_Estadual || '-'}</span></div>
-                                <div><span className="text-gray-400 block text-xs">Indicador IE</span><span className="text-gray-900">{({ CONTRIBUINTE: 'Contribuinte', CONTRIBUINTE_ISENTO: 'Contribuinte Isento', NAO_CONTRIBUINTE: 'Não Contribuinte' })[cliente.Indicador_Inscricao_Estadual] || cliente.Indicador_Inscricao_Estadual || '-'}</span></div>
+                            <div className="border-t border-gray-100 pt-3 grid grid-cols-2 gap-3">
+                                <div><span className="block text-xs text-gray-400 mb-0.5">IE</span><span className="text-gray-900">{cliente.Inscricao_Estadual || '-'}</span></div>
+                                <div><span className="block text-xs text-gray-400 mb-0.5">Indicador IE</span><span className="text-gray-900">{({ CONTRIBUINTE: 'Contribuinte', CONTRIBUINTE_ISENTO: 'Isento', NAO_CONTRIBUINTE: 'Não contrib.' })[cliente.Indicador_Inscricao_Estadual] || '-'}</span></div>
                             </div>
-                        </div>
-
-                        {/* Endereço */}
-                        <div className="border-t border-gray-200 pt-3">
-                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center"><MapPin className="h-3.5 w-3.5 mr-1" /> Endereço</h3>
-                            <div className="text-sm text-gray-900 leading-relaxed">
-                                <p>{cliente.End_Logradouro}{cliente.End_Numero ? `, ${cliente.End_Numero}` : ''}</p>
-                                {cliente.End_Complemento && <p>{cliente.End_Complemento}</p>}
-                                {cliente.End_Bairro && <p>{cliente.End_Bairro}</p>}
-                                <p>{cliente.End_Cidade}{cliente.End_Estado ? ` - ${cliente.End_Estado}` : ''}</p>
-                                {cliente.End_CEP && <p className="text-gray-500">CEP: {cliente.End_CEP}</p>}
+                            <div className="border-t border-gray-100 pt-3">
+                                <span className="block text-xs text-gray-400 mb-1"><MapPin className="h-3 w-3 inline mr-0.5" />Endereço</span>
+                                <p className="text-gray-900 leading-relaxed">
+                                    {cliente.End_Logradouro}{cliente.End_Numero ? `, ${cliente.End_Numero}` : ''}
+                                    {cliente.End_Complemento ? <><br/>{cliente.End_Complemento}</> : ''}
+                                    {cliente.End_Bairro ? <><br/>{cliente.End_Bairro}</> : ''}
+                                    {(cliente.End_Cidade || cliente.End_Estado) ? <><br/>{cliente.End_Cidade}{cliente.End_Estado ? ` - ${cliente.End_Estado}` : ''}</> : ''}
+                                    {cliente.End_CEP ? <><br/><span className="text-gray-500">CEP: {cliente.End_CEP}</span></> : ''}
+                                </p>
                             </div>
-                        </div>
-
-                        {/* Financeiro */}
-                        <div className="border-t border-gray-200 pt-3">
-                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center"><DollarSign className="h-3.5 w-3.5 mr-1" /> Financeiro</h3>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                                <div><span className="text-gray-400 block text-xs">Atrasos Pag.</span><span className="text-gray-900">{cliente.Atrasos_Pagamentos || '0'}</span></div>
-                                <div><span className="text-gray-400 block text-xs">Atrasos Rec.</span><span className="text-gray-900">{cliente.Atrasos_Recebimentos || '0'}</span></div>
-                                <div><span className="text-gray-400 block text-xs">Pagamentos Mês</span><span className="text-gray-900">{cliente.Pagamentos_Mes_Atual || '0'}</span></div>
-                                <div><span className="text-gray-400 block text-xs">Recebimentos Mês</span><span className="text-gray-900">{cliente.Recebimentos_Mes_Atual || '0'}</span></div>
+                            <div className="border-t border-gray-100 pt-3">
+                                <span className="block text-xs text-gray-400 mb-2"><DollarSign className="h-3 w-3 inline mr-0.5" />Financeiro</span>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className={`p-2 rounded-lg ${Number(cliente.Atrasos_Pagamentos) > 0 ? 'bg-red-50 border border-red-100' : 'bg-gray-50'}`}>
+                                        <span className="block text-xs text-gray-400">Atrasos Pag.</span>
+                                        <span className={`font-semibold ${Number(cliente.Atrasos_Pagamentos) > 0 ? 'text-red-600' : 'text-gray-900'}`}>{cliente.Atrasos_Pagamentos || '0'}</span>
+                                        {Number(cliente.Atrasos_Pagamentos) > 0 && <AlertTriangle className="h-3 w-3 text-red-500 inline ml-1" />}
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-gray-50">
+                                        <span className="block text-xs text-gray-400">Pag. Mês</span>
+                                        <span className="font-semibold text-gray-900">{cliente.Pagamentos_Mes_Atual || '0'}</span>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-gray-50">
+                                        <span className="block text-xs text-gray-400">Atrasos Rec.</span>
+                                        <span className="font-semibold text-gray-900">{cliente.Atrasos_Recebimentos || '0'}</span>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-gray-50">
+                                        <span className="block text-xs text-gray-400">Rec. Mês</span>
+                                        <span className="font-semibold text-gray-900">{cliente.Recebimentos_Mes_Atual || '0'}</span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-
-                        {/* Auditoria */}
-                        <div className="border-t border-gray-200 pt-3">
-                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center"><Calendar className="h-3.5 w-3.5 mr-1" /> Auditoria</h3>
-                            <div className="grid grid-cols-2 gap-x-4 text-sm">
-                                <div><span className="text-gray-400 block text-xs">Criação</span><span className="text-gray-900">{cliente.Data_Criacao ? new Date(cliente.Data_Criacao).toLocaleDateString('pt-BR') : '-'}</span></div>
-                                <div><span className="text-gray-400 block text-xs">Alteração</span><span className="text-gray-900">{cliente.Data_Alteracao ? new Date(cliente.Data_Alteracao).toLocaleDateString('pt-BR') : '-'}</span></div>
+                            <div className="border-t border-gray-100 pt-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div><span className="block text-xs text-gray-400 mb-0.5">Criação</span><span className="text-gray-900">{cliente.Data_Criacao ? new Date(cliente.Data_Criacao).toLocaleDateString('pt-BR') : '-'}</span></div>
+                                    <div><span className="block text-xs text-gray-400 mb-0.5">Alteração</span><span className="text-gray-900">{cliente.Data_Alteracao ? new Date(cliente.Data_Alteracao).toLocaleDateString('pt-BR') : '-'}</span></div>
+                                </div>
+                                <div className="mt-2"><span className="block text-xs text-gray-400 mb-0.5">UUID</span><span className="text-gray-500 font-mono text-xs break-all">{cliente.UUID}</span></div>
                             </div>
                         </div>
                     </div>
                 </aside>
+
+                {/* ─── BARRA DE AÇÕES (sticky rodapé) ─── */}
+                <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg px-4 py-3 flex justify-end gap-3 xl:hidden">
+                    <button onClick={handleCancel} className="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2">
+                        <X className="h-4 w-4" /> Descartar
+                    </button>
+                    <button onClick={handleSave} className="px-6 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm">
+                        <Save className="h-4 w-4" /> Salvar Alterações
+                    </button>
+                </div>
+                <div className="hidden xl:flex fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg px-6 py-3 justify-end gap-3">
+                    <button onClick={handleCancel} className="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2">
+                        <X className="h-4 w-4" /> Descartar
+                    </button>
+                    <button onClick={handleSave} className="px-8 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm">
+                        <Save className="h-4 w-4" /> Salvar Alterações
+                    </button>
+                </div>
+
               </div>
             )}
 
