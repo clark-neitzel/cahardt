@@ -283,7 +283,7 @@ const DetalheCliente = () => {
     if (!cliente) return <div className="p-8 text-center text-gray-600">Cliente não encontrado.</div>;
 
     return (
-        <div className="container mx-auto px-4 py-4 max-w-6xl">
+        <div className="container mx-auto px-3 sm:px-4 py-4 max-w-screen-2xl">
             <button
                 onClick={() => navigate('/clientes')}
                 className="mb-4 flex items-center text-gray-600 hover:text-gray-900"
@@ -322,13 +322,7 @@ const DetalheCliente = () => {
                     onClick={() => setAbaAtiva('operacional')}
                     className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'operacional' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
                 >
-                    ✏️ Operacional
-                </button>
-                <button
-                    onClick={() => setAbaAtiva('ca')}
-                    className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${abaAtiva === 'ca' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
-                >
-                    📋 Conta Azul
+                    ✏️ Cadastro
                 </button>
                 <button
                     onClick={() => setAbaAtiva('admin')}
@@ -779,12 +773,14 @@ const DetalheCliente = () => {
 
             {/* ============================= ABA: OPERACIONAL ============================= */}
             {abaAtiva === 'operacional' && (
-                <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 pb-8 items-start">
+                {/* ===================== COLUNA EDITÁVEL ===================== */}
+                <div className="xl:col-span-8 bg-white rounded-xl p-5 sm:p-6 border border-gray-200 shadow-sm">
                     <h2 className="text-lg font-semibold text-primary mb-5 flex items-center">
                         <FileText className="h-5 w-5 mr-2" />
-                        ✏️ Dados Operacionais (Editáveis)
+                        ✏️ Dados do Cliente (Editáveis)
                     </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5">
                         {/* Coluna 1 */}
                         <div className="space-y-5">
                             {/* Vendedor Responsável */}
@@ -852,23 +848,22 @@ const DetalheCliente = () => {
                                 )}
                             </div>
 
+                            {/* Dia de Visita/Venda */}
+                            <DayPicker
+                                label="Dia de Visita/Venda"
+                                selected={formData.Dia_de_venda}
+                                onChange={(val) => setFormData({ ...formData, Dia_de_venda: val })}
+                            />
+
+                            {/* Dia de Entrega */}
+                            <DayPicker
+                                label="Dia de Entrega"
+                                selected={formData.Dia_de_entrega}
+                                onChange={(val) => setFormData({ ...formData, Dia_de_entrega: val })}
+                            />
                         </div>
                         {/* Coluna 2 */}
                         <div className="space-y-4">
-
-                            {/* Dia de Visita/Venda - primeiro */}
-                            <DayPicker
-                            label="Dia de Visita/Venda"
-                            selected={formData.Dia_de_venda}
-                            onChange={(val) => setFormData({ ...formData, Dia_de_venda: val })}
-                        />
-
-                        {/* Dia de Entrega - depois */}
-                        <DayPicker
-                            label="Dia de Entrega"
-                            selected={formData.Dia_de_entrega}
-                            onChange={(val) => setFormData({ ...formData, Dia_de_entrega: val })}
-                        />
 
                             {/* Canais de Atendimento */}
                             <div>
@@ -1165,68 +1160,81 @@ const DetalheCliente = () => {
                         </div>
                     </div>
                 </div>
-            )}
 
-            {/* ============================= ABA: CONTA AZUL ============================= */}
-            {abaAtiva === 'ca' && (
-                <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-700 mb-5 flex items-center">
-                        <Building className="h-5 w-5 mr-2 text-gray-600" />
-                        📋 Dados do Conta Azul (Somente Leitura)
-                    </h2>
-                    <div className="space-y-4">
-                        <div className="border-b border-gray-200 pb-3">
-                            <h3 className="text-sm font-semibold text-gray-600 mb-2">Identificação</h3>
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div><span className="text-gray-500">UUID:</span><p className="text-gray-900 font-mono text-xs">{cliente.UUID}</p></div>
-                                <div><span className="text-gray-500">Código:</span><p className="text-gray-900">{cliente.Codigo || '-'}</p></div>
-                                <div><span className="text-gray-500">Tipo Pessoa:</span><p className="text-gray-900">{cliente.Tipo_Pessoa || '-'}</p></div>
-                                <div><span className="text-gray-500">Perfis:</span><p className="text-gray-900">{cliente.Perfis || '-'}</p></div>
+                {/* ===================== SIDEBAR: CONTA AZUL (somente leitura) ===================== */}
+                <aside className="xl:col-span-4 xl:sticky xl:top-4">
+                    <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 shadow-sm space-y-4">
+                        <h2 className="text-base font-semibold text-gray-700 flex items-center">
+                            <Building className="h-5 w-5 mr-2 text-gray-500" />
+                            📋 Conta Azul <span className="ml-2 text-xs font-normal text-gray-400">(somente leitura)</span>
+                        </h2>
+
+                        {/* Identificação */}
+                        <div className="border-t border-gray-200 pt-3">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Identificação</h3>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                <div><span className="text-gray-400 block text-xs">Código</span><span className="text-gray-900">{cliente.Codigo || '-'}</span></div>
+                                <div><span className="text-gray-400 block text-xs">Tipo Pessoa</span><span className="text-gray-900">{cliente.Tipo_Pessoa || '-'}</span></div>
+                                <div className="col-span-2"><span className="text-gray-400 block text-xs">Perfis</span><span className="text-gray-900">{cliente.Perfis || '-'}</span></div>
+                                <div className="col-span-2"><span className="text-gray-400 block text-xs">UUID</span><span className="text-gray-900 font-mono text-xs break-all">{cliente.UUID}</span></div>
                             </div>
                         </div>
-                        <div className="border-b border-gray-200 pb-3">
-                            <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center"><Phone className="h-4 w-4 mr-1" /> Contato</h3>
+
+                        {/* Contato */}
+                        <div className="border-t border-gray-200 pt-3">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center"><Phone className="h-3.5 w-3.5 mr-1" /> Contato</h3>
                             <div className="space-y-2 text-sm">
-                                <div><span className="text-gray-500">Email:</span><p className="text-gray-900">{cliente.Email || '-'}</p></div>
-                                <div><span className="text-gray-500">Telefone:</span><p className="text-gray-900">{cliente.Telefone || '-'}</p></div>
-                                <div><span className="text-gray-500">Celular:</span><p className="text-gray-900">{cliente.Telefone_Celular || '-'}</p></div>
+                                <div><span className="text-gray-400 block text-xs">Email</span><span className="text-gray-900 break-all">{cliente.Email || '-'}</span></div>
+                                <div className="grid grid-cols-2 gap-x-4">
+                                    <div><span className="text-gray-400 block text-xs">Telefone</span><span className="text-gray-900">{cliente.Telefone || '-'}</span></div>
+                                    <div><span className="text-gray-400 block text-xs">Celular</span><span className="text-gray-900">{cliente.Telefone_Celular || '-'}</span></div>
+                                </div>
                             </div>
                         </div>
-                        <div className="border-b border-gray-200 pb-3">
-                            <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center"><FileText className="h-4 w-4 mr-1" /> Fiscal</h3>
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div><span className="text-gray-500">Inscrição Estadual:</span><p className="text-gray-900">{cliente.Inscricao_Estadual || '-'}</p></div>
-                                <div><span className="text-gray-500">Indicador IE:</span><p className="text-gray-900">{({ CONTRIBUINTE: 'Contribuinte', CONTRIBUINTE_ISENTO: 'Contribuinte Isento', NAO_CONTRIBUINTE: 'Não Contribuinte' })[cliente.Indicador_Inscricao_Estadual] || cliente.Indicador_Inscricao_Estadual || '-'}</p></div>
+
+                        {/* Fiscal */}
+                        <div className="border-t border-gray-200 pt-3">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center"><FileText className="h-3.5 w-3.5 mr-1" /> Fiscal</h3>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                <div><span className="text-gray-400 block text-xs">Inscrição Estadual</span><span className="text-gray-900">{cliente.Inscricao_Estadual || '-'}</span></div>
+                                <div><span className="text-gray-400 block text-xs">Indicador IE</span><span className="text-gray-900">{({ CONTRIBUINTE: 'Contribuinte', CONTRIBUINTE_ISENTO: 'Contribuinte Isento', NAO_CONTRIBUINTE: 'Não Contribuinte' })[cliente.Indicador_Inscricao_Estadual] || cliente.Indicador_Inscricao_Estadual || '-'}</span></div>
                             </div>
                         </div>
-                        <div className="border-b border-gray-200 pb-3">
-                            <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center"><MapPin className="h-4 w-4 mr-1" /> Endereço</h3>
-                            <div className="text-sm text-gray-900">
-                                <p>{cliente.End_Logradouro}, {cliente.End_Numero}</p>
+
+                        {/* Endereço */}
+                        <div className="border-t border-gray-200 pt-3">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center"><MapPin className="h-3.5 w-3.5 mr-1" /> Endereço</h3>
+                            <div className="text-sm text-gray-900 leading-relaxed">
+                                <p>{cliente.End_Logradouro}{cliente.End_Numero ? `, ${cliente.End_Numero}` : ''}</p>
                                 {cliente.End_Complemento && <p>{cliente.End_Complemento}</p>}
-                                <p>{cliente.End_Bairro}</p>
-                                <p>{cliente.End_Cidade} - {cliente.End_Estado}</p>
-                                <p>CEP: {cliente.End_CEP}</p>
+                                {cliente.End_Bairro && <p>{cliente.End_Bairro}</p>}
+                                <p>{cliente.End_Cidade}{cliente.End_Estado ? ` - ${cliente.End_Estado}` : ''}</p>
+                                {cliente.End_CEP && <p className="text-gray-500">CEP: {cliente.End_CEP}</p>}
                             </div>
                         </div>
-                        <div className="border-b border-gray-200 pb-3">
-                            <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center"><DollarSign className="h-4 w-4 mr-1" /> Financeiro</h3>
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div><span className="text-gray-500">Atrasos Pag.:</span><p className="text-gray-900">{cliente.Atrasos_Pagamentos || '0'}</p></div>
-                                <div><span className="text-gray-500">Atrasos Rec.:</span><p className="text-gray-900">{cliente.Atrasos_Recebimentos || '0'}</p></div>
-                                <div><span className="text-gray-500">Pagamentos Mês:</span><p className="text-gray-900">{cliente.Pagamentos_Mes_Atual || '0'}</p></div>
-                                <div><span className="text-gray-500">Recebimentos Mês:</span><p className="text-gray-900">{cliente.Recebimentos_Mes_Atual || '0'}</p></div>
+
+                        {/* Financeiro */}
+                        <div className="border-t border-gray-200 pt-3">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center"><DollarSign className="h-3.5 w-3.5 mr-1" /> Financeiro</h3>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                <div><span className="text-gray-400 block text-xs">Atrasos Pag.</span><span className="text-gray-900">{cliente.Atrasos_Pagamentos || '0'}</span></div>
+                                <div><span className="text-gray-400 block text-xs">Atrasos Rec.</span><span className="text-gray-900">{cliente.Atrasos_Recebimentos || '0'}</span></div>
+                                <div><span className="text-gray-400 block text-xs">Pagamentos Mês</span><span className="text-gray-900">{cliente.Pagamentos_Mes_Atual || '0'}</span></div>
+                                <div><span className="text-gray-400 block text-xs">Recebimentos Mês</span><span className="text-gray-900">{cliente.Recebimentos_Mes_Atual || '0'}</span></div>
                             </div>
                         </div>
-                        <div>
-                            <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center"><Calendar className="h-4 w-4 mr-1" /> Auditoria</h3>
-                            <div className="space-y-1 text-sm">
-                                <div><span className="text-gray-500">Criação:</span><p className="text-gray-900">{cliente.Data_Criacao ? new Date(cliente.Data_Criacao).toLocaleDateString('pt-BR') : '-'}</p></div>
-                                <div><span className="text-gray-500">Alteração:</span><p className="text-gray-900">{cliente.Data_Alteracao ? new Date(cliente.Data_Alteracao).toLocaleDateString('pt-BR') : '-'}</p></div>
+
+                        {/* Auditoria */}
+                        <div className="border-t border-gray-200 pt-3">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center"><Calendar className="h-3.5 w-3.5 mr-1" /> Auditoria</h3>
+                            <div className="grid grid-cols-2 gap-x-4 text-sm">
+                                <div><span className="text-gray-400 block text-xs">Criação</span><span className="text-gray-900">{cliente.Data_Criacao ? new Date(cliente.Data_Criacao).toLocaleDateString('pt-BR') : '-'}</span></div>
+                                <div><span className="text-gray-400 block text-xs">Alteração</span><span className="text-gray-900">{cliente.Data_Alteracao ? new Date(cliente.Data_Alteracao).toLocaleDateString('pt-BR') : '-'}</span></div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </aside>
+              </div>
             )}
 
             {/* ============================= ABA: ADMIN ============================= */}
