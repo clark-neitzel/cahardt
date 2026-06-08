@@ -73,6 +73,7 @@ import DiarioGateway from './components/Diario/DiarioGateway';
 import DiarioCheckout from './components/Diario/DiarioCheckout';
 import PendenciaRotaGateway from './components/PendenciaRotaGateway';
 import AlertaFaturamento from './components/AlertaFaturamento';
+import Clippy from './components/Clippy/Clippy';
 import { useVersionCheck } from './hooks/useVersionCheck';
 
 const PrivateRoute = ({ children, tab }) => {
@@ -453,6 +454,9 @@ const Layout = ({ children }) => {
 
         {/* ALERTA DE PEDIDOS PENDENTES DE FATURAMENTO (popup a cada 10 min) */}
         <AlertaFaturamento />
+
+        {/* COPILOTO (CLIPPY) — assistente de negócio com IA, só desktop */}
+        <Clippy />
 
         <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 overflow-x-clip">
           {children}

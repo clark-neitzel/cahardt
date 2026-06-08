@@ -50,6 +50,7 @@ const iaLogsRoutes = require('./routes/iaLogs'); // Logs de Análise IA
 const mensagemAgendadaRoutes = require('./routes/mensagemAgendadaRoutes'); // Mensagens Agendadas
 const curriculoRoutes = require('./routes/curriculos'); // Módulo RH: Currículos (público)
 const rhRoutes = require('./routes/rh'); // Módulo RH: Painel interno
+const copilotoRoutes = require('./routes/copiloto'); // Copiloto (Clippy): assistente de negócio com IA
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -120,6 +121,7 @@ app.use('/api/mensagens-agendadas', authMiddleware, mensagemAgendadaRoutes); // 
 app.use('/api/migrations', authMiddleware, migrationRoutes); // Migration endpoint (protegido)
 app.use('/api/curriculos', curriculoRoutes); // RH: Submissão pública de currículos
 app.use('/api/rh', authMiddleware, rhRoutes); // RH: Painel interno (protegido)
+app.use('/api/copiloto', authMiddleware, copilotoRoutes); // Copiloto (Clippy): assistente de negócio com IA
 
 // Rota base
 app.get('/', (req, res) => {
