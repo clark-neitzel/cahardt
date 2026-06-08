@@ -88,3 +88,14 @@ Campos do backend podem chegar `null` ou `undefined`. Interpolar diretamente pro
 ## PWA / Atualização
 
 O app é PWA. Sempre que fizer deploy de mudanças visíveis, incluir o ícone de refresh na UI e o hook `useVersionCheck` para que o usuário seja notificado automaticamente.
+
+---
+
+## Manual das Abas — manter em dia
+
+Cada aba do app tem um manual em `docs/abas/<slug>.md` (índice em `docs/abas/README.md`): o que a aba é, como funciona, o fluxo real de uso e o que ela afeta.
+
+**Sempre que alterar uma aba** (tela, fluxo, permissão ou regra), atualize o manual daquela aba na MESMA tarefa:
+- Faça uma análise completa da aba alterada e edite o que mudou.
+- NÃO remova itens importantes que continuam válidos.
+- Baseie-se no comportamento REAL do código, não no nome das rotas.
