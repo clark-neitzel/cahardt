@@ -184,7 +184,20 @@ const ContasReceberTabela = () => {
             });
             // Filtro client-side extra para statusParcela/forma (quando some: combina em AND)
             let filtered = flat;
-            if (filtros.statusParcela.length) filtered = filtered.filter(l => filtros.statusParcela.includes(l.statusParcela));
+            if (filtros.statusParcela.length) {
+                filtered = filtered.filter(l => filtros.statusParcela.includes(l.statusParcela));
+            } else {
+                // Visão padrão de "Contas a Receber": mostra apenas o que falta receber.
+                // Parcelas já pagas/canceladas somem — exceto quando algum filtro mira justamente
+                // as pagas (Status Conta QUITADO/CANCELADO, data de pagamento ou forma da baixa).
+                const querPagas = filtros.status.includes('QUITADO')
+                    || filtros.status.includes('CANCELADO')
+                    || !!filtros.pagDe || !!filtros.pagAte
+                    || filtros.formaPagamento.length > 0;
+                if (!querPagas) {
+                    filtered = filtered.filter(l => l.statusParcela === 'PENDENTE' || l.statusParcela === 'VENCIDO');
+                }
+            }
             if (filtros.formaPagamento.length) filtered = filtered.filter(l => filtros.formaPagamento.includes(l.formaPagamento || ''));
             setLinhas(filtered);
             setIndicadores(data.indicadores || {});
