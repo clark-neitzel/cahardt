@@ -1,95 +1,106 @@
 /**
  * Clippy — assistente de AJUDA do sistema.
  *
- * Função única: dizer ao usuário ONDE e COMO fazer cada tarefa no app.
- * NÃO acessa dados de negócio (vendas, valores, clientes). Ele conhece apenas
- * o MAPA DAS TELAS e responde "onde eu faço X?" / "como faço Y?".
+ * Função: dizer ao usuário ONDE e COMO fazer cada tarefa no app, com base nos
+ * MANUAIS DAS ABAS (um arquivo por aba em `backend/manuais/abas/`, fonte da verdade).
+ * NÃO acessa dados de negócio (vendas, valores, clientes).
  *
- * Filtra o mapa pelas permissões do usuário, então só sugere telas que ele
- * realmente pode acessar. Devolve { resposta, atalhos:[{label, rota}] }.
+ * Eficiência de tokens: o prompt leva um ÍNDICE curto de todas as abas que o
+ * usuário pode acessar + o conteúdo completo apenas das abas mais relevantes à
+ * pergunta (selecionadas por palavras-chave). Filtra tudo por permissão.
+ *
+ * Rotas dos botões "Ir para" vêm da tabela ABAS (rotas REAIS validadas no App.jsx),
+ * não do cabeçalho dos manuais (que pode divergir).
  *
  * Provider de IA abstraído em aiProvider.js (OpenAI padrão, Gemini plugável).
  */
 
+const fs = require('fs');
+const path = require('path');
 const ai = require('./aiProvider');
 
 // ─────────────────────────────────────────────
-// Mapa das telas do app (fonte do menu em App.jsx).
-// perm = chave de permissão exigida (null = todos). Mantido em sincronia com o Sidebar.
+// Tabela de abas: slug (= nome do manual), nome exibido, ROTA REAL e permissão.
+// Mantida em sincronia com o menu (Sidebar) em frontend/src/App.jsx.
 // ─────────────────────────────────────────────
-const APP_MAP = [
-    { titulo: 'Dashboard', rota: '/', caminho: 'Início', perm: null,
-      descricao: 'Tela inicial com a visão geral do dia.' },
-
-    // Vendas
-    { titulo: 'Catálogo', rota: '/catalogo', caminho: 'Vendas › Catálogo', perm: 'catalogo',
-      descricao: 'Consultar produtos, fotos e preços.' },
-    { titulo: 'Pedidos', rota: '/pedidos', caminho: 'Vendas › Pedidos', perm: 'pedidos',
-      descricao: 'Ver, editar e acompanhar pedidos.' },
-    { titulo: 'Novo Pedido', rota: '/pedidos/novo', caminho: 'Vendas › Pedidos › Novo Pedido', perm: 'pedidos',
-      descricao: 'Lançar um novo pedido para um cliente (botão "Novo Pedido" na tela de Pedidos).' },
-    { titulo: 'Relatório de Pedidos', rota: '/relatorios/pedidos', caminho: 'Vendas › Rel. Pedidos', perm: 'pedidos',
-      descricao: 'Listagem detalhada e filtros de pedidos.' },
-    { titulo: 'Relatório de Vendas', rota: '/relatorios/vendas', caminho: 'Vendas › Rel. Vendas', perm: 'relatorioVendas',
-      descricao: 'Relatório de vendas e faturamento por período.' },
-    { titulo: 'Delivery', rota: '/delivery', caminho: 'Vendas › Delivery', perm: 'delivery',
-      descricao: 'Kanban de pedidos de delivery (Kit Festa).' },
-    { titulo: 'Rota', rota: '/rota', caminho: 'Vendas › Rota', perm: 'pedidos',
-      descricao: 'Roteiro de visitas e clientes no mapa.' },
-    { titulo: 'Leads', rota: '/leads', caminho: 'Vendas › Leads', perm: 'rota',
-      descricao: 'Cadastrar e acompanhar leads (clientes potenciais).' },
-    { titulo: 'Atendimentos', rota: '/atendimentos', caminho: 'Vendas › Atendimentos', perm: 'Pode_Ver_Atendimentos',
-      descricao: 'Registrar e consultar atendimentos comerciais a clientes.' },
-    { titulo: 'Análise IA', rota: '/analise-ia', caminho: 'Vendas › Análise IA', perm: 'Pode_Ver_Analise_IA',
-      descricao: 'Análises e orientações comerciais geradas por IA.' },
-    { titulo: 'Clientes', rota: '/clientes', caminho: 'Vendas › Clientes', perm: 'clientes',
-      descricao: 'Cadastro de clientes, ficha, histórico e referências.' },
-
-    // Logística
-    { titulo: 'Embarque', rota: '/admin/embarques', caminho: 'Logística › Embarque', perm: 'Pode_Acessar_Embarque',
-      descricao: 'Montar cargas e despachar entregas.' },
-    { titulo: 'Entregas', rota: '/entregas', caminho: 'Logística › Entregas', perm: 'Pode_Ver_Todas_Entregas',
-      descricao: 'Acompanhar todas as entregas (visão gerencial).' },
-
-    // Financeiro
-    { titulo: 'Caixa', rota: '/caixa', caminho: 'Financeiro › Caixa', perm: 'Pode_Acessar_Caixa',
-      descricao: 'Caixa diário: conferência de entregas e pagamentos recebidos.' },
-    { titulo: 'Despesas', rota: '/despesas', caminho: 'Financeiro › Despesas', perm: 'Pode_Acessar_Caixa',
-      descricao: 'Lançar e consultar despesas (botão "Nova Despesa").' },
-    { titulo: 'Auditoria de Entregas', rota: '/admin/auditoria-entregas', caminho: 'Financeiro › Auditoria', perm: 'Pode_Ver_Todas_Entregas',
-      descricao: 'Auditar entregas e divergências de pagamento.' },
-    { titulo: 'Contas a Receber', rota: '/financeiro/contas-receber/tabela', caminho: 'Financeiro › Contas a Receber', perm: 'Pode_Acessar_Contas_Receber',
-      descricao: 'Ver o que cada cliente deve, parcelas, vencidos e dar baixa.' },
-
-    // Admin
-    { titulo: 'Produtos (cadastro)', rota: '/admin/produtos', caminho: 'Admin › Produtos', perm: 'produtos',
-      descricao: 'Cadastrar e editar produtos.' },
-    { titulo: 'Vendedores', rota: '/admin/vendedores', caminho: 'Admin › Vendedores', perm: 'vendedores',
-      descricao: 'Cadastrar usuários/vendedores e definir permissões.' },
-    { titulo: 'Mensagens Agendadas', rota: '/admin/mensagens', caminho: 'Admin › Mensagens', perm: 'admin',
-      descricao: 'Programar mensagens automáticas.' },
-    { titulo: 'Veículos', rota: '/admin/veiculos', caminho: 'Admin › Veículos', perm: 'Pode_Acessar_Veiculos',
-      descricao: 'Cadastro e manutenção da frota.' },
-    { titulo: 'Sincronizar', rota: '/admin/sync', caminho: 'Admin › Sincronizar', perm: 'sync',
-      descricao: 'Sincronizar dados com o Conta Azul.' },
-
-    // RH
-    { titulo: 'Currículos', rota: '/rh/curriculos', caminho: 'RH › Currículos', perm: 'Pode_Ver_RH',
-      descricao: 'Consultar currículos recebidos.' },
-
-    // PCP / Produção / Estoque
-    { titulo: 'PCP (Produção)', rota: '/pcp/painel', caminho: 'PCP', perm: 'pcp',
-      descricao: 'Planejamento e controle de produção: itens, receitas, ordens, agenda e sugestões.' },
-    { titulo: 'Estoque', rota: '/estoque/posicao', caminho: 'Produção › Estoque', perm: 'estoque',
-      descricao: 'Posição, ajuste e histórico de estoque.' },
-
-    // Configurações
-    { titulo: 'Configurações', rota: '/admin/config', caminho: 'Configurações', perm: 'configuracoes',
-      descricao: 'Configurações gerais, preços, bancos, metas e categorias.' },
+const ABAS = [
+    { slug: 'dashboard', nome: 'Dashboard', rota: '/', perm: null },
+    { slug: 'catalogo', nome: 'Catálogo', rota: '/catalogo', perm: 'catalogo' },
+    { slug: 'rota', nome: 'Rota', rota: '/rota', perm: 'pedidos' },
+    { slug: 'leads', nome: 'Leads', rota: '/leads', perm: 'rota' },
+    { slug: 'pedidos', nome: 'Pedidos', rota: '/pedidos', perm: 'pedidos' },
+    { slug: 'atendimentos', nome: 'Atendimentos', rota: '/atendimentos', perm: 'Pode_Ver_Atendimentos' },
+    { slug: 'analise-ia', nome: 'Análise IA', rota: '/analise-ia', perm: 'Pode_Ver_Analise_IA' },
+    { slug: 'clientes', nome: 'Clientes', rota: '/clientes', perm: 'clientes' },
+    { slug: 'rel-pedidos', nome: 'Relatório de Pedidos', rota: '/relatorios/pedidos', perm: 'pedidos' },
+    { slug: 'rel-vendas', nome: 'Relatório de Vendas', rota: '/relatorios/vendas', perm: 'relatorioVendas' },
+    { slug: 'delivery', nome: 'Delivery', rota: '/delivery', perm: 'delivery' },
+    { slug: 'embarque', nome: 'Embarque', rota: '/admin/embarques', perm: 'Pode_Acessar_Embarque' },
+    { slug: 'entregas', nome: 'Entregas', rota: '/entregas', perm: 'Pode_Ver_Todas_Entregas' },
+    { slug: 'auditoria-entregas', nome: 'Auditoria de Entregas', rota: '/admin/auditoria-entregas', perm: 'Pode_Ver_Todas_Entregas' },
+    { slug: 'caixa', nome: 'Caixa', rota: '/caixa', perm: 'Pode_Acessar_Caixa' },
+    { slug: 'despesas', nome: 'Despesas', rota: '/despesas', perm: 'Pode_Acessar_Caixa' },
+    { slug: 'contas-receber', nome: 'Contas a Receber', rota: '/financeiro/contas-receber/tabela', perm: 'Pode_Acessar_Contas_Receber' },
+    { slug: 'produtos', nome: 'Produtos', rota: '/admin/produtos', perm: 'produtos' },
+    { slug: 'vendedores', nome: 'Vendedores', rota: '/admin/vendedores', perm: 'vendedores' },
+    { slug: 'mensagens-agendadas', nome: 'Mensagens Agendadas', rota: '/admin/mensagens', perm: 'admin' },
+    { slug: 'veiculos', nome: 'Veículos', rota: '/admin/veiculos', perm: 'Pode_Acessar_Veiculos' },
+    { slug: 'sincronizar', nome: 'Sincronizar', rota: '/admin/sync', perm: 'sync' },
+    { slug: 'curriculos', nome: 'Currículos', rota: '/rh/curriculos', perm: 'Pode_Ver_RH' },
+    { slug: 'pcp-itens', nome: 'PCP — Itens', rota: '/pcp/itens', perm: 'pcp' },
+    { slug: 'pcp-receitas', nome: 'PCP — Receitas', rota: '/pcp/receitas', perm: 'pcp' },
+    { slug: 'pcp-ordens', nome: 'PCP — Ordens', rota: '/pcp/ordens', perm: 'pcp' },
+    { slug: 'pcp-painel', nome: 'PCP — Painel', rota: '/pcp/painel', perm: 'pcp' },
+    { slug: 'pcp-calendario', nome: 'PCP — Calendário', rota: '/pcp/calendario', perm: 'pcp' },
+    { slug: 'pcp-estoque', nome: 'PCP — Estoque', rota: '/pcp/estoque', perm: 'pcp' },
+    { slug: 'pcp-sugestoes', nome: 'PCP — Sugestões', rota: '/pcp/sugestoes', perm: 'pcp' },
+    { slug: 'pcp-dashboard', nome: 'PCP — Dashboard', rota: '/pcp/dashboard', perm: 'pcp' },
+    { slug: 'estoque-posicao', nome: 'Estoque — Posição', rota: '/estoque/posicao', perm: 'estoque' },
+    { slug: 'estoque-ajuste', nome: 'Estoque — Ajuste', rota: '/estoque', perm: 'estoque' },
+    { slug: 'estoque-historico', nome: 'Estoque — Histórico', rota: '/estoque/historico', perm: 'estoque' },
+    { slug: 'config-gerais', nome: 'Configurações — Gerais', rota: '/admin/config', perm: 'configuracoes' },
+    { slug: 'config-precos', nome: 'Configurações — Preços', rota: '/config/tabela-precos', perm: 'configuracoes' },
+    { slug: 'config-bancos', nome: 'Configurações — Bancos', rota: '/config/contas-financeiras', perm: 'configuracoes' },
+    { slug: 'config-metas', nome: 'Configurações — Metas', rota: '/config/metas', perm: 'configuracoes' },
+    { slug: 'config-categorias-produto', nome: 'Configurações — Cat. Produtos', rota: '/config/categorias-produto', perm: 'configuracoes' },
+    { slug: 'config-categorias-cliente', nome: 'Configurações — Cat. Clientes', rota: '/config/categorias-cliente', perm: 'configuracoes' },
+    { slug: 'config-categorias-estoque', nome: 'Configurações — Cat. Estoque', rota: '/config/categorias-estoque', perm: 'configuracoes' },
 ];
 
-// Mesma semântica do hasPermission do frontend: admin libera tudo;
-// boolean → valor; array (ex.: estoque) → tem itens; objeto (ex.: pcp) → algum true.
+// ─────────────────────────────────────────────
+// Carrega os manuais (uma vez, na inicialização). Em produção os arquivos vêm
+// junto no deploy do backend, então editar um manual + publicar = Clippy atualizado.
+// ─────────────────────────────────────────────
+const MANUAIS_DIR = path.join(__dirname, '..', 'manuais', 'abas');
+
+function carregarManuais() {
+    const map = {};
+    try {
+        for (const f of fs.readdirSync(MANUAIS_DIR)) {
+            if (!f.endsWith('.md') || f.toLowerCase() === 'readme.md') continue;
+            const slug = f.replace(/\.md$/, '');
+            const raw = fs.readFileSync(path.join(MANUAIS_DIR, f), 'utf8');
+            let corpo = raw;
+            const fm = raw.match(/^---\n[\s\S]*?\n---\n?/); // remove frontmatter
+            if (fm) corpo = raw.slice(fm[0].length);
+            corpo = corpo.trim();
+            let resumo = '';
+            const m = corpo.match(/##\s*O que é\s*\n+([^\n]+)/i);
+            if (m) resumo = m[1].replace(/[*_>#`]/g, '').trim();
+            map[slug] = { resumo, corpo };
+        }
+    } catch (e) {
+        console.error('[copiloto] Falha ao carregar manuais:', e.message);
+    }
+    return map;
+}
+
+const MANUAIS = carregarManuais();
+console.log(`[copiloto] ${Object.keys(MANUAIS).length} manuais de abas carregados.`);
+
+// ─────────────────────────────────────────────
+// Permissão (mesma semântica do hasPermission do frontend)
+// ─────────────────────────────────────────────
 function podeAcessar(perms, key) {
     if (!perms) return false;
     if (perms.admin) return true;
@@ -101,21 +112,48 @@ function podeAcessar(perms, key) {
     return false;
 }
 
+// ─────────────────────────────────────────────
+// Seleção por relevância (palavras-chave) — para gastar poucos tokens
+// ─────────────────────────────────────────────
+const STOPWORDS = new Set([
+    'como', 'onde', 'qual', 'quais', 'para', 'pra', 'uma', 'com', 'que', 'dos', 'das',
+    'fazer', 'quero', 'posso', 'faco', 'tem', 'sobre', 'meu', 'minha', 'isso', 'aqui',
+    'app', 'sistema', 'aba', 'tela', 'consigo', 'consegue', 'preciso', 'sei', 'fica',
+]);
+function normalizar(s) {
+    return (s || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+}
+function tokenizar(s) {
+    return normalizar(s).split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !STOPWORDS.has(w));
+}
+
+function selecionarRelevantes(pergunta, abasAcessiveis, n = 3) {
+    const qt = [...new Set(tokenizar(pergunta))];
+    if (!qt.length) return [];
+    const scored = abasAcessiveis.map((a) => {
+        const man = MANUAIS[a.slug] || {};
+        const titulo = new Set(tokenizar(`${a.nome} ${man.resumo || ''}`));
+        const corpoNorm = normalizar(man.corpo || '');
+        let score = 0;
+        for (const t of qt) {
+            if (titulo.has(t)) score += 2;
+            else if (corpoNorm.includes(t)) score += 1;
+        }
+        return { a, score };
+    });
+    return scored.filter((x) => x.score > 0).sort((x, y) => y.score - x.score).slice(0, n).map((x) => x.a);
+}
+
 const PERSONA = `Você é o "Clippy", o assistente de ajuda do app de gestão da Hardt Salgados.
-Sua ÚNICA função é dizer ao usuário ONDE e COMO realizar tarefas no sistema (em qual tela/menu).
+Sua função é ensinar o usuário a usar o sistema: ONDE fica cada coisa e COMO fazer cada tarefa, com base nos manuais das telas.
 REGRAS:
-- Você NÃO tem acesso a dados de negócio (vendas, valores, nomes de clientes). Se pedirem números ou dados,
-  responda gentilmente que você só ajuda a navegar e indique a tela onde ele encontra essa informação.
-- Baseie-se SOMENTE na lista de telas fornecida. NUNCA invente telas, menus ou caminhos.
+- Você NÃO tem acesso a dados de negócio (vendas, valores, nomes de clientes). Se pedirem números/dados, diga que você só ajuda a usar o app e indique a tela onde ele encontra isso.
+- Baseie-se SOMENTE no índice e nos manuais fornecidos. NUNCA invente telas, menus, botões ou caminhos.
 - Se a tela necessária não estiver na lista (o usuário não tem permissão), diga que ele não tem acesso a ela.
-- Seja curto, direto e amigável, em português do Brasil. Sempre cite o caminho do menu.`;
+- Seja curto e prático, em português do Brasil. Quando fizer sentido, dê o passo a passo em itens.`;
 
 /**
- * Responde uma dúvida de "onde/como faço X" com base no mapa de telas do usuário.
- * @param {Object} opts
- * @param {string} opts.pergunta
- * @param {Array}  [opts.historico] [{role:'user'|'assistant', content}]
- * @param {Object} [opts.perms]     req.user.permissoes
+ * Responde uma dúvida de uso com base nos manuais das abas acessíveis ao usuário.
  * @returns {Promise<{resposta:string, atalhos:Array<{label,rota}>}>}
  */
 async function responderAjuda({ pergunta, historico = [], perms = {} } = {}) {
@@ -130,32 +168,44 @@ async function responderAjuda({ pergunta, historico = [], perms = {} } = {}) {
         throw err;
     }
 
-    const disponiveis = APP_MAP.filter(e => podeAcessar(perms, e.perm));
-    const baseTexto = disponiveis
-        .map(e => `- ${e.titulo} — ${e.caminho} (rota ${e.rota}): ${e.descricao}`)
+    const acessiveis = ABAS.filter((a) => podeAcessar(perms, a.perm));
+
+    const indice = acessiveis
+        .map((a) => {
+            const r = MANUAIS[a.slug]?.resumo;
+            return `- ${a.nome} (${a.rota})${r ? ': ' + r : ''}`;
+        })
         .join('\n');
+
+    const relevantes = selecionarRelevantes(pergunta, acessiveis);
+    const detalhes = relevantes
+        .map((a) => `### ${a.nome} (${a.rota})\n${(MANUAIS[a.slug]?.corpo || '').slice(0, 1600)}`)
+        .join('\n\n');
 
     const system = `${PERSONA}
 
-TELAS DISPONÍVEIS PARA ESTE USUÁRIO (use apenas estas):
-${baseTexto}
+ÍNDICE DAS TELAS (todas que ESTE usuário pode acessar):
+${indice}
+
+MANUAIS DAS TELAS MAIS RELEVANTES À PERGUNTA:
+${detalhes || '(nenhum manual específico selecionado — use o índice acima)'}
 
 Responda SEMPRE em JSON neste formato:
-{ "resposta": "explicação curta de onde/como fazer", "atalhos": [{ "label": "Nome da tela", "rota": "/rota" }] }
-- Inclua no máximo 2 atalhos, apenas com rotas que aparecem na lista acima.
+{ "resposta": "explicação de onde/como fazer", "atalhos": [{ "label": "Nome da tela", "rota": "/rota" }] }
+- No máximo 2 atalhos, apenas com rotas que aparecem no índice acima.
 - Se não houver tela aplicável, deixe "atalhos": [].`;
 
     const msgs = historico
-        .filter(h => h && (h.role === 'user' || h.role === 'assistant') && h.content)
+        .filter((h) => h && (h.role === 'user' || h.role === 'assistant') && h.content)
         .slice(-8)
-        .map(h => ({ role: h.role, content: String(h.content).slice(0, 800) }));
+        .map((h) => ({ role: h.role, content: String(h.content).slice(0, 800) }));
 
     msgs.push({ role: 'user', content: pergunta.trim().slice(0, 800) });
 
     const { texto, modelo, provider } = await ai.gerarTexto({
         system,
         mensagens: msgs,
-        maxTokens: 400,
+        maxTokens: 500,
         temperature: 0.2,
         json: true,
     });
@@ -167,19 +217,13 @@ Responda SEMPRE em JSON neste formato:
         parsed = { resposta: texto, atalhos: [] };
     }
 
-    // Só deixa passar atalhos com rota válida (anti-alucinação)
-    const rotasValidas = new Set(disponiveis.map(e => e.rota));
+    const rotasValidas = new Set(acessiveis.map((a) => a.rota));
     const atalhos = (Array.isArray(parsed.atalhos) ? parsed.atalhos : [])
-        .filter(a => a && typeof a.rota === 'string' && rotasValidas.has(a.rota))
+        .filter((a) => a && typeof a.rota === 'string' && rotasValidas.has(a.rota))
         .slice(0, 2)
-        .map(a => ({ label: String(a.label || a.rota), rota: a.rota }));
+        .map((a) => ({ label: String(a.label || a.rota), rota: a.rota }));
 
-    return {
-        resposta: parsed.resposta || texto,
-        atalhos,
-        modelo,
-        provider,
-    };
+    return { resposta: parsed.resposta || texto, atalhos, modelo, provider };
 }
 
-module.exports = { responderAjuda, APP_MAP };
+module.exports = { responderAjuda, ABAS };

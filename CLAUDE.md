@@ -93,9 +93,12 @@ O app é PWA. Sempre que fizer deploy de mudanças visíveis, incluir o ícone d
 
 ## Manual das Abas — manter em dia
 
-Cada aba do app tem um manual em `docs/abas/<slug>.md` (índice em `docs/abas/README.md`): o que a aba é, como funciona, o fluxo real de uso e o que ela afeta.
+Cada aba do app tem um manual em `backend/manuais/abas/<slug>.md` (índice em `backend/manuais/abas/README.md`): o que a aba é, como funciona, o fluxo real de uso e o que ela afeta.
+
+Esses manuais são a **fonte de conhecimento do assistente Clippy** (`backend/services/copilotoService.js` lê os arquivos em runtime). Por isso ficam dentro de `backend/` — assim vão junto no deploy e o Clippy passa a usar a versão nova **ao publicar o backend** (sem passo extra de "gerar pacote").
 
 **Sempre que alterar uma aba** (tela, fluxo, permissão ou regra), atualize o manual daquela aba na MESMA tarefa:
 - Faça uma análise completa da aba alterada e edite o que mudou.
 - NÃO remova itens importantes que continuam válidos.
 - Baseie-se no comportamento REAL do código, não no nome das rotas.
+- Se a rota real ou a permissão da aba mudou, atualize também a tabela `ABAS` em `backend/services/copilotoService.js` (rotas reais usadas nos botões "Ir para").

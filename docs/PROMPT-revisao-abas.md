@@ -12,11 +12,11 @@ Você vai criar o **manual de cada aba** do app CA-Hardt (frontend React/Vite, b
 - Para cada aba, ABRA o(s) componente(s) em `frontend/src/pages/...` e descreva o fluxo como ele realmente funciona. Exemplo concreto: **criar um pedido NÃO começa na aba "Pedidos"** — começa na aba **Rota**, no card do cliente, botão "Novo Pedido", que abre `/pedidos/novo?clienteId=...` (`frontend/src/pages/Rota/RotaLeads.jsx`).
 
 **Onde salvar (1 arquivo por aba, para gastar poucos tokens ao consultar):**
-- Crie a pasta `docs/abas/`.
-- Um arquivo por aba: `docs/abas/<slug>.md` (ex.: `pedidos.md`, `rota.md`, `contas-receber.md`).
-- Um índice `docs/abas/README.md` com uma linha por aba (nome, rota, 1 frase, link).
+- Crie a pasta `backend/manuais/abas/`.
+- Um arquivo por aba: `backend/manuais/abas/<slug>.md` (ex.: `pedidos.md`, `rota.md`, `contas-receber.md`).
+- Um índice `backend/manuais/abas/README.md` com uma linha por aba (nome, rota, 1 frase, link).
 
-**Template de cada `docs/abas/<slug>.md`:**
+**Template de cada `backend/manuais/abas/<slug>.md`:**
 ```markdown
 ---
 aba: <Nome>
