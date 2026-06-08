@@ -37,6 +37,17 @@ export default function Clippy() {
     const chatEndRef = useRef(null);
     const inputRef = useRef(null);
 
+    // Posição do mascote (arrastável). Guardada em px como distância das bordas direita/baixo.
+    const [pos, setPos] = useState(() => {
+        try {
+            const s = JSON.parse(localStorage.getItem('clippy_pos'));
+            if (s && typeof s.right === 'number' && typeof s.bottom === 'number') return s;
+        } catch { /* ignora */ }
+        return { right: 20, bottom: 92 };
+    });
+    const [arrastando, setArrastando] = useState(false);
+    const dragRef = useRef(null);
+
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [mensagens, enviando]);
@@ -44,6 +55,43 @@ export default function Clippy() {
     useEffect(() => {
         if (open) inputRef.current?.focus();
     }, [open]);
+
+    // Mantém o mascote dentro da tela (inclusive ao redimensionar a janela)
+    useEffect(() => {
+        const clamp = () => setPos((p) => ({
+            right: Math.min(Math.max(p.right, 8), window.innerWidth - 72),
+            bottom: Math.min(Math.max(p.bottom, 8), window.innerHeight - 72),
+        }));
+        clamp();
+        window.addEventListener('resize', clamp);
+        return () => window.removeEventListener('resize', clamp);
+    }, []);
+
+    function onPointerDown(e) {
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        dragRef.current = { startX: e.clientX, startY: e.clientY, right: pos.right, bottom: pos.bottom, moved: false };
+        setArrastando(true);
+    }
+    function onPointerMove(e) {
+        const d = dragRef.current;
+        if (!d) return;
+        const dx = e.clientX - d.startX;
+        const dy = e.clientY - d.startY;
+        if (Math.abs(dx) + Math.abs(dy) > 4) d.moved = true;
+        setPos({
+            right: Math.min(Math.max(d.right - dx, 8), window.innerWidth - 72),
+            bottom: Math.min(Math.max(d.bottom - dy, 8), window.innerHeight - 72),
+        });
+    }
+    function onPointerUp() {
+        const d = dragRef.current;
+        dragRef.current = null;
+        setArrastando(false);
+        // Persiste a posição final (lê o valor mais recente via setPos funcional)
+        setPos((p) => { try { localStorage.setItem('clippy_pos', JSON.stringify(p)); } catch { /* ignora */ } return p; });
+        // Se quase não moveu, trata como clique (abre/fecha)
+        if (d && !d.moved) { setOpen((o) => !o); setDica(false); }
+    }
 
     function irPara(rota) {
         navigate(rota);
@@ -70,12 +118,19 @@ export default function Clippy() {
         }
     }
 
+    // Abre o painel para o lado que tiver espaço, para não sair da tela
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+    const abrirParaCima = (vh - pos.bottom - 64) >= 500;
+    const alinharEsquerda = (vw - pos.right - 64) < 370;
+    const painelPos = `${abrirParaCima ? 'bottom-full mb-3' : 'top-full mt-3'} ${alinharEsquerda ? 'left-0' : 'right-0'}`;
+
     return (
-        <div className="hidden lg:block fixed bottom-5 right-5 z-50 no-print">
+        <div className="hidden lg:block fixed z-50 no-print" style={{ right: pos.right, bottom: pos.bottom }}>
             {/* ── Painel de chat ── */}
             {open && (
                 <div
-                    className="absolute bottom-full right-0 mb-3 w-[370px] h-[500px] bg-white rounded-2xl border border-gray-200 shadow-2xl flex flex-col overflow-hidden"
+                    className={`absolute ${painelPos} w-[370px] h-[500px] bg-white rounded-2xl border border-gray-200 shadow-2xl flex flex-col overflow-hidden`}
                     style={{ animation: 'clippyPop .18s ease-out' }}
                 >
                     {/* Header */}
@@ -195,10 +250,12 @@ export default function Clippy() {
                     </div>
                 )}
                 <button
-                    onClick={() => { setOpen((o) => !o); setDica(false); }}
-                    title="Abrir ajuda"
-                    className="w-16 h-16 rounded-full bg-white border border-gray-200 shadow-xl flex items-center justify-center hover:-translate-y-0.5 transition-transform shrink-0"
-                    style={!open ? { animation: 'clippyFloat 3.5s ease-in-out infinite' } : undefined}
+                    onPointerDown={onPointerDown}
+                    onPointerMove={onPointerMove}
+                    onPointerUp={onPointerUp}
+                    title="Clique para abrir • arraste para mover"
+                    className={`w-16 h-16 rounded-full bg-white border border-gray-200 shadow-xl flex items-center justify-center shrink-0 transition-transform ${arrastando ? 'cursor-grabbing scale-105' : 'cursor-grab hover:-translate-y-0.5'}`}
+                    style={{ touchAction: 'none', ...((!open && !arrastando) ? { animation: 'clippyFloat 3.5s ease-in-out infinite' } : {}) }}
                 >
                     <ClippyMascot size={40} />
                 </button>
