@@ -120,6 +120,7 @@ model Cliente {
   Observacoes_Gerais           String?
   Telefone_Celular             String?
   Telefone_Comercial           String?
+  Inscricao_Estadual           String?
   Indicador_Inscricao_Estadual String?
   Outros_Contatos              String?
   Atrasos_Pagamentos           Decimal? @db.Decimal(12, 2)
