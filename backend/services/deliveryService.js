@@ -124,6 +124,14 @@ const deliveryService = {
         });
     },
 
+    // Cláusulas que excluem pedidos cancelados, excluídos ou devolvidos.
+    // Aplicado a todas as queries do Kanban e ao trigger garantirStatusParaPedido.
+    _pedidoAtivoWhere: () => ({
+        situacaoCA: { not: 'CANCELADO' },
+        statusEnvio: { not: 'EXCLUIDO' },
+        devolucaoFinalizada: false
+    }),
+
     // Backfill: cria delivery_status em PEDIDO para todos os pedidos elegiveis
     // (item de categoria ativa) que ainda não têm registro.
     backfillStatus: async () => {
@@ -134,6 +142,7 @@ const deliveryService = {
             prisma.pedido.findMany({
                 where: {
                     situacaoCA: 'FATURADO',
+                    ...deliveryService._pedidoAtivoWhere(),
                     itens: { some: { OR: filtros.map(f => ({ produto: f })) } }
                 },
                 select: { id: true }
@@ -171,11 +180,13 @@ const deliveryService = {
 
         const pedidoIds = statusTodos.map(s => s.pedidoId);
 
-        // Lista todos os pedidos com delivery_status (incluindo não-faturados, que
-        // aparecem em cinza no Kanban e não podem ser movimentados).
+        // Lista pedidos com delivery_status, incluindo não-faturados (que aparecem
+        // em cinza no Kanban e não podem ser movimentados). Cancelados, excluídos
+        // e devolvidos são omitidos.
         const pedidos = await prisma.pedido.findMany({
             where: {
                 id: { in: pedidoIds },
+                ...deliveryService._pedidoAtivoWhere(),
                 itens: { some: { OR: filtros.map(f => ({ produto: f })) } }
             },
             include: {
@@ -373,6 +384,14 @@ const deliveryService = {
     garantirStatusParaPedido: async (pedidoId) => {
         const filtros = await deliveryService._produtoWhereFiltros();
         if (!filtros.length) return null;
+
+        // Não cria status para pedidos cancelados, excluídos ou já devolvidos.
+        const pedido = await prisma.pedido.findUnique({
+            where: { id: pedidoId },
+            select: { situacaoCA: true, statusEnvio: true, devolucaoFinalizada: true }
+        });
+        if (!pedido) return null;
+        if (pedido.situacaoCA === 'CANCELADO' || pedido.statusEnvio === 'EXCLUIDO' || pedido.devolucaoFinalizada) return null;
 
         const tem = await prisma.pedidoItem.findFirst({
             where: {
