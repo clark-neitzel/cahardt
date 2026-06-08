@@ -557,13 +557,6 @@ const contaAzulService = {
                             if (resDet && resDet.data) {
                                 detalheC = resDet.data;
                             }
-                            // Se o CA não retornou inscrições, preserva a IE local (evita zerar o que o app gravou)
-                            if (!Array.isArray(detalheC.inscricoes) && localCLI?.Inscricao_Estadual) {
-                                detalheC.inscricoes = [{
-                                    inscricao_estadual: localCLI.Inscricao_Estadual,
-                                    indicador_inscricao_estadual: localCLI.Indicador_Inscricao_Estadual
-                                }];
-                            }
                             await new Promise(r => setTimeout(r, 200)); // Rate limit 5req/s
                         } catch (e) {
                             console.error(`⚠️ Erro ao buscar detalhe do Cliente ${c.id}:`, e.message);
@@ -575,13 +568,6 @@ const contaAzulService = {
                         // Preservar telefones locais (lista CA não retorna telefone_celular)
                         detalheC.telefone_celular = localCLI.Telefone_Celular || detalheC.telefone_celular;
                         detalheC.telefone_comercial = localCLI.Telefone || detalheC.telefone_comercial;
-                        // Preservar IE local (não foi refeito o GET de detalhe)
-                        if (!Array.isArray(detalheC.inscricoes) && localCLI.Inscricao_Estadual) {
-                            detalheC.inscricoes = [{
-                                inscricao_estadual: localCLI.Inscricao_Estadual,
-                                indicador_inscricao_estadual: localCLI.Indicador_Inscricao_Estadual
-                            }];
-                        }
                     }
                 }
 
@@ -626,14 +612,6 @@ const contaAzulService = {
                     End_CEP: enderecoPrincipal.cep || enderecoPrincipal.zip_code,
                     End_Pais: enderecoPrincipal.pais || 'Brasil',
                     Observacoes_Gerais: c.notes || c.observacoes,
-
-                    // Inscrição Estadual (número) + indicador, vindos do detalhe da pessoa
-                    Inscricao_Estadual: (Array.isArray(detalheC.inscricoes) && detalheC.inscricoes.length > 0)
-                        ? (detalheC.inscricoes[0].inscricao_estadual || detalheC.inscricoes[0].numero || null)
-                        : null,
-                    Indicador_Inscricao_Estadual: (Array.isArray(detalheC.inscricoes) && detalheC.inscricoes.length > 0)
-                        ? (detalheC.inscricoes[0].indicador_inscricao_estadual || null)
-                        : null,
 
                     Perfil_Filtro: "PADRAO",
                     contaAzulUpdatedAt: ultimaAtualizacaoCA || new Date(),
@@ -972,6 +950,7 @@ const contaAzulService = {
 
         const ender = (Array.isArray(p.enderecos) && p.enderecos.length > 0) ? p.enderecos[0] : (p.endereco || p.address || {});
         const inscr = (Array.isArray(p.inscricoes) && p.inscricoes.length > 0) ? p.inscricoes[0] : null;
+        const ieNumero = inscr ? (inscr.inscricao_estadual || inscr.numero || null) : null;
         const razao = p.nome_empresa || p.company_name || p.razao_social;
         const fantasia = p.nome || p.fantasy_name || p.nome_fantasia || p.apelido;
         const dataAltRaw = p.data_alteracao || p.atualizado_em || p.updated_at || p.ultima_atualizacao;
@@ -983,7 +962,7 @@ const contaAzulService = {
             Email: p.email ?? null,
             Telefone: p.telefone_comercial || p.business_phone || p.telefone || null,
             Telefone_Celular: p.telefone_celular || p.mobile_phone || p.celular || null,
-            Inscricao_Estadual: inscr ? (inscr.inscricao_estadual || inscr.numero || null) : null,
+            // Indicador continua em `clientes` (coluna existente); o número da IE vai para `cliente_fiscal`.
             Indicador_Inscricao_Estadual: inscr ? (inscr.indicador_inscricao_estadual || null) : null,
             Observacoes_Gerais: p.notes ?? p.observacoes ?? p.observacao ?? null,
             End_Logradouro: ender.logradouro || ender.street || null,
@@ -1000,7 +979,18 @@ const contaAzulService = {
         // Não sobrescrever com undefined
         Object.keys(dados).forEach(k => dados[k] === undefined && delete dados[k]);
 
-        return await prisma.cliente.update({ where: { UUID: uuid }, data: dados });
+        const atualizado = await prisma.cliente.update({ where: { UUID: uuid }, data: dados });
+
+        // Número da IE em tabela separada (só grava quando o CA retornou inscrição)
+        if (inscr) {
+            await prisma.clienteFiscal.upsert({
+                where: { clienteUuid: uuid },
+                create: { clienteUuid: uuid, inscricaoEstadual: ieNumero },
+                update: { inscricaoEstadual: ieNumero }
+            });
+        }
+
+        return atualizado;
     },
 
     // Envia ao CA os campos editáveis pelo app (email, celular, observação, IE + indicador).

@@ -215,6 +215,7 @@ const clienteController = {
                 where: { UUID: uuid },
                 include: {
                     arquivos: true,
+                    fiscal: true,
                     indicacao: {
                         select: { UUID: true, Nome: true, NomeFantasia: true }
                     }
@@ -224,6 +225,9 @@ const clienteController = {
             if (!cliente) {
                 return res.status(404).json({ error: 'Cliente não encontrado' });
             }
+
+            // Achata a IE (tabela separada) para o front continuar usando cliente.Inscricao_Estadual
+            cliente.Inscricao_Estadual = cliente.fiscal?.inscricaoEstadual ?? null;
 
             res.json(cliente);
         } catch (error) {
@@ -295,7 +299,8 @@ const clienteController = {
                 where: { UUID: uuid },
                 select: {
                     Email: true, Telefone_Celular: true, Observacoes_Gerais: true,
-                    Inscricao_Estadual: true, Indicador_Inscricao_Estadual: true
+                    Indicador_Inscricao_Estadual: true,
+                    fiscal: { select: { inscricaoEstadual: true } }
                 }
             });
             if (!atual) return res.status(404).json({ error: 'Cliente não encontrado' });
@@ -307,7 +312,7 @@ const clienteController = {
                 if (Observacoes_Gerais !== undefined && (Observacoes_Gerais || '') !== (atual.Observacoes_Gerais || '')) {
                     camposCA.Observacoes_Gerais = Observacoes_Gerais || '';
                 }
-                if (ieNorm !== undefined && ieNorm !== (atual.Inscricao_Estadual || '')) camposCA.Inscricao_Estadual = ieNorm;
+                if (ieNorm !== undefined && ieNorm !== (atual.fiscal?.inscricaoEstadual || '')) camposCA.Inscricao_Estadual = ieNorm;
                 if (Indicador_Inscricao_Estadual !== undefined && (Indicador_Inscricao_Estadual || '') !== (atual.Indicador_Inscricao_Estadual || '')) {
                     camposCA.Indicador_Inscricao_Estadual = Indicador_Inscricao_Estadual || null;
                 }
@@ -346,10 +351,23 @@ const clienteController = {
                     // Cadastro CA (só grava se tem permissão; reflete o que foi enviado)
                     Email: (podeEditarCadastroCA && emailNorm !== undefined) ? (emailNorm || null) : undefined,
                     Telefone_Celular: (podeEditarCadastroCA && celularNorm !== undefined) ? (celularNorm || null) : undefined,
-                    Inscricao_Estadual: (podeEditarCadastroCA && ieNorm !== undefined) ? (ieNorm || null) : undefined,
                     Indicador_Inscricao_Estadual: (podeEditarCadastroCA && Indicador_Inscricao_Estadual !== undefined) ? (Indicador_Inscricao_Estadual || null) : undefined
                 }
             });
+
+            // Número da IE em tabela separada (cliente_fiscal), fora da tabela clientes
+            if (podeEditarCadastroCA && ieNorm !== undefined) {
+                await prisma.clienteFiscal.upsert({
+                    where: { clienteUuid: uuid },
+                    create: { clienteUuid: uuid, inscricaoEstadual: ieNorm || null },
+                    update: { inscricaoEstadual: ieNorm || null }
+                });
+            }
+
+            // Reflete a IE achatada na resposta
+            cliente.Inscricao_Estadual = (podeEditarCadastroCA && ieNorm !== undefined)
+                ? (ieNorm || null)
+                : (atual.fiscal?.inscricaoEstadual ?? null);
 
             res.json(cliente);
         } catch (error) {
