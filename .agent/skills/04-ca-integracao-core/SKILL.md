@@ -430,3 +430,52 @@ const nomeCondicao = e.nomeCondicaoPagamento
 ```sql
 ALTER TABLE "pedidos" ADD COLUMN IF NOT EXISTS "nome_condicao_pagamento" TEXT;
 ```
+
+-------------------------------------------------
+## EDIÇÃO DE CADASTRO DO CLIENTE (App → CA) — JUN/2026
+-------------------------------------------------
+
+> Permite editar pelo app **email, celular, observação e inscrição estadual** do cliente, refletindo no Conta Azul. A integração de clientes deixou de ser só leitura: agora é **bidirecional** para esses campos.
+
+### Funções novas em `contaAzulService.js`
+
+| Função | O que faz |
+|---|---|
+| `atualizarPessoaCA(idCliente, payload)` | **PATCH genérico** em `/v1/pessoas/{id}` (com retry 401 e log `CLIENTE_PATCH`). Aceita payload parcial: `{ email }`, `{ telefone_celular }`, `{ inscricoes: [...] }`, etc. ⚠️ Era `atualizarIndicadorIECliente` — renomeada. O envio de pedidos (`syncPedidosService`) usa ela para o indicador de IE. |
+| `sincronizarClienteUnico(uuid)` | **Sincroniza UM cadastro** (`GET /v1/pessoas/{uuid}`) e atualiza o registro local. Chamada pelo `detalhar` ao **abrir o cliente**, para mostrar dados atuais do CA antes de editar. Best-effort (se o CA cair, segue com o local). Não mexe em campos do app (dias de rota, GPS, etc.). |
+| `atualizarDadosClienteCA(uuid, campos)` | **Envia ao CA** os campos editados (email/celular/observação/IE/indicador). Estratégia **GET → merge → PATCH**: lê a pessoa atual para usar as chaves reais do CA e preservar as demais inscrições, evitando depender de nomes de campo "chutados". |
+
+### Fluxo (controller `clienteController.js`)
+
+- **`detalhar`**: chama `sincronizarClienteUnico(uuid)` (best-effort) → `findUnique` (com `include: { fiscal: true }`) → **achata** `cliente.fiscal.inscricaoEstadual` em `cliente.Inscricao_Estadual` para o front. `Cliente.UUID` **é o id da pessoa no CA** (criado com `UUID: c.id` no sync), por isso o GET usa a URL `/v1/pessoas/{UUID}`.
+- **`atualizar`**: valida formato (email; celular só dígitos 10–11; IE 9 dígitos SC) → compara com o atual e monta só os campos que mudaram → **envia ao CA ANTES de gravar local** (se o PATCH falhar, responde **502** e não grava nada → evita divergência app↔CA) → grava local. Gate de permissão `podeEditarCadastroCA = admin || clientes.edit || Pode_Editar_GPS` (espelhado no frontend).
+
+### ⚠️ Inscrição Estadual fica em tabela SEPARADA (`cliente_fiscal`)
+
+**Por quê:** a tabela `clientes` **atingiu o teto de 1600 colunas do Postgres** (o limite conta colunas já apagadas, que `prisma db push` acumula a cada deploy ao dropar/recriar colunas). Adicionar QUALQUER coluna nova em `clientes` quebra o `db push` no deploy com:
+```
+ERROR: tables can have at most 1600 columns
+```
+Por isso o **número da IE** vive em `cliente_fiscal` (relação 1-1; a FK fica nessa tabela, então `clientes` não ganha coluna). O **indicador** (`Indicador_Inscricao_Estadual`) já era coluna existente em `clientes` e continua lá.
+
+```prisma
+model ClienteFiscal {
+  clienteUuid       String  @id @map("cliente_uuid")
+  inscricaoEstadual String? @map("inscricao_estadual")
+  cliente           Cliente @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
+  @@map("cliente_fiscal")
+}
+```
+
+> 🚨 **REGRA**: NÃO adicionar colunas novas à tabela `clientes`. Use tabela 1-1 separada (como `cliente_fiscal`) até a `clientes` ser reconstruída para purgar as colunas mortas.
+
+### Frontend (`DetalheCliente.jsx`)
+
+- Seção "Contato / Fiscal" na aba de edição (gated por `podeEditarCadastroCA`): email, celular (máscara some, grava só dígitos), IE (9 dígitos) + indicador (Contribuinte / Isento / Não contribuinte).
+- Botão **"Consultar no Sintegra SC"**: copia o CNPJ para a área de transferência e abre `https://sat.sef.sc.gov.br/.../ComprovanteIE/Consulta.aspx` (a página `.aspx` não aceita pré-preencher por URL — por isso copia+cola).
+- Validação espelha o backend; trata 502 (erro do CA) com alerta.
+
+### Verificação no 1º teste real
+Confirme nos logs a forma real do CA antes de confiar nos nomes de campo:
+- `[Sync único <uuid>] inscricoes: [...]` (chave do número/indicador da IE)
+- `CLIENTE_PATCH SUCESSO` com o body enviado e a resposta
