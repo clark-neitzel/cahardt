@@ -202,15 +202,6 @@ const clienteController = {
     detalhar: async (req, res) => {
         try {
             const { uuid } = req.params;
-
-            // Sincroniza apenas este cadastro com o Conta Azul antes de exibir (best-effort).
-            // Se o CA estiver indisponível, segue com os dados locais sem travar a tela.
-            try {
-                await contaAzulService.sincronizarClienteUnico(uuid);
-            } catch (syncErr) {
-                console.warn(`[detalhar] Falha ao sincronizar cliente ${uuid} com o CA: ${syncErr.message}`);
-            }
-
             const cliente = await prisma.cliente.findUnique({
                 where: { UUID: uuid },
                 include: {
@@ -253,12 +244,7 @@ const clienteController = {
                 insightAtivo,
                 observacaoComercialFixa,
                 // WhatsApp
-                recebeAvisoPedido,
-                // Cadastro Conta Azul (sincronizado)
-                Email,
-                Telefone_Celular,
-                Inscricao_Estadual,
-                Indicador_Inscricao_Estadual
+                recebeAvisoPedido
             } = req.body;
 
             // Verificar permissão para editar GPS
@@ -266,61 +252,6 @@ const clienteController = {
                 ? JSON.parse(req.user.permissoes)
                 : (req.user.permissoes || {});
             const podeEditarGPS = perms.admin || perms.Pode_Editar_GPS || perms.clientes?.edit || perms.Pode_Executar_Entregas;
-            // Gate para editar o cadastro que é sincronizado com o Conta Azul (espelhado no frontend)
-            const podeEditarCadastroCA = perms.admin || perms.clientes?.edit || perms.Pode_Editar_GPS;
-
-            // ---- Validação + normalização dos campos do Conta Azul ----
-            const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
-            const erros = [];
-            let emailNorm, celularNorm, ieNorm;
-
-            if (Email !== undefined) {
-                emailNorm = String(Email ?? '').trim();
-                if (emailNorm && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) erros.push('E-mail inválido');
-            }
-            if (Telefone_Celular !== undefined) {
-                celularNorm = soDigitos(Telefone_Celular);
-                if (celularNorm && (celularNorm.length < 10 || celularNorm.length > 11)) {
-                    erros.push('Celular deve ter 10 ou 11 dígitos (com DDD)');
-                }
-            }
-            if (Inscricao_Estadual !== undefined) {
-                ieNorm = soDigitos(Inscricao_Estadual);
-                if (ieNorm && ieNorm.length !== 9) erros.push('Inscrição Estadual (SC) deve ter 9 dígitos');
-            }
-            if (erros.length) return res.status(400).json({ error: erros.join('; ') });
-
-            // ---- Detectar quais campos do CA mudaram (para só enviar o necessário) ----
-            const atual = await prisma.cliente.findUnique({
-                where: { UUID: uuid },
-                select: {
-                    Email: true, Telefone_Celular: true, Observacoes_Gerais: true,
-                    Inscricao_Estadual: true, Indicador_Inscricao_Estadual: true
-                }
-            });
-            if (!atual) return res.status(404).json({ error: 'Cliente não encontrado' });
-
-            const camposCA = {};
-            if (podeEditarCadastroCA) {
-                if (emailNorm !== undefined && emailNorm !== (atual.Email || '')) camposCA.Email = emailNorm;
-                if (celularNorm !== undefined && celularNorm !== (atual.Telefone_Celular || '')) camposCA.Telefone_Celular = celularNorm;
-                if (Observacoes_Gerais !== undefined && (Observacoes_Gerais || '') !== (atual.Observacoes_Gerais || '')) {
-                    camposCA.Observacoes_Gerais = Observacoes_Gerais || '';
-                }
-                if (ieNorm !== undefined && ieNorm !== (atual.Inscricao_Estadual || '')) camposCA.Inscricao_Estadual = ieNorm;
-                if (Indicador_Inscricao_Estadual !== undefined && (Indicador_Inscricao_Estadual || '') !== (atual.Indicador_Inscricao_Estadual || '')) {
-                    camposCA.Indicador_Inscricao_Estadual = Indicador_Inscricao_Estadual || null;
-                }
-            }
-
-            // ---- Enviar ao Conta Azul ANTES de gravar local (evita divergência app↔CA) ----
-            if (Object.keys(camposCA).length > 0) {
-                try {
-                    await contaAzulService.atualizarDadosClienteCA(uuid, camposCA);
-                } catch (caErr) {
-                    return res.status(502).json({ error: 'Falha ao enviar ao Conta Azul: ' + caErr.message });
-                }
-            }
 
             const cliente = await prisma.cliente.update({
                 where: { UUID: uuid },
@@ -342,12 +273,7 @@ const clienteController = {
                         : null,
                     insightAtivo: insightAtivo !== undefined ? insightAtivo : true,
                     observacaoComercialFixa: observacaoComercialFixa || null,
-                    recebeAvisoPedido: recebeAvisoPedido !== undefined ? recebeAvisoPedido : undefined,
-                    // Cadastro CA (só grava se tem permissão; reflete o que foi enviado)
-                    Email: (podeEditarCadastroCA && emailNorm !== undefined) ? (emailNorm || null) : undefined,
-                    Telefone_Celular: (podeEditarCadastroCA && celularNorm !== undefined) ? (celularNorm || null) : undefined,
-                    Inscricao_Estadual: (podeEditarCadastroCA && ieNorm !== undefined) ? (ieNorm || null) : undefined,
-                    Indicador_Inscricao_Estadual: (podeEditarCadastroCA && Indicador_Inscricao_Estadual !== undefined) ? (Indicador_Inscricao_Estadual || null) : undefined
+                    recebeAvisoPedido: recebeAvisoPedido !== undefined ? recebeAvisoPedido : undefined
                 }
             });
 

@@ -12,8 +12,7 @@ import clienteInsightService from '../../services/clienteInsightService';
 import leadService from '../../services/leadService';
 import devolucaoService from '../../services/devolucaoService';
 import { API_URL } from '../../services/api';
-import { useAuth } from '../../contexts/AuthContext';
-import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search } from 'lucide-react';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 
@@ -56,10 +55,6 @@ const DayPicker = ({ label, selected, onChange }) => {
 const DetalheCliente = () => {
     const { uuid } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
-    const perms = user?.permissoes || {};
-    // Espelha o gate do backend (clienteController.atualizar): quem pode editar o cadastro sincronizado com o CA
-    const podeEditarCadastroCA = perms.admin || perms.clientes?.edit || perms.Pode_Editar_GPS;
     const [cliente, setCliente] = useState(null);
     const [condicoesPagamento, setCondicoesPagamento] = useState([]);
     const [condicoesPagamentoCA, setCondicoesPagamentoCA] = useState([]);
@@ -91,12 +86,7 @@ const DetalheCliente = () => {
         cicloCompraPersonalizadoDias: '',
         insightAtivo: true,
         observacaoComercialFixa: '',
-        recebeAvisoPedido: true,
-        // Cadastro Conta Azul (sincronizado)
-        Email: '',
-        Telefone_Celular: '',
-        Inscricao_Estadual: '',
-        Indicador_Inscricao_Estadual: ''
+        recebeAvisoPedido: true
     });
 
     // Indicação (busca de cliente)
@@ -175,11 +165,7 @@ const DetalheCliente = () => {
                 cicloCompraPersonalizadoDias: clienteData.cicloCompraPersonalizadoDias || '',
                 insightAtivo: clienteData.insightAtivo !== undefined ? clienteData.insightAtivo : true,
                 observacaoComercialFixa: clienteData.observacaoComercialFixa || '',
-                recebeAvisoPedido: clienteData.recebeAvisoPedido !== undefined ? clienteData.recebeAvisoPedido : true,
-                Email: clienteData.Email || '',
-                Telefone_Celular: clienteData.Telefone_Celular || '',
-                Inscricao_Estadual: clienteData.Inscricao_Estadual || '',
-                Indicador_Inscricao_Estadual: clienteData.Indicador_Inscricao_Estadual || ''
+                recebeAvisoPedido: clienteData.recebeAvisoPedido !== undefined ? clienteData.recebeAvisoPedido : true
             });
 
             // Setar nome da indicação se existir
@@ -226,34 +212,9 @@ const DetalheCliente = () => {
         setIndicacaoSearch('');
     };
 
-    // Consulta da IE no Sintegra SC: a página não aceita CNPJ pela URL,
-    // então copiamos o CNPJ para a área de transferência e abrimos a consulta (basta colar).
-    const abrirSintegra = async () => {
-        const cnpj = (cliente?.Documento || '').replace(/\D/g, '');
-        try {
-            if (cnpj) await navigator.clipboard.writeText(cnpj);
-        } catch { /* clipboard pode falhar sem HTTPS; segue abrindo */ }
-        window.open('https://sat.sef.sc.gov.br/tax.NET/Sat.Cadastro.Web/ComprovanteIE/Consulta.aspx', '_blank');
-        if (cnpj) alert('CNPJ copiado! Cole no campo do Sintegra SC e clique em Buscar.');
-    };
-
     const handleSave = async () => {
-        // Validação dos campos sincronizados com o CA (espelha o backend)
-        const email = (formData.Email || '').trim();
-        const celular = (formData.Telefone_Celular || '').replace(/\D/g, '');
-        const ie = (formData.Inscricao_Estadual || '').replace(/\D/g, '');
-        const erros = [];
-        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) erros.push('E-mail inválido');
-        if (celular && (celular.length < 10 || celular.length > 11)) erros.push('Celular deve ter 10 ou 11 dígitos (com DDD)');
-        if (ie && ie.length !== 9) erros.push('Inscrição Estadual (SC) deve ter 9 dígitos');
-        if (erros.length) {
-            alert('Corrija antes de salvar:\n• ' + erros.join('\n• '));
-            return;
-        }
-
         try {
-            // Envia já normalizado (celular/IE só dígitos)
-            await clienteService.atualizar(uuid, { ...formData, Email: email, Telefone_Celular: celular, Inscricao_Estadual: ie });
+            await clienteService.atualizar(uuid, formData);
             alert('Dados atualizados com sucesso!');
             navigate('/clientes');
         } catch (error) {
@@ -1048,88 +1009,6 @@ const DetalheCliente = () => {
                                 </label>
                             </div>
 
-                            {/* Contato / Fiscal — sincronizado com o Conta Azul */}
-                            {podeEditarCadastroCA && (
-                                <div className="pt-4 border-t border-gray-200">
-                                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                                        <Building className="h-4 w-4 mr-1 text-blue-600" />
-                                        Contato / Fiscal <span className="ml-2 text-xs font-normal text-blue-600">(sincroniza com o Conta Azul)</span>
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {/* Email */}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                <Mail className="h-4 w-4 inline mr-1" /> E-mail
-                                            </label>
-                                            <input
-                                                type="email"
-                                                className="block w-full border border-gray-300 rounded-md shadow-sm p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                                placeholder="cliente@email.com"
-                                                value={formData.Email}
-                                                onChange={(e) => setFormData({ ...formData, Email: e.target.value })}
-                                            />
-                                        </div>
-
-                                        {/* Celular */}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                <Phone className="h-4 w-4 inline mr-1" /> Celular
-                                            </label>
-                                            <input
-                                                type="tel"
-                                                inputMode="numeric"
-                                                maxLength={11}
-                                                className="block w-full border border-gray-300 rounded-md shadow-sm p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                                placeholder="47999126739"
-                                                value={formData.Telefone_Celular}
-                                                onChange={(e) => setFormData({ ...formData, Telefone_Celular: e.target.value.replace(/\D/g, '') })}
-                                            />
-                                            <p className="text-xs text-gray-400 mt-1">Só números, com DDD (10 ou 11 dígitos).</p>
-                                        </div>
-
-                                        {/* Inscrição Estadual */}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                <FileText className="h-4 w-4 inline mr-1" /> Inscrição Estadual
-                                            </label>
-                                            <input
-                                                type="text"
-                                                inputMode="numeric"
-                                                maxLength={9}
-                                                className="block w-full border border-gray-300 rounded-md shadow-sm p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                                placeholder="9 dígitos (SC)"
-                                                value={formData.Inscricao_Estadual}
-                                                onChange={(e) => setFormData({ ...formData, Inscricao_Estadual: e.target.value.replace(/\D/g, '') })}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={abrirSintegra}
-                                                className="mt-1 inline-flex items-center text-xs text-blue-600 hover:text-blue-800 font-medium"
-                                            >
-                                                <ExternalLink className="h-3.5 w-3.5 mr-1" /> Consultar no Sintegra SC
-                                            </button>
-                                        </div>
-
-                                        {/* Indicador de IE */}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Indicador de IE
-                                            </label>
-                                            <select
-                                                className="block w-full border border-gray-300 rounded-md shadow-sm p-2.5 bg-white text-gray-900 focus:ring-primary focus:border-primary"
-                                                value={formData.Indicador_Inscricao_Estadual}
-                                                onChange={(e) => setFormData({ ...formData, Indicador_Inscricao_Estadual: e.target.value })}
-                                            >
-                                                <option value="">— Selecionar —</option>
-                                                <option value="CONTRIBUINTE">Contribuinte</option>
-                                                <option value="CONTRIBUINTE_ISENTO">Contribuinte Isento</option>
-                                                <option value="NAO_CONTRIBUINTE">Não Contribuinte</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
                             {/* Observações */}
                             <div className="pt-4 border-t border-gray-200">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1190,13 +1069,6 @@ const DetalheCliente = () => {
                                 <div><span className="text-gray-500">Email:</span><p className="text-gray-900">{cliente.Email || '-'}</p></div>
                                 <div><span className="text-gray-500">Telefone:</span><p className="text-gray-900">{cliente.Telefone || '-'}</p></div>
                                 <div><span className="text-gray-500">Celular:</span><p className="text-gray-900">{cliente.Telefone_Celular || '-'}</p></div>
-                            </div>
-                        </div>
-                        <div className="border-b border-gray-200 pb-3">
-                            <h3 className="text-sm font-semibold text-gray-600 mb-2 flex items-center"><FileText className="h-4 w-4 mr-1" /> Fiscal</h3>
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div><span className="text-gray-500">Inscrição Estadual:</span><p className="text-gray-900">{cliente.Inscricao_Estadual || '-'}</p></div>
-                                <div><span className="text-gray-500">Indicador IE:</span><p className="text-gray-900">{({ CONTRIBUINTE: 'Contribuinte', CONTRIBUINTE_ISENTO: 'Contribuinte Isento', NAO_CONTRIBUINTE: 'Não Contribuinte' })[cliente.Indicador_Inscricao_Estadual] || cliente.Indicador_Inscricao_Estadual || '-'}</p></div>
                             </div>
                         </div>
                         <div className="border-b border-gray-200 pb-3">

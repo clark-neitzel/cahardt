@@ -557,13 +557,6 @@ const contaAzulService = {
                             if (resDet && resDet.data) {
                                 detalheC = resDet.data;
                             }
-                            // Se o CA não retornou inscrições, preserva a IE local (evita zerar o que o app gravou)
-                            if (!Array.isArray(detalheC.inscricoes) && localCLI?.Inscricao_Estadual) {
-                                detalheC.inscricoes = [{
-                                    inscricao_estadual: localCLI.Inscricao_Estadual,
-                                    indicador_inscricao_estadual: localCLI.Indicador_Inscricao_Estadual
-                                }];
-                            }
                             await new Promise(r => setTimeout(r, 200)); // Rate limit 5req/s
                         } catch (e) {
                             console.error(`⚠️ Erro ao buscar detalhe do Cliente ${c.id}:`, e.message);
@@ -575,13 +568,6 @@ const contaAzulService = {
                         // Preservar telefones locais (lista CA não retorna telefone_celular)
                         detalheC.telefone_celular = localCLI.Telefone_Celular || detalheC.telefone_celular;
                         detalheC.telefone_comercial = localCLI.Telefone || detalheC.telefone_comercial;
-                        // Preservar IE local (não foi refeito o GET de detalhe)
-                        if (!Array.isArray(detalheC.inscricoes) && localCLI.Inscricao_Estadual) {
-                            detalheC.inscricoes = [{
-                                inscricao_estadual: localCLI.Inscricao_Estadual,
-                                indicador_inscricao_estadual: localCLI.Indicador_Inscricao_Estadual
-                            }];
-                        }
                     }
                 }
 
@@ -626,14 +612,6 @@ const contaAzulService = {
                     End_CEP: enderecoPrincipal.cep || enderecoPrincipal.zip_code,
                     End_Pais: enderecoPrincipal.pais || 'Brasil',
                     Observacoes_Gerais: c.notes || c.observacoes,
-
-                    // Inscrição Estadual (número) + indicador, vindos do detalhe da pessoa
-                    Inscricao_Estadual: (Array.isArray(detalheC.inscricoes) && detalheC.inscricoes.length > 0)
-                        ? (detalheC.inscricoes[0].inscricao_estadual || detalheC.inscricoes[0].numero || null)
-                        : null,
-                    Indicador_Inscricao_Estadual: (Array.isArray(detalheC.inscricoes) && detalheC.inscricoes.length > 0)
-                        ? (detalheC.inscricoes[0].indicador_inscricao_estadual || null)
-                        : null,
 
                     Perfil_Filtro: "PADRAO",
                     contaAzulUpdatedAt: ultimaAtualizacaoCA || new Date(),
@@ -891,9 +869,7 @@ const contaAzulService = {
         }
     },
 
-    // PATCH genérico de uma pessoa (cliente) no Conta Azul.
-    // Aceita payload parcial (ex.: { email }, { telefone_celular }, { inscricoes: [...] }).
-    atualizarPessoaCA: async (idCliente, payload) => {
+    atualizarIndicadorIECliente: async (idCliente, payload) => {
         const start = Date.now();
         const url = `https://api-v2.contaazul.com/v1/pessoas/${idCliente}`;
         let token = await contaAzulService.getAccessToken();
@@ -955,95 +931,6 @@ const contaAzulService = {
             const errorMsg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
             throw new Error(`Erro na API Conta Azul (PATCH cliente ${idCliente}): ${errorMsg}`);
         }
-    },
-
-    // Sincroniza UM único cadastro com o Conta Azul (GET /v1/pessoas/{uuid}) e atualiza o registro local.
-    // Usado ao abrir a tela do cliente para refletir os dados atuais do CA antes de editar.
-    // Não mexe em campos exclusivos do app (dias de rota, GPS, condições, etc.).
-    sincronizarClienteUnico: async (uuid) => {
-        if (!uuid) return null;
-        const url = `https://api-v2.contaazul.com/v1/pessoas/${uuid}`;
-        const res = await contaAzulService._axiosGet(url, 'CLIENTE_SYNC_UNICO');
-        const p = res?.data;
-        if (!p) return null;
-
-        // Log para confirmar o formato real do CA (chave do número da IE / indicador).
-        console.log(`[Sync único ${uuid}] inscricoes:`, JSON.stringify(p.inscricoes || null));
-
-        const ender = (Array.isArray(p.enderecos) && p.enderecos.length > 0) ? p.enderecos[0] : (p.endereco || p.address || {});
-        const inscr = (Array.isArray(p.inscricoes) && p.inscricoes.length > 0) ? p.inscricoes[0] : null;
-        const razao = p.nome_empresa || p.company_name || p.razao_social;
-        const fantasia = p.nome || p.fantasy_name || p.nome_fantasia || p.apelido;
-        const dataAltRaw = p.data_alteracao || p.atualizado_em || p.updated_at || p.ultima_atualizacao;
-
-        const dados = {
-            Nome: razao || fantasia || undefined,
-            NomeFantasia: (fantasia && fantasia !== razao) ? fantasia : null,
-            Tipo_Pessoa: (p.person_type || p.tipo_pessoa || '').toUpperCase().includes('JUR') ? 'JURIDICA' : 'FISICA',
-            Email: p.email ?? null,
-            Telefone: p.telefone_comercial || p.business_phone || p.telefone || null,
-            Telefone_Celular: p.telefone_celular || p.mobile_phone || p.celular || null,
-            Inscricao_Estadual: inscr ? (inscr.inscricao_estadual || inscr.numero || null) : null,
-            Indicador_Inscricao_Estadual: inscr ? (inscr.indicador_inscricao_estadual || null) : null,
-            Observacoes_Gerais: p.notes ?? p.observacoes ?? p.observacao ?? null,
-            End_Logradouro: ender.logradouro || ender.street || null,
-            End_Numero: ender.numero || ender.number || null,
-            End_Complemento: ender.complemento || ender.complement || null,
-            End_Bairro: ender.bairro || ender.neighborhood || null,
-            End_Cidade: ender.cidade || ender.city?.name || ender.city || null,
-            End_Estado: ender.estado || ender.state?.name || ender.state || null,
-            End_CEP: ender.cep || ender.zip_code || null,
-            Ativo: typeof p.ativo === 'boolean' ? p.ativo : undefined,
-            Data_Alteracao: dataAltRaw ? new Date(dataAltRaw) : undefined,
-            contaAzulUpdatedAt: dataAltRaw ? new Date(dataAltRaw) : undefined
-        };
-        // Não sobrescrever com undefined
-        Object.keys(dados).forEach(k => dados[k] === undefined && delete dados[k]);
-
-        return await prisma.cliente.update({ where: { UUID: uuid }, data: dados });
-    },
-
-    // Envia ao CA os campos editáveis pelo app (email, celular, observação, IE + indicador).
-    // Estratégia GET -> merge -> PATCH: lê a pessoa atual para usar as chaves reais e preservar
-    // demais inscrições/campos, evitando depender de nomes de campo "chutados".
-    atualizarDadosClienteCA: async (uuid, campos) => {
-        let atual = {};
-        try {
-            const res = await contaAzulService._axiosGet(`https://api-v2.contaazul.com/v1/pessoas/${uuid}`, 'CLIENTE_GET_EDICAO');
-            atual = res?.data || {};
-        } catch (e) {
-            console.warn(`[atualizarDadosClienteCA] Falha ao GET pessoa ${uuid}: ${e.message}`);
-        }
-
-        const payload = {};
-        if (campos.Email !== undefined) payload.email = campos.Email || null;
-        if (campos.Telefone_Celular !== undefined) payload.telefone_celular = campos.Telefone_Celular || null;
-
-        if (campos.Observacoes_Gerais !== undefined) {
-            // Usa a chave de observação que o CA realmente retornou (notes/observacao/observacoes); default observacao.
-            const obsKey = ('observacao' in atual) ? 'observacao'
-                : ('notes' in atual) ? 'notes'
-                : ('observacoes' in atual) ? 'observacoes'
-                : 'observacao';
-            payload[obsKey] = campos.Observacoes_Gerais || null;
-        }
-
-        if (campos.Inscricao_Estadual !== undefined || campos.Indicador_Inscricao_Estadual !== undefined) {
-            const existentes = Array.isArray(atual.inscricoes) ? atual.inscricoes : [];
-            const base = existentes.length > 0 ? { ...existentes[0] } : {};
-            if (campos.Inscricao_Estadual !== undefined) {
-                // preserva a chave existente (numero vs inscricao_estadual)
-                if ('numero' in base && !('inscricao_estadual' in base)) base.numero = campos.Inscricao_Estadual || null;
-                else base.inscricao_estadual = campos.Inscricao_Estadual || null;
-            }
-            if (campos.Indicador_Inscricao_Estadual !== undefined) {
-                base.indicador_inscricao_estadual = campos.Indicador_Inscricao_Estadual || null;
-            }
-            payload.inscricoes = [base, ...existentes.slice(1)];
-        }
-
-        if (Object.keys(payload).length === 0) return null;
-        return await contaAzulService.atualizarPessoaCA(uuid, payload);
     },
 
     // Rotina exclusiva para V2: A V2 simplesmente "esconde" pedidos deletados da busca geral.

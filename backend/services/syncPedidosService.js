@@ -147,7 +147,7 @@ const syncPedidosService = {
             // Antes da venda, tenta manter o indicador de IE coerente no cliente CA
             try {
                 const indicadorIE = syncPedidosService._resolverIndicadorIE(pedido.cliente);
-                await contaAzulService.atualizarPessoaCA(
+                await contaAzulService.atualizarIndicadorIECliente(
                     pedido.cliente.contaAzulId || pedido.cliente.UUID,
                     {
                         inscricoes: [
