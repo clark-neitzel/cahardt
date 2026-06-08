@@ -18,6 +18,8 @@ const LS_KEY = 'contasReceberTabela_filters';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '-';
+// YYYY-MM-DD no fuso de SP — mesma data que fmtData mostra, p/ comparar com inputs date.
+const toYMD = (d) => d ? new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) : '';
 
 const STATUS_CONTA = {
     ABERTO: 'bg-blue-100 text-blue-800',
@@ -199,6 +201,12 @@ const ContasReceberTabela = () => {
                 }
             }
             if (filtros.formaPagamento.length) filtered = filtered.filter(l => filtros.formaPagamento.includes(l.formaPagamento || ''));
+            // Refino de data no nível da PARCELA: o backend filtra a CONTA (some), então sem
+            // isto uma conta entraria trazendo parcelas com vencimento/pagamento fora do range.
+            if (filtros.vencDe) filtered = filtered.filter(l => toYMD(l.dataVencimento) >= filtros.vencDe);
+            if (filtros.vencAte) filtered = filtered.filter(l => toYMD(l.dataVencimento) <= filtros.vencAte);
+            if (filtros.pagDe) filtered = filtered.filter(l => l.dataPagamento && toYMD(l.dataPagamento) >= filtros.pagDe);
+            if (filtros.pagAte) filtered = filtered.filter(l => l.dataPagamento && toYMD(l.dataPagamento) <= filtros.pagAte);
             setLinhas(filtered);
             setIndicadores(data.indicadores || {});
             saveFilters();
