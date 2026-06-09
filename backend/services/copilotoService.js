@@ -144,13 +144,23 @@ function selecionarRelevantes(pergunta, abasAcessiveis, n = 3) {
     return scored.filter((x) => x.score > 0).sort((x, y) => y.score - x.score).slice(0, n).map((x) => x.a);
 }
 
+// Extrai o trecho ÚTIL do manual para responder: descarta as seções de
+// desenvolvedor ("Depende de", "Arquivos no código"), que ficam no fim e só
+// gastam tokens. Mantém "O que é / O que dá pra fazer / Como fazer / Permissões".
+function trechoUtil(corpo) {
+    if (!corpo) return '';
+    const corte = corpo.search(/\n##\s*(Depende|Arquivos)/i);
+    const t = corte > 0 ? corpo.slice(0, corte) : corpo;
+    return t.trim().slice(0, 4000);
+}
+
 const PERSONA = `Você é o "Clippy", o assistente de ajuda do app de gestão da Hardt Salgados.
 Sua função é ensinar o usuário a usar o sistema: ONDE fica cada coisa e COMO fazer cada tarefa, com base nos manuais das telas.
 REGRAS:
 - Você NÃO tem acesso a dados de negócio (vendas, valores, nomes de clientes). Se pedirem números/dados, diga que você só ajuda a usar o app e indique a tela onde ele encontra isso.
 - Baseie-se SOMENTE no índice e nos manuais fornecidos. NUNCA invente telas, menus, botões ou caminhos.
 - Se a tela necessária não estiver na lista (o usuário não tem permissão), diga que ele não tem acesso a ela.
-- Seja curto e prático, em português do Brasil.
+- Responda de forma COMPLETA e prática, em português do Brasil: se o manual traz um passo a passo, liste TODOS os passos em ordem. NUNCA escreva "siga os passos abaixo" (ou parecido) sem de fato listar os passos. Use as informações do manual, não invente nem resuma a ponto de ficar vago.
 - FORMATO: quando houver passos, escreva UM passo por linha, cada um iniciando com "1.", "2.", "3."... e uma quebra de linha real (\\n) entre eles. Use texto simples, SEM markdown (nada de **, *, # ou _). Se precisar destacar um botão, escreva o nome entre aspas, ex.: clique em "+ Entrada".`;
 
 /**
@@ -180,7 +190,7 @@ async function responderAjuda({ pergunta, historico = [], perms = {} } = {}) {
 
     const relevantes = selecionarRelevantes(pergunta, acessiveis);
     const detalhes = relevantes
-        .map((a) => `### ${a.nome} (${a.rota})\n${(MANUAIS[a.slug]?.corpo || '').slice(0, 1600)}`)
+        .map((a) => `### ${a.nome} (${a.rota})\n${trechoUtil(MANUAIS[a.slug]?.corpo)}`)
         .join('\n\n');
 
     const system = `${PERSONA}
@@ -206,7 +216,7 @@ Responda SEMPRE em JSON neste formato:
     const { texto, modelo, provider } = await ai.gerarTexto({
         system,
         mensagens: msgs,
-        maxTokens: 500,
+        maxTokens: 750,
         temperature: 0.2,
         json: true,
     });
