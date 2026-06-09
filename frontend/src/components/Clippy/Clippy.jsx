@@ -26,6 +26,17 @@ const SUGESTOES = [
     'Onde lanço uma despesa?',
 ];
 
+// Deixa a resposta legível: remove markdown e quebra os passos numerados em linhas
+function formatarResposta(t) {
+    if (!t) return t;
+    return String(t)
+        .replace(/\*\*(.*?)\*\*/g, '$1')                 // remove **negrito**
+        .replace(/`([^`]*)`/g, '$1')                      // remove `código`
+        .replace(/([:.!?])\s+(\d{1,2}\.\s)/g, '$1\n$2')   // quebra antes de "1.", "2."...
+        .replace(/(^|\n)\s*[-*]\s+/g, '$1• ')             // listas com - ou * viram •
+        .trim();
+}
+
 export default function Clippy() {
     const navigate = useNavigate();
 
@@ -184,7 +195,7 @@ export default function Clippy() {
                                     <div className={`p-2.5 text-[13px] leading-snug whitespace-pre-wrap ${msg.role === 'user'
                                         ? 'rounded-2xl rounded-tr-sm bg-primary text-white'
                                         : 'rounded-2xl rounded-tl-sm bg-gray-100 text-gray-700'}`}>
-                                        {msg.content}
+                                        {msg.role === 'assistant' ? formatarResposta(msg.content) : msg.content}
                                     </div>
                                     {/* Atalhos clicáveis */}
                                     {msg.atalhos?.map((a) => (
