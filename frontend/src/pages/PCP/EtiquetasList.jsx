@@ -346,11 +346,13 @@ export default function EtiquetasList() {
     useEffect(() => { carregar(); }, [carregar]);
     useEffect(() => { inputRef.current?.focus(); }, []);
 
-    const filtradas = todas.filter(et => {
-        if (!search.trim()) return true;
-        const q = search.toLowerCase();
-        return et.nomeProduto.toLowerCase().includes(q) || et.codigoProduto.toLowerCase().includes(q);
-    });
+    const filtradas = todas
+        .filter(et => {
+            if (!search.trim()) return true;
+            const q = search.toLowerCase();
+            return et.nomeProduto.toLowerCase().includes(q) || et.codigoProduto.toLowerCase().includes(q);
+        })
+        .sort((a, b) => a.nomeProduto.localeCompare(b.nomeProduto, 'pt-BR'));
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-6">
@@ -387,7 +389,7 @@ export default function EtiquetasList() {
 
             {/* Grid de cards */}
             {loading ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {Array.from({ length: 8 }).map((_, i) => (
                         <div key={i} className="bg-gray-100 rounded-xl h-40 animate-pulse" />
                     ))}
@@ -399,7 +401,7 @@ export default function EtiquetasList() {
                     {search && <p className="text-sm mt-1">Tente outro termo de busca</p>}
                 </div>
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {filtradas.map(et => (
                         <EtiquetaCard key={et.id} et={et} onPrint={setSelecionada} />
                     ))}
