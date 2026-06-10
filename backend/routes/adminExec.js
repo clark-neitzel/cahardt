@@ -1018,4 +1018,121 @@ router.post('/fix-km-combustivel', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/recalcular-flex-historico
+// Recalcula flexGerado por item e flexTotal dos pedidos dos últimos 30 dias
+// aplicando as regras atuais de categoria (flexPositivo, flexNegativo, contabilizaFlex, isentoFlex)
+router.post('/recalcular-flex-historico', async (req, res) => {
+    try {
+        const diasParam = parseInt(req.query.dias) || 30;
+        const apenasSimular = req.query.simular === 'true';
+
+        const trintaDiasAtras = new Date();
+        trintaDiasAtras.setDate(trintaDiasAtras.getDate() - diasParam);
+
+        // Carrega regras de categorias CA
+        const catEstoque = await prisma.categoriaEstoque.findMany({ select: { nome: true, contabilizaFlex: true } });
+        const catEstoqueMap = new Map(catEstoque.map(c => [c.nome, c.contabilizaFlex]));
+
+        // Carrega regras de categorias comerciais
+        const catProduto = await prisma.categoriaProduto.findMany({ select: { id: true, flexPositivo: true, flexNegativo: true } });
+        const catProdutoMap = new Map(catProduto.map(c => [c.id, { flexPositivo: c.flexPositivo, flexNegativo: c.flexNegativo }]));
+
+        // Busca produtos com suas categorias
+        const produtos = await prisma.produto.findMany({ select: { id: true, categoria: true, categoriaProdutoId: true } });
+        const produtoMap = new Map(produtos.map(p => {
+            const contabilizaFlex = p.categoria ? (catEstoqueMap.get(p.categoria) ?? true) : true;
+            const catComercial = p.categoriaProdutoId ? catProdutoMap.get(p.categoriaProdutoId) : null;
+            return [p.id, { contabilizaFlex, flexPositivo: catComercial?.flexPositivo ?? true, flexNegativo: catComercial?.flexNegativo ?? true }];
+        }));
+
+        // Busca pedidos do período
+        const pedidos = await prisma.pedido.findMany({
+            where: {
+                createdAt: { gte: trintaDiasAtras },
+                statusEnvio: { not: 'EXCLUIDO' }
+            },
+            include: {
+                itens: { select: { id: true, produtoId: true, valor: true, valorBase: true, quantidade: true, flexGerado: true } },
+                cliente: { select: { categoriaCliente: { select: { isentoFlex: true } } } }
+            }
+        });
+
+        const resultados = [];
+        let pedidosAlterados = 0;
+        let itensAlterados = 0;
+
+        for (const pedido of pedidos) {
+            const isentoFlex = pedido.cliente?.categoriaCliente?.isentoFlex || false;
+            let novoFlexTotal = 0;
+            const itensParaAtualizar = [];
+
+            for (const item of pedido.itens) {
+                let novoFlexGerado;
+
+                if (isentoFlex || pedido.bonificacao) {
+                    novoFlexGerado = 0;
+                } else {
+                    const flexBruto = (Number(item.valor) - Number(item.valorBase)) * Number(item.quantidade);
+                    const regra = produtoMap.get(item.produtoId);
+                    if (!regra || !regra.contabilizaFlex) {
+                        novoFlexGerado = 0;
+                    } else if (flexBruto > 0 && !regra.flexPositivo) {
+                        novoFlexGerado = 0;
+                    } else if (flexBruto < 0 && !regra.flexNegativo) {
+                        novoFlexGerado = 0;
+                    } else {
+                        novoFlexGerado = flexBruto;
+                    }
+                }
+
+                novoFlexTotal += novoFlexGerado;
+
+                const flexAtual = Number(item.flexGerado || 0);
+                if (Math.abs(flexAtual - novoFlexGerado) > 0.001) {
+                    itensParaAtualizar.push({ id: item.id, novoFlexGerado, flexAtual });
+                }
+            }
+
+            const flexTotalAtual = Number(pedido.flexTotal || 0);
+            const mudouTotal = Math.abs(flexTotalAtual - novoFlexTotal) > 0.001;
+            const mudouItens = itensParaAtualizar.length > 0;
+
+            if (mudouTotal || mudouItens) {
+                pedidosAlterados++;
+                itensAlterados += itensParaAtualizar.length;
+                resultados.push({
+                    pedidoId: pedido.id,
+                    numero: pedido.numero,
+                    especial: pedido.especial,
+                    flexAntes: flexTotalAtual,
+                    flexDepois: novoFlexTotal,
+                    itensMudados: itensParaAtualizar.length
+                });
+
+                if (!apenasSimular) {
+                    // Atualiza itens
+                    for (const it of itensParaAtualizar) {
+                        await prisma.pedidoItem.update({ where: { id: it.id }, data: { flexGerado: it.novoFlexGerado } });
+                    }
+                    // Atualiza flexTotal do pedido
+                    await prisma.pedido.update({ where: { id: pedido.id }, data: { flexTotal: novoFlexTotal } });
+                }
+            }
+        }
+
+        res.json({
+            ok: true,
+            simulacao: apenasSimular,
+            diasConsiderados: diasParam,
+            totalPedidos: pedidos.length,
+            pedidosAlterados,
+            itensAlterados,
+            detalhes: resultados
+        });
+    } catch (e) {
+        console.error('[admin-exec] recalcular-flex-historico:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;
