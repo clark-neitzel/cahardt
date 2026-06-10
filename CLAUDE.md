@@ -85,6 +85,33 @@ Campos do backend podem chegar `null` ou `undefined`. Interpolar diretamente pro
 
 ---
 
+## Regras de Schema Prisma (NUNCA QUEBRAR O DEPLOY)
+
+### Nunca remover campos do schema.prisma que já existem no banco
+
+O deploy usa `prisma db push` (sem `--accept-data-loss`). Se um campo for removido do schema e a coluna ainda existir no banco, o Prisma recusa o push e o servidor **não sobe**.
+
+**Errado — causa falha de deploy:**
+```prisma
+// Antes:
+tipoFlex String @default("NORMAL") @map("tipo_flex")
+// Depois (removido):
+// (campo deletado do schema)
+```
+
+**Certo — manter o campo legado no schema:**
+```prisma
+tipoFlex     String  @default("NORMAL") @map("tipo_flex")  // legado — mantido para não dropar a coluna
+flexPositivo Boolean @default(true) @map("flex_positivo")
+flexNegativo Boolean @default(true) @map("flex_negativo")
+```
+
+**Regra:** ao substituir um campo por outro, **sempre manter o campo antigo** no schema com um comentário `// legado`. Só é seguro remover após confirmar que a coluna foi dropada manualmente no banco de produção.
+
+Isso se aplica a qualquer campo que já existia em produção — mesmo que não seja mais usado no código.
+
+---
+
 ## PWA / Atualização
 
 O app é PWA. Sempre que fizer deploy de mudanças visíveis, incluir o ícone de refresh na UI e o hook `useVersionCheck` para que o usuário seja notificado automaticamente.
