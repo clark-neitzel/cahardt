@@ -932,8 +932,15 @@ router.post('/import-etiquetas', async (req, res) => {
                         pesoUnitario: parseInt(et.pesoUnitario) || 0,
                     }
                 });
-                // Auto-link: procura produto no catálogo pelo código
+                // Auto-link: procura produto no catálogo, respeita unique constraint (produtoId)
                 const produtoCat = todosProdutos.find(p => String(p.codigo).trim() === String(et.codigoProduto).trim());
+                let produtoIdFinal = undefined;
+                if (produtoCat?.id) {
+                    const jaOcupado = await prisma.etiquetaProduto.findFirst({
+                        where: { produtoId: produtoCat.id, id: { not: existente?.id ?? 'none' } }
+                    });
+                    if (!jaOcupado) produtoIdFinal = produtoCat.id;
+                }
                 const data = {
                     codigoProduto:         String(et.codigoProduto || ''),
                     nomeProduto:           String(et.nomeProduto || ''),
@@ -947,7 +954,7 @@ router.post('/import-etiquetas', async (req, res) => {
                     gordurasTrans:         et.gordurasTrans      || null,
                     fibraAlimentar:        et.fibraAlimentar     || null,
                     sodio:                 et.sodio              || null,
-                    produtoId:             produtoCat?.id || undefined,
+                    produtoId:             produtoIdFinal,
                     quantidadeEmbalagem:   parseInt(et.quantidadeEmbalagem) || 1,
                     quantidadeAproximada:  Boolean(et.quantidadeAproximada),
                     composicao:            String(et.composicao  || ''),

@@ -74,6 +74,8 @@
 | PCP — Calendário | `/pcp/calendario` | Planejamento visual de produção em calendário com drag and drop | [pcp-calendario.md](pcp-calendario.md) |
 | PCP — Estoque (PCP) | `/pcp/estoque` | Posição de estoque de MP, SUB, PA e EMB com ajustes manuais | [pcp-estoque.md](pcp-estoque.md) |
 | PCP — Sugestões | `/pcp/sugestoes` | Sugestões automáticas de produção para itens abaixo do mínimo | [pcp-sugestoes.md](pcp-sugestoes.md) |
+| PCP — Etiquetas | `/pcp/etiquetas` | Impressão de etiquetas de embalagem 80×100mm com código de barras EAN-13 | [pcp-etiquetas.md](pcp-etiquetas.md) |
+| PCP — Dados Etiquetas | `/pcp/etiquetas/dados` | Cadastro e manutenção dos dados nutricionais e rótulo de cada produto | [pcp-etiquetas.md](pcp-etiquetas.md) |
 
 ---
 
