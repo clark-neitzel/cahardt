@@ -49,6 +49,10 @@ import PainelOperacional from './pages/PCP/PainelOperacional';
 import CalendarioProducao from './pages/PCP/CalendarioProducao';
 import SugestoesProducao from './pages/PCP/SugestoesProducao';
 import DashboardPcp from './pages/PCP/DashboardPcp';
+import EtiquetasList from './pages/PCP/EtiquetasList';
+import EtiquetasDados from './pages/PCP/EtiquetasDados';
+import EtiquetaForm from './pages/PCP/EtiquetaForm';
+import EtiquetaImprimir from './pages/PCP/EtiquetaImprimir';
 import DeliveryKanban from './pages/Delivery/DeliveryKanban';
 import DeliveryConfig from './pages/Delivery/DeliveryConfig';
 import PainelAtendimentos from './pages/Atendimentos/PainelAtendimentos';
@@ -64,7 +68,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -235,6 +239,8 @@ const Layout = ({ children }) => {
           {canPcp('estoque') && <SidebarItem to="/pcp/estoque" icon={Factory} label="Estoque PCP" />}
           {canPcp('sugestoes') && <SidebarItem to="/pcp/sugestoes" icon={Lightbulb} label="Sugestoes" />}
           {canPcp('sugestoes') && <SidebarItem to="/pcp/dashboard" icon={BarChart3} label="Dashboard" />}
+          {canPcp('etiquetas') && <SidebarItem to="/pcp/etiquetas" icon={Tag} label="Etiquetas" />}
+          {canPcp('etiquetas') && <SidebarItem to="/pcp/etiquetas/dados" icon={DatabaseZap} label="Dados Etiquetas" />}
 
           {/* Produção / Estoque */}
           {showEstoque && <SidebarSection label="Produção" />}
@@ -399,6 +405,8 @@ const Layout = ({ children }) => {
                 {canPcp('estoque') && <NavLink to="/pcp/estoque" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Estoque PCP</NavLink>}
                 {canPcp('sugestoes') && <NavLink to="/pcp/sugestoes" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Sugestoes</NavLink>}
                 {canPcp('sugestoes') && <NavLink to="/pcp/dashboard" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Dashboard</NavLink>}
+                {canPcp('etiquetas') && <NavLink to="/pcp/etiquetas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Etiquetas</NavLink>}
+                {canPcp('etiquetas') && <NavLink to="/pcp/etiquetas/dados" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Dados Etiquetas</NavLink>}
               </MobileMenuSection>
             )}
 
@@ -539,6 +547,11 @@ function App() {
               <Route path="/pcp/estoque" element={<PrivateRoute><EstoquePcp /></PrivateRoute>} />
               <Route path="/pcp/sugestoes" element={<PrivateRoute><SugestoesProducao /></PrivateRoute>} />
               <Route path="/pcp/dashboard" element={<PrivateRoute><DashboardPcp /></PrivateRoute>} />
+              <Route path="/pcp/etiquetas" element={<PrivateRoute><EtiquetasList /></PrivateRoute>} />
+              <Route path="/pcp/etiquetas/dados" element={<PrivateRoute><EtiquetasDados /></PrivateRoute>} />
+              <Route path="/pcp/etiquetas/nova" element={<PrivateRoute><EtiquetaForm /></PrivateRoute>} />
+              <Route path="/pcp/etiquetas/:id/editar" element={<PrivateRoute><EtiquetaForm /></PrivateRoute>} />
+              <Route path="/pcp/etiquetas/:id/imprimir" element={<PrivateRoute><EtiquetaImprimir /></PrivateRoute>} />
 
               {/* Produção / Estoque */}
               <Route path="/estoque" element={<PrivateRoute><PainelEstoque /></PrivateRoute>} />

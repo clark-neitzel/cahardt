@@ -44,6 +44,7 @@ const pcpEstoqueRoutes = require('./routes/pcpEstoqueRoutes'); // PCP: Estoque
 const pcpOrdemRoutes = require('./routes/pcpOrdemRoutes'); // PCP: Ordens de Produção
 const pcpAgendaRoutes = require('./routes/pcpAgendaRoutes'); // PCP: Agenda/Calendário
 const pcpSugestaoRoutes = require('./routes/pcpSugestaoRoutes'); // PCP: Sugestões de Produção
+const pcpEtiquetaRoutes = require('./routes/pcpEtiquetaRoutes'); // PCP: Etiquetas de Produtos
 const devolucaoRoutes = require('./routes/devolucaoRoutes'); // Devoluções
 const deliveryRoutes = require('./routes/deliveryRoutes'); // Delivery (Kit Festa)
 const iaLogsRoutes = require('./routes/iaLogs'); // Logs de Análise IA
@@ -113,6 +114,7 @@ app.use('/api/pcp/estoque', authMiddleware, pcpEstoqueRoutes);
 app.use('/api/pcp/ordens', authMiddleware, pcpOrdemRoutes);
 app.use('/api/pcp/agenda', authMiddleware, pcpAgendaRoutes);
 app.use('/api/pcp/sugestoes', authMiddleware, pcpSugestaoRoutes);
+app.use('/api/pcp/etiquetas', authMiddleware, pcpEtiquetaRoutes);
 app.use('/api/devolucoes', authMiddleware, devolucaoRoutes); // Devoluções
 app.use('/api/delivery', authMiddleware, deliveryRoutes); // Delivery (Kit Festa)
 app.use('/api/ia-logs', iaLogsRoutes); // Logs de Análise IA (auth interno)

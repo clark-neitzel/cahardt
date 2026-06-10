@@ -6,7 +6,7 @@ import {
     Box, UserCog, Car, RefreshCw, FileText,
     Settings, DollarSign, Warehouse, TrendingUp,
     Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3, BarChart2,
-    Clock, CalendarOff, ClipboardCheck
+    Clock, CalendarOff, ClipboardCheck, Tag
 } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import configService from '../../../services/configService';
@@ -97,6 +97,7 @@ const DEFAULT_PERMISSIONS = {
         agenda: false,
         estoque: false,
         sugestoes: false,
+        etiquetas: false,
     },
     // Regras de Horário para Pedidos
     horarioLimiteAmanha: '18:00',
@@ -280,7 +281,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     const togglePcpAll = (val) => {
         setPermissoes(prev => ({
             ...prev,
-            pcp: { itens: val, receitas: val, ordens: val, cancelarOrdens: val, agenda: val, estoque: val, sugestoes: val }
+            pcp: { itens: val, receitas: val, ordens: val, cancelarOrdens: val, agenda: val, estoque: val, sugestoes: val, etiquetas: val }
         }));
     };
     const changeClientesScope = (val) => {
@@ -320,7 +321,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     ].filter(Boolean).length;
     const countEstoque = (permissoes.estoque || []).length;
     const pcpPerms = permissoes.pcp || {};
-    const countPcp = [pcpPerms.itens, pcpPerms.receitas, pcpPerms.ordens, pcpPerms.cancelarOrdens, pcpPerms.agenda, pcpPerms.estoque, pcpPerms.sugestoes].filter(Boolean).length;
+    const countPcp = [pcpPerms.itens, pcpPerms.receitas, pcpPerms.ordens, pcpPerms.cancelarOrdens, pcpPerms.agenda, pcpPerms.estoque, pcpPerms.sugestoes, pcpPerms.etiquetas].filter(Boolean).length;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-black bg-opacity-50">
@@ -860,6 +861,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         <MenuToggle icon={Warehouse} label="Estoque PCP" checked={!!pcpPerms.estoque} onChange={() => togglePcp('estoque')} />
                         <MenuToggle icon={Lightbulb} label="Sugestoes de Producao" checked={!!pcpPerms.sugestoes} onChange={() => togglePcp('sugestoes')} />
                         <MenuToggle icon={BarChart3} label="Dashboard PCP" checked={!!pcpPerms.sugestoes} onChange={() => togglePcp('sugestoes')} />
+                        <MenuToggle icon={Tag} label="Etiquetas de Produtos" checked={!!pcpPerms.etiquetas} onChange={() => togglePcp('etiquetas')} />
                     </DeptSection>
 
                     {/* ── RH ── */}

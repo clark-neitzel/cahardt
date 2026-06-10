@@ -60,6 +60,8 @@ model Produto {
   permiteRecomendacao     Boolean           @default(true) @map("permite_recomendacao")
   prioridadeRecomendacao  Int               @default(1) @map("prioridade_recomendacao")
 
+  etiqueta EtiquetaProduto?
+
   @@map("produtos")
 }
 
@@ -1584,4 +1586,57 @@ model CurriculoHistorico {
 
   @@index([curriculoId])
   @@map("curriculo_historico")
+}
+
+// ─── Etiquetas de Produtos ────────────────────────────────────────────────────
+
+model EtiquetaProduto {
+  id    String @id @default(uuid())
+
+  // Vínculo opcional com Produto do catálogo
+  produtoId String? @unique @map("produto_id")
+  produto   Produto? @relation(fields: [produtoId], references: [id])
+
+  // Identificação
+  codigoProduto         String  @map("codigo_produto")
+  nomeProduto           String  @map("nome_produto")
+  pesoUnitario          Int     @map("peso_unitario")          // gramas
+  pesoTabelaNutricional Int     @map("peso_tabela_nutricional") // gramas (porção)
+
+  // Informação Nutricional (texto com unidade + %VD, ex: "34kcal (2% VD)")
+  valorEnergetico   String? @map("valor_energetico")
+  carboidratos      String?
+  proteinas         String?
+  gordurasTotais    String? @map("gorduras_totais")
+  gordurasSaturadas String? @map("gorduras_saturadas")
+  gordurasTrans     String? @map("gorduras_trans")
+  fibraAlimentar    String? @map("fibra_alimentar")
+  sodio             String?
+
+  // Conteúdo do rótulo
+  quantidadeEmbalagem Int    @map("quantidade_embalagem")
+  composicao          String @db.Text
+  modoPreparo         String @db.Text @map("modo_preparo")
+  codigoBarras        String? @map("codigo_barras")
+
+  // Alérgenos
+  contemLeite     Boolean @default(false) @map("contem_leite")
+  contemGluten    Boolean @default(false) @map("contem_gluten")
+  contemOvo       Boolean @default(false) @map("contem_ovo")
+  outrosAlergenos String? @map("outros_alergenos")
+  avisosRotulo    String? @map("avisos_rotulo")
+
+  // Conservação
+  armazenamento String?
+  validadeDias  Int     @default(90) @map("validade_dias")
+
+  // Controle
+  ativo       Boolean @default(true)
+  tipoProduto String? @map("tipo_produto")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([codigoProduto])
+  @@map("etiquetas_produtos")
 }
