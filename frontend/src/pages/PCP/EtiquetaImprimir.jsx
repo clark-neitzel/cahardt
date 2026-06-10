@@ -209,11 +209,23 @@ ${Array.from({ length: copies }, () => `<div class="pg">${conteudo.innerHTML}</d
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Cópias</label>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => setCopies(c => Math.max(1, c-1))} className="p-1.5 rounded border border-gray-300 hover:bg-gray-50">
+                            <button onClick={() => setCopies(c => Math.max(1, (parseInt(c)||1)-1))} className="p-1.5 rounded border border-gray-300 hover:bg-gray-50">
                                 <Minus className="h-4 w-4" />
                             </button>
-                            <span className="w-10 text-center font-semibold text-gray-800">{copies}</span>
-                            <button onClick={() => setCopies(c => Math.min(200, c+1))} className="p-1.5 rounded border border-gray-300 hover:bg-gray-50">
+                            <input
+                                type="number"
+                                min="1"
+                                max="999"
+                                value={copies}
+                                onChange={e => {
+                                    const v = parseInt(e.target.value);
+                                    if (!isNaN(v) && v >= 1) setCopies(Math.min(999, v));
+                                    else if (e.target.value === '') setCopies('');
+                                }}
+                                onBlur={e => { if (!e.target.value || parseInt(e.target.value) < 1) setCopies(1); }}
+                                className="w-16 text-center font-semibold text-gray-800 border border-gray-300 rounded-lg py-1.5 focus:ring-2 focus:ring-indigo-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <button onClick={() => setCopies(c => Math.min(999, (parseInt(c)||1)+1))} className="p-1.5 rounded border border-gray-300 hover:bg-gray-50">
                                 <Plus className="h-4 w-4" />
                             </button>
                         </div>

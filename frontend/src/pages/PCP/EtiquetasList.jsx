@@ -241,8 +241,20 @@ ${Array.from({ length: copies }, () => `<div class="pg">${conteudo.innerHTML}</d
                             <button onClick={() => setCopies(c => Math.max(1, c-1))} className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50">
                                 <Minus className="h-3.5 w-3.5" />
                             </button>
-                            <span className="w-10 text-center text-lg font-bold text-gray-800">{copies}</span>
-                            <button onClick={() => setCopies(c => Math.min(200, c+1))} className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50">
+                            <input
+                                type="number"
+                                min="1"
+                                max="999"
+                                value={copies}
+                                onChange={e => {
+                                    const v = parseInt(e.target.value);
+                                    if (!isNaN(v) && v >= 1) setCopies(Math.min(999, v));
+                                    else if (e.target.value === '') setCopies('');
+                                }}
+                                onBlur={e => { if (!e.target.value || parseInt(e.target.value) < 1) setCopies(1); }}
+                                className="w-16 text-center text-lg font-bold text-gray-800 border border-gray-300 rounded-lg py-1 focus:ring-2 focus:ring-indigo-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <button onClick={() => setCopies(c => Math.min(999, (parseInt(c) || 1)+1))} className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50">
                                 <Plus className="h-3.5 w-3.5" />
                             </button>
                         </div>
