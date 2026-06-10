@@ -28,8 +28,8 @@ const Toggle = ({ checked, onChange }) => (
 
 // Card section wrapper
 const SectionCard = ({ icon: Icon, title, badge, children }) => (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100 rounded-t-xl">
             <Icon className="h-4 w-4 text-blue-600 shrink-0" />
             <span className="text-xs font-bold uppercase tracking-widest text-gray-600">{title}</span>
             {badge && <span className="ml-auto">{badge}</span>}
