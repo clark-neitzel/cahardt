@@ -907,7 +907,14 @@ router.post('/estoque-ajuste-batch', async (req, res) => {
 // POST /api/admin-exec/import-etiquetas — upsert em lote de etiquetas (por codigoProduto)
 router.post('/import-etiquetas', async (req, res) => {
     try {
-        const { etiquetas } = req.body;
+        const { etiquetas, limparVazios } = req.body;
+
+        if (limparVazios) {
+            const del = await prisma.etiquetaProduto.deleteMany({
+                where: { OR: [{ codigoProduto: '' }, { nomeProduto: '' }] }
+            });
+            if (!etiquetas?.length) return res.json({ ok: true, deletados: del.count });
+        }
         if (!Array.isArray(etiquetas) || etiquetas.length === 0)
             return res.status(400).json({ error: 'Array etiquetas vazio.' });
 
