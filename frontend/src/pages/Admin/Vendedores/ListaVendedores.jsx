@@ -10,6 +10,8 @@ const FORMAS_OPTIONS = [
     { value: 'TELEFONE', label: 'Telefone', icon: Phone, color: 'blue' },
 ];
 
+const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
 const ListaVendedores = () => {
     const [vendedores, setVendedores] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -19,33 +21,30 @@ const ListaVendedores = () => {
     const [editForm, setEditForm] = useState({});
     const [permissionsModalVendedor, setPermissionsModalVendedor] = useState(null);
 
-    // Toggle direto de formas de atendimento visíveis (auto-save)
     const handleToggleForma = async (vendedor, formaValue) => {
         const atual = vendedor.formasAtendimentoVisiveis || [];
         const jaAtivo = atual.includes(formaValue);
         const novas = jaAtivo ? atual.filter(v => v !== formaValue) : [...atual, formaValue];
         try {
             const updated = await vendedorService.atualizar(vendedor.id, { formasAtendimentoVisiveis: novas });
-            setVendedores(vendedores.map(v => v.id === vendedor.id ? updated : v));
+            setVendedores(vendedores.map(v => v.id === vendedor.id ? { ...vendedor, ...updated } : v));
             toast.success(`${vendedor.nome}: formas atualizadas`);
-        } catch (error) {
+        } catch {
             toast.error('Erro ao salvar formas de atendimento');
         }
     };
 
-    // Toggle direto de alerta de faturamento (auto-save)
     const handleToggleAlertaFaturamento = async (vendedor) => {
-        const novoValor = !(vendedor.alertaFaturamento !== false); // default true
+        const novoValor = !(vendedor.alertaFaturamento !== false);
         try {
             const updated = await vendedorService.atualizar(vendedor.id, { alertaFaturamento: novoValor });
-            setVendedores(vendedores.map(v => v.id === vendedor.id ? updated : v));
+            setVendedores(vendedores.map(v => v.id === vendedor.id ? { ...vendedor, ...updated } : v));
             toast.success(`${vendedor.nome}: alerta faturamento ${novoValor ? 'ativado' : 'desativado'}`);
-        } catch (error) {
+        } catch {
             toast.error('Erro ao salvar alerta de faturamento');
         }
     };
 
-    // Carregar vendedores
     const fetchVendedores = async () => {
         try {
             setLoading(true);
@@ -58,31 +57,27 @@ const ListaVendedores = () => {
         }
     };
 
-    useEffect(() => {
-        fetchVendedores();
-    }, []);
+    useEffect(() => { fetchVendedores(); }, []);
 
     const handleEdit = (vendedor) => {
         setEditingId(vendedor.id);
         setEditForm({
             email: vendedor.email || '',
             telefone: vendedor.telefone || '',
-            flexMensal: vendedor.flexMensal || 0,
-            flexDisponivel: vendedor.flexDisponivel || 0,
+            percentualFlex: vendedor.percentualFlex !== undefined ? Number(vendedor.percentualFlex) : 0,
             maxDescontoFlex: vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100
         });
     };
 
-    const handleCancel = () => {
-        setEditingId(null);
-        setEditForm({});
-    };
+    const handleCancel = () => { setEditingId(null); setEditForm({}); };
 
     const handleSave = async (id) => {
         try {
             const updated = await vendedorService.atualizar(id, editForm);
-            setVendedores(vendedores.map(v => v.id === id ? updated : v));
+            setVendedores(vendedores.map(v => v.id === id ? { ...v, ...updated } : v));
             setEditingId(null);
+            // Recarrega para obter flexDinamico atualizado
+            fetchVendedores();
         } catch (error) {
             console.error('Erro ao salvar:', error);
             alert('Erro ao conectar com servidor');
@@ -95,9 +90,9 @@ const ListaVendedores = () => {
         if (!window.confirm(`Deseja ${acao} o usuário ${vendedor.nome}?${!novoStatus ? '\n\nEle não poderá mais acessar a plataforma e não será possível emitir pedidos para clientes vinculados a ele.' : ''}`)) return;
         try {
             const updated = await vendedorService.atualizar(vendedor.id, { ativo: novoStatus });
-            setVendedores(vendedores.map(v => v.id === vendedor.id ? updated : v));
+            setVendedores(vendedores.map(v => v.id === vendedor.id ? { ...v, ...updated } : v));
             toast.success(`${vendedor.nome} ${novoStatus ? 'reativado' : 'inativado'} com sucesso`);
-        } catch (error) {
+        } catch {
             toast.error('Erro ao alterar status do vendedor');
         }
     };
@@ -117,23 +112,12 @@ const ListaVendedores = () => {
                 </div>
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                     <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer whitespace-nowrap">
-                        <input
-                            type="checkbox"
-                            checked={mostrarInativos}
-                            onChange={e => setMostrarInativos(e.target.checked)}
-                            className="rounded border-gray-300 text-gray-600 focus:ring-gray-500 h-3.5 w-3.5"
-                        />
+                        <input type="checkbox" checked={mostrarInativos} onChange={e => setMostrarInativos(e.target.checked)} className="rounded border-gray-300 text-gray-600 focus:ring-gray-500 h-3.5 w-3.5" />
                         Mostrar inativos
                     </label>
                     <div className="relative flex-1 sm:flex-none">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Buscar vendedor..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full sm:w-48 pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-blue-400 outline-none"
-                        />
+                        <input type="text" placeholder="Buscar vendedor..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full sm:w-48 pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-blue-400 outline-none" />
                     </div>
                 </div>
             </div>
@@ -146,52 +130,45 @@ const ListaVendedores = () => {
                             <th className="w-[13%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
                             <th className="w-[18%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">E-mail</th>
                             <th className="w-[12%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Telefone</th>
-                            <th className="w-[9%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flex Mensal</th>
-                            <th className="w-[7%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">% Desc.</th>
-                            <th className="w-[9%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flex Disp.</th>
-                            <th className="w-[20%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Formas Visíveis</th>
+                            <th className="w-[8%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase" title="% do valor líquido de vendas dos últimos 30 dias">% Flex</th>
+                            <th className="w-[7%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase" title="% máximo de desconto por item">% Desc.</th>
+                            <th className="w-[11%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase" title="Flex disponível calculado sobre os últimos 30 dias">Flex Disp. (30d)</th>
+                            <th className="w-[19%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Formas Visíveis</th>
                             <th className="w-[12%] px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {loading ? (
-                            <tr><td colSpan="7" className="px-3 py-4 text-center">Carregando...</td></tr>
+                            <tr><td colSpan="8" className="px-3 py-4 text-center">Carregando...</td></tr>
                         ) : filtered.length === 0 ? (
-                            <tr><td colSpan="7" className="px-3 py-4 text-center text-gray-500">Nenhum usuário encontrado.</td></tr>
-                        ) : filtered.map(vendedor => (
-                            editingId === vendedor.id ? (
+                            <tr><td colSpan="8" className="px-3 py-4 text-center text-gray-500">Nenhum usuário encontrado.</td></tr>
+                        ) : filtered.map(vendedor => {
+                            const flex = vendedor.flexDinamico || {};
+                            const dispColor = flex.disponivel < 0 ? 'text-red-600 font-bold' : 'text-green-700 font-semibold';
+                            return editingId === vendedor.id ? (
                                 <tr key={vendedor.id} className="bg-blue-50">
-                                    <td className="px-3 py-3 text-sm font-medium text-gray-900">
-                                        <div className="font-bold truncate">{vendedor.nome}</div>
-                                    </td>
-                                    <td className="px-3 py-3 text-sm text-gray-500">
-                                        <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" />
-                                    </td>
-                                    <td className="px-3 py-3 text-sm text-gray-500">
-                                        <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: e.target.value })} type="tel" placeholder="(xx) xxxxx-xxxx" />
-                                    </td>
-                                    <td className="px-3 py-3 text-sm text-gray-500">
-                                        <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.flexMensal} onChange={e => setEditForm({ ...editForm, flexMensal: e.target.value })} type="number" step="0.01" />
-                                    </td>
-                                    <td className="px-3 py-3 text-sm text-gray-500">
-                                        <div className="flex items-center">
-                                            <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.maxDescontoFlex} onChange={e => setEditForm({ ...editForm, maxDescontoFlex: e.target.value })} type="number" step="0.01" min="0" max="100" />
-                                            <span className="ml-1 text-xs">%</span>
+                                    <td className="px-3 py-3 text-sm font-medium text-gray-900"><div className="font-bold truncate">{vendedor.nome}</div></td>
+                                    <td className="px-3 py-3"><input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" /></td>
+                                    <td className="px-3 py-3"><input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: e.target.value })} type="tel" placeholder="(xx) xxxxx-xxxx" /></td>
+                                    <td className="px-3 py-3">
+                                        <div className="flex items-center gap-0.5">
+                                            <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.percentualFlex} onChange={e => setEditForm({ ...editForm, percentualFlex: e.target.value })} type="number" step="0.1" min="0" max="100" />
+                                            <span className="text-xs text-gray-500">%</span>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-3 text-sm text-gray-500">
-                                        <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.flexDisponivel} onChange={e => setEditForm({ ...editForm, flexDisponivel: e.target.value })} type="number" step="0.01" />
+                                    <td className="px-3 py-3">
+                                        <div className="flex items-center gap-0.5">
+                                            <input className="border border-gray-300 rounded px-2 py-1 w-full bg-white text-gray-900 text-xs" value={editForm.maxDescontoFlex} onChange={e => setEditForm({ ...editForm, maxDescontoFlex: e.target.value })} type="number" step="0.01" min="0" max="100" />
+                                            <span className="text-xs text-gray-500">%</span>
+                                        </div>
                                     </td>
-                                    <td className="px-3 py-3 text-sm text-gray-500">
+                                    <td className="px-3 py-3 text-xs text-gray-400 italic">calculado</td>
+                                    <td className="px-3 py-3">
                                         <div className="flex flex-wrap gap-1">
                                             {FORMAS_OPTIONS.map(f => {
                                                 const Icon = f.icon;
                                                 const ativo = (vendedor.formasAtendimentoVisiveis || []).includes(f.value);
-                                                return (
-                                                    <button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border transition-colors cursor-pointer ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
-                                                        <Icon className="h-3 w-3" />{f.label}
-                                                    </button>
-                                                );
+                                                return (<button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border transition-colors cursor-pointer ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200'}`}><Icon className="h-3 w-3" />{f.label}</button>);
                                             })}
                                         </div>
                                     </td>
@@ -203,63 +180,65 @@ const ListaVendedores = () => {
                                     </td>
                                 </tr>
                             ) : (
-                            <tr key={vendedor.id} className={vendedor.ativo === false ? 'bg-gray-50 opacity-60' : ''}>
-                                <td className="px-3 py-3 text-sm font-medium text-gray-900">
-                                    <div className="flex items-center gap-1">
-                                        <span className="truncate">{vendedor.nome}</span>
-                                        {vendedor.ativo === false && <span className="text-[9px] bg-red-100 text-red-700 px-1 py-0.5 rounded font-semibold shrink-0">INATIVO</span>}
-                                    </div>
-                                    <div className="text-[10px] text-gray-400 font-mono mt-0.5 truncate">{vendedor.idLegado || '-'}</div>
-                                </td>
-                                <td className="px-3 py-3 text-sm text-gray-500">
-                                    <div className="flex items-center truncate">
-                                        <Mail className="h-3.5 w-3.5 mr-1.5 text-gray-400 shrink-0" />
-                                        <span className="truncate text-xs">{vendedor.email || <span className="text-gray-300 italic">Sem e-mail</span>}</span>
-                                    </div>
-                                </td>
-                                <td className="px-3 py-3 text-sm text-gray-500">
-                                    <div className="flex items-center truncate">
-                                        <Phone className="h-3.5 w-3.5 mr-1.5 text-gray-400 shrink-0" />
-                                        <span className="truncate text-xs">{vendedor.telefone || <span className="text-gray-300 italic">Sem telefone</span>}</span>
-                                    </div>
-                                </td>
-                                <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
-                                    {`R$ ${Number(vendedor.flexMensal).toFixed(2)}`}
-                                </td>
-                                <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
-                                    {`${Number(vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100).toFixed(0)}%`}
-                                </td>
-                                <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
-                                    {`R$ ${Number(vendedor.flexDisponivel).toFixed(2)}`}
-                                </td>
-                                <td className="px-3 py-3 text-sm text-gray-500">
-                                    <div className="flex flex-wrap gap-1">
-                                        {FORMAS_OPTIONS.map(f => {
-                                            const Icon = f.icon;
-                                            const ativo = (vendedor.formasAtendimentoVisiveis || []).includes(f.value);
-                                            return (
-                                                <button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border transition-colors cursor-pointer ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
-                                                    <Icon className="h-3 w-3" />{f.label}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </td>
-                                <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
-                                    <div className="flex justify-end space-x-1.5">
-                                        <button onClick={() => handleToggleAlertaFaturamento(vendedor)} className={vendedor.alertaFaturamento !== false ? 'text-amber-500 hover:text-amber-700' : 'text-gray-300 hover:text-gray-500'} title={vendedor.alertaFaturamento !== false ? 'Alerta faturamento: ON' : 'Alerta faturamento: OFF'}>
-                                            {vendedor.alertaFaturamento !== false ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
-                                        </button>
-                                        <button onClick={() => setPermissionsModalVendedor(vendedor)} className="text-indigo-600 hover:text-indigo-900" title="Acessos e Permissões"><Shield className="h-4 w-4" /></button>
-                                        <button onClick={() => handleEdit(vendedor)} className="text-primary hover:text-indigo-900" title="Editar"><Pencil className="h-4 w-4" /></button>
-                                        <button onClick={() => handleToggleAtivo(vendedor)} className={vendedor.ativo === false ? 'text-green-600 hover:text-green-800' : 'text-red-500 hover:text-red-700'} title={vendedor.ativo === false ? 'Reativar' : 'Inativar'}>
-                                            {vendedor.ativo === false ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            )
-                        ))}
+                                <tr key={vendedor.id} className={vendedor.ativo === false ? 'bg-gray-50 opacity-60' : ''}>
+                                    <td className="px-3 py-3 text-sm font-medium text-gray-900">
+                                        <div className="flex items-center gap-1">
+                                            <span className="truncate">{vendedor.nome}</span>
+                                            {vendedor.ativo === false && <span className="text-[9px] bg-red-100 text-red-700 px-1 py-0.5 rounded font-semibold shrink-0">INATIVO</span>}
+                                        </div>
+                                        <div className="text-[10px] text-gray-400 font-mono mt-0.5 truncate">{vendedor.idLegado || '-'}</div>
+                                    </td>
+                                    <td className="px-3 py-3 text-sm text-gray-500">
+                                        <div className="flex items-center truncate">
+                                            <Mail className="h-3.5 w-3.5 mr-1.5 text-gray-400 shrink-0" />
+                                            <span className="truncate text-xs">{vendedor.email || <span className="text-gray-300 italic">Sem e-mail</span>}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-3 text-sm text-gray-500">
+                                        <div className="flex items-center truncate">
+                                            <Phone className="h-3.5 w-3.5 mr-1.5 text-gray-400 shrink-0" />
+                                            <span className="truncate text-xs">{vendedor.telefone || <span className="text-gray-300 italic">Sem telefone</span>}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-3 text-xs text-gray-600 whitespace-nowrap">
+                                        {Number(vendedor.percentualFlex || 0).toFixed(1)}%
+                                        {flex.orcamento > 0 && <div className="text-[10px] text-gray-400">≈ R$ {fmt(flex.orcamento)}</div>}
+                                    </td>
+                                    <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
+                                        {`${Number(vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100).toFixed(0)}%`}
+                                    </td>
+                                    <td className="px-3 py-3 text-xs whitespace-nowrap">
+                                        <span className={dispColor}>R$ {fmt(flex.disponivel ?? 0)}</span>
+                                        {flex.orcamento > 0 && (
+                                            <div className="text-[10px] text-gray-400">
+                                                usado: R$ {fmt(Math.abs(flex.flexUsado || 0))}
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="px-3 py-3 text-sm text-gray-500">
+                                        <div className="flex flex-wrap gap-1">
+                                            {FORMAS_OPTIONS.map(f => {
+                                                const Icon = f.icon;
+                                                const ativo = (vendedor.formasAtendimentoVisiveis || []).includes(f.value);
+                                                return (<button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border transition-colors cursor-pointer ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200'}`}><Icon className="h-3 w-3" />{f.label}</button>);
+                                            })}
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                        <div className="flex justify-end space-x-1.5">
+                                            <button onClick={() => handleToggleAlertaFaturamento(vendedor)} className={vendedor.alertaFaturamento !== false ? 'text-amber-500 hover:text-amber-700' : 'text-gray-300 hover:text-gray-500'} title={vendedor.alertaFaturamento !== false ? 'Alerta faturamento: ON' : 'Alerta faturamento: OFF'}>
+                                                {vendedor.alertaFaturamento !== false ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                                            </button>
+                                            <button onClick={() => setPermissionsModalVendedor(vendedor)} className="text-indigo-600 hover:text-indigo-900" title="Acessos e Permissões"><Shield className="h-4 w-4" /></button>
+                                            <button onClick={() => handleEdit(vendedor)} className="text-primary hover:text-indigo-900" title="Editar"><Pencil className="h-4 w-4" /></button>
+                                            <button onClick={() => handleToggleAtivo(vendedor)} className={vendedor.ativo === false ? 'text-green-600 hover:text-green-800' : 'text-red-500 hover:text-red-700'} title={vendedor.ativo === false ? 'Reativar' : 'Inativar'}>
+                                                {vendedor.ativo === false ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -270,91 +249,87 @@ const ListaVendedores = () => {
                     <div className="text-center py-8 text-gray-500">Carregando...</div>
                 ) : filtered.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">Nenhum usuário encontrado.</div>
-                ) : filtered.map(vendedor => (
-                    <div key={vendedor.id} className={`bg-white rounded-xl border shadow-sm p-3 ${vendedor.ativo === false ? 'border-red-200 opacity-60' : 'border-gray-200'}`}>
-                        <div className="flex items-center justify-between mb-2">
-                            <div>
-                                <div className="flex items-center gap-1.5">
-                                    <p className="font-bold text-[14px] text-gray-900">{vendedor.nome}</p>
-                                    {vendedor.ativo === false && <span className="text-[9px] bg-red-100 text-red-700 px-1 py-0.5 rounded font-semibold">INATIVO</span>}
+                ) : filtered.map(vendedor => {
+                    const flex = vendedor.flexDinamico || {};
+                    return (
+                        <div key={vendedor.id} className={`bg-white rounded-xl border shadow-sm p-3 ${vendedor.ativo === false ? 'border-red-200 opacity-60' : 'border-gray-200'}`}>
+                            <div className="flex items-center justify-between mb-2">
+                                <div>
+                                    <div className="flex items-center gap-1.5">
+                                        <p className="font-bold text-[14px] text-gray-900">{vendedor.nome}</p>
+                                        {vendedor.ativo === false && <span className="text-[9px] bg-red-100 text-red-700 px-1 py-0.5 rounded font-semibold">INATIVO</span>}
+                                    </div>
+                                    <p className="text-[11px] text-gray-400 font-mono">{vendedor.idLegado || '-'}</p>
                                 </div>
-                                <p className="text-[11px] text-gray-400 font-mono">{vendedor.idLegado || '-'}</p>
+                                <div className="flex gap-1.5">
+                                    <button onClick={() => handleToggleAlertaFaturamento(vendedor)} className={`p-1.5 rounded-lg ${vendedor.alertaFaturamento !== false ? 'bg-amber-50 text-amber-500' : 'bg-gray-50 text-gray-300'}`} title={vendedor.alertaFaturamento !== false ? 'Alerta faturamento: ON' : 'Alerta faturamento: OFF'}>
+                                        {vendedor.alertaFaturamento !== false ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                                    </button>
+                                    <button onClick={() => setPermissionsModalVendedor(vendedor)} className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg"><Shield className="h-4 w-4" /></button>
+                                    <button onClick={() => handleEdit(vendedor)} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg"><Pencil className="h-4 w-4" /></button>
+                                    <button onClick={() => handleToggleAtivo(vendedor)} className={`p-1.5 rounded-lg ${vendedor.ativo === false ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
+                                        {vendedor.ativo === false ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
+                                    </button>
+                                </div>
                             </div>
-                            <div className="flex gap-1.5">
-                                <button onClick={() => handleToggleAlertaFaturamento(vendedor)} className={`p-1.5 rounded-lg ${vendedor.alertaFaturamento !== false ? 'bg-amber-50 text-amber-500' : 'bg-gray-50 text-gray-300'}`} title={vendedor.alertaFaturamento !== false ? 'Alerta faturamento: ON' : 'Alerta faturamento: OFF'}>
-                                    {vendedor.alertaFaturamento !== false ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
-                                </button>
-                                <button onClick={() => setPermissionsModalVendedor(vendedor)} className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg"><Shield className="h-4 w-4" /></button>
-                                <button onClick={() => handleEdit(vendedor)} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg"><Pencil className="h-4 w-4" /></button>
-                                <button onClick={() => handleToggleAtivo(vendedor)} className={`p-1.5 rounded-lg ${vendedor.ativo === false ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
-                                    {vendedor.ativo === false ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
-                                </button>
-                            </div>
-                        </div>
 
-                        {editingId === vendedor.id ? (
-                            <div className="space-y-2 pt-2 border-t border-gray-100">
-                                <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] bg-white text-gray-900" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" placeholder="E-mail" />
-                                <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] bg-white text-gray-900" value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: e.target.value })} type="tel" placeholder="Telefone (xx) xxxxx-xxxx" />
-                                <div className="grid grid-cols-3 gap-2">
-                                    <div>
-                                        <label className="text-[10px] text-gray-500 block">Flex Mensal</label>
-                                        <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] bg-white text-gray-900" value={editForm.flexMensal} onChange={e => setEditForm({ ...editForm, flexMensal: e.target.value })} type="number" step="0.01" />
+                            {editingId === vendedor.id ? (
+                                <div className="space-y-2 pt-2 border-t border-gray-100">
+                                    <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] bg-white text-gray-900" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" placeholder="E-mail" />
+                                    <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] bg-white text-gray-900" value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: e.target.value })} type="tel" placeholder="Telefone (xx) xxxxx-xxxx" />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="text-[10px] text-gray-500 block">% Flex (sobre vendas 30d)</label>
+                                            <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] bg-white text-gray-900" value={editForm.percentualFlex} onChange={e => setEditForm({ ...editForm, percentualFlex: e.target.value })} type="number" step="0.1" min="0" max="100" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-gray-500 block">% Máx Desc. (por item)</label>
+                                            <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] bg-white text-gray-900" value={editForm.maxDescontoFlex} onChange={e => setEditForm({ ...editForm, maxDescontoFlex: e.target.value })} type="number" />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="text-[10px] text-gray-500 block">% Máx Desc.</label>
-                                        <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] bg-white text-gray-900" value={editForm.maxDescontoFlex} onChange={e => setEditForm({ ...editForm, maxDescontoFlex: e.target.value })} type="number" />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] text-gray-500 block">Flex Disp.</label>
-                                        <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] bg-white text-gray-900" value={editForm.flexDisponivel} onChange={e => setEditForm({ ...editForm, flexDisponivel: e.target.value })} type="number" step="0.01" />
+                                    <div className="flex gap-2 pt-1">
+                                        <button onClick={() => handleSave(vendedor.id)} className="flex-1 bg-green-600 text-white text-[12px] font-semibold py-1.5 rounded-lg flex items-center justify-center gap-1"><Save className="h-3.5 w-3.5" /> Salvar</button>
+                                        <button onClick={handleCancel} className="px-3 py-1.5 border border-gray-300 text-gray-600 text-[12px] font-semibold rounded-lg">Cancelar</button>
                                     </div>
                                 </div>
-                                <div className="flex gap-2 pt-1">
-                                    <button onClick={() => handleSave(vendedor.id)} className="flex-1 bg-green-600 text-white text-[12px] font-semibold py-1.5 rounded-lg flex items-center justify-center gap-1"><Save className="h-3.5 w-3.5" /> Salvar</button>
-                                    <button onClick={handleCancel} className="px-3 py-1.5 border border-gray-300 text-gray-600 text-[12px] font-semibold rounded-lg">Cancelar</button>
-                                </div>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-500">
-                                    <span className="flex items-center gap-0.5"><Mail className="h-3 w-3" /> {vendedor.email || 'Sem e-mail'}</span>
-                                    {vendedor.telefone && <span className="flex items-center gap-0.5"><Phone className="h-3 w-3" /> {vendedor.telefone}</span>}
-                                    <span>Flex: R$ {Number(vendedor.flexMensal).toFixed(2)}</span>
-                                    <span>Desc: {Number(vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100).toFixed(0)}%</span>
-                                    <span className="font-semibold text-green-700">Disp: R$ {Number(vendedor.flexDisponivel).toFixed(2)}</span>
-                                </div>
-                                <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-gray-100">
-                                    <span className="text-[10px] text-gray-400 w-full mb-0.5">Formas visíveis:</span>
-                                    {FORMAS_OPTIONS.map(f => {
-                                        const Icon = f.icon;
-                                        const ativo = (vendedor.formasAtendimentoVisiveis || []).includes(f.value);
-                                        return (
-                                            <button
-                                                key={f.value}
-                                                type="button"
-                                                onClick={() => handleToggleForma(vendedor, f.value)}
-                                                className={`flex items-center gap-1 px-2 py-1.5 text-[11px] font-semibold rounded border transition-colors ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200'}`}
-                                            >
-                                                <Icon className="h-3 w-3" />{f.label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </>
-                        )}
-                    </div>
-                ))}
+                            ) : (
+                                <>
+                                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-500">
+                                        <span className="flex items-center gap-0.5"><Mail className="h-3 w-3" /> {vendedor.email || 'Sem e-mail'}</span>
+                                        {vendedor.telefone && <span className="flex items-center gap-0.5"><Phone className="h-3 w-3" /> {vendedor.telefone}</span>}
+                                        <span>% Flex: {Number(vendedor.percentualFlex || 0).toFixed(1)}%</span>
+                                        <span>Desc: {Number(vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100).toFixed(0)}%</span>
+                                        {flex.orcamento > 0 && (
+                                            <span>Orç: R$ {fmt(flex.orcamento)}</span>
+                                        )}
+                                        <span className={flex.disponivel < 0 ? 'font-bold text-red-600' : 'font-semibold text-green-700'}>
+                                            Disp (30d): R$ {fmt(flex.disponivel ?? 0)}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-gray-100">
+                                        <span className="text-[10px] text-gray-400 w-full mb-0.5">Formas visíveis:</span>
+                                        {FORMAS_OPTIONS.map(f => {
+                                            const Icon = f.icon;
+                                            const ativo = (vendedor.formasAtendimentoVisiveis || []).includes(f.value);
+                                            return (
+                                                <button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-2 py-1.5 text-[11px] font-semibold rounded border transition-colors ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
+                                                    <Icon className="h-3 w-3" />{f.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
 
             {permissionsModalVendedor && (
                 <PermissoesModal
                     vendedor={permissionsModalVendedor}
                     onClose={() => setPermissionsModalVendedor(null)}
-                    onUpdated={() => {
-                        setPermissionsModalVendedor(null);
-                        fetchVendedores();
-                    }}
+                    onUpdated={() => { setPermissionsModalVendedor(null); fetchVendedores(); }}
                 />
             )}
         </div>

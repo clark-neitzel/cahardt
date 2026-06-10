@@ -1,8 +1,9 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/database');
+const { calcularFlexBulk } = require('../services/flexService');
 
 const vendedorController = {
-    // Listar todos os vendedores
+    // Listar todos os vendedores (inclui flex dinâmico computado dos últimos 30 dias)
     listar: async (req, res) => {
         try {
             const where = {};
@@ -13,14 +14,32 @@ const vendedorController = {
                 where,
                 orderBy: { nome: 'asc' }
             });
-            res.json(vendedores);
+
+            const ids = vendedores.map(v => v.id);
+            const flexMap = await calcularFlexBulk(ids);
+
+            const resultado = vendedores.map(v => {
+                const flex = flexMap.get(v.id) || { percentualFlex: Number(v.percentualFlex || 0), vendasLiquidas: 0, orcamento: 0, flexUsado: 0, disponivel: 0 };
+                return {
+                    ...v,
+                    percentualFlex: Number(v.percentualFlex || 0),
+                    flexDinamico: {
+                        vendasLiquidas: flex.vendasLiquidas,
+                        orcamento: flex.orcamento,
+                        flexUsado: flex.flexUsado,
+                        disponivel: flex.disponivel
+                    }
+                };
+            });
+
+            res.json(resultado);
         } catch (error) {
             console.error('Erro ao listar vendedores:', error);
             res.status(500).json({ error: 'Erro ao listar vendedores' });
         }
     },
 
-    // Buscar vendedor por ID (opcional)
+    // Buscar vendedor por ID
     obter: async (req, res) => {
         try {
             const { id } = req.params;
@@ -37,15 +56,15 @@ const vendedorController = {
     atualizar: async (req, res) => {
         try {
             const { id } = req.params;
-            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento } = req.body;
+            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, percentualFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento } = req.body;
 
-            // Prepara objeto de atualização (ignora undefined)
             const dataToUpdate = {};
             if (email !== undefined) dataToUpdate.email = email;
             if (telefone !== undefined) dataToUpdate.telefone = telefone;
             if (flexMensal !== undefined) dataToUpdate.flexMensal = flexMensal;
             if (flexDisponivel !== undefined) dataToUpdate.flexDisponivel = flexDisponivel;
             if (maxDescontoFlex !== undefined) dataToUpdate.maxDescontoFlex = maxDescontoFlex;
+            if (percentualFlex !== undefined) dataToUpdate.percentualFlex = percentualFlex;
             if (ativo !== undefined) dataToUpdate.ativo = ativo;
             if (login !== undefined) dataToUpdate.login = login || null;
             if (permissoes !== undefined) dataToUpdate.permissoes = permissoes;
@@ -62,7 +81,6 @@ const vendedorController = {
                 data: dataToUpdate
             });
 
-            // Remover a senha do retorno por segurança
             vendedor.senha = undefined;
 
             res.json(vendedor);

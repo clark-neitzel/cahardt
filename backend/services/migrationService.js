@@ -883,7 +883,10 @@ const migrationService = {
                 "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT "delivery_webhook_logs_pkey" PRIMARY KEY ("id")
             )`,
-            `CREATE INDEX IF NOT EXISTS "delivery_webhook_logs_pedido_id_idx" ON "delivery_webhook_logs"("pedido_id")`
+            `CREATE INDEX IF NOT EXISTS "delivery_webhook_logs_pedido_id_idx" ON "delivery_webhook_logs"("pedido_id")`,
+
+            // Percentual de Flex dinâmico por vendedor (% sobre vendas líquidas 30 dias)
+            `ALTER TABLE "vendedores" ADD COLUMN IF NOT EXISTS "percentual_flex" DECIMAL(5,2) NOT NULL DEFAULT 0`
         ];
 
         for (const [index, cmd] of commands.entries()) {

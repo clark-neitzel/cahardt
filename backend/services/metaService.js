@@ -3,6 +3,7 @@ const prisma = new PrismaClient();
 const dayjs = require('dayjs');
 const isBetween = require('dayjs/plugin/isBetween');
 dayjs.extend(isBetween);
+const { calcularFlexDinamico } = require('./flexService');
 
 const metaService = {
     salvarMetaMensal: async (dados, usuarioLogadoId) => {
@@ -388,6 +389,9 @@ const metaService = {
         const diasRestantesSemana = totalDiasSemana - qtdDiasTrabalhadosSemanaAteHoje;
         const projecaoSemanal = totalVendidoSemana + (mediaDiariaRealizadaMes * diasRestantesSemana);
 
+        // Flex dinâmico: orçamento = % sobre vendas líquidas dos últimos 30 dias
+        const flexDinamico = await calcularFlexDinamico(vendedorId).catch(() => null);
+
         return {
             temMeta: true,
             dataAtual: dataAtual.format('YYYY-MM-DD'),
@@ -403,12 +407,13 @@ const metaService = {
                 mensal: valorMensalTarget,
                 semanal: metaSemanalCalculada,
                 diaria: metaDiariaCalculada,
-                flexMensal: Number(meta.flexMensal)
+                flexMensal: flexDinamico?.orcamento ?? Number(meta.flexMensal)
             },
             realizado: {
                 totalVendidoMes,
                 totalVendidoSemana,
-                flexUtilizadoMes,
+                flexUtilizadoMes: flexDinamico ? Math.abs(flexDinamico.flexUsado) : flexUtilizadoMes,
+                flexDisponivel: flexDinamico?.disponivel ?? null,
                 mediaDiariaAtual: mediaDiariaRealizadaMes
             },
             projecoes: { mensal: projecaoMensal, semanal: projecaoSemanal },

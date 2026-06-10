@@ -3,6 +3,7 @@ const promocaoService = require('./promocaoService');
 const clienteInsightService = require('./clienteInsightService');
 const { calcularItensComFlex, calcularDiferencaFlex, gerarParcelasData } = require('./pedidoCalculos');
 const estoqueService = require('./estoqueService');
+const { calcularFlexDinamico } = require('./flexService');
 
 const pedidoService = {
     // Resumo de pendências: conta pedidos por tipo e status (leve, só COUNT)
@@ -272,33 +273,16 @@ const pedidoService = {
                 data: { flexTotal: flexTotalPedido }
             });
 
-            // Se passou o vendedor, atualiza o saldo Flex dele (se o pedido for pra enviar/aberto consome saldo)
-            // Pula toda lógica de flex se a categoria do cliente é isenta
-            if (vendedorId && !isentoFlex) {
-                const vendedor = await tx.vendedor.findUnique({ where: { id: vendedorId } });
-
-                if (vendedor) {
-                    const novoFlexDisponivel = parseFloat(vendedor.flexDisponivel) + flexTotalPedido;
-                    const limiteFlexAprovado = parseFloat(vendedor.flexMensal);
-
-                    // Regra de Negócio: Se enviar, e o flex final ficar menor que o limite aprovado, bloqueia
-                    // Ex: Mensal = 0, Disponivel atual = 10, tentou gastar -20 (ficaria -10). Limite é 0.
-                    if (statusEnvio === 'ENVIAR' && novoFlexDisponivel < 0 && Math.abs(novoFlexDisponivel) > limiteFlexAprovado) {
-                        throw new Error(`Saldo Flex insuficiente para finalizar. Faltam R$ ${Math.abs(novoFlexDisponivel).toFixed(2)}`);
+            // Validação de flex: usa cálculo dinâmico (% sobre vendas líquidas dos últimos 30 dias)
+            // Pula se a categoria do cliente é isenta de flex
+            if (vendedorId && !isentoFlex && statusEnvio === 'ENVIAR' && flexTotalPedido < 0) {
+                const flexInfo = await calcularFlexDinamico(vendedorId, tx);
+                if (flexInfo.orcamento > 0) {
+                    // disponivel já inclui os pedidos anteriores; subtrai o gasto deste pedido
+                    const disponivelAposEste = flexInfo.disponivel + flexTotalPedido;
+                    if (disponivelAposEste < 0) {
+                        throw new Error(`Saldo Flex insuficiente para finalizar. Disponível: R$ ${flexInfo.disponivel.toFixed(2)}, tentando usar: R$ ${Math.abs(flexTotalPedido).toFixed(2)}`);
                     }
-
-                    // Atualiza saldo flex do Vendedor e Saldo Utilizado do Cliente
-                    await tx.vendedor.update({
-                        where: { id: vendedorId },
-                        data: { flexDisponivel: novoFlexDisponivel }
-                    });
-
-                    await tx.cliente.update({
-                        where: { UUID: clienteId },
-                        data: {
-                            Flex_utilizado: { increment: Math.abs(flexTotalPedido) }
-                        }
-                    });
                 }
             }
 
@@ -452,30 +436,19 @@ const pedidoService = {
                 }
             });
 
-            // Se for finalizado, abate o Flex (visto que antes estava em ABERTO e não abateu)
+            // Ao finalizar pedido, valida flex dinâmico (% sobre vendas líquidas 30 dias)
             if (statusEnvio === 'ENVIAR') {
-                const vendedor = await tx.vendedor.findUnique({ where: { id: vendedorId } });
-                if (vendedor) {
-                    const { diferencaFlex, diferencaModulo } = calcularDiferencaFlex(flexTotalPedido, pedidoAntigo);
-
-                    const novoFlexDisponivel = parseFloat(vendedor.flexDisponivel) + diferencaFlex;
-                    const limiteFlexAprovado = parseFloat(vendedor.flexMensal);
-
-                    if (novoFlexDisponivel < 0 && Math.abs(novoFlexDisponivel) > limiteFlexAprovado) {
-                        throw new Error(`Saldo Flex insuficiente para finalizar. Faltam R$ ${Math.abs(novoFlexDisponivel).toFixed(2)}`);
-                    }
-
-                    await tx.vendedor.update({
-                        where: { id: vendedorId },
-                        data: { flexDisponivel: novoFlexDisponivel }
-                    });
-
-                    await tx.cliente.update({
-                        where: { UUID: clienteId },
-                        data: {
-                            Flex_utilizado: { increment: diferencaModulo }
+                if (vendedorId && !isentoFlex && flexTotalPedido < 0) {
+                    const { diferencaFlex } = calcularDiferencaFlex(flexTotalPedido, pedidoAntigo);
+                    if (diferencaFlex < 0) {
+                        const flexInfo = await calcularFlexDinamico(vendedorId, tx);
+                        if (flexInfo.orcamento > 0) {
+                            const disponivelAposEste = flexInfo.disponivel + diferencaFlex;
+                            if (disponivelAposEste < 0) {
+                                throw new Error(`Saldo Flex insuficiente para finalizar. Disponível: R$ ${flexInfo.disponivel.toFixed(2)}`);
+                            }
                         }
-                    });
+                    }
                 }
 
                 if (pedidoAntigo.statusEnvio === 'ENVIAR') {

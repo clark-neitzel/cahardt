@@ -16,7 +16,8 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 
 - Listar todos os usuários (ativos e inativos)
 - Buscar por nome
-- Editar: e-mail, telefone, Flex Mensal, Flex Disponível, % máximo de desconto Flex
+- Editar: e-mail, telefone, **% Flex** (percentual sobre vendas 30 dias), % máximo de desconto por item
+- Ver o **Flex Disponível (30d)**: calculado automaticamente — não é mais editável manualmente
 - Ativar ou inativar um usuário
 - Configurar quais formas de atendimento aparecem para o vendedor (Presencial, WhatsApp, Telefone)
 - Ligar/desligar alerta de faturamento por WhatsApp
@@ -28,7 +29,7 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 
 ### Editar dados de um vendedor
 1. Clique no ícone de lápis na linha do vendedor
-2. Campos editáveis aparecem: e-mail, telefone, Flex Mensal, Flex Disponível, % Desc.
+2. Campos editáveis aparecem: e-mail, telefone, **% Flex** (orçamento dinâmico sobre vendas 30 dias), **% Máx Desc.** (limite por item)
 3. Salve com o ícone de check
 
 ### Configurar permissões
@@ -81,7 +82,7 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 
 - **Rota** — as formas de atendimento configuradas aqui aparecem no modal de atendimento
 - **Caixa / Embarque** — a flag `Pode_Executar_Entregas` define quem aparece como motorista
-- **Metas** — Flex Mensal e Flex Disponível são usados nas validações de desconto nos pedidos
+- **Pedidos** — o flex disponível dinâmico é verificado ao finalizar um pedido com desconto
 - **Dashboard** — `Pode_Ver_Dashboard_Admin` habilita o painel gerencial
 
 ---
