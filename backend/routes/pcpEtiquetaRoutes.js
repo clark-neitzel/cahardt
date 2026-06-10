@@ -140,6 +140,7 @@ function sanitize(body) {
         fibraAlimentar:        body.fibraAlimentar     || null,
         sodio:                 body.sodio              || null,
         quantidadeEmbalagem:   parseInt(body.quantidadeEmbalagem) || 1,
+        quantidadeAproximada:  Boolean(body.quantidadeAproximada),
         composicao:            String(body.composicao   || ''),
         modoPreparo:           String(body.modoPreparo  || ''),
         codigoBarras:          body.codigoBarras        || null,

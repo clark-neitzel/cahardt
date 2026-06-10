@@ -20,6 +20,7 @@ const VAZIO = {
     fibraAlimentar: '',
     sodio: '',
     quantidadeEmbalagem: '',
+    quantidadeAproximada: false,
     composicao: '',
     modoPreparo: '',
     codigoBarras: '',
@@ -140,7 +141,18 @@ export default function EtiquetaForm() {
                             <input type="number" min="1" value={form.pesoTabelaNutricional} onChange={e => set('pesoTabelaNutricional', e.target.value)} className={inputCls} placeholder="Ex: 28" />
                         </Campo>
                         <Campo label="Quantidade por Embalagem" required>
-                            <input type="number" min="1" value={form.quantidadeEmbalagem} onChange={e => set('quantidadeEmbalagem', e.target.value)} className={inputCls} placeholder="Ex: 50" />
+                            <div className="flex items-center gap-3">
+                                <input type="number" min="1" value={form.quantidadeEmbalagem} onChange={e => set('quantidadeEmbalagem', e.target.value)} className={inputCls} placeholder="Ex: 50" />
+                                <label className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer text-sm text-gray-700 select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={form.quantidadeAproximada}
+                                        onChange={e => set('quantidadeAproximada', e.target.checked)}
+                                        className="w-4 h-4 rounded accent-indigo-600"
+                                    />
+                                    Qtd. aproximada (~)
+                                </label>
+                            </div>
                         </Campo>
                         <Campo label="Código de Barras (EAN)">
                             <input type="text" value={form.codigoBarras} onChange={e => set('codigoBarras', e.target.value)} className={inputCls} placeholder="Ex: 7898620330460" />

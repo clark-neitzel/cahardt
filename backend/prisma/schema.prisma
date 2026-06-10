@@ -1614,8 +1614,9 @@ model EtiquetaProduto {
   sodio             String?
 
   // Conteúdo do rótulo
-  quantidadeEmbalagem Int    @map("quantidade_embalagem")
-  composicao          String @db.Text
+  quantidadeEmbalagem    Int     @map("quantidade_embalagem")
+  quantidadeAproximada   Boolean @default(false) @map("quantidade_aproximada")
+  composicao             String  @db.Text
   modoPreparo         String @db.Text @map("modo_preparo")
   codigoBarras        String? @map("codigo_barras")
 

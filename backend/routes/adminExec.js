@@ -939,6 +939,7 @@ router.post('/import-etiquetas', async (req, res) => {
                     fibraAlimentar:        et.fibraAlimentar     || null,
                     sodio:                 et.sodio              || null,
                     quantidadeEmbalagem:   parseInt(et.quantidadeEmbalagem) || 1,
+                    quantidadeAproximada:  Boolean(et.quantidadeAproximada),
                     composicao:            String(et.composicao  || ''),
                     modoPreparo:           String(et.modoPreparo || ''),
                     codigoBarras:          et.codigoBarras       || null,

@@ -80,7 +80,7 @@ function LabelView({ et, dataFab, dataVal }) {
                 </div>
             </div>
             <div style={{ border:'0.5pt solid #000', textAlign:'center', fontWeight:'bold', fontSize:'6.5pt', padding:'0.5mm', borderBottom:'none' }}>
-                CONTÉM {et.quantidadeEmbalagem} UNIDADES
+                CONTÉM {et.quantidadeAproximada ? '~' : ''}{et.quantidadeEmbalagem} UNIDADES
             </div>
             <div style={{ border:'0.5pt solid #000', textAlign:'center', fontWeight:'bold', fontSize:'6.5pt', padding:'0.5mm 0' }}>
                 INGREDIENTES:
