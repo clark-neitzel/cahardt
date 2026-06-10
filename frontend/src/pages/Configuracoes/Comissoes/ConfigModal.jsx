@@ -75,19 +75,28 @@ const ConfigModal = ({ dados, onClose, onSalvar }) => {
                                 value={form.bonusProdutos}
                                 onChange={set('bonusProdutos')}
                             />
-                            <div className="grid grid-cols-2 gap-3">
-                                <Field
-                                    label="Bônus flex (%)"
-                                    hint="Acréscimo se não ultrapassar o limite de flex"
-                                    value={form.bonusFlex}
-                                    onChange={set('bonusFlex')}
-                                />
-                                <Field
-                                    label="Limite flex (%)"
-                                    hint="% máximo de uso do flex para ganhar o bônus"
-                                    value={form.limiteFlexPerc}
-                                    onChange={set('limiteFlexPerc')}
-                                />
+                            {/* Flex */}
+                            <div className="rounded-lg border border-dashed border-gray-200 p-3 space-y-3 bg-gray-50">
+                                <p className="text-xs text-gray-500">
+                                    Comissão sobre o <strong>saldo não usado</strong> do flex — se o uso ficar abaixo do limite.
+                                </p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Field
+                                        label="Limite de uso do flex (%)"
+                                        hint="Máximo % do flex que pode ser usado"
+                                        value={form.limiteFlexPerc}
+                                        onChange={set('limiteFlexPerc')}
+                                    />
+                                    <Field
+                                        label="% sobre o saldo do flex"
+                                        hint="Comissão paga sobre o flex não utilizado"
+                                        value={form.bonusFlex}
+                                        onChange={set('bonusFlex')}
+                                    />
+                                </div>
+                                <p className="text-[11px] text-blue-600">
+                                    Ex: se o flex foi R$2.000 e usou R$400 (20%), o saldo é R$1.600 → comissão = {form.bonusFlex}% × R$1.600
+                                </p>
                             </div>
                         </div>
                     </section>

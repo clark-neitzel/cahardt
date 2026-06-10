@@ -16,7 +16,7 @@ module.exports = {
 
     salvarConfig: async (req, res) => {
         try {
-            const usuarioLogadoId = req.usuario?.id;
+            const usuarioLogadoId = req.user?.id || 'system';
             const config = await comissaoService.salvarConfig(req.body, usuarioLogadoId);
             res.json(config);
         } catch (err) {

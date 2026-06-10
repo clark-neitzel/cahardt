@@ -340,7 +340,7 @@ const DetalheApuracao = ({ data, onVoltar, fmt, fmtPerc }) => {
                 <Row
                     label={<span className="flex items-center gap-1">
                         {isBonusFlex ? <CheckCircle size={14} className="text-green-500" /> : <XCircle size={14} className="text-gray-400" />}
-                        Bônus flex (uso: {(c?.bonusFlex?.percUsado ?? 0).toFixed(1)}% / limite {fmtPerc(c?.bonusFlex?.limite)})
+                        Flex — saldo {fmt(c?.bonusFlex?.saldoFlex)} (uso: {(c?.bonusFlex?.percUsado ?? 0).toFixed(1)}% / limite {fmtPerc(c?.bonusFlex?.limite)})
                     </span>}
                     value={fmt(c?.bonusFlex?.valor)}
                     dimmed={!isBonusFlex}

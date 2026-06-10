@@ -157,10 +157,11 @@ const comissaoService = {
         const produtosBatidos = progressoProdutos.filter(p => p.bateu).length;
         const bonusProdutosValor = totalVendidoMes * (config.bonusProdutos / 100) * produtosBatidos;
 
-        // Bônus flex: aplica % sobre total vendido se uso de flex <= limite configurado
+        // Bônus flex: % de comissão sobre o saldo não usado do flex (se uso <= limite configurado)
         const flexDentroDoLimite = percFlexUsado <= config.limiteFlexPerc;
+        const saldoFlex = Math.max(0, flexMeta - flexUsadoMes);
         const bonusFlexValor = flexDentroDoLimite
-            ? totalVendidoMes * (config.bonusFlex / 100)
+            ? saldoFlex * (config.bonusFlex / 100)
             : 0;
 
         const totalComissao = comissaoBase + bonusCidadesValor + bonusProdutosValor + bonusFlexValor;
@@ -189,7 +190,7 @@ const comissaoService = {
                 comissaoBase,
                 bonusCidades: { valor: bonusCidadesValor, conquistado: todasCidadesBateram, cidadesBatidas, totalCidades: progressoCidades.length },
                 bonusProdutos: { valor: bonusProdutosValor, produtosBatidos, totalProdutos: progressoProdutos.length },
-                bonusFlex: { valor: bonusFlexValor, conquistado: flexDentroDoLimite, percUsado: percFlexUsado, limite: config.limiteFlexPerc },
+                bonusFlex: { valor: bonusFlexValor, conquistado: flexDentroDoLimite, percUsado: percFlexUsado, limite: config.limiteFlexPerc, saldoFlex },
                 totalComissao
             },
             progressoCidades,
