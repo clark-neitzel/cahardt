@@ -77,7 +77,7 @@ router.post('/', async (req, res) => {
             if (!isAdmin) {
                 const ultimoAbast = await prisma.despesa.findFirst({
                     where: { veiculoId, categoria: 'COMBUSTIVEL', kmNoAbastecimento: { not: null } },
-                    orderBy: { kmNoAbastecimento: 'desc' },
+                    orderBy: [{ dataReferencia: 'desc' }, { id: 'desc' }],
                     select: { kmNoAbastecimento: true }
                 });
                 if (ultimoAbast && kmInt <= ultimoAbast.kmNoAbastecimento) {
@@ -152,7 +152,7 @@ router.put('/:id', async (req, res) => {
             if (!isAdminUser) {
                 const ultimoAbast = await prisma.despesa.findFirst({
                     where: { veiculoId, categoria: 'COMBUSTIVEL', kmNoAbastecimento: { not: null }, id: { not: id } },
-                    orderBy: { kmNoAbastecimento: 'desc' },
+                    orderBy: [{ dataReferencia: 'desc' }, { id: 'desc' }],
                     select: { kmNoAbastecimento: true }
                 });
                 if (ultimoAbast && kmInt <= ultimoAbast.kmNoAbastecimento) {

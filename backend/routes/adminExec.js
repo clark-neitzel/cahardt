@@ -988,4 +988,34 @@ router.post('/import-etiquetas', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/fix-km-combustivel — corrige km errado em abastecimento
+// Body: { veiculoId, kmErrado, kmCorreto }
+router.post('/fix-km-combustivel', async (req, res) => {
+    try {
+        const { veiculoId, kmErrado, kmCorreto } = req.body;
+        if (!veiculoId || kmErrado === undefined) {
+            return res.status(400).json({ error: 'veiculoId e kmErrado obrigatórios' });
+        }
+        const registros = await prisma.despesa.findMany({
+            where: { veiculoId, categoria: 'COMBUSTIVEL', kmNoAbastecimento: Number(kmErrado) },
+            select: { id: true, dataReferencia: true, kmNoAbastecimento: true, litros: true, valor: true }
+        });
+        if (registros.length === 0) {
+            return res.json({ ok: false, mensagem: 'Nenhum registro encontrado com esse km.' });
+        }
+        if (kmCorreto === null || kmCorreto === undefined) {
+            // Sem kmCorreto: apenas lista os registros encontrados
+            return res.json({ ok: true, encontrados: registros.length, registros });
+        }
+        const atualizados = [];
+        for (const r of registros) {
+            await prisma.despesa.update({ where: { id: r.id }, data: { kmNoAbastecimento: Number(kmCorreto) } });
+            atualizados.push(r.id);
+        }
+        res.json({ ok: true, corrigidos: atualizados.length, ids: atualizados });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;
