@@ -904,4 +904,63 @@ router.post('/estoque-ajuste-batch', async (req, res) => {
     return res.json({ ok: true, aplicados: resultados.length, erros: erros.length, resultados, erros });
 });
 
+// POST /api/admin-exec/import-etiquetas — upsert em lote de etiquetas (por codigoProduto)
+router.post('/import-etiquetas', async (req, res) => {
+    try {
+        const { etiquetas } = req.body;
+        if (!Array.isArray(etiquetas) || etiquetas.length === 0)
+            return res.status(400).json({ error: 'Array etiquetas vazio.' });
+
+        const criados = [], atualizados = [], erros = [];
+
+        for (const et of etiquetas) {
+            try {
+                const existente = await prisma.etiquetaProduto.findFirst({
+                    where: { codigoProduto: String(et.codigoProduto) }
+                });
+                const data = {
+                    codigoProduto:         String(et.codigoProduto || ''),
+                    nomeProduto:           String(et.nomeProduto || ''),
+                    pesoUnitario:          parseInt(et.pesoUnitario) || 0,
+                    pesoTabelaNutricional: parseInt(et.pesoTabelaNutricional) || 0,
+                    valorEnergetico:       et.valorEnergetico   || null,
+                    carboidratos:          et.carboidratos       || null,
+                    proteinas:             et.proteinas          || null,
+                    gordurasTotais:        et.gordurasTotais     || null,
+                    gordurasSaturadas:     et.gordurasSaturadas  || null,
+                    gordurasTrans:         et.gordurasTrans      || null,
+                    fibraAlimentar:        et.fibraAlimentar     || null,
+                    sodio:                 et.sodio              || null,
+                    quantidadeEmbalagem:   parseInt(et.quantidadeEmbalagem) || 1,
+                    composicao:            String(et.composicao  || ''),
+                    modoPreparo:           String(et.modoPreparo || ''),
+                    codigoBarras:          et.codigoBarras       || null,
+                    contemLeite:           Boolean(et.contemLeite),
+                    contemGluten:          Boolean(et.contemGluten),
+                    contemOvo:             Boolean(et.contemOvo),
+                    outrosAlergenos:       et.outrosAlergenos    || null,
+                    avisosRotulo:          et.avisosRotulo        || null,
+                    armazenamento:         et.armazenamento       || null,
+                    validadeDias:          parseInt(et.validadeDias) || 90,
+                    ativo:                 et.ativo !== false,
+                    tipoProduto:           et.tipoProduto         || null,
+                };
+                if (existente) {
+                    await prisma.etiquetaProduto.update({ where: { id: existente.id }, data });
+                    atualizados.push(et.codigoProduto);
+                } else {
+                    await prisma.etiquetaProduto.create({ data });
+                    criados.push(et.codigoProduto);
+                }
+            } catch (e) {
+                erros.push({ codigo: et.codigoProduto, erro: e.message });
+            }
+        }
+        return res.json({ ok: true, criados: criados.length, atualizados: atualizados.length, erros, detalhe: { criados, atualizados } });
+    } catch (err) {
+        console.error('[import-etiquetas]', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
