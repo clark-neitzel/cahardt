@@ -2,6 +2,23 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const dayjs = require('dayjs');
 
+// Calcula o valor da comissão base para um determinado valor de vendas
+function calcularComissaoBase(totalVendido, valorMeta, config) {
+    const limiteAbaixo = valorMeta * (1 - (config.faixaAbaixo ?? 0) / 100);
+    const limiteAcima  = valorMeta * (1 + (config.faixaAcima  ?? 0) / 100);
+    if (totalVendido < limiteAbaixo) {
+        return { valor: totalVendido * (config.percAbaixoMeta / 100), faixa: 'abaixo' };
+    } else if (totalVendido <= limiteAcima) {
+        // cobre tanto "entre limiteAbaixo e meta" quanto "entre meta e limiteAcima"
+        return { valor: totalVendido * (config.percNaMeta / 100), faixa: 'na_meta' };
+    } else {
+        return {
+            valor: limiteAcima * (config.percNaMeta / 100) + (totalVendido - limiteAcima) * (config.percAcimaMeta / 100),
+            faixa: 'acima'
+        };
+    }
+}
+
 const comissaoService = {
 
     // -------------------------------------------------------
@@ -138,37 +155,10 @@ const comissaoService = {
         // CÁLCULO DA COMISSÃO
         // -------------------------------------------------------
         const valorMeta = Number(meta.valorMensal);
-
-        // Fronteiras das faixas
-        // limiteAbaixo: se realizado < limiteAbaixo → aplica percAbaixoMeta
-        //               se realizado entre limiteAbaixo e meta → aplica percNaMeta
-        // limiteAcima:  se realizado <= limiteAcima → percNaMeta sobre tudo
-        //               se realizado > limiteAcima → percNaMeta até o limite + percAcimaMeta sobre o excedente
         const limiteAbaixo = valorMeta * (1 - (config.faixaAbaixo ?? 0) / 100);
         const limiteAcima  = valorMeta * (1 + (config.faixaAcima  ?? 0) / 100);
 
-        let comissaoBase = 0;
-        let faixaAplicada = 'abaixo';
-
-        if (totalVendidoMes < limiteAbaixo) {
-            // Faixa abaixo: abaixo do limite inferior
-            comissaoBase = totalVendidoMes * (config.percAbaixoMeta / 100);
-            faixaAplicada = 'abaixo';
-        } else if (totalVendidoMes < valorMeta) {
-            // Faixa intermediária: entre o limite inferior e a meta (tolerância)
-            comissaoBase = totalVendidoMes * (config.percNaMeta / 100);
-            faixaAplicada = 'na_meta';
-        } else if (totalVendidoMes <= limiteAcima) {
-            // Atingiu/superou a meta mas ainda dentro da faixa "na meta"
-            comissaoBase = valorMeta * (config.percNaMeta / 100)
-                         + (totalVendidoMes - valorMeta) * (config.percNaMeta / 100);
-            faixaAplicada = 'na_meta';
-        } else {
-            // Acima do limite superior: percNaMeta até o limiteAcima + percAcimaMeta no excedente
-            comissaoBase = limiteAcima * (config.percNaMeta / 100)
-                         + (totalVendidoMes - limiteAcima) * (config.percAcimaMeta / 100);
-            faixaAplicada = 'acima';
-        }
+        const { valor: comissaoBase, faixa: faixaAplicada } = calcularComissaoBase(totalVendidoMes, valorMeta, config);
 
         // Bônus cidades: proporção cidades batidas / total cidades × taxa × total vendido
         // Ex: 7 de 10 cidades = 70% do bônus; todas = 100%
@@ -192,6 +182,49 @@ const comissaoService = {
             : 0;
 
         const totalComissao = comissaoBase + bonusCidadesValor + bonusProdutosValor + bonusFlexValor;
+
+        // -------------------------------------------------------
+        // PROJEÇÃO — ritmo atual extrapolado para o fim do mês
+        // -------------------------------------------------------
+        const hoje = dayjs();
+        const diasTrabalho = Array.isArray(meta.diasTrabalho) ? meta.diasTrabalho : JSON.parse(meta.diasTrabalho || '[]');
+        const diasPassados = diasTrabalho.filter(d => !dayjs(d).isAfter(hoje, 'day'));
+        const diasRestantes = diasTrabalho.filter(d => dayjs(d).isAfter(hoje, 'day'));
+        const qtdPassados = diasPassados.length;
+        const qtdRestantes = diasRestantes.length;
+        const mediaDiaria = qtdPassados > 0 ? totalVendidoMes / qtdPassados : 0;
+        const valorProjetado = totalVendidoMes + (mediaDiaria * qtdRestantes);
+
+        // Calcula comissão sobre o valor projetado (mantém bônus cidades/produtos como estão agora)
+        const { valor: comissaoBaseProj } = calcularComissaoBase(valorProjetado, valorMeta, config);
+        // Bônus sobre projeção (cidades/produtos mantidos na proporção atual; flex projetado)
+        const flexUsadoProj = flexUsadoMes + (mediaDiaria > 0 && flexMeta > 0
+            ? (flexUsadoMes / Math.max(totalVendidoMes, 1)) * (mediaDiaria * qtdRestantes)
+            : 0);
+        const saldoFlexProj = Math.max(0, flexMeta - flexUsadoProj);
+        const percFlexUsadoProj = flexMeta > 0 ? (flexUsadoProj / flexMeta) * 100 : 0;
+        const bonusFlexProj = percFlexUsadoProj <= config.limiteFlexPerc
+            ? saldoFlexProj * (config.bonusFlex / 100)
+            : 0;
+        const bonusCidadesProj = valorProjetado * (config.bonusCidades / 100) * ratioCidades;
+        const bonusProdutosProj = valorProjetado * (config.bonusProdutos / 100) * ratioProdutos;
+        const totalComissaoProj = comissaoBaseProj + bonusCidadesProj + bonusProdutosProj + bonusFlexProj;
+
+        const projecao = {
+            valorProjetado,
+            percMeta: valorMeta > 0 ? (valorProjetado / valorMeta) * 100 : 0,
+            mediaDiaria,
+            diasPassados: qtdPassados,
+            diasRestantes: qtdRestantes,
+            totalDias: diasTrabalho.length,
+            comissao: {
+                base: comissaoBaseProj,
+                bonusCidades: bonusCidadesProj,
+                bonusProdutos: bonusProdutosProj,
+                bonusFlex: bonusFlexProj,
+                total: totalComissaoProj,
+            }
+        };
 
         return {
             vendedorId,
@@ -225,7 +258,8 @@ const comissaoService = {
                 totalComissao
             },
             progressoCidades,
-            progressoProdutos
+            progressoProdutos,
+            projecao
         };
     },
 

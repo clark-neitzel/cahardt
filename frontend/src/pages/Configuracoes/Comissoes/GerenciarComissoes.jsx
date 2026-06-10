@@ -240,29 +240,51 @@ const GerenciarComissoes = () => {
                                         ? (a.calculo?.totalComissao / a.realizado) * 100
                                         : 0;
 
+                                    const proj = a.projecao;
+                                    const percEfetivaProj = proj?.valorProjetado > 0
+                                        ? (proj.comissao.total / proj.valorProjetado) * 100 : 0;
+
                                     return (
-                                        <tr key={a.vendedorId} className="border-b hover:bg-gray-50">
-                                            <td className="py-3 pr-4 font-medium text-gray-800">{a.vendedor?.nome}</td>
-                                            <td className="text-right pr-4">{fmt(a.realizado)}</td>
-                                            <td className={`text-right pr-4 font-medium ${percMeta >= 100 ? 'text-green-600' : 'text-orange-600'}`}>
-                                                {percMeta.toFixed(1)}%
-                                            </td>
-                                            <td className="text-right pr-4 text-gray-600">{fmt(a.calculo?.comissaoBase)}</td>
-                                            <td className="text-right pr-4 text-green-700">{fmt(bonusTotal)}</td>
-                                            <td className="text-right pr-4 font-bold text-gray-900">{fmt(a.calculo?.totalComissao)}</td>
-                                            <td className="text-right pr-4 font-semibold text-blue-700">
-                                                {fmtPerc(percEfetiva)}
-                                            </td>
-                                            <td className="text-right">
-                                                <button
-                                                    onClick={() => setDetalhe(a.vendedorId)}
-                                                    className="p-1.5 rounded hover:bg-blue-50 text-gray-500 hover:text-blue-600 transition-colors"
-                                                    title="Ver detalhes"
-                                                >
-                                                    <BarChart2 size={15} />
-                                                </button>
-                                            </td>
-                                        </tr>
+                                        <React.Fragment key={a.vendedorId}>
+                                            {/* Linha atual */}
+                                            <tr className="border-b hover:bg-gray-50">
+                                                <td className="py-2 pr-4 font-medium text-gray-800">{a.vendedor?.nome}</td>
+                                                <td className="text-right pr-4">{fmt(a.realizado)}</td>
+                                                <td className={`text-right pr-4 font-medium ${percMeta >= 100 ? 'text-green-600' : 'text-orange-600'}`}>
+                                                    {percMeta.toFixed(1)}%
+                                                </td>
+                                                <td className="text-right pr-4 text-gray-600">{fmt(a.calculo?.comissaoBase)}</td>
+                                                <td className="text-right pr-4 text-green-700">{fmt(bonusTotal)}</td>
+                                                <td className="text-right pr-4 font-bold text-gray-900">{fmt(a.calculo?.totalComissao)}</td>
+                                                <td className="text-right pr-4 font-semibold text-blue-700">{fmtPerc(percEfetiva)}</td>
+                                                <td className="text-right">
+                                                    <button onClick={() => setDetalhe(a.vendedorId)}
+                                                        className="p-1.5 rounded hover:bg-blue-50 text-gray-500 hover:text-blue-600 transition-colors"
+                                                        title="Ver detalhes">
+                                                        <BarChart2 size={15} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {/* Linha de projeção */}
+                                            {proj && proj.diasRestantes > 0 && (
+                                                <tr className="border-b bg-blue-50/40">
+                                                    <td className="py-1 pr-4 pl-4 text-xs text-blue-500 italic">
+                                                        ↗ projeção ({proj.diasPassados}d trabalhados · {proj.diasRestantes}d restantes)
+                                                    </td>
+                                                    <td className="text-right pr-4 text-xs text-blue-600">{fmt(proj.valorProjetado)}</td>
+                                                    <td className={`text-right pr-4 text-xs font-medium ${proj.percMeta >= 100 ? 'text-green-600' : 'text-blue-600'}`}>
+                                                        {proj.percMeta.toFixed(1)}%
+                                                    </td>
+                                                    <td className="text-right pr-4 text-xs text-blue-500">{fmt(proj.comissao.base)}</td>
+                                                    <td className="text-right pr-4 text-xs text-green-600">
+                                                        {fmt((proj.comissao.bonusCidades || 0) + (proj.comissao.bonusProdutos || 0) + (proj.comissao.bonusFlex || 0))}
+                                                    </td>
+                                                    <td className="text-right pr-4 text-xs font-bold text-blue-700">{fmt(proj.comissao.total)}</td>
+                                                    <td className="text-right pr-4 text-xs text-blue-600">{fmtPerc(percEfetivaProj)}</td>
+                                                    <td />
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     );
                                 })}
                             </tbody>
@@ -396,6 +418,33 @@ const DetalheApuracao = ({ data, onVoltar, fmt, fmtPerc }) => {
                                 </span>
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Projeção */}
+            {data.projecao && data.projecao.diasRestantes > 0 && (
+                <div className="border border-blue-200 rounded-xl p-4 bg-blue-50/50 mb-6">
+                    <h3 className="font-semibold text-blue-700 text-sm mb-3">
+                        Projeção ao final do mês
+                        <span className="ml-2 text-xs font-normal text-blue-400">
+                            {data.projecao.diasPassados}d trabalhados · {data.projecao.diasRestantes}d restantes · média {fmt(data.projecao.mediaDiaria)}/dia
+                        </span>
+                    </h3>
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                        <Card label="Vendas projetadas" value={fmt(data.projecao.valorProjetado)} />
+                        <Card label="% da meta proj." value={`${(data.projecao.percMeta ?? 0).toFixed(1)}%`} highlight={data.projecao.percMeta >= 100} />
+                        <Card label="Comissão projetada" value={fmt(data.projecao.comissao.total)} highlight />
+                    </div>
+                    <div className="space-y-1.5 text-sm">
+                        <Row label="Base projetada" value={fmt(data.projecao.comissao.base)} />
+                        <Row label="Bônus cidades proj." value={fmt(data.projecao.comissao.bonusCidades)} dimmed={!data.projecao.comissao.bonusCidades} />
+                        <Row label="Bônus produtos proj." value={fmt(data.projecao.comissao.bonusProdutos)} dimmed={!data.projecao.comissao.bonusProdutos} />
+                        <Row label="Bônus flex proj." value={fmt(data.projecao.comissao.bonusFlex)} dimmed={!data.projecao.comissao.bonusFlex} />
+                        <div className="border-t pt-1.5 flex justify-between font-bold text-blue-700">
+                            <span>TOTAL PROJETADO</span>
+                            <span>{fmt(data.projecao.comissao.total)}</span>
+                        </div>
                     </div>
                 </div>
             )}
