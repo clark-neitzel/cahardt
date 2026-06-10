@@ -56,13 +56,16 @@ export default function EtiquetaForm() {
 
     const [form, setForm] = useState(VAZIO);
     const [produtos, setProdutos] = useState([]);
+    const [etiquetasExistentes, setEtiquetasExistentes] = useState([]);
     const [salvando, setSalvando] = useState(false);
 
     useEffect(() => {
         produtoService.listar({ ativo: true, limit: 500 }).then(r => {
             const arr = Array.isArray(r) ? r : (r?.produtos || r?.itens || []);
-            setProdutos(arr);
+            setProdutos(arr.sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), undefined, { numeric: true })));
         }).catch(() => {});
+        // Carrega etiquetas existentes para mostrar quantas estão vinculadas por produto
+        etiquetaService.listar({}).then(lista => setEtiquetasExistentes(Array.isArray(lista) ? lista : [])).catch(() => {});
     }, []);
 
     useEffect(() => {
@@ -168,10 +171,15 @@ export default function EtiquetaForm() {
                         <Campo label="Vincular ao Produto do Catálogo (opcional)">
                             <select value={form.produtoId} onChange={e => set('produtoId', e.target.value)} className={inputCls}>
                                 <option value="">— Nenhum —</option>
-                                {produtos.map(p => (
-                                    <option key={p.id} value={p.id}>{p.codigo} — {p.nome}</option>
-                                ))}
+                                {produtos.map(p => {
+                                    const vinculadas = etiquetasExistentes.filter(e => e.produtoId === p.id && e.id !== id);
+                                    const label = vinculadas.length > 0
+                                        ? `${p.codigo} — ${p.nome}  (${vinculadas.length} etiqueta${vinculadas.length > 1 ? 's' : ''} vinculada${vinculadas.length > 1 ? 's' : ''})`
+                                        : `${p.codigo} — ${p.nome}`;
+                                    return <option key={p.id} value={p.id}>{label}</option>;
+                                })}
                             </select>
+                            <p className="text-xs text-gray-400 mt-1">Um produto pode ter múltiplas etiquetas (ex: versão 22g e 28g)</p>
                         </Campo>
                     </div>
                 </section>

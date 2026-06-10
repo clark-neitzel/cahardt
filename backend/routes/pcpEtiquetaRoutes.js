@@ -68,7 +68,7 @@ router.post('/', async (req, res) => {
         return res.status(201).json(item);
     } catch (err) {
         console.error('[Etiqueta] criar:', err.message);
-        if (err.code === 'P2002') return res.status(409).json({ error: 'Produto já possui etiqueta cadastrada.' });
+        // P2002 não deve mais ocorrer para produtoId (removido @unique)
         return res.status(500).json({ error: err.message });
     }
 });

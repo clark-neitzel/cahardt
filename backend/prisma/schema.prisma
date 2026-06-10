@@ -60,7 +60,7 @@ model Produto {
   permiteRecomendacao     Boolean           @default(true) @map("permite_recomendacao")
   prioridadeRecomendacao  Int               @default(1) @map("prioridade_recomendacao")
 
-  etiqueta EtiquetaProduto?
+  etiquetas EtiquetaProduto[]
 
   @@map("produtos")
 }
@@ -1593,8 +1593,8 @@ model CurriculoHistorico {
 model EtiquetaProduto {
   id    String @id @default(uuid())
 
-  // Vínculo opcional com Produto do catálogo
-  produtoId String? @unique @map("produto_id")
+  // Vínculo opcional com Produto do catálogo (um produto pode ter várias etiquetas — tamanhos diferentes)
+  produtoId String? @map("produto_id")
   produto   Produto? @relation(fields: [produtoId], references: [id])
 
   // Identificação
