@@ -328,9 +328,17 @@ export default function EtiquetasList() {
     const [todas, setTodas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [categoriaSel, setCategoriaSel] = useState(null);
+    const [categoriaSel, setCategoriaSel] = useState(
+        () => localStorage.getItem('etiquetas_categoria') || null
+    );
     const [selecionada, setSelecionada] = useState(null);
     const inputRef = useRef(null);
+
+    const selecionarCategoria = (id) => {
+        setCategoriaSel(id);
+        if (id) localStorage.setItem('etiquetas_categoria', id);
+        else localStorage.removeItem('etiquetas_categoria');
+    };
 
     const carregar = useCallback(async () => {
         try {
@@ -393,11 +401,11 @@ export default function EtiquetasList() {
             {categorias.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-3">
                     <button
-                        onClick={() => setCategoriaSel(null)}
-                        className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors ${
+                        onClick={() => selecionarCategoria(null)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
                             categoriaSel === null
-                                ? 'bg-indigo-600 text-white border-indigo-600'
-                                : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-300'
+                                : 'bg-white text-gray-500 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'
                         }`}
                     >
                         Todos
@@ -405,11 +413,11 @@ export default function EtiquetasList() {
                     {categorias.map(cat => (
                         <button
                             key={cat.id}
-                            onClick={() => setCategoriaSel(categoriaSel === cat.id ? null : cat.id)}
-                            className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors ${
+                            onClick={() => selecionarCategoria(categoriaSel === cat.id ? null : cat.id)}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
                                 categoriaSel === cat.id
-                                    ? 'bg-indigo-600 text-white border-indigo-600'
-                                    : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-300'
+                                    : 'bg-white text-gray-500 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'
                             }`}
                         >
                             {cat.nome}
