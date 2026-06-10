@@ -890,6 +890,8 @@ const migrationService = {
 
             // Regras de Flex por Categoria Comercial e Categoria CA
             `ALTER TABLE "categorias_produto" ADD COLUMN IF NOT EXISTS "tipo_flex" TEXT NOT NULL DEFAULT 'NORMAL'`,
+            `ALTER TABLE "categorias_produto" ADD COLUMN IF NOT EXISTS "flex_positivo" BOOLEAN NOT NULL DEFAULT true`,
+            `ALTER TABLE "categorias_produto" ADD COLUMN IF NOT EXISTS "flex_negativo" BOOLEAN NOT NULL DEFAULT true`,
             `ALTER TABLE "categorias_estoque" ADD COLUMN IF NOT EXISTS "contabiliza_flex" BOOLEAN NOT NULL DEFAULT true`
         ];
 

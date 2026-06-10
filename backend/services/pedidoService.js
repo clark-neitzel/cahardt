@@ -214,7 +214,13 @@ const pedidoService = {
         // A validação de Flex e atualização do vendedor ocorrerá dentro de uma transação
         return await prisma.$transaction(async (tx) => {
             // Montar os itens com avaliação de promoção e regras de flex por categoria
-            const { itensData, flexTotalPedido } = calcularItensComFlex(itens, promocoesAtivas, valorTotalEstimado, regrasCategoria);
+            let { itensData, flexTotalPedido } = calcularItensComFlex(itens, promocoesAtivas, valorTotalEstimado, regrasCategoria);
+
+            // Se cliente isento de flex, zera todos os valores de flex nos itens e no pedido
+            if (isentoFlex) {
+                itensData = itensData.map(i => ({ ...i, flexGerado: 0 }));
+                flexTotalPedido = 0;
+            }
 
             // Se pedido especial, atribuir número ZZ sequencial
             let numeroEspecial = undefined;
@@ -335,6 +341,13 @@ const pedidoService = {
     editar: async (id, dadosPedido) => {
         const { clienteId, vendedorId, itens, statusEnvio, observacoes, dataVenda, opcaoCondicaoPagamento, nomeCondicaoPagamento, tipoPagamento, especial, bonificacao, valorFrete } = dadosPedido;
 
+        // Buscar isentoFlex do cliente antes da transação
+        const clienteEditado = clienteId ? await prisma.cliente.findUnique({
+            where: { UUID: clienteId },
+            select: { categoriaCliente: { select: { isentoFlex: true } } }
+        }) : null;
+        const isentoFlexEdit = clienteEditado?.categoriaCliente?.isentoFlex || false;
+
         return await prisma.$transaction(async (tx) => {
             const pedidoAntigo = await tx.pedido.findUnique({
                 where: { id },
@@ -372,10 +385,10 @@ const pedidoService = {
                 const valorBase = parseFloat(item.valorBase) || 0;
                 const qtd = parseFloat(item.quantidade) || 0;
 
-                const flexBruto = (valorDigitado - valorBase) * qtd;
-                const regra = editRegras.get(item.produtoId);
+                const flexBruto = isentoFlexEdit ? 0 : (valorDigitado - valorBase) * qtd;
+                const regra = !isentoFlexEdit ? editRegras.get(item.produtoId) : null;
                 const flexItem = regra
-                    ? (!regra.contabilizaFlex ? 0 : regra.tipoFlex === 'NAO_CONTABILIZAR' ? 0 : regra.tipoFlex === 'SOMENTE_NEGATIVO' ? Math.min(0, flexBruto) : flexBruto)
+                    ? (!regra.contabilizaFlex ? 0 : flexBruto > 0 && regra.flexPositivo === false ? 0 : flexBruto < 0 && regra.flexNegativo === false ? 0 : flexBruto)
                     : flexBruto;
 
                 totalPedido += valorDigitado * qtd;

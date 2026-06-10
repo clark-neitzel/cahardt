@@ -1086,8 +1086,8 @@ model CategoriaProduto {
   permiteFracao   Boolean  @default(false) @map("permite_fracao")
   controlaEstoque Boolean  @default(false) @map("controla_estoque")
   ativo           Boolean  @default(true)
-  // NORMAL = conta positivo e negativo | SOMENTE_NEGATIVO = só desconto | NAO_CONTABILIZAR = exclui do flex
-  tipoFlex        String   @default("NORMAL") @map("tipo_flex")
+  flexPositivo    Boolean  @default(true) @map("flex_positivo")  // acréscimos somam no saldo?
+  flexNegativo    Boolean  @default(true) @map("flex_negativo")  // descontos descontam do saldo?
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 

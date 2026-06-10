@@ -13,7 +13,7 @@ async function obterRegrasCategoria(produtoIds, db) {
         select: {
             id: true,
             categoria: true,
-            categoriaProduto: { select: { tipoFlex: true } }
+            categoriaProduto: { select: { flexPositivo: true, flexNegativo: true } }
         }
     });
 
@@ -25,7 +25,8 @@ async function obterRegrasCategoria(produtoIds, db) {
 
     return new Map(produtos.map(p => [p.id, {
         contabilizaFlex: p.categoria ? (catEstoqueMap.get(p.categoria) ?? true) : true,
-        tipoFlex: p.categoriaProduto?.tipoFlex || 'NORMAL'
+        flexPositivo: p.categoriaProduto?.flexPositivo ?? true,
+        flexNegativo: p.categoriaProduto?.flexNegativo ?? true
     }]));
 }
 
@@ -33,9 +34,8 @@ async function obterRegrasCategoria(produtoIds, db) {
 function aplicarRegraFlex(flexBruto, regra) {
     if (!regra) return flexBruto;
     if (!regra.contabilizaFlex) return 0;
-    const tipo = regra.tipoFlex || 'NORMAL';
-    if (tipo === 'NAO_CONTABILIZAR') return 0;
-    if (tipo === 'SOMENTE_NEGATIVO') return Math.min(0, flexBruto);
+    if (flexBruto > 0 && regra.flexPositivo === false) return 0;
+    if (flexBruto < 0 && regra.flexNegativo === false) return 0;
     return flexBruto;
 }
 

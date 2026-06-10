@@ -41,7 +41,8 @@ const CategoriasProduto = () => {
             corTag: '',
             permiteFracao: false,
             ativo: true,
-            tipoFlex: 'NORMAL'
+            flexPositivo: true,
+            flexNegativo: true
         });
     };
 
@@ -153,18 +154,24 @@ const CategoriasProduto = () => {
                                     placeholder="#FF5733"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Regra de Flex</label>
-                                <select
-                                    value={form.tipoFlex || 'NORMAL'}
-                                    onChange={(e) => setForm({ ...form, tipoFlex: e.target.value })}
-                                    className="border border-gray-300 rounded-md p-2 bg-white text-gray-900 focus:ring-primary focus:border-primary text-sm"
-                                >
-                                    <option value="NORMAL">Normal (positivo e negativo)</option>
-                                    <option value="SOMENTE_NEGATIVO">Só desconto (ignora acréscimo)</option>
-                                    <option value="NAO_CONTABILIZAR">Não contabilizar flex</option>
-                                </select>
-                            </div>
+                            <label className="flex items-center space-x-2 mt-6">
+                                <input
+                                    type="checkbox"
+                                    checked={form.flexPositivo !== false}
+                                    onChange={(e) => setForm({ ...form, flexPositivo: e.target.checked })}
+                                    className="h-4 w-4 text-primary bg-white focus:ring-primary border-gray-300 rounded"
+                                />
+                                <span className="text-gray-900 text-sm font-medium">Soma Flex Positivo (acréscimo entra no saldo)</span>
+                            </label>
+                            <label className="flex items-center space-x-2 mt-6">
+                                <input
+                                    type="checkbox"
+                                    checked={form.flexNegativo !== false}
+                                    onChange={(e) => setForm({ ...form, flexNegativo: e.target.checked })}
+                                    className="h-4 w-4 text-primary bg-white focus:ring-primary border-gray-300 rounded"
+                                />
+                                <span className="text-gray-900 text-sm font-medium">Desconta Flex Negativo (desconto sai do saldo)</span>
+                            </label>
                             <label className="flex items-center space-x-2 mt-6">
                                 <input
                                     type="checkbox"
@@ -228,8 +235,9 @@ const CategoriasProduto = () => {
                                         {cat.nome}
                                         {cat.permiteFracao && <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">Fração</span>}
                                         {cat.controlaEstoque && <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded">Estoque</span>}
-                                        {cat.tipoFlex === 'SOMENTE_NEGATIVO' && <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-700 rounded">Flex: só desc.</span>}
-                                        {cat.tipoFlex === 'NAO_CONTABILIZAR' && <span className="px-2 py-0.5 text-xs bg-gray-200 text-gray-600 rounded">Flex: excluído</span>}
+                                        {cat.flexPositivo === false && cat.flexNegativo === false && <span className="px-2 py-0.5 text-xs bg-gray-200 text-gray-600 rounded">Flex: excluído</span>}
+                                        {cat.flexPositivo === false && cat.flexNegativo !== false && <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-700 rounded">Flex: só desconto</span>}
+                                        {cat.flexPositivo !== false && cat.flexNegativo === false && <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">Flex: só acréscimo</span>}
                                         {!cat.ativo && <span className="px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded">Inativo</span>}
                                     </h3>
                                     <p className="text-xs text-gray-500">{cat.descricao || 'Sem descrição'}</p>

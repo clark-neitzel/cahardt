@@ -6,14 +6,17 @@ const promocaoService = require('./promocaoService');
 
 /**
  * Aplica as regras de flex de categoria sobre um flexItem bruto.
- * regra = { contabilizaFlex: bool, tipoFlex: 'NORMAL'|'SOMENTE_NEGATIVO'|'NAO_CONTABILIZAR' }
+ * regra = {
+ *   contabilizaFlex: bool,   -- CategoriaEstoque (CA): false = exclui tudo
+ *   flexPositivo: bool,      -- CategoriaProduto: acréscimo entra no saldo?
+ *   flexNegativo: bool,      -- CategoriaProduto: desconto sai do saldo?
+ * }
  */
 function aplicarRegraFlex(flexBruto, regra) {
     if (!regra) return flexBruto;
     if (!regra.contabilizaFlex) return 0;
-    const tipo = regra.tipoFlex || 'NORMAL';
-    if (tipo === 'NAO_CONTABILIZAR') return 0;
-    if (tipo === 'SOMENTE_NEGATIVO') return Math.min(0, flexBruto);
+    if (flexBruto > 0 && regra.flexPositivo === false) return 0;
+    if (flexBruto < 0 && regra.flexNegativo === false) return 0;
     return flexBruto;
 }
 
