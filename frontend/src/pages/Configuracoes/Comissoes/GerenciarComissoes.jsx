@@ -205,13 +205,13 @@ const GerenciarComissoes = () => {
                             <thead>
                                 <tr className="text-xs text-gray-500 uppercase tracking-wide border-b">
                                     <th className="text-left py-2 pr-4 font-medium">Vendedor</th>
-                                    <th className="text-right pr-4 font-medium">Meta</th>
                                     <th className="text-right pr-4 font-medium">Realizado</th>
                                     <th className="text-right pr-4 font-medium">% Meta</th>
-                                    <th className="text-right pr-4 font-medium">Comissão Base</th>
-                                    <th className="text-right pr-4 font-medium">Bônus Total</th>
-                                    <th className="text-right pr-4 font-medium">Total</th>
-                                    <th className="text-right font-medium">Detalhes</th>
+                                    <th className="text-right pr-4 font-medium">Base</th>
+                                    <th className="text-right pr-4 font-medium">Bônus</th>
+                                    <th className="text-right pr-4 font-medium">Total R$</th>
+                                    <th className="text-right pr-4 font-medium">% Efetiva</th>
+                                    <th className="text-right font-medium"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -225,9 +225,8 @@ const GerenciarComissoes = () => {
                                     if (!a.temConfig) return (
                                         <tr key={a.vendedorId} className="border-b">
                                             <td className="py-3 pr-4 font-medium text-gray-800">{a.vendedor?.nome}</td>
-                                            <td className="text-right pr-4">{fmt(a.meta)}</td>
                                             <td className="text-right pr-4">{fmt(a.realizado)}</td>
-                                            <td colSpan={5} className="text-gray-400 italic pr-4 text-right">
+                                            <td colSpan={6} className="text-gray-400 italic pr-4 text-right">
                                                 sem configuração de comissão
                                             </td>
                                         </tr>
@@ -237,18 +236,23 @@ const GerenciarComissoes = () => {
                                         + (a.calculo?.bonusProdutos?.valor || 0)
                                         + (a.calculo?.bonusFlex?.valor || 0);
                                     const percMeta = a.percRealizado ?? 0;
+                                    const percEfetiva = a.realizado > 0
+                                        ? (a.calculo?.totalComissao / a.realizado) * 100
+                                        : 0;
 
                                     return (
                                         <tr key={a.vendedorId} className="border-b hover:bg-gray-50">
                                             <td className="py-3 pr-4 font-medium text-gray-800">{a.vendedor?.nome}</td>
-                                            <td className="text-right pr-4">{fmt(a.meta)}</td>
                                             <td className="text-right pr-4">{fmt(a.realizado)}</td>
                                             <td className={`text-right pr-4 font-medium ${percMeta >= 100 ? 'text-green-600' : 'text-orange-600'}`}>
                                                 {percMeta.toFixed(1)}%
                                             </td>
-                                            <td className="text-right pr-4">{fmt(a.calculo?.comissaoBase)}</td>
+                                            <td className="text-right pr-4 text-gray-600">{fmt(a.calculo?.comissaoBase)}</td>
                                             <td className="text-right pr-4 text-green-700">{fmt(bonusTotal)}</td>
                                             <td className="text-right pr-4 font-bold text-gray-900">{fmt(a.calculo?.totalComissao)}</td>
+                                            <td className="text-right pr-4 font-semibold text-blue-700">
+                                                {fmtPerc(percEfetiva)}
+                                            </td>
                                             <td className="text-right">
                                                 <button
                                                     onClick={() => setDetalhe(a.vendedorId)}
@@ -296,6 +300,16 @@ const DetalheApuracao = ({ data, onVoltar, fmt, fmtPerc }) => {
     const c = data.calculo;
     const isBonusCidades = c?.bonusCidades?.conquistado;
     const isBonusFlex = c?.bonusFlex?.conquistado;
+    const percEfetiva = data.realizado > 0 ? (c?.totalComissao / data.realizado) * 100 : 0;
+
+    // % que cada componente representa sobre o total vendido
+    const pv = (v) => data.realizado > 0 ? fmtPerc((v / data.realizado) * 100) : '—';
+
+    const faixaLabel = {
+        abaixo: 'abaixo do limite — faixa abaixo',
+        na_meta: 'dentro da faixa na meta',
+        acima: 'acima do kicker — faixa acima',
+    }[c?.faixaAplicada] || c?.faixaAplicada;
 
     return (
         <div>
@@ -306,51 +320,61 @@ const DetalheApuracao = ({ data, onVoltar, fmt, fmtPerc }) => {
 
             {/* Resumo */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                <Card label="Meta" value={fmt(data.meta)} />
                 <Card label="Realizado" value={fmt(data.realizado)} highlight={data.percRealizado >= 100} />
                 <Card label="% da Meta" value={`${(data.percRealizado ?? 0).toFixed(1)}%`} highlight={data.percRealizado >= 100} />
                 <Card label="Total Comissão" value={fmt(c?.totalComissao)} highlight />
+                <Card label="% Efetiva s/ Vendas" value={fmtPerc(percEfetiva)} highlight />
             </div>
 
             {/* Detalhamento */}
-            <div className="border rounded-xl p-4 space-y-3 text-sm mb-6">
-                <h3 className="font-semibold text-gray-700 mb-2">Detalhamento</h3>
+            <div className="border rounded-xl p-4 space-y-2 text-sm mb-6">
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-700">Detalhamento</h3>
+                    <span className="text-xs text-gray-400">R$ valor · % das vendas</span>
+                </div>
 
-                <Row label={`Comissão base (${data.calculo?.faixaAplicada === 'acima' ? '% na meta + % excedente' : '% abaixo da meta'})`}
-                     value={fmt(c?.comissaoBase)} />
+                <Row label={`Comissão base (${faixaLabel})`}
+                     value={fmt(c?.comissaoBase)}
+                     sub={pv(c?.comissaoBase)} />
 
                 <Row
                     label={<span className="flex items-center gap-1">
                         {isBonusCidades ? <CheckCircle size={14} className="text-green-500" /> : <AlertCircle size={14} className="text-orange-400" />}
-                        Bônus cidades — {c?.bonusCidades?.cidadesBatidas}/{c?.bonusCidades?.totalCidades} cidades
-                        {' '}({((c?.bonusCidades?.ratio ?? 0) * 100).toFixed(0)}% do bônus)
+                        Bônus cidades — {c?.bonusCidades?.cidadesBatidas}/{c?.bonusCidades?.totalCidades}
+                        {' '}({((c?.bonusCidades?.ratio ?? 0) * 100).toFixed(0)}%)
                     </span>}
                     value={fmt(c?.bonusCidades?.valor)}
+                    sub={pv(c?.bonusCidades?.valor)}
                     dimmed={c?.bonusCidades?.cidadesBatidas === 0}
                 />
 
                 <Row
                     label={<span className="flex items-center gap-1">
                         {c?.bonusProdutos?.produtosBatidos > 0 ? <CheckCircle size={14} className="text-green-500" /> : <AlertCircle size={14} className="text-orange-400" />}
-                        Bônus produtos — {c?.bonusProdutos?.produtosBatidos}/{c?.bonusProdutos?.totalProdutos} produtos
-                        {' '}({((c?.bonusProdutos?.ratio ?? 0) * 100).toFixed(0)}% do bônus)
+                        Bônus produtos — {c?.bonusProdutos?.produtosBatidos}/{c?.bonusProdutos?.totalProdutos}
+                        {' '}({((c?.bonusProdutos?.ratio ?? 0) * 100).toFixed(0)}%)
                     </span>}
                     value={fmt(c?.bonusProdutos?.valor)}
+                    sub={pv(c?.bonusProdutos?.valor)}
                     dimmed={c?.bonusProdutos?.produtosBatidos === 0}
                 />
 
                 <Row
                     label={<span className="flex items-center gap-1">
                         {isBonusFlex ? <CheckCircle size={14} className="text-green-500" /> : <XCircle size={14} className="text-gray-400" />}
-                        Flex — saldo {fmt(c?.bonusFlex?.saldoFlex)} (uso: {(c?.bonusFlex?.percUsado ?? 0).toFixed(1)}% / limite {fmtPerc(c?.bonusFlex?.limite)})
+                        Flex — saldo {fmt(c?.bonusFlex?.saldoFlex)} · uso {(c?.bonusFlex?.percUsado ?? 0).toFixed(1)}% / lim {fmtPerc(c?.bonusFlex?.limite)}
                     </span>}
                     value={fmt(c?.bonusFlex?.valor)}
+                    sub={pv(c?.bonusFlex?.valor)}
                     dimmed={!isBonusFlex}
                 />
 
-                <div className="border-t pt-2 flex justify-between font-bold text-gray-900">
+                <div className="border-t pt-2 flex justify-between font-bold text-gray-900 text-base">
                     <span>TOTAL</span>
-                    <span>{fmt(c?.totalComissao)}</span>
+                    <div className="text-right">
+                        <div>{fmt(c?.totalComissao)}</div>
+                        <div className="text-sm font-semibold text-blue-700">{fmtPerc(percEfetiva)} das vendas</div>
+                    </div>
                 </div>
             </div>
 
@@ -408,10 +432,13 @@ const Card = ({ label, value, highlight }) => (
     </div>
 );
 
-const Row = ({ label, value, dimmed }) => (
-    <div className={`flex justify-between ${dimmed ? 'text-gray-400' : 'text-gray-700'}`}>
-        <span>{label}</span>
-        <span className="font-medium">{value}</span>
+const Row = ({ label, value, sub, dimmed }) => (
+    <div className={`flex justify-between items-start ${dimmed ? 'text-gray-400' : 'text-gray-700'}`}>
+        <span className="flex-1 pr-2">{label}</span>
+        <div className="text-right shrink-0">
+            <span className="font-medium">{value}</span>
+            {sub && <span className="ml-1.5 text-xs text-gray-400">({sub})</span>}
+        </div>
     </div>
 );
 
