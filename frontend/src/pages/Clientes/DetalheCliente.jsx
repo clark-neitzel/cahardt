@@ -925,7 +925,7 @@ const DetalheCliente = () => {
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Condições Permitidas (Flex/App)</label>
-                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <div>
                                 <MultiSelect
                                     options={condicoesPagamento.map(c => c.nomeCondicao)}
                                     selected={formData.condicoes_pagamento_permitidas.map(id => {
