@@ -541,7 +541,8 @@ const pedidoController = {
                     itens: {
                         include: { produto: { select: { nome: true, codigo: true, categoria: true } } }
                     },
-                    contaReceber: { select: { status: true, valorTotal: true } }
+                    contaReceber: { select: { status: true, valorTotal: true } },
+                    pagamentosReais: { select: { formaPagamentoNome: true, valor: true } }
                 },
                 orderBy: { dataVenda: 'desc' }
             });
@@ -552,7 +553,7 @@ const pedidoController = {
             let totalItens = 0;
 
             const pedidosFormatados = pedidos.map(p => {
-                const valorTotal = p.itens.reduce((sum, item) => sum + Number(item.valorTotal || 0), 0);
+                const valorTotal = p.itens.reduce((sum, item) => sum + Number(item.valor || 0) * Number(item.quantidade || 0), 0);
                 const qtdItens = p.itens.reduce((sum, item) => sum + Number(item.quantidade || 0), 0);
                 valorTotalGeral += valorTotal;
                 totalItens += qtdItens;
@@ -569,13 +570,29 @@ const pedidoController = {
                     statusEnvio: p.statusEnvio,
                     situacaoCA: p.situacaoCA,
                     statusEntrega: p.statusEntrega,
+                    dataEntrega: p.dataEntrega || null,
+                    observacaoEntrega: p.observacaoEntrega || null,
                     condicaoPagamento: p.nomeCondicaoPagamento || '-',
                     valorTotal,
                     qtdItens,
                     flexTotal: Number(p.flexTotal || 0),
                     contaReceberStatus: p.contaReceber?.status || null,
                     canalOrigem: p.canalOrigem || '-',
-                    observacoes: p.observacoes || ''
+                    observacoes: p.observacoes || '',
+                    pagamentosReais: (p.pagamentosReais || []).map(pg => ({
+                        forma: pg.formaPagamentoNome,
+                        valor: Number(pg.valor)
+                    })),
+                    itens: p.itens.map(item => ({
+                        produtoNome: item.produto?.nome || item.descricao || '-',
+                        produtoCodigo: item.produto?.codigo || '-',
+                        quantidade: Number(item.quantidade),
+                        valor: Number(item.valor),
+                        valorBase: Number(item.valorBase),
+                        flexGerado: Number(item.flexGerado || 0),
+                        emPromocao: item.emPromocao,
+                        nomePromocao: item.nomePromocao || null
+                    }))
                 };
             });
 
@@ -591,6 +608,113 @@ const pedidoController = {
         } catch (error) {
             console.error('Erro ao gerar relatório:', error);
             res.status(500).json({ error: 'Erro ao gerar relatório' });
+        }
+    },
+
+    relatorioFlex: async (req, res) => {
+        try {
+            const { dataDe, dataAte, vendedorId } = req.query;
+            const permissoes = req.user?.permissoes || {};
+            const podeVerTodos = permissoes.admin || permissoes.pedidos?.clientes === 'todos';
+
+            const where = { statusEnvio: { not: 'EXCLUIDO' } };
+
+            if (!podeVerTodos) {
+                where.vendedorId = req.user.id;
+            } else if (vendedorId) {
+                where.vendedorId = vendedorId;
+            }
+
+            if (dataDe || dataAte) {
+                where.createdAt = {};
+                if (dataDe) where.createdAt.gte = new Date(dataDe + 'T00:00:00.000Z');
+                if (dataAte) where.createdAt.lte = new Date(dataAte + 'T23:59:59.999Z');
+            }
+
+            // Só pedidos que usaram flex (flexTotal != 0)
+            where.flexTotal = { not: 0 };
+
+            const pedidos = await prisma.pedido.findMany({
+                where,
+                include: {
+                    cliente: { select: { Nome: true, NomeFantasia: true } },
+                    vendedor: { select: { id: true, nome: true, flexMensal: true, flexDisponivel: true } },
+                    itens: { select: { valor: true, valorBase: true, flexGerado: true, quantidade: true, produto: { select: { nome: true, codigo: true } } } }
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+
+            // Agrupar por vendedor
+            const vendedoresMap = new Map();
+            for (const p of pedidos) {
+                const vid = p.vendedorId || 'SEM_VENDEDOR';
+                if (!vendedoresMap.has(vid)) {
+                    vendedoresMap.set(vid, {
+                        vendedorId: vid,
+                        vendedorNome: p.vendedor?.nome || 'Sem Vendedor',
+                        flexMensal: Number(p.vendedor?.flexMensal || 0),
+                        flexDisponivel: Number(p.vendedor?.flexDisponivel || 0),
+                        flexNegativo: 0,
+                        flexPositivo: 0,
+                        qtdPedidosNegativo: 0,
+                        qtdPedidosPositivo: 0,
+                        pedidos: []
+                    });
+                }
+                const v = vendedoresMap.get(vid);
+                const ft = Number(p.flexTotal);
+                if (ft < 0) { v.flexNegativo += ft; v.qtdPedidosNegativo++; }
+                else { v.flexPositivo += ft; v.qtdPedidosPositivo++; }
+
+                v.pedidos.push({
+                    id: p.id,
+                    numero: p.numero,
+                    especial: p.especial,
+                    createdAt: p.createdAt,
+                    clienteNome: p.cliente?.NomeFantasia || p.cliente?.Nome || '-',
+                    flexTotal: ft,
+                    valorTotal: p.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0),
+                    itens: p.itens.map(i => ({
+                        produtoNome: i.produto?.nome || '-',
+                        produtoCodigo: i.produto?.codigo || '-',
+                        quantidade: Number(i.quantidade),
+                        valor: Number(i.valor),
+                        valorBase: Number(i.valorBase),
+                        flexGerado: Number(i.flexGerado || 0)
+                    }))
+                });
+            }
+
+            // Buscar todos os vendedores para mostrar quem tem orçamento mesmo sem uso
+            let vendedoresCompleto = Array.from(vendedoresMap.values());
+            if (podeVerTodos && !vendedorId) {
+                const todosVendedores = await prisma.vendedor.findMany({
+                    where: { ativo: true },
+                    select: { id: true, nome: true, flexMensal: true, flexDisponivel: true }
+                });
+                for (const v of todosVendedores) {
+                    if (!vendedoresMap.has(v.id) && Number(v.flexMensal) > 0) {
+                        vendedoresCompleto.push({
+                            vendedorId: v.id,
+                            vendedorNome: v.nome,
+                            flexMensal: Number(v.flexMensal),
+                            flexDisponivel: Number(v.flexDisponivel),
+                            flexNegativo: 0,
+                            flexPositivo: 0,
+                            qtdPedidosNegativo: 0,
+                            qtdPedidosPositivo: 0,
+                            pedidos: []
+                        });
+                    }
+                }
+            }
+
+            vendedoresCompleto.sort((a, b) => a.flexNegativo - b.flexNegativo);
+
+            res.json({ vendedores: vendedoresCompleto });
+        } catch (error) {
+            console.error('Erro ao gerar relatório flex:', error);
+            res.status(500).json({ error: 'Erro ao gerar relatório flex' });
         }
     },
 

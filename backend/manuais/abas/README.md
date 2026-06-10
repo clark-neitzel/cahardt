@@ -16,8 +16,9 @@
 | Atendimentos | `/atendimentos` | Histórico e auditoria de todos os atendimentos registrados no sistema | [atendimentos.md](atendimentos.md) |
 | Análise IA | `/analise-ia` | Logs técnicos das análises de inteligência artificial (admin) | [analise-ia.md](analise-ia.md) |
 | Clientes | `/clientes` | Cadastro completo de clientes com edição, filtros e ações em lote | [clientes.md](clientes.md) |
-| Rel. Pedidos | `/relatorios/pedidos` | Relatório detalhado de pedidos com exportação em CSV | [rel-pedidos.md](rel-pedidos.md) |
+| Rel. Pedidos | `/relatorios/pedidos` | Relatório detalhado de pedidos com itens, flex por item, entrega e pagamentos | [rel-pedidos.md](rel-pedidos.md) |
 | Rel. Vendas | `/relatorios/vendas` | Relatório por item vendido com filtros por coluna estilo Excel | [rel-vendas.md](rel-vendas.md) |
+| Análise Flex | `/relatorios/flex` | Análise do uso de flex por vendedor: descontos, acréscimos e orçamento consumido | [analise-flex.md](analise-flex.md) |
 | Delivery | `/delivery` | Kanban de acompanhamento de pedidos de entrega (Kit Festa) com WhatsApp | [delivery.md](delivery.md) |
 
 ---

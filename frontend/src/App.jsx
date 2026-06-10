@@ -34,6 +34,7 @@ import RelatorioCaixaPrint from './pages/Caixa/RelatorioCaixaPrint';
 import ContasReceberTabela from './pages/Financeiro/ContasReceberTabela';
 import RelatorioPedidos from './pages/Relatorios/RelatorioPedidos';
 import RelatorioVendas from './pages/Relatorios/RelatorioVendas';
+import RelatorioFlex from './pages/Relatorios/RelatorioFlex';
 import PainelEstoque from './pages/Estoque/PainelEstoque';
 import HistoricoEstoque from './pages/Estoque/HistoricoEstoque';
 import PosicaoEstoque from './pages/Estoque/PosicaoEstoque';
@@ -68,7 +69,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -198,6 +199,7 @@ const Layout = ({ children }) => {
           {hasPermission('pedidos') && <SidebarItem to="/pedidos" icon={ClipboardList} label="Pedidos" />}
           {hasPermission('pedidos') && <SidebarItem to="/relatorios/pedidos" icon={FileText} label="Rel. Pedidos" />}
           {hasPermission('relatorioVendas') && <SidebarItem to="/relatorios/vendas" icon={BarChart2} label="Rel. Vendas" />}
+          {hasPermission('pedidos') && <SidebarItem to="/relatorios/flex" icon={Percent} label="Análise Flex" />}
           {hasPermission('delivery') && <SidebarItem to="/delivery" icon={Truck} label="Delivery" />}
           {hasPermission('pedidos') && <SidebarItem to="/rota" icon={Map} label="Rota" />}
           {hasPermission('rota') && <SidebarItem to="/leads" icon={Target} label="Leads" />}
@@ -350,6 +352,7 @@ const Layout = ({ children }) => {
               {hasPermission('pedidos') && <NavLink to="/pedidos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Pedidos</NavLink>}
               {hasPermission('pedidos') && <NavLink to="/relatorios/pedidos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rel. Pedidos</NavLink>}
               {hasPermission('relatorioVendas') && <NavLink to="/relatorios/vendas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rel. Vendas</NavLink>}
+              {hasPermission('pedidos') && <NavLink to="/relatorios/flex" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Análise Flex</NavLink>}
               {hasPermission('delivery') && <NavLink to="/delivery" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Delivery</NavLink>}
               {hasPermission('pedidos') && <NavLink to="/rota" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rota</NavLink>}
               {hasPermission('rota') && <NavLink to="/leads" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Leads</NavLink>}
@@ -502,6 +505,7 @@ function App() {
               {/* Relatórios */}
               <Route path="/relatorios/pedidos" element={<PrivateRoute tab="pedidos"><RelatorioPedidos /></PrivateRoute>} />
               <Route path="/relatorios/vendas" element={<PrivateRoute tab="relatorioVendas"><RelatorioVendas /></PrivateRoute>} />
+              <Route path="/relatorios/flex" element={<PrivateRoute tab="pedidos"><RelatorioFlex /></PrivateRoute>} />
 
               {/* Delivery (Kit Festa) */}
               <Route path="/delivery" element={<PrivateRoute tab="delivery"><DeliveryKanban /></PrivateRoute>} />

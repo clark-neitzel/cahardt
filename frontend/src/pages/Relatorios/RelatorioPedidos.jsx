@@ -33,10 +33,8 @@ const RelatorioPedidos = () => {
     const [showFiltros, setShowFiltros] = useState(true);
     const [expandido, setExpandido] = useState(null);
 
-    // Vendedores para filtro
     const [vendedores, setVendedores] = useState([]);
 
-    // Filtros
     const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
     const inicioMes = hoje.slice(0, 8) + '01';
     const [dataCriacaoDe, setDataCriacaoDe] = useState(inicioMes);
@@ -49,6 +47,7 @@ const RelatorioPedidos = () => {
     const [situacaoCA, setSituacaoCA] = useState('');
     const [statusEntrega, setStatusEntrega] = useState('');
     const [buscaCliente, setBuscaCliente] = useState('');
+    const [filtroFlex, setFiltroFlex] = useState('');
 
     const podeVerTodos = user?.permissoes?.admin || user?.permissoes?.pedidos?.clientes === 'todos';
 
@@ -76,7 +75,6 @@ const RelatorioPedidos = () => {
 
             let resultado = data.pedidos || [];
 
-            // Filtro local por nome de cliente
             if (buscaCliente.trim()) {
                 const termo = buscaCliente.trim().toLowerCase();
                 resultado = resultado.filter(p =>
@@ -84,6 +82,10 @@ const RelatorioPedidos = () => {
                     p.clienteDocumento.includes(termo)
                 );
             }
+
+            if (filtroFlex === 'negativo') resultado = resultado.filter(p => p.flexTotal < 0);
+            else if (filtroFlex === 'positivo') resultado = resultado.filter(p => p.flexTotal > 0);
+            else if (filtroFlex === 'zerado') resultado = resultado.filter(p => p.flexTotal === 0);
 
             setPedidos(resultado);
             setResumo(data.resumo || {});
@@ -93,7 +95,7 @@ const RelatorioPedidos = () => {
         } finally {
             setLoading(false);
         }
-    }, [dataCriacaoDe, dataCriacaoAte, dataVendaDe, dataVendaAte, vendedorId, statusEnvio, especial, situacaoCA, statusEntrega, buscaCliente]);
+    }, [dataCriacaoDe, dataCriacaoAte, dataVendaDe, dataVendaAte, vendedorId, statusEnvio, especial, situacaoCA, statusEntrega, buscaCliente, filtroFlex]);
 
     const exportarCSV = () => {
         if (pedidos.length === 0) {
@@ -103,7 +105,7 @@ const RelatorioPedidos = () => {
 
         const headers = [
             'Nº', 'Data Criação', 'Data Venda', 'Cliente', 'CNPJ/CPF', 'Vendedor',
-            'Tipo', 'Status', 'Situação CA', 'Entrega', 'Condição Pgto',
+            'Tipo', 'Status', 'Situação CA', 'Entrega', 'Data Entrega', 'Condição Pgto',
             'Qtd Itens', 'Valor Total (R$)', 'Flex Total', 'Canal', 'Observações'
         ];
 
@@ -118,6 +120,7 @@ const RelatorioPedidos = () => {
             p.statusEnvio,
             p.situacaoCA || '-',
             STATUS_ENTREGA[p.statusEntrega] || p.statusEntrega || '-',
+            p.dataEntrega ? new Date(p.dataEntrega).toLocaleDateString('pt-BR') : '-',
             `"${p.condicaoPagamento}"`,
             p.qtdItens,
             Number(p.valorTotal).toFixed(2).replace('.', ','),
@@ -126,7 +129,7 @@ const RelatorioPedidos = () => {
             `"${(p.observacoes || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`
         ]);
 
-        const BOM = '\uFEFF';
+        const BOM = '﻿';
         const csvContent = BOM + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -253,6 +256,16 @@ const RelatorioPedidos = () => {
                                 <option value="DEVOLVIDO">Devolvido</option>
                             </select>
                         </div>
+                        <div>
+                            <label className="text-xs text-gray-500 font-medium">Flex</label>
+                            <select value={filtroFlex} onChange={(e) => setFiltroFlex(e.target.value)}
+                                className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900">
+                                <option value="">Todos</option>
+                                <option value="negativo">Flex Negativo (descontos)</option>
+                                <option value="positivo">Flex Positivo (acréscimos)</option>
+                                <option value="zerado">Sem Flex</option>
+                            </select>
+                        </div>
                     </div>
                     <div className="flex justify-end gap-2 mt-4">
                         <button
@@ -261,6 +274,7 @@ const RelatorioPedidos = () => {
                                 setDataVendaDe(''); setDataVendaAte('');
                                 setVendedorId(''); setStatusEnvio(''); setEspecial('');
                                 setSituacaoCA(''); setStatusEntrega(''); setBuscaCliente('');
+                                setFiltroFlex('');
                             }}
                             className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5"
                         >
@@ -360,6 +374,11 @@ const RelatorioPedidos = () => {
                                                     {p.especial && (
                                                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-medium">ESP</span>
                                                     )}
+                                                    {p.flexTotal !== 0 && (
+                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${p.flexTotal < 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                                            Flex {p.flexTotal >= 0 ? '+' : ''}{Number(p.flexTotal).toFixed(2)}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -408,7 +427,8 @@ const RelatorioPedidos = () => {
 
                                 {/* Detalhes expandidos */}
                                 {isExpanded && (
-                                    <div className="border-t border-gray-100 p-3 sm:p-4 bg-gray-50">
+                                    <div className="border-t border-gray-100 p-3 sm:p-4 bg-gray-50 space-y-4">
+                                        {/* Info geral */}
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                                             <div>
                                                 <span className="text-gray-400">CNPJ/CPF</span>
@@ -424,7 +444,7 @@ const RelatorioPedidos = () => {
                                             </div>
                                             <div>
                                                 <span className="text-gray-400">Flex Total</span>
-                                                <p className={`font-medium ${p.flexTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                <p className={`font-bold ${p.flexTotal > 0 ? 'text-green-600' : p.flexTotal < 0 ? 'text-red-600' : 'text-gray-500'}`}>
                                                     {p.flexTotal >= 0 ? '+' : ''}{Number(p.flexTotal).toFixed(2)}
                                                 </p>
                                             </div>
@@ -436,6 +456,16 @@ const RelatorioPedidos = () => {
                                                 <span className="text-gray-400">Conta a Receber</span>
                                                 <p className="text-gray-700 font-medium">{p.contaReceberStatus || '-'}</p>
                                             </div>
+                                            <div>
+                                                <span className="text-gray-400">Status Entrega</span>
+                                                <p className="text-gray-700 font-medium">{STATUS_ENTREGA[p.statusEntrega] || p.statusEntrega || '-'}</p>
+                                            </div>
+                                            {p.dataEntrega && (
+                                                <div>
+                                                    <span className="text-gray-400">Data Entrega</span>
+                                                    <p className="text-gray-700 font-medium">{new Date(p.dataEntrega).toLocaleDateString('pt-BR')}</p>
+                                                </div>
+                                            )}
                                             {p.especial && (
                                                 <div className="col-span-2">
                                                     <span className="text-gray-400">Tipo</span>
@@ -443,10 +473,79 @@ const RelatorioPedidos = () => {
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* Pagamentos na entrega */}
+                                        {p.pagamentosReais && p.pagamentosReais.length > 0 && (
+                                            <div>
+                                                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-1">Pagamentos na Entrega</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {p.pagamentosReais.map((pg, i) => (
+                                                        <span key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded font-medium">
+                                                            {pg.forma}: R$ {fmt(pg.valor)}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Observações */}
                                         {p.observacoes && (
-                                            <div className="mt-2 text-xs">
+                                            <div className="text-xs">
                                                 <span className="text-gray-400">Obs:</span>
                                                 <p className="text-gray-600 mt-0.5">{p.observacoes}</p>
+                                            </div>
+                                        )}
+                                        {p.observacaoEntrega && (
+                                            <div className="text-xs">
+                                                <span className="text-gray-400">Obs. Entrega:</span>
+                                                <p className="text-gray-600 mt-0.5">{p.observacaoEntrega}</p>
+                                            </div>
+                                        )}
+
+                                        {/* Itens com flex */}
+                                        {p.itens && p.itens.length > 0 && (
+                                            <div>
+                                                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-2">Itens do Pedido</p>
+                                                <div className="rounded-md border border-gray-200 overflow-hidden">
+                                                    <table className="w-full text-xs">
+                                                        <thead className="bg-gray-100">
+                                                            <tr>
+                                                                <th className="px-2 py-1.5 text-left text-gray-500 font-medium">Produto</th>
+                                                                <th className="px-2 py-1.5 text-right text-gray-500 font-medium">Qtd</th>
+                                                                <th className="px-2 py-1.5 text-right text-gray-500 font-medium">V. Base</th>
+                                                                <th className="px-2 py-1.5 text-right text-gray-500 font-medium">V. Prat.</th>
+                                                                <th className="px-2 py-1.5 text-right text-gray-500 font-medium">Flex</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-gray-100">
+                                                            {p.itens.map((item, idx) => (
+                                                                <tr key={idx} className="bg-white">
+                                                                    <td className="px-2 py-1.5 text-gray-700">
+                                                                        <span className="font-medium">{item.produtoNome}</span>
+                                                                        {item.emPromocao && item.nomePromocao && (
+                                                                            <span className="ml-1 text-[9px] bg-orange-100 text-orange-600 px-1 py-0.5 rounded">promo</span>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="px-2 py-1.5 text-right text-gray-600">{Number(item.quantidade).toFixed(3).replace('.', ',')}</td>
+                                                                    <td className="px-2 py-1.5 text-right text-gray-500">{fmt(item.valorBase)}</td>
+                                                                    <td className="px-2 py-1.5 text-right text-gray-700 font-medium">{fmt(item.valor)}</td>
+                                                                    <td className={`px-2 py-1.5 text-right font-bold ${item.flexGerado > 0 ? 'text-green-600' : item.flexGerado < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                                                                        {item.flexGerado >= 0 ? '+' : ''}{Number(item.flexGerado).toFixed(2)}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                        <tfoot className="bg-gray-50">
+                                                            <tr>
+                                                                <td colSpan={3} className="px-2 py-1.5 text-right text-gray-500 font-medium">Total do Pedido</td>
+                                                                <td className="px-2 py-1.5 text-right font-bold text-gray-800">R$ {fmt(p.valorTotal)}</td>
+                                                                <td className={`px-2 py-1.5 text-right font-bold ${p.flexTotal > 0 ? 'text-green-600' : p.flexTotal < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                                                                    {p.flexTotal >= 0 ? '+' : ''}{Number(p.flexTotal).toFixed(2)}
+                                                                </td>
+                                                            </tr>
+                                                        </tfoot>
+                                                    </table>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
