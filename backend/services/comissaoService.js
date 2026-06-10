@@ -11,27 +11,26 @@ const comissaoService = {
     salvarConfig: async (dados, usuarioLogadoId) => {
         const {
             vendedorId, mesReferencia,
-            percAbaixoMeta, percNaMeta, percAcimaMeta,
+            faixaAbaixo, percAbaixoMeta, percNaMeta, faixaAcima, percAcimaMeta,
             bonusCidades, bonusProdutos, bonusFlex, limiteFlexPerc
         } = dados;
 
+        const campos = {
+            faixaAbaixo: faixaAbaixo ?? 0,
+            percAbaixoMeta: percAbaixoMeta ?? 0,
+            percNaMeta: percNaMeta ?? 0,
+            faixaAcima: faixaAcima ?? 0,
+            percAcimaMeta: percAcimaMeta ?? 0,
+            bonusCidades: bonusCidades ?? 0,
+            bonusProdutos: bonusProdutos ?? 0,
+            bonusFlex: bonusFlex ?? 0,
+            limiteFlexPerc: limiteFlexPerc ?? 100,
+        };
+
         return prisma.comissaoConfig.upsert({
             where: { vendedorId_mesReferencia: { vendedorId, mesReferencia } },
-            update: {
-                percAbaixoMeta, percNaMeta, percAcimaMeta,
-                bonusCidades, bonusProdutos, bonusFlex, limiteFlexPerc
-            },
-            create: {
-                vendedorId, mesReferencia,
-                percAbaixoMeta: percAbaixoMeta ?? 0,
-                percNaMeta: percNaMeta ?? 0,
-                percAcimaMeta: percAcimaMeta ?? 0,
-                bonusCidades: bonusCidades ?? 0,
-                bonusProdutos: bonusProdutos ?? 0,
-                bonusFlex: bonusFlex ?? 0,
-                limiteFlexPerc: limiteFlexPerc ?? 100,
-                criadoPor: usuarioLogadoId
-            }
+            update: campos,
+            create: { vendedorId, mesReferencia, ...campos, criadoPor: usuarioLogadoId }
         });
     },
 
@@ -140,29 +139,50 @@ const comissaoService = {
         // -------------------------------------------------------
         const valorMeta = Number(meta.valorMensal);
 
-        // Comissão base
+        // Fronteiras das faixas
+        // limiteAbaixo: se realizado < limiteAbaixo → aplica percAbaixoMeta
+        //               se realizado entre limiteAbaixo e meta → aplica percNaMeta
+        // limiteAcima:  se realizado <= limiteAcima → percNaMeta sobre tudo
+        //               se realizado > limiteAcima → percNaMeta até o limite + percAcimaMeta sobre o excedente
+        const limiteAbaixo = valorMeta * (1 - (config.faixaAbaixo ?? 0) / 100);
+        const limiteAcima  = valorMeta * (1 + (config.faixaAcima  ?? 0) / 100);
+
         let comissaoBase = 0;
         let faixaAplicada = 'abaixo';
-        if (totalVendidoMes < valorMeta) {
+
+        if (totalVendidoMes < limiteAbaixo) {
+            // Faixa abaixo: abaixo do limite inferior
             comissaoBase = totalVendidoMes * (config.percAbaixoMeta / 100);
             faixaAplicada = 'abaixo';
-        } else {
-            // % na meta sobre o valor integral da meta + % acima só no excedente
+        } else if (totalVendidoMes < valorMeta) {
+            // Faixa intermediária: entre o limite inferior e a meta (tolerância)
+            comissaoBase = totalVendidoMes * (config.percNaMeta / 100);
+            faixaAplicada = 'na_meta';
+        } else if (totalVendidoMes <= limiteAcima) {
+            // Atingiu/superou a meta mas ainda dentro da faixa "na meta"
             comissaoBase = valorMeta * (config.percNaMeta / 100)
-                         + (totalVendidoMes - valorMeta) * (config.percAcimaMeta / 100);
+                         + (totalVendidoMes - valorMeta) * (config.percNaMeta / 100);
+            faixaAplicada = 'na_meta';
+        } else {
+            // Acima do limite superior: percNaMeta até o limiteAcima + percAcimaMeta no excedente
+            comissaoBase = limiteAcima * (config.percNaMeta / 100)
+                         + (totalVendidoMes - limiteAcima) * (config.percAcimaMeta / 100);
             faixaAplicada = 'acima';
         }
 
-        // Bônus cidades: aplica % sobre total vendido se TODAS cidades bateram meta
-        const todasCidadesBateram = progressoCidades.length > 0 && progressoCidades.every(c => c.bateu);
-        const bonusCidadesValor = todasCidadesBateram
-            ? totalVendidoMes * (config.bonusCidades / 100)
-            : 0;
+        // Bônus cidades: proporção cidades batidas / total cidades × taxa × total vendido
+        // Ex: 7 de 10 cidades = 70% do bônus; todas = 100%
+        const totalCidades = progressoCidades.length;
         const cidadesBatidas = progressoCidades.filter(c => c.bateu).length;
+        const todasCidadesBateram = totalCidades > 0 && cidadesBatidas === totalCidades;
+        const ratioCidades = totalCidades > 0 ? cidadesBatidas / totalCidades : 0;
+        const bonusCidadesValor = totalVendidoMes * (config.bonusCidades / 100) * ratioCidades;
 
-        // Bônus produtos: % por cada produto que bateu a meta, aplicado sobre total vendido
+        // Bônus produtos: proporção produtos batidos / total produtos × taxa × total vendido
+        const totalProdutos = progressoProdutos.length;
         const produtosBatidos = progressoProdutos.filter(p => p.bateu).length;
-        const bonusProdutosValor = totalVendidoMes * (config.bonusProdutos / 100) * produtosBatidos;
+        const ratioProdutos = totalProdutos > 0 ? produtosBatidos / totalProdutos : 0;
+        const bonusProdutosValor = totalVendidoMes * (config.bonusProdutos / 100) * ratioProdutos;
 
         // Bônus flex: % de comissão sobre o saldo não usado do flex (se uso <= limite configurado)
         const flexDentroDoLimite = percFlexUsado <= config.limiteFlexPerc;
@@ -184,19 +204,23 @@ const comissaoService = {
             percRealizado: valorMeta > 0 ? (totalVendidoMes / valorMeta) * 100 : 0,
             flex: { usado: flexUsadoMes, total: flexMeta, percUsado: percFlexUsado, dentroDoLimite: flexDentroDoLimite },
             config: {
+                faixaAbaixo: config.faixaAbaixo ?? 0,
                 percAbaixoMeta: config.percAbaixoMeta,
                 percNaMeta: config.percNaMeta,
+                faixaAcima: config.faixaAcima ?? 0,
                 percAcimaMeta: config.percAcimaMeta,
                 bonusCidades: config.bonusCidades,
                 bonusProdutos: config.bonusProdutos,
                 bonusFlex: config.bonusFlex,
-                limiteFlexPerc: config.limiteFlexPerc
+                limiteFlexPerc: config.limiteFlexPerc,
+                limiteAbaixo,
+                limiteAcima
             },
             calculo: {
                 faixaAplicada,
                 comissaoBase,
-                bonusCidades: { valor: bonusCidadesValor, conquistado: todasCidadesBateram, cidadesBatidas, totalCidades: progressoCidades.length },
-                bonusProdutos: { valor: bonusProdutosValor, produtosBatidos, totalProdutos: progressoProdutos.length },
+                bonusCidades: { valor: bonusCidadesValor, conquistado: todasCidadesBateram, cidadesBatidas, totalCidades, ratio: ratioCidades },
+                bonusProdutos: { valor: bonusProdutosValor, produtosBatidos, totalProdutos, ratio: ratioProdutos },
                 bonusFlex: { valor: bonusFlexValor, conquistado: flexDentroDoLimite, percUsado: percFlexUsado, limite: config.limiteFlexPerc, saldoFlex },
                 totalComissao
             },

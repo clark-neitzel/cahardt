@@ -321,17 +321,19 @@ const DetalheApuracao = ({ data, onVoltar, fmt, fmtPerc }) => {
 
                 <Row
                     label={<span className="flex items-center gap-1">
-                        {isBonusCidades ? <CheckCircle size={14} className="text-green-500" /> : <XCircle size={14} className="text-gray-400" />}
-                        Bônus cidades ({c?.bonusCidades?.cidadesBatidas}/{c?.bonusCidades?.totalCidades} cidades)
+                        {isBonusCidades ? <CheckCircle size={14} className="text-green-500" /> : <AlertCircle size={14} className="text-orange-400" />}
+                        Bônus cidades — {c?.bonusCidades?.cidadesBatidas}/{c?.bonusCidades?.totalCidades} cidades
+                        {' '}({((c?.bonusCidades?.ratio ?? 0) * 100).toFixed(0)}% do bônus)
                     </span>}
                     value={fmt(c?.bonusCidades?.valor)}
-                    dimmed={!isBonusCidades}
+                    dimmed={c?.bonusCidades?.cidadesBatidas === 0}
                 />
 
                 <Row
                     label={<span className="flex items-center gap-1">
-                        {c?.bonusProdutos?.produtosBatidos > 0 ? <CheckCircle size={14} className="text-green-500" /> : <XCircle size={14} className="text-gray-400" />}
-                        Bônus produtos ({c?.bonusProdutos?.produtosBatidos}/{c?.bonusProdutos?.totalProdutos} produtos)
+                        {c?.bonusProdutos?.produtosBatidos > 0 ? <CheckCircle size={14} className="text-green-500" /> : <AlertCircle size={14} className="text-orange-400" />}
+                        Bônus produtos — {c?.bonusProdutos?.produtosBatidos}/{c?.bonusProdutos?.totalProdutos} produtos
+                        {' '}({((c?.bonusProdutos?.ratio ?? 0) * 100).toFixed(0)}% do bônus)
                     </span>}
                     value={fmt(c?.bonusProdutos?.valor)}
                     dimmed={c?.bonusProdutos?.produtosBatidos === 0}

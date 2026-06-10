@@ -1658,10 +1658,12 @@ model ComissaoConfig {
   vendedorId    String @map("vendedor_id")
   mesReferencia String @map("mes_referencia") // Formato "YYYY-MM"
 
-  // Faixas de comissão (% sobre vendas)
-  percAbaixoMeta Float @default(0) @map("perc_abaixo_meta") // % quando realizado < meta
-  percNaMeta     Float @default(0) @map("perc_na_meta")     // % aplicado sobre o valor da meta (quando >= meta)
-  percAcimaMeta  Float @default(0) @map("perc_acima_meta")  // % aplicado apenas sobre o excedente acima da meta
+  // Faixas de comissão — cada faixa tem um LIMITE (fronteira em % da meta) e uma TAXA (% de comissão)
+  faixaAbaixo    Float @default(0) @map("faixa_abaixo")     // fronteira inferior: acima de X% abaixo da meta começa a faixa "abaixo" (0 = qualquer valor abaixo da meta)
+  percAbaixoMeta Float @default(0) @map("perc_abaixo_meta") // comissão % quando realizado < (meta - faixaAbaixo%)
+  percNaMeta     Float @default(0) @map("perc_na_meta")     // comissão % quando realizado está entre (meta - faixaAbaixo%) e meta
+  faixaAcima     Float @default(0) @map("faixa_acima")      // fronteira superior: bônus de excedente só começa além de X% acima da meta (0 = qualquer excedente)
+  percAcimaMeta  Float @default(0) @map("perc_acima_meta")  // comissão % sobre o excedente além de (meta + faixaAcima%)
 
   // Bônus independentes
   bonusCidades   Float @default(0) @map("bonus_cidades")    // % adicional se bater meta em TODAS as cidades
