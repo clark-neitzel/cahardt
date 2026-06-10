@@ -328,6 +328,7 @@ export default function EtiquetasList() {
     const [todas, setTodas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [categoriaSel, setCategoriaSel] = useState(null);
     const [selecionada, setSelecionada] = useState(null);
     const inputRef = useRef(null);
 
@@ -346,8 +347,16 @@ export default function EtiquetasList() {
     useEffect(() => { carregar(); }, [carregar]);
     useEffect(() => { inputRef.current?.focus(); }, []);
 
+    // Categorias únicas dos produtos vinculados, ordenadas
+    const categorias = [...new Map(
+        todas
+            .filter(et => et.produto?.categoriaProduto)
+            .map(et => [et.produto.categoriaProduto.id, et.produto.categoriaProduto])
+    ).values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
     const filtradas = todas
         .filter(et => {
+            if (categoriaSel && et.produto?.categoriaProduto?.id !== categoriaSel) return false;
             if (!search.trim()) return true;
             const q = search.toLowerCase();
             return et.nomeProduto.toLowerCase().includes(q) || et.codigoProduto.toLowerCase().includes(q);
@@ -357,13 +366,13 @@ export default function EtiquetasList() {
     return (
         <div className="max-w-7xl mx-auto px-4 py-6">
             {/* Cabeçalho */}
-            <div className="mb-6">
+            <div className="mb-4">
                 <h1 className="text-2xl font-bold text-gray-800">Etiquetas</h1>
                 <p className="text-sm text-gray-500 mt-0.5">Selecione um produto para imprimir a etiqueta</p>
             </div>
 
             {/* Busca */}
-            <div className="relative mb-6">
+            <div className="relative mb-2">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                     ref={inputRef}
@@ -380,10 +389,39 @@ export default function EtiquetasList() {
                 )}
             </div>
 
+            {/* Filtros de categoria — pills compactos */}
+            {categorias.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                    <button
+                        onClick={() => setCategoriaSel(null)}
+                        className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors ${
+                            categoriaSel === null
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'
+                        }`}
+                    >
+                        Todos
+                    </button>
+                    {categorias.map(cat => (
+                        <button
+                            key={cat.id}
+                            onClick={() => setCategoriaSel(categoriaSel === cat.id ? null : cat.id)}
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors ${
+                                categoriaSel === cat.id
+                                    ? 'bg-indigo-600 text-white border-indigo-600'
+                                    : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600'
+                            }`}
+                        >
+                            {cat.nome}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {/* Contador */}
             {!loading && (
-                <p className="text-sm text-gray-400 mb-4">
-                    {search ? `${filtradas.length} resultado(s) para "${search}"` : `${todas.length} etiqueta(s) ativa(s)`}
+                <p className="text-xs text-gray-400 mb-3">
+                    {filtradas.length} etiqueta(s){categoriaSel || search ? ' filtrada(s)' : ' ativa(s)'}
                 </p>
             )}
 

@@ -915,6 +915,9 @@ router.post('/import-etiquetas', async (req, res) => {
             });
             if (!etiquetas?.length) return res.json({ ok: true, deletados: del.count });
         }
+
+        // Pré-carrega produtos do catálogo para auto-vincular por código
+        const todosProdutos = await prisma.produto.findMany({ select: { id: true, codigo: true } });
         if (!Array.isArray(etiquetas) || etiquetas.length === 0)
             return res.status(400).json({ error: 'Array etiquetas vazio.' });
 
@@ -922,9 +925,15 @@ router.post('/import-etiquetas', async (req, res) => {
 
         for (const et of etiquetas) {
             try {
+                // Match por codigoProduto + pesoUnitario para não sobrescrever versões diferentes
                 const existente = await prisma.etiquetaProduto.findFirst({
-                    where: { codigoProduto: String(et.codigoProduto) }
+                    where: {
+                        codigoProduto: String(et.codigoProduto),
+                        pesoUnitario: parseInt(et.pesoUnitario) || 0,
+                    }
                 });
+                // Auto-link: procura produto no catálogo pelo código
+                const produtoCat = todosProdutos.find(p => String(p.codigo).trim() === String(et.codigoProduto).trim());
                 const data = {
                     codigoProduto:         String(et.codigoProduto || ''),
                     nomeProduto:           String(et.nomeProduto || ''),
@@ -938,6 +947,7 @@ router.post('/import-etiquetas', async (req, res) => {
                     gordurasTrans:         et.gordurasTrans      || null,
                     fibraAlimentar:        et.fibraAlimentar     || null,
                     sodio:                 et.sodio              || null,
+                    produtoId:             produtoCat?.id || undefined,
                     quantidadeEmbalagem:   parseInt(et.quantidadeEmbalagem) || 1,
                     quantidadeAproximada:  Boolean(et.quantidadeAproximada),
                     composicao:            String(et.composicao  || ''),

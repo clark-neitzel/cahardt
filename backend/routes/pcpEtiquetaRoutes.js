@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
 
         const lista = await prisma.etiquetaProduto.findMany({
             where,
-            include: { produto: { select: { id: true, nome: true, codigo: true } } },
+            include: { produto: { select: { id: true, nome: true, codigo: true, categoriaProduto: { select: { id: true, nome: true } } } } },
             orderBy: { nomeProduto: 'asc' },
         });
         return res.json(lista);
@@ -47,7 +47,7 @@ router.get('/:id', async (req, res) => {
 
         const item = await prisma.etiquetaProduto.findUnique({
             where: { id: req.params.id },
-            include: { produto: { select: { id: true, nome: true, codigo: true } } },
+            include: { produto: { select: { id: true, nome: true, codigo: true, categoriaProduto: { select: { id: true, nome: true } } } } },
         });
         if (!item) return res.status(404).json({ error: 'Etiqueta não encontrada.' });
         return res.json(item);
