@@ -380,6 +380,7 @@ model Vendedor {
 
   curriculoAcessos   CurriculoAcesso[]
   curriculoHistorico CurriculoHistorico[]
+  comissaoConfigs    ComissaoConfig[]
 
   @@map("vendedores")
 }
@@ -1646,4 +1647,35 @@ model EtiquetaProduto {
 
   @@index([codigoProduto])
   @@map("etiquetas_produtos")
+}
+
+// =============================================
+// MÓDULO COMISSÕES
+// =============================================
+
+model ComissaoConfig {
+  id            String @id @default(uuid())
+  vendedorId    String @map("vendedor_id")
+  mesReferencia String @map("mes_referencia") // Formato "YYYY-MM"
+
+  // Faixas de comissão (% sobre vendas)
+  percAbaixoMeta Float @default(0) @map("perc_abaixo_meta") // % quando realizado < meta
+  percNaMeta     Float @default(0) @map("perc_na_meta")     // % aplicado sobre o valor da meta (quando >= meta)
+  percAcimaMeta  Float @default(0) @map("perc_acima_meta")  // % aplicado apenas sobre o excedente acima da meta
+
+  // Bônus independentes
+  bonusCidades   Float @default(0) @map("bonus_cidades")    // % adicional se bater meta em TODAS as cidades
+  bonusProdutos  Float @default(0) @map("bonus_produtos")   // % adicional por cada produto que bateu a meta
+  bonusFlex      Float @default(0) @map("bonus_flex")       // % adicional se uso de flex <= limiteFlexPerc
+  limiteFlexPerc Float @default(100) @map("limite_flex_perc") // % máximo de uso do flex para ganhar bônus flex
+
+  criadoPor String   @map("criado_por")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  vendedor Vendedor @relation(fields: [vendedorId], references: [id])
+
+  @@unique([vendedorId, mesReferencia])
+  @@index([mesReferencia])
+  @@map("comissao_config")
 }

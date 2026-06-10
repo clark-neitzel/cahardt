@@ -52,6 +52,7 @@ const mensagemAgendadaRoutes = require('./routes/mensagemAgendadaRoutes'); // Me
 const curriculoRoutes = require('./routes/curriculos'); // Módulo RH: Currículos (público)
 const rhRoutes = require('./routes/rh'); // Módulo RH: Painel interno
 const copilotoRoutes = require('./routes/copiloto'); // Copiloto (Clippy): assistente de negócio com IA
+const comissaoRoutes = require('./routes/comissaoRoutes'); // Módulo de Comissões
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -124,6 +125,7 @@ app.use('/api/migrations', authMiddleware, migrationRoutes); // Migration endpoi
 app.use('/api/curriculos', curriculoRoutes); // RH: Submissão pública de currículos
 app.use('/api/rh', authMiddleware, rhRoutes); // RH: Painel interno (protegido)
 app.use('/api/copiloto', authMiddleware, copilotoRoutes); // Copiloto (Clippy): assistente de negócio com IA
+app.use('/api/comissoes', authMiddleware, comissaoRoutes); // Módulo de Comissões
 
 // Rota base
 app.get('/', (req, res) => {

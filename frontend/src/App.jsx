@@ -12,6 +12,7 @@ import Configuracoes from './pages/Admin/Configuracoes/Configuracoes';
 import TabelaPrecos from './pages/Configuracoes/TabelaPrecos';
 import ContasFinanceiras from './pages/Configuracoes/ContasFinanceiras';
 import GerenciarMetas from './pages/Configuracoes/Metas/GerenciarMetas';
+import GerenciarComissoes from './pages/Configuracoes/Comissoes/GerenciarComissoes';
 import CategoriasProduto from './pages/Configuracoes/CategoriasProduto';
 import CategoriasCliente from './pages/Configuracoes/CategoriasCliente';
 import CategoriasEstoque from './pages/Configuracoes/CategoriasEstoque';
@@ -256,6 +257,7 @@ const Layout = ({ children }) => {
           {showConfig && <SidebarItem to="/config/tabela-precos" icon={DollarSign} label="Preços" />}
           {showConfig && <SidebarItem to="/config/contas-financeiras" icon={Building2} label="Bancos" />}
           {showConfig && <SidebarItem to="/config/metas" icon={TrendingUp} label="Metas" />}
+          {showConfig && <SidebarItem to="/config/comissoes" icon={DollarSign} label="Comissões" />}
           {showConfig && <SidebarItem to="/config/categorias-produto" icon={FolderOpen} label="Cat. Produtos" />}
           {showConfig && <SidebarItem to="/config/categorias-cliente" icon={FolderOpen} label="Cat. Clientes" />}
           {showConfig && <SidebarItem to="/config/categorias-estoque" icon={FolderOpen} label="Cat. Estoque" />}
@@ -429,6 +431,7 @@ const Layout = ({ children }) => {
                 <NavLink to="/config/tabela-precos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Preços</NavLink>
                 <NavLink to="/config/contas-financeiras" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Bancos</NavLink>
                 <NavLink to="/config/metas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Metas de Vendas</NavLink>
+                <NavLink to="/config/comissoes" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Comissões</NavLink>
                 <NavLink to="/config/categorias-produto" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Cat. Produtos</NavLink>
                 <NavLink to="/config/categorias-cliente" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Cat. Clientes</NavLink>
                 <NavLink to="/config/categorias-estoque" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Cat. Estoque</NavLink>
@@ -578,6 +581,7 @@ function App() {
               <Route path="/config/contas-financeiras" element={<PrivateRoute tab="configuracoes"><ContasFinanceiras /></PrivateRoute>} />
               <Route path="/config/pagamentos-entrega" element={<PrivateRoute tab="configuracoes"><FormasPagamentoEntrega /></PrivateRoute>} />
               <Route path="/config/metas" element={<PrivateRoute tab="configuracoes"><GerenciarMetas /></PrivateRoute>} />
+              <Route path="/config/comissoes" element={<PrivateRoute tab="configuracoes"><GerenciarComissoes /></PrivateRoute>} />
               <Route path="/config/categorias-produto" element={<PrivateRoute tab="configuracoes"><CategoriasProduto /></PrivateRoute>} />
               <Route path="/config/categorias-cliente" element={<PrivateRoute tab="configuracoes"><CategoriasCliente /></PrivateRoute>} />
               <Route path="/config/categorias-estoque" element={<PrivateRoute tab="configuracoes"><CategoriasEstoque /></PrivateRoute>} />

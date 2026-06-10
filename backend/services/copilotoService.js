@@ -80,6 +80,7 @@ const ABAS = [
     { slug: 'config-precos',               nome: 'Configurações — Preços',        rota: '/config/tabela-precos',              perm: 'configuracoes' },
     { slug: 'config-bancos',               nome: 'Configurações — Bancos',        rota: '/config/contas-financeiras',         perm: 'configuracoes' },
     { slug: 'config-metas',                nome: 'Configurações — Metas',         rota: '/config/metas',                      perm: 'configuracoes' },
+    { slug: 'config-comissoes',            nome: 'Configurações — Comissões',     rota: '/config/comissoes',                  perm: 'configuracoes' },
     { slug: 'config-categorias-produto',   nome: 'Configurações — Cat. Produtos', rota: '/config/categorias-produto',         perm: 'configuracoes' },
     { slug: 'config-categorias-cliente',   nome: 'Configurações — Cat. Clientes', rota: '/config/categorias-cliente',         perm: 'configuracoes' },
     { slug: 'config-categorias-estoque',   nome: 'Configurações — Cat. Estoque',  rota: '/config/categorias-estoque',         perm: 'configuracoes' },
