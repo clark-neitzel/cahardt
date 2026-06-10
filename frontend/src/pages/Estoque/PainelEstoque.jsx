@@ -8,7 +8,8 @@ import { useAuth } from '../../contexts/AuthContext';
 // ─── Card de produto ──────────────────────────────────────────────────────────
 
 function ProdutoCard({ produto, isSelected, onEscolher, lancamentoHoje }) {
-    const liquido = lancamentoHoje ? lancamentoHoje.entradas - lancamentoHoje.saidas : null;
+    const entradas = lancamentoHoje?.entradas ?? 0;
+    const saidas = lancamentoHoje?.saidas ?? 0;
     const abaixoMin = (produto.estoqueMinimo || 0) > 0 &&
         parseFloat(produto.estoqueDisponivel || 0) < parseFloat(produto.estoqueMinimo || 0);
 
@@ -38,12 +39,16 @@ function ProdutoCard({ produto, isSelected, onEscolher, lancamentoHoje }) {
                         {Number(produto.estoqueDisponivel || 0).toFixed(0)} {produto.unidade}
                     </span>
                 </div>
-                {liquido !== null && liquido !== 0 && (
+                {entradas > 0 && (
                     <div className="flex justify-between">
-                        <span className="text-gray-400">Lançados hoje</span>
-                        <span className={`font-semibold ${liquido > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                            {liquido > 0 ? '+' : ''}{liquido.toFixed(0)}
-                        </span>
+                        <span className="text-gray-400">Entrada hoje</span>
+                        <span className="font-semibold text-green-600">+{entradas.toFixed(0)}</span>
+                    </div>
+                )}
+                {saidas > 0 && (
+                    <div className="flex justify-between">
+                        <span className="text-gray-400">Saída hoje</span>
+                        <span className="font-semibold text-red-500">-{saidas.toFixed(0)}</span>
                     </div>
                 )}
             </div>
@@ -140,9 +145,10 @@ export default function PainelEstoque() {
             .map(p => [p.categoriaProduto.id, p.categoriaProduto])
     ).values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 
-    // Filtragem client-side
+    // Filtragem client-side — apenas produtos do catálogo (com categoria comercial)
     const filtrados = todos.filter(p => {
-        if (categoriaSel && p.categoriaProduto?.id !== categoriaSel) return false;
+        if (!p.categoriaProduto) return false;
+        if (categoriaSel && p.categoriaProduto.id !== categoriaSel) return false;
         if (!search.trim()) return true;
         const q = search.toLowerCase();
         return p.nome.toLowerCase().includes(q) || (p.codigo || '').toLowerCase().includes(q);
