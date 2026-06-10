@@ -87,6 +87,10 @@ export default function PainelEstoque() {
     const [quantidade, setQuantidade] = useState('');
     const [observacao, setObservacao] = useState('');
     const [loadingAjuste, setLoadingAjuste] = useState(false);
+
+    // Histórico do produto selecionado
+    const [historicoItem, setHistoricoItem] = useState([]);
+    const [loadingHistorico, setLoadingHistorico] = useState(false);
     const [permissoes, setPermissoes] = useState(null);
     const [editandoMinimo, setEditandoMinimo] = useState(false);
     const [estoqueMinimo, setEstoqueMinimo] = useState('');
@@ -137,6 +141,25 @@ export default function PainelEstoque() {
     }, []);
 
     useEffect(() => { carregarLancamentosHoje(); }, [carregarLancamentosHoje]);
+
+    // Carrega últimos lançamentos do produto selecionado
+    const carregarHistoricoItem = useCallback(async (produtoId) => {
+        if (!produtoId) return;
+        setLoadingHistorico(true);
+        try {
+            const res = await estoqueService.listarHistorico({ produtoId, tamanhoPagina: 8 });
+            setHistoricoItem(res.items || []);
+        } catch {
+            setHistoricoItem([]);
+        } finally {
+            setLoadingHistorico(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (produtoSelecionado) carregarHistoricoItem(produtoSelecionado.id);
+        else setHistoricoItem([]);
+    }, [produtoSelecionado, carregarHistoricoItem]);
 
     // Categorias comerciais únicas dos produtos carregados
     const categorias = [...new Map(
@@ -228,6 +251,7 @@ export default function PainelEstoque() {
 
             setQuantidade('');
             setObservacao('');
+            carregarHistoricoItem(produtoSelecionado.id);
 
             const label = tipo === 'ENTRADA' ? 'Entrada' : 'Saída';
             toast.success(
@@ -546,6 +570,36 @@ export default function PainelEstoque() {
                                                 : 'Você pode apenas diminuir estoque nesta categoria.'}
                                     </p>
                                 )}
+
+                                {/* Histórico do produto selecionado */}
+                                <div className="border-t border-gray-100 pt-3">
+                                    <p className="text-xs font-semibold text-gray-500 mb-2">Últimos lançamentos</p>
+                                    {loadingHistorico ? (
+                                        <div className="flex justify-center py-3">
+                                            <Loader2 className="h-4 w-4 animate-spin text-gray-300" />
+                                        </div>
+                                    ) : historicoItem.length === 0 ? (
+                                        <p className="text-xs text-gray-400 text-center py-2">Nenhum lançamento registrado.</p>
+                                    ) : (
+                                        <div className="space-y-1.5">
+                                            {historicoItem.map(m => {
+                                                const isEntrada = m.tipo === 'ENTRADA';
+                                                const dt = new Date(m.createdAt);
+                                                const dataStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+                                                const desc = m.observacao || m.motivo?.toLowerCase().replace(/_/g, ' ') || '';
+                                                return (
+                                                    <div key={m.id} className="flex items-center gap-2 text-xs">
+                                                        <span className={`shrink-0 w-10 text-right font-bold ${isEntrada ? 'text-green-600' : 'text-red-500'}`}>
+                                                            {isEntrada ? '+' : '-'}{Number(m.quantidade).toFixed(0)}
+                                                        </span>
+                                                        <span className="text-gray-500 truncate flex-1 capitalize">{desc}</span>
+                                                        <span className="text-gray-400 shrink-0 tabular-nums">{dataStr}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ) : (
                             // Desktop: placeholder quando nenhum produto está selecionado
