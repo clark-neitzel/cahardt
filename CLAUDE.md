@@ -91,14 +91,16 @@ O app é PWA. Sempre que fizer deploy de mudanças visíveis, incluir o ícone d
 
 ---
 
-## Manual das Abas — manter em dia
+## Manual das Abas e Clippy — atualizar SEMPRE (não esperar o usuário pedir)
 
-Cada aba do app tem um manual em `backend/manuais/abas/<slug>.md` (índice em `backend/manuais/abas/README.md`): o que a aba é, como funciona, o fluxo real de uso e o que ela afeta.
+Cada aba/tela do app tem um manual em `backend/manuais/abas/<slug>.md` (índice em `backend/manuais/abas/README.md`). Esses manuais são a **fonte de conhecimento do assistente Clippy** (`backend/services/copilotoService.js` lê os arquivos em runtime + a tabela `ABAS` com as rotas/permissões reais). O Clippy passa a usar a versão nova **ao publicar o backend**.
 
-Esses manuais são a **fonte de conhecimento do assistente Clippy** (`backend/services/copilotoService.js` lê os arquivos em runtime). Por isso ficam dentro de `backend/` — assim vão junto no deploy e o Clippy passa a usar a versão nova **ao publicar o backend** (sem passo extra de "gerar pacote").
-
-**Sempre que alterar uma aba** (tela, fluxo, permissão ou regra), atualize o manual daquela aba na MESMA tarefa:
-- Faça uma análise completa da aba alterada e edite o que mudou.
-- NÃO remova itens importantes que continuam válidos.
-- Baseie-se no comportamento REAL do código, não no nome das rotas.
-- Se a rota real ou a permissão da aba mudou, atualize também a tabela `ABAS` em `backend/services/copilotoService.js` (rotas reais usadas nos botões "Ir para").
+**CHECKLIST OBRIGATÓRIO ao final de TODA alteração no sistema** (faça por conta própria, sem o usuário precisar pedir):
+1. Pergunte-se: esta mudança **cria ou altera** alguma função, tela, fluxo ou permissão visível ao usuário?
+2. Se SIM:
+   - Atualize o manual da aba correspondente (analise a aba inteira; edite só o que mudou; NÃO remova itens importantes).
+   - Se for tela/função **NOVA**: crie o manual (`backend/manuais/abas/<slug>.md`), adicione a linha no índice `README.md` e adicione a entrada na tabela `ABAS` em `backend/services/copilotoService.js` (rota real + permissão real).
+   - Se a **rota ou permissão** mudou: atualize a tabela `ABAS`.
+   - Cubra TODAS as funções e TODAS as sub-abas da tela.
+3. Baseie-se no comportamento REAL do código, não no nome das rotas.
+4. Ao final, **avise o usuário** o que foi atualizado no manual/Clippy (ou diga que nada precisou).
