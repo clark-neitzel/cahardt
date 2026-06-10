@@ -150,13 +150,11 @@ export default function EtiquetaImprimir() {
     const handlePrint = () => {
         const conteudo = printRef.current;
         if (!conteudo) return;
-        const janela = window.open('', '_blank', 'width=400,height=600');
-        janela.document.write(`
-<!DOCTYPE html>
+
+        const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Etiqueta - ${et.nomeProduto}</title>
   <style>
     @page { size: 80mm 100mm; margin: 2mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -167,10 +165,16 @@ export default function EtiquetaImprimir() {
 </head>
 <body>
 ${Array.from({ length: copies }, () => `<div class="pg">${conteudo.innerHTML}</div>`).join('')}
-<script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}<\/script>
 </body>
-</html>`);
-        janela.document.close();
+</html>`;
+
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;';
+        document.body.appendChild(iframe);
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open(); doc.write(html); doc.close();
+        iframe.contentWindow.onafterprint = () => document.body.removeChild(iframe);
+        setTimeout(() => iframe.contentWindow.print(), 300);
     };
 
     return (
