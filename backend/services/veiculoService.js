@@ -41,7 +41,7 @@ const veiculoService = {
         return ultimo || null;
     },
 
-    // Retorna o maior KM registrado em abastecimentos para validação ao registrar novo
+    // Retorna o KM do abastecimento mais recente para validação ao registrar novo
     ultimoKmAbastecimento: async (veiculoId) => {
         const resultado = await prisma.despesa.findFirst({
             where: {
@@ -49,7 +49,7 @@ const veiculoService = {
                 categoria: 'COMBUSTIVEL',
                 kmNoAbastecimento: { not: null }
             },
-            orderBy: { kmNoAbastecimento: 'desc' },
+            orderBy: [{ dataReferencia: 'desc' }, { id: 'desc' }],
             select: { kmNoAbastecimento: true, dataReferencia: true, litros: true }
         });
         return resultado || null;
