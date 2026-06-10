@@ -72,25 +72,32 @@ const comissaoService = {
         if (!meta) return { vendedorId, vendedor, temMeta: false, temConfig: !!config };
         if (!config) return { vendedorId, vendedor, temMeta: true, temConfig: false };
 
-        // Pedidos válidos do mês (excluindo cancelados, devolvidos e bonificações)
+        // Pedidos válidos do mês — mesmo filtro do metaService
+        // (exclui cancelados/devolvidos mas mantém situacaoCA null, exclui bonificações)
         const pedidos = await prisma.pedido.findMany({
             where: {
                 vendedorId,
                 dataVenda: { gte: inicio, lte: fim },
-                situacaoCA: { notIn: ['CANCELADO', 'DEVOLVIDO'] },
-                bonificacao: false
+                bonificacao: false,
+                OR: [
+                    { situacaoCA: { notIn: ['CANCELADO', 'DEVOLVIDO'] } },
+                    { situacaoCA: null }
+                ]
             },
             include: {
-                itens: { select: { produtoId: true, quantidade: true } },
+                itens: { select: { produtoId: true, quantidade: true, valor: true } },
                 cliente: { select: { End_Cidade: true } }
             }
         });
 
+        // Valor de cada pedido = soma dos itens (igual ao metaService)
+        const valorPedido = (p) => p.itens.reduce((acc, item) => acc + (Number(item.valor) * Number(item.quantidade)), 0);
+
         // Total vendido no mês
-        const totalVendidoMes = pedidos.reduce((acc, p) => acc + Number(p.totalLiquido ?? p.total ?? 0), 0);
+        const totalVendidoMes = pedidos.reduce((acc, p) => acc + valorPedido(p), 0);
 
         // Flex utilizado no mês
-        const flexUsadoMes = pedidos.reduce((acc, p) => acc + Math.abs(Number(p.flexTotal ?? 0)), 0);
+        const flexUsadoMes = pedidos.reduce((acc, p) => acc + Number(p.flexTotal || 0), 0);
         const flexMeta = Number(meta.flexMensal) || 0;
         const percFlexUsado = flexMeta > 0 ? (flexUsadoMes / flexMeta) * 100 : 0;
 
@@ -99,7 +106,7 @@ const comissaoService = {
         for (const p of pedidos) {
             const cidade = p.cliente?.End_Cidade;
             if (!cidade) continue;
-            realizadoPorCidade[cidade] = (realizadoPorCidade[cidade] || 0) + Number(p.totalLiquido ?? p.total ?? 0);
+            realizadoPorCidade[cidade] = (realizadoPorCidade[cidade] || 0) + valorPedido(p);
         }
 
         // Realizado por produto (quantidade)
