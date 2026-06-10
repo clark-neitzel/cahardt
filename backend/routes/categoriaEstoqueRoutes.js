@@ -19,14 +19,18 @@ router.patch('/:nome', async (req, res) => {
         const permissoes = req.user?.permissoes || {};
         if (!permissoes.admin) return res.status(403).json({ error: 'Apenas administradores.' });
 
-        const { controlaEstoque } = req.body;
-        if (typeof controlaEstoque !== 'boolean') {
+        const { controlaEstoque, contabilizaFlex } = req.body;
+        if (controlaEstoque !== undefined && typeof controlaEstoque !== 'boolean') {
             return res.status(400).json({ error: 'controlaEstoque deve ser true ou false.' });
+        }
+        if (contabilizaFlex !== undefined && typeof contabilizaFlex !== 'boolean') {
+            return res.status(400).json({ error: 'contabilizaFlex deve ser true ou false.' });
         }
 
         const resultado = await categoriaEstoqueService.salvar(
             decodeURIComponent(req.params.nome),
-            controlaEstoque
+            controlaEstoque,
+            contabilizaFlex
         );
         return res.json(resultado);
     } catch (err) {

@@ -1,6 +1,45 @@
 const prisma = require('../config/database');
 
 /**
+ * Carrega o mapa de regras flex por produtoId.
+ * Retorna Map<produtoId, { contabilizaFlex, tipoFlex }>
+ */
+async function obterRegrasCategoria(produtoIds, db) {
+    if (!produtoIds || produtoIds.length === 0) return new Map();
+    const client = db || prisma;
+
+    const produtos = await client.produto.findMany({
+        where: { id: { in: produtoIds } },
+        select: {
+            id: true,
+            categoria: true,
+            categoriaProduto: { select: { tipoFlex: true } }
+        }
+    });
+
+    const categoriasCa = [...new Set(produtos.map(p => p.categoria).filter(Boolean))];
+    const catEstoque = categoriasCa.length > 0
+        ? await client.categoriaEstoque.findMany({ where: { nome: { in: categoriasCa } }, select: { nome: true, contabilizaFlex: true } })
+        : [];
+    const catEstoqueMap = new Map(catEstoque.map(c => [c.nome, c.contabilizaFlex]));
+
+    return new Map(produtos.map(p => [p.id, {
+        contabilizaFlex: p.categoria ? (catEstoqueMap.get(p.categoria) ?? true) : true,
+        tipoFlex: p.categoriaProduto?.tipoFlex || 'NORMAL'
+    }]));
+}
+
+/** Aplica a regra de flex de categoria sobre um valor bruto. */
+function aplicarRegraFlex(flexBruto, regra) {
+    if (!regra) return flexBruto;
+    if (!regra.contabilizaFlex) return 0;
+    const tipo = regra.tipoFlex || 'NORMAL';
+    if (tipo === 'NAO_CONTABILIZAR') return 0;
+    if (tipo === 'SOMENTE_NEGATIVO') return Math.min(0, flexBruto);
+    return flexBruto;
+}
+
+/**
  * Calcula o orçamento de flex dinâmico de um vendedor.
  * Orçamento = vendas líquidas últimos 30 dias × percentualFlex%
  * Disponível = orçamento − |flex negativo usado nos últimos 30 dias|
@@ -34,18 +73,24 @@ async function calcularFlexDinamico(vendedorId, tx) {
             statusEntrega: { not: 'DEVOLVIDO' }
         },
         select: {
-            flexTotal: true,
-            itens: { select: { valor: true, quantidade: true } }
+            itens: { select: { produtoId: true, valor: true, quantidade: true, flexGerado: true } }
         }
     });
+
+    // Carrega regras de categoria para todos os produtos dos pedidos
+    const allProdutoIds = [...new Set(pedidos.flatMap(p => p.itens.map(i => i.produtoId)).filter(Boolean))];
+    const regras = await obterRegrasCategoria(allProdutoIds, db);
 
     let vendasLiquidas = 0;
     let flexUsado = 0;
 
     for (const p of pedidos) {
-        vendasLiquidas += p.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0);
-        const ft = Number(p.flexTotal);
-        if (ft < 0) flexUsado += ft;
+        for (const i of p.itens) {
+            vendasLiquidas += Number(i.valor) * Number(i.quantidade);
+            const flexBruto = Number(i.flexGerado || 0);
+            const flexEfetivo = aplicarRegraFlex(flexBruto, regras.get(i.produtoId));
+            if (flexEfetivo < 0) flexUsado += flexEfetivo;
+        }
     }
 
     const orcamento = vendasLiquidas * percentual / 100;
@@ -80,11 +125,14 @@ async function calcularFlexBulk(vendedorIds) {
             },
             select: {
                 vendedorId: true,
-                flexTotal: true,
-                itens: { select: { valor: true, quantidade: true } }
+                itens: { select: { produtoId: true, valor: true, quantidade: true, flexGerado: true } }
             }
         })
     ]);
+
+    // Carrega regras de categoria para todos os produtos
+    const allProdutoIds = [...new Set(pedidos.flatMap(p => p.itens.map(i => i.produtoId)).filter(Boolean))];
+    const regras = await obterRegrasCategoria(allProdutoIds);
 
     // Inicializa mapa por vendedor
     const percMap = new Map(vendedores.map(v => [v.id, Number(v.percentualFlex || 0)]));
@@ -93,9 +141,12 @@ async function calcularFlexBulk(vendedorIds) {
     for (const p of pedidos) {
         const d = dados.get(p.vendedorId);
         if (!d) continue;
-        d.vendasLiquidas += p.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0);
-        const ft = Number(p.flexTotal);
-        if (ft < 0) d.flexUsado += ft;
+        for (const i of p.itens) {
+            d.vendasLiquidas += Number(i.valor) * Number(i.quantidade);
+            const flexBruto = Number(i.flexGerado || 0);
+            const flexEfetivo = aplicarRegraFlex(flexBruto, regras.get(i.produtoId));
+            if (flexEfetivo < 0) d.flexUsado += flexEfetivo;
+        }
     }
 
     const resultado = new Map();
@@ -110,4 +161,4 @@ async function calcularFlexBulk(vendedorIds) {
     return resultado;
 }
 
-module.exports = { calcularFlexDinamico, calcularFlexBulk };
+module.exports = { calcularFlexDinamico, calcularFlexBulk, obterRegrasCategoria };

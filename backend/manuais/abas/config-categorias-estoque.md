@@ -14,8 +14,9 @@ Define quais categorias de produto têm controle de estoque ativo no sistema. So
 
 ## O que dá pra fazer aqui
 
-- Ver todas as categorias detectadas nos produtos cadastrados
-- Ativar ou desativar o controle de estoque por categoria (toggle)
+- Ver todas as categorias do Conta Azul detectadas nos produtos cadastrados
+- Ativar/desativar controle de **Estoque** por categoria (toggle verde)
+- Ativar/desativar **Flex** por categoria (toggle roxo) — se desativado, produtos dessa categoria são excluídos do cálculo de flex
 - Ver quais categorias ainda não foram configuradas (detectadas nos produtos mas sem configuração salva)
 
 ---
@@ -36,10 +37,12 @@ Define quais categorias de produto têm controle de estoque ativo no sistema. So
 
 ## Impacto de cada estado
 
-| Estado | Efeito |
-|--------|--------|
-| Ativado | Estoque é reservado quando pedido é criado; é baixado quando faturado |
-| Desativado | Produtos da categoria não têm estoque gerenciado |
+| Toggle | Estado | Efeito |
+|--------|--------|--------|
+| Estoque | Ativado | Estoque é reservado quando pedido é criado; é baixado quando faturado |
+| Estoque | Desativado | Produtos da categoria não têm estoque gerenciado |
+| Flex | Ativado (padrão) | Itens da categoria entram no cálculo de flex normalmente |
+| Flex | Desativado | Itens da categoria são excluídos do flex — ex: produtos internos vendidos a funcionários |
 
 ---
 

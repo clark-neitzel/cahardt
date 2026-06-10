@@ -22,6 +22,7 @@ Cadastro das categorias comerciais de produto. Estas categorias são usadas para
 - Excluir uma categoria (somente se não estiver em uso)
 - Ativar / desativar uma categoria
 - Configurar se a categoria permite venda fracionada
+- Configurar a **Regra de Flex** da categoria comercial: Normal / Só desconto / Não contabilizar
 
 ---
 

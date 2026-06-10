@@ -4,7 +4,7 @@ import api from '../../services/api';
 import { TrendingDown, TrendingUp, ChevronDown, ChevronUp, Filter, Percent } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtSinal = (v) => (v >= 0 ? '+' : '') + fmt(v);
 
 export default function RelatorioFlex() {

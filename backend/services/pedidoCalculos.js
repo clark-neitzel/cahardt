@@ -5,10 +5,27 @@
 const promocaoService = require('./promocaoService');
 
 /**
+ * Aplica as regras de flex de categoria sobre um flexItem bruto.
+ * regra = { contabilizaFlex: bool, tipoFlex: 'NORMAL'|'SOMENTE_NEGATIVO'|'NAO_CONTABILIZAR' }
+ */
+function aplicarRegraFlex(flexBruto, regra) {
+    if (!regra) return flexBruto;
+    if (!regra.contabilizaFlex) return 0;
+    const tipo = regra.tipoFlex || 'NORMAL';
+    if (tipo === 'NAO_CONTABILIZAR') return 0;
+    if (tipo === 'SOMENTE_NEGATIVO') return Math.min(0, flexBruto);
+    return flexBruto;
+}
+
+/**
  * Calcula itens do pedido com flex e avaliação de promoção.
+ * @param {Array} itens
+ * @param {Object} promocoesAtivas
+ * @param {number} valorTotalEstimado
+ * @param {Map<string,{contabilizaFlex,tipoFlex}>} [regrasCategoria] - regras por produtoId (opcional)
  * Retorna { itensData, flexTotalPedido }.
  */
-function calcularItensComFlex(itens, promocoesAtivas, valorTotalEstimado) {
+function calcularItensComFlex(itens, promocoesAtivas, valorTotalEstimado, regrasCategoria) {
     let flexTotalPedido = 0;
 
     const itensData = itens.map(item => {
@@ -18,20 +35,23 @@ function calcularItensComFlex(itens, promocoesAtivas, valorTotalEstimado) {
 
         const promo = promocoesAtivas[item.produtoId] || null;
         let emPromocao = false;
-        let flexItem;
+        let flexItemBruto;
 
         if (promo) {
             const liberada = promocaoService.avaliarLiberada(promo, itens, valorTotalEstimado);
             if (liberada) {
                 emPromocao = true;
                 const precoPromoBase = parseFloat(promo.precoPromocional);
-                flexItem = promocaoService.calcularFlexComPromocao(valorDigitado, valorBase, precoPromoBase, quantidade);
+                flexItemBruto = promocaoService.calcularFlexComPromocao(valorDigitado, valorBase, precoPromoBase, quantidade);
             } else {
-                flexItem = (valorDigitado - valorBase) * quantidade;
+                flexItemBruto = (valorDigitado - valorBase) * quantidade;
             }
         } else {
-            flexItem = (valorDigitado - valorBase) * quantidade;
+            flexItemBruto = (valorDigitado - valorBase) * quantidade;
         }
+
+        const regra = regrasCategoria ? regrasCategoria.get(item.produtoId) : null;
+        const flexItem = aplicarRegraFlex(flexItemBruto, regra);
 
         flexTotalPedido += flexItem;
 

@@ -24,12 +24,21 @@ const categoriaEstoqueService = {
         return [...cadastradas, ...extras].sort((a, b) => a.nome.localeCompare(b.nome));
     },
 
-    // Salva (upsert) o flag controlaEstoque para uma categoria
-    salvar: async (nome, controlaEstoque) => {
+    // Salva (upsert) os flags de uma categoria (estoque e/ou flex)
+    salvar: async (nome, controlaEstoque, contabilizaFlex) => {
+        const updateData = {};
+        if (controlaEstoque !== undefined) updateData.controlaEstoque = controlaEstoque;
+        if (contabilizaFlex !== undefined) updateData.contabilizaFlex = contabilizaFlex;
+
         return await prisma.categoriaEstoque.upsert({
             where: { nome },
-            update: { controlaEstoque },
-            create: { id: require('crypto').randomUUID(), nome, controlaEstoque }
+            update: updateData,
+            create: {
+                id: require('crypto').randomUUID(),
+                nome,
+                controlaEstoque: controlaEstoque ?? false,
+                contabilizaFlex: contabilizaFlex ?? true
+            }
         });
     }
 };

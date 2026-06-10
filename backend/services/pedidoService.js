@@ -3,7 +3,7 @@ const promocaoService = require('./promocaoService');
 const clienteInsightService = require('./clienteInsightService');
 const { calcularItensComFlex, calcularDiferencaFlex, gerarParcelasData } = require('./pedidoCalculos');
 const estoqueService = require('./estoqueService');
-const { calcularFlexDinamico } = require('./flexService');
+const { calcularFlexDinamico, obterRegrasCategoria } = require('./flexService');
 
 const pedidoService = {
     // Resumo de pendências: conta pedidos por tipo e status (leve, só COUNT)
@@ -208,10 +208,13 @@ const pedidoService = {
             acc + parseFloat(item.valor) * parseFloat(item.quantidade), 0
         );
 
+        // Buscar regras de flex por categoria (antes da transação)
+        const regrasCategoria = await obterRegrasCategoria(produtoIds);
+
         // A validação de Flex e atualização do vendedor ocorrerá dentro de uma transação
         return await prisma.$transaction(async (tx) => {
-            // Montar os itens com avaliação de promoção (função pura)
-            const { itensData, flexTotalPedido } = calcularItensComFlex(itens, promocoesAtivas, valorTotalEstimado);
+            // Montar os itens com avaliação de promoção e regras de flex por categoria
+            const { itensData, flexTotalPedido } = calcularItensComFlex(itens, promocoesAtivas, valorTotalEstimado, regrasCategoria);
 
             // Se pedido especial, atribuir número ZZ sequencial
             let numeroEspecial = undefined;
@@ -361,12 +364,19 @@ const pedidoService = {
             let totalPedido = 0;
             let flexTotalPedido = 0;
 
+            const editProdutoIds = [...new Set((itens || []).map(i => i.produtoId).filter(Boolean))];
+            const editRegras = await obterRegrasCategoria(editProdutoIds, tx);
+
             const novosItens = (itens || []).map(item => {
                 const valorDigitado = parseFloat(item.valor) || 0;
                 const valorBase = parseFloat(item.valorBase) || 0;
                 const qtd = parseFloat(item.quantidade) || 0;
 
-                const flexItem = (valorDigitado - valorBase) * qtd;
+                const flexBruto = (valorDigitado - valorBase) * qtd;
+                const regra = editRegras.get(item.produtoId);
+                const flexItem = regra
+                    ? (!regra.contabilizaFlex ? 0 : regra.tipoFlex === 'NAO_CONTABILIZAR' ? 0 : regra.tipoFlex === 'SOMENTE_NEGATIVO' ? Math.min(0, flexBruto) : flexBruto)
+                    : flexBruto;
 
                 totalPedido += valorDigitado * qtd;
                 flexTotalPedido += flexItem;

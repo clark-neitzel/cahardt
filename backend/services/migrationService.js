@@ -886,7 +886,11 @@ const migrationService = {
             `CREATE INDEX IF NOT EXISTS "delivery_webhook_logs_pedido_id_idx" ON "delivery_webhook_logs"("pedido_id")`,
 
             // Percentual de Flex dinâmico por vendedor (% sobre vendas líquidas 30 dias)
-            `ALTER TABLE "vendedores" ADD COLUMN IF NOT EXISTS "percentual_flex" DECIMAL(5,2) NOT NULL DEFAULT 0`
+            `ALTER TABLE "vendedores" ADD COLUMN IF NOT EXISTS "percentual_flex" DECIMAL(5,2) NOT NULL DEFAULT 0`,
+
+            // Regras de Flex por Categoria Comercial e Categoria CA
+            `ALTER TABLE "categorias_produto" ADD COLUMN IF NOT EXISTS "tipo_flex" TEXT NOT NULL DEFAULT 'NORMAL'`,
+            `ALTER TABLE "categorias_estoque" ADD COLUMN IF NOT EXISTS "contabiliza_flex" BOOLEAN NOT NULL DEFAULT true`
         ];
 
         for (const [index, cmd] of commands.entries()) {

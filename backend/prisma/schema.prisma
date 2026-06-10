@@ -1086,6 +1086,8 @@ model CategoriaProduto {
   permiteFracao   Boolean  @default(false) @map("permite_fracao")
   controlaEstoque Boolean  @default(false) @map("controla_estoque")
   ativo           Boolean  @default(true)
+  // NORMAL = conta positivo e negativo | SOMENTE_NEGATIVO = só desconto | NAO_CONTABILIZAR = exclui do flex
+  tipoFlex        String   @default("NORMAL") @map("tipo_flex")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -1100,6 +1102,8 @@ model CategoriaEstoque {
   id              String   @id @default(uuid())
   nome            String   @unique
   controlaEstoque Boolean  @default(false) @map("controla_estoque")
+  // Se false, produtos desta categoria CA são excluídos do cálculo de flex
+  contabilizaFlex Boolean  @default(true) @map("contabiliza_flex")
   createdAt       DateTime @default(now()) @map("created_at")
 
   @@map("categorias_estoque")

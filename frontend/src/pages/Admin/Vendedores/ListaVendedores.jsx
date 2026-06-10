@@ -10,7 +10,7 @@ const FORMAS_OPTIONS = [
     { value: 'TELEFONE', label: 'Telefone', icon: Phone, color: 'blue' },
 ];
 
-const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const ListaVendedores = () => {
     const [vendedores, setVendedores] = useState([]);
