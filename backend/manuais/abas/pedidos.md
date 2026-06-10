@@ -16,7 +16,7 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 
 ## O que dá pra fazer aqui
 
-- Visualizar todos os pedidos (Normal, Especial, Bonificação, Amostras, Devoluções)
+- Visualizar pedidos separados por tipo (sub-abas: Pedidos | Especiais | Bonificação | Amostras | Devoluções)
 - Filtrar por data de entrega, data de criação, vencimento, embarque, motorista e vendedor
 - Buscar por cliente, cidade, número do pedido ou valor total
 - Filtrar rapidamente por status (Aberto, Enviar, Sincronizando, Aprovado, Faturado, Erro)
@@ -64,13 +64,52 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 4. O status muda para RECEBIDO e é faturado no CA
 
 ### Consultar situação no Conta Azul
-- Clique no botão com ícone de reload (🔄) ao lado do pedido que já tem `idVendaContaAzul`
+- Clique no botão de reload ao lado do pedido que já tem `idVendaContaAzul`
 - O sistema consulta o CA e atualiza `situacaoCA` e `statusEnvio`
 
 ### Ver link de cobrança (PIX/Boleto)
-- Clique no ícone de cifrão (💲) ao lado do pedido faturado
+- Clique no ícone de cifrão ao lado do pedido faturado
 - O sistema busca as cobranças ativas no CA e exibe os links
 - Há botão **Copiar** para copiar todos os links formatados
+
+---
+
+## Sub-abas
+
+A tela Pedidos possui 5 sub-abas internas (6 contando Devoluções para quem tem permissão).
+
+### Pedidos (aba principal)
+Lista todos os pedidos normais (`especial = false`, `bonificacao = false`). Inclui pedidos de Encaixe (marcados como encaixe mas do tipo normal). É a aba padrão ao abrir a tela.
+
+- Filtros por data de entrega, criação, vencimento, embarque e motorista
+- Filtros por status rápido clicáveis no painel de pendências
+- Seleção em lote para impressão (pedidos FATURADO)
+
+### Especiais
+Lista pedidos do tipo **Especial** (`ZZ#`). São pedidos com condições diferenciadas de preço ou prazo, que requerem aprovação antes de ir ao CA.
+
+- Exibe botão **Aprovar** (para aprovadores) e **Reverter** (para quem pode reverter)
+- Após aprovação, o status muda e o pedido é faturado no CA automaticamente
+
+### Bonificação
+Lista pedidos do tipo **Bonificação** (`BN#`). Produtos enviados de graça para o cliente. Também requerem aprovação.
+
+- Mesma lógica de aprovação e reversão dos Especiais
+- Permissões separadas: `Pode_Aprovar_Bonificacao` e `Pode_Reverter_Bonificacao`
+
+### Amostras
+Lista pedidos do tipo **Amostra** (`AM#`). Produtos enviados como amostra com fluxo de status próprio.
+
+Status possíveis: `SOLICITADA → PREPARACAO → LIBERADO → ENTREGUE`
+
+- Botão de avançar status: muda para o próximo estado
+- Botão de excluir amostra (quem tem `Pode_Excluir_Amostra`)
+- Controle de amostras por produto
+
+### Devoluções
+Visível apenas para quem tem `Pode_Fazer_Devolucao` ou `admin`. Renderiza o componente `ListaDevolucoes`.
+
+Mostra todas as devoluções registradas (parciais ou totais) com motivo, motorista, data, valor e status (ATIVA ou REVERTIDA).
 
 ---
 
@@ -102,20 +141,20 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 
 ## Permissões necessárias
 
-| Ação | Permissão |
-|------|-----------|
+| Ação | Permissão necessária |
+|------|----------------------|
 | Ver a aba | `pedidos` (view) |
-| Aprovar Especial | `Pode_Aprovar_Especial` ou admin |
-| Reverter Especial | `Pode_Reverter_Especial` ou admin |
-| Aprovar Bonificação | `Pode_Aprovar_Bonificacao` ou admin |
-| Reverter Bonificação | `Pode_Reverter_Bonificacao` ou admin |
-| Excluir pedido normal | `Pode_Excluir_Pedido` ou admin |
-| Excluir pedido especial | `Pode_Excluir_Especial` ou admin |
-| Excluir bonificação | `Pode_Excluir_Bonificacao` ou admin |
-| Excluir amostra | `Pode_Excluir_Amostra` ou admin |
-| Ver pedidos de todos os vendedores | `pedidos.clientes = "todos"` ou admin |
-| Reatribuir vendedor | `Pode_Reatribuir_Vendedor` ou admin |
-| Ver sub-aba Devoluções | `Pode_Fazer_Devolucao` ou admin |
+| Aprovar Especial | `Pode_Aprovar_Especial` ou `admin` |
+| Reverter Especial | `Pode_Reverter_Especial` ou `admin` |
+| Aprovar Bonificação | `Pode_Aprovar_Bonificacao` ou `admin` |
+| Reverter Bonificação | `Pode_Reverter_Bonificacao` ou `admin` |
+| Excluir pedido normal | `Pode_Excluir_Pedido` ou `admin` |
+| Excluir pedido especial | `Pode_Excluir_Especial` ou `admin` |
+| Excluir bonificação | `Pode_Excluir_Bonificacao` ou `admin` |
+| Excluir amostra | `Pode_Excluir_Amostra` ou `admin` |
+| Ver pedidos de todos os vendedores | `pedidos.clientes = "todos"` ou `admin` |
+| Reatribuir vendedor | `Pode_Reatribuir_Vendedor` ou `admin` |
+| Ver sub-aba Devoluções | `Pode_Fazer_Devolucao` ou `admin` |
 
 ---
 
@@ -134,7 +173,7 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 
 | Caminho | Papel |
 |---------|-------|
-| `frontend/src/pages/Pedidos/ListaPedidos.jsx` | Tela principal da aba (listagem, filtros, ações) |
+| `frontend/src/pages/Pedidos/ListaPedidos.jsx` | Tela principal da aba (listagem, filtros, sub-abas, ações) |
 | `frontend/src/pages/Pedidos/NovoPedido.jsx` | Formulário de criação/edição de pedido |
 | `frontend/src/pages/Pedidos/ImpressaoPedido.jsx` | Tela de impressão de 1 ou N pedidos |
 | `frontend/src/pages/Pedidos/ListaDevolucoes.jsx` | Sub-aba de devoluções |

@@ -22,49 +22,66 @@ const ai = require('./aiProvider');
 // ─────────────────────────────────────────────
 // Tabela de abas: slug (= nome do manual), nome exibido, ROTA REAL e permissão.
 // Mantida em sincronia com o menu (Sidebar) em frontend/src/App.jsx.
+//
+// perm: string | string[]
+//   - string: chave direta em permissoes (boolean) ou objeto (checa .view)
+//   - 'pcp.itens': notação ponto para sub-chaves (perms.pcp.itens)
+//   - array: acesso se QUALQUER permissão for válida
+//   - null: acesso público (qualquer usuário logado)
 // ─────────────────────────────────────────────
 const ABAS = [
-    { slug: 'dashboard', nome: 'Dashboard', rota: '/', perm: null },
-    { slug: 'catalogo', nome: 'Catálogo', rota: '/catalogo', perm: 'catalogo' },
-    { slug: 'rota', nome: 'Rota', rota: '/rota', perm: 'pedidos' },
-    { slug: 'leads', nome: 'Leads', rota: '/leads', perm: 'rota' },
-    { slug: 'pedidos', nome: 'Pedidos', rota: '/pedidos', perm: 'pedidos' },
-    { slug: 'atendimentos', nome: 'Atendimentos', rota: '/atendimentos', perm: 'Pode_Ver_Atendimentos' },
-    { slug: 'analise-ia', nome: 'Análise IA', rota: '/analise-ia', perm: 'Pode_Ver_Analise_IA' },
-    { slug: 'clientes', nome: 'Clientes', rota: '/clientes', perm: 'clientes' },
-    { slug: 'rel-pedidos', nome: 'Relatório de Pedidos', rota: '/relatorios/pedidos', perm: 'pedidos' },
-    { slug: 'rel-vendas', nome: 'Relatório de Vendas', rota: '/relatorios/vendas', perm: 'relatorioVendas' },
-    { slug: 'delivery', nome: 'Delivery', rota: '/delivery', perm: 'delivery' },
-    { slug: 'embarque', nome: 'Embarque', rota: '/admin/embarques', perm: 'Pode_Acessar_Embarque' },
-    { slug: 'entregas', nome: 'Entregas', rota: '/entregas', perm: 'Pode_Ver_Todas_Entregas' },
-    { slug: 'auditoria-entregas', nome: 'Auditoria de Entregas', rota: '/admin/auditoria-entregas', perm: 'Pode_Ver_Todas_Entregas' },
-    { slug: 'caixa', nome: 'Caixa', rota: '/caixa', perm: 'Pode_Acessar_Caixa' },
-    { slug: 'despesas', nome: 'Despesas', rota: '/despesas', perm: 'Pode_Acessar_Caixa' },
-    { slug: 'contas-receber', nome: 'Contas a Receber', rota: '/financeiro/contas-receber/tabela', perm: 'Pode_Acessar_Contas_Receber' },
-    { slug: 'produtos', nome: 'Produtos', rota: '/admin/produtos', perm: 'produtos' },
-    { slug: 'vendedores', nome: 'Vendedores', rota: '/admin/vendedores', perm: 'vendedores' },
-    { slug: 'mensagens-agendadas', nome: 'Mensagens Agendadas', rota: '/admin/mensagens', perm: 'admin' },
-    { slug: 'veiculos', nome: 'Veículos', rota: '/admin/veiculos', perm: 'Pode_Acessar_Veiculos' },
-    { slug: 'sincronizar', nome: 'Sincronizar', rota: '/admin/sync', perm: 'sync' },
-    { slug: 'curriculos', nome: 'Currículos', rota: '/rh/curriculos', perm: 'Pode_Ver_RH' },
-    { slug: 'pcp-itens', nome: 'PCP — Itens', rota: '/pcp/itens', perm: 'pcp' },
-    { slug: 'pcp-receitas', nome: 'PCP — Receitas', rota: '/pcp/receitas', perm: 'pcp' },
-    { slug: 'pcp-ordens', nome: 'PCP — Ordens', rota: '/pcp/ordens', perm: 'pcp' },
-    { slug: 'pcp-painel', nome: 'PCP — Painel', rota: '/pcp/painel', perm: 'pcp' },
-    { slug: 'pcp-calendario', nome: 'PCP — Calendário', rota: '/pcp/calendario', perm: 'pcp' },
-    { slug: 'pcp-estoque', nome: 'PCP — Estoque', rota: '/pcp/estoque', perm: 'pcp' },
-    { slug: 'pcp-sugestoes', nome: 'PCP — Sugestões', rota: '/pcp/sugestoes', perm: 'pcp' },
-    { slug: 'pcp-dashboard', nome: 'PCP — Dashboard', rota: '/pcp/dashboard', perm: 'pcp' },
-    { slug: 'estoque-posicao', nome: 'Estoque — Posição', rota: '/estoque/posicao', perm: 'estoque' },
-    { slug: 'estoque-ajuste', nome: 'Estoque — Ajuste', rota: '/estoque', perm: 'estoque' },
-    { slug: 'estoque-historico', nome: 'Estoque — Histórico', rota: '/estoque/historico', perm: 'estoque' },
-    { slug: 'config-gerais', nome: 'Configurações — Gerais', rota: '/admin/config', perm: 'configuracoes' },
-    { slug: 'config-precos', nome: 'Configurações — Preços', rota: '/config/tabela-precos', perm: 'configuracoes' },
-    { slug: 'config-bancos', nome: 'Configurações — Bancos', rota: '/config/contas-financeiras', perm: 'configuracoes' },
-    { slug: 'config-metas', nome: 'Configurações — Metas', rota: '/config/metas', perm: 'configuracoes' },
-    { slug: 'config-categorias-produto', nome: 'Configurações — Cat. Produtos', rota: '/config/categorias-produto', perm: 'configuracoes' },
-    { slug: 'config-categorias-cliente', nome: 'Configurações — Cat. Clientes', rota: '/config/categorias-cliente', perm: 'configuracoes' },
-    { slug: 'config-categorias-estoque', nome: 'Configurações — Cat. Estoque', rota: '/config/categorias-estoque', perm: 'configuracoes' },
+    // ── Vendas ──────────────────────────────────
+    { slug: 'dashboard',          nome: 'Dashboard',                    rota: '/',                                   perm: null },
+    { slug: 'catalogo',           nome: 'Catálogo',                     rota: '/catalogo',                           perm: 'catalogo' },
+    { slug: 'pedidos',            nome: 'Pedidos',                      rota: '/pedidos',                            perm: 'pedidos' },
+    { slug: 'rel-pedidos',        nome: 'Relatório de Pedidos',         rota: '/relatorios/pedidos',                 perm: 'pedidos' },
+    { slug: 'rel-vendas',         nome: 'Relatório de Vendas',          rota: '/relatorios/vendas',                  perm: 'relatorioVendas' },
+    { slug: 'delivery',           nome: 'Delivery',                     rota: '/delivery',                           perm: 'delivery' },
+    { slug: 'rota',               nome: 'Rota',                         rota: '/rota',                               perm: 'pedidos' },
+    { slug: 'leads',              nome: 'Leads',                        rota: '/leads',                              perm: 'rota' },
+    { slug: 'atendimentos',       nome: 'Atendimentos',                 rota: '/atendimentos',                       perm: 'Pode_Ver_Atendimentos' },
+    { slug: 'analise-ia',         nome: 'Análise IA',                   rota: '/analise-ia',                         perm: 'Pode_Ver_Analise_IA' },
+    { slug: 'clientes',           nome: 'Clientes',                     rota: '/clientes',                           perm: 'clientes' },
+    // ── Logística ───────────────────────────────
+    { slug: 'embarque',           nome: 'Embarque',                     rota: '/admin/embarques',                    perm: 'Pode_Acessar_Embarque' },
+    { slug: 'entregas',           nome: 'Entregas',                     rota: '/entregas',                           perm: ['Pode_Ver_Todas_Entregas', 'Pode_Executar_Entregas'] },
+    { slug: 'minhas-entregas',    nome: 'Minhas Entregas (Motorista)',   rota: '/minhas-entregas',                    perm: 'Pode_Executar_Entregas' },
+    // ── Financeiro ──────────────────────────────
+    { slug: 'caixa',              nome: 'Caixa',                        rota: '/caixa',                              perm: 'Pode_Acessar_Caixa' },
+    { slug: 'despesas',           nome: 'Despesas',                     rota: '/despesas',                           perm: 'Pode_Acessar_Caixa' },
+    { slug: 'auditoria-entregas', nome: 'Auditoria de Entregas',        rota: '/admin/auditoria-entregas',           perm: 'Pode_Ver_Todas_Entregas' },
+    { slug: 'contas-receber',     nome: 'Contas a Receber',             rota: '/financeiro/contas-receber/tabela',   perm: 'Pode_Acessar_Contas_Receber' },
+    // ── Admin ────────────────────────────────────
+    { slug: 'produtos',           nome: 'Produtos',                     rota: '/admin/produtos',                     perm: 'produtos' },
+    { slug: 'vendedores',         nome: 'Vendedores',                   rota: '/admin/vendedores',                   perm: 'vendedores' },
+    { slug: 'mensagens-agendadas',nome: 'Mensagens Agendadas',          rota: '/admin/mensagens',                    perm: 'admin' },
+    { slug: 'veiculos',           nome: 'Veículos',                     rota: '/admin/veiculos',                     perm: ['Pode_Acessar_Veiculos'] },
+    { slug: 'sincronizar',        nome: 'Sincronizar',                  rota: '/admin/sync',                         perm: 'sync' },
+    // ── RH ───────────────────────────────────────
+    { slug: 'curriculos',         nome: 'Currículos',                   rota: '/rh/curriculos',                      perm: ['Pode_Ver_RH', 'Pode_Editar_RH'] },
+    // ── PCP — sub-permissões específicas ─────────
+    { slug: 'pcp-itens',          nome: 'PCP — Itens',                  rota: '/pcp/itens',                          perm: 'pcp.itens' },
+    { slug: 'pcp-receitas',       nome: 'PCP — Receitas',               rota: '/pcp/receitas',                       perm: 'pcp.receitas' },
+    { slug: 'pcp-ordens',         nome: 'PCP — Ordens',                 rota: '/pcp/ordens',                         perm: 'pcp.ordens' },
+    { slug: 'pcp-painel',         nome: 'PCP — Painel',                 rota: '/pcp/painel',                         perm: 'pcp.ordens' },
+    { slug: 'pcp-calendario',     nome: 'PCP — Calendário',             rota: '/pcp/calendario',                     perm: 'pcp.agenda' },
+    { slug: 'pcp-estoque',        nome: 'PCP — Estoque PCP',            rota: '/pcp/estoque',                        perm: 'pcp.estoque' },
+    { slug: 'pcp-sugestoes',      nome: 'PCP — Sugestões',              rota: '/pcp/sugestoes',                      perm: 'pcp.sugestoes' },
+    { slug: 'pcp-dashboard',      nome: 'PCP — Dashboard',              rota: '/pcp/dashboard',                      perm: 'pcp.sugestoes' },
+    { slug: 'pcp-etiquetas',      nome: 'PCP — Etiquetas',              rota: '/pcp/etiquetas',                      perm: 'pcp.etiquetas' },
+    { slug: 'pcp-etiquetas-dados',nome: 'PCP — Dados de Etiquetas',     rota: '/pcp/etiquetas/dados',                perm: 'pcp.etiquetas' },
+    // ── Estoque ──────────────────────────────────
+    { slug: 'estoque-posicao',    nome: 'Estoque — Posição',            rota: '/estoque/posicao',                    perm: 'estoque' },
+    { slug: 'estoque-ajuste',     nome: 'Estoque — Ajuste',             rota: '/estoque',                            perm: 'estoque' },
+    { slug: 'estoque-historico',  nome: 'Estoque — Histórico',          rota: '/estoque/historico',                  perm: 'estoque' },
+    // ── Configurações ────────────────────────────
+    { slug: 'config-gerais',               nome: 'Configurações — Gerais',        rota: '/admin/config',                      perm: 'configuracoes' },
+    { slug: 'config-precos',               nome: 'Configurações — Preços',        rota: '/config/tabela-precos',              perm: 'configuracoes' },
+    { slug: 'config-bancos',               nome: 'Configurações — Bancos',        rota: '/config/contas-financeiras',         perm: 'configuracoes' },
+    { slug: 'config-metas',                nome: 'Configurações — Metas',         rota: '/config/metas',                      perm: 'configuracoes' },
+    { slug: 'config-categorias-produto',   nome: 'Configurações — Cat. Produtos', rota: '/config/categorias-produto',         perm: 'configuracoes' },
+    { slug: 'config-categorias-cliente',   nome: 'Configurações — Cat. Clientes', rota: '/config/categorias-cliente',         perm: 'configuracoes' },
+    { slug: 'config-categorias-estoque',   nome: 'Configurações — Cat. Estoque',  rota: '/config/categorias-estoque',         perm: 'configuracoes' },
 ];
 
 // ─────────────────────────────────────────────
@@ -99,17 +116,41 @@ const MANUAIS = carregarManuais();
 console.log(`[copiloto] ${Object.keys(MANUAIS).length} manuais de abas carregados.`);
 
 // ─────────────────────────────────────────────
-// Permissão (mesma semântica do hasPermission do frontend)
+// Permissão — espelha o hasPermission do AuthContext do frontend.
+//
+// Tipos suportados em `perm`:
+//   null          → acesso livre (qualquer usuário logado)
+//   'chave'       → boolean direto (ex: 'Pode_Acessar_Caixa')
+//   'catalogo'    → objeto { view, edit } — verifica .view === true
+//   'estoque'     → array — verifica length > 0
+//   'pcp.itens'   → notação ponto: perms.pcp.itens (boolean)
+//   ['a', 'b']    → array de perms — acesso se QUALQUER uma for válida
 // ─────────────────────────────────────────────
-function podeAcessar(perms, key) {
-    if (!perms) return false;
-    if (perms.admin) return true;
-    if (!key) return true;
+function resolverUmaChave(perms, key) {
+    // Notação ponto: 'pcp.itens' → perms.pcp.itens
+    if (key.includes('.')) {
+        const [parent, child] = key.split('.');
+        const parentVal = perms[parent];
+        if (!parentVal || typeof parentVal !== 'object' || Array.isArray(parentVal)) return false;
+        const val = parentVal[child];
+        return typeof val === 'boolean' ? val : false;
+    }
     const val = perms[key];
     if (typeof val === 'boolean') return val;
+    // Array (estoque): tem algum item
     if (Array.isArray(val)) return val.length > 0;
-    if (val && typeof val === 'object') return Object.values(val).some(Boolean);
+    // Objeto (catalogo, pedidos, rota, clientes, produtos, vendedores, sync, configuracoes):
+    // verifica .view === true — NÃO usa some(Boolean) para evitar falso-positivo com 'vinculados'
+    if (val && typeof val === 'object') return val.view === true;
     return false;
+}
+
+function podeAcessar(perms, perm) {
+    if (!perms) return false;
+    if (perms.admin) return true;
+    if (!perm) return true;
+    const chaves = Array.isArray(perm) ? perm : [perm];
+    return chaves.some((k) => resolverUmaChave(perms, k));
 }
 
 // ─────────────────────────────────────────────

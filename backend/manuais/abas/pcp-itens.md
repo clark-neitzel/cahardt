@@ -1,78 +1,89 @@
 ---
-aba: PCP — Subprodutos
+aba: Itens PCP (Subprodutos)
 rota: /pcp/itens
-permissao: admin ou acesso ao módulo PCP
+permissao: pcp.itens
 ---
 
-# PCP — Subprodutos
+# Itens PCP (Subprodutos)
 
 ## O que é
 
-Cadastro de subprodutos (itens intermediários de produção). Subprodutos são componentes que precisam ser fabricados antes de entrar em outro produto final. Por exemplo: uma massa que é feita primeiro e depois usada em vários produtos. Matérias-primas (MP), produtos acabados (PA) e embalagens (EMB) vêm do cadastro de Produtos; somente subprodutos (SUB) são gerenciados aqui.
+Esta tela gerencia os **subprodutos** do PCP — itens intermediários fabricados internamente e usados como ingrediente em outras receitas. Exemplo: massa pré-preparada, recheio, cobertura.
 
----
+Matérias-primas (MP), Produtos Acabados (PA) e Embalagens (EMB) **não são criados aqui**: eles vêm do cadastro de Produtos do sistema e são importados automaticamente quando você os usa pela primeira vez em uma receita.
 
 ## O que dá pra fazer aqui
 
-- Listar subprodutos ativos (ou inativos/todos)
+- Ver a lista de subprodutos com estoque atual e mínimo (destaque vermelho quando abaixo do mínimo)
 - Buscar por nome ou código
-- Ver estoque atual e estoque mínimo de cada subproduto
-- Identificar subprodutos abaixo do estoque mínimo (destaque vermelho)
+- Filtrar por status: ativos, inativos ou todos
 - Criar novo subproduto
 - Editar um subproduto existente
 - Ativar ou desativar um subproduto
 
----
+## Como fazer (passo a passo real)
+
+### Criar um novo subproduto
+
+1. Clique em **Novo Subproduto** (canto superior direito).
+2. O sistema sugere um código automaticamente — você pode manter ou digitar outro.
+3. Preencha os campos:
+   - **Código**: identificação interna (obrigatório)
+   - **Nome**: nome do subproduto (obrigatório)
+   - **Tipo**: sempre "Subproduto" (SUB) — não é possível alterar nesta tela
+   - **Unidade**: KG, UN, L, PCT, CX, G ou ML
+   - **Custo Unitário**: valor por unidade (opcional, aceita 4 casas decimais)
+   - **Estoque Mínimo**: quantidade mínima desejada em estoque (opcional, padrão 0)
+   - **Descrição**: texto livre (opcional)
+4. Clique em **Criar Subproduto**.
+
+### Editar um subproduto
+
+1. Na lista, clique no ícone de lápis ao lado do subproduto.
+2. Altere os campos desejados.
+3. Clique em **Salvar**.
+
+> Se o item foi importado do cadastro de Produtos (tipos MP, PA ou EMB), os campos código, nome e unidade ficam bloqueados — só é possível editar estoque mínimo, custo unitário e descrição.
+
+### Ativar ou desativar um subproduto
+
+1. Na lista, clique no ícone de toggle (liga/desliga) ao lado do item.
+2. O status muda imediatamente.
+3. Itens inativos ficam esmaecidos na lista e não aparecem como opções ao criar receitas.
+
+### Filtrar a lista
+
+- **Busca**: pesquisa por nome ou código em tempo real.
+- **Status**: dropdown para exibir Ativos / Inativos / Todos.
 
 ## Tipos de item no PCP
 
-| Tipo | Origem | Descrição |
-|------|--------|-----------|
-| MP | Cadastro de Produtos | Matéria-prima (ex: farinha, açúcar) |
-| SUB | Esta aba | Subproduto intermediário (ex: massa pronta) |
-| PA | Cadastro de Produtos | Produto Acabado (ex: bolo pronto) |
-| EMB | Cadastro de Produtos | Embalagem (ex: caixa, saco) |
-
----
-
-## Como fazer (passo a passo real)
-
-### Criar um subproduto
-1. Clique em **+ Novo Subproduto**
-2. Preencha: código, nome, unidade de medida, estoque mínimo
-3. Salve — o subproduto fica disponível para ser usado nas Receitas
-
-### Editar um subproduto
-1. Clique no ícone de lápis na linha do item
-2. A tela de edição abre
-3. Edite os campos e salve
-
-### Ativar/desativar
-- Clique no ícone de toggle na linha do item
-- Itens inativos ficam com opacidade reduzida e não aparecem nas seleções de receita
-
----
+| Tipo | Sigla | Origem |
+|------|-------|--------|
+| Matéria-Prima | MP | Importado do cadastro de Produtos |
+| Subproduto | SUB | Criado nesta tela |
+| Produto Acabado | PA | Importado do cadastro de Produtos |
+| Embalagem | EMB | Importado do cadastro de Produtos |
 
 ## Permissões necessárias
 
-| Permissão | Efeito |
-|-----------|--------|
-| `admin` ou acesso ao módulo PCP | Gerencia subprodutos |
+| Ação | Permissão |
+|------|-----------|
+| Ver a tela | `pcp.itens` |
+| Criar, editar, ativar/desativar | `pcp.itens` |
 
----
+Admin (`admin: true`) tem acesso sem precisar de `pcp.itens`.
 
 ## Depende de / Interfere em
 
-- **PCP — Receitas** — subprodutos são usados como componentes nas receitas de produção
-- **PCP — Estoque** — o estoque dos subprodutos é gerenciado naquele painel
-- **PCP — Sugestões** — quando o subproduto fica abaixo do mínimo, o sistema sugere produção
-
----
+- **Receitas**: subprodutos criados aqui aparecem como opção de "item produzido" e como ingredientes ao montar receitas.
+- **Estoque PCP** (`/pcp/estoque`): cada subproduto tem saldo exibido lá. Ao finalizar uma ordem de produção, o estoque do subproduto produzido aumenta.
+- **Produtos (cadastro geral)**: MP, PA e EMB são importados automaticamente na primeira vez que você os seleciona numa receita.
 
 ## Arquivos no código
 
 | Caminho | Papel |
 |---------|-------|
-| `frontend/src/pages/PCP/ItensPcp.jsx` | Lista de subprodutos |
-| `frontend/src/services/pcpItemService.js` | Chamadas de API |
-| `backend/src/routes/pcp/itens.js` | Rotas do backend |
+| `frontend/src/pages/PCP/ItensPcp.jsx` | Listagem com filtros, toggle ativo/inativo |
+| `frontend/src/pages/PCP/ItemPcpForm.jsx` | Formulário de criação e edição |
+| `frontend/src/services/pcpItemService.js` | Chamadas de API para itens PCP |

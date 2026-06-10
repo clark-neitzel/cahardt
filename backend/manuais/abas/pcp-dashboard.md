@@ -1,72 +1,70 @@
 ---
-aba: PCP — Dashboard
+aba: Dashboard PCP
 rota: /pcp/dashboard
-permissao: admin ou acesso ao módulo PCP
+permissao: pcp.sugestoes
 ---
 
-# PCP — Dashboard
+# Dashboard PCP
 
 ## O que é
 
-Painel de visão geral do módulo de PCP (Planejamento e Controle de Produção). Exibe os principais indicadores de produção: quantas ordens estão em cada status, volume produzido na semana, e quais itens estão abaixo do estoque mínimo. Os cards são clicáveis e levam para as telas específicas.
+Painel de visão geral do módulo de produção. Exibe os principais números em tempo real: quantidade de ordens por status, volume produzido na semana, sugestões pendentes e lista de itens abaixo do estoque mínimo. Os cards são clicáveis e levam direto para a tela correspondente.
 
----
+Não há filtros de período — os dados refletem a situação atual (ordens abertas) e a semana corrente (produção finalizada).
 
 ## O que dá pra fazer aqui
 
-- Ver quantas ordens estão Planejadas, Em Produção e Finalizadas
-- Ver quantas sugestões de produção estão pendentes de decisão
-- Ver o volume total produzido na semana atual (em unidades)
-- Ver quais itens estão abaixo do estoque mínimo com déficit calculado
-- Navegar rapidamente para as ordens ou sugestões clicando nos cards
+- Ver os KPIs principais do PCP num único lugar
+- Identificar rapidamente quantas ordens precisam de atenção
+- Ver o volume produzido na semana atual
+- Ver quais itens estão abaixo do estoque mínimo com o déficit calculado
+- Navegar para as telas de ordens, painel ou sugestões clicando nos cards
 
----
+## KPIs exibidos
 
-## KPIs do painel
+| KPI | O que mostra | Clicando vai para |
+|-----|-------------|------------------|
+| Planejadas | Ordens com status PLANEJADA (aguardando início) | `/pcp/ordens` |
+| Em Produção | Ordens com status EM_PRODUCAO | `/pcp/painel` |
+| Finalizadas | Total geral de ordens concluídas (histórico) | — |
+| Sugestões Pendentes | Sugestões aguardando aceite ou rejeição | `/pcp/sugestoes` |
 
-| KPI | O que mostra |
-|-----|-------------|
-| Planejadas | Ordens criadas aguardando início |
-| Em Produção | Ordens iniciadas no chão de fábrica |
-| Finalizadas | Total histórico de ordens concluídas |
-| Sugestões Pendentes | Sugestões de produção aguardando aceite/rejeição |
-| Produção da Semana | Volume (unidades) produzido nas últimas ordens finalizadas desta semana |
+## Seções do painel
 
----
+### Produção da Semana
+Mostra o total de unidades produzidas e o número de ordens finalizadas na semana atual.
 
-## Como fazer (passo a passo real)
+### Resumo de Ordens
+Gráfico de barras horizontais com o total de ordens em cada status (Planejadas, Em Produção, Finalizadas, Canceladas) e o percentual de cada uma em relação ao total.
 
-### Navegar pelos KPIs
-- Clique em **Planejadas** para ir à lista de ordens planejadas
-- Clique em **Em Produção** para ir ao Painel Operacional
-- Clique em **Sugestões Pendentes** para ir às sugestões
-
-### Ver itens abaixo do mínimo
-- Se houver itens críticos, um card vermelho aparece na parte inferior com a tabela de déficit
-- Mostra: item, tipo, estoque atual, mínimo e quantidade em falta
-
----
+### Itens Abaixo do Estoque Mínimo
+Só aparece se houver itens em situação crítica. Tabela com:
+- Nome do item
+- Tipo (MP, SUB, PA, EMB)
+- Estoque atual
+- Estoque mínimo
+- Déficit (quanto está faltando, em vermelho)
 
 ## Permissões necessárias
 
-| Permissão | Efeito |
-|-----------|--------|
-| `admin` ou acesso ao módulo PCP | Acessa o dashboard |
+| Ação | Permissão |
+|------|-----------|
+| Ver o dashboard | `pcp.sugestoes` |
 
----
+Admin (`admin: true`) tem acesso sem precisar de `pcp.sugestoes`.
+
+> A permissão usada é `pcp.sugestoes` (mesma das sugestões) — não há permissão separada para o dashboard.
 
 ## Depende de / Interfere em
 
-- **PCP — Ordens** — os números de planejadas/em produção/finalizadas vêm de lá
-- **PCP — Sugestões** — o contador de pendentes vem das sugestões não decididas
-- **PCP — Estoque** — os itens abaixo do mínimo vêm do estoque PCP
-
----
+- **Ordens de Produção**: os números de planejadas, em produção e finalizadas vêm das ordens.
+- **Painel de Produção**: o KPI "Em Produção" leva para o painel.
+- **Sugestões**: o contador "Pendentes" vem das sugestões não decididas.
+- **Estoque PCP**: os itens abaixo do mínimo vêm do estoque PCP.
 
 ## Arquivos no código
 
 | Caminho | Papel |
 |---------|-------|
-| `frontend/src/pages/PCP/DashboardPcp.jsx` | Tela do dashboard PCP |
-| `frontend/src/services/pcpSugestaoService.js` | API de KPIs (`dashboard()`) |
-| `backend/src/routes/pcp/sugestoes.js` | Rota do dashboard PCP |
+| `frontend/src/pages/PCP/DashboardPcp.jsx` | Tela do dashboard com KPIs, gráfico e tabela de alertas |
+| `frontend/src/services/pcpSugestaoService.js` | Método `dashboard()` que busca todos os KPIs numa única chamada |
