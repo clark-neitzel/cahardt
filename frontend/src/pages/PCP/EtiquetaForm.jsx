@@ -60,8 +60,9 @@ export default function EtiquetaForm() {
     const [salvando, setSalvando] = useState(false);
 
     useEffect(() => {
-        produtoService.listar({ ativo: true, limit: 500 }).then(r => {
-            const arr = Array.isArray(r) ? r : (r?.produtos || r?.itens || []);
+        produtoService.listar({ ativo: true, limit: 2000, page: 1 }).then(r => {
+            // endpoint retorna { data: [...], meta: {...} }
+            const arr = Array.isArray(r) ? r : (r?.data || r?.produtos || r?.itens || []);
             setProdutos(arr.sort((a, b) => String(a.codigo).localeCompare(String(b.codigo), undefined, { numeric: true })));
         }).catch(() => {});
         // Carrega etiquetas existentes para mostrar quantas estão vinculadas por produto
@@ -169,16 +170,44 @@ export default function EtiquetaForm() {
                     </div>
                     <div className="mt-4">
                         <Campo label="Vincular ao Produto do Catálogo (opcional)">
-                            <select value={form.produtoId} onChange={e => set('produtoId', e.target.value)} className={inputCls}>
-                                <option value="">— Nenhum —</option>
-                                {produtos.map(p => {
-                                    const vinculadas = etiquetasExistentes.filter(e => e.produtoId === p.id && e.id !== id);
-                                    const label = vinculadas.length > 0
-                                        ? `${p.codigo} — ${p.nome}  (${vinculadas.length} etiqueta${vinculadas.length > 1 ? 's' : ''} vinculada${vinculadas.length > 1 ? 's' : ''})`
-                                        : `${p.codigo} — ${p.nome}`;
-                                    return <option key={p.id} value={p.id}>{label}</option>;
-                                })}
-                            </select>
+                            {produtos.length === 0 ? (
+                                <div className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-400 bg-gray-50">
+                                    Carregando produtos...
+                                </div>
+                            ) : (
+                                <select value={form.produtoId} onChange={e => set('produtoId', e.target.value)} className={inputCls}>
+                                    <option value="">— Nenhum —</option>
+                                    {(() => {
+                                        const semEtiqueta = produtos.filter(p =>
+                                            !etiquetasExistentes.some(e => e.produtoId === p.id && e.id !== id)
+                                        );
+                                        const comEtiqueta = produtos.filter(p =>
+                                            etiquetasExistentes.some(e => e.produtoId === p.id && e.id !== id)
+                                        );
+                                        return (
+                                            <>
+                                                {semEtiqueta.length > 0 && (
+                                                    <optgroup label="Sem etiqueta vinculada">
+                                                        {semEtiqueta.map(p => (
+                                                            <option key={p.id} value={p.id}>{p.codigo} — {p.nome}</option>
+                                                        ))}
+                                                    </optgroup>
+                                                )}
+                                                {comEtiqueta.length > 0 && (
+                                                    <optgroup label="Já tem etiqueta (pode adicionar outra)">
+                                                        {comEtiqueta.map(p => {
+                                                            const n = etiquetasExistentes.filter(e => e.produtoId === p.id && e.id !== id).length;
+                                                            return (
+                                                                <option key={p.id} value={p.id}>{p.codigo} — {p.nome} ({n} etiqueta{n > 1 ? 's' : ''})</option>
+                                                            );
+                                                        })}
+                                                    </optgroup>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
+                                </select>
+                            )}
                             <p className="text-xs text-gray-400 mt-1">Um produto pode ter múltiplas etiquetas (ex: versão 22g e 28g)</p>
                         </Campo>
                     </div>
