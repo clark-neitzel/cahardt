@@ -1012,7 +1012,7 @@ router.get('/', verificarAuth, async (req, res) => {
 
         // ============ PRODUTOS EM QUEDA (top 5: 30d vs 30-60d) ============
         const itens30a60 = await prisma.pedidoItem.findMany({
-            where: { pedido: { ...baseWherePedido, dataVenda: { gte: start60d, lt: start30d } } },
+            where: { pedido: { ...baseWherePedido, dataVenda: { gte: start60d, lt: start30d } }, produto: { ativo: true } },
             select: { produtoId: true, quantidade: true, valor: true, produto: { select: { nome: true } } },
         });
         const prodPrev = new Map();
@@ -1032,7 +1032,7 @@ router.get('/', verificarAuth, async (req, res) => {
             }
         }
         emQueda.sort((a, b) => a.variacaoPct - b.variacaoPct);
-        const produtosEmQueda = emQueda.slice(0, 5);
+        const produtosEmQueda = emQueda.slice(0, 10);
 
         // ============ METAS POR VENDEDOR ============
         const mesRefStr = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
