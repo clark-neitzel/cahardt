@@ -50,6 +50,8 @@ A tela central de trabalho do vendedor. É aqui que começa qualquer ação de v
 4. O app navega para `/pedidos/novo?clienteId=...`
 5. Preencha o pedido normalmente
 
+> **Layout da tela de pedido:** os passos são os mesmos no celular e no computador (cliente → tipo → condição de pagamento → data → qualidade do atendimento → produtos). No **computador (tela larga)** a tela mostra duas colunas: à esquerda o formulário e a lista de produtos; à direita um painel fixo **"Itens do Pedido"** com cada item (com botões de +/− e Remover), Subtotal, Frete, Flex e Total sempre visíveis, além do botão **Fechar pedido**. No **celular** o layout é em coluna única, com o botão de fechar fixo no rodapé (igual a antes). Em promoções **CONDICIONAIS**, cada condição mostra um **✓ verde** quando já foi atingida.
+
 ### Ver inadimplência do cliente
 1. Clique no ícone vermelho de alerta no card
 2. Um modal exibe: total vencido, parcelas em aberto e detalhes de cada nota
