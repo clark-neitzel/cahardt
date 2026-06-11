@@ -1135,4 +1135,41 @@ router.post('/recalcular-flex-historico', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/autolink-etiquetas-ean
+// Vincula etiquetas sem produtoId procurando produto pelo EAN (codigoBarras == produto.ean)
+router.post('/autolink-etiquetas-ean', async (req, res) => {
+    try {
+        const etiquetasSemLink = await prisma.etiquetaProduto.findMany({
+            where: { produtoId: null },
+            select: { id: true, codigoBarras: true, codigoProduto: true, nomeProduto: true }
+        });
+
+        const vinculadas = [], semMatch = [], erros = [];
+
+        for (const et of etiquetasSemLink) {
+            if (!et.codigoBarras) { semMatch.push(et.codigoProduto); continue; }
+            try {
+                const produto = await prisma.produto.findFirst({
+                    where: { ean: et.codigoBarras },
+                    select: { id: true, codigo: true, nome: true }
+                });
+                if (!produto) { semMatch.push(`${et.codigoProduto} (EAN ${et.codigoBarras})`); continue; }
+
+                await prisma.etiquetaProduto.update({
+                    where: { id: et.id },
+                    data: { produtoId: produto.id }
+                });
+                vinculadas.push({ etiqueta: et.nomeProduto, produto: produto.nome, sku: produto.codigo });
+            } catch (e) {
+                erros.push({ codigo: et.codigoProduto, erro: e.message });
+            }
+        }
+
+        return res.json({ ok: true, vinculadas: vinculadas.length, semMatch: semMatch.length, erros: erros.length, detalhe: { vinculadas, semMatch, erros } });
+    } catch (err) {
+        console.error('[autolink-etiquetas-ean]', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
