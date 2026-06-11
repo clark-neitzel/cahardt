@@ -62,6 +62,8 @@ model Produto {
 
   etiquetas EtiquetaProduto[]
 
+  kitFestaProduto KitFestaProduto?
+
   @@map("produtos")
 }
 
@@ -173,6 +175,8 @@ model Cliente {
   // Dados fiscais em tabela separada (a tabela `clientes` atingiu o limite de colunas do Postgres)
   fiscal                       ClienteFiscal?
 
+  kitFestaCliente              KitFestaCliente?
+
   @@index([Nome])
   @@index([NomeFantasia])
   @@index([Documento])
@@ -262,6 +266,8 @@ model Pedido {
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  kitFestaPedido KitFestaPedido?
 
   @@index([statusEnvio])
   @@index([vendedorId])
@@ -1680,4 +1686,246 @@ model ComissaoConfig {
   @@unique([vendedorId, mesReferencia])
   @@index([mesReferencia])
   @@map("comissao_config")
+}
+
+// ============================================================
+// ── KIT FESTA — Site público de pedidos + Agenda da cozinha ──
+// Módulo independente do Delivery* (que é o Kanban pós-pedido).
+// Cliente acessa por link, faz pedido; admin aprova e converte
+// em Pedido normal/especial.
+// ============================================================
+
+// Usuário do site (área do cliente). Pode ou não ter cadastro no CA (clienteUuid).
+model KitFestaCliente {
+  id            String  @id @default(uuid())
+  cpf           String  @unique // só dígitos
+  nome          String
+  telefone      String?
+  email         String?
+  senhaHash     String? @map("senha_hash") // null = ainda precisa criar senha
+
+  // Vínculo com o cadastro do Conta Azul (quando existe)
+  clienteUuid String?  @unique @map("cliente_uuid")
+  cliente     Cliente? @relation(fields: [clienteUuid], references: [UUID])
+
+  // Programa de indicação / fidelidade
+  pontos          Int     @default(0)
+  codigoIndicacao String? @unique @map("codigo_indicacao")
+  creditoIndicacao Decimal @default(0) @map("credito_indicacao") @db.Decimal(12, 2)
+  indicadoPorId   String? @map("indicado_por_id")
+  indicadoPor     KitFestaCliente?  @relation("KitFestaIndicacao", fields: [indicadoPorId], references: [id])
+  indicados       KitFestaCliente[] @relation("KitFestaIndicacao")
+
+  // Recuperação de senha
+  resetToken    String?   @map("reset_token")
+  resetTokenExp DateTime? @map("reset_token_exp")
+
+  ultimoAcesso DateTime? @map("ultimo_acesso")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  pedidos KitFestaPedido[]
+
+  @@index([cpf])
+  @@map("kitfesta_clientes")
+}
+
+// Categorias de exibição no site (ex: Fritos, De forno, Doces). Editável pelo admin.
+model KitFestaCategoria {
+  id        String  @id @default(uuid())
+  nome      String
+  slug      String  @unique // ex: 'fritos', 'forno', 'doces'
+  ordem     Int     @default(0)
+  ativo     Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  produtos KitFestaProduto[]
+
+  @@map("kitfesta_categorias")
+}
+
+// Vincula um Produto do app ao site, com config de exibição.
+model KitFestaProduto {
+  id        String @id @default(uuid())
+  produtoId String @unique @map("produto_id")
+  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  categoriaId     String?            @map("categoria_id")
+  categoria       KitFestaCategoria? @relation(fields: [categoriaId], references: [id])
+
+  unidadesPorCaixa Int      @default(25) @map("unidades_por_caixa")
+  precoKitFesta    Decimal? @map("preco_kitfesta") @db.Decimal(12, 2) // override; null = usa valorVenda do Produto
+  descricaoSite    String?  @map("descricao_site") @db.Text
+  tags             String[] @default([])
+  opcoes           String[] @default([]) // ex: ['Frango','Palmito']
+  destaque         Boolean  @default(false) // "Mais pedidos"
+  ordem            Int      @default(0)
+  ativo            Boolean  @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  itens KitFestaPedidoItem[]
+
+  @@index([ativo])
+  @@map("kitfesta_produtos")
+}
+
+// Status do dia na agenda da cozinha. Sem registro = usa default (aberto se houver horário no template).
+model KitFestaAgendaDia {
+  id        String  @id @default(uuid())
+  data      DateTime @unique @db.Date
+  status    String  @default("open") // open | few | full | closed
+  observacao String? @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("kitfesta_agenda_dias")
+}
+
+// Template de horários por modo/dia-da-semana. O site gera os slots de cada data a partir daqui.
+model KitFestaHorarioPadrao {
+  id         String  @id @default(uuid())
+  modo       String  // retirada | entrega
+  hora       String  // '08:30'
+  capacidade Int     @default(10) // pedidos por slot
+  diasSemana Int[]   @default([]) @map("dias_semana") // 0=Dom ... 6=Sáb; vazio = todos
+  ativo      Boolean @default(true)
+  ordem      Int     @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("kitfesta_horarios_padrao")
+}
+
+// Bairros de entrega com CEP e taxa.
+model KitFestaBairro {
+  id        String  @id @default(uuid())
+  nome      String
+  cidade    String? @default("Joinville")
+  cep       String? // CEP base ou principal do bairro
+  taxa      Decimal @default(0) @db.Decimal(12, 2)
+  ativo     Boolean @default(true)
+  ordem     Int     @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pedidos KitFestaPedido[]
+
+  @@map("kitfesta_bairros")
+}
+
+// Cupons de desconto.
+model KitFestaCupom {
+  id             String    @id @default(uuid())
+  codigo         String    @unique
+  tipo           String    // pct | brl
+  valor          Decimal   @db.Decimal(12, 2)
+  label          String?
+  minCaixas      Int?      @map("min_caixas")
+  validade       DateTime? @db.Date
+  primeiraCompra Boolean   @default(false) @map("primeira_compra")
+  usoMaximo      Int?      @map("uso_maximo") // total de usos permitidos (null = ilimitado)
+  usos           Int       @default(0)
+  ativo          Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@map("kitfesta_cupons")
+}
+
+// Pedido feito no site. Entra numa fila; admin aprova e converte em Pedido normal/especial.
+model KitFestaPedido {
+  id     String @id @default(uuid())
+  numero Int    @unique @default(autoincrement())
+
+  // Cliente do site (sempre presente; pode estar sem cadastro CA)
+  kitFestaClienteId String          @map("kitfesta_cliente_id")
+  kitFestaCliente   KitFestaCliente @relation(fields: [kitFestaClienteId], references: [id])
+
+  // Snapshot dos dados do cliente no momento do pedido
+  nomeCliente     String  @map("nome_cliente")
+  cpfCliente      String  @map("cpf_cliente")
+  telefoneCliente String? @map("telefone_cliente")
+  semCadastro     Boolean @default(false) @map("sem_cadastro") // visitante sem Cliente no app/CA
+
+  // Entrega
+  modo        String   // retirada | entrega
+  data        DateTime @db.Date
+  horario     String
+  bairroId    String?  @map("bairro_id")
+  bairro      KitFestaBairro? @relation(fields: [bairroId], references: [id])
+  taxaEntrega Decimal  @default(0) @map("taxa_entrega") @db.Decimal(12, 2)
+  enderecoEntrega String? @map("endereco_entrega") @db.Text
+
+  // Valores
+  subtotal      Decimal @db.Decimal(12, 2)
+  cupomCodigo   String? @map("cupom_codigo")
+  descontoValor Decimal @default(0) @map("desconto_valor") @db.Decimal(12, 2)
+  total         Decimal @db.Decimal(12, 2)
+  totalCaixas   Int     @map("total_caixas")
+
+  observacoes String? @db.Text
+
+  // Fluxo de aprovação
+  // AGUARDANDO | PENDENTE_CADASTRO | APROVADO | RECUSADO | CONVERTIDO | CANCELADO
+  status        String  @default("AGUARDANDO")
+  motivoRecusa  String? @map("motivo_recusa") @db.Text
+
+  // Conversão para Pedido normal
+  tipoConversao String? @map("tipo_conversao") // NORMAL | ESPECIAL | BONIFICACAO
+  pedidoId      String? @unique @map("pedido_id")
+  pedido        Pedido? @relation(fields: [pedidoId], references: [id])
+  aprovadoPorId String? @map("aprovado_por_id")
+  aprovadoEm    DateTime? @map("aprovado_em")
+
+  whatsappEnviado Boolean @default(false) @map("whatsapp_enviado")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  itens KitFestaPedidoItem[]
+
+  @@index([status])
+  @@index([data])
+  @@index([kitFestaClienteId])
+  @@map("kitfesta_pedidos")
+}
+
+model KitFestaPedidoItem {
+  id             String @id @default(uuid())
+  kitFestaPedidoId String @map("kitfesta_pedido_id")
+  kitFestaPedido KitFestaPedido @relation(fields: [kitFestaPedidoId], references: [id], onDelete: Cascade)
+
+  kitFestaProdutoId String?          @map("kitfesta_produto_id")
+  kitFestaProduto   KitFestaProduto? @relation(fields: [kitFestaProdutoId], references: [id])
+
+  nomeProduto      String  @map("nome_produto")
+  opcao            String? // ex: 'Frango' / 'Palmito'
+  quantidade       Int     // nº de caixas
+  unidadesPorCaixa Int     @map("unidades_por_caixa")
+  precoUnitario    Decimal @map("preco_unitario") @db.Decimal(12, 2)
+
+  @@map("kitfesta_pedido_itens")
+}
+
+// Configurações do site (chave/valor). Ex: hero, como_funciona, loja, regras, frete_texto.
+model KitFestaConfig {
+  chave     String  @id
+  valor     Json?
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("kitfesta_config")
+}
+
+// Avaliações exibidas no site, gerenciadas pelo admin.
+model KitFestaAvaliacao {
+  id        String  @id @default(uuid())
+  nome      String
+  evento    String?
+  texto     String  @db.Text
+  estrelas  Int     @default(5)
+  dataLabel String? @map("data_label")
+  ordem     Int     @default(0)
+  ativo     Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("kitfesta_avaliacoes")
 }

@@ -20,6 +20,7 @@
 | Rel. Vendas | `/relatorios/vendas` | Relatório por item vendido com filtros por coluna estilo Excel | [rel-vendas.md](rel-vendas.md) |
 | Análise Flex | `/relatorios/flex` | Análise do uso de flex por vendedor: descontos, acréscimos e orçamento consumido | [analise-flex.md](analise-flex.md) |
 | Delivery | `/delivery` | Kanban de acompanhamento de pedidos de entrega (Kit Festa) com WhatsApp | [delivery.md](delivery.md) |
+| Kit Festa | `/kit-festa-admin` | Painel do site de pedidos Kit Festa: fila de pedidos, agenda da cozinha, produtos do site, bairros, cupons e configurações | [kit-festa.md](kit-festa.md) |
 
 ---
 
