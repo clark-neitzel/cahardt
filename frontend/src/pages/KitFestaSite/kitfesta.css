@@ -1,4 +1,6 @@
 /* ===== Kit Festa — site público (escopo .kf) ===== */
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Bitter:ital,wght@0,400;0,500;0,700;1,400&family=Kaushan+Script&display=swap');
+
 .kf {
   --green: #128240;
   --green-d: #0d6330;
@@ -43,7 +45,10 @@
 .kf .field { margin-bottom: 12px; }
 .kf .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px; }
 .kf .ip { display: flex; align-items: center; gap: 8px; border: 1.5px solid rgba(0,0,0,.12); border-radius: 10px; padding: 0 12px; background: #fff; }
-.kf .ip input { border: 0; outline: 0; padding: 11px 0; flex: 1; font-size: 15px; background: transparent; font-family: inherit; }
+.kf .ip input { border: 0; outline: 0; padding: 11px 0; flex: 1; font-size: 15px; background: transparent; font-family: inherit; color: var(--ink); }
+/* Garante que TODO texto digitado apareça (vence estilos globais do app) */
+.kf input, .kf textarea, .kf select { color: var(--ink) !important; -webkit-text-fill-color: var(--ink); }
+.kf input::placeholder, .kf textarea::placeholder { color: #b3a88c !important; -webkit-text-fill-color: #b3a88c; opacity: 1; }
 
 /* Login */
 .kf .login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
