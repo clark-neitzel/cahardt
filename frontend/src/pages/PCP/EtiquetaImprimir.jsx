@@ -5,6 +5,8 @@ import JsBarcode from 'jsbarcode';
 import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
 
+const codExibir = (et) => et.produto?.codigo || et.codigoProduto;
+
 function hojeIso() { return new Date().toISOString().split('T')[0]; }
 
 function isoParaDisplay(iso) {
@@ -52,7 +54,7 @@ function LabelView({ et, dataFab, dataVal }) {
                 {et.nomeProduto}
             </div>
             <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'7pt', borderBottom:'0.5pt solid #000', paddingBottom:'0.8mm', marginBottom:'0.8mm' }}>
-                CÓD.{et.codigoProduto}&nbsp;&nbsp;&nbsp;PESO UNITÁRIO {et.pesoUnitario} gramas
+                CÓD.{codExibir(et)}&nbsp;&nbsp;&nbsp;PESO UNITÁRIO {et.pesoUnitario} gramas
             </div>
             <div style={{ border:'0.5pt solid #000', marginBottom:'0.8mm' }}>
                 <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'6.5pt', borderBottom:'0.5pt solid #000', padding:'0.5mm 0' }}>
@@ -185,7 +187,7 @@ ${Array.from({ length: copies }, () => `<div class="pg">${conteudo.innerHTML}</d
                 </button>
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Imprimir Etiqueta</h1>
-                    <p className="text-sm text-gray-500">{et.nomeProduto} — Cód. {et.codigoProduto}</p>
+                    <p className="text-sm text-gray-500">{et.nomeProduto} — Cód. {codExibir(et)}</p>
                 </div>
             </div>
 

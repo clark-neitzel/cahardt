@@ -94,7 +94,7 @@ function LabelView({ et, dataFab, dataVal }) {
                 {et.nomeProduto}
             </div>
             <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'7pt', borderBottom:'0.5pt solid #000', paddingBottom:'0.8mm', marginBottom:'0.8mm' }}>
-                CÓD.{et.codigoProduto}&nbsp;&nbsp;&nbsp;PESO UNITÁRIO {et.pesoUnitario} gramas
+                CÓD.{codExibir(et)}&nbsp;&nbsp;&nbsp;PESO UNITÁRIO {et.pesoUnitario} gramas
             </div>
             <div style={{ border:'0.5pt solid #000', marginBottom:'0.8mm' }}>
                 <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'6.5pt', borderBottom:'0.5pt solid #000', padding:'0.5mm 0' }}>
@@ -211,7 +211,7 @@ ${Array.from({ length: copies }, () => `<div class="pg">${conteudo.innerHTML}</d
                 <div className="flex items-center justify-between px-6 py-4 border-b">
                     <div>
                         <h2 className="text-lg font-bold text-gray-800">{et.nomeProduto}</h2>
-                        <p className="text-sm text-gray-400">Cód. {et.codigoProduto} · {et.pesoUnitario}g · {et.quantidadeEmbalagem} un/emb</p>
+                        <p className="text-sm text-gray-400">Cód. {codExibir(et)} · {et.pesoUnitario}g · {et.quantidadeEmbalagem} un/emb</p>
                     </div>
                     <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100">
                         <X className="h-5 w-5 text-gray-500" />
@@ -282,6 +282,9 @@ ${Array.from({ length: copies }, () => `<div class="pg">${conteudo.innerHTML}</d
     );
 }
 
+// SKU do catálogo tem prioridade; cai para o código interno se não vinculado
+const codExibir = (et) => et.produto?.codigo || et.codigoProduto;
+
 // ─── Card de etiqueta ─────────────────────────────────────────────────────────
 
 function EtiquetaCard({ et, onPrint }) {
@@ -293,7 +296,7 @@ function EtiquetaCard({ et, onPrint }) {
             <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                     <span className="inline-block text-xs font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded mb-1">
-                        {et.codigoProduto}
+                        {codExibir(et)}
                     </span>
                     <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2">{et.nomeProduto}</h3>
                 </div>

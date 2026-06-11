@@ -116,7 +116,14 @@ export default function EtiquetasDados() {
                         <tbody className="divide-y divide-gray-100">
                             {lista.map(et => (
                                 <tr key={et.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-3 font-mono text-xs text-gray-500">{et.codigoProduto}</td>
+                                    <td className="px-4 py-3 font-mono text-xs">
+                                        <span className="text-indigo-600 font-semibold">
+                                            {et.produto?.codigo || et.codigoProduto}
+                                        </span>
+                                        {et.produto?.codigo && et.produto.codigo !== et.codigoProduto && (
+                                            <span className="block text-gray-400 text-[10px]">int: {et.codigoProduto}</span>
+                                        )}
+                                    </td>
                                     <td className="px-4 py-3 font-medium text-gray-800">
                                         {et.nomeProduto}
                                         {et.produto && (
