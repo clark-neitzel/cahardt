@@ -7,6 +7,17 @@ const webhookService = require('./webhookService');
 
 const money2 = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
 
+// Merge: defaults + overrides do banco, mesclando objetos por chave (não substitui
+// o objeto inteiro — assim novos campos do default aparecem mesmo com override parcial salvo)
+const isPlainObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
+function mergeConfig(defaults, map) {
+    const out = { ...defaults };
+    for (const k of Object.keys(map)) {
+        out[k] = (isPlainObj(defaults[k]) && isPlainObj(map[k])) ? { ...defaults[k], ...map[k] } : map[k];
+    }
+    return out;
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123';
 
 // ───────── Helpers ─────────
@@ -231,7 +242,7 @@ const kitFestaService = {
         const rows = await prisma.kitFestaConfig.findMany();
         const map = {};
         rows.forEach(r => { map[r.chave] = r.valor; });
-        return { ...DEFAULT_CONFIG, ...map };
+        return mergeConfig(DEFAULT_CONFIG, map);
     },
 
     // ───────── Agenda pública ─────────
@@ -699,7 +710,7 @@ const kitFestaService = {
         const rows = await prisma.kitFestaConfig.findMany();
         const map = {};
         rows.forEach(r => { map[r.chave] = r.valor; });
-        return { ...DEFAULT_CONFIG, ...map };
+        return mergeConfig(DEFAULT_CONFIG, map);
     },
     async adminSetConfig(chave, valor) {
         return prisma.kitFestaConfig.upsert({
