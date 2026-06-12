@@ -1844,6 +1844,7 @@ model KitFestaPedido {
   nomeCliente     String  @map("nome_cliente")
   cpfCliente      String  @map("cpf_cliente")
   telefoneCliente String? @map("telefone_cliente")
+  celularAlterado Boolean @default(false) @map("celular_alterado") // cliente informou/corrigiu o nº no checkout — admin deve atualizar no cadastro
   semCadastro     Boolean @default(false) @map("sem_cadastro") // visitante sem Cliente no app/CA
 
   // Entrega

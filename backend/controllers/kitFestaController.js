@@ -200,6 +200,12 @@ const kitFestaController = {
         try { res.json(await svc.adminVincularCliente(req.params.id, req.body.clienteUuid)); }
         catch (e) { erro(res, e, 'adminVincularCliente'); }
     },
+    adminExcluirPedido: async (req, res) => {
+        try {
+            if (!req.user?.permissoes?.admin) return res.status(403).json({ error: 'Apenas administradores podem excluir pedidos.' });
+            res.json(await svc.adminExcluirPedido(req.params.id));
+        } catch (e) { erro(res, e, 'adminExcluirPedido'); }
+    },
 };
 
 module.exports = kitFestaController;

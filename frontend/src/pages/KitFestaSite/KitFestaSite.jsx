@@ -119,6 +119,7 @@ export default function KitFestaSite() {
 
       {screen === 'checkout' && (
         <CheckoutScreen cfg={cfg} cart={cart} produtos={produtos} totals={totals} coupon={coupon}
+          telefoneAtual={cliente?.telefone || visitante?.telefone || ''}
           onBack={() => setScreen('shop')}
           onFinish={(info) => setConfirm(info)} />
       )}
@@ -436,7 +437,7 @@ function CalendarPicker({ selected, onSelect }) {
 }
 
 /* ---------- Checkout ---------- */
-function CheckoutScreen({ cfg, cart, produtos, totals, coupon, onBack, onFinish }) {
+function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, onBack, onFinish }) {
   const [modo, setModo] = useState('retirada');
   const [date, setDate] = useState(null);
   const [slot, setSlot] = useState(null);
@@ -445,6 +446,10 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, onBack, onFinish 
   const [bairros, setBairros] = useState([]);
   const [bairroId, setBairroId] = useState('');
   const [endereco, setEndereco] = useState('');
+  const maskTel = (v) => v.replace(/\D/g, '').slice(0, 11)
+    .replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2').replace(/(\d{4})(\d)/, '$1-$2');
+  const [telefone, setTelefone] = useState(telefoneAtual ? maskTel(telefoneAtual) : '');
+  const telOk = telefone.replace(/\D/g, '').length >= 10;
   const ids = Object.keys(cart).filter(id => cart[id] > 0);
   const prodById = (id) => produtos.find(p => p.id === id);
 
@@ -459,7 +464,7 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, onBack, onFinish 
   const bairro = bairros.find(b => b.id === bairroId);
   const taxa = modo === 'entrega' ? Number(bairro?.taxa || 0) : 0;
   const totalFinal = totals.total + taxa;
-  const ready = date && slot && (modo === 'retirada' || bairroId);
+  const ready = date && slot && telOk && (modo === 'retirada' || bairroId);
 
   return (
     <div className="tex-paper" style={{ minHeight: '100vh' }}>
@@ -490,6 +495,16 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, onBack, onFinish 
                 </select>
                 <textarea className="obs" style={{ marginTop: 10, minHeight: 60 }} placeholder="Endereço de entrega (rua, número, complemento)"
                   value={endereco} onChange={e => setEndereco(e.target.value)} />
+              </div>
+            )}
+            {modo === 'retirada' && (
+              <div className="sum-meta" style={{ marginTop: 14 }}>
+                <div className="r"><MapPin size={15} /> {cfg.loja?.endereco}</div>
+                {cfg.loja?.mapsUrl && (
+                  <a href={cfg.loja.mapsUrl} target="_blank" rel="noreferrer" className="r" style={{ color: 'var(--green-dd)', fontWeight: 600 }}>
+                    <MapPin size={15} /> Ver no mapa / traçar rota
+                  </a>
+                )}
               </div>
             )}
           </div>
@@ -538,9 +553,24 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, onBack, onFinish 
               <div className="r"><Calendar size={15} /> {dateLabel || 'Selecione uma data'}</div>
               <div className="r"><Clock size={15} /> {slot || 'Selecione um horário'}</div>
             </div>
+
+            {/* WhatsApp do cliente — confirma ou pede o número */}
+            <div style={{ marginTop: 14 }}>
+              <label className="field" style={{ display: 'block', marginBottom: 4 }}>
+                <span style={{ fontFamily: 'var(--f-display)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.72rem', color: '#6a5f4c' }}>
+                  <MessageCircle size={13} style={{ verticalAlign: '-2px' }} /> Seu WhatsApp {telefoneAtual ? '(confirme)' : ''}
+                </span>
+              </label>
+              <div className="ip" style={{ background: '#fff' }}>
+                <input inputMode="numeric" placeholder="(47) 99999-0000" value={telefone}
+                  onChange={e => setTelefone(maskTel(e.target.value))} />
+              </div>
+              <p style={{ fontSize: 11, color: '#8a7d63', marginTop: 4 }}>Mandamos uma cópia do pedido nesse número.</p>
+            </div>
+
             <button className="btn btn-wa btn-block" disabled={!ready} style={{ marginTop: 12 }}
-              onClick={() => onFinish({ modo, date, dateLabel, slot, obs, bairroId, bairro, taxa, endereco })}>
-              <MessageCircle size={19} /> {ready ? 'Enviar pedido pelo WhatsApp' : 'Complete os dados'}
+              onClick={() => onFinish({ modo, date, dateLabel, slot, obs, bairroId, bairro, taxa, endereco, telefone })}>
+              <MessageCircle size={19} /> {!telOk ? 'Confirme seu WhatsApp' : (ready ? 'Finalizar pedido' : 'Complete os dados')}
             </button>
             <p style={{ fontSize: 12, color: '#8a7d63', textAlign: 'center', marginTop: 10 }}>
               O pagamento é combinado depois (pix ou na entrega).</p>
@@ -561,15 +591,17 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
 
   useEffect(() => {
     const itens = ids.map(id => { const p = prodById(id); return { kitFestaProdutoId: id, quantidade: cart[id] }; });
+    const visitanteFinal = visitante ? { ...visitante, telefone: info.telefone || visitante.telefone } : undefined;
     const payload = {
       itens, modo: info.modo, data: info.date, horario: info.slot,
       bairroId: info.bairroId || null, enderecoEntrega: info.endereco || null,
       cupomCodigo: coupon?.codigo || null, observacoes: info.obs || null,
-      visitante: visitante || undefined,
+      telefone: info.telefone || null,
+      visitante: visitanteFinal,
     };
     publicApi.criarPedido(payload)
       .then(() => {
-        // monta WhatsApp
+        // link opcional pra falar com a loja
         const linhas = ids.map(id => `• ${cart[id]}x ${prodById(id)?.nome}`).join('\n');
         const txt = encodeURIComponent(
           `*Pedido Hardt — Kit Festa*\n${linhas}\n\n` +
@@ -578,8 +610,7 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
           (info.endereco ? `\nEndereço: ${info.endereco}` : '') +
           (coupon ? `\nCupom: ${coupon.codigo}` : '') +
           (info.obs ? `\nObs: ${info.obs}` : '') +
-          `\n\nTotal: ${money(totals.total + (info.taxa || 0))}` +
-          (visitante ? `\n\n⚠️ Cliente sem cadastro — finalizar cadastro` : '')
+          `\n\nTotal: ${money(totals.total + (info.taxa || 0))}`
         );
         setLink(`https://wa.me/${cfg.loja?.whatsapp}?text=${txt}`);
       })
@@ -593,8 +624,8 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
       <div className="modal-card" style={{ position: 'relative', zIndex: 1 }}>
         <div className="modal-top">
           <div className="ok">{salvando ? <Loader2 size={34} className="animate-spin" /> : erro ? <X size={34} /> : <Check size={34} />}</div>
-          <h3>{salvando ? 'Registrando…' : erro ? 'Ops!' : 'Pedido registrado!'}</h3>
-          <p>{salvando ? 'Estamos salvando seu pedido' : erro ? erro : 'Falta confirmar no WhatsApp.'}</p>
+          <h3>{salvando ? 'Registrando…' : erro ? 'Ops!' : 'Pedido recebido!'}</h3>
+          <p>{salvando ? 'Estamos salvando seu pedido' : erro ? erro : 'Enviamos uma cópia no seu WhatsApp 📲'}</p>
         </div>
         <div className="modal-body">
           {!salvando && !erro && (
@@ -603,9 +634,10 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
                 <div className="r"><Truck size={15} /> {info.modo === 'retirada' ? 'Retirada na loja' : `Entrega${info.bairro ? ` · ${info.bairro.nome}` : ''}`}</div>
                 <div className="r"><Calendar size={15} /> {info.dateLabel} · {info.slot}</div>
                 <div className="r"><ShoppingBag size={15} /> {totals.boxes} caixas · {money(totals.total + (info.taxa || 0))}</div>
+                {info.telefone && <div className="r"><MessageCircle size={15} /> Cópia enviada para {info.telefone}</div>}
               </div>
               <a className="btn btn-wa btn-block" href={link} target="_blank" rel="noreferrer" style={{ marginTop: 14 }}>
-                <MessageCircle size={19} /> Abrir conversa no WhatsApp</a>
+                <MessageCircle size={19} /> Falar com a loja no WhatsApp</a>
             </>
           )}
           <button className="btn btn-outline-ink btn-block" style={{ marginTop: 10 }} onClick={onClose}>
@@ -664,7 +696,12 @@ function Footer({ cfg, logo }) {
           </div>
           <div>
             <h5>Onde estamos</h5>
-            <div className="row"><MapPin size={16} />{l.endereco}</div>
+            <div className="row"><MapPin size={16} />
+              {l.mapsUrl
+                ? <a href={l.mapsUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--chalk)', textDecoration: 'underline', textUnderlineOffset: 2 }}>{l.endereco}</a>
+                : l.endereco}
+            </div>
+            {l.mapsUrl && <div className="row"><MapPin size={16} style={{ opacity: 0 }} /><a href={l.mapsUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--yellow)' }}>📍 Ver no mapa / traçar rota</a></div>}
           </div>
           <div>
             <h5>Fale com a gente</h5>

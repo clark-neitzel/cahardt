@@ -3,6 +3,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pedidoService = require('./pedidoService');
+const webhookService = require('./webhookService');
+
+const money2 = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123';
 
@@ -293,7 +296,7 @@ const kitFestaService = {
     },
 
     // ───────── Criação de pedido (cliente logado ou visitante) ─────────
-    async criarPedidoSite({ clienteId, visitante, itens, modo, data, horario, bairroId, enderecoEntrega, cupomCodigo, observacoes }) {
+    async criarPedidoSite({ clienteId, visitante, itens, modo, data, horario, bairroId, enderecoEntrega, cupomCodigo, observacoes, telefone }) {
         if (!Array.isArray(itens) || itens.length === 0) throw new Error('Carrinho vazio.');
 
         // Cliente autenticado ou visitante (cria registro sem cadastro)
@@ -376,12 +379,24 @@ const kitFestaService = {
 
         const total = Math.max(0, subtotal - descontoValor) + taxaEntrega;
 
+        // Telefone confirmado/informado no checkout. Marca "celular alterado" se
+        // diferente do que estava no cadastro do site (admin atualiza no sistema).
+        const telConfirmado = soDigitos(telefone);
+        const telAntigo = soDigitos(auth.telefone);
+        const telefoneFinal = telConfirmado.length >= 10 ? telConfirmado : (auth.telefone || null);
+        const celularAlterado = telConfirmado.length >= 10 && telConfirmado !== telAntigo;
+        // Atualiza o telefone no perfil do site (pré-preenche da próxima vez)
+        if (celularAlterado) {
+            await prisma.kitFestaCliente.update({ where: { id: auth.id }, data: { telefone: telefoneFinal } }).catch(() => {});
+        }
+
         const pedido = await prisma.kitFestaPedido.create({
             data: {
                 kitFestaClienteId: auth.id,
                 nomeCliente: auth.nome,
                 cpfCliente: auth.cpf,
-                telefoneCliente: auth.telefone,
+                telefoneCliente: telefoneFinal,
+                celularAlterado,
                 semCadastro,
                 modo,
                 data: new Date(data),
@@ -400,7 +415,47 @@ const kitFestaService = {
             },
             include: { itens: true, bairro: true },
         });
+
+        // Envia cópia do pedido no WhatsApp do cliente (mesma forma dos outros envios)
+        setTimeout(() => { this._enviarCopiaCliente(pedido.id).catch(e => console.error('[KitFesta] cópia WhatsApp:', e.message)); }, 0);
+
         return pedido;
+    },
+
+    // Monta e envia a cópia do pedido no WhatsApp do cliente via webhook (BotConversa)
+    async _enviarCopiaCliente(pedidoId) {
+        const p = await prisma.kitFestaPedido.findUnique({ where: { id: pedidoId }, include: { itens: true, bairro: true } });
+        if (!p || !p.telefoneCliente) return;
+        const cfg = await this.configPublico();
+        const loja = cfg.loja || {};
+        const dataBR = p.data.toISOString().slice(0, 10).split('-').reverse().join('/');
+        const linhas = p.itens.map(it => `• ${it.quantidade}x ${it.nomeProduto}${it.opcao ? ` (${it.opcao})` : ''}`).join('\n');
+        const partes = [
+            `Olá, *${p.nomeCliente}*! 👋`,
+            '',
+            `Recebemos seu pedido *Kit Festa* #${p.numero} ✅`,
+            '',
+            linhas,
+            '',
+            `${p.modo === 'retirada' ? '🏠 Retirada na loja' : `🚚 Entrega${p.bairro ? ` · ${p.bairro.nome}` : ''}`}`,
+            (p.modo === 'retirada' && loja.endereco) ? `📍 ${loja.endereco}` : null,
+            (p.modo === 'retirada' && loja.mapsUrl) ? `🗺️ Como chegar: ${loja.mapsUrl}` : null,
+            `📅 ${dataBR} às ${p.horario}`,
+            p.cupomCodigo ? `🎟️ Cupom: ${p.cupomCodigo}` : null,
+            `💰 *Total: ${money2(p.total)}*`,
+            '',
+            'Em breve confirmamos tudo por aqui. O pagamento é combinado depois (pix ou na entrega).',
+            `Obrigado! 🙏 — ${loja.nome || 'Hardt'}`,
+        ].filter(x => x !== null);
+        await webhookService.enviarMensagemCustom(p.telefoneCliente, p.nomeCliente, partes.join('\n'));
+    },
+
+    // Exclusão de pedido (apenas teste/admin) — itens caem em cascata
+    async adminExcluirPedido(id) {
+        const kp = await prisma.kitFestaPedido.findUnique({ where: { id } });
+        if (!kp) throw new Error('Pedido não encontrado.');
+        await prisma.kitFestaPedido.delete({ where: { id } });
+        return { ok: true };
     },
 
     async meusPedidos(clienteId) {
@@ -778,6 +833,7 @@ const DEFAULT_CONFIG = {
         endereco: 'Rua XV de Outubro, 170 — Pirabeiraba, Joinville/SC',
         telefone: '(47) 98854-8476',
         whatsapp: '5547988548476',
+        mapsUrl: 'https://maps.app.goo.gl/NyPdgwqKb9mmz1vU6',
     },
     regras: {
         minCaixas: 4,

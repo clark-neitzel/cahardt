@@ -2,7 +2,7 @@
 
 **Rota (painel admin):** `/kit-festa-admin`
 **Site público do cliente:** `/kit-festa` (link enviado por WhatsApp/redes; não exige login do app)
-**Permissão:** `admin` ou `kitFesta`
+**Permissão:** `admin` ou `kitFesta`. Para liberar a outros usuários: **Vendedores → editar → permissões → ligar "Kit Festa"** (a exclusão de pedidos continua só para admin).
 
 O Kit Festa é a linha de salgados de festa (caixas de 25 unidades, mínimo de 4 caixas). O cliente acessa um **link público**, monta o pedido, escolhe data/horário e finaliza pelo WhatsApp. O pedido cai numa **fila** no painel admin; ao ser **aprovado**, vira um pedido normal/especial/bonificação na aba **Pedidos**.
 
@@ -19,8 +19,9 @@ O Kit Festa é a linha de salgados de festa (caixas de 25 unidades, mínimo de 4
    - **Esqueci minha senha** → recebe um código para redefinir.
 2. **Monta o pedido** no catálogo (filtros por categoria; cada caixa = 1 sabor, 25un).
 3. **Carrinho:** aplica cupom; respeita o mínimo de caixas.
-4. **Checkout:** escolhe retirada (sem taxa) ou entrega (seleciona o **bairro**, que mostra a **taxa**), escolhe **data** (calendário liberado pela cozinha) e **horário** (com vagas), e observações.
-5. **Finaliza:** o pedido é salvo e abre o WhatsApp com a mensagem pronta. O pagamento é combinado depois (pix ou na entrega).
+4. **Checkout:** escolhe retirada (mostra o endereço e link "ver no mapa") ou entrega (seleciona o **bairro**, que mostra a **taxa**), escolhe **data** (calendário liberado pela cozinha) e **horário** (com vagas), e observações.
+5. **Confirma o WhatsApp:** o cliente confirma o número (ou informa, se não tiver) — é pra onde a cópia do pedido é enviada.
+6. **Finaliza:** o pedido é salvo e o cliente **recebe uma cópia no WhatsApp** automaticamente (mesmo envio dos outros avisos do app, via BotConversa). Se o número for novo/corrigido, o pedido é marcado como **"celular alterado"** para a equipe atualizar no cadastro. O pagamento é combinado depois (pix ou na entrega).
 
 ---
 
@@ -30,8 +31,10 @@ O Kit Festa é a linha de salgados de festa (caixas de 25 unidades, mínimo de 4
 Fila de pedidos vindos do site. Filtros por status (Aguardando, Sem cadastro, Convertidos, Recusados) e busca por nome/CPF/telefone.
 - Abrir um pedido mostra itens, cliente, modo, data/horário, bairro/taxa, total e observações.
 - **Pedidos "Sem cadastro"** aparecem destacados em vermelho. Antes de aprovar, é preciso **vincular** o pedido a um cliente do app (cadastre no Conta Azul, sincronize, busque e vincule).
+- **Celular alterado:** quando o cliente informa/corrige o número no checkout, o pedido mostra o aviso **"celular alterado"** (laranja) com o novo número — atualize no cadastro do cliente no app/CA.
 - **Aprovar:** escolha o **tipo de pedido** (Normal, Especial ou Bonificação) e o **vendedor**. Ao aprovar, o pedido é **convertido** e passa a aparecer na aba **Pedidos** no fluxo normal.
 - **Recusar:** com motivo opcional.
+- **Excluir** (ícone de lixeira no topo do pedido): apaga o pedido do Kit Festa de vez. **Só administradores** veem/usam (útil para apagar testes). Não apaga o Pedido normal já convertido — só o registro do Kit Festa.
 
 ### 2. Agenda
 Calendário da cozinha. Cada dia tem um status: **Aberto**, **Últimas vagas**, **Esgotado** ou **Fechado** (cores na legenda). Um número no canto mostra quantos pedidos há no dia.
@@ -54,7 +57,7 @@ Cupons de desconto: código, tipo (% ou R$), valor, mínimo de caixas, validade,
 
 ### 6. Configurações
 Tudo que aparece no site, editável sem programador:
-- **Dados da loja** (nome, slogan, endereço, telefone, WhatsApp).
+- **Dados da loja** (nome, slogan, endereço, telefone, WhatsApp) + **upload da logo** ("Trocar logo" — use PNG com fundo transparente) + **Link do mapa (Google Maps)** usado no rodapé, no checkout de retirada e na cópia do WhatsApp.
 - **Regras** (pedido mínimo de caixas).
 - **Página inicial (hero)** (título, subtítulo, kicker).
 - **Como funciona** (4 passos).

@@ -6,7 +6,7 @@ import {
     Box, UserCog, Car, RefreshCw, FileText,
     Settings, DollarSign, Warehouse, TrendingUp,
     Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3, BarChart2,
-    Clock, CalendarOff, ClipboardCheck, Tag
+    Clock, CalendarOff, ClipboardCheck, Tag, PartyPopper
 } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import configService from '../../../services/configService';
@@ -464,6 +464,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         <MenuToggle icon={ClipboardCheck} label="Atendimentos" checked={!!permissoes.Pode_Ver_Atendimentos} onChange={() => toggleBool('Pode_Ver_Atendimentos')} />
                         <MenuToggle icon={Target} label="Leads" checked={!!permissoes.rota?.view} onChange={() => toggleView('rota')} />
                         <MenuToggle icon={Users} label="Clientes" checked={!!permissoes.clientes?.view} onChange={() => toggleView('clientes')} />
+                        <MenuToggle icon={PartyPopper} label="Kit Festa" checked={!!permissoes.kitFesta} onChange={() => toggleBool('kitFesta')} />
 
                         {/* Sub-permissões de edição */}
                         {(permissoes.catalogo?.view || permissoes.pedidos?.view || permissoes.clientes?.view) && (

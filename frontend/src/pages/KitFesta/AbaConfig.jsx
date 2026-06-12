@@ -48,6 +48,7 @@ export default function AbaConfig() {
         <Campo label="Slogan" value={cfg.loja?.slogan || ''} onChange={e => up('loja', { slogan: e.target.value })} />
         <Campo label="Desde" value={cfg.loja?.desde || ''} onChange={e => up('loja', { desde: e.target.value })} />
         <Campo label="Endereço" value={cfg.loja?.endereco || ''} onChange={e => up('loja', { endereco: e.target.value })} />
+        <Campo label="Link do mapa (Google Maps)" value={cfg.loja?.mapsUrl || ''} onChange={e => up('loja', { mapsUrl: e.target.value })} placeholder="https://maps.app.goo.gl/..." />
         <div className="grid grid-cols-2 gap-2">
           <Campo label="Telefone (exibição)" value={cfg.loja?.telefone || ''} onChange={e => up('loja', { telefone: e.target.value })} />
           <Campo label="WhatsApp (só números)" value={cfg.loja?.whatsapp || ''} onChange={e => up('loja', { whatsapp: e.target.value })} />

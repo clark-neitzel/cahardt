@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Loader2, Check, X, AlertTriangle, UserPlus, Package, Calendar, Clock, MapPin, Truck, ExternalLink } from 'lucide-react';
+import { Search, Loader2, Check, X, AlertTriangle, UserPlus, Package, Calendar, Clock, MapPin, Truck, ExternalLink, Trash2, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { kitFestaService } from '../../services/kitFestaService';
 import clienteService from '../../services/clienteService';
 import vendedorService from '../../services/vendedorService';
+import { useAuth } from '../../contexts/AuthContext';
 
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
 const STATUS_FILTROS = [
@@ -27,6 +28,8 @@ const STATUS_LABEL = {
 };
 
 export default function AbaPedidos() {
+  const { user } = useAuth();
+  const isAdmin = !!user?.permissoes?.admin;
   const [lista, setLista] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
@@ -83,19 +86,22 @@ export default function AbaPedidos() {
               {p.status === 'PENDENTE_CADASTRO' && (
                 <div className="mt-2 text-xs text-red-600 flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Cliente sem cadastro no app</div>
               )}
+              {p.celularAlterado && (
+                <div className="mt-1 text-xs text-amber-600 flex items-center gap-1"><Phone className="h-3 w-3" /> Celular alterado — atualizar no cadastro</div>
+              )}
               {p.pedido && <div className="mt-1 text-xs text-emerald-600">→ Pedido {p.pedido.numero ? `#${p.pedido.numero}` : 'criado'}</div>}
             </button>
           ))}
         </div>
       )}
 
-      {aberto && <ModalPedido pedido={aberto} onClose={() => setAberto(null)} onChanged={() => { setAberto(null); carregar(); }} />}
+      {aberto && <ModalPedido pedido={aberto} isAdmin={isAdmin} onClose={() => setAberto(null)} onChanged={() => { setAberto(null); carregar(); }} />}
     </div>
   );
 }
 
 // ── Modal de detalhe + aprovação/conversão ──
-function ModalPedido({ pedido, onClose, onChanged }) {
+function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
   const [vendedores, setVendedores] = useState([]);
   const [tipo, setTipo] = useState('NORMAL');
   const [vendedorId, setVendedorId] = useState('');
@@ -134,6 +140,14 @@ function ModalPedido({ pedido, onClose, onChanged }) {
     finally { setProcessando(false); }
   };
 
+  const excluir = async () => {
+    if (!confirm(`Excluir definitivamente o pedido #${pedido.numero}? Esta ação não pode ser desfeita.`)) return;
+    setProcessando(true);
+    try { await kitFestaService.excluirPedido(pedido.id); toast.success('Pedido excluído'); onChanged(); }
+    catch (e) { toast.error(e.response?.data?.error || 'Erro ao excluir'); }
+    finally { setProcessando(false); }
+  };
+
   const recusar = async () => {
     const motivo = prompt('Motivo da recusa (opcional):');
     if (motivo === null) return;
@@ -153,7 +167,15 @@ function ModalPedido({ pedido, onClose, onChanged }) {
             <h3 className="font-semibold text-gray-800">Pedido #{pedido.numero}</h3>
             <span className={`text-xs px-2 py-0.5 rounded-full ${BADGE[pedido.status]}`}>{STATUS_LABEL[pedido.status]}</span>
           </div>
-          <button onClick={onClose}><X className="h-5 w-5 text-gray-400" /></button>
+          <div className="flex items-center gap-1">
+            {isAdmin && (
+              <button onClick={excluir} disabled={processando} title="Excluir pedido"
+                className="p-1.5 rounded-lg text-gray-300 hover:text-red-600 hover:bg-red-50">
+                <Trash2 className="h-4.5 w-4.5" />
+              </button>
+            )}
+            <button onClick={onClose}><X className="h-5 w-5 text-gray-400" /></button>
+          </div>
         </div>
 
         <div className="p-4 space-y-4">
@@ -161,6 +183,11 @@ function ModalPedido({ pedido, onClose, onChanged }) {
           <div>
             <div className="font-medium text-gray-800">{pedido.nomeCliente}</div>
             <div className="text-sm text-gray-500">CPF {pedido.cpfCliente} · {pedido.telefoneCliente || 'sem telefone'}</div>
+            {pedido.celularAlterado && (
+              <div className="mt-1.5 text-xs bg-amber-50 text-amber-700 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5" /> O cliente informou/corrigiu o celular ({pedido.telefoneCliente}). Atualize no cadastro do app/CA.
+              </div>
+            )}
           </div>
 
           {/* Entrega */}

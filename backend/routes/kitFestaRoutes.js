@@ -79,5 +79,6 @@ router.get('/pedidos', ctrl.adminPedidos);
 router.post('/pedidos/:id/aprovar', ctrl.adminAprovarPedido);
 router.post('/pedidos/:id/recusar', ctrl.adminRecusarPedido);
 router.post('/pedidos/:id/vincular', ctrl.adminVincularCliente);
+router.delete('/pedidos/:id', ctrl.adminExcluirPedido);
 
 module.exports = router;
