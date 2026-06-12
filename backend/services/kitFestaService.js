@@ -140,7 +140,7 @@ const kitFestaService = {
                 },
             });
         }
-        return { token: gerarTokenCliente(auth), cliente: this._perfilPublico(auth) };
+        return { token: gerarTokenCliente(auth), cliente: await this._perfilPublico(auth) };
     },
 
     async login({ cpf: cpfRaw, senha }) {
@@ -150,7 +150,7 @@ const kitFestaService = {
         const ok = await bcrypt.compare(senha, auth.senhaHash);
         if (!ok) throw new Error('Senha incorreta.');
         await prisma.kitFestaCliente.update({ where: { cpf }, data: { ultimoAcesso: new Date() } });
-        return { token: gerarTokenCliente(auth), cliente: this._perfilPublico(auth) };
+        return { token: gerarTokenCliente(auth), cliente: await this._perfilPublico(auth) };
     },
 
     // Gera token de reset (o envio por WhatsApp é feito pela camada de rota/controller)
@@ -179,10 +179,27 @@ const kitFestaService = {
             where: { cpf },
             data: { senhaHash, resetToken: null, resetTokenExp: null },
         });
-        return { token: gerarTokenCliente(auth), cliente: this._perfilPublico(auth) };
+        return { token: gerarTokenCliente(auth), cliente: await this._perfilPublico(auth) };
     },
 
-    _perfilPublico(auth) {
+    async _perfilPublico(auth) {
+        let endereco = null;
+        if (auth.clienteUuid) {
+            const c = await prisma.cliente.findUnique({
+                where: { UUID: auth.clienteUuid },
+                select: { End_Logradouro: true, End_Numero: true, End_Complemento: true, End_Bairro: true, End_Cidade: true, End_CEP: true },
+            }).catch(() => null);
+            if (c && (c.End_Logradouro || c.End_Bairro)) {
+                const completo = [
+                    c.End_Logradouro, c.End_Numero ? `nº ${c.End_Numero}` : null, c.End_Complemento,
+                    c.End_Bairro, c.End_Cidade,
+                ].filter(Boolean).join(', ');
+                endereco = {
+                    logradouro: c.End_Logradouro || '', numero: c.End_Numero || '', complemento: c.End_Complemento || '',
+                    bairro: c.End_Bairro || '', cidade: c.End_Cidade || '', cep: c.End_CEP || '', completo,
+                };
+            }
+        }
         return {
             id: auth.id,
             cpf: auth.cpf,
@@ -193,6 +210,7 @@ const kitFestaService = {
             codigoIndicacao: auth.codigoIndicacao,
             creditoIndicacao: dec(auth.creditoIndicacao),
             temCadastroApp: !!auth.clienteUuid,
+            endereco,
         };
     },
 

@@ -19,7 +19,11 @@ O Kit Festa é a linha de salgados de festa (caixas de 25 unidades, mínimo de 4
    - **Esqueci minha senha** → recebe um código para redefinir.
 2. **Monta o pedido** no catálogo (filtros por categoria; cada caixa = 1 sabor, 25un).
 3. **Carrinho:** aplica cupom; respeita o mínimo de caixas.
-4. **Checkout:** escolhe retirada (mostra o endereço e link "ver no mapa") ou entrega (seleciona o **bairro**, que mostra a **taxa**), escolhe **data** (calendário liberado pela cozinha) e **horário** (com vagas), e observações.
+4. **Checkout (passo a passo — cada etapa aparece após preencher a anterior):**
+   - **Como receber:** retirada (mostra o endereço da loja + link "ver no mapa") ou **entrega**.
+   - **Endereço (entrega):** se o cliente tem endereço no cadastro, ele aparece e o cliente escolhe "entregar neste endereço" ou "outro endereço". Se for outro, ou se não tiver cadastro (obrigatório informar), ele digita o **CEP** → o sistema busca (ViaCEP) e preenche rua + **bairro** (que é selecionado na lista, definindo a **taxa**) → informa **número** e complemento.
+   - **Dia e horário:** calendário liberado pela cozinha + horário com vaga.
+   - **Observações** (opcional).
 5. **Confirma o WhatsApp:** o cliente confirma o número (ou informa, se não tiver) — é pra onde a cópia do pedido é enviada.
 6. **Finaliza:** o pedido é salvo e o cliente **recebe uma cópia no WhatsApp** automaticamente (mesmo envio dos outros avisos do app, via BotConversa). Se o número for novo/corrigido, o pedido é marcado como **"celular alterado"** para a equipe atualizar no cadastro. O pagamento é combinado depois (pix ou na entrega).
 

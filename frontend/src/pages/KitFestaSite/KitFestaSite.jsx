@@ -120,6 +120,7 @@ export default function KitFestaSite() {
       {screen === 'checkout' && (
         <CheckoutScreen cfg={cfg} cart={cart} produtos={produtos} totals={totals} coupon={coupon}
           telefoneAtual={cliente?.telefone || visitante?.telefone || ''}
+          enderecoCadastro={cliente?.endereco}
           onBack={() => setScreen('shop')}
           onFinish={(info) => setConfirm(info)} />
       )}
@@ -437,7 +438,7 @@ function CalendarPicker({ selected, onSelect }) {
 }
 
 /* ---------- Checkout ---------- */
-function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, onBack, onFinish }) {
+function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, enderecoCadastro, onBack, onFinish }) {
   const [modo, setModo] = useState('retirada');
   const [date, setDate] = useState(null);
   const [slot, setSlot] = useState(null);
@@ -445,13 +446,24 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, on
   const [obs, setObs] = useState('');
   const [bairros, setBairros] = useState([]);
   const [bairroId, setBairroId] = useState('');
-  const [endereco, setEndereco] = useState('');
   const maskTel = (v) => v.replace(/\D/g, '').slice(0, 11)
     .replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2').replace(/(\d{4})(\d)/, '$1-$2');
+  const maskCep = (v) => v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d)/, '$1-$2');
   const [telefone, setTelefone] = useState(telefoneAtual ? maskTel(telefoneAtual) : '');
   const telOk = telefone.replace(/\D/g, '').length >= 10;
+  // Endereço de entrega
+  const temEndCadastro = !!enderecoCadastro?.completo;
+  const [usarOutro, setUsarOutro] = useState(false);
+  const [cep, setCep] = useState('');
+  const [logradouro, setLogradouro] = useState('');
+  const [numero, setNumero] = useState('');
+  const [complemento, setComplemento] = useState('');
+  const [cepMsg, setCepMsg] = useState('');
+  const [cepLoading, setCepLoading] = useState(false);
+  const precisaNovoEnd = modo === 'entrega' && (!temEndCadastro || usarOutro);
   const ids = Object.keys(cart).filter(id => cart[id] > 0);
   const prodById = (id) => produtos.find(p => p.id === id);
+  const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 
   useEffect(() => { if (modo === 'entrega') publicApi.bairros().then(setBairros).catch(() => {}); }, [modo]);
   useEffect(() => {
@@ -459,12 +471,42 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, on
     publicApi.slots(date, modo).then(setSlots).catch(() => setSlots([]));
     setSlot(null);
   }, [date, modo]);
+  // Ao usar o endereço do cadastro, tenta casar o bairro com a lista (define a taxa)
+  useEffect(() => {
+    if (modo === 'entrega' && temEndCadastro && !usarOutro && enderecoCadastro?.bairro && bairros.length) {
+      const m = bairros.find(b => norm(b.nome) === norm(enderecoCadastro.bairro));
+      setBairroId(m ? m.id : '');
+    }
+  }, [modo, usarOutro, bairros, temEndCadastro]);
+
+  const buscarCep = async () => {
+    const c = cep.replace(/\D/g, '');
+    if (c.length !== 8) { setCepMsg('CEP inválido.'); return; }
+    setCepLoading(true); setCepMsg('');
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${c}/json/`).then(x => x.json());
+      if (r.erro) { setCepMsg('CEP não encontrado.'); return; }
+      if (r.logradouro) setLogradouro(r.logradouro);
+      const m = bairros.find(b => norm(b.nome) === norm(r.bairro));
+      if (m) { setBairroId(m.id); setCepMsg(''); }
+      else { setBairroId(''); setCepMsg(`Bairro "${r.bairro || '—'}" ainda não está na lista de entrega — selecione abaixo se atendermos.`); }
+    } catch { setCepMsg('Erro ao buscar o CEP.'); }
+    finally { setCepLoading(false); }
+  };
 
   const dateLabel = date ? date.split('-').reverse().join('/') : null;
   const bairro = bairros.find(b => b.id === bairroId);
   const taxa = modo === 'entrega' ? Number(bairro?.taxa || 0) : 0;
   const totalFinal = totals.total + taxa;
-  const ready = date && slot && telOk && (modo === 'retirada' || bairroId);
+  // Endereço final (texto) e validação
+  const enderecoFinal = modo !== 'entrega' ? ''
+    : precisaNovoEnd
+      ? `${logradouro}, nº ${numero}${complemento ? `, ${complemento}` : ''}${cep ? ` — CEP ${cep}` : ''}`
+      : (enderecoCadastro?.completo || '');
+  const enderecoOk = modo !== 'entrega' || (!!bairroId && (precisaNovoEnd ? (logradouro.trim() && numero.trim()) : !!enderecoCadastro?.completo));
+  // Etapas progressivas: cada bloco só aparece quando o anterior está completo
+  const modoOk = modo === 'retirada' || enderecoOk;
+  const ready = date && slot && telOk && modoOk;
 
   return (
     <div className="tex-paper" style={{ minHeight: '100vh' }}>
@@ -489,12 +531,52 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, on
             {modo === 'entrega' && (
               <div style={{ marginTop: 14 }}>
                 <p className="sub" style={{ marginTop: 0 }}>{cfg.freteTexto}</p>
+
+                {/* Endereço do cadastro (se houver) */}
+                {temEndCadastro && (
+                  <div className="sum-meta" style={{ marginBottom: 10 }}>
+                    <div className="r"><MapPin size={15} /> {enderecoCadastro.completo}</div>
+                    <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, marginTop: 6, cursor: 'pointer' }}>
+                      <input type="radio" checked={!usarOutro} onChange={() => setUsarOutro(false)} /> Entregar neste endereço
+                    </label>
+                    <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, cursor: 'pointer' }}>
+                      <input type="radio" checked={usarOutro} onChange={() => setUsarOutro(true)} /> Entregar em outro endereço
+                    </label>
+                  </div>
+                )}
+
+                {/* Novo endereço via CEP (visitante ou "outro endereço") */}
+                {precisaNovoEnd && (
+                  <div style={{ display: 'grid', gap: 8, marginBottom: 10 }}>
+                    {!temEndCadastro && <p style={{ fontSize: 12, color: '#8a7d63', margin: 0 }}>Informe o endereço de entrega:</p>}
+                    <div className="coupon" style={{ margin: 0 }}>
+                      <div className="ip" style={{ flex: 1, background: '#fff' }}>
+                        <input inputMode="numeric" placeholder="CEP" value={cep}
+                          onChange={e => setCep(maskCep(e.target.value))} onBlur={() => cep.replace(/\D/g, '').length === 8 && buscarCep()} />
+                      </div>
+                      <button className="btn btn-outline-ink btn-sm" onClick={buscarCep} disabled={cepLoading}>
+                        {cepLoading ? '...' : 'Buscar'}
+                      </button>
+                    </div>
+                    {cepMsg && <p style={{ fontSize: 11, color: '#b3261e', margin: 0 }}>{cepMsg}</p>}
+                    <div className="ip" style={{ background: '#fff' }}>
+                      <input placeholder="Rua / logradouro" value={logradouro} onChange={e => setLogradouro(e.target.value)} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 8 }}>
+                      <div className="ip" style={{ background: '#fff' }}><input inputMode="numeric" placeholder="Número" value={numero} onChange={e => setNumero(e.target.value)} /></div>
+                      <div className="ip" style={{ background: '#fff' }}><input placeholder="Complemento" value={complemento} onChange={e => setComplemento(e.target.value)} /></div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Bairro — define a taxa (auto pelo CEP, editável) */}
+                <label className="field" style={{ display: 'block', marginBottom: 4 }}>
+                  <span style={{ fontFamily: 'var(--f-display)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.72rem', color: '#6a5f4c' }}>Bairro (define a taxa)</span>
+                </label>
                 <select className="bairro-sel" value={bairroId} onChange={e => setBairroId(e.target.value)}>
                   <option value="">Selecione o bairro…</option>
                   {bairros.map(b => <option key={b.id} value={b.id}>{b.nome} — {Number(b.taxa) > 0 ? money(b.taxa) : 'grátis'}</option>)}
                 </select>
-                <textarea className="obs" style={{ marginTop: 10, minHeight: 60 }} placeholder="Endereço de entrega (rua, número, complemento)"
-                  value={endereco} onChange={e => setEndereco(e.target.value)} />
               </div>
             )}
             {modo === 'retirada' && (
@@ -509,31 +591,35 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, on
             )}
           </div>
 
-          <div className="co-block">
-            <h3><Calendar size={20} /> Escolha o dia</h3>
-            <p className="sub">A cozinha libera as datas conforme a produção.</p>
-            <CalendarPicker selected={date} onSelect={(k) => { setDate(k); setSlot(null); }} />
-            {date && (
-              <>
-                <h3 style={{ marginTop: 22, fontSize: 16 }}><Clock size={18} /> Horário ({modo})</h3>
-                {slots.length === 0 ? <p className="sub">Sem horários para esta data neste modo.</p> : (
-                  <div className="slots" style={{ marginTop: 8 }}>
-                    {slots.map(s => (
-                      <button key={s.hora} className={'slot' + (slot === s.hora ? ' on' : '')} disabled={s.full} onClick={() => setSlot(s.hora)}>
-                        {s.hora}{s.full && <small>esgotado</small>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+          {modoOk && (
+            <div className="co-block">
+              <h3><Calendar size={20} /> Escolha o dia</h3>
+              <p className="sub">A cozinha libera as datas conforme a produção.</p>
+              <CalendarPicker selected={date} onSelect={(k) => { setDate(k); setSlot(null); }} />
+              {date && (
+                <>
+                  <h3 style={{ marginTop: 22, fontSize: 16 }}><Clock size={18} /> Horário ({modo})</h3>
+                  {slots.length === 0 ? <p className="sub">Sem horários para esta data neste modo.</p> : (
+                    <div className="slots" style={{ marginTop: 8 }}>
+                      {slots.map(s => (
+                        <button key={s.hora} className={'slot' + (slot === s.hora ? ' on' : '')} disabled={s.full} onClick={() => setSlot(s.hora)}>
+                          {s.hora}{s.full && <small>esgotado</small>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
-          <div className="co-block">
-            <h3><Edit3 size={19} /> Observações</h3>
-            <p className="sub">Alguma preferência? Ex.: empadinha de palmito, ponto do salgado…</p>
-            <textarea className="obs" placeholder="Escreva aqui (opcional)" value={obs} onChange={e => setObs(e.target.value)} />
-          </div>
+          {slot && (
+            <div className="co-block">
+              <h3><Edit3 size={19} /> Observações</h3>
+              <p className="sub">Alguma preferência? Ex.: empadinha de palmito, ponto do salgado…</p>
+              <textarea className="obs" placeholder="Escreva aqui (opcional)" value={obs} onChange={e => setObs(e.target.value)} />
+            </div>
+          )}
         </div>
 
         <div>
@@ -554,23 +640,25 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, on
               <div className="r"><Clock size={15} /> {slot || 'Selecione um horário'}</div>
             </div>
 
-            {/* WhatsApp do cliente — confirma ou pede o número */}
-            <div style={{ marginTop: 14 }}>
-              <label className="field" style={{ display: 'block', marginBottom: 4 }}>
-                <span style={{ fontFamily: 'var(--f-display)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.72rem', color: '#6a5f4c' }}>
-                  <MessageCircle size={13} style={{ verticalAlign: '-2px' }} /> Seu WhatsApp {telefoneAtual ? '(confirme)' : ''}
-                </span>
-              </label>
-              <div className="ip" style={{ background: '#fff' }}>
-                <input inputMode="numeric" placeholder="(47) 99999-0000" value={telefone}
-                  onChange={e => setTelefone(maskTel(e.target.value))} />
+            {/* WhatsApp do cliente — só aparece na última etapa (após escolher horário) */}
+            {slot && (
+              <div style={{ marginTop: 14 }}>
+                <label className="field" style={{ display: 'block', marginBottom: 4 }}>
+                  <span style={{ fontFamily: 'var(--f-display)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.72rem', color: '#6a5f4c' }}>
+                    <MessageCircle size={13} style={{ verticalAlign: '-2px' }} /> Seu WhatsApp {telefoneAtual ? '(confirme)' : ''}
+                  </span>
+                </label>
+                <div className="ip" style={{ background: '#fff' }}>
+                  <input inputMode="numeric" placeholder="(47) 99999-0000" value={telefone}
+                    onChange={e => setTelefone(maskTel(e.target.value))} />
+                </div>
+                <p style={{ fontSize: 11, color: '#8a7d63', marginTop: 4 }}>Mandamos uma cópia do pedido nesse número.</p>
               </div>
-              <p style={{ fontSize: 11, color: '#8a7d63', marginTop: 4 }}>Mandamos uma cópia do pedido nesse número.</p>
-            </div>
+            )}
 
             <button className="btn btn-wa btn-block" disabled={!ready} style={{ marginTop: 12 }}
-              onClick={() => onFinish({ modo, date, dateLabel, slot, obs, bairroId, bairro, taxa, endereco, telefone })}>
-              <MessageCircle size={19} /> {!telOk ? 'Confirme seu WhatsApp' : (ready ? 'Finalizar pedido' : 'Complete os dados')}
+              onClick={() => onFinish({ modo, date, dateLabel, slot, obs, bairroId, bairro, taxa, endereco: enderecoFinal, telefone })}>
+              <MessageCircle size={19} /> {!modoOk ? (modo === 'entrega' ? 'Complete o endereço' : '') : !date ? 'Escolha o dia' : !slot ? 'Escolha o horário' : !telOk ? 'Confirme seu WhatsApp' : 'Finalizar pedido'}
             </button>
             <p style={{ fontSize: 12, color: '#8a7d63', textAlign: 'center', marginTop: 10 }}>
               O pagamento é combinado depois (pix ou na entrega).</p>
