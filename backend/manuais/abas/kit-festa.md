@@ -23,6 +23,8 @@ O Kit Festa é a linha de salgados de festa (caixas de 25 unidades, mínimo de 4
 5. **Confirma o WhatsApp:** o cliente confirma o número (ou informa, se não tiver) — é pra onde a cópia do pedido é enviada.
 6. **Finaliza:** o pedido é salvo e o cliente **recebe uma cópia no WhatsApp** automaticamente (mesmo envio dos outros avisos do app, via BotConversa). Se o número for novo/corrigido, o pedido é marcado como **"celular alterado"** para a equipe atualizar no cadastro. O pagamento é combinado depois (pix ou na entrega).
 
+No site o cliente logado também vê a seção **"Indique e ganhe"** com o código de indicação dele (quando o programa de indicação está ativo nas Configurações).
+
 ---
 
 ## Painel admin — sub-abas
