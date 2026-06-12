@@ -72,7 +72,7 @@ export default function KitFestaSite() {
 
   if (!cfg) return <div className="kf"><div className="login tex-board"><Loader2 className="animate-spin" color="#fff" /></div></div>;
 
-  const goCatalog = () => { const el = document.getElementById('catalogo'); if (el) window.scrollTo({ top: el.offsetTop - 10, behavior: 'smooth' }); };
+  const goCatalog = () => { document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
 
   return (
     <div className="kf">
@@ -104,6 +104,9 @@ export default function KitFestaSite() {
               </div>
             </Section>
           )}
+          {cfg.indicacao?.ativo && cliente?.codigoIndicacao && (
+            <Referral code={cliente.codigoIndicacao} credito={cfg.indicacao?.credito} />
+          )}
           <Footer cfg={cfg} logo={siteLogo} />
 
           {totals.boxes > 0 && (
@@ -123,7 +126,7 @@ export default function KitFestaSite() {
       {cartOpen && (
         <CartDrawer cart={cart} produtos={produtos} totals={totals} coupon={coupon} setCoupon={setCoupon} minCaixas={minCaixas}
           onClose={() => setCartOpen(false)} onAdd={addItem} onRemove={removeItem}
-          onCheckout={() => { setCartOpen(false); setScreen('checkout'); window.scrollTo({ top: 0 }); }} />
+          onCheckout={() => { setCartOpen(false); setScreen('checkout'); document.querySelector('.kf')?.scrollTo({ top: 0 }); }} />
       )}
 
       {confirm && (
@@ -141,7 +144,7 @@ function Header({ cfg, logo, cartCount, onCart, onLogout, nome }) {
     <header className="hd tex-board">
       <div className="sawtooth" />
       <div className="wrap hd-bar">
-        <div className="hd-logo" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+        <div className="hd-logo" onClick={() => document.querySelector('.kf')?.scrollTo({ top: 0, behavior: 'smooth' })}>
           <img src={logo || LOGO} alt="Hardt" />
           <div><div className="nm">{cfg.loja?.nome?.split(' ')[0] || 'Hardt'}</div><div className="sb">Doces &amp; Salgados</div></div>
         </div>
@@ -611,6 +614,37 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
         </div>
       </div>
     </div>
+  );
+}
+
+/* ---------- Indique e ganhe ---------- */
+function Referral({ code, credito }) {
+  const [copied, setCopied] = useState(false);
+  const c = credito || 20;
+  const copy = () => { try { navigator.clipboard.writeText(code); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
+  return (
+    <section className="sec tex-board">
+      <div className="wrap">
+        <div className="ref">
+          <div>
+            <span className="kicker" style={{ color: 'var(--green-dd)' }}>Indique &amp; ganhe</span>
+            <h2>Indicou, os dois ganham</h2>
+            <p>Compartilhe seu código. Seu amigo ganha <b>R${c} OFF</b> na primeira compra e você ganha <b>R${c} de crédito</b> quando ele fizer o pedido.</p>
+            <div className="ref-code">
+              <span className="code">{code}</span>
+              <button className="btn btn-green btn-sm" onClick={copy}>
+                {copied ? <><Check size={16} /> Copiado!</> : 'Copiar código'}
+              </button>
+            </div>
+          </div>
+          <div className="ref-steps">
+            <div className="ref-step"><span className="n">1</span><div><b>Compartilhe</b><p>Mande seu código pra família, amigos ou no grupo da empresa.</p></div></div>
+            <div className="ref-step"><span className="n">2</span><div><b>Seu amigo pede</b><p>Ele usa o código no carrinho e ganha desconto na hora.</p></div></div>
+            <div className="ref-step"><span className="n">3</span><div><b>Vocês ganham</b><p>O crédito cai na sua conta pra usar no próximo kit.</p></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
