@@ -40,6 +40,11 @@ export const kitFestaService = {
     // Config do site
     getConfig: () => api.get('/kitfesta/config').then(r => r.data),
     setConfig: (chave, valor) => api.put(`/kitfesta/config/${chave}`, { valor }).then(r => r.data),
+    uploadLogo: (file) => {
+        const fd = new FormData();
+        fd.append('logo', file);
+        return api.post('/kitfesta/logo', fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data);
+    },
 
     // Pedidos (fila)
     pedidos: (params) => api.get('/kitfesta/pedidos', { params }).then(r => r.data),

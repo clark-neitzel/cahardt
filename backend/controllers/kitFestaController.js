@@ -175,6 +175,14 @@ const kitFestaController = {
         try { res.json(await svc.adminSetConfig(req.params.chave, req.body.valor)); }
         catch (e) { erro(res, e, 'adminSetConfig'); }
     },
+    adminUploadLogo: async (req, res) => {
+        try {
+            if (!req.file) return res.status(400).json({ error: 'Nenhuma imagem enviada.' });
+            const url = `/uploads/kitfesta/${req.file.filename}`;
+            await svc.adminSetConfig('logoUrl', url);
+            res.json({ logoUrl: url });
+        } catch (e) { erro(res, e, 'adminUploadLogo'); }
+    },
     // Pedidos
     adminPedidos: async (req, res) => {
         try { res.json(await svc.adminListarPedidos({ status: req.query.status, busca: req.query.busca, data: req.query.data })); }

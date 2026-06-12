@@ -29,10 +29,13 @@ export default function KitFestaSite() {
 
   // boot: tenta restaurar sessão
   useEffect(() => {
+    publicApi.config().then(setCfg).catch(() => {}); // carrega cedo p/ logo no login
     const t = getToken();
     const restore = t ? publicApi.perfil().then(setCliente).catch(() => setToken(null)) : Promise.resolve();
     restore.finally(() => setBooting(false));
   }, []);
+
+  const siteLogo = (cfg && cfg.logoUrl) ? imgUrl(cfg.logoUrl) : LOGO;
 
   // carrega dados do site quando entra (cliente ou visitante)
   const logado = cliente || visitante;
@@ -62,7 +65,7 @@ export default function KitFestaSite() {
   if (booting) return <div className="kf"><div className="login tex-board"><Loader2 className="animate-spin" color="#fff" /></div></div>;
 
   if (!logado) {
-    return <div className="kf"><Login logo={LOGO}
+    return <div className="kf"><Login logo={siteLogo}
       onLogin={(c) => setCliente(c)}
       onVisitante={(v) => setVisitante(v)} /></div>;
   }
@@ -75,7 +78,7 @@ export default function KitFestaSite() {
     <div className="kf">
       {screen === 'shop' && (
         <>
-          <Header cfg={cfg} cartCount={totals.boxes} onCart={() => setCartOpen(true)} onLogout={logout}
+          <Header cfg={cfg} logo={siteLogo} cartCount={totals.boxes} onCart={() => setCartOpen(true)} onLogout={logout}
             nome={cliente?.nome || visitante?.nome} />
           <Hero cfg={cfg} onCatalog={goCatalog} />
           <HowItWorks cfg={cfg} />
@@ -101,7 +104,7 @@ export default function KitFestaSite() {
               </div>
             </Section>
           )}
-          <Footer cfg={cfg} />
+          <Footer cfg={cfg} logo={siteLogo} />
 
           {totals.boxes > 0 && (
             <button className="btn btn-yellow fab-cart" onClick={() => setCartOpen(true)}>
@@ -133,13 +136,13 @@ export default function KitFestaSite() {
 }
 
 /* ---------- Header ---------- */
-function Header({ cfg, cartCount, onCart, onLogout, nome }) {
+function Header({ cfg, logo, cartCount, onCart, onLogout, nome }) {
   return (
     <header className="hd tex-board">
       <div className="sawtooth" />
       <div className="wrap hd-bar">
         <div className="hd-logo" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <img src={LOGO} alt="Hardt" />
+          <img src={logo || LOGO} alt="Hardt" />
           <div><div className="nm">{cfg.loja?.nome?.split(' ')[0] || 'Hardt'}</div><div className="sb">Doces &amp; Salgados</div></div>
         </div>
         <div className="hd-spacer" />
@@ -612,7 +615,7 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
 }
 
 /* ---------- Footer ---------- */
-function Footer({ cfg }) {
+function Footer({ cfg, logo }) {
   const l = cfg.loja || {};
   return (
     <footer className="ft tex-board">
@@ -620,7 +623,7 @@ function Footer({ cfg }) {
         <div className="ft-grid">
           <div>
             <div className="hd-logo" style={{ marginBottom: 12 }}>
-              <img src={LOGO} alt="Hardt" />
+              <img src={logo || LOGO} alt="Hardt" />
               <div><div className="nm">{l.nome?.split(' ')[0] || 'Hardt'}</div><div className="sb">Doces &amp; Salgados</div></div>
             </div>
             <p style={{ fontSize: '.9rem', lineHeight: 1.5, maxWidth: '34ch' }}>{l.slogan} · {l.desde}.</p>

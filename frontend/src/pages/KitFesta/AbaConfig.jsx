@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { Loader2, Save, Store, Megaphone, ListChecks, Gift, Truck, Star, Plus, Trash2 } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Loader2, Save, Store, Megaphone, ListChecks, Gift, Truck, Star, Plus, Trash2, Image as ImageIcon, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { kitFestaService } from '../../services/kitFestaService';
+import { API_URL } from '../../services/api';
+
+const imgUrl = (u) => !u ? null : (u.startsWith('http') ? u : `${API_URL}${u}`);
 
 const Campo = ({ label, ...props }) => (
   <div>
@@ -40,6 +43,7 @@ export default function AbaConfig() {
     <div className="grid lg:grid-cols-2 gap-4">
       {/* Loja */}
       <Secao titulo="Dados da loja" icon={Store} onSave={() => salvarSecao('loja', cfg.loja)} saving={salvando === 'loja'}>
+        <LogoUploader logoUrl={cfg.logoUrl} onChanged={(url) => setCfg(c => ({ ...c, logoUrl: url }))} />
         <Campo label="Nome" value={cfg.loja?.nome || ''} onChange={e => up('loja', { nome: e.target.value })} />
         <Campo label="Slogan" value={cfg.loja?.slogan || ''} onChange={e => up('loja', { slogan: e.target.value })} />
         <Campo label="Desde" value={cfg.loja?.desde || ''} onChange={e => up('loja', { desde: e.target.value })} />
@@ -101,6 +105,45 @@ export default function AbaConfig() {
       {/* Avaliações */}
       <div className="lg:col-span-2">
         <Avaliacoes lista={avaliacoes} onChanged={carregar} />
+      </div>
+    </div>
+  );
+}
+
+function LogoUploader({ logoUrl, onChanged }) {
+  const inputRef = useRef(null);
+  const [enviando, setEnviando] = useState(false);
+
+  const escolher = () => inputRef.current?.click();
+  const onFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) return toast.error('Imagem muito grande (máx 3MB)');
+    setEnviando(true);
+    try {
+      const { logoUrl: url } = await kitFestaService.uploadLogo(file);
+      onChanged(url);
+      toast.success('Logo atualizada');
+    } catch (err) { toast.error(err.response?.data?.error || 'Erro ao enviar logo'); }
+    finally { setEnviando(false); if (inputRef.current) inputRef.current.value = ''; }
+  };
+
+  return (
+    <div>
+      <label className="text-xs text-gray-500">Logo do site</label>
+      <div className="flex items-center gap-3 mt-1">
+        <div className="w-16 h-16 rounded-lg bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
+          {imgUrl(logoUrl) ? <img src={imgUrl(logoUrl)} alt="logo" className="w-full h-full object-contain" />
+            : <ImageIcon className="h-5 w-5 text-gray-500" />}
+        </div>
+        <div>
+          <button type="button" onClick={escolher} disabled={enviando}
+            className="text-xs px-3 py-2 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1.5 disabled:opacity-50">
+            {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Trocar logo
+          </button>
+          <p className="text-[11px] text-gray-400 mt-1">PNG com fundo transparente · máx 3MB</p>
+        </div>
+        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
       </div>
     </div>
   );
