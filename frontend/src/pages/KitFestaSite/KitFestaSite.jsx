@@ -80,19 +80,22 @@ export default function KitFestaSite() {
           <Hero cfg={cfg} onCatalog={goCatalog} />
           <HowItWorks cfg={cfg} />
           {produtos.some(p => p.destaque) && (
-            <Section bg="tex-paper" titulo="Mais pedidos" sub="Os campeões de venda das nossas festas">
+            <Section titulo="Mais pedidos" sub="Os campeões de venda das nossas festas">
               <ProdGrid produtos={produtos.filter(p => p.destaque)} qtyOf={qtyOf} onAdd={addItem} onRemove={removeItem} />
             </Section>
           )}
           <Catalog produtos={produtos} categorias={categorias} qtyOf={qtyOf} onAdd={addItem} onRemove={removeItem} />
           {avaliacoes.length > 0 && (
-            <Section bg="tex-paper" titulo="O que dizem nossos clientes">
+            <Section board titulo="O que dizem nossos clientes" sub="Quem fez festa com a gente conta como foi">
               <div className="rev-grid">
                 {avaliacoes.map(a => (
                   <div className="rev" key={a.id}>
-                    <div className="stars">{'★'.repeat(a.estrelas)}{'☆'.repeat(5 - a.estrelas)}</div>
-                    <p className="txt">"{a.texto}"</p>
-                    <div className="who"><b>{a.nome}</b>{a.evento ? ` · ${a.evento}` : ''}{a.dataLabel ? ` · ${a.dataLabel}` : ''}</div>
+                    <div style={{ color: 'var(--yellow)', fontSize: '.95rem' }}>{'★'.repeat(a.estrelas)}{'☆'.repeat(5 - a.estrelas)}</div>
+                    <p className="q">"{a.texto}"</p>
+                    <div className="who">
+                      <div className="av">{(a.nome || '?')[0]}</div>
+                      <div><b>{a.nome}</b><span>{[a.evento, a.dataLabel].filter(Boolean).join(' · ')}</span></div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -155,24 +158,28 @@ function Header({ cfg, cartCount, onCart, onLogout, nome }) {
 /* ---------- Hero ---------- */
 function Hero({ cfg, onCatalog }) {
   const h = cfg.hero || {};
+  const titulo = h.titulo || '';
+  const naIdx = titulo.toLowerCase().indexOf(' na ');
+  const tituloA = naIdx >= 0 ? titulo.slice(0, naIdx) : titulo;
+  const tituloB = naIdx >= 0 ? titulo.slice(naIdx + 1) : '';
   return (
     <section className="hero tex-board">
       <div className="wrap hero-grid">
-        <div>
+        <div className="rise">
           <span className="kicker">{h.kicker} · {cfg.loja?.desde}</span>
-          <h1>{h.titulo?.split(' na ')[0] || h.titulo}<span className="y">{h.titulo?.includes(' na ') ? 'na ' + h.titulo.split(' na ')[1] : ''}</span></h1>
+          <h1>{tituloA}{tituloB && <span className="y">{tituloB}</span>}</h1>
           <p className="lead">{h.subtitulo}</p>
           <div className="hero-cta">
             <button className="btn btn-yellow" onClick={onCatalog}><ShoppingBag size={18} /> Montar meu pedido</button>
             <a className="btn btn-ghost" href={`https://wa.me/${cfg.loja?.whatsapp}`} target="_blank" rel="noreferrer"><MessageCircle size={18} /> WhatsApp</a>
           </div>
           <div className="hero-trust">
-            <div><b>+18 anos</b><span>fazendo festa</span></div>
-            <div><b>25un</b><span>por caixa</span></div>
-            <div><b>mín. {cfg.regras?.minCaixas || 4}</b><span>caixas</span></div>
+            <div className="t"><b>+18 anos</b><span>fazendo festa em Joinville</span></div>
+            <div className="t"><b>25un</b><span>por caixa</span></div>
+            <div className="t"><b>mín. {cfg.regras?.minCaixas || 4}</b><span>caixas por pedido</span></div>
           </div>
         </div>
-        <div className="hero-figure">
+        <div className="hero-figure rise">
           <div className="ph"><img src={BOX} alt="Caixa de salgados Hardt" /></div>
           <div className="hero-badge"><b>25</b><span>salgados / caixa</span></div>
         </div>
@@ -181,17 +188,22 @@ function Hero({ cfg, onCatalog }) {
   );
 }
 
-/* ---------- Como funciona ---------- */
+/* ---------- Como funciona (faixa verde) ---------- */
 function HowItWorks({ cfg }) {
   const steps = cfg.comoFunciona || [];
   const icons = [User, ShoppingBag, Calendar, MessageCircle];
   return (
-    <section className="how section">
+    <section className="tex-green how">
       <div className="wrap">
         <div className="how-grid">
           {steps.map((s, i) => {
             const Ic = icons[i] || Sparkles;
-            return <div className="how-step" key={i}><div className="ic"><Ic size={22} /></div><h3>{s.titulo}</h3><p>{s.desc}</p></div>;
+            return (
+              <div className="how-step" key={i}>
+                <div className="nm"><Ic size={20} /></div>
+                <div><h4>{s.titulo}</h4><p>{s.desc}</p></div>
+              </div>
+            );
           })}
         </div>
       </div>
@@ -200,11 +212,13 @@ function HowItWorks({ cfg }) {
 }
 
 /* ---------- Section wrapper ---------- */
-function Section({ titulo, sub, children, bg = 'tex-paper' }) {
+function Section({ titulo, sub, children, board = false }) {
   return (
-    <section className={`section ${bg}`}>
+    <section className={`sec ${board ? 'tex-board' : 'tex-paper'}`}>
       <div className="wrap">
-        <div className="section-title"><h2>{titulo}</h2>{sub && <p>{sub}</p>}</div>
+        <div className={`sec-head ${board ? 'on-board' : 'on-paper'}`}>
+          <div><h2>{titulo}</h2>{sub && <p className="lead">{sub}</p>}</div>
+        </div>
         {children}
       </div>
     </section>
@@ -216,14 +230,16 @@ function Catalog({ produtos, categorias, qtyOf, onAdd, onRemove }) {
   const [filtro, setFiltro] = useState('todos');
   const lista = filtro === 'todos' ? produtos : produtos.filter(p => p.categoria === filtro);
   return (
-    <section className="section tex-paper" id="catalogo">
+    <section className="sec tex-paper" id="catalogo">
       <div className="wrap">
-        <div className="section-title"><h2>Nosso cardápio</h2><p>Cada caixa = 1 sabor, 25 unidades. Combine à vontade!</p></div>
-        <div className="filters">
-          <button className={filtro === 'todos' ? 'on' : ''} onClick={() => setFiltro('todos')}>Todos</button>
-          {categorias.map(c => (
-            <button key={c.id} className={filtro === c.slug ? 'on' : ''} onClick={() => setFiltro(c.slug)}>{c.nome}</button>
-          ))}
+        <div className="sec-head on-paper">
+          <div><h2>Nosso cardápio</h2><p className="lead">Cada caixa = 1 sabor, 25 unidades. Combine os sabores à vontade!</p></div>
+          <div className="filters">
+            <button className={`chip${filtro === 'todos' ? ' active' : ''}`} onClick={() => setFiltro('todos')}>Todos</button>
+            {categorias.map(c => (
+              <button key={c.id} className={`chip${filtro === c.slug ? ' active' : ''}`} onClick={() => setFiltro(c.slug)}>{c.nome}</button>
+            ))}
+          </div>
         </div>
         <ProdGrid produtos={lista} qtyOf={qtyOf} onAdd={onAdd} onRemove={onRemove} />
       </div>
@@ -233,26 +249,28 @@ function Catalog({ produtos, categorias, qtyOf, onAdd, onRemove }) {
 
 function ProdGrid({ produtos, qtyOf, onAdd, onRemove }) {
   return (
-    <div className="prod-grid">
+    <div className="grid-prod">
       {produtos.map(p => {
         const q = qtyOf(p.id);
         return (
-          <div className="pcard" key={p.id}>
-            <div className="img">
-              {p.tags?.[0] && <span className="tag">{p.tags[0]}</span>}
-              {imgUrl(p.imagem) && <img src={imgUrl(p.imagem)} alt={p.nome} loading="lazy" />}
+          <div className="card" key={p.id}>
+            <div className="card-ph tex-paper">
+              {p.tags?.length > 0 && (
+                <div className="tags">{p.tags.slice(0, 1).map(t => <span className="tag tag-yellow" key={t}>{t}</span>)}</div>
+              )}
+              {imgUrl(p.imagem) && <img src={imgUrl(p.imagem)} alt={p.nome} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
             </div>
-            <div className="body">
+            <div className="card-body">
               <h3>{p.nome}</h3>
-              <p className="desc">{p.descricao}</p>
-              <div className="price">{money(p.preco)} <small>/ {p.unidades}un</small></div>
-              <div className="add">
+              <p className="d">{p.descricao}</p>
+              <div className="card-foot">
+                <div className="price"><b>{money(p.preco)}</b><span>{p.unidades} unidades</span></div>
                 {q === 0 ? (
-                  <button className="btn btn-green btn-block btn-sm" onClick={() => onAdd(p.id)}><Plus size={15} /> Adicionar</button>
+                  <button className="add-btn" onClick={() => onAdd(p.id)} aria-label="Adicionar"><Plus size={18} /></button>
                 ) : (
-                  <div className="stepper" style={{ display: 'flex', width: '100%' }}>
+                  <div className="stepper">
                     <button onClick={() => onRemove(p.id)}><Minus size={15} /></button>
-                    <span className="q" style={{ flex: 1 }}>{q} caixa(s)</span>
+                    <span className="q">{q}</span>
                     <button onClick={() => onAdd(p.id)}><Plus size={15} /></button>
                   </div>
                 )}
@@ -261,7 +279,7 @@ function ProdGrid({ produtos, qtyOf, onAdd, onRemove }) {
           </div>
         );
       })}
-      {produtos.length === 0 && <p style={{ color: 'var(--muted)', gridColumn: '1/-1', textAlign: 'center' }}>Nenhum produto nesta categoria.</p>}
+      {produtos.length === 0 && <p style={{ color: '#8a7d63', gridColumn: '1/-1', textAlign: 'center' }}>Nenhum produto nesta categoria.</p>}
     </div>
   );
 }
@@ -291,19 +309,23 @@ function CartDrawer({ cart, produtos, onClose, onAdd, onRemove, coupon, setCoupo
         </div>
         <div className="drawer-body">
           {ids.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px 0' }}>
-              <ShoppingBag size={48} style={{ opacity: .3 }} /><p>Seu carrinho está vazio.</p>
+            <div className="cart-empty">
+              <ShoppingBag size={48} /><p>Seu carrinho está vazio.<br />Escolha seus sabores favoritos!</p>
             </div>
           ) : (
             <>
               {ids.map(id => { const p = prodById(id); if (!p) return null; return (
                 <div className="ci" key={id}>
-                  <div className="thumb">{imgUrl(p.imagem) && <img src={imgUrl(p.imagem)} alt="" />}</div>
+                  <div className="thumb tex-paper" style={{ overflow: 'hidden' }}>
+                    {imgUrl(p.imagem) && <img src={imgUrl(p.imagem)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  </div>
                   <div className="info"><h4>{p.nome}</h4><span>{money(p.preco)} · {p.unidades}un</span></div>
-                  <div className="stepper">
-                    <button onClick={() => onRemove(id)}><Minus size={15} /></button>
-                    <span className="q">{cart[id]}</span>
-                    <button onClick={() => onAdd(id)}><Plus size={15} /></button>
+                  <div className="right">
+                    <div className="stepper">
+                      <button onClick={() => onRemove(id)}><Minus size={15} /></button>
+                      <span className="q">{cart[id]}</span>
+                      <button onClick={() => onAdd(id)}><Plus size={15} /></button>
+                    </div>
                   </div>
                 </div>
               ); })}
@@ -514,7 +536,7 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, onBack, onFinish 
               onClick={() => onFinish({ modo, date, dateLabel, slot, obs, bairroId, bairro, taxa, endereco })}>
               <MessageCircle size={19} /> {ready ? 'Enviar pedido pelo WhatsApp' : 'Complete os dados'}
             </button>
-            <p style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center', marginTop: 10 }}>
+            <p style={{ fontSize: 12, color: '#8a7d63', textAlign: 'center', marginTop: 10 }}>
               O pagamento é combinado depois (pix ou na entrega).</p>
           </div>
         </div>
@@ -593,11 +615,31 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
 function Footer({ cfg }) {
   const l = cfg.loja || {};
   return (
-    <footer className="footer">
+    <footer className="ft tex-board">
       <div className="wrap">
-        <b>{l.nome}</b> · {l.desde}<br />
-        {l.endereco}<br />
-        {l.telefone} · <a href={`https://wa.me/${l.whatsapp}`} style={{ color: 'var(--yellow)' }} target="_blank" rel="noreferrer">WhatsApp</a>
+        <div className="ft-grid">
+          <div>
+            <div className="hd-logo" style={{ marginBottom: 12 }}>
+              <img src={LOGO} alt="Hardt" />
+              <div><div className="nm">{l.nome?.split(' ')[0] || 'Hardt'}</div><div className="sb">Doces &amp; Salgados</div></div>
+            </div>
+            <p style={{ fontSize: '.9rem', lineHeight: 1.5, maxWidth: '34ch' }}>{l.slogan} · {l.desde}.</p>
+          </div>
+          <div>
+            <h5>Onde estamos</h5>
+            <div className="row"><MapPin size={16} />{l.endereco}</div>
+          </div>
+          <div>
+            <h5>Fale com a gente</h5>
+            <div className="row"><MessageCircle size={16} />
+              <a href={`https://wa.me/${l.whatsapp}`} style={{ color: 'var(--chalk)' }} target="_blank" rel="noreferrer">{l.telefone}</a>
+            </div>
+          </div>
+        </div>
+        <div className="ft-bottom">
+          <span>© {new Date().getFullYear()} {l.nome}. Todos os direitos reservados.</span>
+          <span>Salgados de festa feitos à mão.</span>
+        </div>
       </div>
     </footer>
   );
