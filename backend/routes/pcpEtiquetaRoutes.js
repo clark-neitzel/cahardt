@@ -153,6 +153,7 @@ function sanitize(body) {
         validadeDias:          parseInt(body.validadeDias) || 90,
         ativo:                 body.ativo !== undefined ? Boolean(body.ativo) : true,
         tipoProduto:           body.tipoProduto         || null,
+        tarjaPreta:            Boolean(body.tarjaPreta),
     };
 }
 

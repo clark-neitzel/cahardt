@@ -1647,6 +1647,7 @@ model EtiquetaProduto {
   // Controle
   ativo       Boolean @default(true)
   tipoProduto String? @map("tipo_produto")
+  tarjaPreta  Boolean @default(false) @map("tarja_preta")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

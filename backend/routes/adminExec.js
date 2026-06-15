@@ -969,6 +969,7 @@ router.post('/import-etiquetas', async (req, res) => {
                     validadeDias:          parseInt(et.validadeDias) || 90,
                     ativo:                 et.ativo !== false,
                     tipoProduto:           et.tipoProduto         || null,
+                    tarjaPreta:            Boolean(et.tarjaPreta),
                 };
                 if (existente) {
                     await prisma.etiquetaProduto.update({ where: { id: existente.id }, data });

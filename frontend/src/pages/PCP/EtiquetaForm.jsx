@@ -33,6 +33,7 @@ const VAZIO = {
     validadeDias: 90,
     ativo: true,
     tipoProduto: '',
+    tarjaPreta: false,
 };
 
 function Campo({ label, required, children }) {
@@ -166,6 +167,20 @@ export default function EtiquetaForm() {
                         </Campo>
                         <Campo label="Validade (dias)">
                             <input type="number" min="1" value={form.validadeDias} onChange={e => set('validadeDias', e.target.value)} className={inputCls} />
+                        </Campo>
+                        <Campo label="Nome do produto na etiqueta">
+                            <label className="flex items-center gap-2 cursor-pointer select-none mt-1">
+                                <input
+                                    type="checkbox"
+                                    checked={form.tarjaPreta}
+                                    onChange={e => set('tarjaPreta', e.target.checked)}
+                                    className="w-4 h-4 rounded accent-gray-900"
+                                />
+                                <span className="text-sm text-gray-700">Tarja preta no nome</span>
+                                {form.tarjaPreta && (
+                                    <span className="px-2 py-0.5 bg-black text-white text-xs font-bold rounded">NOME DO PRODUTO</span>
+                                )}
+                            </label>
                         </Campo>
                     </div>
                     <div className="mt-4">

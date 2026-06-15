@@ -50,7 +50,7 @@ function LabelView({ et, dataFab, dataVal }) {
 
     return (
         <div style={{ width:'80mm', minHeight:'100mm', fontSize:'6.5pt', fontFamily:'Arial, sans-serif', border:'0.5pt solid #000', padding:'1.5mm', boxSizing:'border-box', lineHeight:1.25, background:'#fff', color:'#000' }}>
-            <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'9.5pt', borderBottom:'0.5pt solid #000', paddingBottom:'1mm', marginBottom:'1mm', lineHeight:1.2 }}>
+            <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'9.5pt', borderBottom:'0.5pt solid #000', paddingBottom:'1mm', marginBottom:'1mm', lineHeight:1.2, background: et.tarjaPreta ? '#000' : 'transparent', color: et.tarjaPreta ? '#fff' : '#000', margin: et.tarjaPreta ? '-1.5mm -1.5mm 1mm -1.5mm' : undefined, padding: et.tarjaPreta ? '1.5mm' : undefined }}>
                 {et.nomeProduto}
             </div>
             <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'7pt', borderBottom:'0.5pt solid #000', paddingBottom:'0.8mm', marginBottom:'0.8mm' }}>
