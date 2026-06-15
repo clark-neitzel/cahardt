@@ -8,8 +8,15 @@ export default function EtiquetasDados() {
     const navigate = useNavigate();
     const [lista, setLista] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
-    const [ativoFiltro, setAtivoFiltro] = useState('true');
+    const [search, setSearch] = useState(
+        () => localStorage.getItem('etiquetas_dados_search') || ''
+    );
+    const [ativoFiltro, setAtivoFiltro] = useState(
+        () => localStorage.getItem('etiquetas_dados_ativo') ?? 'true'
+    );
+
+    const setSearchSalvo = (v) => { setSearch(v); localStorage.setItem('etiquetas_dados_search', v); };
+    const setAtivoSalvo  = (v) => { setAtivoFiltro(v); localStorage.setItem('etiquetas_dados_ativo', v); };
 
     const carregar = useCallback(async () => {
         try {
@@ -74,13 +81,13 @@ export default function EtiquetasDados() {
                         type="text"
                         placeholder="Buscar por nome ou código..."
                         value={search}
-                        onChange={e => setSearch(e.target.value)}
+                        onChange={e => setSearchSalvo(e.target.value)}
                         className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                 </div>
                 <select
                     value={ativoFiltro}
-                    onChange={e => setAtivoFiltro(e.target.value)}
+                    onChange={e => setAtivoSalvo(e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
                 >
                     <option value="true">Ativos</option>
