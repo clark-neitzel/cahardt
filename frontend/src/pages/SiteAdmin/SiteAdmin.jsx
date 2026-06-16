@@ -241,6 +241,7 @@ function ProdutosTab() {
   const [categorias, setCategorias] = useState([]);
   const [busca, setBusca] = useState('');
   const [cat, setCat] = useState('');
+  const [filtro, setFiltro] = useState('todos'); // todos | nosite | fora
   const [loading, setLoading] = useState(true);
 
   const carregar = useCallback(() => {
@@ -274,13 +275,19 @@ function ProdutosTab() {
           <option value="">Todas as categorias comerciais</option>
           {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
         </select>
+        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+          {[['todos', 'Todos'], ['nosite', 'No site'], ['fora', 'Fora']].map(([id, lbl]) => (
+            <button key={id} onClick={() => setFiltro(id)}
+              className={`px-3 py-1.5 text-sm rounded-md ${filtro === id ? 'bg-white shadow-sm text-sky-600 font-medium' : 'text-gray-500'}`}>{lbl}</button>
+          ))}
+        </div>
       </div>
-      <p className="text-xs text-gray-400 mb-3">Marque os produtos que aparecem no site de congelados. O preço usa o valor de venda do produto, salvo se você informar um preço específico para o site. (Não inclua aqui os produtos do Kit Festa.)</p>
+      <p className="text-xs text-gray-400 mb-3">Marque os produtos que aparecem no site de congelados. O preço usa o valor de venda do produto, salvo se você informar um preço específico para o site. Produtos que já estão no Kit Festa aparecem sinalizados — escolha em qual site cada produto entra.</p>
 
       {loading ? <p className="text-gray-400 text-sm py-10 text-center">Carregando…</p>
         : (
           <div className="space-y-2">
-            {produtos.map(p => (
+            {produtos.filter(p => filtro === 'todos' ? true : filtro === 'nosite' ? p.noSite : !p.noSite).map(p => (
               <div key={p.produtoId} className={`flex flex-wrap items-center gap-3 border rounded-xl p-3 ${p.noSite ? 'border-sky-200 bg-sky-50/40' : 'border-gray-200 bg-white'}`}>
                 <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 flex items-center justify-center">
                   {p.imagem ? <img src={p.imagem.startsWith('http') ? p.imagem : `${api.defaults.baseURL.replace('/api', '')}${p.imagem}`} alt="" className="w-full h-full object-cover" /> : <Package size={18} className="text-gray-300" />}

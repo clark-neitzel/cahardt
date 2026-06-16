@@ -76,11 +76,18 @@ export default function CongeladosSite() {
   const condSel = useMemo(() => (cliente?.condicoes || []).find(c => c.id === hdr.tabelaPrecoId) || null, [cliente, hdr.tabelaPrecoId]);
   const minimo = condSel?.valorMinimo || 0;
 
+  // Preço cobrado: o MAIOR entre (preço base + acréscimo da condição) e o que o
+  // cliente pagou na última compra daquele produto — sempre o maior, visando lucro.
+  const precoDe = useMemo(() => {
+    const acr = condSel?.acrescimo || 0;
+    return (p) => Math.max(Number(p.preco || 0) + acr, Number(p.precoUltimaCompra || 0));
+  }, [condSel]);
+
   const totals = useMemo(() => {
     let boxes = 0, subtotal = 0;
-    Object.keys(cart).forEach(id => { const p = produtos.find(x => x.id === id); if (p) { boxes += cart[id]; subtotal += cart[id] * p.preco; } });
+    Object.keys(cart).forEach(id => { const p = produtos.find(x => x.id === id); if (p) { boxes += cart[id]; subtotal += cart[id] * precoDe(p); } });
     return { boxes, subtotal };
-  }, [cart, produtos]);
+  }, [cart, produtos, precoDe]);
 
   const below = minimo > 0 && totals.subtotal < minimo;
 
@@ -135,7 +142,7 @@ export default function CongeladosSite() {
     if (condSel) msg += `Pagamento: ${encodeURIComponent(condSel.nome)}%0A`;
     if (hdr.dia) msg += `Entrega: ${encodeURIComponent(hdr.dia)}%0A`;
     msg += `%0A`;
-    Object.keys(cart).forEach(id => { const p = produtos.find(x => x.id === id); if (p) msg += `• ${cart[id]}x ${encodeURIComponent(p.nome)} — ${money(p.preco * cart[id])}%0A`; });
+    Object.keys(cart).forEach(id => { const p = produtos.find(x => x.id === id); if (p) msg += `• ${cart[id]}x ${encodeURIComponent(p.nome)} — ${money(precoDe(p) * cart[id])}%0A`; });
     msg += `%0A*Total: ${money(totals.subtotal)}*`;
     if (hdr.obs) msg += `%0A%0AObs: ${encodeURIComponent(hdr.obs)}`;
     window.open(`https://wa.me/${whatsapp}?text=${msg}`, '_blank');
@@ -219,7 +226,7 @@ export default function CongeladosSite() {
           <>
             <div className="cg-band-head"><span className="kx">Você sempre pede</span></div>
             <div className="cg-grid">
-              {comprados.map(p => <Card key={p.id} p={p} qty={qtyOf(p.id)} add={addItem} dec={removeItem} />)}
+              {comprados.map(p => <Card key={p.id} p={p} preco={precoDe(p)} qty={qtyOf(p.id)} add={addItem} dec={removeItem} />)}
             </div>
           </>
         )}
@@ -228,7 +235,7 @@ export default function CongeladosSite() {
           <>
             {comprados.length > 0 && <div className="cg-band-head"><h2>Mais salgados</h2></div>}
             <div className="cg-grid" style={{ marginTop: comprados.length > 0 ? 0 : 16 }}>
-              {outros.map(p => <Card key={p.id} p={p} qty={qtyOf(p.id)} add={addItem} dec={removeItem} />)}
+              {outros.map(p => <Card key={p.id} p={p} preco={precoDe(p)} qty={qtyOf(p.id)} add={addItem} dec={removeItem} />)}
             </div>
           </>
         )}
@@ -264,9 +271,9 @@ export default function CongeladosSite() {
                   <div className="cg-citem" key={id}>
                     <div>
                       <div className="cn">{p.nome}</div>
-                      <div className="cp">{cart[id]} cx × {money(p.preco)}</div>
+                      <div className="cp">{cart[id]} cx × {money(precoDe(p))}</div>
                     </div>
-                    <div className="ct">{money(p.preco * cart[id])}</div>
+                    <div className="ct">{money(precoDe(p) * cart[id])}</div>
                     <div className="cfoot">
                       <div className="cg-ministep">
                         <button onClick={() => removeItem(id)}><Icon n="minus" w={13} /></button>
@@ -328,7 +335,7 @@ export default function CongeladosSite() {
 }
 
 /* ============== CARD ============== */
-function Card({ p, qty, add, dec }) {
+function Card({ p, preco, qty, add, dec }) {
   const img = imgUrl(p.imagem);
   return (
     <article className="cg-card">
@@ -340,7 +347,7 @@ function Card({ p, qty, add, dec }) {
         <h3>{p.nome}</h3>
         <span className="cx">caixa{p.unidades ? ` · ${p.unidades} un` : ''}{p.unidade ? ` · ${p.unidade}` : ''}</span>
         <div className="cg-card-foot">
-          <div className="price"><b>{money(p.preco)}</b></div>
+          <div className="price"><b>{money(preco != null ? preco : p.preco)}</b></div>
           {qty === 0 ? (
             <button className="cg-add" onClick={() => add(p.id)} aria-label="Adicionar"><Icon n="plus" w={20} /></button>
           ) : (

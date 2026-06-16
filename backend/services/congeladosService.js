@@ -63,11 +63,35 @@ async function condicoesDoCliente(cliente) {
     return tabelas.map(t => ({
         id: t.id,
         nome: t.nomeCondicao,
+        acrescimo: dec(t.acrescimoPreco),
         valorMinimo: dec(t.valorMinimo),
         permiteEspecial: !!t.permiteEspecial,
         permitePedido: !!t.permitePedido,
         padrao: t.id === padrao,
     }));
+}
+
+// Preço final cobrado: o MAIOR entre o preço da condição (base + acréscimo) e o
+// maior valor já pago pelo cliente naquele produto (última compra). Visa o maior lucro.
+function precoFinal(base, acrescimo, ultimaCompra) {
+    const precoCondicao = dec(base) + dec(acrescimo);
+    return Math.max(precoCondicao, dec(ultimaCompra));
+}
+
+// Maior valor pago pelo cliente em cada produto na compra mais recente que o contém.
+async function precoUltimaCompraMap(clienteUuid, produtoIds) {
+    if (!clienteUuid || !produtoIds.length) return {};
+    const itens = await prisma.pedidoItem.findMany({
+        where: { produtoId: { in: produtoIds }, pedido: { clienteId: clienteUuid } },
+        select: { produtoId: true, valor: true, pedido: { select: { dataVenda: true } } },
+        orderBy: { pedido: { dataVenda: 'desc' } },
+    });
+    const map = {};
+    for (const it of itens) {
+        // o primeiro de cada produto é o mais recente (última compra daquele produto)
+        if (map[it.produtoId] == null) map[it.produtoId] = dec(it.valor);
+    }
+    return map;
 }
 
 const congeladosService = {
@@ -256,6 +280,10 @@ const congeladosService = {
         const compradosIds = await this._produtoIdsHistorico(clienteUuid, 3);
         catalogo.forEach(p => { p.comprado = compradosIds.has(p.produtoId); });
 
+        // Preço da última compra de cada produto (pra cobrar o maior valor possível)
+        const ultimaMap = await precoUltimaCompraMap(clienteUuid, catalogo.map(p => p.produtoId));
+        catalogo.forEach(p => { p.precoUltimaCompra = ultimaMap[p.produtoId] || 0; });
+
         // Último pedido (para "repetir último pedido") — mapeado ao catálogo de congelados
         let ultimoPedido = [];
         if (clienteUuid) {
@@ -312,6 +340,21 @@ const congeladosService = {
         const cpMap = {};
         cps.forEach(k => { cpMap[k.id] = k; });
 
+        // Condição escolhida → acréscimo e mínimo de compra
+        let condicaoNome = null;
+        let acrescimo = 0;
+        let minimo = 0;
+        if (tabelaPrecoId) {
+            const tabela = await prisma.tabelaPreco.findUnique({ where: { id: tabelaPrecoId } });
+            condicaoNome = tabela?.nomeCondicao || null;
+            acrescimo = dec(tabela?.acrescimoPreco);
+            minimo = dec(tabela?.valorMinimo);
+        }
+
+        // Preço da última compra de cada produto (cobra o maior valor possível)
+        const produtoIds = cps.map(c => c.produtoId);
+        const ultimaMap = await precoUltimaCompraMap(auth.clienteUuid, produtoIds);
+
         let subtotal = 0;
         let totalCaixas = 0;
         const itensData = [];
@@ -320,7 +363,8 @@ const congeladosService = {
             if (!cp) throw new Error('Produto indisponível no carrinho.');
             const qtd = parseInt(it.quantidade) || 0;
             if (qtd <= 0) continue;
-            const preco = cp.precoCongelados != null ? dec(cp.precoCongelados) : dec(cp.produto?.valorVenda);
+            const base = cp.precoCongelados != null ? dec(cp.precoCongelados) : dec(cp.produto?.valorVenda);
+            const preco = precoFinal(base, acrescimo, ultimaMap[cp.produtoId]);
             subtotal += preco * qtd;
             totalCaixas += qtd;
             itensData.push({
@@ -333,16 +377,8 @@ const congeladosService = {
         }
         if (!itensData.length) throw new Error('Carrinho vazio.');
 
-        // Condição escolhida → mínimo de compra (em R$)
-        let condicaoNome = null;
-        let tabela = null;
-        if (tabelaPrecoId) {
-            tabela = await prisma.tabelaPreco.findUnique({ where: { id: tabelaPrecoId } });
-            condicaoNome = tabela?.nomeCondicao || null;
-            const minimo = dec(tabela?.valorMinimo);
-            if (minimo > 0 && subtotal < minimo) {
-                throw new Error(`Pedido mínimo de R$ ${minimo.toFixed(2).replace('.', ',')} para esta condição de pagamento.`);
-            }
+        if (minimo > 0 && subtotal < minimo) {
+            throw new Error(`Pedido mínimo de R$ ${minimo.toFixed(2).replace('.', ',')} para esta condição de pagamento.`);
         }
 
         const telConfirmado = soDigitos(telefone);
