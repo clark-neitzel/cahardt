@@ -56,13 +56,11 @@ export default function CongeladosSite() {
     }
   }, [logado, cliente]);
 
-  // pré-seleciona condição padrão e telefone do perfil
+  // pré-seleciona dia de entrega e telefone do perfil
   useEffect(() => {
     if (!cliente) return;
-    const padrao = (cliente.condicoes || []).find(c => c.padrao) || (cliente.condicoes || [])[0];
     setHdr(h => ({
       ...h,
-      tabelaPrecoId: h.tabelaPrecoId || padrao?.id || '',
       dia: h.dia || (cliente.diasEntrega || [])[0] || '',
       telefone: h.telefone || cliente.telefone || '',
     }));
@@ -73,21 +71,17 @@ export default function CongeladosSite() {
   const removeItem = (id) => setCart(c => { const n = { ...c }; const v = (n[id] || 0) - 1; if (v <= 0) delete n[id]; else n[id] = v; return n; });
   const delItem = (id) => setCart(c => { const n = { ...c }; delete n[id]; return n; });
 
-  const condSel = useMemo(() => (cliente?.condicoes || []).find(c => c.id === hdr.tabelaPrecoId) || null, [cliente, hdr.tabelaPrecoId]);
-  const minimo = condSel?.valorMinimo || 0;
-
-  // Preço cobrado: o MAIOR entre (preço base + acréscimo da condição) e o que o
-  // cliente pagou na última compra daquele produto — sempre o maior, visando lucro.
-  const precoDe = useMemo(() => {
-    const acr = condSel?.acrescimo || 0;
-    return (p) => Math.max(Number(p.preco || 0) + acr, Number(p.precoUltimaCompra || 0));
-  }, [condSel]);
+  // O site usa SÓ a condição padrão do cliente. O preço de cada produto já vem
+  // pronto do servidor (igual ao que o vendedor vê: condição + último preço + flex).
+  const condPadrao = cliente?.condicaoPadrao || null;
+  const minimo = condPadrao?.valorMinimo || 0;
+  const precoDe = (p) => Number(p.preco || 0);
 
   const totals = useMemo(() => {
     let boxes = 0, subtotal = 0;
-    Object.keys(cart).forEach(id => { const p = produtos.find(x => x.id === id); if (p) { boxes += cart[id]; subtotal += cart[id] * precoDe(p); } });
+    Object.keys(cart).forEach(id => { const p = produtos.find(x => x.id === id); if (p) { boxes += cart[id]; subtotal += cart[id] * Number(p.preco || 0); } });
     return { boxes, subtotal };
-  }, [cart, produtos, precoDe]);
+  }, [cart, produtos]);
 
   const below = minimo > 0 && totals.subtotal < minimo;
 
@@ -119,7 +113,6 @@ export default function CongeladosSite() {
     const itens = Object.keys(cart).map(id => ({ congeladosProdutoId: id, quantidade: cart[id] }));
     const payload = {
       itens,
-      tabelaPrecoId: hdr.tabelaPrecoId || null,
       diaEntrega: hdr.dia || null,
       observacoes: hdr.obs || null,
       telefone: soDigitos(hdr.telefone) || (visitante?.telefone || ''),
@@ -139,7 +132,7 @@ export default function CongeladosSite() {
     const nome = cliente?.nome || visitante?.nome || '';
     let msg = `*Pedido de Congelados — Hardt*%0A`;
     msg += `Cliente: ${encodeURIComponent(nome)}%0A`;
-    if (condSel) msg += `Pagamento: ${encodeURIComponent(condSel.nome)}%0A`;
+    if (condPadrao) msg += `Pagamento: ${encodeURIComponent(condPadrao.nome)}%0A`;
     if (hdr.dia) msg += `Entrega: ${encodeURIComponent(hdr.dia)}%0A`;
     msg += `%0A`;
     Object.keys(cart).forEach(id => { const p = produtos.find(x => x.id === id); if (p) msg += `• ${cart[id]}x ${encodeURIComponent(p.nome)} — ${money(precoDe(p) * cart[id])}%0A`; });
@@ -287,12 +280,10 @@ export default function CongeladosSite() {
               })}
 
               <div className="cg-dco">
-                {cliente && (cliente.condicoes || []).length > 0 && (
+                {condPadrao && (
                   <>
                     <h4>Condição de pagamento</h4>
-                    <select className="cg-select" value={hdr.tabelaPrecoId} onChange={e => setHdr({ ...hdr, tabelaPrecoId: e.target.value })}>
-                      {(cliente.condicoes || []).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                    </select>
+                    <div className="cg-select" style={{ opacity: .9 }}>{condPadrao.nome}</div>
                   </>
                 )}
 

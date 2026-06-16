@@ -17,9 +17,9 @@ Módulo do **site público da Hardt** voltado à revenda de congelados (B2B), co
    - Não existe → pode fazer o pedido **sem cadastro** (a equipe vincula depois).
 2. **Catálogo personalizado:** para clientes com cadastro, aparecem primeiro **"Você sempre pede"** (produtos comprados nas últimas 3 compras) e depois **"Mais salgados"**. Há busca e filtros por **categoria comercial** (a mesma categoria de produto do sistema). O Kit Festa **não** entra no catálogo de congelados.
 3. **Repetir último pedido:** botão que recria o carrinho com os itens da última compra do cliente.
-4. **Carrinho (gaveta lateral):** escolha da **condição de pagamento** (somente as liberadas no cadastro do cliente), **dia de entrega** (somente os dias do cadastro), telefone e observações.
-5. **Pedido mínimo:** vem da **condição de pagamento** escolhida (o valor mínimo de compra cadastrado na Tabela de Preços). Se o subtotal for menor, o envio fica bloqueado.
-6. **Preços:** usam o valor de venda do produto (ou um preço específico do site, se o admin definir). Não há pagamento online — o pedido é registrado e o pagamento é combinado depois.
+4. **Carrinho (gaveta lateral):** mostra a **condição de pagamento padrão** do cliente (o site usa só a padrão), **dia de entrega** (somente os dias do cadastro), telefone e observações.
+5. **Pedido mínimo:** vem da **condição padrão** do cliente (o valor mínimo de compra cadastrado na Tabela de Preços). Se o subtotal for menor, o envio fica bloqueado.
+6. **Preços — iguais aos do vendedor:** o cliente vê **exatamente o mesmo preço que o vendedor veria na tela de pedido** para ele, calculado com a **condição de pagamento padrão**: preço de tabela + acréscimo da condição e, se o cliente já comprou aquele produto, o **último preço negociado** (pra mais ou pra menos) — respeitando o piso da **política de desconto do flex** (limite do vendedor do cliente). Assim, se o vendedor negociar um valor diferente, na próxima vez o site já mostra o valor atualizado. Não há pagamento online — o pedido é registrado e o pagamento é combinado depois.
 7. **Promoções:** ainda não são tratadas no site de congelados.
 
 ## Painel admin (`/site-admin`)

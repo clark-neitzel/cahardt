@@ -49,49 +49,55 @@ function produtoSitePublico(cp) {
     };
 }
 
-// Condições (TabelaPreco) liberadas para o cliente → formato do site
-async function condicoesDoCliente(cliente) {
-    if (!cliente) return [];
-    const ids = new Set();
-    if (cliente.Condicao_de_pagamento) ids.add(cliente.Condicao_de_pagamento);
-    (cliente.condicoes_pagamento_permitidas || []).forEach(id => ids.add(id));
-    if (!ids.size) return [];
-    const tabelas = await prisma.tabelaPreco.findMany({ where: { id: { in: [...ids] }, ativo: true } });
-    // Ordena com a condição padrão primeiro
-    const padrao = cliente.Condicao_de_pagamento;
-    tabelas.sort((a, b) => (a.id === padrao ? -1 : 0) - (b.id === padrao ? -1 : 0));
-    return tabelas.map(t => ({
-        id: t.id,
-        nome: t.nomeCondicao,
-        acrescimo: dec(t.acrescimoPreco),
-        valorMinimo: dec(t.valorMinimo),
-        permiteEspecial: !!t.permiteEspecial,
-        permitePedido: !!t.permitePedido,
-        padrao: t.id === padrao,
-    }));
+// Preço EXATAMENTE como o vendedor vê na tela de pedido (NovoPedido), para a
+// condição PADRÃO do cliente:
+//   valorBase     = preço de tabela × (1 + acréscimo% da condição)
+//   valorUnitário = último preço real do cliente naquele produto (negociado, pra
+//                   mais OU menos); se não houver histórico, usa o valorBase
+//   piso          = valorBase × (1 − maxDescontoFlex% do vendedor do cliente)
+// O valor nunca fica abaixo do piso (política de desconto do flex).
+function precoVendedor({ base, acrescimoPct, ultimoPreco, maxDescontoPct }) {
+    const valorBase = dec(base) * (1 + dec(acrescimoPct) / 100);
+    let valor = (ultimoPreco != null && dec(ultimoPreco) > 0) ? dec(ultimoPreco) : valorBase;
+    const piso = valorBase * (1 - dec(maxDescontoPct) / 100);
+    if (valor < piso && piso > 0) valor = piso;
+    return Math.round(valor * 100) / 100;
 }
 
-// Preço final cobrado: o MAIOR entre o preço da condição (base + acréscimo) e o
-// maior valor já pago pelo cliente naquele produto (última compra). Visa o maior lucro.
-function precoFinal(base, acrescimo, ultimaCompra) {
-    const precoCondicao = dec(base) + dec(acrescimo);
-    return Math.max(precoCondicao, dec(ultimaCompra));
-}
-
-// Maior valor pago pelo cliente em cada produto na compra mais recente que o contém.
+// Último preço real pago pelo cliente em cada produto (pedido mais recente, não excluído).
 async function precoUltimaCompraMap(clienteUuid, produtoIds) {
     if (!clienteUuid || !produtoIds.length) return {};
     const itens = await prisma.pedidoItem.findMany({
-        where: { produtoId: { in: produtoIds }, pedido: { clienteId: clienteUuid } },
-        select: { produtoId: true, valor: true, pedido: { select: { dataVenda: true } } },
+        where: { produtoId: { in: produtoIds }, pedido: { clienteId: clienteUuid, statusEnvio: { not: 'EXCLUIDO' } } },
+        select: { produtoId: true, valor: true },
         orderBy: { pedido: { dataVenda: 'desc' } },
     });
     const map = {};
     for (const it of itens) {
-        // o primeiro de cada produto é o mais recente (última compra daquele produto)
-        if (map[it.produtoId] == null) map[it.produtoId] = dec(it.valor);
+        if (map[it.produtoId] == null) map[it.produtoId] = dec(it.valor); // 1º = mais recente
     }
     return map;
+}
+
+// Contexto de preço do cliente: acréscimo da condição PADRÃO + limite de desconto do flex.
+async function contextoPreco(cliente) {
+    const ctx = { acrescimoPct: 0, maxDescontoPct: 100, condicaoPadrao: null };
+    if (!cliente) return ctx;
+    if (cliente.Condicao_de_pagamento) {
+        const t = await prisma.tabelaPreco.findUnique({ where: { id: cliente.Condicao_de_pagamento } });
+        if (t) {
+            ctx.acrescimoPct = dec(t.acrescimoPreco);
+            ctx.condicaoPadrao = { id: t.id, nome: t.nomeCondicao, valorMinimo: dec(t.valorMinimo), permiteEspecial: !!t.permiteEspecial, permitePedido: !!t.permitePedido };
+        }
+    }
+    // Limite de desconto: 100% (livre) se a categoria do cliente é sem limite; senão, do vendedor do cliente.
+    if (!cliente.categoriaCliente?.semLimiteDesconto) {
+        if (cliente.idVendedor) {
+            const v = await prisma.vendedor.findUnique({ where: { id: cliente.idVendedor }, select: { maxDescontoFlex: true } });
+            ctx.maxDescontoPct = v ? dec(v.maxDescontoFlex) : 100;
+        }
+    }
+    return ctx;
 }
 
 const congeladosService = {
@@ -210,9 +216,12 @@ const congeladosService = {
     async _perfilPublico(auth) {
         let cliente = null;
         if (auth.clienteUuid) {
-            cliente = await prisma.cliente.findUnique({ where: { UUID: auth.clienteUuid } }).catch(() => null);
+            cliente = await prisma.cliente.findUnique({
+                where: { UUID: auth.clienteUuid },
+                include: { categoriaCliente: { select: { semLimiteDesconto: true } } },
+            }).catch(() => null);
         }
-        const condicoes = await condicoesDoCliente(cliente);
+        const ctx = await contextoPreco(cliente);
         return {
             id: auth.id,
             documento: auth.documento,
@@ -221,7 +230,7 @@ const congeladosService = {
             email: auth.email,
             temCadastroApp: !!auth.clienteUuid,
             diasEntrega: diasEntregaLabels(cliente?.Dia_de_entrega),
-            condicoes,
+            condicaoPadrao: ctx.condicaoPadrao, // o site usa SÓ a condição padrão do cliente
         };
     },
 
@@ -275,14 +284,20 @@ const congeladosService = {
     async meuCatalogo(clienteId) {
         const auth = await prisma.congeladosCliente.findUnique({ where: { id: clienteId } });
         const clienteUuid = auth?.clienteUuid || null;
+        const cliente = clienteUuid
+            ? await prisma.cliente.findUnique({ where: { UUID: clienteUuid }, include: { categoriaCliente: { select: { semLimiteDesconto: true } } } }).catch(() => null)
+            : null;
         const catalogo = await this.catalogoPublico();
 
         const compradosIds = await this._produtoIdsHistorico(clienteUuid, 3);
         catalogo.forEach(p => { p.comprado = compradosIds.has(p.produtoId); });
 
-        // Preço da última compra de cada produto (pra cobrar o maior valor possível)
+        // Preço idêntico ao que o vendedor vê: condição padrão + último preço real + piso do flex
+        const ctx = await contextoPreco(cliente);
         const ultimaMap = await precoUltimaCompraMap(clienteUuid, catalogo.map(p => p.produtoId));
-        catalogo.forEach(p => { p.precoUltimaCompra = ultimaMap[p.produtoId] || 0; });
+        catalogo.forEach(p => {
+            p.preco = precoVendedor({ base: p.preco, acrescimoPct: ctx.acrescimoPct, ultimoPreco: ultimaMap[p.produtoId], maxDescontoPct: ctx.maxDescontoPct });
+        });
 
         // Último pedido (para "repetir último pedido") — mapeado ao catálogo de congelados
         let ultimoPedido = [];
@@ -312,7 +327,7 @@ const congeladosService = {
     },
 
     // ───────── Criação de pedido (cliente logado ou visitante) ─────────
-    async criarPedidoSite({ clienteId, visitante, itens, tabelaPrecoId, diaEntrega, observacoes, telefone }) {
+    async criarPedidoSite({ clienteId, visitante, itens, diaEntrega, observacoes, telefone }) {
         if (!Array.isArray(itens) || itens.length === 0) throw new Error('Carrinho vazio.');
 
         let auth;
@@ -340,18 +355,15 @@ const congeladosService = {
         const cpMap = {};
         cps.forEach(k => { cpMap[k.id] = k; });
 
-        // Condição escolhida → acréscimo e mínimo de compra
-        let condicaoNome = null;
-        let acrescimo = 0;
-        let minimo = 0;
-        if (tabelaPrecoId) {
-            const tabela = await prisma.tabelaPreco.findUnique({ where: { id: tabelaPrecoId } });
-            condicaoNome = tabela?.nomeCondicao || null;
-            acrescimo = dec(tabela?.acrescimoPreco);
-            minimo = dec(tabela?.valorMinimo);
-        }
+        // Preço idêntico ao do vendedor, usando a condição PADRÃO do cliente.
+        const cliente = auth.clienteUuid
+            ? await prisma.cliente.findUnique({ where: { UUID: auth.clienteUuid }, include: { categoriaCliente: { select: { semLimiteDesconto: true } } } }).catch(() => null)
+            : null;
+        const ctx = await contextoPreco(cliente);
+        const condicaoNome = ctx.condicaoPadrao?.nome || null;
+        const tabelaIdFinal = ctx.condicaoPadrao?.id || null;
+        const minimo = dec(ctx.condicaoPadrao?.valorMinimo);
 
-        // Preço da última compra de cada produto (cobra o maior valor possível)
         const produtoIds = cps.map(c => c.produtoId);
         const ultimaMap = await precoUltimaCompraMap(auth.clienteUuid, produtoIds);
 
@@ -364,7 +376,7 @@ const congeladosService = {
             const qtd = parseInt(it.quantidade) || 0;
             if (qtd <= 0) continue;
             const base = cp.precoCongelados != null ? dec(cp.precoCongelados) : dec(cp.produto?.valorVenda);
-            const preco = precoFinal(base, acrescimo, ultimaMap[cp.produtoId]);
+            const preco = precoVendedor({ base, acrescimoPct: ctx.acrescimoPct, ultimoPreco: ultimaMap[cp.produtoId], maxDescontoPct: ctx.maxDescontoPct });
             subtotal += preco * qtd;
             totalCaixas += qtd;
             itensData.push({
@@ -397,7 +409,7 @@ const congeladosService = {
                 telefoneCliente: telefoneFinal,
                 celularAlterado,
                 semCadastro,
-                tabelaPrecoId: tabelaPrecoId || null,
+                tabelaPrecoId: tabelaIdFinal,
                 condicaoNome,
                 diaEntrega: diaEntrega || null,
                 subtotal,
