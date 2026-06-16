@@ -184,7 +184,9 @@ function PrintModal({ et, onClose }) {
   <meta charset="UTF-8">
   <style>
     @page { size: 80mm 100mm; margin: 2mm; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0;
+        print-color-adjust: exact !important;
+        -webkit-print-color-adjust: exact !important; }
     body { background: #fff; }
     .pg { page-break-after: always; }
     .pg:last-child { page-break-after: avoid; }
