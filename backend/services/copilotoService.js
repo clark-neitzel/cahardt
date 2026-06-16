@@ -39,6 +39,7 @@ const ABAS = [
     { slug: 'analise-flex',       nome: 'Análise de Flex',              rota: '/relatorios/flex',                    perm: 'pedidos' },
     { slug: 'delivery',           nome: 'Delivery',                     rota: '/delivery',                           perm: 'delivery' },
     { slug: 'kit-festa',          nome: 'Kit Festa',                    rota: '/kit-festa-admin',                    perm: 'kitFesta' },
+    { slug: 'site-congelados',    nome: 'Site (Congelados)',            rota: '/site-admin',                         perm: 'kitFesta' },
     { slug: 'rota',               nome: 'Rota',                         rota: '/rota',                               perm: 'pedidos' },
     { slug: 'leads',              nome: 'Leads',                        rota: '/leads',                              perm: 'rota' },
     { slug: 'atendimentos',       nome: 'Atendimentos',                 rota: '/atendimentos',                       perm: 'Pode_Ver_Atendimentos' },

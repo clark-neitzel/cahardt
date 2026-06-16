@@ -62,7 +62,8 @@ model Produto {
 
   etiquetas EtiquetaProduto[]
 
-  kitFestaProduto KitFestaProduto?
+  kitFestaProduto   KitFestaProduto?
+  congeladosProduto CongeladosProduto?
 
   @@map("produtos")
 }
@@ -142,7 +143,7 @@ model Cliente {
   Serasa_consulta                String? // URL do arquivo principal
   Formas_Atendimento             String[] @default([])
 
-  recebeAvisoPedido  Boolean   @default(true) @map("recebe_aviso_pedido")
+  recebeAvisoPedido Boolean @default(true) @map("recebe_aviso_pedido")
 
   contaAzulUpdatedAt DateTime? @map("conta_azul_updated_at")
   updated_at         DateTime  @updatedAt
@@ -150,18 +151,18 @@ model Cliente {
   idVendedor String?   @map("id_vendedor")
   vendedor   Vendedor? @relation(fields: [idVendedor], references: [id])
 
-  arquivos       ClienteArquivo[]
-  pedidos        Pedido[]
-  leads          Lead[]
-  amostras       Amostra[]
-  contasReceber  ContaReceber[]
-  devolucoes     Devolucao[]
-  atendimentos   Atendimento[]
+  arquivos      ClienteArquivo[]
+  pedidos       Pedido[]
+  leads         Lead[]
+  amostras      Amostra[]
+  contasReceber ContaReceber[]
+  devolucoes    Devolucao[]
+  atendimentos  Atendimento[]
 
   // Indicação (auto-referência: quem indicou este cliente)
-  indicacaoId    String?   @map("indicacao_id")
-  indicacao      Cliente?  @relation("ClienteIndicacao", fields: [indicacaoId], references: [UUID])
-  indicados      Cliente[] @relation("ClienteIndicacao")
+  indicacaoId String?   @map("indicacao_id")
+  indicacao   Cliente?  @relation("ClienteIndicacao", fields: [indicacaoId], references: [UUID])
+  indicados   Cliente[] @relation("ClienteIndicacao")
 
   // Inteligência Comercial
   categoriaClienteId           String?           @map("categoria_cliente_id")
@@ -173,9 +174,10 @@ model Cliente {
   iaAnaliseLogs                IaAnaliseLog[]
 
   // Dados fiscais em tabela separada (a tabela `clientes` atingiu o limite de colunas do Postgres)
-  fiscal                       ClienteFiscal?
+  fiscal ClienteFiscal?
 
-  kitFestaCliente              KitFestaCliente?
+  kitFestaCliente   KitFestaCliente?
+  congeladosCliente CongeladosCliente?
 
   @@index([Nome])
   @@index([NomeFantasia])
@@ -213,11 +215,11 @@ model Pedido {
   bonificacao            Boolean   @default(false) // Pedido bonificação - não envia ao CA, valor total 0, sem contas a receber
 
   // Status de Integração
-  statusEnvio            String    @default("ABERTO") @map("status_envio") // ABERTO, ENVIAR, SINCRONIZANDO, RECEBIDO, ERRO
-  idVendaContaAzul       String?   @map("id_venda_contaazul") // ID gerado na API 
-  situacaoCA             String?   @map("situacao_ca") // APROVADO, FATURADO, EM_ABERTO (Conta Azul Oficial)
-  erroEnvio              String?   @map("erro_envio") @db.Text
-  enviadoEm              DateTime? @map("enviado_em")
+  statusEnvio      String    @default("ABERTO") @map("status_envio") // ABERTO, ENVIAR, SINCRONIZANDO, RECEBIDO, ERRO
+  idVendaContaAzul String?   @map("id_venda_contaazul") // ID gerado na API 
+  situacaoCA       String?   @map("situacao_ca") // APROVADO, FATURADO, EM_ABERTO (Conta Azul Oficial)
+  erroEnvio        String?   @map("erro_envio") @db.Text
+  enviadoEm        DateTime? @map("enviado_em")
 
   // UX e Mobile
   flexTotal          Decimal   @default(0) @map("flex_total") @db.Decimal(12, 2)
@@ -259,15 +261,16 @@ model Pedido {
   contaReceber         ContaReceber?
   movimentacoesEstoque MovimentacaoEstoque[]
   devolucoes           Devolucao[]
-  devolucaoFinalizada  Boolean   @default(false) @map("devolucao_finalizada")
-  baixaCaRealizada     Boolean   @default(false) @map("baixa_ca_realizada") // Baixa no CA já foi feita via caixa
-  baixaCaValor         Decimal?  @db.Decimal(12, 2) @map("baixa_ca_valor")  // Valor da baixa realizada
-  baixaCaEm            DateTime? @map("baixa_ca_em")
+  devolucaoFinalizada  Boolean                 @default(false) @map("devolucao_finalizada")
+  baixaCaRealizada     Boolean                 @default(false) @map("baixa_ca_realizada") // Baixa no CA já foi feita via caixa
+  baixaCaValor         Decimal?                @map("baixa_ca_valor") @db.Decimal(12, 2) // Valor da baixa realizada
+  baixaCaEm            DateTime?               @map("baixa_ca_em")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  kitFestaPedido KitFestaPedido?
+  kitFestaPedido   KitFestaPedido?
+  congeladosPedido CongeladosPedido?
 
   @@index([statusEnvio])
   @@index([vendedorId])
@@ -358,23 +361,23 @@ model Vendedor {
   // Alerta de pedidos não faturados (popup a cada 10 min)
   alertaFaturamento Boolean @default(true) @map("alerta_faturamento")
 
-  clientes             Cliente[]
-  pedidos              Pedido[]
-  pedidosLancados      Pedido[]         @relation("UsuarioLancamento")
-  leads                Lead[]
+  clientes                 Cliente[]
+  pedidos                  Pedido[]
+  pedidosLancados          Pedido[]         @relation("UsuarioLancamento")
+  leads                    Lead[]
   atendimentos             Atendimento[]
-  atendimentosTransferidos Atendimento[] @relation("AtendimentoTransferido")
-  atendimentosRegistrados  Atendimento[] @relation("AtendimentoRegistro")
-  diarios              DiarioVendedor[]
-  amostrasSolicitadas  Amostra[]        @relation("AmostrasSolicitadas")
+  atendimentosTransferidos Atendimento[]    @relation("AtendimentoTransferido")
+  atendimentosRegistrados  Atendimento[]    @relation("AtendimentoRegistro")
+  diarios                  DiarioVendedor[]
+  amostrasSolicitadas      Amostra[]        @relation("AmostrasSolicitadas")
 
   embarques        Embarque[]
-  pagamentosFiados  PedidoPagamentoReal[] @relation("PagamentosFiados")
-  despesas          Despesa[]             @relation("DespesasDoVendedor")
-  caixasDiarios     CaixaDiario[]
-  metasMensais      MetaMensalVendedor[]
-  roteirizacao      Roteirizacao?
-  baixasRealizadas  Parcela[]             @relation("BaixasRealizadas")
+  pagamentosFiados PedidoPagamentoReal[] @relation("PagamentosFiados")
+  despesas         Despesa[]             @relation("DespesasDoVendedor")
+  caixasDiarios    CaixaDiario[]
+  metasMensais     MetaMensalVendedor[]
+  roteirizacao     Roteirizacao?
+  baixasRealizadas Parcela[]             @relation("BaixasRealizadas")
 
   movimentacoesEstoque MovimentacaoEstoque[]
 
@@ -394,8 +397,8 @@ model Vendedor {
 model MensagemAgendada {
   id          String    @id @default(uuid())
   vendedorId  String    @map("vendedor_id")
-  tipo        String    // "meta"
-  hora        String    // "08:00" (horário SP)
+  tipo        String // "meta"
+  hora        String // "08:00" (horário SP)
   diasSemana  String[]  @map("dias_semana")
   ativo       Boolean   @default(true)
   ultimoEnvio DateTime? @map("ultimo_envio")
@@ -408,19 +411,19 @@ model MensagemAgendada {
 }
 
 model MovimentacaoEstoque {
-  id          String   @id @default(uuid())
-  produtoId   String   @map("produto_id")
-  vendedorId  String?  @map("vendedor_id")
-  pedidoId    String?  @map("pedido_id")
-  tipo        String   // ENTRADA | SAIDA
-  quantidade  Decimal  @db.Decimal(12, 3)
-  motivo      String   // AJUSTE_MANUAL | PEDIDO_ESPECIAL | PEDIDO_BONIFICACAO | CANCELAMENTO | EXCLUSAO
-  observacao  String?
-  estoqueAntes Decimal @map("estoque_antes") @db.Decimal(12, 3)
-  estoqueDepois Decimal @map("estoque_depois") @db.Decimal(12, 3)
-  sincCA      Boolean  @default(false) @map("sinc_ca")
-  erroCA      String?  @map("erro_ca")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id            String   @id @default(uuid())
+  produtoId     String   @map("produto_id")
+  vendedorId    String?  @map("vendedor_id")
+  pedidoId      String?  @map("pedido_id")
+  tipo          String // ENTRADA | SAIDA
+  quantidade    Decimal  @db.Decimal(12, 3)
+  motivo        String // AJUSTE_MANUAL | PEDIDO_ESPECIAL | PEDIDO_BONIFICACAO | CANCELAMENTO | EXCLUSAO
+  observacao    String?
+  estoqueAntes  Decimal  @map("estoque_antes") @db.Decimal(12, 3)
+  estoqueDepois Decimal  @map("estoque_depois") @db.Decimal(12, 3)
+  sincCA        Boolean  @default(false) @map("sinc_ca")
+  erroCA        String?  @map("erro_ca")
+  createdAt     DateTime @default(now()) @map("created_at")
 
   produto  Produto   @relation(fields: [produtoId], references: [id])
   vendedor Vendedor? @relation(fields: [vendedorId], references: [id])
@@ -437,31 +440,31 @@ model AppConfig {
 }
 
 model TabelaPreco {
-  id                  String   @id // id-Pgto (Ex: "1000")
-  idCondicao          String   @map("id_condicao") // ID_CONDICAO (Ex: "AVISTA_DIN")
-  nomeCondicao        String   @map("nome_condicao") // NOME_CONDICAO
-  tipoPagamento       String?  @map("tipo_pagamento") // TIPO_PAGAMENTO
-  opcaoCondicao       String?  @map("opcao_condicao") // opcao_condicao_pagamento
-  qtdParcelas         Int      @default(1) @map("qtd_parcelas")
-  parcelasDias        Int      @default(0) @map("parcelas_dias")
-  acrescimoPreco      Decimal  @default(0) @map("acrescimo_preco") @db.Decimal(10, 2)
-  parcelasPercentuais Decimal  @default(100) @map("parcelas_percentuais") @db.Decimal(10, 2)
-  valorMinimo         Decimal? @default(0) @map("valor_minimo") @db.Decimal(12, 2)
-  exigeBanco          Boolean  @default(false) @map("exige_banco")
-  bancoPadrao         String?  @map("banco_padrao")
-  debitaCaixa         Boolean  @default(false) @map("debita_caixa")
-  ativo               Boolean  @default(true)
-  permiteEspecial     Boolean  @default(false) @map("permite_especial") // Condição disponível para pedidos especiais
-  permitePedido       Boolean  @default(true)  @map("permite_pedido")   // Condição disponível para pedidos comuns
-  permiteBonificacao  Boolean  @default(false) @map("permite_bonificacao") // Condição disponível para pedidos bonificação
+  id                          String   @id // id-Pgto (Ex: "1000")
+  idCondicao                  String   @map("id_condicao") // ID_CONDICAO (Ex: "AVISTA_DIN")
+  nomeCondicao                String   @map("nome_condicao") // NOME_CONDICAO
+  tipoPagamento               String?  @map("tipo_pagamento") // TIPO_PAGAMENTO
+  opcaoCondicao               String?  @map("opcao_condicao") // opcao_condicao_pagamento
+  qtdParcelas                 Int      @default(1) @map("qtd_parcelas")
+  parcelasDias                Int      @default(0) @map("parcelas_dias")
+  acrescimoPreco              Decimal  @default(0) @map("acrescimo_preco") @db.Decimal(10, 2)
+  parcelasPercentuais         Decimal  @default(100) @map("parcelas_percentuais") @db.Decimal(10, 2)
+  valorMinimo                 Decimal? @default(0) @map("valor_minimo") @db.Decimal(12, 2)
+  exigeBanco                  Boolean  @default(false) @map("exige_banco")
+  bancoPadrao                 String?  @map("banco_padrao")
+  debitaCaixa                 Boolean  @default(false) @map("debita_caixa")
+  ativo                       Boolean  @default(true)
+  permiteEspecial             Boolean  @default(false) @map("permite_especial") // Condição disponível para pedidos especiais
+  permitePedido               Boolean  @default(true) @map("permite_pedido") // Condição disponível para pedidos comuns
+  permiteBonificacao          Boolean  @default(false) @map("permite_bonificacao") // Condição disponível para pedidos bonificação
   obs                         String?
   formasRecebimentoPermitidas Json?    @map("formas_recebimento_permitidas") // IDs das formas de recebimento permitidas na entrega: ["tabela_1000", "uuid-forma"]
   permiteDevolucaoTotal       Boolean  @default(true) @map("permite_devolucao_total")
   permiteDevolucaoParcial     Boolean  @default(true) @map("permite_devolucao_parcial")
   regrasCategoria             Json?    @map("regras_categoria") // Regras de preço por categoria CA para especiais: [{ categoria, precoBase, acrescimo }]
-  categoriasEspecial  Json?    @map("categorias_especial") // Categorias de produto visíveis em pedidos especiais: ["cat1", "cat2"]
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  categoriasEspecial          Json?    @map("categorias_especial") // Categorias de produto visíveis em pedidos especiais: ["cat1", "cat2"]
+  createdAt                   DateTime @default(now()) @map("created_at")
+  updatedAt                   DateTime @updatedAt @map("updated_at")
 
   @@map("tabela_precos")
 }
@@ -558,10 +561,10 @@ model Lead {
   observacoes         String?   @db.Text
   fotoFachada         String?   @map("foto_fachada")
 
-  cidade              String?
-  origemLead          String?   @map("origem_lead")
-  categoriaClienteId  String?   @map("categoria_cliente_id")
-  categoriaCliente    CategoriaCliente? @relation(fields: [categoriaClienteId], references: [id])
+  cidade             String?
+  origemLead         String?           @map("origem_lead")
+  categoriaClienteId String?           @map("categoria_cliente_id")
+  categoriaCliente   CategoriaCliente? @relation(fields: [categoriaClienteId], references: [id])
 
   idVendedor String?   @map("id_vendedor")
   vendedor   Vendedor? @relation(fields: [idVendedor], references: [id])
@@ -592,8 +595,8 @@ model Atendimento {
   pedidoId      String?   @map("pedido_id")
 
   // Ação estruturada
-  acaoKey           String?   @map("acao_key")
-  acaoLabel         String?   @map("acao_label")
+  acaoKey   String? @map("acao_key")
+  acaoLabel String? @map("acao_label")
 
   // Transferência
   transferidoParaId         String?   @map("transferido_para_id")
@@ -603,20 +606,20 @@ model Atendimento {
   transferenciaVistaOrigem  Boolean   @default(false) @map("transferencia_vista_origem")
 
   // Retorno
-  assuntoRetorno    String?   @map("assunto_retorno") @db.Text
-  dataRetorno       DateTime? @map("data_retorno")
+  assuntoRetorno String?   @map("assunto_retorno") @db.Text
+  dataRetorno    DateTime? @map("data_retorno")
 
   // Alerta visual
-  alertaVisualAtivo Boolean   @default(false) @map("alerta_visual_ativo")
-  alertaVisualCor   String?   @map("alerta_visual_cor")
-  alertaVisualVisto Boolean   @default(false) @map("alerta_visual_visto")
+  alertaVisualAtivo Boolean @default(false) @map("alerta_visual_ativo")
+  alertaVisualCor   String? @map("alerta_visual_cor")
+  alertaVisualVisto Boolean @default(false) @map("alerta_visual_visto")
 
   // Amostra vinculada
-  amostraId         String?   @map("amostra_id")
-  amostra           Amostra?  @relation(fields: [amostraId], references: [id])
+  amostraId String?  @map("amostra_id")
+  amostra   Amostra? @relation(fields: [amostraId], references: [id])
 
-  leadId    String? @map("lead_id")
-  lead      Lead?   @relation(fields: [leadId], references: [id])
+  leadId    String?  @map("lead_id")
+  lead      Lead?    @relation(fields: [leadId], references: [id])
   clienteId String?  @map("cliente_id")
   cliente   Cliente? @relation(fields: [clienteId], references: [UUID])
 
@@ -652,10 +655,10 @@ model Veiculo {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Seguro
-  seguroVencimento  DateTime? @map("seguro_vencimento")
-  seguroApolice     String?   @map("seguro_apolice")
-  seguroSeguradora  String?   @map("seguro_seguradora")
-  seguroApoliceUrl  String?   @map("seguro_apolice_url")
+  seguroVencimento DateTime? @map("seguro_vencimento")
+  seguroApolice    String?   @map("seguro_apolice")
+  seguroSeguradora String?   @map("seguro_seguradora")
+  seguroApoliceUrl String?   @map("seguro_apolice_url")
 
   // Métricas e Configurações
   capacidadeTanque Decimal? @map("capacidade_tanque") @db.Decimal(8, 2)
@@ -899,8 +902,8 @@ model CaixaEntregaConferida {
 
 model AuditLog {
   id          String   @id @default(uuid())
-  acao        String   // REVERTER_CONFERENCIA | REABRIR_CAIXA
-  entidade    String   // "CaixaDiario"
+  acao        String // REVERTER_CONFERENCIA | REABRIR_CAIXA
+  entidade    String // "CaixaDiario"
   entidadeId  String   @map("entidade_id")
   detalhes    String?  @db.Text
   usuarioId   String   @map("usuario_id")
@@ -1044,21 +1047,21 @@ model MetaCidade {
 // =============================================
 
 model Amostra {
-  id              String    @id @default(uuid())
-  numero          Int       @default(autoincrement())
-  leadId          String?   @map("lead_id")
-  lead            Lead?     @relation(fields: [leadId], references: [id])
-  clienteId       String?   @map("cliente_id")
-  cliente         Cliente?  @relation(fields: [clienteId], references: [UUID])
-  dataEntrega     DateTime? @map("data_entrega")
-  observacao      String?   @db.Text
-  status          String    @default("SOLICITADA") // SOLICITADA | PREPARACAO | LIBERADO | ENTREGUE | CANCELADA
-  solicitadoPorId String    @map("solicitado_por_id")
-  solicitadoPor   Vendedor  @relation("AmostrasSolicitadas", fields: [solicitadoPorId], references: [id])
-  embarqueId      String?   @map("embarque_id")
-  embarque        Embarque? @relation(fields: [embarqueId], references: [id])
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id              String        @id @default(uuid())
+  numero          Int           @default(autoincrement())
+  leadId          String?       @map("lead_id")
+  lead            Lead?         @relation(fields: [leadId], references: [id])
+  clienteId       String?       @map("cliente_id")
+  cliente         Cliente?      @relation(fields: [clienteId], references: [UUID])
+  dataEntrega     DateTime?     @map("data_entrega")
+  observacao      String?       @db.Text
+  status          String        @default("SOLICITADA") // SOLICITADA | PREPARACAO | LIBERADO | ENTREGUE | CANCELADA
+  solicitadoPorId String        @map("solicitado_por_id")
+  solicitadoPor   Vendedor      @relation("AmostrasSolicitadas", fields: [solicitadoPorId], references: [id])
+  embarqueId      String?       @map("embarque_id")
+  embarque        Embarque?     @relation(fields: [embarqueId], references: [id])
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
   itens           AmostraItem[]
   atendimentos    Atendimento[]
 
@@ -1093,9 +1096,9 @@ model CategoriaProduto {
   permiteFracao   Boolean  @default(false) @map("permite_fracao")
   controlaEstoque Boolean  @default(false) @map("controla_estoque")
   ativo           Boolean  @default(true)
-  tipoFlex        String   @default("NORMAL") @map("tipo_flex")   // legado — mantido para não dropar a coluna
-  flexPositivo    Boolean  @default(true) @map("flex_positivo")  // acréscimos somam no saldo?
-  flexNegativo    Boolean  @default(true) @map("flex_negativo")  // descontos descontam do saldo?
+  tipoFlex        String   @default("NORMAL") @map("tipo_flex") // legado — mantido para não dropar a coluna
+  flexPositivo    Boolean  @default(true) @map("flex_positivo") // acréscimos somam no saldo?
+  flexNegativo    Boolean  @default(true) @map("flex_negativo") // descontos descontam do saldo?
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -1121,25 +1124,25 @@ model CategoriaEstoque {
 // Módulo isolado: pedidos que tenham item em categoria marcada aparecem no Kanban.
 
 model DeliveryCategoria {
-  id        String   @id @default(uuid())
-  nome      String   @unique
-  ativo     Boolean  @default(true)
+  id                      String   @id @default(uuid())
+  nome                    String   @unique
+  ativo                   Boolean  @default(true)
   // IDs de CategoriaProduto (sub-filtro). Vazio/null = aceita todos os produtos da categoria CA.
-  categoriasComerciaisIds Json? @map("categorias_comerciais_ids")
-  createdAt DateTime @default(now()) @map("created_at")
+  categoriasComerciaisIds Json?    @map("categorias_comerciais_ids")
+  createdAt               DateTime @default(now()) @map("created_at")
 
   @@map("delivery_categorias")
 }
 
 model DeliveryStatus {
-  id         String   @id @default(uuid())
-  pedidoId   String   @unique @map("pedido_id")
-  etapa      String   @default("PEDIDO") // PEDIDO | PRODUCAO | SAINDO | ENTREGUE
-  etapaAt    DateTime @default(now()) @map("etapa_at")
+  id                String   @id @default(uuid())
+  pedidoId          String   @unique @map("pedido_id")
+  etapa             String   @default("PEDIDO") // PEDIDO | PRODUCAO | SAINDO | ENTREGUE
+  etapaAt           DateTime @default(now()) @map("etapa_at")
   // Quando true, movimentações não disparam WhatsApp para o cliente (bot interno continua).
-  silenciarWhatsapp Boolean @default(false) @map("silenciar_whatsapp")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  silenciarWhatsapp Boolean  @default(false) @map("silenciar_whatsapp")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@index([etapa])
   @@map("delivery_status")
@@ -1160,8 +1163,8 @@ model DeliveryWebhookLog {
   id        String   @id @default(uuid())
   pedidoId  String   @map("pedido_id")
   etapa     String
-  destino   String   // BOT | WHATSAPP
-  status    String   // OK | ERRO
+  destino   String // BOT | WHATSAPP
+  status    String // OK | ERRO
   mensagem  String?  @db.Text
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -1170,15 +1173,15 @@ model DeliveryWebhookLog {
 }
 
 model CategoriaCliente {
-  id               String   @id @default(uuid())
-  nome             String   @unique
-  descricao        String?  @db.Text
-  cicloPadraoDias  Int      @default(7) @map("ciclo_padrao_dias")
-  isentoFlex       Boolean  @default(false) @map("isento_flex")
-  semLimiteDesconto Boolean @default(false) @map("sem_limite_desconto")
-  ativo            Boolean  @default(true)
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid())
+  nome              String   @unique
+  descricao         String?  @db.Text
+  cicloPadraoDias   Int      @default(7) @map("ciclo_padrao_dias")
+  isentoFlex        Boolean  @default(false) @map("isento_flex")
+  semLimiteDesconto Boolean  @default(false) @map("sem_limite_desconto")
+  ativo             Boolean  @default(true)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   clientes Cliente[]
   leads    Lead[]
@@ -1195,7 +1198,7 @@ model ContaReceber {
   clienteId  String  @map("cliente_id")
   cliente    Cliente @relation(fields: [clienteId], references: [UUID])
   origem     String  @default("ESPECIAL") // ESPECIAL | FATURADO_CA
-  valorTotal Decimal @db.Decimal(12, 2) @map("valor_total")
+  valorTotal Decimal @map("valor_total") @db.Decimal(12, 2)
   status     String  @default("ABERTO") // ABERTO | PARCIAL | QUITADO | CANCELADO
   observacao String? @db.Text
 
@@ -1219,7 +1222,7 @@ model Parcela {
 
   // Baixa
   dataPagamento  DateTime? @map("data_pagamento")
-  valorPago      Decimal?  @db.Decimal(12, 2) @map("valor_pago")
+  valorPago      Decimal?  @map("valor_pago") @db.Decimal(12, 2)
   formaPagamento String?   @map("forma_pagamento")
   baixadoPorId   String?   @map("baixado_por_id")
   baixadoPor     Vendedor? @relation("BaixasRealizadas", fields: [baixadoPorId], references: [id])
@@ -1243,8 +1246,8 @@ model ItemPcp {
   id        String  @id @default(uuid())
   codigo    String  @unique
   nome      String
-  tipo      String  // MP | SUB | PA | EMB
-  unidade   String  // KG | UN | L | PCT | CX
+  tipo      String // MP | SUB | PA | EMB
+  unidade   String // KG | UN | L | PCT | CX
   descricao String? @db.Text
   ativo     Boolean @default(true)
 
@@ -1271,21 +1274,21 @@ model ItemPcp {
 }
 
 model Receita {
-  id             String    @id @default(uuid())
-  itemPcpId      String    @map("item_pcp_id")
-  versao         Int       @default(1)
-  nome           String
-  rendimentoBase Decimal   @map("rendimento_base") @db.Decimal(12, 3)
-  perdaPercentual Decimal? @map("perda_percentual") @db.Decimal(5, 2)
-  status         String    @default("ativa") // rascunho | ativa | inativa
+  id                 String    @id @default(uuid())
+  itemPcpId          String    @map("item_pcp_id")
+  versao             Int       @default(1)
+  nome               String
+  rendimentoBase     Decimal   @map("rendimento_base") @db.Decimal(12, 3)
+  perdaPercentual    Decimal?  @map("perda_percentual") @db.Decimal(5, 2)
+  status             String    @default("ativa") // rascunho | ativa | inativa
   dataInicioVigencia DateTime  @map("data_inicio_vigencia")
   dataFimVigencia    DateTime? @map("data_fim_vigencia")
-  observacoes    String?   @db.Text
+  observacoes        String?   @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  itemPcp        ItemPcp        @relation(fields: [itemPcpId], references: [id])
+  itemPcp        ItemPcp            @relation(fields: [itemPcpId], references: [id])
   itens          ReceitaItem[]
   ordensProducao OrdemProducao[]
   logs           ReceitaVersaoLog[]
@@ -1296,14 +1299,14 @@ model Receita {
 }
 
 model ReceitaVersaoLog {
-  id            String   @id @default(uuid())
-  receitaId     String   @map("receita_id")
-  versao        Int
-  motivo        String   @db.Text
-  alteracoes    Json
-  alteradoPorId String?  @map("alterado_por_id")
-  alteradoPorNome String? @map("alterado_por_nome")
-  alteradoEm    DateTime @default(now()) @map("alterado_em")
+  id              String   @id @default(uuid())
+  receitaId       String   @map("receita_id")
+  versao          Int
+  motivo          String   @db.Text
+  alteracoes      Json
+  alteradoPorId   String?  @map("alterado_por_id")
+  alteradoPorNome String?  @map("alterado_por_nome")
+  alteradoEm      DateTime @default(now()) @map("alterado_em")
 
   receita Receita @relation(fields: [receitaId], references: [id], onDelete: Cascade)
 
@@ -1316,7 +1319,7 @@ model ReceitaItem {
   receitaId  String  @map("receita_id")
   itemPcpId  String  @map("item_pcp_id")
   quantidade Decimal @db.Decimal(12, 3)
-  tipo       String  // MP | SUB | EMB
+  tipo       String // MP | SUB | EMB
   ordemEtapa String? @map("ordem_etapa") // preparo, modelagem, fritura, embalagem
   observacao String? @db.Text
 
@@ -1327,19 +1330,19 @@ model ReceitaItem {
 }
 
 model OrdemProducao {
-  id                  String   @id @default(uuid())
-  numero              Int      @unique @default(autoincrement())
-  receitaId           String   @map("receita_id")
-  quantidadePlanejada Decimal  @map("quantidade_planejada") @db.Decimal(12, 3)
-  quantidadeProduzida Decimal  @default(0) @map("quantidade_produzida") @db.Decimal(12, 3)
-  fatorEscala         Decimal  @map("fator_escala") @db.Decimal(10, 4)
-  status              String   @default("PLANEJADA") // PLANEJADA | EM_PRODUCAO | FINALIZADA | CANCELADA
-  receitaSnapshot     Json     @map("receita_snapshot")
-  dataPlanejada       DateTime @map("data_planejada")
+  id                  String    @id @default(uuid())
+  numero              Int       @unique @default(autoincrement())
+  receitaId           String    @map("receita_id")
+  quantidadePlanejada Decimal   @map("quantidade_planejada") @db.Decimal(12, 3)
+  quantidadeProduzida Decimal   @default(0) @map("quantidade_produzida") @db.Decimal(12, 3)
+  fatorEscala         Decimal   @map("fator_escala") @db.Decimal(10, 4)
+  status              String    @default("PLANEJADA") // PLANEJADA | EM_PRODUCAO | FINALIZADA | CANCELADA
+  receitaSnapshot     Json      @map("receita_snapshot")
+  dataPlanejada       DateTime  @map("data_planejada")
   dataInicio          DateTime? @map("data_inicio")
   dataFim             DateTime? @map("data_fim")
-  observacoes         String?  @db.Text
-  criadoPorId         String?  @map("criado_por_id")
+  observacoes         String?   @db.Text
+  criadoPorId         String?   @map("criado_por_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1359,7 +1362,7 @@ model OrdemConsumo {
   itemPcpId          String  @map("item_pcp_id")
   quantidadePrevista Decimal @map("quantidade_prevista") @db.Decimal(12, 3)
   quantidadeReal     Decimal @default(0) @map("quantidade_real") @db.Decimal(12, 3)
-  tipo               String  // MP | SUB | EMB
+  tipo               String // MP | SUB | EMB
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -1387,16 +1390,16 @@ model AgendaProducao {
 }
 
 model MovimentacaoPcp {
-  id              String   @id @default(uuid())
-  itemPcpId       String   @map("item_pcp_id")
-  tipo            String   // ENTRADA | SAIDA
-  quantidade      Decimal  @db.Decimal(12, 3)
-  motivo          String   // PRODUCAO_ENTRADA | PRODUCAO_CONSUMO | AJUSTE_MANUAL | COMPRA
-  ordemProducaoId String?  @map("ordem_producao_id")
-  observacao      String?  @db.Text
-  estoqueAntes    Decimal  @map("estoque_antes") @db.Decimal(12, 3)
-  estoqueDepois   Decimal  @map("estoque_depois") @db.Decimal(12, 3)
-  criadoPorId     String?  @map("criado_por_id")
+  id              String  @id @default(uuid())
+  itemPcpId       String  @map("item_pcp_id")
+  tipo            String // ENTRADA | SAIDA
+  quantidade      Decimal @db.Decimal(12, 3)
+  motivo          String // PRODUCAO_ENTRADA | PRODUCAO_CONSUMO | AJUSTE_MANUAL | COMPRA
+  ordemProducaoId String? @map("ordem_producao_id")
+  observacao      String? @db.Text
+  estoqueAntes    Decimal @map("estoque_antes") @db.Decimal(12, 3)
+  estoqueDepois   Decimal @map("estoque_depois") @db.Decimal(12, 3)
+  criadoPorId     String? @map("criado_por_id")
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -1408,14 +1411,14 @@ model MovimentacaoPcp {
 }
 
 model SugestaoProducao {
-  id                 String   @id @default(uuid())
-  itemPcpId          String   @map("item_pcp_id")
-  quantidadeSugerida Decimal  @map("quantidade_sugerida") @db.Decimal(12, 3)
-  bateladas          Int      @default(1)
-  motivo             String   // ESTOQUE_MINIMO | DEMANDA_PEDIDOS
-  status             String   @default("PENDENTE") // PENDENTE | ACEITA | REJEITADA
-  ordemProducaoId    String?  @map("ordem_producao_id")
-  observacoes        String?  @db.Text
+  id                 String  @id @default(uuid())
+  itemPcpId          String  @map("item_pcp_id")
+  quantidadeSugerida Decimal @map("quantidade_sugerida") @db.Decimal(12, 3)
+  bateladas          Int     @default(1)
+  motivo             String // ESTOQUE_MINIMO | DEMANDA_PEDIDOS
+  status             String  @default("PENDENTE") // PENDENTE | ACEITA | REJEITADA
+  ordemProducaoId    String? @map("ordem_producao_id")
+  observacoes        String? @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1431,51 +1434,51 @@ model SugestaoProducao {
 // =============================================
 
 model Devolucao {
-  id                  String   @id @default(uuid())
-  numero              Int      @default(autoincrement())
-  pedidoOriginalId    String   @map("pedido_original_id")
-  clienteId           String   @map("cliente_id")
+  id               String @id @default(uuid())
+  numero           Int    @default(autoincrement())
+  pedidoOriginalId String @map("pedido_original_id")
+  clienteId        String @map("cliente_id")
 
-  tipo                String   // ESPECIAL | CONTA_AZUL
-  escopo              String   // TOTAL | PARCIAL
-  motivo              String   @db.Text
-  observacao          String?  @db.Text
+  tipo       String // ESPECIAL | CONTA_AZUL
+  escopo     String // TOTAL | PARCIAL
+  motivo     String  @db.Text
+  observacao String? @db.Text
 
   // Campos exclusivos para devolução Conta Azul
-  notaDevolucaoCA     String?  @map("nota_devolucao_ca")
-  pdfDevolucaoUrl     String?  @map("pdf_devolucao_url")
+  notaDevolucaoCA String? @map("nota_devolucao_ca")
+  pdfDevolucaoUrl String? @map("pdf_devolucao_url")
 
   // Contexto da entrega original
-  motoristaId         String?  @map("motorista_id")
+  motoristaId         String?   @map("motorista_id")
   dataEntregaOriginal DateTime? @map("data_entrega_original")
-  caixaDataReferencia String?  @map("caixa_data_referencia") // YYYY-MM-DD
+  caixaDataReferencia String?   @map("caixa_data_referencia") // YYYY-MM-DD
 
   // Auditoria
-  registradoPorId     String   @map("registrado_por_id")
-  dataDevolucao       DateTime @default(now()) @map("data_devolucao")
+  registradoPorId String   @map("registrado_por_id")
+  dataDevolucao   DateTime @default(now()) @map("data_devolucao")
 
   // Status e reversão
-  status              String   @default("ATIVA") // ATIVA | REVERTIDA
-  revertidoPorId      String?  @map("revertido_por_id")
-  revertidoEm         DateTime? @map("revertido_em")
-  motivoReversao      String?  @map("motivo_reversao") @db.Text
+  status         String    @default("ATIVA") // ATIVA | REVERTIDA
+  revertidoPorId String?   @map("revertido_por_id")
+  revertidoEm    DateTime? @map("revertido_em")
+  motivoReversao String?   @map("motivo_reversao") @db.Text
 
   // Processamento Conta Azul (wizard boleto)
-  processadoCA        Boolean  @default(false) @map("processado_ca")
-  parcelaCAId         String?  @map("parcela_ca_id")     // UUID da parcela no CA
-  pdfBoletoUrl        String?  @map("pdf_boleto_url")    // PDF do novo boleto (parcial)
-  wizardEtapa         String?  @map("wizard_etapa")      // Etapa atual do wizard (para retomar)
+  processadoCA Boolean @default(false) @map("processado_ca")
+  parcelaCAId  String? @map("parcela_ca_id") // UUID da parcela no CA
+  pdfBoletoUrl String? @map("pdf_boleto_url") // PDF do novo boleto (parcial)
+  wizardEtapa  String? @map("wizard_etapa") // Etapa atual do wizard (para retomar)
 
   // Financeiro
-  valorTotal          Decimal  @map("valor_total") @db.Decimal(12, 2)
-  snapshotParcelas    Json?    @map("snapshot_parcelas") // Snapshot das parcelas antes do ajuste
+  valorTotal       Decimal @map("valor_total") @db.Decimal(12, 2)
+  snapshotParcelas Json?   @map("snapshot_parcelas") // Snapshot das parcelas antes do ajuste
 
   // Relações
-  pedidoOriginal Pedido    @relation(fields: [pedidoOriginalId], references: [id])
-  cliente        Cliente   @relation(fields: [clienteId], references: [UUID])
-  registradoPor  Vendedor  @relation("DevolucaoRegistrada", fields: [registradoPorId], references: [id])
-  revertidoPor   Vendedor? @relation("DevolucaoRevertida", fields: [revertidoPorId], references: [id])
-  motorista      Vendedor? @relation("DevolucaoMotorista", fields: [motoristaId], references: [id])
+  pedidoOriginal Pedido          @relation(fields: [pedidoOriginalId], references: [id])
+  cliente        Cliente         @relation(fields: [clienteId], references: [UUID])
+  registradoPor  Vendedor        @relation("DevolucaoRegistrada", fields: [registradoPorId], references: [id])
+  revertidoPor   Vendedor?       @relation("DevolucaoRevertida", fields: [revertidoPorId], references: [id])
+  motorista      Vendedor?       @relation("DevolucaoMotorista", fields: [motoristaId], references: [id])
   itens          DevolucaoItem[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -1504,23 +1507,23 @@ model DevolucaoItem {
 }
 
 model IaAnaliseLog {
-  id                      Int      @id @default(autoincrement())
-  clienteId               String   @map("cliente_id")
-  vendedorId              String?  @map("vendedor_id")
-  disparadoPor            String   @map("disparado_por") // ATENDIMENTO | NOTURNO | MANUAL
-  disparadoPorUsuarioId   String?  @map("disparado_por_usuario_id")
-  atendimentoId           String?  @map("atendimento_id")
-  modelo                  String   @default("gpt-4o-mini")
-  promptEnviado           String   @map("prompt_enviado") @db.Text
-  dadosEntrada            Json     @map("dados_entrada")
-  respostaIa              Json?    @map("resposta_ia")
-  tokensPrompt            Int?     @map("tokens_prompt")
-  tokensResposta          Int?     @map("tokens_resposta")
-  tokensTotal             Int?     @map("tokens_total")
-  duracaoMs               Int?     @map("duracao_ms")
-  sucesso                 Boolean  @default(true)
-  erroMsg                 String?  @map("erro_msg")
-  criadoEm               DateTime @default(now()) @map("criado_em")
+  id                    Int      @id @default(autoincrement())
+  clienteId             String   @map("cliente_id")
+  vendedorId            String?  @map("vendedor_id")
+  disparadoPor          String   @map("disparado_por") // ATENDIMENTO | NOTURNO | MANUAL
+  disparadoPorUsuarioId String?  @map("disparado_por_usuario_id")
+  atendimentoId         String?  @map("atendimento_id")
+  modelo                String   @default("gpt-4o-mini")
+  promptEnviado         String   @map("prompt_enviado") @db.Text
+  dadosEntrada          Json     @map("dados_entrada")
+  respostaIa            Json?    @map("resposta_ia")
+  tokensPrompt          Int?     @map("tokens_prompt")
+  tokensResposta        Int?     @map("tokens_resposta")
+  tokensTotal           Int?     @map("tokens_total")
+  duracaoMs             Int?     @map("duracao_ms")
+  sucesso               Boolean  @default(true)
+  erroMsg               String?  @map("erro_msg")
+  criadoEm              DateTime @default(now()) @map("criado_em")
 
   cliente Cliente @relation(fields: [clienteId], references: [UUID])
 
@@ -1532,41 +1535,41 @@ model IaAnaliseLog {
 }
 
 model Curriculo {
-  id                  Int      @id @default(autoincrement())
-  criadoEm           DateTime @default(now()) @map("criado_em")
-  atualizadoEm       DateTime @updatedAt @map("atualizado_em")
+  id           Int      @id @default(autoincrement())
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
 
   // Dados pessoais
-  nome                String
-  email               String?
-  whatsapp            String
-  cpf                 String   @unique
-  dataNascimento      DateTime @map("data_nascimento")
-  estadoCivil         String?  @map("estado_civil")
-  temFilhos           String?  @map("tem_filhos")
-  naturalidade        String?
-  endereco            String?
-  foto                String?
+  nome           String
+  email          String?
+  whatsapp       String
+  cpf            String   @unique
+  dataNascimento DateTime @map("data_nascimento")
+  estadoCivil    String?  @map("estado_civil")
+  temFilhos      String?  @map("tem_filhos")
+  naturalidade   String?
+  endereco       String?
+  foto           String?
 
   // Disponibilidade
-  areaInteresse       String   @map("area_interesse")
-  horarioInicio       String?  @map("horario_inicio")
-  horasExtras         String?  @map("horas_extras")
-  disponibilidade     String?
+  areaInteresse   String  @map("area_interesse")
+  horarioInicio   String? @map("horario_inicio")
+  horasExtras     String? @map("horas_extras")
+  disponibilidade String?
 
   // Histórico profissional
-  empregosRegistrados   String? @db.Text @map("empregos_registrados")
-  empregosSemRegistro   String? @db.Text @map("empregos_sem_registro")
-  outrasExperiencias    String? @db.Text @map("outras_experiencias")
+  empregosRegistrados String? @map("empregos_registrados") @db.Text
+  empregosSemRegistro String? @map("empregos_sem_registro") @db.Text
+  outrasExperiencias  String? @map("outras_experiencias") @db.Text
 
   // Campos RH (preenchidos internamente)
-  status              String   @default("Novo")
-  observacao          String?  @db.Text
-  dataAlteracao       DateTime? @map("data_alteracao")
+  status        String    @default("Novo")
+  observacao    String?   @db.Text
+  dataAlteracao DateTime? @map("data_alteracao")
 
   // Relações
-  acessos    CurriculoAcesso[]
-  historico  CurriculoHistorico[]
+  acessos   CurriculoAcesso[]
+  historico CurriculoHistorico[]
 
   @@map("curriculos")
 }
@@ -1575,7 +1578,7 @@ model CurriculoAcesso {
   id          Int      @id @default(autoincrement())
   curriculoId Int      @map("curriculo_id")
   vendedorId  String   @map("vendedor_id")
-  acessadoEm DateTime @default(now()) @map("acessado_em")
+  acessadoEm  DateTime @default(now()) @map("acessado_em")
 
   curriculo Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
   vendedor  Vendedor  @relation(fields: [vendedorId], references: [id])
@@ -1590,9 +1593,9 @@ model CurriculoHistorico {
   curriculoId Int      @map("curriculo_id")
   vendedorId  String   @map("vendedor_id")
   campo       String
-  valorAntes  String?  @db.Text @map("valor_antes")
-  valorDepois String?  @db.Text @map("valor_depois")
-  criadoEm   DateTime @default(now()) @map("criado_em")
+  valorAntes  String?  @map("valor_antes") @db.Text
+  valorDepois String?  @map("valor_depois") @db.Text
+  criadoEm    DateTime @default(now()) @map("criado_em")
 
   curriculo Curriculo @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
   vendedor  Vendedor  @relation(fields: [vendedorId], references: [id])
@@ -1604,17 +1607,17 @@ model CurriculoHistorico {
 // ─── Etiquetas de Produtos ────────────────────────────────────────────────────
 
 model EtiquetaProduto {
-  id    String @id @default(uuid())
+  id String @id @default(uuid())
 
   // Vínculo opcional com Produto do catálogo (um produto pode ter várias etiquetas — tamanhos diferentes)
-  produtoId String? @map("produto_id")
+  produtoId String?  @map("produto_id")
   produto   Produto? @relation(fields: [produtoId], references: [id])
 
   // Identificação
-  codigoProduto         String  @map("codigo_produto")
-  nomeProduto           String  @map("nome_produto")
-  pesoUnitario          Int     @map("peso_unitario")          // gramas
-  pesoTabelaNutricional Int     @map("peso_tabela_nutricional") // gramas (porção)
+  codigoProduto         String @map("codigo_produto")
+  nomeProduto           String @map("nome_produto")
+  pesoUnitario          Int    @map("peso_unitario") // gramas
+  pesoTabelaNutricional Int    @map("peso_tabela_nutricional") // gramas (porção)
 
   // Informação Nutricional (texto com unidade + %VD, ex: "34kcal (2% VD)")
   valorEnergetico   String? @map("valor_energetico")
@@ -1627,11 +1630,11 @@ model EtiquetaProduto {
   sodio             String?
 
   // Conteúdo do rótulo
-  quantidadeEmbalagem    Int     @map("quantidade_embalagem")
-  quantidadeAproximada   Boolean @default(false) @map("quantidade_aproximada")
-  composicao             String  @db.Text
-  modoPreparo         String @db.Text @map("modo_preparo")
-  codigoBarras        String? @map("codigo_barras")
+  quantidadeEmbalagem  Int     @map("quantidade_embalagem")
+  quantidadeAproximada Boolean @default(false) @map("quantidade_aproximada")
+  composicao           String  @db.Text
+  modoPreparo          String  @map("modo_preparo") @db.Text
+  codigoBarras         String? @map("codigo_barras")
 
   // Alérgenos
   contemLeite     Boolean @default(false) @map("contem_leite")
@@ -1666,16 +1669,16 @@ model ComissaoConfig {
   mesReferencia String @map("mes_referencia") // Formato "YYYY-MM"
 
   // Faixas de comissão — cada faixa tem um LIMITE (fronteira em % da meta) e uma TAXA (% de comissão)
-  faixaAbaixo    Float @default(0) @map("faixa_abaixo")     // fronteira inferior: acima de X% abaixo da meta começa a faixa "abaixo" (0 = qualquer valor abaixo da meta)
+  faixaAbaixo    Float @default(0) @map("faixa_abaixo") // fronteira inferior: acima de X% abaixo da meta começa a faixa "abaixo" (0 = qualquer valor abaixo da meta)
   percAbaixoMeta Float @default(0) @map("perc_abaixo_meta") // comissão % quando realizado < (meta - faixaAbaixo%)
-  percNaMeta     Float @default(0) @map("perc_na_meta")     // comissão % quando realizado está entre (meta - faixaAbaixo%) e meta
-  faixaAcima     Float @default(0) @map("faixa_acima")      // fronteira superior: bônus de excedente só começa além de X% acima da meta (0 = qualquer excedente)
-  percAcimaMeta  Float @default(0) @map("perc_acima_meta")  // comissão % sobre o excedente além de (meta + faixaAcima%)
+  percNaMeta     Float @default(0) @map("perc_na_meta") // comissão % quando realizado está entre (meta - faixaAbaixo%) e meta
+  faixaAcima     Float @default(0) @map("faixa_acima") // fronteira superior: bônus de excedente só começa além de X% acima da meta (0 = qualquer excedente)
+  percAcimaMeta  Float @default(0) @map("perc_acima_meta") // comissão % sobre o excedente além de (meta + faixaAcima%)
 
   // Bônus independentes
-  bonusCidades   Float @default(0) @map("bonus_cidades")    // % adicional se bater meta em TODAS as cidades
-  bonusProdutos  Float @default(0) @map("bonus_produtos")   // % adicional por cada produto que bateu a meta
-  bonusFlex      Float @default(0) @map("bonus_flex")       // % adicional se uso de flex <= limiteFlexPerc
+  bonusCidades   Float @default(0) @map("bonus_cidades") // % adicional se bater meta em TODAS as cidades
+  bonusProdutos  Float @default(0) @map("bonus_produtos") // % adicional por cada produto que bateu a meta
+  bonusFlex      Float @default(0) @map("bonus_flex") // % adicional se uso de flex <= limiteFlexPerc
   limiteFlexPerc Float @default(100) @map("limite_flex_perc") // % máximo de uso do flex para ganhar bônus flex
 
   criadoPor String   @map("criado_por")
@@ -1698,24 +1701,24 @@ model ComissaoConfig {
 
 // Usuário do site (área do cliente). Pode ou não ter cadastro no CA (clienteUuid).
 model KitFestaCliente {
-  id            String  @id @default(uuid())
-  cpf           String  @unique // só dígitos
-  nome          String
-  telefone      String?
-  email         String?
-  senhaHash     String? @map("senha_hash") // null = ainda precisa criar senha
+  id        String  @id @default(uuid())
+  cpf       String  @unique // só dígitos
+  nome      String
+  telefone  String?
+  email     String?
+  senhaHash String? @map("senha_hash") // null = ainda precisa criar senha
 
   // Vínculo com o cadastro do Conta Azul (quando existe)
   clienteUuid String?  @unique @map("cliente_uuid")
   cliente     Cliente? @relation(fields: [clienteUuid], references: [UUID])
 
   // Programa de indicação / fidelidade
-  pontos          Int     @default(0)
-  codigoIndicacao String? @unique @map("codigo_indicacao")
-  creditoIndicacao Decimal @default(0) @map("credito_indicacao") @db.Decimal(12, 2)
-  indicadoPorId   String? @map("indicado_por_id")
-  indicadoPor     KitFestaCliente?  @relation("KitFestaIndicacao", fields: [indicadoPorId], references: [id])
-  indicados       KitFestaCliente[] @relation("KitFestaIndicacao")
+  pontos           Int               @default(0)
+  codigoIndicacao  String?           @unique @map("codigo_indicacao")
+  creditoIndicacao Decimal           @default(0) @map("credito_indicacao") @db.Decimal(12, 2)
+  indicadoPorId    String?           @map("indicado_por_id")
+  indicadoPor      KitFestaCliente?  @relation("KitFestaIndicacao", fields: [indicadoPorId], references: [id])
+  indicados        KitFestaCliente[] @relation("KitFestaIndicacao")
 
   // Recuperação de senha
   resetToken    String?   @map("reset_token")
@@ -1733,11 +1736,11 @@ model KitFestaCliente {
 
 // Categorias de exibição no site (ex: Fritos, De forno, Doces). Editável pelo admin.
 model KitFestaCategoria {
-  id        String  @id @default(uuid())
+  id        String   @id @default(uuid())
   nome      String
-  slug      String  @unique // ex: 'fritos', 'forno', 'doces'
-  ordem     Int     @default(0)
-  ativo     Boolean @default(true)
+  slug      String   @unique // ex: 'fritos', 'forno', 'doces'
+  ordem     Int      @default(0)
+  ativo     Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
 
   produtos KitFestaProduto[]
@@ -1747,12 +1750,12 @@ model KitFestaCategoria {
 
 // Vincula um Produto do app ao site, com config de exibição.
 model KitFestaProduto {
-  id        String @id @default(uuid())
-  produtoId String @unique @map("produto_id")
+  id        String  @id @default(uuid())
+  produtoId String  @unique @map("produto_id")
   produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 
-  categoriaId     String?            @map("categoria_id")
-  categoria       KitFestaCategoria? @relation(fields: [categoriaId], references: [id])
+  categoriaId String?            @map("categoria_id")
+  categoria   KitFestaCategoria? @relation(fields: [categoriaId], references: [id])
 
   unidadesPorCaixa Int      @default(25) @map("unidades_por_caixa")
   precoKitFesta    Decimal? @map("preco_kitfesta") @db.Decimal(12, 2) // override; null = usa valorVenda do Produto
@@ -1774,25 +1777,25 @@ model KitFestaProduto {
 
 // Status do dia na agenda da cozinha. Sem registro = usa default (aberto se houver horário no template).
 model KitFestaAgendaDia {
-  id        String  @id @default(uuid())
-  data      DateTime @unique @db.Date
-  status    String  @default("open") // open | few | full | closed
-  observacao String? @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id         String   @id @default(uuid())
+  data       DateTime @unique @db.Date
+  status     String   @default("open") // open | few | full | closed
+  observacao String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   @@map("kitfesta_agenda_dias")
 }
 
 // Template de horários por modo/dia-da-semana. O site gera os slots de cada data a partir daqui.
 model KitFestaHorarioPadrao {
-  id         String  @id @default(uuid())
-  modo       String  // retirada | entrega
-  hora       String  // '08:30'
-  capacidade Int     @default(10) // pedidos por slot
-  diasSemana Int[]   @default([]) @map("dias_semana") // 0=Dom ... 6=Sáb; vazio = todos
-  ativo      Boolean @default(true)
-  ordem      Int     @default(0)
+  id         String   @id @default(uuid())
+  modo       String // retirada | entrega
+  hora       String // '08:30'
+  capacidade Int      @default(10) // pedidos por slot
+  diasSemana Int[]    @default([]) @map("dias_semana") // 0=Dom ... 6=Sáb; vazio = todos
+  ativo      Boolean  @default(true)
+  ordem      Int      @default(0)
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@map("kitfesta_horarios_padrao")
@@ -1800,13 +1803,13 @@ model KitFestaHorarioPadrao {
 
 // Bairros de entrega com CEP e taxa.
 model KitFestaBairro {
-  id        String  @id @default(uuid())
+  id        String   @id @default(uuid())
   nome      String
-  cidade    String? @default("Joinville")
+  cidade    String?  @default("Joinville")
   cep       String? // CEP base ou principal do bairro
-  taxa      Decimal @default(0) @db.Decimal(12, 2)
-  ativo     Boolean @default(true)
-  ordem     Int     @default(0)
+  taxa      Decimal  @default(0) @db.Decimal(12, 2)
+  ativo     Boolean  @default(true)
+  ordem     Int      @default(0)
   createdAt DateTime @default(now()) @map("created_at")
 
   pedidos KitFestaPedido[]
@@ -1818,7 +1821,7 @@ model KitFestaBairro {
 model KitFestaCupom {
   id             String    @id @default(uuid())
   codigo         String    @unique
-  tipo           String    // pct | brl
+  tipo           String // pct | brl
   valor          Decimal   @db.Decimal(12, 2)
   label          String?
   minCaixas      Int?      @map("min_caixas")
@@ -1849,13 +1852,13 @@ model KitFestaPedido {
   semCadastro     Boolean @default(false) @map("sem_cadastro") // visitante sem Cliente no app/CA
 
   // Entrega
-  modo        String   // retirada | entrega
-  data        DateTime @db.Date
-  horario     String
-  bairroId    String?  @map("bairro_id")
-  bairro      KitFestaBairro? @relation(fields: [bairroId], references: [id])
-  taxaEntrega Decimal  @default(0) @map("taxa_entrega") @db.Decimal(12, 2)
-  enderecoEntrega String? @map("endereco_entrega") @db.Text
+  modo            String // retirada | entrega
+  data            DateTime        @db.Date
+  horario         String
+  bairroId        String?         @map("bairro_id")
+  bairro          KitFestaBairro? @relation(fields: [bairroId], references: [id])
+  taxaEntrega     Decimal         @default(0) @map("taxa_entrega") @db.Decimal(12, 2)
+  enderecoEntrega String?         @map("endereco_entrega") @db.Text
 
   // Valores
   subtotal      Decimal @db.Decimal(12, 2)
@@ -1868,14 +1871,14 @@ model KitFestaPedido {
 
   // Fluxo de aprovação
   // AGUARDANDO | PENDENTE_CADASTRO | APROVADO | RECUSADO | CONVERTIDO | CANCELADO
-  status        String  @default("AGUARDANDO")
-  motivoRecusa  String? @map("motivo_recusa") @db.Text
+  status       String  @default("AGUARDANDO")
+  motivoRecusa String? @map("motivo_recusa") @db.Text
 
   // Conversão para Pedido normal
-  tipoConversao String? @map("tipo_conversao") // NORMAL | ESPECIAL | BONIFICACAO
-  pedidoId      String? @unique @map("pedido_id")
-  pedido        Pedido? @relation(fields: [pedidoId], references: [id])
-  aprovadoPorId String? @map("aprovado_por_id")
+  tipoConversao String?   @map("tipo_conversao") // NORMAL | ESPECIAL | BONIFICACAO
+  pedidoId      String?   @unique @map("pedido_id")
+  pedido        Pedido?   @relation(fields: [pedidoId], references: [id])
+  aprovadoPorId String?   @map("aprovado_por_id")
   aprovadoEm    DateTime? @map("aprovado_em")
 
   whatsappEnviado Boolean @default(false) @map("whatsapp_enviado")
@@ -1892,16 +1895,16 @@ model KitFestaPedido {
 }
 
 model KitFestaPedidoItem {
-  id             String @id @default(uuid())
-  kitFestaPedidoId String @map("kitfesta_pedido_id")
-  kitFestaPedido KitFestaPedido @relation(fields: [kitFestaPedidoId], references: [id], onDelete: Cascade)
+  id               String         @id @default(uuid())
+  kitFestaPedidoId String         @map("kitfesta_pedido_id")
+  kitFestaPedido   KitFestaPedido @relation(fields: [kitFestaPedidoId], references: [id], onDelete: Cascade)
 
   kitFestaProdutoId String?          @map("kitfesta_produto_id")
   kitFestaProduto   KitFestaProduto? @relation(fields: [kitFestaProdutoId], references: [id])
 
   nomeProduto      String  @map("nome_produto")
   opcao            String? // ex: 'Frango' / 'Palmito'
-  quantidade       Int     // nº de caixas
+  quantidade       Int // nº de caixas
   unidadesPorCaixa Int     @map("unidades_por_caixa")
   precoUnitario    Decimal @map("preco_unitario") @db.Decimal(12, 2)
 
@@ -1910,7 +1913,7 @@ model KitFestaPedidoItem {
 
 // Configurações do site (chave/valor). Ex: hero, como_funciona, loja, regras, frete_texto.
 model KitFestaConfig {
-  chave     String  @id
+  chave     String   @id
   valor     Json?
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -1919,15 +1922,145 @@ model KitFestaConfig {
 
 // Avaliações exibidas no site, gerenciadas pelo admin.
 model KitFestaAvaliacao {
-  id        String  @id @default(uuid())
+  id        String   @id @default(uuid())
   nome      String
   evento    String?
-  texto     String  @db.Text
-  estrelas  Int     @default(5)
-  dataLabel String? @map("data_label")
-  ordem     Int     @default(0)
-  ativo     Boolean @default(true)
+  texto     String   @db.Text
+  estrelas  Int      @default(5)
+  dataLabel String?  @map("data_label")
+  ordem     Int      @default(0)
+  ativo     Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("kitfesta_avaliacoes")
+}
+
+// =============================================
+// SITE CONGELADOS (B2B / revenda)
+// Espelha a arquitetura do Kit Festa, mas personalizado por cliente:
+// preços, condições de pagamento e dias de entrega vêm do cadastro do app.
+// =============================================
+
+// Login do cliente do site de congelados. CPF ou CNPJ (só dígitos).
+model CongeladosCliente {
+  id        String  @id @default(uuid())
+  documento String  @unique // só dígitos (CPF 11 ou CNPJ 14)
+  nome      String
+  telefone  String?
+  email     String?
+  senhaHash String? @map("senha_hash") // null = ainda precisa criar senha
+
+  // Vínculo com o cadastro do Conta Azul (quando existe)
+  clienteUuid String?  @unique @map("cliente_uuid")
+  cliente     Cliente? @relation(fields: [clienteUuid], references: [UUID])
+
+  // Recuperação de senha
+  resetToken    String?   @map("reset_token")
+  resetTokenExp DateTime? @map("reset_token_exp")
+
+  ultimoAcesso DateTime? @map("ultimo_acesso")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  pedidos CongeladosPedido[]
+
+  @@index([documento])
+  @@map("congelados_clientes")
+}
+
+// Vincula um Produto do app ao catálogo de congelados, com config de exibição.
+// A categoria de filtro vem da CategoriaProduto (categoria comercial) do próprio Produto.
+model CongeladosProduto {
+  id        String  @id @default(uuid())
+  produtoId String  @unique @map("produto_id")
+  produto   Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  unidadesPorCaixa Int      @default(0) @map("unidades_por_caixa") // 0 = usa a unidade do produto
+  precoCongelados  Decimal? @map("preco_congelados") @db.Decimal(12, 2) // override; null = usa valorVenda
+  descricaoSite    String?  @map("descricao_site") @db.Text
+  destaque         Boolean  @default(false) // "Mais pedidos" na home
+  ordem            Int      @default(0)
+  ativo            Boolean  @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  itens CongeladosPedidoItem[]
+
+  @@index([ativo])
+  @@map("congelados_produtos")
+}
+
+// Pedido feito no site de congelados. Entra numa fila; admin vincula/aprova e
+// converte em Pedido normal ou especial (respeitando a condição de pagamento).
+model CongeladosPedido {
+  id     String @id @default(uuid())
+  numero Int    @unique @default(autoincrement())
+
+  congeladosClienteId String            @map("congelados_cliente_id")
+  congeladosCliente   CongeladosCliente @relation(fields: [congeladosClienteId], references: [id])
+
+  // Snapshot dos dados do cliente no momento do pedido
+  nomeCliente      String  @map("nome_cliente")
+  documentoCliente String  @map("documento_cliente")
+  telefoneCliente  String? @map("telefone_cliente")
+  celularAlterado  Boolean @default(false) @map("celular_alterado")
+  semCadastro      Boolean @default(false) @map("sem_cadastro") // visitante sem Cliente no app/CA
+
+  // Condição de pagamento e entrega escolhidas (vindas do cadastro do cliente)
+  tabelaPrecoId String? @map("tabela_preco_id") // id da TabelaPreco (condição) escolhida
+  condicaoNome  String? @map("condicao_nome")
+  diaEntrega    String? @map("dia_entrega")
+
+  // Valores
+  subtotal    Decimal @db.Decimal(12, 2)
+  total       Decimal @db.Decimal(12, 2)
+  totalCaixas Int     @map("total_caixas")
+
+  observacoes String? @db.Text
+
+  // Fluxo: AGUARDANDO | PENDENTE_CADASTRO | RECUSADO | CONVERTIDO | CANCELADO
+  status       String  @default("AGUARDANDO")
+  motivoRecusa String? @map("motivo_recusa") @db.Text
+
+  // Conversão para Pedido normal/especial
+  tipoConversao String?   @map("tipo_conversao") // NORMAL | ESPECIAL | BONIFICACAO
+  pedidoId      String?   @unique @map("pedido_id")
+  pedido        Pedido?   @relation(fields: [pedidoId], references: [id])
+  aprovadoPorId String?   @map("aprovado_por_id")
+  aprovadoEm    DateTime? @map("aprovado_em")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  itens CongeladosPedidoItem[]
+
+  @@index([status])
+  @@index([congeladosClienteId])
+  @@map("congelados_pedidos")
+}
+
+model CongeladosPedidoItem {
+  id                 String           @id @default(uuid())
+  congeladosPedidoId String           @map("congelados_pedido_id")
+  congeladosPedido   CongeladosPedido @relation(fields: [congeladosPedidoId], references: [id], onDelete: Cascade)
+
+  congeladosProdutoId String?            @map("congelados_produto_id")
+  congeladosProduto   CongeladosProduto? @relation(fields: [congeladosProdutoId], references: [id])
+
+  nomeProduto      String  @map("nome_produto")
+  quantidade       Int // nº de caixas
+  unidadesPorCaixa Int     @default(0) @map("unidades_por_caixa")
+  precoUnitario    Decimal @map("preco_unitario") @db.Decimal(12, 2)
+
+  @@map("congelados_pedido_itens")
+}
+
+// Configurações do site de congelados (chave/valor).
+model CongeladosConfig {
+  chave     String   @id
+  valor     Json?
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("congelados_config")
 }

@@ -65,6 +65,9 @@ import ListaCurriculos from './pages/RH/ListaCurriculos';
 import DetalheCurriculo from './pages/RH/DetalheCurriculo';
 import KitFestaAdmin from './pages/KitFesta/KitFestaAdmin';
 import KitFestaSite from './pages/KitFestaSite/KitFestaSite';
+import HomeSite from './pages/Site/HomeSite';
+import CongeladosSite from './pages/Site/CongeladosSite';
+import SiteAdmin from './pages/SiteAdmin/SiteAdmin';
 
 import {
   Menu, X, LogOut, ChevronDown,
@@ -72,7 +75,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, PartyPopper
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, PartyPopper, Snowflake
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -205,6 +208,7 @@ const Layout = ({ children }) => {
           {hasPermission('pedidos') && <SidebarItem to="/relatorios/flex" icon={Percent} label="Análise Flex" />}
           {hasPermission('delivery') && <SidebarItem to="/delivery" icon={Truck} label="Delivery" />}
           {(isAdmin || hasPermission('kitFesta')) && <SidebarItem to="/kit-festa-admin" icon={PartyPopper} label="Kit Festa" />}
+          {(isAdmin || hasPermission('kitFesta')) && <SidebarItem to="/site-admin" icon={Snowflake} label="Site" />}
           {hasPermission('pedidos') && <SidebarItem to="/rota" icon={Map} label="Rota" />}
           {hasPermission('rota') && <SidebarItem to="/leads" icon={Target} label="Leads" />}
           {(isAdmin || hasPermission('Pode_Ver_Atendimentos')) && <SidebarItem to="/atendimentos" icon={ClipboardCheck} label="Atendimentos" />}
@@ -360,6 +364,7 @@ const Layout = ({ children }) => {
               {hasPermission('pedidos') && <NavLink to="/relatorios/flex" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Análise Flex</NavLink>}
               {hasPermission('delivery') && <NavLink to="/delivery" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Delivery</NavLink>}
               {(isAdmin || hasPermission('kitFesta')) && <NavLink to="/kit-festa-admin" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Kit Festa</NavLink>}
+              {(isAdmin || hasPermission('kitFesta')) && <NavLink to="/site-admin" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Site</NavLink>}
               {hasPermission('pedidos') && <NavLink to="/rota" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rota</NavLink>}
               {hasPermission('rota') && <NavLink to="/leads" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Leads</NavLink>}
               {(isAdmin || hasPermission('Pode_Ver_Atendimentos')) && <NavLink to="/atendimentos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Atendimentos</NavLink>}
@@ -497,6 +502,10 @@ function App() {
               {/* Site público do Kit Festa (sem autenticação do app) */}
               <Route path="/kit-festa" element={<KitFestaSite />} />
 
+              {/* Site público da Hardt (home + congelados) — sem autenticação do app */}
+              <Route path="/inicio" element={<HomeSite />} />
+              <Route path="/congelados" element={<CongeladosSite />} />
+
               <Route path="/login" element={<Login />} />
 
               {/* Dashboard / Tela Inicial */}
@@ -523,6 +532,9 @@ function App() {
 
               {/* Kit Festa — painel admin (agenda, produtos, pedidos do site) */}
               <Route path="/kit-festa-admin" element={<PrivateRoute tab="kitFesta"><KitFestaAdmin /></PrivateRoute>} />
+
+              {/* Site Congelados — painel admin (pedidos do site, produtos) */}
+              <Route path="/site-admin" element={<PrivateRoute tab="kitFesta"><SiteAdmin /></PrivateRoute>} />
 
               {/* Rota / Leads (CRM) */}
               <Route path="/rota" element={<PrivateRoute tab="pedidos"><RotaLeads /></PrivateRoute>} />

@@ -55,6 +55,8 @@ const copilotoRoutes = require('./routes/copiloto'); // Copiloto (Clippy): assis
 const comissaoRoutes = require('./routes/comissaoRoutes'); // Módulo de Comissões
 const kitFestaRoutes = require('./routes/kitFestaRoutes'); // Kit Festa: painel admin
 const kitFestaPublicRoutes = require('./routes/kitFestaPublicRoutes'); // Kit Festa: site público do cliente
+const congeladosRoutes = require('./routes/congeladosRoutes'); // Site Congelados: painel admin
+const congeladosPublicRoutes = require('./routes/congeladosPublicRoutes'); // Site Congelados: site público do cliente
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -77,6 +79,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/kitfesta-publico', kitFestaPublicRoutes); // Kit Festa: site público (auth do cliente é interna)
+app.use('/api/congelados-publico', congeladosPublicRoutes); // Site Congelados: site público (auth do cliente é interna)
 
 
 // (Protegidas)
@@ -130,6 +133,7 @@ app.use('/api/rh', authMiddleware, rhRoutes); // RH: Painel interno (protegido)
 app.use('/api/copiloto', authMiddleware, copilotoRoutes); // Copiloto (Clippy): assistente de negócio com IA
 app.use('/api/comissoes', authMiddleware, comissaoRoutes); // Módulo de Comissões
 app.use('/api/kitfesta', authMiddleware, kitFestaRoutes); // Kit Festa: painel admin (agenda, produtos, pedidos)
+app.use('/api/congelados', authMiddleware, congeladosRoutes); // Site Congelados: painel admin (produtos, pedidos)
 
 // Rota base
 app.get('/', (req, res) => {

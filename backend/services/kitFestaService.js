@@ -862,7 +862,7 @@ const DEFAULT_CONFIG = {
         endereco: 'Rua XV de Outubro, 170 — Pirabeiraba, Joinville/SC',
         telefone: '(47) 98854-8476',
         whatsapp: '5547988548476',
-        mapsUrl: 'https://maps.app.goo.gl/NyPdgwqKb9mmz1vU6',
+        mapsUrl: 'https://www.google.com/maps/place/Hardt+Salgados/@-26.1901505,-48.910781,17z',
     },
     regras: {
         minCaixas: 4,

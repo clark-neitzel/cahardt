@@ -21,6 +21,7 @@
 | Análise Flex | `/relatorios/flex` | Análise do uso de flex por vendedor: descontos, acréscimos e orçamento consumido | [analise-flex.md](analise-flex.md) |
 | Delivery | `/delivery` | Kanban de acompanhamento de pedidos de entrega (Kit Festa) com WhatsApp | [delivery.md](delivery.md) |
 | Kit Festa | `/kit-festa-admin` | Painel do site de pedidos Kit Festa: fila de pedidos, agenda da cozinha, produtos do site, bairros, cupons e configurações | [kit-festa.md](kit-festa.md) |
+| Site (Congelados) | `/site-admin` | Painel do site de congelados (B2B): fila de pedidos do site, vincular cliente, virar pedido normal/especial e seleção de produtos do site | [site-congelados.md](site-congelados.md) |
 
 ---
 
