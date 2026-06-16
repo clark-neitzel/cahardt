@@ -461,7 +461,7 @@ const pedidoService = {
 
             // Ao finalizar pedido, valida flex dinâmico (% sobre vendas líquidas 30 dias)
             if (statusEnvio === 'ENVIAR') {
-                if (vendedorId && !isentoFlex && flexTotalPedido < 0) {
+                if (vendedorId && !isentoFlexEdit && flexTotalPedido < 0) {
                     const { diferencaFlex } = calcularDiferencaFlex(flexTotalPedido, pedidoAntigo);
                     if (diferencaFlex < 0) {
                         const flexInfo = await calcularFlexDinamico(vendedorId, tx);
