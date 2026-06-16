@@ -642,6 +642,22 @@ const DEFAULT_CONFIG = {
         whatsapp: '5547988548476',
         instagram: 'hardtsalgados',
     },
+    logoUrl: null, // logo enviada pelo admin (sobrepõe a padrão)
+    // Frases da PÁGINA PRINCIPAL (home)
+    hero: {
+        kicker: 'Joinville/SC · Frota própria refrigerada',
+        titulo: 'Salgado de verdade, feito à mão.',
+        subtitulo: 'Desde 2007 levando coxinha, bolinha e empadinha pra festa, o coffee break e o freezer da sua casa. Peça pelo link, combine retirada ou entrega e pague depois — sem complicação.',
+    },
+    caminhos: {
+        titulo: 'Dois jeitos de pedir',
+        subtitulo: 'Salgados prontos pra sua festa ou congelados pra revender e ter sempre em estoque. Escolha por onde começar.',
+    },
+    // Texto da área de congelados (login)
+    congelados: {
+        loginTitulo: 'Área do cliente',
+        loginSub: 'Entre para ver seus produtos, preços e condições e fazer seu pedido de congelados.',
+    },
 };
 
 module.exports = congeladosService;

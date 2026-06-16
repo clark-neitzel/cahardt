@@ -12,7 +12,7 @@ function mascara(v) {
   return d.replace(/(\d{2})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1/$2').replace(/(\d{4})(\d{1,2})$/, '$1-$2');
 }
 
-export default function Login({ logo, whatsapp, onLogin, onVisitante }) {
+export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitante }) {
   const [etapa, setEtapa] = useState('doc'); // doc | senha | criar | visitante
   const [doc, setDoc] = useState('');
   const [nome, setNome] = useState('');
@@ -76,8 +76,8 @@ export default function Login({ logo, whatsapp, onLogin, onVisitante }) {
         <div className="sawtooth"></div>
         <div className="cg-login-in">
           <img className="logo" src={logo} alt="Hardt" />
-          <h1>Área do cliente</h1>
-          <p className="sub">Entre para ver seus produtos, preços e condições e fazer seu pedido de congelados.</p>
+          <h1>{titulo || 'Área do cliente'}</h1>
+          <p className="sub">{sub || 'Entre para ver seus produtos, preços e condições e fazer seu pedido de congelados.'}</p>
 
           {erro && <div className="cg-login-err">{erro}</div>}
 

@@ -10,6 +10,11 @@ export const congeladosService = {
     // Config do site
     getConfig: () => api.get('/congelados/config').then(r => r.data),
     setConfig: (chave, valor) => api.put(`/congelados/config/${chave}`, { valor }).then(r => r.data),
+    uploadLogo: (file) => {
+        const fd = new FormData();
+        fd.append('logo', file);
+        return api.post('/congelados/logo', fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data);
+    },
 
     // Pedidos (fila)
     pedidos: (params) => api.get('/congelados/pedidos', { params }).then(r => r.data),

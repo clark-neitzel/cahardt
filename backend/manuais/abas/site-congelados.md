@@ -38,7 +38,12 @@ Ações por pedido:
 - **Recusar** (com motivo) e **Excluir** (somente administrador).
 
 ### Produtos no site
-Define **quais produtos** aparecem no catálogo de congelados (igual ao Kit Festa). Busca por nome e filtro por categoria comercial. Para cada produto: **Adicionar/remover** do site e, opcionalmente, um **preço específico do site** (se vazio, usa o valor de venda do produto). Produtos que também estão no Kit Festa aparecem sinalizados.
+Define **quais produtos** aparecem no catálogo de congelados (igual ao Kit Festa): cards com foto, nome, categoria e preço. Busca por nome, filtros **Todos / No site / Fora** e seleção de **várias categorias comerciais** ao mesmo tempo — os filtros ficam **salvos** (voltam do jeito que você deixou). Botão **Adicionar/No site** e **Configurar** por produto (preço do site, unidades por caixa, descrição, ordem, destaque "Mais pedidos", ativo). Se o preço do site ficar vazio, usa o cálculo automático (condição + negociação). Produtos que também estão no Kit Festa aparecem sinalizados.
+
+### Configurações
+Configura a aparência e os textos do site (igual ao Kit Festa): **logo**, dados da loja (nome, slogan, endereço, telefone, WhatsApp, Instagram), as **frases da página inicial** (kicker, título, subtítulo), o texto da seção "Dois jeitos de pedir" e os textos da tela de login dos congelados. Cada bloco tem seu botão **Salvar**.
+
+No topo da aba há **Abrir site** (abre a página principal) e **Copiar link do cliente** (copia o link da área de congelados pra mandar ao cliente).
 
 ## Página principal (`/inicio`)
 Vitrine institucional pública (sem login): topo com logo e menu, hero com a caixa girando, os dois caminhos (Kit Festa e Congelados), faixa de diferenciais, contato (endereço, WhatsApp, Instagram) e rodapé. Tem um **botão de WhatsApp flutuante** que acompanha a rolagem e abre uma conversa direta. Os dados de contato vêm da configuração do site.

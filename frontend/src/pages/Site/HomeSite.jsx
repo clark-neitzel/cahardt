@@ -3,23 +3,30 @@ import { Link } from 'react-router-dom';
 import publicApi from './api';
 import { WhatsIcon } from './icons';
 import './site.css';
+import { API_URL } from '../../services/api';
 
 const LOGO = '/congelados/logo.png';
 const BOX = '/congelados/box.gif';
+const imgUrl = (u) => !u ? null : (u.startsWith('http') ? u : `${API_URL}${u}`);
+
+const LOJA_PADRAO = {
+  nome: 'Hardt Doces e Salgados',
+  endereco: 'Rua XV de Outubro, 170 — Pirabeiraba, Joinville/SC',
+  telefone: '(47) 98854-8476',
+  whatsapp: '5547988548476',
+  instagram: 'hardtsalgados',
+};
 
 // Página principal pública do site da Hardt. Marketing/funil — sem login.
 export default function HomeSite() {
-  const [loja, setLoja] = useState({
-    nome: 'Hardt Doces e Salgados',
-    endereco: 'Rua XV de Outubro, 170 — Pirabeiraba, Joinville/SC',
-    telefone: '(47) 98854-8476',
-    whatsapp: '5547988548476',
-    instagram: 'hardtsalgados',
-  });
+  const [cfg, setCfg] = useState(null);
 
-  useEffect(() => {
-    publicApi.config().then(c => { if (c?.loja) setLoja(l => ({ ...l, ...c.loja })); }).catch(() => {});
-  }, []);
+  useEffect(() => { publicApi.config().then(setCfg).catch(() => {}); }, []);
+
+  const loja = { ...LOJA_PADRAO, ...(cfg?.loja || {}) };
+  const hero = cfg?.hero || {};
+  const caminhos = cfg?.caminhos || {};
+  const LOGO_SRC = cfg?.logoUrl ? imgUrl(cfg.logoUrl) : LOGO;
 
   const wa = `https://wa.me/${loja.whatsapp}`;
   const waMsg = `${wa}?text=${encodeURIComponent('Olá! Vim pelo site da Hardt e gostaria de fazer um pedido.')}`;
@@ -30,7 +37,7 @@ export default function HomeSite() {
       <header className="nav">
         <div className="wrap nav-in">
           <Link to="/inicio" className="nav-logo">
-            <img src={LOGO} alt={loja.nome} />
+            <img src={LOGO_SRC} alt={loja.nome} />
             <span className="hide-sm">desde 2007</span>
           </Link>
           <nav className="nav-links">
@@ -46,9 +53,9 @@ export default function HomeSite() {
       <section className="hero">
         <div className="wrap hero-grid">
           <div>
-            <div className="hero-since kicker"><span className="dot"></span> Joinville/SC · Frota própria refrigerada</div>
+            <div className="hero-since kicker"><span className="dot"></span> {hero.kicker || 'Joinville/SC · Frota própria refrigerada'}</div>
             <h1>Salgado <span className="scr">de verdade,</span><br /><span className="y">feito à mão.</span></h1>
-            <p className="lead">Desde 2007 levando coxinha, bolinha e empadinha pra festa, o coffee break e o freezer da sua casa. Peça pelo link, combine retirada ou entrega e pague depois — sem complicação.</p>
+            <p className="lead">{hero.subtitulo || 'Desde 2007 levando coxinha, bolinha e empadinha pra festa, o coffee break e o freezer da sua casa. Peça pelo link, combine retirada ou entrega e pague depois — sem complicação.'}</p>
             <div className="hero-cta">
               <Link className="btn btn-yellow" to="/kit-festa">Montar meu Kit Festa →</Link>
               <a className="btn btn-ghost" href={waMsg} target="_blank" rel="noopener noreferrer">Falar no WhatsApp</a>
@@ -66,8 +73,8 @@ export default function HomeSite() {
         <div className="wrap">
           <div className="sec-head">
             <div className="kicker">O que você precisa hoje?</div>
-            <h2>Dois jeitos de pedir</h2>
-            <p>Salgados prontos pra sua festa ou congelados pra revender e ter sempre em estoque. Escolha por onde começar.</p>
+            <h2>{caminhos.titulo || 'Dois jeitos de pedir'}</h2>
+            <p>{caminhos.subtitulo || 'Salgados prontos pra sua festa ou congelados pra revender e ter sempre em estoque. Escolha por onde começar.'}</p>
           </div>
           <div className="paths">
             <Link className="path path-festa" to="/kit-festa">
@@ -152,7 +159,7 @@ export default function HomeSite() {
       <footer className="foot">
         <div className="wrap foot-in">
           <Link to="/inicio" className="foot-logo">
-            <img src={LOGO} alt="Hardt" />
+            <img src={LOGO_SRC} alt="Hardt" />
             <b>Hardt Doces e Salgados<span>Sabor sem igual · desde 2007</span></b>
           </Link>
           <div className="foot-links">

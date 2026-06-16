@@ -32,7 +32,7 @@ export default function CongeladosSite() {
   const [hdr, setHdr] = useState({ tabelaPrecoId: '', dia: '', obs: '', telefone: '' });
 
   const logado = cliente || visitante;
-  const siteLogo = (cfg && cfg.loja && cfg.loja.logoUrl) ? imgUrl(cfg.loja.logoUrl) : LOGO;
+  const siteLogo = cfg?.logoUrl ? imgUrl(cfg.logoUrl) : LOGO;
   const whatsapp = cfg?.loja?.whatsapp || '5547988548476';
 
   // boot: restaura sessão
@@ -144,7 +144,7 @@ export default function CongeladosSite() {
   if (booting) return <div className="cg tex-board" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon n="cart" w={28} /></div>;
 
   if (!logado) {
-    return <div className="cg tex-board"><Login logo={siteLogo} whatsapp={whatsapp} onLogin={setCliente} onVisitante={setVisitante} /></div>;
+    return <div className="cg tex-board"><Login logo={siteLogo} whatsapp={whatsapp} titulo={cfg?.congelados?.loginTitulo} sub={cfg?.congelados?.loginSub} onLogin={setCliente} onVisitante={setVisitante} /></div>;
   }
 
   // tela de confirmação
