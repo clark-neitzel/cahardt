@@ -426,6 +426,7 @@ function ModalConfigProduto({ produto, onClose, onSaved }) {
   const [form, setForm] = useState({
     precoCongelados: s.precoCongelados ?? '',
     unidadesPorCaixa: s.unidadesPorCaixa ?? 0,
+    embalagem: s.embalagem || 'caixa',
     descricaoSite: s.descricaoSite || '',
     destaque: !!s.destaque,
     ordem: s.ordem ?? 0,
@@ -483,10 +484,17 @@ function ModalConfigProduto({ produto, onClose, onSaved }) {
             <p className="text-[11px] text-gray-400 mt-0.5">Vazio = usa o cálculo automático (condição + negociação).</p>
           </div>
           <div>
-            <label className="text-xs text-gray-500">Unid. por caixa</label>
+            <label className="text-xs text-gray-500">Unidades</label>
             <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.unidadesPorCaixa}
               onChange={e => setForm({ ...form, unidadesPorCaixa: e.target.value })} inputMode="numeric" placeholder="0 = não mostrar" />
           </div>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Embalagem (como aparece no site)</label>
+          <input list="emb-opts" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.embalagem}
+            onChange={e => setForm({ ...form, embalagem: e.target.value })} placeholder="caixa" />
+          <datalist id="emb-opts"><option value="caixa" /><option value="pacote" /><option value="unidade" /><option value="bandeja" /><option value="saco" /></datalist>
+          <p className="text-[11px] text-gray-400 mt-0.5">Ex.: caixa, pacote, unidade. Mostra "{form.embalagem || 'caixa'}{form.unidadesPorCaixa ? ` · ${form.unidadesPorCaixa} un` : ''}" no card.</p>
         </div>
         <div>
           <label className="text-xs text-gray-500">Descrição no site</label>

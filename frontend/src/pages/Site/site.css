@@ -315,3 +315,52 @@
 
 .cg-fab{ position:fixed; left:14px; right:14px; bottom:14px; z-index:50; display:none; }
 @media (max-width:640px){ .cg-fab.show{ display:block; } }
+
+/* selo "ver detalhes" no card (clicável) */
+.cg-card .ph{ cursor:pointer; }
+.cg-card .ph .cg-ver{ position:absolute; bottom:8px; right:8px; z-index:2; font-family:var(--f-display); text-transform:uppercase; letter-spacing:.06em; font-size:.6rem; font-weight:600; color:#fff; background:rgba(8,12,8,.55); padding:.3em .6em; border-radius:6px; opacity:0; transition:opacity .15s ease; pointer-events:none; }
+.cg-card .ph:hover .cg-ver{ opacity:1; }
+
+/* ---------------- FICHA (popup do produto) ---------------- */
+.cg-fmodal-ov{ position:fixed; inset:0; z-index:90; background:rgba(8,12,8,.72); backdrop-filter:blur(3px); display:flex; align-items:flex-start; justify-content:center; padding:24px 16px; overflow-y:auto; }
+.cg-fmodal{ width:100%; max-width:620px; background:var(--ink-2); border:1px solid var(--line-soft); border-radius:var(--r-lg); box-shadow:var(--shadow); position:relative; overflow:hidden; }
+.cg-fclose{ position:absolute; top:12px; right:12px; z-index:3; width:36px; height:36px; border-radius:10px; background:rgba(8,12,8,.5); color:#fff; display:flex; align-items:center; justify-content:center; }
+.cg-fclose:hover{ background:rgba(8,12,8,.75); }
+.cg-fhead{ display:flex; gap:16px; padding:18px; border-bottom:1px solid var(--line-soft); align-items:flex-start; }
+.cg-fimg{ width:120px; height:120px; flex:0 0 auto; border-radius:var(--r); overflow:hidden; background:linear-gradient(160deg,#fbf7ee,#ece2cd); position:relative; }
+.cg-fimg img{ width:100%; height:100%; object-fit:cover; }
+.cg-fimg .noimg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:8px; text-align:center; color:rgba(255,255,255,.85); font-family:'Courier New',monospace; font-size:.62rem; text-transform:uppercase; }
+.cg-fhead-info{ min-width:0; padding-right:34px; }
+.cg-fhead-info h2{ font-family:var(--f-display); text-transform:uppercase; color:var(--chalk); font-weight:700; font-size:1.3rem; line-height:1.05; margin:0 0 6px; }
+.cg-ftag{ display:inline-block; font-family:var(--f-display); text-transform:uppercase; letter-spacing:.06em; font-size:.62rem; font-weight:600; color:var(--green-dd); background:var(--yellow); padding:.25em .6em; border-radius:6px; }
+.cg-fmeta{ color:var(--chalk-dim); font-size:.86rem; margin:8px 0 0; }
+.cg-floading,.cg-fnodata{ color:var(--chalk-dim); padding:24px 18px; text-align:center; font-size:.92rem; }
+.cg-fbody{ padding:18px; max-height:62vh; overflow-y:auto; }
+.cg-fdesc{ color:var(--chalk); font-size:.95rem; line-height:1.5; margin:0 0 16px; }
+.cg-fgrid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:18px; }
+.cg-fcard{ background:var(--ink-3); border:1px solid var(--line-soft); border-radius:12px; padding:12px 10px; text-align:center; }
+.cg-fcard b{ display:block; font-family:var(--f-display); color:var(--yellow); font-weight:700; font-size:1.02rem; line-height:1.1; }
+.cg-fcard span{ display:block; color:var(--chalk-dim); font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; margin-top:3px; }
+.cg-fsec{ margin-bottom:18px; }
+.cg-fsec h4{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.06em; color:var(--yellow); font-size:.78rem; margin:0 0 8px; display:flex; align-items:baseline; gap:8px; }
+.cg-fporc{ color:var(--chalk-dim); font-weight:400; letter-spacing:0; text-transform:none; font-size:.75rem; }
+.cg-fsec p{ color:var(--chalk); font-size:.92rem; line-height:1.55; margin:0; }
+.cg-ftable{ width:100%; border-collapse:collapse; }
+.cg-ftable td{ padding:7px 0; border-bottom:1px solid rgba(243,236,220,.08); color:var(--chalk); font-size:.9rem; }
+.cg-ftable td:last-child{ text-align:right; font-family:var(--f-display); color:var(--chalk-dim); white-space:nowrap; }
+
+/* ---------------- RESPONSIVO (celular) ---------------- */
+@media (max-width:640px){
+  .cg-top-in{ height:auto; padding:10px 0; flex-wrap:wrap; gap:8px; }
+  .cg-brand img{ height:42px; }
+  .cg-brand .who b{ font-size:.92rem; -webkit-line-clamp:2; }
+  .cg-tools{ top:0; position:static; }
+  .cg-top{ position:static; }
+  .cg-band-head .kx{ font-size:1.25rem; }
+  .cg-band-head h2{ font-size:1.25rem; }
+  .cg-fhead{ flex-direction:column; align-items:center; text-align:center; }
+  .cg-fhead-info{ padding-right:0; }
+  .cg-fgrid{ grid-template-columns:1fr 1fr; }
+  .cg-drawer{ width:100vw; }
+  .cg-repeat{ flex-direction:column; align-items:stretch; }
+}

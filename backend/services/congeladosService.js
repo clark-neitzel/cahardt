@@ -47,6 +47,7 @@ function produtoSitePublico(cp) {
         descricao: cp.descricaoSite || cp.produto?.descricao || '',
         unidade: cp.produto?.unidade || '',
         unidades: cp.unidadesPorCaixa || 0,
+        embalagem: cp.embalagem || 'caixa',
         grupo: cp.produto?.categoriaProduto?.id || null,
         grupoNome: cp.produto?.categoriaProduto?.nome || null,
         preco,
@@ -324,6 +325,47 @@ const congeladosService = {
         return [...map.values()].sort((a, b) => a.ordem - b.ordem);
     },
 
+    // Ficha do produto (popup) — puxa os dados da etiqueta pelo código/produto
+    async fichaPublico(congeladosProdutoId) {
+        const cp = await prisma.congeladosProduto.findUnique({
+            where: { id: congeladosProdutoId },
+            include: { produto: { include: { imagens: true, categoriaProduto: true } } },
+        });
+        if (!cp || !cp.produto) throw new Error('Produto não encontrado.');
+        const p = cp.produto;
+
+        let et = await prisma.etiquetaProduto.findFirst({ where: { produtoId: p.id, ativo: true }, orderBy: { updatedAt: 'desc' } });
+        if (!et && p.codigo) et = await prisma.etiquetaProduto.findFirst({ where: { codigoProduto: p.codigo, ativo: true }, orderBy: { updatedAt: 'desc' } });
+
+        return {
+            id: cp.id,
+            nome: p.nome,
+            codigo: p.codigo,
+            unidade: p.unidade,
+            unidades: cp.unidadesPorCaixa || 0,
+            embalagem: cp.embalagem || 'caixa',
+            descricao: cp.descricaoSite || p.descricao || '',
+            grupoNome: p.categoriaProduto?.nome || null,
+            imagem: imagemPrincipal(p),
+            etiqueta: et ? {
+                pesoUnitario: et.pesoUnitario,
+                pesoPorcao: et.pesoTabelaNutricional,
+                quantidadeEmbalagem: et.quantidadeEmbalagem,
+                quantidadeAproximada: et.quantidadeAproximada,
+                nutricional: {
+                    valorEnergetico: et.valorEnergetico, carboidratos: et.carboidratos, proteinas: et.proteinas,
+                    gordurasTotais: et.gordurasTotais, gordurasSaturadas: et.gordurasSaturadas, gordurasTrans: et.gordurasTrans,
+                    fibraAlimentar: et.fibraAlimentar, sodio: et.sodio,
+                },
+                composicao: et.composicao,
+                modoPreparo: et.modoPreparo,
+                alergenos: { leite: et.contemLeite, gluten: et.contemGluten, ovo: et.contemOvo, outros: et.outrosAlergenos, avisos: et.avisosRotulo },
+                armazenamento: et.armazenamento,
+                validadeDias: et.validadeDias,
+            } : null,
+        };
+    },
+
     // Produtos comprados nas últimas N compras do cliente (para "Você sempre pede")
     async _produtoIdsHistorico(clienteUuid, ultimas = 3) {
         if (!clienteUuid) return new Set();
@@ -524,6 +566,7 @@ const congeladosService = {
             site: p.congeladosProduto ? {
                 id: p.congeladosProduto.id,
                 unidadesPorCaixa: p.congeladosProduto.unidadesPorCaixa,
+                embalagem: p.congeladosProduto.embalagem || 'caixa',
                 precoCongelados: p.congeladosProduto.precoCongelados != null ? dec(p.congeladosProduto.precoCongelados) : null,
                 descricaoSite: p.congeladosProduto.descricaoSite,
                 destaque: p.congeladosProduto.destaque,
@@ -536,6 +579,7 @@ const congeladosService = {
     async adminSalvarProdutoSite(produtoId, dados) {
         const data = {
             unidadesPorCaixa: dados.unidadesPorCaixa != null ? parseInt(dados.unidadesPorCaixa) : undefined,
+            embalagem: dados.embalagem != null && String(dados.embalagem).trim() !== '' ? String(dados.embalagem).trim() : undefined,
             precoCongelados: dados.precoCongelados === '' || dados.precoCongelados == null ? null : Number(dados.precoCongelados),
             descricaoSite: dados.descricaoSite ?? undefined,
             destaque: dados.destaque != null ? !!dados.destaque : undefined,
@@ -547,6 +591,7 @@ const congeladosService = {
             create: {
                 produtoId,
                 unidadesPorCaixa: dados.unidadesPorCaixa != null ? parseInt(dados.unidadesPorCaixa) : 0,
+                embalagem: dados.embalagem != null && String(dados.embalagem).trim() !== '' ? String(dados.embalagem).trim() : 'caixa',
                 precoCongelados: dados.precoCongelados === '' || dados.precoCongelados == null ? null : Number(dados.precoCongelados),
                 descricaoSite: dados.descricaoSite || null,
                 destaque: !!dados.destaque,

@@ -43,6 +43,10 @@ const congeladosController = {
         try { res.json(await svc.meuCatalogo(req.congelados.id)); }
         catch (e) { erro(res, e, 'meuCatalogo'); }
     },
+    ficha: async (req, res) => {
+        try { res.json(await svc.fichaPublico(req.params.id)); }
+        catch (e) { erro(res, e, 'ficha'); }
+    },
     config: async (req, res) => {
         try { res.json(await svc.configPublico()); }
         catch (e) { erro(res, e, 'config'); }

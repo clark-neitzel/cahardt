@@ -25,6 +25,7 @@ export const publicApi = {
   catalogo: () => cg.get('/catalogo').then(r => r.data),
   grupos: () => cg.get('/grupos').then(r => r.data),
   config: () => cg.get('/config').then(r => r.data),
+  ficha: (id) => cg.get(`/produto/${id}/ficha`).then(r => r.data),
   // Cliente logado
   perfil: () => cg.get('/perfil').then(r => r.data),
   meuCatalogo: () => cg.get('/meu-catalogo').then(r => r.data),

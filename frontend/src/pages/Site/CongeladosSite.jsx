@@ -110,10 +110,35 @@ export default function CongeladosSite() {
     });
   }, [produtos, filtro, q]);
 
-  const comprados = useMemo(() => matched.filter(p => p.comprado), [matched]);
-  const outros = useMemo(() => matched.filter(p => !p.comprado), [matched]);
+  const ordenaNome = (a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' });
+
+  // "Você sempre pede": os comprados, em ordem alfabética
+  const comprados = useMemo(() => matched.filter(p => p.comprado).slice().sort(ordenaNome), [matched]);
+
+  // Demais produtos AGRUPADOS por categoria (na ordem do admin) e alfabéticos dentro
+  const secoes = useMemo(() => {
+    const base = filtro === 'recompra' ? [] : matched.filter(p => !p.comprado);
+    const porGrupo = {};
+    base.forEach(p => { const k = p.grupo || '_outros'; (porGrupo[k] = porGrupo[k] || []).push(p); });
+    const ordem = grupos.map(g => g.id);
+    return Object.keys(porGrupo)
+      .sort((a, b) => (ordem.indexOf(a) === -1 ? 999 : ordem.indexOf(a)) - (ordem.indexOf(b) === -1 ? 999 : ordem.indexOf(b)))
+      .map(id => ({
+        id,
+        nome: grupos.find(g => g.id === id)?.nome || 'Outros',
+        produtos: porGrupo[id].slice().sort(ordenaNome),
+      }));
+  }, [matched, grupos, filtro]);
 
   const logout = () => { setToken(null); setCliente(null); setVisitante(null); setCart({}); setProdutos([]); };
+
+  // Popup de ficha do produto (etiqueta)
+  const [ficha, setFicha] = useState(null);
+  const [fichaLoading, setFichaLoading] = useState(false);
+  const abrirFicha = (p) => {
+    setFichaLoading(true); setFicha({ nome: p.nome, imagem: p.imagem, _loading: true });
+    publicApi.ficha(p.id).then(setFicha).catch(() => setFicha(null)).finally(() => setFichaLoading(false));
+  };
 
   async function finalizar() {
     setErroEnvio(''); setEnviando(true);
@@ -227,19 +252,19 @@ export default function CongeladosSite() {
           <>
             <div className="cg-band-head"><span className="kx">Você sempre pede</span></div>
             <div className="cg-grid">
-              {comprados.map(p => <Card key={p.id} p={p} preco={precoDe(p)} qty={qtyOf(p.id)} add={addItem} dec={removeItem} />)}
+              {comprados.map(p => <Card key={p.id} p={p} preco={precoDe(p)} qty={qtyOf(p.id)} add={addItem} dec={removeItem} onAbrir={abrirFicha} />)}
             </div>
           </>
         )}
 
-        {outros.length > 0 && (
-          <>
-            {comprados.length > 0 && <div className="cg-band-head"><h2>Mais salgados</h2></div>}
-            <div className="cg-grid" style={{ marginTop: comprados.length > 0 ? 0 : 16 }}>
-              {outros.map(p => <Card key={p.id} p={p} preco={precoDe(p)} qty={qtyOf(p.id)} add={addItem} dec={removeItem} />)}
+        {secoes.map(sec => (
+          <React.Fragment key={sec.id}>
+            <div className="cg-band-head"><h2>{sec.nome}</h2></div>
+            <div className="cg-grid">
+              {sec.produtos.map(p => <Card key={p.id} p={p} preco={precoDe(p)} qty={qtyOf(p.id)} add={addItem} dec={removeItem} onAbrir={abrirFicha} />)}
             </div>
-          </>
-        )}
+          </React.Fragment>
+        ))}
       </main>
 
       {/* mobile fab */}
@@ -333,22 +358,112 @@ export default function CongeladosSite() {
           </div>
         )}
       </aside>
+
+      {ficha && <FichaModal ficha={ficha} onClose={() => setFicha(null)} />}
+    </div>
+  );
+}
+
+/* ============== FICHA (popup do produto) ============== */
+function FichaModal({ ficha, onClose }) {
+  const img = imgUrl(ficha.imagem);
+  const et = ficha.etiqueta;
+  const nut = et?.nutricional || {};
+  const linhasNut = [
+    ['Valor energético', nut.valorEnergetico], ['Carboidratos', nut.carboidratos], ['Proteínas', nut.proteinas],
+    ['Gorduras totais', nut.gordurasTotais], ['Gorduras saturadas', nut.gordurasSaturadas], ['Gorduras trans', nut.gordurasTrans],
+    ['Fibra alimentar', nut.fibraAlimentar], ['Sódio', nut.sodio],
+  ].filter(([, v]) => v);
+  const alerg = et?.alergenos || {};
+  const listaAlerg = [alerg.leite && 'leite', alerg.gluten && 'glúten', alerg.ovo && 'ovo', alerg.outros].filter(Boolean).join(', ');
+
+  return (
+    <div className="cg-fmodal-ov" onClick={onClose}>
+      <div className="cg-fmodal" onClick={e => e.stopPropagation()}>
+        <button className="cg-fclose" onClick={onClose}><Icon n="chevRight" w={18} /></button>
+        <div className="cg-fhead">
+          <div className="cg-fimg" style={!img ? { background: tileGradient(ficha.codigo || ficha.nome) } : undefined}>
+            {img ? <img src={img} alt={ficha.nome} /> : <span className="noimg">foto · {ficha.nome}</span>}
+          </div>
+          <div className="cg-fhead-info">
+            <h2>{ficha.nome}</h2>
+            {ficha.grupoNome && <span className="cg-ftag">{ficha.grupoNome}</span>}
+            <p className="cg-fmeta">
+              {(ficha.embalagem || 'caixa')}{ficha.unidades ? ` · ${ficha.unidades} un` : ''}{et?.pesoUnitario ? ` · ${et.pesoUnitario}g/un` : ''}
+            </p>
+          </div>
+        </div>
+
+        {ficha._loading ? (
+          <p className="cg-floading">Carregando informações…</p>
+        ) : (
+          <div className="cg-fbody thin-scroll">
+            {ficha.descricao && <p className="cg-fdesc">{ficha.descricao}</p>}
+
+            {!et && <p className="cg-fnodata">Ficha técnica deste produto ainda não cadastrada.</p>}
+
+            {et && (
+              <>
+                <div className="cg-fgrid">
+                  {et.validadeDias != null && <div className="cg-fcard"><b>{et.validadeDias} dias</b><span>validade</span></div>}
+                  {et.armazenamento && <div className="cg-fcard"><b>{et.armazenamento}</b><span>conservação</span></div>}
+                  {et.quantidadeEmbalagem != null && <div className="cg-fcard"><b>{et.quantidadeEmbalagem}{et.quantidadeAproximada ? '±' : ''} un</b><span>por embalagem</span></div>}
+                </div>
+
+                {et.modoPreparo && (
+                  <div className="cg-fsec">
+                    <h4>Modo de preparo</h4>
+                    <p>{et.modoPreparo}</p>
+                  </div>
+                )}
+
+                {linhasNut.length > 0 && (
+                  <div className="cg-fsec">
+                    <h4>Informação nutricional {et.pesoPorcao ? <span className="cg-fporc">porção {et.pesoPorcao}g</span> : null}</h4>
+                    <table className="cg-ftable">
+                      <tbody>{linhasNut.map(([k, v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody>
+                    </table>
+                  </div>
+                )}
+
+                {et.composicao && (
+                  <div className="cg-fsec">
+                    <h4>Ingredientes</h4>
+                    <p>{et.composicao}</p>
+                  </div>
+                )}
+
+                {(listaAlerg || alerg.avisos) && (
+                  <div className="cg-fsec">
+                    <h4>Alérgicos</h4>
+                    {listaAlerg && <p>Contém: {listaAlerg}.</p>}
+                    {alerg.avisos && <p style={{ color: 'var(--chalk-dim)' }}>{alerg.avisos}</p>}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 /* ============== CARD ============== */
-function Card({ p, preco, qty, add, dec }) {
+function Card({ p, preco, qty, add, dec, onAbrir }) {
   const img = imgUrl(p.imagem);
+  const emb = p.embalagem || 'caixa';
   return (
     <article className="cg-card">
-      <div className="ph" style={!img ? { background: tileGradient(p.codigo || p.nome) } : undefined}>
+      <div className="ph" style={!img ? { background: tileGradient(p.codigo || p.nome) } : undefined}
+        onClick={() => onAbrir && onAbrir(p)} role="button" title="Ver detalhes do produto">
         {(p.comprado) && <div className="tagrow"><span className="tg bought">Você compra</span></div>}
         {img ? <img src={img} alt={p.nome} loading="lazy" /> : <div className="noimg">foto · {p.nome}</div>}
+        <span className="cg-ver">ver detalhes</span>
       </div>
       <div className="cg-card-body">
-        <h3>{p.nome}</h3>
-        <span className="cx">caixa{p.unidades ? ` · ${p.unidades} un` : ''}{p.unidade ? ` · ${p.unidade}` : ''}</span>
+        <h3 onClick={() => onAbrir && onAbrir(p)} style={{ cursor: 'pointer' }}>{p.nome}</h3>
+        <span className="cx">{emb}{p.unidades ? ` · ${p.unidades} un` : ''}</span>
         <div className="cg-card-foot">
           <div className="price"><b>{money(preco != null ? preco : p.preco)}</b></div>
           {qty === 0 ? (

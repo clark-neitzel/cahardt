@@ -31,6 +31,7 @@ router.post('/auth/reset-senha', ctrl.resetSenha);
 router.get('/catalogo', ctrl.catalogo);
 router.get('/grupos', ctrl.grupos);
 router.get('/config', ctrl.config);
+router.get('/produto/:id/ficha', ctrl.ficha);
 
 // ── Pedido (visitante ou cliente logado) ──
 router.post('/pedido', clienteAuth(false), ctrl.criarPedido);
