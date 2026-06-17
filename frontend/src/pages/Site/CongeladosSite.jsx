@@ -152,25 +152,11 @@ export default function CongeladosSite() {
     if (visitante) payload.visitante = visitante;
     try {
       const pedido = await publicApi.criarPedido(payload);
-      enviarWhatsApp(pedido);
       setConfirm(pedido);
       setCart({}); setOpen(false);
     } catch (e) {
       setErroEnvio(e?.response?.data?.error || e.message || 'Não foi possível enviar o pedido.');
     } finally { setEnviando(false); }
-  }
-
-  function enviarWhatsApp(pedido) {
-    const nome = cliente?.nome || visitante?.nome || '';
-    let msg = `*Pedido de Congelados — Hardt*%0A`;
-    msg += `Cliente: ${encodeURIComponent(nome)}%0A`;
-    if (condPadrao) msg += `Pagamento: ${encodeURIComponent(condPadrao.nome)}%0A`;
-    if (hdr.dia) msg += `Entrega: ${encodeURIComponent(hdr.dia)}%0A`;
-    msg += `%0A`;
-    Object.keys(cart).forEach(id => { const p = produtos.find(x => x.id === id); if (p) msg += `• ${cart[id]}x ${encodeURIComponent(p.nome)} — ${money(precoDe(p) * cart[id])}%0A`; });
-    msg += `%0A*Total: ${money(totals.subtotal)}*`;
-    if (hdr.obs) msg += `%0A%0AObs: ${encodeURIComponent(hdr.obs)}`;
-    window.open(`https://wa.me/${whatsapp}?text=${msg}`, '_blank');
   }
 
   if (booting) return <div className="cg tex-board" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon n="cart" w={28} /></div>;
@@ -187,7 +173,7 @@ export default function CongeladosSite() {
           <div className="cg-login-in">
             <img className="logo" src={siteLogo} alt="Hardt" />
             <h1>Pedido enviado!</h1>
-            <p className="sub">Recebemos seu pedido <b style={{ color: 'var(--chalk)' }}>#{confirm.numero}</b>. Nossa equipe vai confirmar e combinar o pagamento conforme a condição escolhida.</p>
+            <p className="sub">Recebemos seu pedido <b style={{ color: 'var(--chalk)' }}>#{confirm.numero}</b>. Você vai receber a confirmação no seu <b style={{ color: 'var(--chalk)' }}>WhatsApp</b>. Nossa equipe combina o pagamento conforme a sua condição.</p>
             <button className="btn btn-yellow btn-block" onClick={() => setConfirm(null)} style={{ marginTop: 8 }}>Fazer outro pedido</button>
             <p className="cg-login-note"><Link to="/inicio" style={{ color: 'var(--chalk-dim)' }}>← voltar ao site</Link></p>
           </div>
@@ -208,7 +194,7 @@ export default function CongeladosSite() {
             <img src={siteLogo} alt="Hardt" />
             <div className="who">
               <b>{nomeCurto}</b>
-              <small>{cliente ? 'seus preços já aplicados' : 'pedido sem cadastro'}</small>
+              {!cliente && <small>pedido sem cadastro</small>}
             </div>
           </div>
           <div className="cg-top-actions">
@@ -270,7 +256,7 @@ export default function CongeladosSite() {
       {/* mobile fab */}
       <div className={'cg-fab' + (totals.boxes > 0 && !open ? ' show' : '')}>
         <button className="btn btn-yellow btn-block" onClick={() => setOpen(true)}>
-          Ver pedido · {totals.boxes} cx · {money(totals.subtotal)}
+          Ver pedido · {totals.boxes} {totals.boxes === 1 ? 'item' : 'itens'} · {money(totals.subtotal)}
         </button>
       </div>
 
@@ -347,12 +333,12 @@ export default function CongeladosSite() {
 
         {totals.boxes > 0 && (
           <div className="cg-dfoot">
-            <div className="cg-totrow"><span>Subtotal ({totals.boxes} cx)</span><b>{money(totals.subtotal)}</b></div>
+            <div className="cg-totrow"><span>Subtotal ({totals.boxes} {totals.boxes === 1 ? 'item' : 'itens'})</span><b>{money(totals.subtotal)}</b></div>
             <div className="cg-totrow grand"><span>Total</span><b>{money(totals.subtotal)}</b></div>
             {below && <p className="cg-minwarn"><Icon n="tag" w={13} /> Pedido mínimo de {money(minimo)} para esta condição — faltam {money(minimo - totals.subtotal)}.</p>}
             {erroEnvio && <p className="cg-minwarn"><Icon n="tag" w={13} /> {erroEnvio}</p>}
             <button className="btn btn-wa btn-block cg-cta" disabled={below || enviando} onClick={finalizar}>
-              <Icon n="check" w={18} /> {enviando ? 'Enviando…' : 'Enviar pedido'}
+              <Icon n="check" w={18} /> {enviando ? 'Enviando…' : 'Enviar pedido pelo WhatsApp'}
             </button>
             <p className="cg-login-note" style={{ marginTop: 10 }}>Pagamento combinado depois, conforme sua condição — nada é cobrado online.</p>
           </div>

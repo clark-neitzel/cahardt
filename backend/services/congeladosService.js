@@ -6,6 +6,7 @@ const pedidoService = require('./pedidoService');
 const webhookService = require('./webhookService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123';
+const money2 = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
 
 // ───────── Helpers ─────────
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');
@@ -507,7 +508,7 @@ const congeladosService = {
             }
         }
 
-        return prisma.congeladosPedido.create({
+        const pedido = await prisma.congeladosPedido.create({
             data: {
                 congeladosClienteId: auth.id,
                 nomeCliente: auth.nome,
@@ -527,6 +528,34 @@ const congeladosService = {
             },
             include: { itens: true },
         });
+
+        // Envia cópia do pedido no WhatsApp do cliente (mesma forma do Kit Festa)
+        setTimeout(() => { this._enviarCopiaCliente(pedido.id).catch(e => console.error('[Congelados] cópia WhatsApp:', e.message)); }, 0);
+        return pedido;
+    },
+
+    // Monta e envia a confirmação do pedido no WhatsApp do cliente (via webhook BotConversa)
+    async _enviarCopiaCliente(pedidoId) {
+        const p = await prisma.congeladosPedido.findUnique({ where: { id: pedidoId }, include: { itens: true } });
+        if (!p || !p.telefoneCliente) return;
+        const cfg = await this.configPublico();
+        const loja = cfg.loja || {};
+        const linhas = p.itens.map(it => `• ${it.quantidade}x ${it.nomeProduto} — ${money2(dec(it.precoUnitario) * it.quantidade)}`).join('\n');
+        const partes = [
+            `Olá, *${p.nomeCliente}*! 👋`,
+            '',
+            `Recebemos seu pedido de *Congelados* #${p.numero} ✅`,
+            '',
+            linhas,
+            '',
+            p.condicaoNome ? `💳 Pagamento: ${p.condicaoNome}` : null,
+            p.diaEntrega ? `🚚 Entrega: ${p.diaEntrega}` : null,
+            `💰 *Total: ${money2(p.total)}*`,
+            '',
+            'Em breve nossa equipe confirma tudo por aqui. O pagamento é combinado conforme a sua condição — nada é cobrado online.',
+            `Obrigado! 🙏 — ${loja.nome || 'Hardt'}`,
+        ].filter(x => x !== null);
+        await webhookService.enviarMensagemCustom(p.telefoneCliente, p.nomeCliente, partes.join('\n'));
     },
 
     async meusPedidos(clienteId) {

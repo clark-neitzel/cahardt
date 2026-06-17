@@ -109,7 +109,7 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
           {etapa === 'doc' && (
             <form onSubmit={continuarDoc}>
               <div className="cg-field">
-                <label>CPF / CNPJ</label>
+                <label>CPF / CNPJ ou código</label>
                 <input className="cg-input" inputMode="numeric" value={doc} onChange={e => setDoc(mascara(e.target.value))} placeholder="000.000.000-00" autoFocus />
               </div>
               <button type="submit" className="btn btn-yellow btn-block" disabled={busy || !docOk} style={{ marginTop: 8 }}>
