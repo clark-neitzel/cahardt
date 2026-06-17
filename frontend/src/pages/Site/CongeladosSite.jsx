@@ -164,7 +164,7 @@ export default function CongeladosSite() {
     );
   }
 
-  const nomeCurto = (cliente?.nome || visitante?.nome || 'Cliente').split(' ').slice(0, 2).join(' ');
+  const nomeCurto = cliente?.nome || visitante?.nome || 'Cliente';
   const gruposFiltro = [{ id: 'todos', nome: 'Todos' }, ...(cliente ? [{ id: 'recompra', nome: 'Recomprar' }] : []), ...grupos];
 
   return (
@@ -299,8 +299,12 @@ export default function CongeladosSite() {
                   </>
                 )}
 
-                <h4>Telefone (WhatsApp)</h4>
-                <input className="cg-select" value={hdr.telefone} onChange={e => setHdr({ ...hdr, telefone: e.target.value })} placeholder="(47) 9 9999-9999" />
+                {!cliente?.temCadastroApp && (
+                  <>
+                    <h4>Telefone (WhatsApp)</h4>
+                    <input className="cg-select" value={hdr.telefone} onChange={e => setHdr({ ...hdr, telefone: e.target.value })} placeholder="(47) 9 9999-9999" />
+                  </>
+                )}
 
                 <h4>Observações <span style={{ color: 'var(--chalk-dim)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(opcional)</span></h4>
                 <textarea className="cg-textarea" placeholder="Horário, doca, alguma observação..." value={hdr.obs} onChange={e => setHdr({ ...hdr, obs: e.target.value })} />

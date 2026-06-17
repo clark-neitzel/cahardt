@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pedidoService = require('./pedidoService');
+const webhookService = require('./webhookService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123';
 
@@ -10,6 +11,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123'
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');
 const dec = (v) => (v == null ? 0 : Number(v));
 const docValido = (d) => d.length === 11 || d.length === 14; // CPF ou CNPJ
+// Esconde o meio do telefone: (47) 9****-**76
+const mascararTelefone = (t) => {
+    const d = soDigitos(t);
+    if (d.length < 6) return '•••••';
+    return `${d.slice(0, 2)} ${d.slice(2, 3)}••••-••${d.slice(-2)}`;
+};
 
 // Tokens de dia salvos no cadastro do cliente (Dia_de_entrega: "SEG,QUA") → rótulo amigável
 const DIA_LABEL = { DOM: 'Domingo', SEG: 'Segunda', TER: 'Terça', QUA: 'Quarta', QUI: 'Quinta', SEX: 'Sexta', SAB: 'Sábado' };
@@ -105,7 +112,8 @@ const congeladosService = {
     // ───────────────────── PÚBLICO ─────────────────────────────
     // ============================================================
 
-    // Passo 1 do login: descobre o estado do documento (CPF/CNPJ)
+    // Passo 1 do login: descobre o estado do documento (CPF/CNPJ).
+    // A senha do Kit Festa serve para o site de congelados (mesma conta, por CPF).
     async checkDoc(docRaw) {
         const documento = soDigitos(docRaw);
         if (!docValido(documento)) throw new Error('Informe um CPF ou CNPJ válido.');
@@ -113,23 +121,25 @@ const congeladosService = {
         const auth = await prisma.congeladosCliente.findUnique({ where: { documento } });
         const clienteApp = await prisma.cliente.findFirst({
             where: { Documento: { contains: documento } },
-            select: { UUID: true, Nome: true, NomeFantasia: true, Telefone: true, Telefone_Celular: true, Email: true },
+            select: { UUID: true, Nome: true, NomeFantasia: true },
         });
+        // Kit Festa só tem CPF (11 dígitos)
+        const kf = documento.length === 11
+            ? await prisma.kitFestaCliente.findUnique({ where: { cpf: documento } }).catch(() => null)
+            : null;
 
+        if (auth?.senhaHash) {
+            return { situacao: 'TEM_SENHA', temCadastroApp: !!auth.clienteUuid || !!clienteApp, nome: auth.nome };
+        }
+        if (kf?.senhaHash) {
+            // tem senha no Kit Festa → usa a mesma
+            return { situacao: 'TEM_SENHA', origem: 'kitfesta', temCadastroApp: !!clienteApp || !!kf.clienteUuid, nome: clienteApp?.NomeFantasia || clienteApp?.Nome || auth?.nome || kf.nome };
+        }
         if (auth) {
-            return {
-                situacao: auth.senhaHash ? 'TEM_SENHA' : 'CRIAR_SENHA',
-                temCadastroApp: !!auth.clienteUuid || !!clienteApp,
-                nome: auth.nome,
-            };
+            return { situacao: 'CRIAR_SENHA', temCadastroApp: !!auth.clienteUuid || !!clienteApp, nome: auth.nome };
         }
         if (clienteApp) {
-            return {
-                situacao: 'CRIAR_SENHA',
-                temCadastroApp: true,
-                nome: clienteApp.NomeFantasia || clienteApp.Nome,
-                _clienteUuid: clienteApp.UUID,
-            };
+            return { situacao: 'CRIAR_SENHA', temCadastroApp: true, nome: clienteApp.NomeFantasia || clienteApp.Nome };
         }
         return { situacao: 'SEM_CADASTRO', temCadastroApp: false, nome: null };
     },
@@ -177,24 +187,65 @@ const congeladosService = {
 
     async login({ documento: docRaw, senha }) {
         const documento = soDigitos(docRaw);
-        const auth = await prisma.congeladosCliente.findUnique({ where: { documento } });
+        let auth = await prisma.congeladosCliente.findUnique({ where: { documento } });
+
+        // 1) Senha do próprio site de congelados
+        if (auth?.senhaHash && await bcrypt.compare(senha, auth.senhaHash)) {
+            await prisma.congeladosCliente.update({ where: { documento }, data: { ultimoAcesso: new Date() } });
+            return { token: gerarTokenCliente(auth), cliente: await this._perfilPublico(auth) };
+        }
+
+        // 2) Senha do Kit Festa (mesma conta por CPF) → adota a mesma senha aqui
+        if (documento.length === 11) {
+            const kf = await prisma.kitFestaCliente.findUnique({ where: { cpf: documento } }).catch(() => null);
+            if (kf?.senhaHash && await bcrypt.compare(senha, kf.senhaHash)) {
+                const clienteApp = await prisma.cliente.findFirst({ where: { Documento: { contains: documento } }, select: { UUID: true, Nome: true, NomeFantasia: true, Telefone: true, Telefone_Celular: true } });
+                auth = await prisma.congeladosCliente.upsert({
+                    where: { documento },
+                    create: {
+                        documento, nome: clienteApp?.NomeFantasia || clienteApp?.Nome || kf.nome,
+                        senhaHash: kf.senhaHash,
+                        telefone: kf.telefone || clienteApp?.Telefone_Celular || clienteApp?.Telefone || null,
+                        clienteUuid: kf.clienteUuid || clienteApp?.UUID || null,
+                        ultimoAcesso: new Date(),
+                    },
+                    update: { senhaHash: auth?.senhaHash || kf.senhaHash, clienteUuid: auth?.clienteUuid || kf.clienteUuid || clienteApp?.UUID || null, ultimoAcesso: new Date() },
+                });
+                return { token: gerarTokenCliente(auth), cliente: await this._perfilPublico(auth) };
+            }
+        }
+
         if (!auth || !auth.senhaHash) throw new Error('Documento não cadastrado ou sem senha.');
-        const ok = await bcrypt.compare(senha, auth.senhaHash);
-        if (!ok) throw new Error('Senha incorreta.');
-        await prisma.congeladosCliente.update({ where: { documento }, data: { ultimoAcesso: new Date() } });
-        return { token: gerarTokenCliente(auth), cliente: await this._perfilPublico(auth) };
+        throw new Error('Senha incorreta.');
     },
 
+    // Gera o código de recuperação e ENVIA por WhatsApp (não retorna o código pro front).
     async esqueciSenha(docRaw) {
         const documento = soDigitos(docRaw);
-        const auth = await prisma.congeladosCliente.findUnique({ where: { documento } });
-        if (!auth) throw new Error('Documento não encontrado.');
-        const token = crypto.randomBytes(4).toString('hex').toUpperCase();
-        await prisma.congeladosCliente.update({
-            where: { documento },
-            data: { resetToken: token, resetTokenExp: new Date(Date.now() + 30 * 60 * 1000) },
-        });
-        return { codigo: token, telefone: auth.telefone, nome: auth.nome };
+        if (!docValido(documento)) throw new Error('Informe um CPF ou CNPJ válido.');
+        let auth = await prisma.congeladosCliente.findUnique({ where: { documento } });
+
+        // Junta telefone/nome do cadastro do app e do Kit Festa
+        const clienteApp = await prisma.cliente.findFirst({ where: { Documento: { contains: documento } }, select: { UUID: true, Nome: true, NomeFantasia: true, Telefone: true, Telefone_Celular: true } });
+        const kf = documento.length === 11 ? await prisma.kitFestaCliente.findUnique({ where: { cpf: documento } }).catch(() => null) : null;
+
+        let nome = auth?.nome || clienteApp?.NomeFantasia || clienteApp?.Nome || kf?.nome;
+        let telefone = auth?.telefone || clienteApp?.Telefone_Celular || clienteApp?.Telefone || kf?.telefone;
+        const clienteUuid = auth?.clienteUuid || clienteApp?.UUID || kf?.clienteUuid || null;
+
+        if (!auth && !nome) throw new Error('Documento não encontrado.');
+        if (!auth) {
+            auth = await prisma.congeladosCliente.create({ data: { documento, nome: nome || 'Cliente', telefone: telefone || null, clienteUuid } });
+        }
+        if (!telefone) throw new Error('Não há um WhatsApp no seu cadastro. Fale com a gente para recuperar o acesso.');
+
+        const codigo = crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 caracteres
+        await prisma.congeladosCliente.update({ where: { documento }, data: { resetToken: codigo, resetTokenExp: new Date(Date.now() + 30 * 60 * 1000) } });
+
+        const msg = `Olá, *${nome}*! 🔐\n\nSeu código para criar uma nova senha no site da Hardt é:\n\n*${codigo}*\n\nVálido por 30 minutos. Se não foi você, ignore esta mensagem.`;
+        await webhookService.enviarMensagemCustom(telefone, nome, msg).catch(e => console.error('[Congelados] envio código:', e.message));
+
+        return { enviado: true, telefone: mascararTelefone(telefone) };
     },
 
     async resetSenha({ documento: docRaw, codigo, novaSenha }) {
@@ -400,12 +451,18 @@ const congeladosService = {
             throw new Error(`Pedido mínimo de R$ ${minimo.toFixed(2).replace('.', ',')} para esta condição de pagamento.`);
         }
 
-        const telConfirmado = soDigitos(telefone);
-        const telAntigo = soDigitos(auth.telefone);
-        const telefoneFinal = telConfirmado.length >= 10 ? telConfirmado : (auth.telefone || null);
-        const celularAlterado = telConfirmado.length >= 10 && telConfirmado !== telAntigo;
-        if (celularAlterado) {
-            await prisma.congeladosCliente.update({ where: { id: auth.id }, data: { telefone: telefoneFinal } }).catch(() => {});
+        // Telefone: cliente COM cadastro tem WhatsApp interno (não muda pelo site, por segurança).
+        // Só visitante sem cadastro informa/atualiza o telefone.
+        let telefoneFinal = auth.telefone || null;
+        let celularAlterado = false;
+        if (!auth.clienteUuid) {
+            const telConfirmado = soDigitos(telefone);
+            const telAntigo = soDigitos(auth.telefone);
+            telefoneFinal = telConfirmado.length >= 10 ? telConfirmado : (auth.telefone || null);
+            celularAlterado = telConfirmado.length >= 10 && telConfirmado !== telAntigo;
+            if (celularAlterado) {
+                await prisma.congeladosCliente.update({ where: { id: auth.id }, data: { telefone: telefoneFinal } }).catch(() => {});
+            }
         }
 
         return prisma.congeladosPedido.create({

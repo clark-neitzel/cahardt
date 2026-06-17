@@ -13,11 +13,14 @@ function mascara(v) {
 }
 
 export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitante }) {
-  const [etapa, setEtapa] = useState('doc'); // doc | senha | criar | visitante
+  const [etapa, setEtapa] = useState('doc'); // doc | senha | criar | visitante | reset
   const [doc, setDoc] = useState('');
   const [nome, setNome] = useState('');
   const [senha, setSenha] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [origem, setOrigem] = useState(null); // 'kitfesta' = usa senha do Kit Festa
+  const [codigo, setCodigo] = useState('');
+  const [telMasc, setTelMasc] = useState('');
   const [erro, setErro] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -33,9 +36,31 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
     try {
       const r = await publicApi.checkDoc(docDigits);
       if (r.nome) setNome(r.nome);
+      setOrigem(r.origem || null);
       if (r.situacao === 'TEM_SENHA') setEtapa('senha');
       else if (r.situacao === 'CRIAR_SENHA') setEtapa('criar');
       else setEtapa('visitante');
+    } catch (e) { handleErro(e); }
+    finally { setBusy(false); }
+  }
+
+  async function enviarCodigo() {
+    setErro(''); setBusy(true);
+    try {
+      const r = await publicApi.esqueciSenha(docDigits);
+      setTelMasc(r.telefone || '');
+      setEtapa('reset');
+    } catch (e) { handleErro(e); }
+    finally { setBusy(false); }
+  }
+
+  async function redefinir(e) {
+    e.preventDefault();
+    setErro(''); setBusy(true);
+    try {
+      const r = await publicApi.resetSenha({ documento: docDigits, codigo, novaSenha: senha });
+      setToken(r.token);
+      onLogin(r.cliente);
     } catch (e) { handleErro(e); }
     finally { setBusy(false); }
   }
@@ -97,11 +122,15 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
           {etapa === 'senha' && (
             <form onSubmit={entrar}>
               <p className="sub" style={{ marginBottom: 16 }}>Olá, <b style={{ color: 'var(--chalk)' }}>{nome}</b>! Digite sua senha.</p>
+              {origem === 'kitfesta' && <p className="cg-login-note" style={{ marginTop: 0, marginBottom: 12 }}>Use a <b style={{ color: 'var(--chalk)' }}>mesma senha do seu Kit Festa</b>.</p>}
               <div className="cg-field">
                 <label>Senha</label>
                 <input className="cg-input" type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="••••••••" autoFocus />
               </div>
               <button type="submit" className="btn btn-yellow btn-block" disabled={busy} style={{ marginTop: 8 }}>{busy ? 'Entrando…' : 'Entrar'}</button>
+              <p className="cg-login-note" style={{ marginTop: 12 }}>
+                <a onClick={!busy ? enviarCodigo : undefined}>Esqueci minha senha</a>
+              </p>
               <button type="button" className="cg-back" onClick={() => { setEtapa('doc'); setSenha(''); setErro(''); }}>← usar outro documento</button>
             </form>
           )}
@@ -114,15 +143,28 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
                 <input className="cg-input" value={nome} onChange={e => setNome(e.target.value)} placeholder="Seu nome ou da empresa" />
               </div>
               <div className="cg-field">
-                <label>Telefone (WhatsApp)</label>
-                <input className="cg-input" inputMode="numeric" value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(47) 9 9999-9999" />
-              </div>
-              <div className="cg-field">
                 <label>Crie uma senha</label>
-                <input className="cg-input" type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="ao menos 4 caracteres" />
+                <input className="cg-input" type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="ao menos 4 caracteres" autoFocus />
               </div>
               <button type="submit" className="btn btn-yellow btn-block" disabled={busy} style={{ marginTop: 8 }}>{busy ? 'Criando…' : 'Criar conta e entrar'}</button>
               <button type="button" className="cg-back" onClick={() => { setEtapa('doc'); setSenha(''); setErro(''); }}>← voltar</button>
+            </form>
+          )}
+
+          {etapa === 'reset' && (
+            <form onSubmit={redefinir}>
+              <p className="sub" style={{ marginBottom: 16 }}>Enviamos um código para o seu WhatsApp{telMasc ? <> <b style={{ color: 'var(--chalk)' }}>{telMasc}</b></> : ''}. Informe abaixo e crie uma nova senha.</p>
+              <div className="cg-field">
+                <label>Código recebido</label>
+                <input className="cg-input" value={codigo} onChange={e => setCodigo(e.target.value.toUpperCase())} placeholder="ex: A1B2C3" autoFocus />
+              </div>
+              <div className="cg-field">
+                <label>Nova senha</label>
+                <input className="cg-input" type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="ao menos 4 caracteres" />
+              </div>
+              <button type="submit" className="btn btn-yellow btn-block" disabled={busy} style={{ marginTop: 8 }}>{busy ? 'Salvando…' : 'Salvar e entrar'}</button>
+              <p className="cg-login-note" style={{ marginTop: 12 }}><a onClick={!busy ? enviarCodigo : undefined}>Reenviar código</a></p>
+              <button type="button" className="cg-back" onClick={() => { setEtapa('senha'); setErro(''); }}>← voltar</button>
             </form>
           )}
 
