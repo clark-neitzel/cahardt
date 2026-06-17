@@ -15,6 +15,12 @@ export const congeladosService = {
         fd.append('logo', file);
         return api.post('/congelados/logo', fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data);
     },
+    // Sobe a foto do produto no app (aparece no site e no resto do sistema)
+    uploadFotoProduto: (produtoId, file) => {
+        const fd = new FormData();
+        fd.append('imagens', file);
+        return api.post(`/produtos/${produtoId}/imagens`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data);
+    },
 
     // Pedidos (fila)
     pedidos: (params) => api.get('/congelados/pedidos', { params }).then(r => r.data),

@@ -10,6 +10,13 @@ const LOGO = '/congelados/logo.png';
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
 const imgUrl = (u) => !u ? null : (u.startsWith('http') ? u : `${API_URL}${u}`);
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');
+// Fundo quente determinístico (paleta de salgados) para cards sem foto — como no protótipo
+const tileGradient = (seed) => {
+  let h = 0; const s = String(seed || 'x');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  const hue = 20 + (h % 40); // 20–60: dourado / caramelo / marrom
+  return `linear-gradient(150deg, hsl(${hue} 46% 44%), hsl(${hue} 50% 33%))`;
+};
 
 export default function CongeladosSite() {
   const [cliente, setCliente] = useState(null);   // cliente logado (com condições, dias…)
@@ -335,9 +342,9 @@ function Card({ p, preco, qty, add, dec }) {
   const img = imgUrl(p.imagem);
   return (
     <article className="cg-card">
-      <div className="ph">
+      <div className="ph" style={!img ? { background: tileGradient(p.codigo || p.nome) } : undefined}>
         {(p.comprado) && <div className="tagrow"><span className="tg bought">Você compra</span></div>}
-        {img ? <img src={img} alt={p.nome} loading="lazy" /> : <div className="noimg">{p.nome}</div>}
+        {img ? <img src={img} alt={p.nome} loading="lazy" /> : <div className="noimg">foto · {p.nome}</div>}
       </div>
       <div className="cg-card-body">
         <h3>{p.nome}</h3>

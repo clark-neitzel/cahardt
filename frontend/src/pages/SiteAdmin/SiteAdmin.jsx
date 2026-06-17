@@ -432,6 +432,22 @@ function ModalConfigProduto({ produto, onClose, onSaved }) {
     ativo: s.ativo !== false,
   });
   const [salvando, setSalvando] = useState(false);
+  const [fotoUrl, setFotoUrl] = useState(produto.imagem || null);
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
+  const fotoRef = useRef(null);
+
+  const onFoto = async (e) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast.error('Imagem muito grande (máx 5MB)'); return; }
+    setEnviandoFoto(true);
+    try {
+      const r = await congeladosService.uploadFotoProduto(produto.produtoId, file);
+      const nova = Array.isArray(r) ? r[0]?.url : null;
+      if (nova) setFotoUrl(nova);
+      toast.success('Foto enviada — já aparece no site');
+    } catch (err) { toast.error(err.response?.data?.error || 'Erro ao enviar foto (precisa ser admin).'); }
+    finally { setEnviandoFoto(false); if (fotoRef.current) fotoRef.current.value = ''; }
+  };
   const salvar = async () => {
     setSalvando(true);
     try {
@@ -446,6 +462,19 @@ function ModalConfigProduto({ produto, onClose, onSaved }) {
   return (
     <Modal onClose={onClose} title={produto.nome}>
       <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
+            {fotoUrl ? <img src={imgUrl(fotoUrl)} alt="" className="w-full h-full object-cover" /> : <ImageOff className="h-6 w-6 text-gray-300" />}
+          </div>
+          <div>
+            <button type="button" onClick={() => fotoRef.current?.click()} disabled={enviandoFoto}
+              className="text-xs px-3 py-2 rounded-lg border border-sky-200 text-sky-700 hover:bg-sky-50 flex items-center gap-1.5 disabled:opacity-50">
+              {enviandoFoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} {fotoUrl ? 'Trocar foto' : 'Adicionar foto'}
+            </button>
+            <p className="text-[11px] text-gray-400 mt-1">Aparece no site e no app · máx 5MB</p>
+            <input ref={fotoRef} type="file" accept="image/*" className="hidden" onChange={onFoto} />
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="text-xs text-gray-500">Preço do site (R$)</label>
