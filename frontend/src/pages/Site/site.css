@@ -26,7 +26,9 @@
 }
 .cg *{ box-sizing:border-box; }
 .cg img{ display:block; max-width:100%; }
-.cg button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+/* NÃO resetar background/border aqui: tem especificidade maior que .cg-add/.cg-chip
+   e apagaria o verde do botão e as pílulas das categorias. O Tailwind já zera por padrão. */
+.cg button{ font-family:inherit; cursor:pointer; color:inherit; }
 .cg input,.cg textarea,.cg select{ font-family:inherit; }
 .cg ::selection{ background:var(--yellow); color:var(--ink); }
 .cg a{ text-decoration:none; color:inherit; }
