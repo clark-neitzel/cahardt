@@ -17,7 +17,7 @@
   --line-soft:rgba(243,236,220,.16);
   --shadow:0 18px 44px -20px rgba(8,20,10,.55);
   --shadow-sm:0 8px 22px -14px rgba(8,20,10,.5);
-  --r:14px; --r-lg:22px; --maxw:1180px;
+  --r:14px; --r-lg:22px; --maxw:1460px;
   --f-display:'Oswald','Arial Narrow',sans-serif;
   --f-body:'Bitter',Georgia,serif;
   --f-script:'Kaushan Script',cursive;
@@ -247,11 +247,12 @@
 .cg-band-head .kx{ font-family:var(--f-script); color:var(--yellow); font-size:1.5rem; line-height:1; }
 .cg-band-head h2{ font-family:var(--f-display); text-transform:uppercase; color:var(--chalk); font-weight:700; font-size:1.5rem; line-height:1; margin:0; }
 
-.cg-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(218px,1fr)); gap:16px; }
-@media (max-width:520px){ .cg-grid{ grid-template-columns:1fr 1fr; gap:12px; } }
+.cg-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(270px,1fr)); gap:18px; }
+@media (max-width:560px){ .cg-grid{ grid-template-columns:1fr 1fr; gap:12px; } }
 .cg-card{ background:var(--ink-2); border:1px solid var(--line-soft); border-radius:var(--r); overflow:hidden; display:flex; flex-direction:column; }
-.cg-card .ph{ position:relative; aspect-ratio:4/3; overflow:hidden; background:repeating-linear-gradient(135deg, rgba(243,236,220,.05) 0 9px, rgba(243,236,220,.02) 9px 18px), var(--ink-3); }
-.cg-card .ph img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+/* fundo claro p/ a foto do produto "saltar" (fotos costumam ter fundo branco/transparente) */
+.cg-card .ph{ position:relative; aspect-ratio:4/3; overflow:hidden; background:linear-gradient(160deg,#fbf7ee,#ece2cd); }
+.cg-card .ph img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; padding:6px; }
 .cg-card .ph .noimg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Courier New',monospace; font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.82); text-shadow:0 1px 2px rgba(0,0,0,.25); text-align:center; padding:10px; line-height:1.3; }
 .cg-card .tagrow{ position:absolute; top:8px; left:8px; z-index:2; display:flex; gap:5px; }
 .cg-card .tg{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.04em; font-size:.62rem; font-weight:600; padding:.3em .55em; border-radius:6px; }
