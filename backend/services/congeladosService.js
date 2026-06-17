@@ -252,16 +252,23 @@ const congeladosService = {
             .map(produtoSitePublico);
     },
 
-    // Grupos (categorias comerciais) presentes no catálogo de congelados — para os filtros
+    // Grupos (categorias comerciais) presentes no catálogo de congelados — para os filtros.
+    // O nome exibido pode ser personalizado pelo admin (config "categoriasNomes").
     async gruposPublico() {
-        const produtos = await prisma.congeladosProduto.findMany({
-            where: { ativo: true },
-            include: { produto: { include: { categoriaProduto: true } } },
-        });
+        const [produtos, cfgRow] = await Promise.all([
+            prisma.congeladosProduto.findMany({ where: { ativo: true }, include: { produto: { include: { categoriaProduto: true } } } }),
+            prisma.congeladosConfig.findUnique({ where: { chave: 'categoriasNomes' } }).catch(() => null),
+        ]);
+        const overrides = (cfgRow && cfgRow.valor) || {}; // { [categoriaId]: { nome, ordem, oculto } | "nome" }
         const map = new Map();
         produtos.forEach(p => {
             const c = p.produto?.categoriaProduto;
-            if (c && !map.has(c.id)) map.set(c.id, { id: c.id, nome: c.nome, ordem: c.ordemExibicao || 0 });
+            if (!c || map.has(c.id)) return;
+            const ov = overrides[c.id];
+            const nome = typeof ov === 'string' ? ov : (ov?.nome || c.nome);
+            const ordem = (ov && typeof ov === 'object' && ov.ordem != null) ? ov.ordem : (c.ordemExibicao || 0);
+            const oculto = ov && typeof ov === 'object' && !!ov.oculto;
+            if (!oculto) map.set(c.id, { id: c.id, nome, ordem });
         });
         return [...map.values()].sort((a, b) => a.ordem - b.ordem);
     },
@@ -658,6 +665,8 @@ const DEFAULT_CONFIG = {
         loginTitulo: 'Área do cliente',
         loginSub: 'Entre para ver seus produtos, preços e condições e fazer seu pedido de congelados.',
     },
+    // Nome exibido no site para cada categoria comercial: { [categoriaId]: { nome, ordem, oculto } }
+    categoriasNomes: {},
 };
 
 module.exports = congeladosService;

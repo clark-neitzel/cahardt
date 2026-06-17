@@ -180,6 +180,7 @@ export default function CongeladosSite() {
             </div>
           </div>
           <div className="cg-top-actions">
+            <Link to="/inicio" className="cg-exit">← Início</Link>
             <span className="cg-exit" onClick={logout}>Sair</span>
             <button className="btn btn-yellow btn-sm cg-cart-btn" onClick={() => setOpen(true)}>
               <Icon n="cart" w={17} /> Pedido

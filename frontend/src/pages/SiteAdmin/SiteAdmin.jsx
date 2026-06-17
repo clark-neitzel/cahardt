@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Snowflake, Package, ClipboardList, Settings, Search, Check, X, Link2, Trash2, RefreshCw, Plus, Star, ImageOff, Save, Loader2, Store, Megaphone, Upload, Image as ImageIcon } from 'lucide-react';
+import { Snowflake, Package, ClipboardList, Settings, Search, Check, X, Link2, Trash2, RefreshCw, Plus, Star, ImageOff, Save, Loader2, Store, Megaphone, Upload, Image as ImageIcon, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import congeladosService from '../../services/congeladosService';
 import api, { API_URL } from '../../services/api';
@@ -268,6 +268,7 @@ function ProdutosTab() {
   const [cats, setCats] = useState(() => { try { return JSON.parse(localStorage.getItem(LS_CATS)) || []; } catch { return []; } });
   const [loading, setLoading] = useState(true);
   const [editando, setEditando] = useState(null);
+  const [gerCats, setGerCats] = useState(false);
 
   // persiste filtros
   useEffect(() => { localStorage.setItem(LS_FILTRO, filtro); }, [filtro]);
@@ -314,6 +315,9 @@ function ProdutosTab() {
               className={`px-3 py-1.5 text-xs rounded-md ${filtro === v ? 'bg-white shadow-sm font-medium text-gray-800' : 'text-gray-500'}`}>{l}</button>
           ))}
         </div>
+        <button onClick={() => setGerCats(true)} className="text-xs px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center gap-1.5">
+          <Tag className="h-4 w-4" /> Categorias do site
+        </button>
       </div>
 
       {/* Categorias comerciais (multi-seleção, salvas) */}
@@ -357,7 +361,63 @@ function ProdutosTab() {
         )}
 
       {editando && <ModalConfigProduto produto={editando} onClose={() => setEditando(null)} onSaved={() => { setEditando(null); carregar(); }} />}
+      {gerCats && <ModalCategorias categorias={categorias} onClose={() => setGerCats(false)} />}
     </div>
+  );
+}
+
+// Define o nome (apelido) que cada categoria comercial mostra no site, a ordem e se fica oculta.
+function ModalCategorias({ categorias, onClose }) {
+  const [map, setMap] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    congeladosService.getConfig().then(c => setMap(c.categoriasNomes || {})).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  const up = (id, patch) => setMap(m => ({ ...m, [id]: { ...(typeof m[id] === 'object' ? m[id] : (m[id] ? { nome: m[id] } : {})), ...patch } }));
+  const val = (id) => { const v = map[id]; return typeof v === 'string' ? { nome: v } : (v || {}); };
+
+  const salvar = async () => {
+    setSalvando(true);
+    try { await congeladosService.setConfig('categoriasNomes', map); toast.success('Categorias salvas'); onClose(); }
+    catch { toast.error('Erro ao salvar'); }
+    finally { setSalvando(false); }
+  };
+
+  return (
+    <Modal onClose={onClose} title="Categorias do site">
+      <p className="text-sm text-gray-500 mb-3">Defina o nome que cada categoria mostra no site (sem mexer no nome do sistema), a ordem e se aparece.</p>
+      {loading ? <div className="py-8 text-center text-gray-400"><Loader2 className="h-5 w-5 animate-spin inline" /></div> : (
+        <div className="space-y-2 max-h-[55vh] overflow-y-auto">
+          {categorias.map(c => {
+            const v = val(c.id);
+            return (
+              <div key={c.id} className="border border-gray-100 rounded-lg p-2.5">
+                <div className="text-xs text-gray-400 mb-1">Sistema: {c.nome}</div>
+                <div className="flex items-center gap-2">
+                  <input value={v.nome ?? ''} onChange={e => up(c.id, { nome: e.target.value })} placeholder={c.nome}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
+                  <input value={v.ordem ?? ''} onChange={e => up(c.id, { ordem: e.target.value === '' ? undefined : Number(e.target.value) })}
+                    placeholder="ordem" inputMode="numeric" className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-sm" />
+                  <label className="flex items-center gap-1 text-xs text-gray-500 whitespace-nowrap">
+                    <input type="checkbox" checked={!!v.oculto} onChange={e => up(c.id, { oculto: e.target.checked })} /> ocultar
+                  </label>
+                </div>
+              </div>
+            );
+          })}
+          {categorias.length === 0 && <p className="text-sm text-gray-400 text-center py-4">Nenhuma categoria comercial cadastrada no sistema.</p>}
+        </div>
+      )}
+      <div className="flex gap-2 mt-4">
+        <button onClick={salvar} disabled={salvando} className="flex-1 bg-sky-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-sky-700 disabled:opacity-50 flex items-center justify-center gap-1.5">
+          {salvando && <Loader2 className="h-4 w-4 animate-spin" />} Salvar
+        </button>
+        <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 border border-gray-200 rounded-lg">Fechar</button>
+      </div>
+    </Modal>
   );
 }
 
