@@ -86,10 +86,16 @@ router.get('/amostras-disponiveis', verificarAuth, checkAcessoEmbarque, async (r
 // ==========================================
 router.get('/pedidos-disponiveis', verificarAuth, checkAcessoEmbarque, async (req, res) => {
     try {
+        // Pedidos que estão no Kanban de Delivery são entregues por outro fluxo
+        // e não devem aparecer no agrupamento de embarque.
+        const noDelivery = await prisma.deliveryStatus.findMany({ select: { pedidoId: true } });
+        const idsNoDelivery = noDelivery.map(d => d.pedidoId);
+
         // Regra de Ouro: FATURADOS, Especiais prontos (ENVIAR) ou Bonificações prontas (ENVIAR), sem Embarque
         const pedidosLivres = await prisma.pedido.findMany({
             where: {
                 embarqueId: null,
+                ...(idsNoDelivery.length > 0 ? { id: { notIn: idsNoDelivery } } : {}),
                 OR: [
                     { situacaoCA: 'FATURADO' },
                     { especial: true, statusEnvio: 'ENVIAR' },
