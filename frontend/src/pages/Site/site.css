@@ -235,7 +235,11 @@
 .cg-search input{ flex:1; background:none; border:none; color:var(--chalk); font-size:.98rem; }
 .cg-search input:focus{ outline:none; }
 .cg-search input::placeholder{ color:rgba(243,236,220,.4); }
-.cg-filters{ display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; }
+.cg-carousel{ position:relative; display:flex; align-items:center; gap:8px; }
+.cg-carrow{ flex:0 0 auto; width:32px; height:32px; border-radius:50%; background:var(--ink-3); border:1px solid var(--line-soft); color:var(--chalk); display:flex; align-items:center; justify-content:center; font-size:1.3rem; line-height:1; font-family:var(--f-display); }
+.cg-carrow:hover{ background:var(--ink-2); color:var(--yellow); border-color:var(--yellow); }
+@media (max-width:640px){ .cg-carrow{ display:none; } } /* celular: arrasta com o dedo */
+.cg-filters{ display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; scroll-behavior:smooth; flex:1; -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 3%, #000 94%, transparent 100%); mask-image:linear-gradient(90deg, transparent 0, #000 3%, #000 94%, transparent 100%); }
 .cg-filters::-webkit-scrollbar{ height:0; }
 .cg-chip{ flex:0 0 auto; font-family:var(--f-display); text-transform:uppercase; letter-spacing:.05em; font-size:.82rem; font-weight:600; color:var(--chalk-dim); padding:.55em 1.05em; border-radius:999px; border:1px solid var(--line-soft); background:var(--ink-2); white-space:nowrap; }
 .cg-chip:hover{ color:var(--chalk); }
@@ -348,6 +352,7 @@
 .cg-ftable{ width:100%; border-collapse:collapse; }
 .cg-ftable td{ padding:7px 0; border-bottom:1px solid rgba(243,236,220,.08); color:var(--chalk); font-size:.9rem; }
 .cg-ftable td:last-child{ text-align:right; font-family:var(--f-display); color:var(--chalk-dim); white-space:nowrap; }
+.cg-ffoot{ border-top:1px solid var(--line-soft); padding:14px 18px; background:var(--ink-2); }
 
 /* ---------------- RESPONSIVO (celular) ---------------- */
 @media (max-width:640px){

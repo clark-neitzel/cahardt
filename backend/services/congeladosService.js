@@ -44,7 +44,7 @@ function produtoSitePublico(cp) {
         id: cp.id,
         produtoId: cp.produtoId,
         codigo: cp.produto?.codigo || '',
-        nome: cp.produto?.nome || '',
+        nome: cp.nomeSite || cp.produto?.nome || '',
         descricao: cp.descricaoSite || cp.produto?.descricao || '',
         unidade: cp.produto?.unidade || '',
         unidades: cp.unidadesPorCaixa || 0,
@@ -340,7 +340,7 @@ const congeladosService = {
 
         return {
             id: cp.id,
-            nome: p.nome,
+            nome: cp.nomeSite || p.nome,
             codigo: p.codigo,
             unidade: p.unidade,
             unidades: cp.unidadesPorCaixa || 0,
@@ -596,6 +596,7 @@ const congeladosService = {
                 id: p.congeladosProduto.id,
                 unidadesPorCaixa: p.congeladosProduto.unidadesPorCaixa,
                 embalagem: p.congeladosProduto.embalagem || 'caixa',
+                nomeSite: p.congeladosProduto.nomeSite || '',
                 precoCongelados: p.congeladosProduto.precoCongelados != null ? dec(p.congeladosProduto.precoCongelados) : null,
                 descricaoSite: p.congeladosProduto.descricaoSite,
                 destaque: p.congeladosProduto.destaque,
@@ -609,6 +610,7 @@ const congeladosService = {
         const data = {
             unidadesPorCaixa: dados.unidadesPorCaixa != null ? parseInt(dados.unidadesPorCaixa) : undefined,
             embalagem: dados.embalagem != null && String(dados.embalagem).trim() !== '' ? String(dados.embalagem).trim() : undefined,
+            nomeSite: dados.nomeSite !== undefined ? (String(dados.nomeSite).trim() || null) : undefined,
             precoCongelados: dados.precoCongelados === '' || dados.precoCongelados == null ? null : Number(dados.precoCongelados),
             descricaoSite: dados.descricaoSite ?? undefined,
             destaque: dados.destaque != null ? !!dados.destaque : undefined,
@@ -621,6 +623,7 @@ const congeladosService = {
                 produtoId,
                 unidadesPorCaixa: dados.unidadesPorCaixa != null ? parseInt(dados.unidadesPorCaixa) : 0,
                 embalagem: dados.embalagem != null && String(dados.embalagem).trim() !== '' ? String(dados.embalagem).trim() : 'caixa',
+                nomeSite: dados.nomeSite ? String(dados.nomeSite).trim() : null,
                 precoCongelados: dados.precoCongelados === '' || dados.precoCongelados == null ? null : Number(dados.precoCongelados),
                 descricaoSite: dados.descricaoSite || null,
                 destaque: !!dados.destaque,

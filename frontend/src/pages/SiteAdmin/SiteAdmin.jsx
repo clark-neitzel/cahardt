@@ -446,6 +446,7 @@ function ModalConfigProduto({ produto, embalagens = [], onEmbalagens, onClose, o
     setForm(f => (f.embalagem === e ? { ...f, embalagem: embalagens.filter(x => x !== e)[0] || 'caixa' } : f));
   };
   const [form, setForm] = useState({
+    nomeSite: s.nomeSite || '',
     precoCongelados: s.precoCongelados ?? '',
     unidadesPorCaixa: s.unidadesPorCaixa ?? 0,
     embalagem: s.embalagem || 'caixa',
@@ -497,6 +498,12 @@ function ModalConfigProduto({ produto, embalagens = [], onEmbalagens, onClose, o
             <p className="text-[11px] text-gray-400 mt-1">Aparece no site e no app · máx 5MB</p>
             <input ref={fotoRef} type="file" accept="image/*" className="hidden" onChange={onFoto} />
           </div>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">Nome no site</label>
+          <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.nomeSite}
+            onChange={e => setForm({ ...form, nomeSite: e.target.value })} placeholder={produto.nome} />
+          <p className="text-[11px] text-gray-400 mt-0.5">Vazio = usa o nome do sistema. O pedido gerado no sistema sempre usa o nome do sistema ({produto.nome}).</p>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>

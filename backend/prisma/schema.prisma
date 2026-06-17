@@ -1977,6 +1977,7 @@ model CongeladosProduto {
 
   unidadesPorCaixa Int      @default(0) @map("unidades_por_caixa") // 0 = usa a unidade do produto
   embalagem        String   @default("caixa") // rótulo da embalagem no site (caixa, pacote, unidade...)
+  nomeSite         String?  @map("nome_site") // nome exibido no site; null = nome do sistema. O pedido no sistema sempre usa o nome do sistema.
   precoCongelados  Decimal? @map("preco_congelados") @db.Decimal(12, 2) // override; null = usa valorVenda
   descricaoSite    String?  @map("descricao_site") @db.Text
   destaque         Boolean  @default(false) // "Mais pedidos" na home

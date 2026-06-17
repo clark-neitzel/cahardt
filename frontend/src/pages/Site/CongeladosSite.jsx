@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import publicApi, { getToken, setToken } from './api';
 import { Icon } from './icons';
@@ -140,6 +140,9 @@ export default function CongeladosSite() {
     publicApi.ficha(p.id).then(setFicha).catch(() => setFicha(null)).finally(() => setFichaLoading(false));
   };
 
+  const filtrosRef = useRef(null);
+  const scrollFiltros = (dir) => filtrosRef.current?.scrollBy({ left: dir * 220, behavior: 'smooth' });
+
   async function finalizar() {
     setErroEnvio(''); setEnviando(true);
     const itens = Object.keys(cart).map(id => ({ congeladosProdutoId: id, quantidade: cart[id] }));
@@ -215,10 +218,14 @@ export default function CongeladosSite() {
             <Icon n="search" w={18} />
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar salgado..." />
           </div>
-          <div className="cg-filters">
-            {gruposFiltro.map(g => (
-              <button key={g.id} className={'cg-chip' + (filtro === g.id ? ' on' : '')} onClick={() => setFiltro(g.id)}>{g.nome}</button>
-            ))}
+          <div className="cg-carousel">
+            <button className="cg-carrow left" onClick={() => scrollFiltros(-1)} aria-label="Categorias anteriores">‹</button>
+            <div className="cg-filters" ref={filtrosRef}>
+              {gruposFiltro.map(g => (
+                <button key={g.id} className={'cg-chip' + (filtro === g.id ? ' on' : '')} onClick={() => setFiltro(g.id)}>{g.nome}</button>
+              ))}
+            </div>
+            <button className="cg-carrow right" onClick={() => scrollFiltros(1)} aria-label="Próximas categorias">›</button>
           </div>
         </div>
       </div>
@@ -227,7 +234,7 @@ export default function CongeladosSite() {
       <main className="wrap" style={{ paddingBottom: 120 }}>
         {ultimoPedido.length > 0 && (
           <div className="cg-repeat">
-            <span className="rt">Quer repetir? <b>Seu último pedido</b> tem {ultimoPedido.length} {ultimoPedido.length === 1 ? 'item' : 'itens'}.</span>
+            <span className="rt"><b>Seu último pedido</b> tem {ultimoPedido.length} {ultimoPedido.length === 1 ? 'item' : 'itens'}.</span>
             <button className="btn btn-green btn-sm" onClick={repetirUltimo}><Icon n="refresh" w={15} /> Repetir último pedido</button>
           </div>
         )}
@@ -430,6 +437,9 @@ function FichaModal({ ficha, onClose }) {
             )}
           </div>
         )}
+        <div className="cg-ffoot">
+          <button className="btn btn-yellow btn-block" onClick={onClose}>Fechar</button>
+        </div>
       </div>
     </div>
   );
