@@ -798,6 +798,8 @@ const DEFAULT_CONFIG = {
     },
     // Nome exibido no site para cada categoria comercial: { [categoriaId]: { nome, ordem, oculto } }
     categoriasNomes: {},
+    // Opções de embalagem disponíveis no "Configurar" do produto (lista editável)
+    embalagens: ['caixa', 'pacote', 'unidade', 'bandeja', 'saco'],
 };
 
 module.exports = congeladosService;

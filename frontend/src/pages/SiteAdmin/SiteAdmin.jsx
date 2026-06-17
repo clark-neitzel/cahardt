@@ -269,6 +269,13 @@ function ProdutosTab() {
   const [loading, setLoading] = useState(true);
   const [editando, setEditando] = useState(null);
   const [gerCats, setGerCats] = useState(false);
+  const [embalagens, setEmbalagens] = useState([]);
+
+  const salvarEmbalagens = (lista) => {
+    const norm = [...new Set(lista.map(s => String(s).trim().toLowerCase()).filter(Boolean))];
+    setEmbalagens(norm);
+    congeladosService.setConfig('embalagens', norm).catch(() => {});
+  };
 
   // persiste filtros
   useEffect(() => { localStorage.setItem(LS_FILTRO, filtro); }, [filtro]);
@@ -281,6 +288,7 @@ function ProdutosTab() {
   }, [busca]);
   useEffect(() => { const t = setTimeout(carregar, busca ? 350 : 0); return () => clearTimeout(t); }, [busca, carregar]);
   useEffect(() => { api.get('/categorias-produto').then(r => setCategorias(Array.isArray(r.data) ? r.data : (r.data?.data || []))).catch(() => {}); }, []);
+  useEffect(() => { congeladosService.getConfig().then(c => setEmbalagens(c.embalagens || [])).catch(() => {}); }, []);
 
   const toggleCat = (id) => setCats(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id]);
 
@@ -360,7 +368,7 @@ function ProdutosTab() {
           </div>
         )}
 
-      {editando && <ModalConfigProduto produto={editando} onClose={() => setEditando(null)} onSaved={() => { setEditando(null); carregar(); }} />}
+      {editando && <ModalConfigProduto produto={editando} embalagens={embalagens} onEmbalagens={salvarEmbalagens} onClose={() => setEditando(null)} onSaved={() => { setEditando(null); carregar(); }} />}
       {gerCats && <ModalCategorias categorias={categorias} onClose={() => setGerCats(false)} />}
     </div>
   );
@@ -421,8 +429,22 @@ function ModalCategorias({ categorias, onClose }) {
   );
 }
 
-function ModalConfigProduto({ produto, onClose, onSaved }) {
+function ModalConfigProduto({ produto, embalagens = [], onEmbalagens, onClose, onSaved }) {
   const s = produto.site || {};
+  const [novaEmb, setNovaEmb] = useState('');
+  const opcoesEmb = [...new Set([...(embalagens || []), s.embalagem].filter(Boolean))];
+
+  const addEmb = () => {
+    const v = novaEmb.trim().toLowerCase();
+    if (!v) return;
+    if (!embalagens.includes(v) && onEmbalagens) onEmbalagens([...embalagens, v]);
+    setForm(f => ({ ...f, embalagem: v }));
+    setNovaEmb('');
+  };
+  const removeEmb = (e) => {
+    if (onEmbalagens) onEmbalagens(embalagens.filter(x => x !== e));
+    setForm(f => (f.embalagem === e ? { ...f, embalagem: embalagens.filter(x => x !== e)[0] || 'caixa' } : f));
+  };
   const [form, setForm] = useState({
     precoCongelados: s.precoCongelados ?? '',
     unidadesPorCaixa: s.unidadesPorCaixa ?? 0,
@@ -490,11 +512,23 @@ function ModalConfigProduto({ produto, onClose, onSaved }) {
           </div>
         </div>
         <div>
-          <label className="text-xs text-gray-500">Embalagem (como aparece no site)</label>
-          <input list="emb-opts" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.embalagem}
-            onChange={e => setForm({ ...form, embalagem: e.target.value })} placeholder="caixa" />
-          <datalist id="emb-opts"><option value="caixa" /><option value="pacote" /><option value="unidade" /><option value="bandeja" /><option value="saco" /></datalist>
-          <p className="text-[11px] text-gray-400 mt-0.5">Ex.: caixa, pacote, unidade. Mostra "{form.embalagem || 'caixa'}{form.unidadesPorCaixa ? ` · ${form.unidadesPorCaixa} un` : ''}" no card.</p>
+          <label className="text-xs text-gray-500">Embalagem (como aparece no card)</label>
+          <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.embalagem}
+            onChange={e => setForm({ ...form, embalagem: e.target.value })}>
+            {opcoesEmb.map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            {(embalagens || []).map(e => (
+              <span key={e} className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${form.embalagem === e ? 'bg-sky-50 border-sky-300 text-sky-700' : 'border-gray-200 text-gray-600'}`}>
+                <button type="button" onClick={() => setForm({ ...form, embalagem: e })}>{e}</button>
+                <button type="button" onClick={() => removeEmb(e)} className="text-gray-300 hover:text-red-500" title="Excluir da lista">×</button>
+              </span>
+            ))}
+            <input value={novaEmb} onChange={e => setNovaEmb(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addEmb(); } }}
+              placeholder="nova embalagem" className="border border-gray-300 rounded-full px-3 py-1 text-xs w-32" />
+            <button type="button" onClick={addEmb} className="text-xs px-2.5 py-1 rounded-full bg-sky-600 text-white">+ adicionar</button>
+          </div>
+          <p className="text-[11px] text-gray-400 mt-1">No card aparece: "{form.embalagem || 'caixa'}{form.unidadesPorCaixa ? ` · ${form.unidadesPorCaixa} un` : ''}". Digite uma nova e clique "adicionar" — fica salva na lista.</p>
         </div>
         <div>
           <label className="text-xs text-gray-500">Descrição no site</label>
