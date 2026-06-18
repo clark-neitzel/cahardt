@@ -217,20 +217,25 @@
 .cg-back{ background:none; color:var(--chalk-dim); font-size:.8rem; margin-top:10px; }
 .cg-back:hover{ color:var(--yellow); }
 
-.cg-top{ position:sticky; top:0; z-index:40; background:rgba(20,22,18,.92); backdrop-filter:blur(8px); border-bottom:1px solid var(--line-soft); }
-.cg-top-in{ display:flex; align-items:center; gap:14px; height:68px; }
-.cg-brand{ display:flex; align-items:center; gap:13px; min-width:0; flex:1; }
-.cg-brand img{ height:50px; width:auto; object-fit:contain; }
-.cg-brand .who{ min-width:0; flex:1; }
-.cg-brand .who b{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.02em; color:var(--chalk); font-weight:700; font-size:1.05rem; line-height:1.12; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-.cg-brand .who small{ color:var(--chalk-dim); font-size:.76rem; }
-.cg-top-actions{ margin-left:auto; display:flex; align-items:center; gap:8px; }
-.cg-exit{ color:var(--chalk-dim); font-family:var(--f-display); text-transform:uppercase; letter-spacing:.06em; font-size:.76rem; padding:.5em .7em; border-radius:8px; cursor:pointer; }
-.cg-exit:hover{ color:var(--yellow); }
-.cg-cart-btn{ position:relative; display:inline-flex; align-items:center; gap:8px; }
-.cg-cart-btn .badge{ position:absolute; top:-7px; right:-7px; min-width:20px; height:20px; padding:0 5px; background:var(--tomato); color:#fff; border-radius:999px; font-family:var(--f-display); font-weight:600; font-size:.72rem; display:flex; align-items:center; justify-content:center; }
+/* TOPBAR — fixo no topo em qualquer tamanho de tela */
+.cg-top{ position:sticky; top:0; z-index:40; background:rgba(20,22,18,.96); backdrop-filter:blur(10px); border-bottom:1px solid var(--line-soft); }
+.cg-top-in{ display:flex; align-items:center; gap:12px; height:64px; }
+/* marca: logo + 2 linhas (label pequeno acima, nome em negrito abaixo) */
+.cg-brand{ display:flex; align-items:center; gap:11px; min-width:0; flex:1; }
+.cg-brand img{ height:44px; width:auto; object-fit:contain; flex-shrink:0; }
+.cg-brand .who{ min-width:0; flex:1; display:flex; flex-direction:column; }
+.cg-brand .who .who-label{ font-family:var(--f-script); color:var(--yellow); font-size:.82rem; line-height:1.1; }
+.cg-brand .who .who-nome{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.04em; color:var(--chalk); font-weight:700; font-size:.96rem; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:46vw; }
+/* actions: pills estilo Kit Festa */
+.cg-top-actions{ margin-left:auto; display:flex; align-items:center; gap:7px; flex-shrink:0; }
+.cg-pill{ display:inline-flex; align-items:center; gap:6px; padding:.5em .85em; border-radius:999px; border:1.5px solid var(--line-soft); color:var(--chalk); font-family:var(--f-display); text-transform:uppercase; letter-spacing:.05em; font-size:.76rem; cursor:pointer; transition:.15s; white-space:nowrap; text-decoration:none; }
+.cg-pill:hover{ border-color:var(--yellow); color:var(--yellow); }
+.cg-pill-cart{ position:relative; }
+.cg-pill-cart .badge{ position:absolute; top:-7px; right:-7px; min-width:19px; height:19px; padding:0 4px; background:var(--tomato); color:#fff; border-radius:999px; font-family:var(--f-display); font-weight:700; font-size:.7rem; display:flex; align-items:center; justify-content:center; }
+/* no celular: esconde os rótulos, ficam só os ícones */
+@media (max-width:560px){ .cg-pill .lbl{ display:none; } .cg-brand .who .who-nome{ max-width:35vw; } }
 
-.cg-tools{ position:sticky; top:68px; z-index:30; background:var(--ink); padding:16px 0 14px; border-bottom:1px solid var(--line-soft); }
+.cg-tools{ position:sticky; top:64px; z-index:30; background:var(--ink); padding:16px 0 14px; border-bottom:1px solid var(--line-soft); }
 .cg-search{ display:flex; align-items:center; gap:10px; background:var(--ink-3); border:1px solid var(--line-soft); border-radius:12px; padding:.7em 1em; margin-bottom:12px; color:var(--chalk-dim); }
 .cg-search input{ flex:1; background:none; border:none; color:var(--chalk); font-size:.98rem; }
 .cg-search input:focus{ outline:none; }
@@ -356,11 +361,8 @@
 
 /* ---------------- RESPONSIVO (celular) ---------------- */
 @media (max-width:640px){
-  .cg-top-in{ height:auto; padding:10px 0; flex-wrap:wrap; gap:8px; }
-  .cg-brand img{ height:42px; }
-  .cg-brand .who b{ font-size:.92rem; -webkit-line-clamp:2; }
-  .cg-tools{ top:0; position:static; }
-  .cg-top{ position:static; }
+  /* NÃO anular o sticky — topbar e toolbar ficam fixos em qualquer tela */
+  .cg-tools{ top:64px; } /* top = altura do cg-top-in */
   .cg-band-head .kx{ font-size:1.25rem; }
   .cg-band-head h2{ font-size:1.25rem; }
   .cg-fhead{ flex-direction:column; align-items:center; text-align:center; }

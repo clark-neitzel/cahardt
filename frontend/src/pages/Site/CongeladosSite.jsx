@@ -196,15 +196,22 @@ export default function CongeladosSite() {
           <div className="cg-brand">
             <img src={siteLogo} alt="Hardt" />
             <div className="who">
-              <b>{nomeCurto}</b>
-              {!cliente && <small>pedido sem cadastro</small>}
+              <span className="who-label">Hardt Congelados</span>
+              <b className="who-nome">{nomeCurto}</b>
             </div>
           </div>
           <div className="cg-top-actions">
-            <Link to="/inicio" className="cg-exit">← Início</Link>
-            <span className="cg-exit" onClick={logout}>Sair</span>
-            <button className="btn btn-yellow btn-sm cg-cart-btn" onClick={() => setOpen(true)}>
-              <Icon n="cart" w={17} /> Pedido
+            <Link to="/inicio" className="cg-pill" title="Página inicial">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              <span className="lbl">Início</span>
+            </Link>
+            <button className="cg-pill" onClick={logout} title="Sair">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <span className="lbl">Sair</span>
+            </button>
+            <button className="cg-pill cg-pill-cart" onClick={() => setOpen(true)} title="Ver pedido">
+              <Icon n="cart" w={17} />
+              <span className="lbl">Pedido</span>
               {totals.boxes > 0 && <span className="badge">{totals.boxes}</span>}
             </button>
           </div>

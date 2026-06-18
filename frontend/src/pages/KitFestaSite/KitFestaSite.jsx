@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, User, Plus, Minus, X, Ticket, ArrowRight, MessageCircle, ChevronLeft, ChevronRight, Clock, Calendar, Truck, ShoppingBag, Edit3, Sparkles, Check, Loader2, MapPin } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ShoppingCart, User, Home, Plus, Minus, X, Ticket, ArrowRight, MessageCircle, ChevronLeft, ChevronRight, Clock, Calendar, Truck, ShoppingBag, Edit3, Sparkles, Check, Loader2, MapPin } from 'lucide-react';
 import publicApi, { getToken, setToken } from './api';
 import Login from './Login';
 import './kitfesta.css';
@@ -151,6 +152,9 @@ function Header({ cfg, logo, cartCount, onCart, onLogout, nome }) {
           <div><div className="nm">{cfg.loja?.nome?.split(' ')[0] || 'Hardt'}</div><div className="sb">Doces &amp; Salgados</div></div>
         </div>
         <div className="hd-spacer" />
+        <Link to="/inicio" className="hd-pill" title="Página inicial">
+          <Home size={17} /><span className="lbl">Início</span>
+        </Link>
         <button className="hd-pill" onClick={onLogout} title="Sair">
           <User size={17} /><span className="lbl">{nome?.split(' ')[0] || 'Sair'}</span>
         </button>
