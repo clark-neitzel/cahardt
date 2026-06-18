@@ -409,3 +409,51 @@
 .cg-tools .cg-chip{ color:var(--ink); }
 .cg-tools .cg-chip:hover{ color:var(--green); }
 .cg-tools .cg-chip.on{ color:#fff; }
+
+/* ============================================================
+   CARRINHO (gaveta) — visual claro estilo Kit Festa
+   Papel + cabeçalho verde + miniaturas + stepper verde.
+   ============================================================ */
+.cg-drawer{ background:var(--paper); border-left:none; }
+
+/* cabeçalho verde */
+.cg-drawer .cg-dhead{ background:var(--green); border-bottom:none; color:#fff; padding:18px 20px; }
+.cg-drawer .cg-dhead h3{ color:#fff; }
+.cg-drawer .cg-dhead .x{ color:#fff; border-radius:999px; }
+.cg-drawer .cg-dhead .x:hover{ background:rgba(255,255,255,.18); color:#fff; }
+
+/* itens com miniatura */
+.cg-drawer .cg-citem{ display:flex; align-items:center; gap:12px; grid-template-columns:none; padding:12px 0; border-bottom:1px dashed var(--paper-line); }
+.cg-citem .cthumb{ width:54px; height:54px; flex:0 0 auto; border-radius:10px; overflow:hidden; position:relative; background:linear-gradient(160deg,#fbf7ee,#ece2cd); }
+.cg-citem .cthumb img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.cg-citem .cinfo{ flex:1; min-width:0; }
+.cg-drawer .cg-citem .cn{ color:var(--ink); }
+.cg-drawer .cg-citem .cp{ color:#8a7d63; }
+
+/* stepper verde (igual Kit Festa) */
+.cg-drawer .cg-ministep{ background:var(--green); border:none; border-radius:999px; padding:3px; gap:2px; flex:0 0 auto; }
+.cg-drawer .cg-ministep button{ width:30px; height:30px; border-radius:999px; color:#fff; }
+.cg-drawer .cg-ministep button:hover{ background:rgba(255,255,255,.18); }
+.cg-drawer .cg-ministep .q{ color:#fff; min-width:24px; }
+
+/* carrinho vazio */
+.cg-drawer .cg-cart-empty{ color:#8a7d63; }
+.cg-drawer .cg-cart-empty .ic{ background:#fffaf0; color:var(--paper-line); }
+
+/* campos (condição, dia, telefone, observações) claros */
+.cg-drawer .cg-dco h4{ color:#6a5f4c; }
+.cg-drawer .cg-select,
+.cg-drawer .cg-textarea{ background:#fff; border:1.6px solid var(--paper-line); color:var(--ink); }
+.cg-drawer .cg-select:focus,
+.cg-drawer .cg-textarea:focus{ border-color:var(--green); box-shadow:0 0 0 3px rgba(18,130,64,.12); }
+.cg-drawer .cg-day{ background:#fff; border:1.6px solid var(--paper-line); color:#6a5f4c; }
+.cg-drawer .cg-day.on{ background:var(--green); color:#fff; border-color:var(--green); }
+
+/* rodapé do carrinho claro */
+.cg-drawer .cg-dfoot{ background:#fffaf0; border-top:1px solid var(--paper-line); }
+.cg-drawer .cg-totrow{ color:#5a4f3c; }
+.cg-drawer .cg-totrow b{ color:var(--ink); }
+.cg-drawer .cg-totrow.grand{ border-top:2px solid var(--paper-line); }
+.cg-drawer .cg-totrow.grand span{ color:var(--ink); }
+.cg-drawer .cg-totrow.grand b{ color:var(--green-dd); }
+.cg-drawer .cg-login-note{ color:#8a7d63; }

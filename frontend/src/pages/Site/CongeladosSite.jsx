@@ -88,7 +88,6 @@ export default function CongeladosSite() {
     setCart(c => ({ ...c, [id]: (c[id] || 0) + 1 }));
   };
   const removeItem = (id) => setCart(c => { const n = { ...c }; const v = (n[id] || 0) - 1; if (v <= 0) delete n[id]; else n[id] = v; return n; });
-  const delItem = (id) => setCart(c => { const n = { ...c }; delete n[id]; return n; });
 
   // O site usa SÓ a condição padrão do cliente. O preço de cada produto já vem
   // pronto do servidor (igual ao que o vendedor vê: condição + último preço + flex).
@@ -278,7 +277,7 @@ export default function CongeladosSite() {
         <div className="cg-dhead">
           <Icon n="cart" w={20} />
           <h3>Seu pedido</h3>
-          <button className="x" onClick={() => setOpen(false)}><Icon n="chevRight" w={18} /></button>
+          <button className="x" onClick={() => setOpen(false)}><Icon n="x" w={18} /></button>
         </div>
 
         <div className="cg-dbody thin-scroll">
@@ -291,20 +290,20 @@ export default function CongeladosSite() {
             <>
               {Object.keys(cart).map(id => {
                 const p = produtos.find(x => x.id === id); if (!p) return null;
+                const cimg = imgUrl(p.imagem);
                 return (
                   <div className="cg-citem" key={id}>
-                    <div>
-                      <div className="cn">{p.nome}</div>
-                      <div className="cp">{cart[id]} cx × {money(precoDe(p))}</div>
+                    <div className="cthumb" style={!cimg ? { background: tileGradient(p.codigo || p.nome) } : undefined}>
+                      {cimg && <img src={cimg} alt="" />}
                     </div>
-                    <div className="ct">{money(precoDe(p) * cart[id])}</div>
-                    <div className="cfoot">
-                      <div className="cg-ministep">
-                        <button onClick={() => removeItem(id)}><Icon n="minus" w={13} /></button>
-                        <span className="q">{cart[id]}</span>
-                        <button onClick={() => addItem(id)}><Icon n="plus" w={13} /></button>
-                      </div>
-                      <button className="cg-rm" onClick={() => delItem(id)}><Icon n="trash" w={13} /> Remover</button>
+                    <div className="cinfo">
+                      <div className="cn">{p.nome}</div>
+                      <div className="cp">{money(precoDe(p))}{p.unidades ? ` · ${p.unidades}un` : ` · ${p.embalagem || 'caixa'}`}</div>
+                    </div>
+                    <div className="cg-ministep">
+                      <button onClick={() => removeItem(id)}><Icon n="minus" w={14} /></button>
+                      <span className="q">{cart[id]}</span>
+                      <button onClick={() => addItem(id)}><Icon n="plus" w={14} /></button>
                     </div>
                   </div>
                 );
