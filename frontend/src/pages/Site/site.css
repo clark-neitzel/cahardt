@@ -240,13 +240,9 @@
 .cg-search input{ flex:1; background:none; border:none; color:var(--ink); font-size:.98rem; }
 .cg-search input:focus{ outline:none; }
 .cg-search input::placeholder{ color:rgba(25,27,23,.38); }
-.cg-carousel{ position:relative; display:flex; align-items:center; gap:8px; }
-.cg-carrow{ flex:0 0 auto; width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,.6); border:1px solid var(--paper-line); color:var(--ink-2); display:flex; align-items:center; justify-content:center; font-size:1.3rem; line-height:1; font-family:var(--f-display); }
-.cg-carrow:hover{ background:#fff; color:var(--green); border-color:var(--green); }
-@media (max-width:640px){ .cg-carrow{ display:none; } } /* celular: arrasta com o dedo */
-.cg-filters{ display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; scroll-behavior:smooth; flex:1; -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 3%, #000 94%, transparent 100%); mask-image:linear-gradient(90deg, transparent 0, #000 3%, #000 94%, transparent 100%); }
-.cg-filters::-webkit-scrollbar{ height:0; }
-.cg-chip{ flex:0 0 auto; font-family:var(--f-display); text-transform:uppercase; letter-spacing:.05em; font-size:.82rem; font-weight:600; color:var(--ink); padding:.55em 1.05em; border-radius:999px; border:1.6px solid rgba(25,27,23,.16); background:rgba(255,255,255,.4); white-space:nowrap; transition:.16s; }
+/* categorias estilo Kit Festa: pílulas que quebram linha (sem carrossel) */
+.cg-filters{ display:flex; gap:9px; flex-wrap:wrap; }
+.cg-chip{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.05em; font-size:.82rem; font-weight:600; color:var(--ink); padding:.55em 1.05em; border-radius:999px; border:1.6px solid rgba(25,27,23,.16); background:rgba(255,255,255,.4); white-space:nowrap; transition:.16s; }
 .cg-chip:hover{ border-color:var(--green); color:var(--green); }
 .cg-chip.on{ background:var(--green); color:#fff; border-color:var(--green); }
 
@@ -371,3 +367,39 @@
   .cg-drawer{ width:100vw; }
   .cg-repeat{ flex-direction:column; align-items:stretch; }
 }
+
+/* ============================================================
+   VITRINE CLARA (estilo Kit Festa) — cards cor de creme sobre papel
+   Sobrescreve os tons escuros só da área do catálogo; o topo segue escuro.
+   ============================================================ */
+.cg .tex-paper{
+  background-color:var(--paper);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='.06'/%3E%3C/svg%3E");
+}
+/* a seção de papel preenche a tela abaixo do topo+toolbar (sem faixa escura) */
+.cg-catalog{ min-height:calc(100dvh - 124px); }
+
+/* títulos das faixas sobre o papel */
+.cg-catalog .cg-band-head .kx{ color:var(--green-dd); }
+.cg-catalog .cg-band-head h2{ color:var(--green-dd); }
+
+/* cards claros */
+.cg-catalog .cg-card{ background:#fffaf0; border:1px solid rgba(25,27,23,.06); box-shadow:var(--shadow-sm); transition:transform .16s ease, box-shadow .2s ease; }
+.cg-catalog .cg-card:hover{ transform:translateY(-3px); box-shadow:var(--shadow); }
+.cg-catalog .cg-card-body h3{ color:var(--ink); }
+.cg-catalog .cg-card-body .cx{ color:#6a5f4c; }
+.cg-catalog .cg-card-foot .price b{ color:var(--green-dd); }
+
+/* stepper verde (em vez do escuro) */
+.cg-catalog .cg-step{ background:var(--green); border-color:var(--green); }
+.cg-catalog .cg-step button{ color:#fff; }
+.cg-catalog .cg-step button:hover{ background:rgba(255,255,255,.18); }
+.cg-catalog .cg-step .q{ color:#fff; }
+
+/* banner "repetir último pedido" claro */
+.cg-catalog .cg-repeat{ background:#fffaf0; border:1px solid var(--paper-line); }
+.cg-catalog .cg-repeat .rt{ color:#6a5f4c; }
+.cg-catalog .cg-repeat .rt b{ color:var(--ink); }
+
+/* estado vazio legível sobre papel */
+.cg-catalog .cg-empty{ color:#8a7d63; }

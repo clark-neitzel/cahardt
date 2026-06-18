@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import publicApi, { getToken, setToken } from './api';
 import { Icon } from './icons';
@@ -30,7 +30,6 @@ export default function CongeladosSite() {
 
   const [cart, setCart] = useState({});
   const [filtro, setFiltro] = useState('todos');
-  const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [enviando, setEnviando] = useState(false);
@@ -45,13 +44,24 @@ export default function CongeladosSite() {
 
   // boot: restaura sessão
   useEffect(() => {
-    // Catálogo público carrega sem login (preços do site)
-    publicApi.config().then(setCfg).catch(() => {});
-    publicApi.catalogo().then(setProdutos).catch(() => {});
-    publicApi.grupos().then(setGrupos).catch(() => {});
     const t = getToken();
-    const restore = t ? publicApi.perfil().then(setCliente).catch(() => setToken(null)) : Promise.resolve();
-    restore.finally(() => setBooting(false));
+    if (!t) {
+      // Sem sessão: espera catálogo + grupos carregarem antes de mostrar a tela
+      Promise.all([
+        publicApi.config().then(setCfg).catch(() => {}),
+        publicApi.catalogo().then(setProdutos).catch(() => {}),
+        publicApi.grupos().then(setGrupos).catch(() => {}),
+      ]).finally(() => setBooting(false));
+      return;
+    }
+    // Com sessão: restaura perfil em paralelo com config/grupos
+    publicApi.config().then(setCfg).catch(() => {});
+    publicApi.grupos().then(setGrupos).catch(() => {});
+    publicApi.perfil().then(setCliente).catch(() => {
+      setToken(null);
+      // Sessão inválida: cai no modo público
+      publicApi.catalogo().then(setProdutos).catch(() => {});
+    }).finally(() => setBooting(false));
   }, []);
 
   // Carrega catálogo personalizado ao fazer login como cliente registrado
@@ -101,16 +111,14 @@ export default function CongeladosSite() {
     setOpen(true);
   };
 
-  // filtros + busca
+  // filtros por categoria
   const matched = useMemo(() => {
-    const t = q.trim().toLowerCase();
     return produtos.filter(p => {
-      if (filtro === 'recompra') { if (!p.comprado) return false; }
-      else if (filtro !== 'todos' && p.grupo !== filtro) return false;
-      if (t && !(p.nome.toLowerCase().includes(t) || String(p.codigo).toLowerCase().includes(t))) return false;
+      if (filtro === 'recompra') return !!p.comprado;
+      if (filtro !== 'todos' && p.grupo !== filtro) return false;
       return true;
     });
-  }, [produtos, filtro, q]);
+  }, [produtos, filtro]);
 
   const ordenaNome = (a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' });
 
@@ -141,9 +149,6 @@ export default function CongeladosSite() {
     setFichaLoading(true); setFicha({ nome: p.nome, imagem: p.imagem, _loading: true });
     publicApi.ficha(p.id).then(setFicha).catch(() => setFicha(null)).finally(() => setFichaLoading(false));
   };
-
-  const filtrosRef = useRef(null);
-  const scrollFiltros = (dir) => filtrosRef.current?.scrollBy({ left: dir * 220, behavior: 'smooth' });
 
   async function finalizar() {
     setErroEnvio(''); setEnviando(true);
@@ -217,53 +222,47 @@ export default function CongeladosSite() {
         </div>
       </header>
 
-      {/* TOOLBAR */}
+      {/* TOOLBAR — categorias estilo Kit Festa (pílulas que quebram linha) */}
       <div className="cg-tools">
         <div className="wrap">
-          <div className="cg-search">
-            <Icon n="search" w={18} />
-            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar salgado..." />
-          </div>
-          <div className="cg-carousel">
-            <button className="cg-carrow left" onClick={() => scrollFiltros(-1)} aria-label="Categorias anteriores">‹</button>
-            <div className="cg-filters" ref={filtrosRef}>
-              {gruposFiltro.map(g => (
-                <button key={g.id} className={'cg-chip' + (filtro === g.id ? ' on' : '')} onClick={() => setFiltro(g.id)}>{g.nome}</button>
-              ))}
-            </div>
-            <button className="cg-carrow right" onClick={() => scrollFiltros(1)} aria-label="Próximas categorias">›</button>
+          <div className="cg-filters">
+            {gruposFiltro.map(g => (
+              <button key={g.id} className={'cg-chip' + (filtro === g.id ? ' on' : '')} onClick={() => setFiltro(g.id)}>{g.nome}</button>
+            ))}
           </div>
         </div>
       </div>
 
       {/* CONTENT */}
-      <main className="wrap" style={{ paddingBottom: 120 }}>
-        {cliente && ultimoPedido.length > 0 && (
-          <div className="cg-repeat">
-            <span className="rt"><b>Seu último pedido</b> tem {ultimoPedido.length} {ultimoPedido.length === 1 ? 'item' : 'itens'}.</span>
-            <button className="btn btn-green btn-sm" onClick={repetirUltimo}><Icon n="refresh" w={15} /> Repetir último pedido</button>
-          </div>
-        )}
-
-        {matched.length === 0 && <div className="cg-empty">Nenhum salgado encontrado{q ? ` para “${q}”` : ''}.</div>}
-
-        {cliente && comprados.length > 0 && (
-          <>
-            <div className="cg-band-head"><span className="kx">Você sempre pede</span></div>
-            <div className="cg-grid">
-              {comprados.map(p => <Card key={p.id} p={p} preco={precoDe(p)} qty={qtyOf(p.id)} add={addItem} dec={removeItem} onAbrir={abrirFicha} />)}
+      <main className="cg-catalog tex-paper">
+        <div className="wrap" style={{ paddingBottom: 120 }}>
+          {cliente && ultimoPedido.length > 0 && (
+            <div className="cg-repeat">
+              <span className="rt"><b>Seu último pedido</b> tem {ultimoPedido.length} {ultimoPedido.length === 1 ? 'item' : 'itens'}.</span>
+              <button className="btn btn-green btn-sm" onClick={repetirUltimo}><Icon n="refresh" w={15} /> Repetir último pedido</button>
             </div>
-          </>
-        )}
+          )}
 
-        {secoes.map(sec => (
-          <React.Fragment key={sec.id}>
-            <div className="cg-band-head"><h2>{sec.nome}</h2></div>
-            <div className="cg-grid">
-              {sec.produtos.map(p => <Card key={p.id} p={p} preco={precoDe(p)} qty={qtyOf(p.id)} add={addItem} dec={removeItem} onAbrir={abrirFicha} />)}
-            </div>
-          </React.Fragment>
-        ))}
+          {matched.length === 0 && <div className="cg-empty">Nenhum salgado encontrado.</div>}
+
+          {cliente && comprados.length > 0 && (
+            <>
+              <div className="cg-band-head"><span className="kx">Você sempre pede</span></div>
+              <div className="cg-grid">
+                {comprados.map(p => <Card key={p.id} p={p} preco={precoDe(p)} qty={qtyOf(p.id)} add={addItem} dec={removeItem} onAbrir={abrirFicha} />)}
+              </div>
+            </>
+          )}
+
+          {secoes.map(sec => (
+            <React.Fragment key={sec.id}>
+              <div className="cg-band-head"><h2>{sec.nome}</h2></div>
+              <div className="cg-grid">
+                {sec.produtos.map(p => <Card key={p.id} p={p} preco={precoDe(p)} qty={qtyOf(p.id)} add={addItem} dec={removeItem} onAbrir={abrirFicha} />)}
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
       </main>
 
       {/* mobile fab */}
