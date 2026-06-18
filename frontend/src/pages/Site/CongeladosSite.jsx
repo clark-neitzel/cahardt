@@ -6,7 +6,7 @@ import Login from './Login';
 import './site.css';
 import { API_URL } from '../../services/api';
 
-const LOGO = '/congelados/logo.png';
+const LOGO = '/cong/logo.png';
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
 const imgUrl = (u) => !u ? null : (u.startsWith('http') ? u : `${API_URL}${u}`);
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');

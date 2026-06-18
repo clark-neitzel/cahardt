@@ -5,8 +5,8 @@ import { WhatsIcon } from './icons';
 import './site.css';
 import { API_URL } from '../../services/api';
 
-const LOGO = '/congelados/logo.png';
-const BOX = '/congelados/box.gif';
+const LOGO = '/cong/logo.png';
+const BOX = '/cong/box.gif';
 const imgUrl = (u) => !u ? null : (u.startsWith('http') ? u : `${API_URL}${u}`);
 
 const LOJA_PADRAO = {
