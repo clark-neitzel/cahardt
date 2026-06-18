@@ -400,8 +400,13 @@
 /* cabeçalho do catálogo: título + categorias (mesma posição/tamanho do Kit Festa) */
 .cg-cathead{ display:flex; align-items:flex-end; justify-content:space-between; gap:14px 20px; flex-wrap:wrap; margin:22px 0 18px; }
 .cg-cathead h2{ font-family:var(--f-display); text-transform:uppercase; font-weight:700; line-height:.95; font-size:clamp(1.5rem,3.2vw,2.4rem); color:var(--green-dd); margin:0; }
-/* garante o texto escuro do chip sobre o papel
-   (a regra global ".cg button{color:inherit}" herdava o creme claro e sumia o texto) */
+/* A regra global ".cg button{font-family:inherit;color:inherit}" (especificidade
+   maior que ".cg-chip") forçava a fonte do corpo (Bitter) e a cor herdada nos
+   botões. Reforça aqui com 2 classes para usar a Oswald e a cor certa, igual ao
+   Kit Festa (que escreve ".kf .chip", também com 2 classes). */
+.cg .cg-chip,
+.cg .cg-pill,
+.cg .cg-day{ font-family:var(--f-display); }
 .cg-catalog .cg-chip{ color:var(--ink); }
 .cg-catalog .cg-chip:hover{ color:var(--green); }
 .cg-catalog .cg-chip.on{ color:#fff; }
