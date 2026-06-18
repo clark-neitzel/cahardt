@@ -32,7 +32,7 @@ const congeladosController = {
         catch (e) { erro(res, e, 'perfil'); }
     },
     catalogo: async (req, res) => {
-        try { res.json(await svc.catalogoPublico()); }
+        try { res.json(await svc.catalogoVisitante()); }
         catch (e) { erro(res, e, 'catalogo'); }
     },
     grupos: async (req, res) => {

@@ -88,23 +88,45 @@ async function precoUltimaCompraMap(clienteUuid, produtoIds) {
     return map;
 }
 
-// Contexto de preço do cliente: acréscimo da condição PADRÃO + limite de desconto do flex.
+// Tabela de preço "Site" (id/idCondicao = SITE): usada para quem NÃO tem condição
+// cadastrada (visitante do site). Tem acréscimo % sobre o preço de venda + valor mínimo.
+async function tabelaSite() {
+    return prisma.tabelaPreco.findFirst({
+        where: {
+            ativo: true,
+            OR: [
+                { id: 'SITE' },
+                { idCondicao: { equals: 'SITE', mode: 'insensitive' } },
+                { nomeCondicao: { equals: 'Site', mode: 'insensitive' } },
+            ],
+        },
+    }).catch(() => null);
+}
+
+// Contexto de preço: acréscimo + limite de desconto do flex.
+//   • Cliente COM condição cadastrada → usa a condição dele.
+//   • Sem condição (visitante do site, ou cliente sem condição) → usa a tabela "Site".
 async function contextoPreco(cliente) {
     const ctx = { acrescimoPct: 0, maxDescontoPct: 100, condicaoPadrao: null };
-    if (!cliente) return ctx;
-    if (cliente.Condicao_de_pagamento) {
+    if (cliente?.Condicao_de_pagamento) {
         const t = await prisma.tabelaPreco.findUnique({ where: { id: cliente.Condicao_de_pagamento } });
         if (t) {
             ctx.acrescimoPct = dec(t.acrescimoPreco);
             ctx.condicaoPadrao = { id: t.id, nome: t.nomeCondicao, valorMinimo: dec(t.valorMinimo), permiteEspecial: !!t.permiteEspecial, permitePedido: !!t.permitePedido };
         }
     }
-    // Limite de desconto: 100% (livre) se a categoria do cliente é sem limite; senão, do vendedor do cliente.
-    if (!cliente.categoriaCliente?.semLimiteDesconto) {
-        if (cliente.idVendedor) {
-            const v = await prisma.vendedor.findUnique({ where: { id: cliente.idVendedor }, select: { maxDescontoFlex: true } });
-            ctx.maxDescontoPct = v ? dec(v.maxDescontoFlex) : 100;
+    // Visitante / cliente sem condição própria → preço e mínimo pela tabela "Site".
+    if (!ctx.condicaoPadrao) {
+        const s = await tabelaSite();
+        if (s) {
+            ctx.acrescimoPct = dec(s.acrescimoPreco);
+            ctx.condicaoPadrao = { id: s.id, nome: s.nomeCondicao, valorMinimo: dec(s.valorMinimo), permiteEspecial: !!s.permiteEspecial, permitePedido: !!s.permitePedido };
         }
+    }
+    // Limite de desconto do flex só se aplica a cliente com vendedor.
+    if (cliente && !cliente.categoriaCliente?.semLimiteDesconto && cliente.idVendedor) {
+        const v = await prisma.vendedor.findUnique({ where: { id: cliente.idVendedor }, select: { maxDescontoFlex: true } });
+        ctx.maxDescontoPct = v ? dec(v.maxDescontoFlex) : 100;
     }
     return ctx;
 }
@@ -305,6 +327,16 @@ const congeladosService = {
             .map(produtoSitePublico);
     },
 
+    // Catálogo do VISITANTE (sem login): aplica a tabela "Site" (acréscimo %) sobre o
+    // preço base. Cliente logado tem o catálogo personalizado em meuCatalogo().
+    async catalogoVisitante() {
+        const [lista, ctx] = await Promise.all([this.catalogoPublico(), contextoPreco(null)]);
+        lista.forEach(p => {
+            p.preco = precoVendedor({ base: p.preco, acrescimoPct: ctx.acrescimoPct, maxDescontoPct: ctx.maxDescontoPct });
+        });
+        return lista;
+    },
+
     // Grupos (categorias comerciais) presentes no catálogo de congelados — para os filtros.
     // O nome exibido pode ser personalizado pelo admin (config "categoriasNomes").
     async gruposPublico() {
@@ -421,10 +453,11 @@ const congeladosService = {
 
     // ───────── Config pública ─────────
     async configPublico() {
-        const rows = await prisma.congeladosConfig.findMany();
+        const [rows, site] = await Promise.all([prisma.congeladosConfig.findMany(), tabelaSite()]);
         const map = {};
         rows.forEach(r => { map[r.chave] = r.valor; });
-        return { ...DEFAULT_CONFIG, ...map };
+        // minimoSite: mínimo da tabela "Site" — usado para o visitante (sem condição própria).
+        return { ...DEFAULT_CONFIG, ...map, minimoSite: dec(site?.valorMinimo) };
     },
 
     // ───────── Criação de pedido (cliente logado ou visitante) ─────────

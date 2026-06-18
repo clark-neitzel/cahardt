@@ -19,8 +19,11 @@ Módulo do **site público da Hardt** voltado à revenda de congelados (B2B), co
    - **Ficha do produto:** clicar na foto (ou no nome) abre um **popup** com a ficha técnica vinda da **etiqueta** do produto: modo de preparo, validade (dias), conservação/armazenamento, informação nutricional, ingredientes e alérgicos. Se o produto não tiver etiqueta cadastrada, mostra só a descrição.
 3. **Repetir último pedido:** botão que recria o carrinho com os itens da última compra do cliente.
 4. **Carrinho (gaveta lateral):** mostra a **condição de pagamento padrão** do cliente (o site usa só a padrão), **dia de entrega** (somente os dias do cadastro), telefone e observações.
-5. **Pedido mínimo:** vem da **condição padrão** do cliente (o valor mínimo de compra cadastrado na Tabela de Preços). Se o subtotal for menor, o envio fica bloqueado.
-6. **Preços — iguais aos do vendedor:** o cliente vê **exatamente o mesmo preço que o vendedor veria na tela de pedido** para ele, calculado com a **condição de pagamento padrão**: preço de tabela + acréscimo da condição e, se o cliente já comprou aquele produto, o **último preço negociado** (pra mais ou pra menos) — respeitando o piso da **política de desconto do flex** (limite do vendedor do cliente). Assim, se o vendedor negociar um valor diferente, na próxima vez o site já mostra o valor atualizado. Não há pagamento online — o pedido é registrado e o pagamento é combinado depois.
+5. **Pedido mínimo:** para cliente logado, vem da **condição padrão** dele; para visitante (sem login), vem da **tabela "Site"** (valor mínimo cadastrado nela). Se o subtotal for menor, o envio fica bloqueado.
+6. **Preços — dependem de quem está vendo:**
+   - **Visitante (sem login):** preço pela **tabela de preço "Site"** (condição com `ID = SITE`) — preço de venda do produto **+ o acréscimo % dessa tabela**. O valor mínimo do pedido também é o da tabela "Site".
+   - **Cliente logado:** vê **exatamente o mesmo preço que o vendedor veria na tela de pedido** para ele, calculado com a **condição de pagamento padrão** do cadastro: preço de tabela + acréscimo da condição e, se já comprou aquele produto, o **último preço negociado** (pra mais ou pra menos) — respeitando o piso da **política de desconto do flex** (limite do vendedor). Cliente logado **sem** condição cadastrada cai na tabela "Site".
+   - Não há pagamento online — o pedido é registrado e o pagamento é combinado depois.
 7. **Promoções:** ainda não são tratadas no site de congelados.
 
 ## Painel admin (`/site-admin`)

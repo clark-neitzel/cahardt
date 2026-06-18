@@ -92,7 +92,8 @@ export default function CongeladosSite() {
   // O site usa SÓ a condição padrão do cliente. O preço de cada produto já vem
   // pronto do servidor (igual ao que o vendedor vê: condição + último preço + flex).
   const condPadrao = cliente?.condicaoPadrao || null;
-  const minimo = condPadrao?.valorMinimo || 0;
+  // Cliente registrado usa o mínimo da condição dele; visitante usa o da tabela "Site".
+  const minimo = condPadrao?.valorMinimo || (!cliente ? (cfg?.minimoSite || 0) : 0);
   const precoDe = (p) => Number(p.preco || 0);
 
   const totals = useMemo(() => {
