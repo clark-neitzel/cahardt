@@ -44,7 +44,6 @@ export default function HomeSite() {
             <a href="#caminhos" className="hide-sm">Produtos</a>
             <a href="#diferenciais" className="hide-sm">A Hardt</a>
             <a href="#contato" className="hide-sm">Contato</a>
-            <Link className="btn btn-yellow btn-sm" to="/kit-festa">Pedir Kit Festa</Link>
           </nav>
         </div>
       </header>
@@ -57,8 +56,8 @@ export default function HomeSite() {
             <h1>Salgado <span className="scr">de verdade,</span><br /><span className="y">feito à mão.</span></h1>
             <p className="lead">{hero.subtitulo || 'Desde 2007 levando coxinha, bolinha e empadinha pra festa, o coffee break e o freezer da sua casa. Peça pelo link, combine retirada ou entrega e pague depois — sem complicação.'}</p>
             <div className="hero-cta">
-              <Link className="btn btn-yellow" to="/kit-festa">Montar meu Kit Festa →</Link>
-              <a className="btn btn-ghost" href={waMsg} target="_blank" rel="noopener noreferrer">Falar no WhatsApp</a>
+              <Link className="btn btn-yellow" to="/kit-festa">Pedir Kit Festa →</Link>
+              <Link className="btn btn-ghost" to="/congelados">Pedir Congelados →</Link>
             </div>
           </div>
           <div className="hero-art">

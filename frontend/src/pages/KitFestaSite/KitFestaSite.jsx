@@ -149,16 +149,20 @@ function Header({ cfg, logo, cartCount, onCart, onLogout, nome }) {
       <div className="wrap hd-bar">
         <div className="hd-logo" onClick={() => document.querySelector('.kf')?.scrollTo({ top: 0, behavior: 'smooth' })}>
           <img src={logo || LOGO} alt="Hardt" />
-          <div><div className="nm">{cfg.loja?.nome?.split(' ')[0] || 'Hardt'}</div><div className="sb">Doces &amp; Salgados</div></div>
+          <div className="who">
+            <span className="who-label">Hardt Kit Festa</span>
+            {nome && <b className="who-nome">{nome}</b>}
+          </div>
         </div>
         <div className="hd-spacer" />
         <Link to="/inicio" className="hd-pill" title="Página inicial">
           <Home size={17} /><span className="lbl">Início</span>
         </Link>
         <button className="hd-pill" onClick={onLogout} title="Sair">
-          <User size={17} /><span className="lbl">{nome?.split(' ')[0] || 'Sair'}</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span className="lbl">Sair</span>
         </button>
-        <button className="hd-pill" onClick={onCart}>
+        <button className="hd-pill hd-cart" onClick={onCart}>
           <ShoppingCart size={18} /><span className="lbl">Carrinho</span>
           {cartCount > 0 && <span className="badge">{cartCount}</span>}
         </button>

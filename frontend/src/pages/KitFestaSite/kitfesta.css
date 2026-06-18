@@ -139,8 +139,9 @@
 .kf .hd-bar { display:flex; align-items:center; gap:14px; height:68px; }
 .kf .hd-logo { display:flex; align-items:center; gap:11px; cursor:pointer; }
 .kf .hd-logo img { width:46px; height:46px; object-fit:contain; filter:drop-shadow(0 2px 6px rgba(0,0,0,.4)); }
-.kf .hd-logo .nm { font-family:var(--f-display); text-transform:uppercase; letter-spacing:.14em; font-weight:600; font-size:1.02rem; color:var(--chalk); line-height:1; }
-.kf .hd-logo .sb { font-family:var(--f-script); color:var(--yellow); font-size:.92rem; margin-top:2px; }
+.kf .hd-logo .who { display:flex; flex-direction:column; min-width:0; }
+.kf .hd-logo .who .who-label { font-family:var(--f-script); color:var(--yellow); font-size:.82rem; line-height:1.1; }
+.kf .hd-logo .who .who-nome { font-family:var(--f-display); text-transform:uppercase; letter-spacing:.04em; color:var(--chalk); font-weight:700; font-size:.92rem; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:38vw; }
 .kf .hd-spacer { flex:1; }
 .kf .hd-pill { display:flex; align-items:center; gap:7px; padding:.55em .9em; border-radius:999px; border:1.5px solid var(--line-soft); color:var(--chalk); font-family:var(--f-display); text-transform:uppercase; letter-spacing:.05em; font-size:.78rem; transition:.18s; }
 .kf .hd-pill:hover { border-color:var(--yellow); color:var(--yellow); }
@@ -244,7 +245,7 @@
 }
 @media(max-width:560px) {
   .kf .hd-bar { height:60px; }
-  .kf .hd-logo .sb { display:none; }
+  .kf .hd-logo .who .who-nome { max-width:28vw; }
   .kf .hd-pill .lbl { display:none; }
   .kf .how-grid { grid-template-columns:1fr; }
   .kf .ft-grid { grid-template-columns:1fr; }
