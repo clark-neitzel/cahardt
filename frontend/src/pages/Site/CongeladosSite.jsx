@@ -222,20 +222,19 @@ export default function CongeladosSite() {
         </div>
       </header>
 
-      {/* TOOLBAR — categorias estilo Kit Festa (pílulas que quebram linha) */}
-      <div className="cg-tools">
-        <div className="wrap">
-          <div className="cg-filters">
-            {gruposFiltro.map(g => (
-              <button key={g.id} className={'cg-chip' + (filtro === g.id ? ' on' : '')} onClick={() => setFiltro(g.id)}>{g.nome}</button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* CONTENT */}
       <main className="cg-catalog tex-paper">
         <div className="wrap" style={{ paddingBottom: 120 }}>
+          {/* cabeçalho do cardápio: título + categorias (estilo Kit Festa) */}
+          <div className="cg-cathead">
+            <h2>Nosso cardápio</h2>
+            <div className="cg-filters">
+              {gruposFiltro.map(g => (
+                <button key={g.id} className={'cg-chip' + (filtro === g.id ? ' on' : '')} onClick={() => setFiltro(g.id)}>{g.nome}</button>
+              ))}
+            </div>
+          </div>
+
           {cliente && ultimoPedido.length > 0 && (
             <div className="cg-repeat">
               <span className="rt"><b>Seu último pedido</b> tem {ultimoPedido.length} {ultimoPedido.length === 1 ? 'item' : 'itens'}.</span>

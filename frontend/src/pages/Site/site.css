@@ -235,14 +235,9 @@
 /* no celular: esconde os rótulos, ficam só os ícones */
 @media (max-width:560px){ .cg-pill .lbl{ display:none; } .cg-brand .who .who-nome{ max-width:35vw; } }
 
-.cg-tools{ position:sticky; top:64px; z-index:30; background:var(--paper); padding:16px 0 14px; border-bottom:1px solid var(--paper-line); }
-.cg-search{ display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.7); border:1px solid var(--paper-line); border-radius:12px; padding:.7em 1em; margin-bottom:12px; color:#6a5a3a; }
-.cg-search input{ flex:1; background:none; border:none; color:var(--ink); font-size:.98rem; }
-.cg-search input:focus{ outline:none; }
-.cg-search input::placeholder{ color:rgba(25,27,23,.38); }
-/* categorias estilo Kit Festa: pílulas que quebram linha (sem carrossel) */
+/* categorias estilo Kit Festa: pílulas pequenas no cabeçalho do catálogo */
 .cg-filters{ display:flex; gap:9px; flex-wrap:wrap; }
-.cg-chip{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.05em; font-size:.82rem; font-weight:600; color:var(--ink); padding:.55em 1.05em; border-radius:999px; border:1.6px solid rgba(25,27,23,.16); background:rgba(255,255,255,.4); white-space:nowrap; transition:.16s; }
+.cg-chip{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.05em; font-size:.78rem; font-weight:600; color:var(--ink); padding:.5em 1em; border-radius:999px; border:1.6px solid rgba(25,27,23,.16); background:rgba(255,255,255,.4); white-space:nowrap; transition:.16s; }
 .cg-chip:hover{ border-color:var(--green); color:var(--green); }
 .cg-chip.on{ background:var(--green); color:#fff; border-color:var(--green); }
 
@@ -357,8 +352,6 @@
 
 /* ---------------- RESPONSIVO (celular) ---------------- */
 @media (max-width:640px){
-  /* NÃO anular o sticky — topbar e toolbar ficam fixos em qualquer tela */
-  .cg-tools{ top:64px; } /* top = altura do cg-top-in */
   .cg-band-head .kx{ font-size:1.25rem; }
   .cg-band-head h2{ font-size:1.25rem; }
   .cg-fhead{ flex-direction:column; align-items:center; text-align:center; }
@@ -377,7 +370,7 @@
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='.06'/%3E%3C/svg%3E");
 }
 /* a seção de papel preenche a tela abaixo do topo+toolbar (sem faixa escura) */
-.cg-catalog{ min-height:calc(100dvh - 124px); }
+.cg-catalog{ min-height:calc(100dvh - 64px); }
 
 /* títulos das faixas sobre o papel */
 .cg-catalog .cg-band-head .kx{ color:var(--green-dd); }
@@ -404,11 +397,14 @@
 /* estado vazio legível sobre papel */
 .cg-catalog .cg-empty{ color:#8a7d63; }
 
-/* categorias: garante o texto escuro do chip sobre o papel
+/* cabeçalho do catálogo: título + categorias (mesma posição/tamanho do Kit Festa) */
+.cg-cathead{ display:flex; align-items:flex-end; justify-content:space-between; gap:14px 20px; flex-wrap:wrap; margin:22px 0 18px; }
+.cg-cathead h2{ font-family:var(--f-display); text-transform:uppercase; font-weight:700; line-height:.95; font-size:clamp(1.5rem,3.2vw,2.4rem); color:var(--green-dd); margin:0; }
+/* garante o texto escuro do chip sobre o papel
    (a regra global ".cg button{color:inherit}" herdava o creme claro e sumia o texto) */
-.cg-tools .cg-chip{ color:var(--ink); }
-.cg-tools .cg-chip:hover{ color:var(--green); }
-.cg-tools .cg-chip.on{ color:#fff; }
+.cg-catalog .cg-chip{ color:var(--ink); }
+.cg-catalog .cg-chip:hover{ color:var(--green); }
+.cg-catalog .cg-chip.on{ color:#fff; }
 
 /* ============================================================
    CARRINHO (gaveta) — visual claro estilo Kit Festa
