@@ -403,3 +403,9 @@
 
 /* estado vazio legível sobre papel */
 .cg-catalog .cg-empty{ color:#8a7d63; }
+
+/* categorias: garante o texto escuro do chip sobre o papel
+   (a regra global ".cg button{color:inherit}" herdava o creme claro e sumia o texto) */
+.cg-tools .cg-chip{ color:var(--ink); }
+.cg-tools .cg-chip:hover{ color:var(--green); }
+.cg-tools .cg-chip.on{ color:#fff; }
