@@ -35,6 +35,7 @@ export default function CongeladosSite() {
   const [confirm, setConfirm] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [erroEnvio, setErroEnvio] = useState('');
+  const [loginModal, setLoginModal] = useState(false);
 
   const [hdr, setHdr] = useState({ tabelaPrecoId: '', dia: '', obs: '', telefone: '' });
 
@@ -44,24 +45,22 @@ export default function CongeladosSite() {
 
   // boot: restaura sessão
   useEffect(() => {
+    // Catálogo público carrega sem login (preços do site)
     publicApi.config().then(setCfg).catch(() => {});
+    publicApi.catalogo().then(setProdutos).catch(() => {});
+    publicApi.grupos().then(setGrupos).catch(() => {});
     const t = getToken();
     const restore = t ? publicApi.perfil().then(setCliente).catch(() => setToken(null)) : Promise.resolve();
     restore.finally(() => setBooting(false));
   }, []);
 
-  // carrega catálogo + grupos ao entrar
+  // Carrega catálogo personalizado ao fazer login como cliente registrado
   useEffect(() => {
-    if (!logado) return;
-    publicApi.grupos().then(setGrupos).catch(() => {});
-    if (cliente) {
-      publicApi.meuCatalogo().then(({ catalogo, ultimoPedido }) => {
-        setProdutos(catalogo); setUltimoPedido(ultimoPedido || []);
-      }).catch(() => publicApi.catalogo().then(setProdutos).catch(() => {}));
-    } else {
-      publicApi.catalogo().then(setProdutos).catch(() => {});
-    }
-  }, [logado, cliente]);
+    if (!cliente) return;
+    publicApi.meuCatalogo().then(({ catalogo, ultimoPedido }) => {
+      setProdutos(catalogo); setUltimoPedido(ultimoPedido || []);
+    }).catch(() => {});
+  }, [cliente]);
 
   // pré-seleciona dia de entrega e telefone do perfil
   useEffect(() => {
@@ -74,7 +73,10 @@ export default function CongeladosSite() {
   }, [cliente]);
 
   const qtyOf = (id) => cart[id] || 0;
-  const addItem = (id) => setCart(c => ({ ...c, [id]: (c[id] || 0) + 1 }));
+  const addItem = (id) => {
+    if (!logado) { setLoginModal(true); return; }
+    setCart(c => ({ ...c, [id]: (c[id] || 0) + 1 }));
+  };
   const removeItem = (id) => setCart(c => { const n = { ...c }; const v = (n[id] || 0) - 1; if (v <= 0) delete n[id]; else n[id] = v; return n; });
   const delItem = (id) => setCart(c => { const n = { ...c }; delete n[id]; return n; });
 
@@ -164,9 +166,6 @@ export default function CongeladosSite() {
 
   if (booting) return <div className="cg tex-board" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon n="cart" w={28} /></div>;
 
-  if (!logado) {
-    return <div className="cg tex-board"><Login logo={siteLogo} whatsapp={whatsapp} titulo={cfg?.congelados?.loginTitulo} sub={cfg?.congelados?.loginSub} onLogin={setCliente} onVisitante={setVisitante} /></div>;
-  }
 
   // tela de confirmação
   if (confirm) {
@@ -185,7 +184,7 @@ export default function CongeladosSite() {
     );
   }
 
-  const nomeCurto = cliente?.nome || visitante?.nome || 'Cliente';
+  const nomeCurto = cliente?.nome || visitante?.nome || '';
   const gruposFiltro = [{ id: 'todos', nome: 'Todos' }, ...(cliente ? [{ id: 'recompra', nome: 'Recomprar' }] : []), ...grupos];
 
   return (
@@ -239,7 +238,7 @@ export default function CongeladosSite() {
 
       {/* CONTENT */}
       <main className="wrap" style={{ paddingBottom: 120 }}>
-        {ultimoPedido.length > 0 && (
+        {cliente && ultimoPedido.length > 0 && (
           <div className="cg-repeat">
             <span className="rt"><b>Seu último pedido</b> tem {ultimoPedido.length} {ultimoPedido.length === 1 ? 'item' : 'itens'}.</span>
             <button className="btn btn-green btn-sm" onClick={repetirUltimo}><Icon n="refresh" w={15} /> Repetir último pedido</button>
@@ -248,7 +247,7 @@ export default function CongeladosSite() {
 
         {matched.length === 0 && <div className="cg-empty">Nenhum salgado encontrado{q ? ` para “${q}”` : ''}.</div>}
 
-        {comprados.length > 0 && (
+        {cliente && comprados.length > 0 && (
           <>
             <div className="cg-band-head"><span className="kx">Você sempre pede</span></div>
             <div className="cg-grid">
@@ -358,6 +357,19 @@ export default function CongeladosSite() {
           </div>
         )}
       </aside>
+
+      {loginModal && !logado && (
+        <div className="cg-fmodal-ov" style={{ alignItems: 'center' }} onClick={(e) => e.target === e.currentTarget && setLoginModal(false)}>
+          <Login
+            logo={siteLogo}
+            whatsapp={whatsapp}
+            titulo={cfg?.congelados?.loginTitulo || 'Entrar para comprar'}
+            sub={cfg?.congelados?.loginSub || 'Faça login para adicionar produtos ao pedido e ver seu histórico.'}
+            onLogin={(c) => { setCliente(c); setLoginModal(false); }}
+            onVisitante={(v) => { setVisitante(v); setLoginModal(false); }}
+          />
+        </div>
+      )}
 
       {ficha && <FichaModal ficha={ficha} onClose={() => setFicha(null)} />}
     </div>

@@ -259,6 +259,7 @@
   .kf .grid-prod { grid-template-columns:1fr; }
   .kf .card-body .d { display:block; }
 }
+.kf .kf-login-ov { position:fixed; inset:0; z-index:100; background:rgba(8,12,8,.82); backdrop-filter:blur(4px); overflow-y:auto; animation:kf-fade .2s ease both; }
 .kf .login { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
 .kf .login-card { width:100%; max-width:410px; background:#fffaf0; border-radius:var(--r-lg); box-shadow:var(--shadow); overflow:hidden; }
 .kf .login-top { position:relative; padding:30px 30px 22px; text-align:center; }

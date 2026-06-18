@@ -27,25 +27,23 @@ export default function KitFestaSite() {
   const [coupon, setCoupon] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
+  const [loginModal, setLoginModal] = useState(false);
 
-  // boot: tenta restaurar sessão
+  // Boot: carrega dados do site sempre (sem login) + restaura sessão em paralelo
   useEffect(() => {
-    publicApi.config().then(setCfg).catch(() => {}); // carrega cedo p/ logo no login
     const t = getToken();
     const restore = t ? publicApi.perfil().then(setCliente).catch(() => setToken(null)) : Promise.resolve();
-    restore.finally(() => setBooting(false));
+    Promise.all([
+      publicApi.config().then(setCfg).catch(() => {}),
+      publicApi.catalogo().then(setProdutos).catch(() => {}),
+      publicApi.categorias().then(setCategorias).catch(() => {}),
+      publicApi.avaliacoes().then(setAvaliacoes).catch(() => {}),
+      restore,
+    ]).finally(() => setBooting(false));
   }, []);
 
   const siteLogo = (cfg && cfg.logoUrl) ? imgUrl(cfg.logoUrl) : LOGO;
-
-  // carrega dados do site quando entra (cliente ou visitante)
   const logado = cliente || visitante;
-  useEffect(() => {
-    if (!logado) return;
-    Promise.all([publicApi.config(), publicApi.catalogo(), publicApi.categorias(), publicApi.avaliacoes()])
-      .then(([c, p, cat, av]) => { setCfg(c); setProdutos(p); setCategorias(cat); setAvaliacoes(av); })
-      .catch(() => {});
-  }, [logado]);
 
   const qtyOf = (id) => cart[id] || 0;
   const addItem = (id) => setCart(c => ({ ...c, [id]: (c[id] || 0) + 1 }));
@@ -63,15 +61,7 @@ export default function KitFestaSite() {
 
   const logout = () => { setToken(null); setCliente(null); setVisitante(null); setCart({}); setCoupon(null); };
 
-  if (booting) return <div className="kf"><div className="login tex-board"><Loader2 className="animate-spin" color="#fff" /></div></div>;
-
-  if (!logado) {
-    return <div className="kf"><Login logo={siteLogo}
-      onLogin={(c) => setCliente(c)}
-      onVisitante={(v) => setVisitante(v)} /></div>;
-  }
-
-  if (!cfg) return <div className="kf"><div className="login tex-board"><Loader2 className="animate-spin" color="#fff" /></div></div>;
+  if (booting || !cfg) return <div className="kf"><div className="login tex-board"><Loader2 className="animate-spin" color="#fff" /></div></div>;
 
   const goCatalog = () => { document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
 
@@ -80,7 +70,7 @@ export default function KitFestaSite() {
       {screen === 'shop' && (
         <>
           <Header cfg={cfg} logo={siteLogo} cartCount={totals.boxes} onCart={() => setCartOpen(true)} onLogout={logout}
-            nome={cliente?.nome || visitante?.nome} />
+            nome={cliente?.nome || visitante?.nome} onAbrirLogin={() => setLoginModal(true)} />
           <Hero cfg={cfg} onCatalog={goCatalog} />
           <HowItWorks cfg={cfg} />
           {produtos.some(p => p.destaque) && (
@@ -129,7 +119,10 @@ export default function KitFestaSite() {
       {cartOpen && (
         <CartDrawer cart={cart} produtos={produtos} totals={totals} coupon={coupon} setCoupon={setCoupon} minCaixas={minCaixas}
           onClose={() => setCartOpen(false)} onAdd={addItem} onRemove={removeItem}
-          onCheckout={() => { setCartOpen(false); setScreen('checkout'); document.querySelector('.kf')?.scrollTo({ top: 0 }); }} />
+          onCheckout={() => {
+            if (!logado) { setCartOpen(false); setLoginModal(true); return; }
+            setCartOpen(false); setScreen('checkout'); document.querySelector('.kf')?.scrollTo({ top: 0 });
+          }} />
       )}
 
       {confirm && (
@@ -137,12 +130,20 @@ export default function KitFestaSite() {
           cliente={cliente} visitante={visitante}
           onClose={() => { setConfirm(null); setCart({}); setCoupon(null); setScreen('shop'); }} />
       )}
+
+      {loginModal && !logado && (
+        <div className="kf-login-ov" onClick={(e) => e.target === e.currentTarget && setLoginModal(false)}>
+          <Login logo={siteLogo}
+            onLogin={(c) => { setCliente(c); setLoginModal(false); }}
+            onVisitante={(v) => { setVisitante(v); setLoginModal(false); }} />
+        </div>
+      )}
     </div>
   );
 }
 
 /* ---------- Header ---------- */
-function Header({ cfg, logo, cartCount, onCart, onLogout, nome }) {
+function Header({ cfg, logo, cartCount, onCart, onLogout, nome, onAbrirLogin }) {
   return (
     <header className="hd tex-board">
       <div className="sawtooth" />
@@ -158,9 +159,13 @@ function Header({ cfg, logo, cartCount, onCart, onLogout, nome }) {
         <Link to="/inicio" className="hd-pill" title="Página inicial">
           <Home size={17} /><span className="lbl">Início</span>
         </Link>
-        <button className="hd-pill" onClick={onLogout} title="Sair">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          <span className="lbl">Sair</span>
+        <button className="hd-pill" onClick={nome ? onLogout : onAbrirLogin} title={nome ? 'Sair' : 'Entrar'}>
+          {nome ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          ) : (
+            <User size={16} />
+          )}
+          <span className="lbl">{nome ? 'Sair' : 'Entrar'}</span>
         </button>
         <button className="hd-pill hd-cart" onClick={onCart}>
           <ShoppingCart size={18} /><span className="lbl">Carrinho</span>
