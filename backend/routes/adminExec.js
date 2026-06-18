@@ -32,6 +32,32 @@ router.get('/ping', (req, res) => {
     });
 });
 
+// GET /api/admin-exec/diag-colunas
+// SOMENTE LEITURA. Conta, por tabela, colunas vivas vs "fantasma" (dropped) que
+// ainda ocupam vaga no limite de 1600 do Postgres. Usado para diagnosticar o
+// estoque de colunas mortas (ex.: tabela "clientes" no teto).
+router.get('/diag-colunas', async (req, res) => {
+    try {
+        const linhas = await prisma.$queryRawUnsafe(`
+            SELECT
+                c.relname AS tabela,
+                count(*) FILTER (WHERE a.attnum > 0 AND NOT a.attisdropped)::int AS colunas_vivas,
+                count(*) FILTER (WHERE a.attnum > 0 AND a.attisdropped)::int     AS colunas_fantasma,
+                count(*) FILTER (WHERE a.attnum > 0)::int                        AS total_slots
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            JOIN pg_attribute a ON a.attrelid = c.oid
+            WHERE n.nspname = 'public' AND c.relkind = 'r'
+            GROUP BY c.relname
+            ORDER BY total_slots DESC
+            LIMIT 40
+        `);
+        res.json({ ok: true, limiteMaximo: 1600, tabelas: linhas });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // POST /api/admin-exec/recalcular-dia/:diaSigla
 // Recalcula insights + orientação para todos os clientes de um dia de rota
 router.post('/recalcular-dia/:diaSigla', async (req, res) => {

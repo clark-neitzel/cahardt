@@ -362,9 +362,12 @@ const migrationService = {
             `CREATE INDEX IF NOT EXISTS "atendimentos_cliente_id_idx" ON "atendimentos"("cliente_id");`,
             `CREATE INDEX IF NOT EXISTS "atendimentos_id_vendedor_idx" ON "atendimentos"("id_vendedor");`,
 
-            // Update 24: Campos de Horário nos Clientes
-            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "Horario_Atendimento" TEXT;`,
-            `ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "Horario_Entrega" TEXT;`,
+            // Update 24: Campos de Horário nos Clientes — REMOVIDO.
+            // A tabela "clientes" atingiu o teto de 1600 colunas do Postgres (ver ClienteFiscal),
+            // então estes dois ADD COLUMN sempre falhavam no boot (erro 54011) e poluíam os logs.
+            // As colunas nunca chegaram a existir no banco e não estão no schema.prisma.
+            // Se um dia o recurso "Horário Atendimento/Entrega" for ativado, criar os campos
+            // numa tabela lateral (igual ClienteFiscal), NÃO em "clientes".
 
             // Update 25: Ficha Completa de Veículos — seguro, km médio sugerido, observações
             `ALTER TABLE "veiculos" ADD COLUMN IF NOT EXISTS "seguro_vencimento" TIMESTAMP;`,

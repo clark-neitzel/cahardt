@@ -524,6 +524,7 @@ const pedidoService = {
     },
 
     // 3. Buscar último preço de um produto vendido para um cliente
+    // "Último" = o pedido FEITO por último (data de criação), não pela data de entrega.
     obterUltimoPreco: async (clienteId, produtoId) => {
         // Busca o último item de pedido deste produto para este cliente
         const ultimoItem = await prisma.pedidoItem.findFirst({
@@ -536,7 +537,7 @@ const pedidoService = {
             },
             orderBy: {
                 pedido: {
-                    dataVenda: 'desc'
+                    createdAt: 'desc'
                 }
             },
             select: {
@@ -559,16 +560,17 @@ const pedidoService = {
                     statusEnvio: { not: 'EXCLUIDO' }
                 }
             },
-            orderBy: { pedido: { dataVenda: 'desc' } },
+            // "Último" = pedido FEITO por último (data de criação), não pela data de entrega.
+            orderBy: { pedido: { createdAt: 'desc' } },
             select: {
                 valor: true,
                 quantidade: true,
                 produtoId: true,
-                pedido: { select: { dataVenda: true, numero: true, canalOrigem: true, usuarioLancamento: { select: { nome: true } } } }
+                pedido: { select: { dataVenda: true, createdAt: true, numero: true, canalOrigem: true, usuarioLancamento: { select: { nome: true } } } }
             }
         });
 
-        // Agrupar por produto mantendo as 5 últimas compras
+        // Agrupar por produto mantendo as 5 últimas compras (o 1º de cada = pedido mais recente)
         const porProduto = new Map();
         for (const item of itens) {
             if (!item.produtoId) continue;
@@ -576,6 +578,7 @@ const pedidoService = {
                 porProduto.set(item.produtoId, {
                     produtoId: item.produtoId,
                     ultimaCompra: item.pedido.dataVenda,
+                    _ultimaCriacao: item.pedido.createdAt,
                     ultimoPreco: Number(item.valor),
                     compras: []
                 });
@@ -591,10 +594,10 @@ const pedidoService = {
             }
         }
 
-        // Retornar como array ordenado pela compra mais recente
-        return Array.from(porProduto.values()).sort(
-            (a, b) => new Date(b.ultimaCompra) - new Date(a.ultimaCompra)
-        );
+        // Retornar como array ordenado pelo pedido feito mais recentemente
+        return Array.from(porProduto.values())
+            .sort((a, b) => new Date(b._ultimaCriacao) - new Date(a._ultimaCriacao))
+            .map(({ _ultimaCriacao, ...rest }) => rest);
     },
 
 

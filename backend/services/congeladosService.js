@@ -79,7 +79,8 @@ async function precoUltimaCompraMap(clienteUuid, produtoIds) {
     const itens = await prisma.pedidoItem.findMany({
         where: { produtoId: { in: produtoIds }, pedido: { clienteId: clienteUuid, statusEnvio: { not: 'EXCLUIDO' } } },
         select: { produtoId: true, valor: true },
-        orderBy: { pedido: { dataVenda: 'desc' } },
+        // "Último" = pedido FEITO por último (data de criação), igual ao vendedor.
+        orderBy: { pedido: { createdAt: 'desc' } },
     });
     const map = {};
     for (const it of itens) {
@@ -414,7 +415,7 @@ const congeladosService = {
         if (!clienteUuid) return new Set();
         const pedidos = await prisma.pedido.findMany({
             where: { clienteId: clienteUuid },
-            orderBy: { dataVenda: 'desc' },
+            orderBy: { createdAt: 'desc' }, // últimas compras = pedidos feitos por último
             take: ultimas,
             include: { itens: { select: { produtoId: true } } },
         });
@@ -447,7 +448,7 @@ const congeladosService = {
         if (clienteUuid) {
             const ultimo = await prisma.pedido.findFirst({
                 where: { clienteId: clienteUuid },
-                orderBy: { dataVenda: 'desc' },
+                orderBy: { createdAt: 'desc' }, // o pedido feito por último
                 include: { itens: { select: { produtoId: true, quantidade: true } } },
             });
             if (ultimo) {
