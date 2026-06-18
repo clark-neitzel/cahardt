@@ -46,7 +46,10 @@ export default function KitFestaSite() {
   const logado = cliente || visitante;
 
   const qtyOf = (id) => cart[id] || 0;
-  const addItem = (id) => setCart(c => ({ ...c, [id]: (c[id] || 0) + 1 }));
+  const addItem = (id) => {
+    if (!logado) { setLoginModal(true); return; }
+    setCart(c => ({ ...c, [id]: (c[id] || 0) + 1 }));
+  };
   const removeItem = (id) => setCart(c => { const n = { ...c }; const v = (n[id] || 0) - 1; if (v <= 0) delete n[id]; else n[id] = v; return n; });
 
   const minCaixas = (cfg?.regras?.minCaixas) || 4;
