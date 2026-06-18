@@ -317,14 +317,24 @@ const congeladosService = {
 
     // ───────── Catálogo / grupos ─────────
     async catalogoPublico() {
-        const produtos = await prisma.congeladosProduto.findMany({
-            where: { ativo: true },
-            include: { produto: { include: { imagens: true, categoriaProduto: true } } },
-            orderBy: [{ ordem: 'asc' }],
-        });
+        const [produtos, cfgRow] = await Promise.all([
+            prisma.congeladosProduto.findMany({
+                where: { ativo: true },
+                include: { produto: { include: { imagens: true, categoriaProduto: true } } },
+                orderBy: [{ ordem: 'asc' }],
+            }),
+            prisma.congeladosConfig.findUnique({ where: { chave: 'categoriasNomes' } }).catch(() => null),
+        ]);
+        const overrides = (cfgRow && cfgRow.valor) || {}; // { [categoriaId]: { nome, ordem, oculto, preparo } }
         return produtos
             .filter(p => p.produto && p.produto.ativo !== false)
-            .map(produtoSitePublico);
+            .map(cp => {
+                const o = produtoSitePublico(cp);
+                const ov = overrides[o.grupo];
+                // "preparo": rótulo por categoria que aparece no card (ex.: "Para fritar")
+                o.preparo = (ov && typeof ov === 'object' && ov.preparo) ? String(ov.preparo).trim() : '';
+                return o;
+            });
     },
 
     // Catálogo do VISITANTE (sem login): aplica a tabela "Site" (acréscimo %) sobre o

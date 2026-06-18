@@ -383,6 +383,10 @@
 .cg-catalog .cg-card-body .cx{ color:#6a5f4c; }
 .cg-catalog .cg-card-foot .price b{ color:var(--green-dd); }
 
+/* rótulo de preparo no card (ex.: "Para fritar") — discreto e elegante */
+.cg-prep{ align-self:flex-start; display:inline-flex; align-items:center; gap:5px; margin-top:2px; font-family:var(--f-display); text-transform:uppercase; letter-spacing:.06em; font-size:.64rem; font-weight:600; color:var(--green-dd); background:rgba(18,130,64,.08); border:1px solid rgba(18,130,64,.2); padding:.32em .65em; border-radius:999px; line-height:1; }
+.cg-prep::before{ content:''; width:5px; height:5px; border-radius:999px; background:var(--green); flex:0 0 auto; }
+
 /* stepper verde (em vez do escuro) */
 .cg-catalog .cg-step{ background:var(--green); border-color:var(--green); }
 .cg-catalog .cg-step button{ color:#fff; }

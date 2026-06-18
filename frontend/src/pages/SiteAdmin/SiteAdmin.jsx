@@ -396,7 +396,7 @@ function ModalCategorias({ categorias, onClose }) {
 
   return (
     <Modal onClose={onClose} title="Categorias do site">
-      <p className="text-sm text-gray-500 mb-3">Defina o nome que cada categoria mostra no site (sem mexer no nome do sistema), a ordem e se aparece.</p>
+      <p className="text-sm text-gray-500 mb-3">Defina o nome que cada categoria mostra no site (sem mexer no nome do sistema), a ordem, se aparece e o <b>preparo</b> que aparece no card de cada produto.</p>
       {loading ? <div className="py-8 text-center text-gray-400"><Loader2 className="h-5 w-5 animate-spin inline" /></div> : (
         <div className="space-y-2 max-h-[55vh] overflow-y-auto">
           {categorias.map(c => {
@@ -413,6 +413,8 @@ function ModalCategorias({ categorias, onClose }) {
                     <input type="checkbox" checked={!!v.oculto} onChange={e => up(c.id, { oculto: e.target.checked })} /> ocultar
                   </label>
                 </div>
+                <input value={v.preparo ?? ''} onChange={e => up(c.id, { preparo: e.target.value })} placeholder="Preparo no card (ex.: Para fritar)"
+                  className="w-full mt-2 border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
               </div>
             );
           })}

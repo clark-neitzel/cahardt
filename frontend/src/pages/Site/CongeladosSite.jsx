@@ -477,6 +477,7 @@ function Card({ p, preco, qty, add, dec, onAbrir }) {
       <div className="cg-card-body">
         <h3 onClick={() => onAbrir && onAbrir(p)} style={{ cursor: 'pointer' }}>{p.nome}</h3>
         <span className="cx">{emb}{p.unidades ? ` · ${p.unidades} un` : ''}</span>
+        {p.preparo && <span className="cg-prep">{p.preparo}</span>}
         <div className="cg-card-foot">
           <div className="price"><b>{money(preco != null ? preco : p.preco)}</b></div>
           {qty === 0 ? (
