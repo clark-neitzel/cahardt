@@ -24,8 +24,8 @@ O Kit Festa é a linha de salgados de festa (caixas de 25 unidades, mínimo de 4
    - **Endereço (entrega):** se o cliente tem endereço no cadastro, ele aparece e o cliente escolhe "entregar neste endereço" ou "outro endereço". Se for outro, ou se não tiver cadastro (obrigatório informar), ele digita o **CEP** → o sistema busca (ViaCEP) e preenche rua + **bairro** (que é selecionado na lista, definindo a **taxa**) → informa **número** e complemento.
    - **Dia e horário:** calendário liberado pela cozinha + horário com vaga.
    - **Observações** (opcional).
-5. **Confirma o WhatsApp:** o cliente confirma o número (ou informa, se não tiver) — é pra onde a cópia do pedido é enviada.
-6. **Finaliza:** o pedido é salvo e o cliente **recebe uma cópia no WhatsApp** automaticamente (mesmo envio dos outros avisos do app, via BotConversa). Se o número for novo/corrigido, o pedido é marcado como **"celular alterado"** para a equipe atualizar no cadastro. O pagamento é combinado depois (pix ou na entrega).
+5. **Confirma o WhatsApp:** o cliente confirma o número (ou informa, se não tiver) — fica registrado no pedido.
+6. **Finaliza:** o pedido é salvo e aparece a tela "Pedido registrado!" com o botão **"Enviar pedido pelo WhatsApp"** — o próprio cliente envia o pedido à loja **pelo WhatsApp dele** (a loja **não** dispara mais mensagem automática, para evitar bloqueio do número). Se o número for novo/corrigido, o pedido é marcado como **"celular alterado"** para a equipe atualizar no cadastro. O pagamento é combinado depois (pix ou na entrega).
 
 No site o cliente logado também vê a seção **"Indique e ganhe"** com o código de indicação dele (quando o programa de indicação está ativo nas Configurações).
 
@@ -34,7 +34,7 @@ No site o cliente logado também vê a seção **"Indique e ganhe"** com o códi
 ## Painel admin — sub-abas
 
 ### 1. Pedidos
-Fila de pedidos vindos do site. Filtros por status (Aguardando, Sem cadastro, Convertidos, Recusados) e busca por nome/CPF/telefone.
+Fila de pedidos vindos do site, **do mais recente para o mais antigo**, com **pílulas de status com contagem** (Todos / Aguardando / Sem cadastro / Convertidos / Recusados / Cancelados) e busca por **nome, razão social, nome fantasia, cidade, CPF ou CNPJ** (e telefone). A lista **atualiza sozinha a cada 45 segundos**. Pedidos novos aparecem com **aviso amarelo pulsante** e etiqueta **"Novo"** com borda destacada. Quando o pedido gerado é **excluído no sistema**, o pedido do site vira **Cancelado** automaticamente.
 - Abrir um pedido mostra itens, cliente, modo, data/horário, bairro/taxa, total e observações.
 - **Pedidos "Sem cadastro"** aparecem destacados em vermelho. Antes de aprovar, é preciso **vincular** o pedido a um cliente do app (cadastre no Conta Azul, sincronize, busque e vincule).
 - **Celular alterado:** quando o cliente informa/corrige o número no checkout, o pedido mostra o aviso **"celular alterado"** (laranja) com o novo número — atualize no cadastro do cliente no app/CA.

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Search, Loader2, Check, X, AlertTriangle, UserPlus, Package, Calendar, Clock, MapPin, Truck, ExternalLink, Trash2, Phone } from 'lucide-react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { Search, Loader2, Check, X, AlertTriangle, UserPlus, Package, Calendar, Clock, MapPin, Truck, ExternalLink, Trash2, Phone, RefreshCw, Megaphone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { kitFestaService } from '../../services/kitFestaService';
 import clienteService from '../../services/clienteService';
@@ -13,14 +13,15 @@ const STATUS_FILTROS = [
   ['PENDENTE_CADASTRO', 'Sem cadastro'],
   ['CONVERTIDO', 'Convertidos'],
   ['RECUSADO', 'Recusados'],
+  ['CANCELADO', 'Cancelados'],
 ];
 const BADGE = {
-  AGUARDANDO: 'bg-amber-50 text-amber-700',
-  PENDENTE_CADASTRO: 'bg-red-50 text-red-700',
-  APROVADO: 'bg-blue-50 text-blue-700',
-  CONVERTIDO: 'bg-emerald-50 text-emerald-700',
-  RECUSADO: 'bg-gray-100 text-gray-400',
-  CANCELADO: 'bg-gray-100 text-gray-400',
+  AGUARDANDO: 'bg-amber-100 text-amber-700',
+  PENDENTE_CADASTRO: 'bg-red-100 text-red-700',
+  APROVADO: 'bg-blue-100 text-blue-700',
+  CONVERTIDO: 'bg-emerald-100 text-emerald-700',
+  RECUSADO: 'bg-gray-100 text-gray-500',
+  CANCELADO: 'bg-gray-100 text-gray-500',
 };
 const STATUS_LABEL = {
   AGUARDANDO: 'Aguardando', PENDENTE_CADASTRO: 'Sem cadastro', APROVADO: 'Aprovado',
@@ -36,44 +37,82 @@ export default function AbaPedidos() {
   const [busca, setBusca] = useState('');
   const [aberto, setAberto] = useState(null);
 
-  const carregar = () => {
-    setLoading(true);
-    kitFestaService.pedidos({ status: status || undefined, busca: busca || undefined })
-      .then(setLista).catch(() => toast.error('Erro ao carregar pedidos')).finally(() => setLoading(false));
-  };
-  useEffect(() => { const t = setTimeout(carregar, busca ? 350 : 0); return () => clearTimeout(t); }, [status, busca]);
+  const carregar = useCallback((silent) => {
+    if (!silent) setLoading(true);
+    kitFestaService.pedidos({ busca: busca || undefined })
+      .then(setLista).catch(() => { if (!silent) toast.error('Erro ao carregar pedidos'); }).finally(() => { if (!silent) setLoading(false); });
+  }, [busca]);
+  useEffect(() => { const t = setTimeout(() => carregar(), busca ? 350 : 0); return () => clearTimeout(t); }, [carregar, busca]);
+  // Atualiza sozinho a cada 45s: novos pedidos e mudanças de status aparecem sem recarregar.
+  useEffect(() => { const t = setInterval(() => carregar(true), 45000); return () => clearInterval(t); }, [carregar]);
+
+  const counts = useMemo(() => {
+    const c = { '': lista.length };
+    lista.forEach(p => { c[p.status] = (c[p.status] || 0) + 1; });
+    return c;
+  }, [lista]);
+  const atencao = useMemo(() => lista.filter(p => p.status === 'AGUARDANDO' || p.status === 'PENDENTE_CADASTRO').length, [lista]);
+  const filtrada = status ? lista.filter(p => p.status === status) : lista;
 
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-center gap-2 mb-3">
         <div className="relative flex-1">
           <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm" placeholder="Buscar por nome, CPF ou telefone..."
+          <input className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm" placeholder="Buscar nome, razão, fantasia, cidade, CPF ou CNPJ..."
             value={busca} onChange={e => setBusca(e.target.value)} />
         </div>
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1 overflow-x-auto">
-          {STATUS_FILTROS.map(([v, l]) => (
-            <button key={v} onClick={() => setStatus(v)}
-              className={`px-3 py-1.5 text-xs rounded-md whitespace-nowrap ${status === v ? 'bg-white shadow-sm font-medium text-gray-800' : 'text-gray-500'}`}>{l}</button>
-          ))}
-        </div>
+        <button onClick={() => carregar()} className="p-2 border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50 self-start" title="Atualizar"><RefreshCw className="h-4 w-4" /></button>
       </div>
+
+      {/* pílulas de status com contagem */}
+      <div className="flex flex-wrap gap-2 mb-3">
+        {STATUS_FILTROS.map(([v, l]) => {
+          const active = status === v; const n = v === '' ? (counts[''] || 0) : (counts[v] || 0);
+          const cls = v === '' ? 'bg-gray-100 text-gray-700' : (BADGE[v] || 'bg-gray-100 text-gray-600');
+          return (
+            <button key={v || 'todos'} onClick={() => setStatus(v)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${active ? 'border-emerald-500 bg-emerald-600 text-white' : `border-transparent ${cls} hover:brightness-95`}`}>
+              {l}
+              <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[11px] ${active ? 'bg-white/25' : 'bg-black/10'}`}>{n}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* aviso visual de pedidos novos que precisam de atenção */}
+      {atencao > 0 && (
+        <div className="mb-3 flex items-center gap-2.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-amber-800">
+          <span className="animate-pulse" style={{ width: 9, height: 9, borderRadius: 999, background: '#f59e0b', flexShrink: 0 }} />
+          <Megaphone className="h-4 w-4 flex-none" />
+          <span className="text-sm font-medium">{atencao} pedido{atencao > 1 ? 's' : ''} novo{atencao > 1 ? 's' : ''} aguardando — aprove ou vincule o cliente.</span>
+        </div>
+      )}
 
       {loading ? (
         <div className="p-12 text-center text-gray-400"><Loader2 className="h-6 w-6 animate-spin inline" /></div>
-      ) : lista.length === 0 ? (
+      ) : filtrada.length === 0 ? (
         <div className="p-12 text-center text-gray-400 text-sm">Nenhum pedido encontrado.</div>
       ) : (
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {lista.map(p => (
+          {filtrada.map(p => {
+            const novo = p.status === 'AGUARDANDO' || p.status === 'PENDENTE_CADASTRO';
+            const inativo = p.status === 'RECUSADO' || p.status === 'CANCELADO';
+            const cli = p.kitFestaCliente?.cliente;
+            const fantasia = cli?.NomeFantasia && cli.NomeFantasia !== p.nomeCliente ? cli.NomeFantasia : '';
+            const cidade = cli?.End_Cidade || '';
+            return (
             <button key={p.id} onClick={() => setAberto(p)}
-              className={`text-left bg-white rounded-xl border p-3 hover:shadow-md transition-shadow ${p.status === 'PENDENTE_CADASTRO' ? 'border-red-200' : 'border-gray-200'}`}>
+              className={`text-left bg-white rounded-xl border p-3 hover:shadow-md transition-shadow ${novo ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-200'} ${inativo ? 'opacity-60' : ''}`}>
               <div className="flex items-center justify-between mb-1">
                 <span className="font-mono text-xs text-gray-400">#{p.numero}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${BADGE[p.status]}`}>{STATUS_LABEL[p.status]}</span>
+                <div className="flex items-center gap-1.5">
+                  {novo && <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-amber-500 text-white font-semibold"><span className="animate-pulse" style={{ width: 5, height: 5, borderRadius: 999, background: '#fff' }} />Novo</span>}
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${BADGE[p.status]}`}>{STATUS_LABEL[p.status]}</span>
+                </div>
               </div>
               <div className="font-semibold text-gray-800 text-sm">{p.nomeCliente}</div>
-              <div className="text-xs text-gray-400">{p.telefoneCliente || p.cpfCliente}</div>
+              <div className="text-xs text-gray-400">{[fantasia, cidade, p.telefoneCliente || p.cpfCliente].filter(Boolean).join(' · ')}</div>
               <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
                 <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{String(p.data).slice(0, 10).split('-').reverse().join('/')}</span>
                 <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{p.horario}</span>
@@ -89,9 +128,12 @@ export default function AbaPedidos() {
               {p.celularAlterado && (
                 <div className="mt-1 text-xs text-amber-600 flex items-center gap-1"><Phone className="h-3 w-3" /> Celular alterado — atualizar no cadastro</div>
               )}
-              {p.pedido && <div className="mt-1 text-xs text-emerald-600">→ Pedido {p.pedido.numero ? `#${p.pedido.numero}` : 'criado'}</div>}
+              {p.status === 'CANCELADO'
+                ? <div className="mt-1 text-xs text-gray-500">Pedido {p.pedido?.numero ? `#${p.pedido.numero} ` : ''}excluído no sistema</div>
+                : p.pedido && <div className="mt-1 text-xs text-emerald-600">→ Pedido {p.pedido.numero ? `#${p.pedido.numero}` : 'criado'}</div>}
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
 

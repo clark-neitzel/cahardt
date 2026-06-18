@@ -25,7 +25,8 @@ Módulo do **site público da Hardt** voltado à revenda de congelados (B2B), co
    - **Visitante (sem login):** preço pela **tabela de preço "Site"** (condição com `ID = SITE`) — preço de venda do produto **+ o acréscimo % dessa tabela**. O valor mínimo do pedido também é o da tabela "Site".
    - **Cliente logado:** vê **exatamente o mesmo preço que o vendedor veria na tela de pedido** para ele, calculado com a **condição de pagamento padrão** do cadastro: preço de tabela + acréscimo da condição e, se já comprou aquele produto, o **último preço negociado** (pra mais ou pra menos) — respeitando o piso da **política de desconto do flex** (limite do vendedor). Cliente logado **sem** condição cadastrada cai na tabela "Site".
    - Não há pagamento online — o pedido é registrado e o pagamento é combinado depois.
-7. **Promoções:** ainda não são tratadas no site de congelados.
+7. **Envio do pedido (WhatsApp):** ao finalizar, aparece "Pedido registrado!" com o botão **"Enviar pedido pelo WhatsApp"** — o **próprio cliente** envia o pedido à loja pelo WhatsApp dele. A loja **não** dispara mais mensagem automática (evita bloqueio do número). O pedido fica registrado na fila do admin de qualquer forma.
+8. **Promoções:** ainda não são tratadas no site de congelados.
 
 ## Painel admin (`/site-admin`)
 Duas abas:

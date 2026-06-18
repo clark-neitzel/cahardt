@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import publicApi, { getToken, setToken } from './api';
-import { Icon } from './icons';
+import { Icon, WhatsIcon } from './icons';
 import Login from './Login';
 import './site.css';
 import { API_URL } from '../../services/api';
@@ -174,14 +174,26 @@ export default function CongeladosSite() {
 
   // tela de confirmação
   if (confirm) {
+    const linhas = (confirm.itens || []).map(it => `• ${it.quantidade}x ${it.nomeProduto} — ${money(it.precoUnitario * it.quantidade)}`).join('\n');
+    const txt = encodeURIComponent(
+      `*Pedido Hardt — Congelados #${confirm.numero}*\n${linhas}` +
+      (confirm.condicaoNome ? `\n\nPagamento: ${confirm.condicaoNome}` : '') +
+      (confirm.diaEntrega ? `\nEntrega: ${confirm.diaEntrega}` : '') +
+      (confirm.observacoes ? `\nObs: ${confirm.observacoes}` : '') +
+      `\n\nTotal: ${money(confirm.total)}`
+    );
+    const waLink = `https://wa.me/${whatsapp}?text=${txt}`;
     return (
       <div className="cg tex-board">
         <div className="cg-login"><div className="cg-login-card"><div className="sawtooth"></div>
           <div className="cg-login-in">
             <img className="logo" src={siteLogo} alt="Hardt" />
-            <h1>Pedido enviado!</h1>
-            <p className="sub">Recebemos seu pedido <b style={{ color: 'var(--chalk)' }}>#{confirm.numero}</b>. Você vai receber a confirmação no seu <b style={{ color: 'var(--chalk)' }}>WhatsApp</b>. Nossa equipe combina o pagamento conforme a sua condição.</p>
-            <button className="btn btn-yellow btn-block" onClick={() => setConfirm(null)} style={{ marginTop: 8 }}>Fazer outro pedido</button>
+            <h1>Pedido registrado!</h1>
+            <p className="sub">Seu pedido <b style={{ color: 'var(--chalk)' }}>#{confirm.numero}</b> foi registrado. Para a loja já começar a separar, <b style={{ color: 'var(--chalk)' }}>envie pelo seu WhatsApp</b> tocando no botão abaixo. O pagamento é combinado conforme a sua condição.</p>
+            <a className="btn btn-wa btn-block" href={waLink} target="_blank" rel="noreferrer" style={{ marginTop: 8 }}>
+              <WhatsIcon w={19} /> Enviar pedido pelo WhatsApp
+            </a>
+            <button className="btn btn-yellow btn-block" onClick={() => setConfirm(null)} style={{ marginTop: 10 }}>Fazer outro pedido</button>
             <p className="cg-login-note"><Link to="/inicio" style={{ color: 'var(--chalk-dim)' }}>← voltar ao site</Link></p>
           </div>
         </div></div>

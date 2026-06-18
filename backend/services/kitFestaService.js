@@ -445,38 +445,9 @@ const kitFestaService = {
             include: { itens: true, bairro: true },
         });
 
-        // Envia cópia do pedido no WhatsApp do cliente (mesma forma dos outros envios)
-        setTimeout(() => { this._enviarCopiaCliente(pedido.id).catch(e => console.error('[KitFesta] cópia WhatsApp:', e.message)); }, 0);
-
+        // NÃO enviamos mais cópia automática pelo nosso WhatsApp (risco de bloqueio).
+        // O próprio cliente envia o pedido à loja pelo WhatsApp dele, na tela de confirmação.
         return pedido;
-    },
-
-    // Monta e envia a cópia do pedido no WhatsApp do cliente via webhook (BotConversa)
-    async _enviarCopiaCliente(pedidoId) {
-        const p = await prisma.kitFestaPedido.findUnique({ where: { id: pedidoId }, include: { itens: true, bairro: true } });
-        if (!p || !p.telefoneCliente) return;
-        const cfg = await this.configPublico();
-        const loja = cfg.loja || {};
-        const dataBR = p.data.toISOString().slice(0, 10).split('-').reverse().join('/');
-        const linhas = p.itens.map(it => `• ${it.quantidade}x ${it.nomeProduto}${it.opcao ? ` (${it.opcao})` : ''}`).join('\n');
-        const partes = [
-            `Olá, *${p.nomeCliente}*! 👋`,
-            '',
-            `Recebemos seu pedido *Kit Festa* #${p.numero} ✅`,
-            '',
-            linhas,
-            '',
-            `${p.modo === 'retirada' ? '🏠 Retirada na loja' : `🚚 Entrega${p.bairro ? ` · ${p.bairro.nome}` : ''}`}`,
-            (p.modo === 'retirada' && loja.endereco) ? `📍 ${loja.endereco}` : null,
-            (p.modo === 'retirada' && loja.mapsUrl) ? `🗺️ Como chegar: ${loja.mapsUrl}` : null,
-            `📅 ${dataBR} às ${p.horario}`,
-            p.cupomCodigo ? `🎟️ Cupom: ${p.cupomCodigo}` : null,
-            `💰 *Total: ${money2(p.total)}*`,
-            '',
-            'Em breve confirmamos tudo por aqui. O pagamento é combinado depois (pix ou na entrega).',
-            `Obrigado! 🙏 — ${loja.nome || 'Hardt'}`,
-        ].filter(x => x !== null);
-        await webhookService.enviarMensagemCustom(p.telefoneCliente, p.nomeCliente, partes.join('\n'));
     },
 
     // Exclusão de pedido (apenas teste/admin) — itens caem em cascata
@@ -740,21 +711,40 @@ const kitFestaService = {
 
     // ── Pedidos (fila admin) ──
     async adminListarPedidos({ status, busca, data }) {
+        // Sincroniza com o sistema: pedido convertido cujo pedido gerado foi EXCLUÍDO
+        // no sistema vira CANCELADO aqui (status do site acompanha o do sistema).
+        const convertidos = await prisma.kitFestaPedido.findMany({
+            where: { status: 'CONVERTIDO', pedidoId: { not: null } },
+            select: { id: true, pedido: { select: { statusEnvio: true } } },
+        });
+        const cancelar = convertidos.filter(c => c.pedido?.statusEnvio === 'EXCLUIDO').map(c => c.id);
+        if (cancelar.length) {
+            await prisma.kitFestaPedido.updateMany({ where: { id: { in: cancelar } }, data: { status: 'CANCELADO' } });
+        }
+
         const where = {};
         if (status) where.status = status;
         if (data) where.data = new Date(data);
         if (busca) {
             const cpf = soDigitos(busca);
+            // Busca por nome, razão (Nome), fantasia, cidade, CPF/CNPJ e telefone.
             where.OR = [
                 { nomeCliente: { contains: busca, mode: 'insensitive' } },
-                { cpfCliente: cpf ? { contains: cpf } : undefined },
+                cpf ? { cpfCliente: { contains: cpf } } : undefined,
                 { telefoneCliente: { contains: busca } },
-            ].filter(c => Object.values(c)[0] !== undefined);
+                { kitFestaCliente: { cliente: { Nome: { contains: busca, mode: 'insensitive' } } } },
+                { kitFestaCliente: { cliente: { NomeFantasia: { contains: busca, mode: 'insensitive' } } } },
+                { kitFestaCliente: { cliente: { End_Cidade: { contains: busca, mode: 'insensitive' } } } },
+            ].filter(Boolean);
         }
         return prisma.kitFestaPedido.findMany({
             where,
-            orderBy: { createdAt: 'desc' },
-            include: { itens: true, bairro: true, kitFestaCliente: true, pedido: { select: { id: true, numero: true } } },
+            orderBy: { createdAt: 'desc' }, // mais recente primeiro
+            include: {
+                itens: true, bairro: true,
+                kitFestaCliente: { include: { cliente: { select: { Nome: true, NomeFantasia: true, End_Cidade: true } } } },
+                pedido: { select: { id: true, numero: true, statusEnvio: true } },
+            },
             take: 300,
         });
     },

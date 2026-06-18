@@ -572,33 +572,9 @@ const congeladosService = {
             include: { itens: true },
         });
 
-        // Envia cópia do pedido no WhatsApp do cliente (mesma forma do Kit Festa)
-        setTimeout(() => { this._enviarCopiaCliente(pedido.id).catch(e => console.error('[Congelados] cópia WhatsApp:', e.message)); }, 0);
+        // NÃO enviamos mais cópia automática pelo nosso WhatsApp (risco de bloqueio).
+        // O próprio cliente envia o pedido à loja pelo WhatsApp dele, na tela de confirmação.
         return pedido;
-    },
-
-    // Monta e envia a confirmação do pedido no WhatsApp do cliente (via webhook BotConversa)
-    async _enviarCopiaCliente(pedidoId) {
-        const p = await prisma.congeladosPedido.findUnique({ where: { id: pedidoId }, include: { itens: true } });
-        if (!p || !p.telefoneCliente) return;
-        const cfg = await this.configPublico();
-        const loja = cfg.loja || {};
-        const linhas = p.itens.map(it => `• ${it.quantidade}x ${it.nomeProduto} — ${money2(dec(it.precoUnitario) * it.quantidade)}`).join('\n');
-        const partes = [
-            `Olá, *${p.nomeCliente}*! 👋`,
-            '',
-            `Recebemos seu pedido de *Congelados* #${p.numero} ✅`,
-            '',
-            linhas,
-            '',
-            p.condicaoNome ? `💳 Pagamento: ${p.condicaoNome}` : null,
-            p.diaEntrega ? `🚚 Entrega: ${p.diaEntrega}` : null,
-            `💰 *Total: ${money2(p.total)}*`,
-            '',
-            'Em breve nossa equipe confirma tudo por aqui. O pagamento é combinado conforme a sua condição — nada é cobrado online.',
-            `Obrigado! 🙏 — ${loja.nome || 'Hardt'}`,
-        ].filter(x => x !== null);
-        await webhookService.enviarMensagemCustom(p.telefoneCliente, p.nomeCliente, partes.join('\n'));
     },
 
     async meusPedidos(clienteId) {

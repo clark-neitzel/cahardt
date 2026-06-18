@@ -728,8 +728,8 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
       <div className="modal-card" style={{ position: 'relative', zIndex: 1 }}>
         <div className="modal-top">
           <div className="ok">{salvando ? <Loader2 size={34} className="animate-spin" /> : erro ? <X size={34} /> : <Check size={34} />}</div>
-          <h3>{salvando ? 'Registrando…' : erro ? 'Ops!' : 'Pedido recebido!'}</h3>
-          <p>{salvando ? 'Estamos salvando seu pedido' : erro ? erro : 'Enviamos uma cópia no seu WhatsApp 📲'}</p>
+          <h3>{salvando ? 'Registrando…' : erro ? 'Ops!' : 'Pedido registrado!'}</h3>
+          <p>{salvando ? 'Estamos salvando seu pedido' : erro ? erro : 'Toque abaixo para enviar pelo seu WhatsApp 📲'}</p>
         </div>
         <div className="modal-body">
           {!salvando && !erro && (
@@ -738,10 +738,9 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
                 <div className="r"><Truck size={15} /> {info.modo === 'retirada' ? 'Retirada na loja' : `Entrega${info.bairro ? ` · ${info.bairro.nome}` : ''}`}</div>
                 <div className="r"><Calendar size={15} /> {info.dateLabel} · {info.slot}</div>
                 <div className="r"><ShoppingBag size={15} /> {totals.boxes} caixas · {money(totals.total + (info.taxa || 0))}</div>
-                {info.telefone && <div className="r"><MessageCircle size={15} /> Cópia enviada para {info.telefone}</div>}
               </div>
               <a className="btn btn-wa btn-block" href={link} target="_blank" rel="noreferrer" style={{ marginTop: 14 }}>
-                <MessageCircle size={19} /> Falar com a loja no WhatsApp</a>
+                <MessageCircle size={19} /> Enviar pedido pelo WhatsApp</a>
             </>
           )}
           <button className="btn btn-outline-ink btn-block" style={{ marginTop: 10 }} onClick={onClose}>
