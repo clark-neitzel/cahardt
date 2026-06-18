@@ -31,11 +31,15 @@ Módulo do **site público da Hardt** voltado à revenda de congelados (B2B), co
 Duas abas:
 
 ### Pedidos do site
-Lista a fila de pedidos recebidos pelo site, com busca (nome, documento, telefone) e filtro por status:
+Lista a fila de pedidos recebidos pelo site, **do mais recente para o mais antigo**. A busca é por **nome, razão social, nome fantasia, cidade, CPF ou CNPJ** (e telefone). A lista **atualiza sozinha a cada 45 segundos**, então pedidos novos e mudanças de status aparecem sem precisar recarregar.
+
+No topo há **pílulas de status com a contagem** de cada um (Todos / Aguardando / Sem cadastro / Convertido / Recusado / Cancelado) — clicar filtra a lista. Quando há pedidos novos esperando, aparece um **aviso amarelo pulsante** ("X pedidos novos aguardando") e cada pedido novo ganha a etiqueta **"Novo"** e borda destacada, para o operador tratar na hora.
+
+Status:
 - **Aguardando** — pedido de cliente com cadastro, pronto para aprovar.
 - **Sem cadastro** — visitante sem Cliente no sistema; é preciso **Vincular cliente** antes.
 - **Convertido** — já virou pedido no sistema (mostra o número).
-- **Recusado / Cancelado**.
+- **Recusado / Cancelado** — Cancelado aparece automaticamente quando o pedido gerado é **excluído no sistema** (o status do site acompanha o do sistema).
 
 Ações por pedido:
 - **Vincular cliente:** procura o cadastro no Conta Azul (por nome/documento/código) e vincula ao pedido. Depois o pedido fica "Aguardando".

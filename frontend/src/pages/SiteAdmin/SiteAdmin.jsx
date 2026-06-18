@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Snowflake, Package, ClipboardList, Settings, Search, Check, X, Link2, Trash2, RefreshCw, Plus, Star, ImageOff, Save, Loader2, Store, Megaphone, Upload, Image as ImageIcon, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import congeladosService from '../../services/congeladosService';
@@ -78,12 +78,23 @@ function PedidosTab() {
   const [aprovar, setAprovar] = useState(null);
   const [vincular, setVincular] = useState(null);
 
-  const carregar = useCallback(() => {
-    setLoading(true);
-    congeladosService.pedidos({ status: status || undefined, busca: busca || undefined })
-      .then(setPedidos).catch(() => setPedidos([])).finally(() => setLoading(false));
-  }, [status, busca]);
+  const carregar = useCallback((silent) => {
+    if (!silent) setLoading(true);
+    congeladosService.pedidos({ busca: busca || undefined })
+      .then(setPedidos).catch(() => { if (!silent) setPedidos([]); }).finally(() => { if (!silent) setLoading(false); });
+  }, [busca]);
   useEffect(() => { carregar(); }, [carregar]);
+  // Atualiza sozinho a cada 45s: novos pedidos e mudanças de status aparecem sem recarregar.
+  useEffect(() => { const id = setInterval(() => carregar(true), 45000); return () => clearInterval(id); }, [carregar]);
+
+  // contagem por status (para as pílulas) e quantos precisam de atenção
+  const counts = useMemo(() => {
+    const c = { '': pedidos.length };
+    pedidos.forEach(p => { c[p.status] = (c[p.status] || 0) + 1; });
+    return c;
+  }, [pedidos]);
+  const atencao = useMemo(() => pedidos.filter(p => p.status === 'AGUARDANDO' || p.status === 'PENDENTE_CADASTRO').length, [pedidos]);
+  const lista = status ? pedidos.filter(p => p.status === status) : pedidos;
 
   const recusar = async (p) => {
     const motivo = window.prompt('Motivo da recusa (opcional):') ?? '';
@@ -95,32 +106,59 @@ function PedidosTab() {
     catch (e) { toast.error(e?.response?.data?.error || 'Erro ao excluir.'); }
   };
 
+  const PILLS = [{ id: '', label: 'Todos', cls: 'bg-gray-100 text-gray-700' },
+    ...Object.keys(STATUS_INFO).map(s => ({ id: s, label: STATUS_INFO[s].label, cls: STATUS_INFO[s].cls }))];
+
   return (
     <div>
-      <div className="flex flex-wrap gap-2 mb-4 items-center">
+      <div className="flex flex-wrap gap-2 mb-3 items-center">
         <div className="relative flex-1 min-w-[220px]">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar nome, documento, telefone…"
+          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar nome, razão, fantasia, cidade, CPF ou CNPJ…"
             className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-200 focus:border-sky-400" />
         </div>
-        <select value={status} onChange={e => setStatus(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-          <option value="">Todos os status</option>
-          {Object.keys(STATUS_INFO).map(s => <option key={s} value={s}>{STATUS_INFO[s].label}</option>)}
-        </select>
-        <button onClick={carregar} className="p-2 border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50"><RefreshCw size={16} /></button>
+        <button onClick={() => carregar()} className="p-2 border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50" title="Atualizar"><RefreshCw size={16} /></button>
       </div>
 
+      {/* pílulas de status com contagem */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {PILLS.map(pl => {
+          const active = status === pl.id; const n = counts[pl.id] || 0;
+          return (
+            <button key={pl.id || 'todos'} onClick={() => setStatus(pl.id)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${active ? 'border-sky-500 bg-sky-600 text-white' : `border-transparent ${pl.cls} hover:brightness-95`}`}>
+              {pl.label}
+              <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[11px] ${active ? 'bg-white/25' : 'bg-black/10'}`}>{n}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* aviso visual de pedidos novos que precisam de atenção */}
+      {atencao > 0 && (
+        <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-amber-800">
+          <span className="cg-pulse" style={{ width: 9, height: 9, borderRadius: 999, background: '#f59e0b', flex: 'none' }} />
+          <Megaphone className="h-4 w-4 flex-none" />
+          <span className="text-sm font-medium">{atencao} pedido{atencao > 1 ? 's' : ''} novo{atencao > 1 ? 's' : ''} aguardando — aprove ou vincule o cliente.</span>
+        </div>
+      )}
+
       {loading ? <p className="text-gray-400 text-sm py-10 text-center">Carregando…</p>
-        : pedidos.length === 0 ? <p className="text-gray-400 text-sm py-10 text-center">Nenhum pedido do site ainda.</p>
+        : lista.length === 0 ? <p className="text-gray-400 text-sm py-10 text-center">Nenhum pedido {status ? 'neste status' : 'do site'} ainda.</p>
           : (
             <div className="space-y-3">
-              {pedidos.map(p => (
+              {lista.map(p => (
                 <PedidoCard key={p.id} p={p}
                   onAprovar={() => setAprovar(p)} onVincular={() => setVincular(p)}
                   onRecusar={() => recusar(p)} onExcluir={() => excluir(p)} />
               ))}
             </div>
           )}
+
+      <style>{`
+        @keyframes cg-attn { 0%,100%{ opacity:1 } 50%{ opacity:.3 } }
+        .cg-pulse{ animation:cg-attn 1.4s ease-in-out infinite; will-change:opacity; }
+      `}</style>
 
       {aprovar && <AprovarModal pedido={aprovar} onClose={() => setAprovar(null)} onDone={() => { setAprovar(null); carregar(); }} />}
       {vincular && <VincularModal pedido={vincular} onClose={() => setVincular(null)} onDone={() => { setVincular(null); carregar(); }} />}
@@ -130,18 +168,28 @@ function PedidosTab() {
 
 function PedidoCard({ p, onAprovar, onVincular, onRecusar, onExcluir }) {
   const s = STATUS_INFO[p.status] || { label: p.status, cls: 'bg-gray-100 text-gray-600' };
+  const atencao = p.status === 'AGUARDANDO' || p.status === 'PENDENTE_CADASTRO';
+  const inativo = p.status === 'CANCELADO' || p.status === 'RECUSADO';
+  const cli = p.congeladosCliente?.cliente;
+  const fantasia = cli?.NomeFantasia && cli.NomeFantasia !== p.nomeCliente ? cli.NomeFantasia : '';
+  const cidade = cli?.End_Cidade || '';
   return (
-    <div className="border border-gray-200 rounded-xl p-4 bg-white">
+    <div className={`rounded-xl p-4 bg-white border ${atencao ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-200'} ${inativo ? 'opacity-60' : ''}`}>
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-sky-50 text-sky-600">#{p.numero}</span>
             <b className="text-gray-800">{p.nomeCliente}</b>
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
+            {atencao && (
+              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-500 text-white font-semibold">
+                <span className="cg-pulse" style={{ width: 6, height: 6, borderRadius: 999, background: '#fff', flex: 'none' }} /> Novo
+              </span>
+            )}
             {p.celularAlterado && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">telefone novo</span>}
           </div>
           <div className="text-xs text-gray-500 mt-1">
-            Doc: {p.documentoCliente}{p.telefoneCliente ? ` · ${p.telefoneCliente}` : ''}
+            Doc: {p.documentoCliente}{fantasia ? ` · ${fantasia}` : ''}{cidade ? ` · ${cidade}` : ''}{p.telefoneCliente ? ` · ${p.telefoneCliente}` : ''}
             {p.condicaoNome ? ` · ${p.condicaoNome}` : ''}{p.diaEntrega ? ` · entrega ${p.diaEntrega}` : ''}
           </div>
         </div>
@@ -162,7 +210,11 @@ function PedidoCard({ p, onAprovar, onVincular, onRecusar, onExcluir }) {
       {p.observacoes && <p className="mt-2 text-xs text-gray-500 italic">Obs: {p.observacoes}</p>}
 
       <div className="mt-3 flex flex-wrap gap-2">
-        {p.pedido ? (
+        {p.status === 'CANCELADO' ? (
+          <span className="inline-flex items-center gap-1 text-sm text-gray-500 font-medium">
+            <X size={15} /> Pedido {p.pedido?.numero ? `#${p.pedido.numero} ` : ''}excluído no sistema
+          </span>
+        ) : p.pedido ? (
           <span className="inline-flex items-center gap-1 text-sm text-green-700 font-medium">
             <Check size={15} /> Virou pedido {p.pedido.especial ? 'especial' : ''} {p.pedido.numero ? `#${p.pedido.numero}` : ''}
           </span>

@@ -695,20 +695,39 @@ const congeladosService = {
 
     // ── Pedidos (fila) ──
     async adminListarPedidos({ status, busca }) {
+        // Sincroniza com o sistema: pedido convertido cujo pedido gerado foi EXCLUÍDO
+        // no sistema vira CANCELADO aqui (status do site acompanha o do sistema).
+        const convertidos = await prisma.congeladosPedido.findMany({
+            where: { status: 'CONVERTIDO', pedidoId: { not: null } },
+            select: { id: true, pedido: { select: { statusEnvio: true } } },
+        });
+        const cancelar = convertidos.filter(c => c.pedido?.statusEnvio === 'EXCLUIDO').map(c => c.id);
+        if (cancelar.length) {
+            await prisma.congeladosPedido.updateMany({ where: { id: { in: cancelar } }, data: { status: 'CANCELADO' } });
+        }
+
         const where = {};
         if (status) where.status = status;
         if (busca) {
             const doc = soDigitos(busca);
+            // Busca por nome, razão (Nome), fantasia, cidade, CPF/CNPJ e telefone.
             where.OR = [
                 { nomeCliente: { contains: busca, mode: 'insensitive' } },
                 doc ? { documentoCliente: { contains: doc } } : undefined,
                 { telefoneCliente: { contains: busca } },
+                { congeladosCliente: { cliente: { Nome: { contains: busca, mode: 'insensitive' } } } },
+                { congeladosCliente: { cliente: { NomeFantasia: { contains: busca, mode: 'insensitive' } } } },
+                { congeladosCliente: { cliente: { End_Cidade: { contains: busca, mode: 'insensitive' } } } },
             ].filter(Boolean);
         }
         return prisma.congeladosPedido.findMany({
             where,
-            orderBy: { createdAt: 'desc' },
-            include: { itens: true, congeladosCliente: true, pedido: { select: { id: true, numero: true, especial: true } } },
+            orderBy: { createdAt: 'desc' }, // mais recente primeiro
+            include: {
+                itens: true,
+                congeladosCliente: { include: { cliente: { select: { Nome: true, NomeFantasia: true, End_Cidade: true } } } },
+                pedido: { select: { id: true, numero: true, especial: true, statusEnvio: true } },
+            },
             take: 300,
         });
     },
