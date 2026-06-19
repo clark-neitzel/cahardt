@@ -174,14 +174,30 @@ export default function CongeladosSite() {
 
   // tela de confirmação
   if (confirm) {
-    const linhas = (confirm.itens || []).map(it => `• ${it.quantidade}x ${it.nomeProduto} — ${money(it.precoUnitario * it.quantidade)}`).join('\n');
-    const txt = encodeURIComponent(
-      `*Pedido Hardt — Congelados #${confirm.numero}*\n${linhas}` +
-      (confirm.condicaoNome ? `\n\nPagamento: ${confirm.condicaoNome}` : '') +
-      (confirm.diaEntrega ? `\nEntrega: ${confirm.diaEntrega}` : '') +
-      (confirm.observacoes ? `\nObs: ${confirm.observacoes}` : '') +
-      `\n\nTotal: ${money(confirm.total)}`
-    );
+    const linhas = (confirm.itens || []).map(it =>
+      `• ${it.quantidade}x ${it.nomeProduto}\n   ${money(it.precoUnitario)} cada · ${money(it.precoUnitario * it.quantidade)}`
+    ).join('\n');
+    const caixas = confirm.totalCaixas || (confirm.itens || []).reduce((s, it) => s + (Number(it.quantidade) || 0), 0);
+    const partes = [
+      `*Pedido Hardt — Congelados #${confirm.numero}*`,
+      `Olá! Fiz meu pedido pelo site, segue o resumo 👇`,
+      ``,
+      `👤 *${confirm.nomeCliente || ''}*`,
+      confirm.documentoCliente ? `📄 ${confirm.documentoCliente}` : null,
+      confirm.telefoneCliente ? `📱 ${confirm.telefoneCliente}` : null,
+      ``,
+      `🧊 *Itens (${caixas} cx):*`,
+      linhas,
+      ``,
+      confirm.condicaoNome ? `💳 Pagamento: ${confirm.condicaoNome}` : null,
+      confirm.diaEntrega ? `🚚 Entrega: ${confirm.diaEntrega}` : null,
+      confirm.observacoes ? `📝 Obs: ${confirm.observacoes}` : null,
+      ``,
+      `💰 *Total: ${money(confirm.total)}*`,
+      ``,
+      `Aguardo a confirmação. Obrigado! 🙏`,
+    ].filter(x => x !== null);
+    const txt = encodeURIComponent(partes.join('\n'));
     const waLink = `https://wa.me/${whatsapp}?text=${txt}`;
     return (
       <div className="cg tex-board">
