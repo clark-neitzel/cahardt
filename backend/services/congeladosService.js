@@ -37,6 +37,15 @@ function imagemPrincipal(produto) {
     return p?.url || null;
 }
 
+// Todas as imagens do produto, a principal primeiro (para o carrossel do card e da ficha).
+function imagensProduto(produto) {
+    if (!produto?.imagens?.length) return [];
+    return [...produto.imagens]
+        .sort((a, b) => (b.principal === true ? 1 : 0) - (a.principal === true ? 1 : 0))
+        .map(i => i.url)
+        .filter(Boolean);
+}
+
 // Monta o objeto de produto pro site (preço base — a condição não altera o preço na v1)
 function produtoSitePublico(cp) {
     const preco = cp.precoCongelados != null ? dec(cp.precoCongelados) : dec(cp.produto?.valorVenda);
@@ -55,6 +64,7 @@ function produtoSitePublico(cp) {
         destaque: cp.destaque,
         ordem: cp.ordem,
         imagem: imagemPrincipal(cp.produto),
+        imagens: imagensProduto(cp.produto),
     };
 }
 
@@ -391,6 +401,7 @@ const congeladosService = {
             descricao: cp.descricaoSite || p.descricao || '',
             grupoNome: p.categoriaProduto?.nome || null,
             imagem: imagemPrincipal(p),
+            imagens: imagensProduto(p),
             etiqueta: et ? {
                 pesoUnitario: et.pesoUnitario,
                 pesoPorcao: et.pesoTabelaNutricional,

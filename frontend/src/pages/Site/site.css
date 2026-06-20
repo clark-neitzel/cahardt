@@ -462,3 +462,26 @@
 .cg-drawer .cg-totrow.grand span{ color:var(--ink); }
 .cg-drawer .cg-totrow.grand b{ color:var(--green-dd); }
 .cg-drawer .cg-login-note{ color:#8a7d63; }
+
+/* ============================================================
+   CARROSSEL DE IMAGENS — card (auto) e ficha (com setas)
+   Anima por transform (GPU), sem mexer em box-shadow.
+   ============================================================ */
+.cg-card .ph .cg-slides{ position:absolute; inset:0; display:flex; width:100%; height:100%; transition:transform .6s cubic-bezier(.4,0,.2,1); will-change:transform; }
+.cg-card .ph .cg-slides img{ position:relative; inset:auto; flex:0 0 100%; width:100%; height:100%; object-fit:cover; }
+.cg-card .ph .cg-dots{ position:absolute; bottom:8px; left:50%; transform:translateX(-50%); display:flex; gap:5px; z-index:2; pointer-events:none; }
+.cg-card .ph .cg-dots span{ width:6px; height:6px; border-radius:999px; background:rgba(255,255,255,.55); box-shadow:0 0 2px rgba(0,0,0,.45); transition:background .2s; }
+.cg-card .ph .cg-dots span.on{ background:#fff; }
+
+/* imagem grande no popup da ficha */
+.cg-fhero{ position:relative; width:100%; height:clamp(220px,40vw,320px); overflow:hidden; background:linear-gradient(160deg,#fbf7ee,#ece2cd); display:flex; align-items:center; justify-content:center; }
+.cg-fslides{ position:absolute; inset:0; display:flex; width:100%; height:100%; transition:transform .35s cubic-bezier(.4,0,.2,1); will-change:transform; }
+.cg-fslides img{ flex:0 0 100%; width:100%; height:100%; object-fit:contain; }
+.cg-fhero .noimg{ color:rgba(255,255,255,.85); font-family:'Courier New',monospace; font-size:.8rem; letter-spacing:.08em; text-transform:uppercase; text-align:center; padding:12px; }
+.cg-farrow{ position:absolute; top:50%; transform:translateY(-50%); width:38px; height:38px; border-radius:999px; background:rgba(8,12,8,.5); color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.7rem; line-height:1; z-index:3; }
+.cg-farrow:hover{ background:rgba(8,12,8,.78); }
+.cg-farrow.left{ left:10px; }
+.cg-farrow.right{ right:10px; }
+.cg-fdots{ position:absolute; bottom:10px; left:50%; transform:translateX(-50%); display:flex; gap:6px; z-index:3; }
+.cg-fdots span{ width:7px; height:7px; border-radius:999px; background:rgba(255,255,255,.55); box-shadow:0 0 2px rgba(0,0,0,.4); cursor:pointer; }
+.cg-fdots span.on{ background:#fff; }

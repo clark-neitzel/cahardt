@@ -146,7 +146,7 @@ export default function CongeladosSite() {
   const [ficha, setFicha] = useState(null);
   const [fichaLoading, setFichaLoading] = useState(false);
   const abrirFicha = (p) => {
-    setFichaLoading(true); setFicha({ nome: p.nome, imagem: p.imagem, _loading: true });
+    setFichaLoading(true); setFicha({ nome: p.nome, imagem: p.imagem, imagens: p.imagens, codigo: p.codigo, _loading: true });
     publicApi.ficha(p.id).then(setFicha).catch(() => setFicha(null)).finally(() => setFichaLoading(false));
   };
 
@@ -404,7 +404,12 @@ export default function CongeladosSite() {
 
 /* ============== FICHA (popup do produto) ============== */
 function FichaModal({ ficha, onClose }) {
-  const img = imgUrl(ficha.imagem);
+  const imgs = (ficha.imagens?.length ? ficha.imagens : (ficha.imagem ? [ficha.imagem] : [])).map(imgUrl);
+  const [idx, setIdx] = useState(0);
+  const cur = imgs.length ? idx % imgs.length : 0;
+  const multi = imgs.length > 1;
+  const prev = (e) => { e.stopPropagation(); setIdx(i => (i - 1 + imgs.length) % imgs.length); };
+  const next = (e) => { e.stopPropagation(); setIdx(i => (i + 1) % imgs.length); };
   const et = ficha.etiqueta;
   const nut = et?.nutricional || {};
   const linhasNut = [
@@ -418,11 +423,22 @@ function FichaModal({ ficha, onClose }) {
   return (
     <div className="cg-fmodal-ov" onClick={onClose}>
       <div className="cg-fmodal" onClick={e => e.stopPropagation()}>
-        <button className="cg-fclose" onClick={onClose}><Icon n="chevRight" w={18} /></button>
+        <button className="cg-fclose" onClick={onClose}><Icon n="x" w={18} /></button>
+        <div className="cg-fhero" style={!imgs.length ? { background: tileGradient(ficha.codigo || ficha.nome) } : undefined}>
+          {imgs.length ? (
+            <div className="cg-fslides" style={{ transform: `translateX(-${cur * 100}%)` }}>
+              {imgs.map((u, i) => <img key={i} src={u} alt={ficha.nome} />)}
+            </div>
+          ) : <span className="noimg">foto · {ficha.nome}</span>}
+          {multi && (
+            <>
+              <button className="cg-farrow left" onClick={prev} aria-label="Imagem anterior">‹</button>
+              <button className="cg-farrow right" onClick={next} aria-label="Próxima imagem">›</button>
+              <div className="cg-fdots">{imgs.map((_, i) => <span key={i} className={i === cur ? 'on' : ''} onClick={(e) => { e.stopPropagation(); setIdx(i); }} />)}</div>
+            </>
+          )}
+        </div>
         <div className="cg-fhead">
-          <div className="cg-fimg" style={!img ? { background: tileGradient(ficha.codigo || ficha.nome) } : undefined}>
-            {img ? <img src={img} alt={ficha.nome} /> : <span className="noimg">foto · {ficha.nome}</span>}
-          </div>
           <div className="cg-fhead-info">
             <h2>{ficha.nome}</h2>
             {ficha.grupoNome && <span className="cg-ftag">{ficha.grupoNome}</span>}
@@ -492,14 +508,28 @@ function FichaModal({ ficha, onClose }) {
 
 /* ============== CARD ============== */
 function Card({ p, preco, qty, add, dec, onAbrir }) {
-  const img = imgUrl(p.imagem);
+  const imgs = (p.imagens?.length ? p.imagens : (p.imagem ? [p.imagem] : [])).map(imgUrl);
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    if (imgs.length < 2) return;
+    const t = setInterval(() => setIdx(i => (i + 1) % imgs.length), 2600);
+    return () => clearInterval(t);
+  }, [imgs.length]);
+  const cur = imgs.length ? idx % imgs.length : 0;
   const emb = p.embalagem || 'caixa';
   return (
     <article className="cg-card">
-      <div className="ph" style={!img ? { background: tileGradient(p.codigo || p.nome) } : undefined}
+      <div className="ph" style={!imgs.length ? { background: tileGradient(p.codigo || p.nome) } : undefined}
         onClick={() => onAbrir && onAbrir(p)} role="button" title="Ver detalhes do produto">
         {(p.comprado) && <div className="tagrow"><span className="tg bought">Você compra</span></div>}
-        {img ? <img src={img} alt={p.nome} loading="lazy" /> : <div className="noimg">foto · {p.nome}</div>}
+        {imgs.length ? (
+          <div className="cg-slides" style={{ transform: `translateX(-${cur * 100}%)` }}>
+            {imgs.map((u, i) => <img key={i} src={u} alt={p.nome} loading="lazy" />)}
+          </div>
+        ) : <div className="noimg">foto · {p.nome}</div>}
+        {imgs.length > 1 && (
+          <div className="cg-dots">{imgs.map((_, i) => <span key={i} className={i === cur ? 'on' : ''} />)}</div>
+        )}
         <span className="cg-ver">ver detalhes</span>
       </div>
       <div className="cg-card-body">
