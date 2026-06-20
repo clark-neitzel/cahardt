@@ -180,22 +180,22 @@ export default function CongeladosSite() {
     const caixas = confirm.totalCaixas || (confirm.itens || []).reduce((s, it) => s + (Number(it.quantidade) || 0), 0);
     const partes = [
       `*Pedido Hardt — Congelados #${confirm.numero}*`,
-      `Olá! Fiz meu pedido pelo site, segue o resumo 👇`,
+      `Olá! Fiz meu pedido pelo site, segue o resumo:`,
       ``,
-      `👤 *${confirm.nomeCliente || ''}*`,
-      confirm.documentoCliente ? `📄 ${confirm.documentoCliente}` : null,
-      confirm.telefoneCliente ? `📱 ${confirm.telefoneCliente}` : null,
+      `Cliente: *${confirm.nomeCliente || ''}*`,
+      confirm.documentoCliente ? `Documento: ${confirm.documentoCliente}` : null,
+      confirm.telefoneCliente ? `WhatsApp: ${confirm.telefoneCliente}` : null,
       ``,
-      `🧊 *Itens (${caixas} cx):*`,
+      `*Itens (${caixas} cx):*`,
       linhas,
       ``,
-      confirm.condicaoNome ? `💳 Pagamento: ${confirm.condicaoNome}` : null,
-      confirm.diaEntrega ? `🚚 Entrega: ${confirm.diaEntrega}` : null,
-      confirm.observacoes ? `📝 Obs: ${confirm.observacoes}` : null,
+      confirm.condicaoNome ? `Pagamento: ${confirm.condicaoNome}` : null,
+      confirm.diaEntrega ? `Entrega: ${confirm.diaEntrega}` : null,
+      confirm.observacoes ? `Obs: ${confirm.observacoes}` : null,
       ``,
-      `💰 *Total: ${money(confirm.total)}*`,
+      `*Total: ${money(confirm.total)}*`,
       ``,
-      `Aguardo a confirmação. Obrigado! 🙏`,
+      `Aguardo a confirmação. Obrigado!`,
     ].filter(x => x !== null);
     const txt = encodeURIComponent(partes.join('\n'));
     const waLink = `https://wa.me/${whatsapp}?text=${txt}`;
