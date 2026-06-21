@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pencil, Copy, Calculator, Trash2, History, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Pencil, Copy, Calculator, Trash2, History, ChevronRight, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpReceitaService from '../../services/pcpReceitaService';
 import pcpItemService from '../../services/pcpItemService';
@@ -18,6 +18,165 @@ const TIPO_CORES = {
     PA: 'bg-green-100 text-green-800',
     EMB: 'bg-blue-100 text-blue-800',
 };
+
+const ETAPA_LABELS = {
+    preparo: 'Preparo',
+    modelagem: 'Modelagem',
+    fritura: 'Fritura',
+    embalagem: 'Embalagem',
+};
+
+const TIPO_LABELS = {
+    MP: 'Matéria-prima',
+    SUB: 'Subproduto',
+    PA: 'Produto acabado',
+    EMB: 'Embalagem',
+};
+
+function escaparHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+function fmtQtd(n) {
+    const v = parseFloat(n);
+    if (Number.isNaN(v)) return '—';
+    // remove zeros a direita: 1.500 -> 1,5  / 2.000 -> 2
+    return v.toFixed(3).replace(/\.?0+$/, '').replace('.', ',');
+}
+
+function montarHtmlImpressao(receita) {
+    const itens = receita.itens || [];
+
+    // agrupa por etapa, mantendo a ordem das etapas conhecidas e jogando o resto em "Outros"
+    const ordemEtapas = ['preparo', 'modelagem', 'fritura', 'embalagem'];
+    const grupos = {};
+    itens.forEach(it => {
+        const chave = (it.ordemEtapa || '').toLowerCase().trim() || '_sem_etapa';
+        (grupos[chave] = grupos[chave] || []).push(it);
+    });
+    const chavesOrdenadas = [
+        ...ordemEtapas.filter(e => grupos[e]),
+        ...Object.keys(grupos).filter(e => !ordemEtapas.includes(e)),
+    ];
+
+    const temEtapas = chavesOrdenadas.some(c => c !== '_sem_etapa');
+
+    const linhaItem = (it) => `
+        <tr>
+            <td class="nome">${escaparHtml(it.itemPcp?.nome || '—')}</td>
+            <td class="qtd">${fmtQtd(it.quantidade)}</td>
+            <td class="un">${escaparHtml(it.itemPcp?.unidade || '')}</td>
+            ${it.observacao ? `<td class="obs">${escaparHtml(it.observacao)}</td>` : '<td class="obs"></td>'}
+        </tr>`;
+
+    const secoes = chavesOrdenadas.map(chave => {
+        const titulo = chave === '_sem_etapa'
+            ? (temEtapas ? 'Outros ingredientes' : 'Ingredientes')
+            : (ETAPA_LABELS[chave] || chave.charAt(0).toUpperCase() + chave.slice(1));
+        return `
+            <section class="etapa">
+                <h2>${escaparHtml(titulo)}</h2>
+                <table>
+                    <thead>
+                        <tr><th class="nome">Ingrediente</th><th class="qtd">Qtd</th><th class="un">Un.</th><th class="obs">Observação</th></tr>
+                    </thead>
+                    <tbody>${grupos[chave].map(linhaItem).join('')}</tbody>
+                </table>
+            </section>`;
+    }).join('');
+
+    const rendimento = `${fmtQtd(receita.rendimentoBase)} ${escaparHtml(receita.itemPcp?.unidade || '')}`;
+    const perda = receita.perdaPercentual ? `${fmtQtd(receita.perdaPercentual)}%` : '—';
+    const dataImpressao = new Date().toLocaleDateString('pt-BR');
+
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Receita - ${escaparHtml(receita.nome)}</title>
+<style>
+    @page { size: A4 portrait; margin: 12mm; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+        font-family: Arial, Helvetica, sans-serif;
+        color: #111;
+        font-size: 15pt;
+        line-height: 1.35;
+    }
+    /* largura util da A4 retrato com margem 12mm = 210-24 = 186mm */
+    .folha { width: 186mm; margin: 0 auto; }
+    header { border-bottom: 3px solid #111; padding-bottom: 8px; margin-bottom: 14px; }
+    h1 { font-size: 26pt; margin: 0 0 4px; }
+    .produz { font-size: 15pt; color: #333; margin: 0; }
+    .meta { display: flex; gap: 24px; margin-top: 10px; flex-wrap: wrap; }
+    .meta div { font-size: 14pt; }
+    .meta .rotulo { color: #555; font-size: 11pt; text-transform: uppercase; letter-spacing: .5px; display: block; }
+    .meta .valor { font-weight: bold; font-size: 17pt; }
+    .etapa { margin-top: 16px; page-break-inside: avoid; }
+    .etapa h2 {
+        font-size: 16pt; margin: 0 0 6px; padding: 4px 10px;
+        background: #111; color: #fff; border-radius: 4px;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ccc; vertical-align: top; }
+    th { font-size: 11pt; text-transform: uppercase; color: #555; letter-spacing: .5px; border-bottom: 2px solid #111; }
+    td.nome { font-weight: bold; font-size: 15pt; }
+    .qtd, th.qtd { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    td.qtd { font-weight: bold; font-size: 16pt; }
+    .un, th.un { text-align: center; width: 70px; color: #333; }
+    .obs, th.obs { font-size: 12pt; color: #444; }
+    .observacoes { margin-top: 18px; padding: 10px 12px; border: 2px solid #111; border-radius: 6px; page-break-inside: avoid; }
+    .observacoes .rotulo { font-size: 11pt; text-transform: uppercase; letter-spacing: .5px; color: #555; margin-bottom: 4px; }
+    .observacoes p { margin: 0; font-size: 14pt; white-space: pre-wrap; }
+    footer { margin-top: 20px; padding-top: 8px; border-top: 1px solid #ccc; font-size: 10pt; color: #777; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+<div class="folha">
+    <header>
+        <h1>${escaparHtml(receita.nome)}</h1>
+        <p class="produz">Produz: <strong>${escaparHtml(receita.itemPcp?.nome || '—')}</strong>${receita.itemPcp?.tipo ? ` (${escaparHtml(TIPO_LABELS[receita.itemPcp.tipo] || receita.itemPcp.tipo)})` : ''}</p>
+        <div class="meta">
+            <div><span class="rotulo">Rendimento</span><span class="valor">${rendimento}</span></div>
+            <div><span class="rotulo">Perda padrão</span><span class="valor">${perda}</span></div>
+            <div><span class="rotulo">Versão</span><span class="valor">v${escaparHtml(receita.versao)}</span></div>
+        </div>
+    </header>
+    ${secoes || '<p>Sem ingredientes cadastrados.</p>'}
+    ${receita.observacoes ? `<div class="observacoes"><div class="rotulo">Observações</div><p>${escaparHtml(receita.observacoes)}</p></div>` : ''}
+    <footer>
+        <span>Receita de produção — ${escaparHtml(receita.nome)}</span>
+        <span>Impresso em ${dataImpressao}</span>
+    </footer>
+</div>
+<script>
+    // Ajuste automatico: encolhe a letra so o necessario para caber em 1 folha A4.
+    (function () {
+        try {
+            // mede 1mm em px neste navegador (DPI-safe)
+            var probe = document.createElement('div');
+            probe.style.cssText = 'height:100mm;position:absolute;visibility:hidden;top:0;left:0;';
+            document.body.appendChild(probe);
+            var pxPorMm = probe.offsetHeight / 100;
+            document.body.removeChild(probe);
+
+            var alturaUtilMm = 297 - 24; // A4 retrato menos margens de 12mm
+            var alvoPx = alturaUtilMm * pxPorMm;
+            var folha = document.querySelector('.folha');
+            var atual = folha.scrollHeight;
+            if (atual > alvoPx) {
+                var escala = Math.max(0.45, alvoPx / atual);
+                document.body.style.zoom = escala; // afeta layout e paginacao no Chrome
+            }
+        } catch (e) { /* se falhar, imprime no tamanho padrao */ }
+    })();
+</script>
+</body>
+</html>`;
+}
 
 export default function ReceitaDetalhe() {
     const { id } = useParams();
@@ -75,6 +234,20 @@ export default function ReceitaDetalhe() {
         } catch (err) {
             toast.error(err.response?.data?.error || err.message);
         }
+    };
+
+    const imprimirReceita = () => {
+        if (!receita) return;
+        const win = window.open('', '_blank');
+        if (!win) {
+            toast.error('Permita pop-ups para imprimir');
+            return;
+        }
+        win.document.write(montarHtmlImpressao(receita));
+        win.document.close();
+        win.focus();
+        // espera o layout montar antes de chamar a impressao
+        setTimeout(() => win.print(), 300);
     };
 
     if (loading) return <div className="text-center py-12 text-gray-400">Carregando...</div>;
@@ -156,6 +329,12 @@ export default function ReceitaDetalhe() {
                         className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
                     >
                         <Calculator className="h-3.5 w-3.5" /> Simular Escalonamento
+                    </button>
+                    <button
+                        onClick={imprimirReceita}
+                        className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-800 text-white rounded-lg hover:bg-gray-900"
+                    >
+                        <Printer className="h-3.5 w-3.5" /> Imprimir
                     </button>
                     <button
                         onClick={excluirReceita}

@@ -21,6 +21,7 @@ Uma receita sempre produz um item do PCP (PA = Produto Acabado ou SUB = Subprodu
 - Clonar uma receita para criar uma variação
 - Simular o escalonamento (calcular ingredientes para qualquer quantidade)
 - Ver histórico de versões e o que mudou em cada uma
+- Imprimir a receita em folha A4 para a cozinha (letra grande, ingredientes por etapa)
 - Excluir receita
 
 ## Como fazer (passo a passo real)
@@ -44,6 +45,8 @@ Uma receita sempre produz um item do PCP (PA = Produto Acabado ou SUB = Subprodu
 8. Clique em **Criar Receita**.
 
 > Se você escolher um produto do catálogo como ingrediente ou como item produzido, e ele ainda não existir no PCP, o sistema importa automaticamente.
+
+> **Rascunho automático:** enquanto você digita uma receita (nova ou edição), tudo é salvo automaticamente no próprio navegador. Se atualizar a página, fechar a aba sem querer ou precisar sair, ao voltar para a mesma tela o sistema recupera o que você já tinha digitado e mostra um aviso amarelo. Há um botão **Descartar e recomeçar** para apagar o rascunho. O rascunho é apagado sozinho assim que a receita é salva com sucesso. (Obs.: por ser salvo no navegador, o rascunho fica naquele computador/navegador específico.)
 
 ### Editar uma receita ativa
 
@@ -79,6 +82,15 @@ A simulação calcula quantos ingredientes serão necessários para produzir uma
 3. O resultado mostra: fator de escala, rendimento escalado e a árvore de materiais (BOM) com ícones indicando se o estoque é suficiente ou não.
 
 > O simulador é somente para consulta — não cria nenhuma ordem.
+
+### Imprimir a receita para a cozinha
+
+1. Abra a receita e clique em **Imprimir**.
+2. Abre uma janela já formatada em folha **A4** (retrato), com letra grande e legível para uso na cozinha.
+3. A impressão mostra: nome da receita, o que produz, rendimento, perda padrão e versão no cabeçalho; os ingredientes **agrupados por etapa** (Preparo, Modelagem, Fritura, Embalagem) com quantidade, unidade e observação de cada um; e as observações gerais da receita no rodapé.
+4. A janela do navegador abre a caixa de impressão automaticamente — basta confirmar (ou salvar como PDF).
+
+> Se nada abrir, libere os **pop-ups** do site no navegador.
 
 ## Status da receita
 

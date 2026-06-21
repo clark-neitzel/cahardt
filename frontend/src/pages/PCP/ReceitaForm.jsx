@@ -139,6 +139,11 @@ export default function ReceitaForm() {
 
     const [itens, setItens] = useState([]);
 
+    // ── Rascunho automático (não perder o que foi digitado) ──
+    const STORAGE_KEY = `pcp:receita-rascunho:${id || 'nova'}`;
+    const podeSalvarRascunho = useRef(false);
+    const [rascunhoRestaurado, setRascunhoRestaurado] = useState(false);
+
     useEffect(() => {
         const carregarDados = async () => {
             try {
@@ -182,6 +187,43 @@ export default function ReceitaForm() {
                 .finally(() => setLoading(false));
         }
     }, [id, isEdicao]);
+
+    // Restaura o rascunho salvo no navegador (depois que os dados do servidor já carregaram)
+    useEffect(() => {
+        if (loading) return;                    // espera o fetch da receita (modo edição)
+        if (podeSalvarRascunho.current) return; // já inicializado
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                const draft = JSON.parse(raw);
+                const temConteudo = draft?.form?.nome?.trim() || (Array.isArray(draft?.itens) && draft.itens.length > 0);
+                if (temConteudo) {
+                    if (draft.form) setForm(draft.form);
+                    if (Array.isArray(draft.itens)) setItens(draft.itens);
+                    setRascunhoRestaurado(true);
+                }
+            }
+        } catch { /* ignora rascunho corrompido */ }
+        podeSalvarRascunho.current = true; // a partir daqui as mudanças são salvas
+    }, [loading, STORAGE_KEY]);
+
+    // Salva o rascunho a cada alteração do formulário/itens
+    useEffect(() => {
+        if (!podeSalvarRascunho.current) return;
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ form, itens, ts: Date.now() }));
+        } catch { /* sem espaço / modo privado: ignora */ }
+    }, [form, itens, STORAGE_KEY]);
+
+    const limparRascunho = () => {
+        try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignora */ }
+    };
+
+    const descartarRascunho = () => {
+        if (!confirm('Descartar o rascunho e recomeçar? O que foi digitado será perdido.')) return;
+        limparRascunho();
+        window.location.reload();
+    };
 
     const produtoIdsJaImportados = new Set(itensImportados.map(i => i.produtoId).filter(Boolean));
     const pasImportados = itensImportados.filter(i => i.tipo === 'PA');
@@ -295,11 +337,13 @@ export default function ReceitaForm() {
 
             if (isEdicao) {
                 const atualizada = await pcpReceitaService.atualizar(id, { ...dados, motivo: motivo.trim() });
+                limparRascunho();
                 toast.success(`Nova versão v${atualizada.versao} criada`);
                 navigate(`/pcp/receitas/${atualizada.id}`);
                 return;
             } else {
                 await pcpReceitaService.criar(dados);
+                limparRascunho();
                 toast.success('Receita criada');
             }
             navigate('/pcp/receitas');
@@ -319,6 +363,21 @@ export default function ReceitaForm() {
             </button>
 
             <h1 className="text-2xl font-bold text-gray-800 mb-6">{isEdicao ? 'Editar Receita' : 'Nova Receita'}</h1>
+
+            {rascunhoRestaurado && (
+                <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                    <p className="text-sm text-amber-800">
+                        Recuperamos o que você estava digitando. Continue de onde parou — o rascunho é salvo automaticamente.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={descartarRascunho}
+                        className="shrink-0 text-sm font-medium text-amber-700 hover:text-amber-900 underline"
+                    >
+                        Descartar e recomeçar
+                    </button>
+                </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
