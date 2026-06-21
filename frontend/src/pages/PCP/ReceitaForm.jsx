@@ -25,13 +25,16 @@ function ComboboxBusca({ value, onChange, opcoes, placeholder = 'Buscar...', cla
 
     const selecionado = opcoes.find(o => o.id === value);
 
-    const filtradas = busca.trim()
+    const LIMITE_VISIVEL = 100;
+    const todasFiltradas = busca.trim()
         ? opcoes.filter(o => {
             if (o.tipo === 'grupo') return false;
             const q = busca.toLowerCase();
             return (o.label || '').toLowerCase().includes(q);
         })
         : opcoes;
+    const truncado = todasFiltradas.length > LIMITE_VISIVEL;
+    const filtradas = truncado ? todasFiltradas.slice(0, LIMITE_VISIVEL) : todasFiltradas;
 
     const handleSelect = (id) => {
         onChange(id);
@@ -109,6 +112,11 @@ function ComboboxBusca({ value, onChange, opcoes, placeholder = 'Buscar...', cla
                                 );
                             })
                         )}
+                        {truncado && (
+                            <div className="px-3 py-2 text-center text-[11px] text-gray-400 border-t border-gray-100 bg-gray-50">
+                                Mostrando os primeiros {LIMITE_VISIVEL}. Digite para encontrar o item.
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -152,9 +160,21 @@ export default function ReceitaForm() {
                 setSubprodutos(lista.filter(x => x.tipo === 'SUB'));
                 setItensImportados(lista.filter(x => x.tipo !== 'SUB'));
 
-                const resProd = await api.get('/produtos', { params: { limit: 500 } });
-                const prodList = resProd.data?.data || resProd.data || [];
-                setProdutos(Array.isArray(prodList) ? prodList : []);
+                // Carrega TODOS os produtos (paginando) — senão produtos no fim do
+                // alfabeto ficavam de fora com um limite fixo e não apareciam na receita.
+                const todosProdutos = [];
+                const limitPg = 500;
+                let page = 1;
+                while (page <= 50) { // trava de segurança
+                    const resProd = await api.get('/produtos', { params: { limit: limitPg, page } });
+                    const lote = resProd.data?.data || (Array.isArray(resProd.data) ? resProd.data : []);
+                    if (!Array.isArray(lote) || lote.length === 0) break;
+                    todosProdutos.push(...lote);
+                    const totalPages = resProd.data?.meta?.totalPages;
+                    if (lote.length < limitPg || (totalPages && page >= totalPages)) break;
+                    page++;
+                }
+                setProdutos(todosProdutos);
             } catch {
                 toast.error('Erro ao carregar dados');
             }
