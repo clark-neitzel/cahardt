@@ -424,7 +424,7 @@ const contaAzulService = {
                     contaAzulUpdatedAt: itemList.ultima_atualizacao ? new Date(itemList.ultima_atualizacao) : null
                 };
 
-                await prisma.produto.upsert({
+                const produtoSalvo = await prisma.produto.upsert({
                     where: { contaAzulId: p.id },
                     update: {
                         nome: dadosProduto.nome,
@@ -444,6 +444,17 @@ const contaAzulService = {
                     },
                     create: { ...dadosProduto }
                 });
+
+                // Espelha o nome no item do PCP (usado nas receitas), se houver vínculo.
+                // Só roda para produtos que mudaram (este bloco só executa quando needsUpdate).
+                try {
+                    await prisma.itemPcp.updateMany({
+                        where: { produtoId: produtoSalvo.id, nome: { not: dadosProduto.nome } },
+                        data: { nome: dadosProduto.nome }
+                    });
+                } catch (e) {
+                    console.error('   ⚠️ Falha ao espelhar nome no ItemPcp:', e.message);
+                }
 
                 if (isNew) {
                     countNew++;

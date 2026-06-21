@@ -112,6 +112,7 @@ Admin (`admin: true`) tem acesso sem precisar de `pcp.receitas`.
 ## Depende de / Interfere em
 
 - **Itens PCP**: os ingredientes e o item produzido precisam existir como itens PCP (ou ser importados do catálogo).
+- **Nome do produto**: o nome do ingrediente que aparece na receita acompanha o nome do produto no catálogo. Se o nome do produto mudar (pela sincronização com a Conta Azul), o nome passa a refletir automaticamente nas receitas.
 - **Ordens de Produção**: só receitas com status "ativa" aparecem ao criar uma nova ordem. Cada ordem registra qual versão da receita foi usada.
 - **Simulador**: usa os dados de estoque atual de cada item para indicar se o estoque é suficiente.
 

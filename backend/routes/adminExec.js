@@ -1199,4 +1199,28 @@ router.post('/autolink-etiquetas-ean', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/sync-itempcp-nomes
+// Corrige nomes defasados: faz o nome de cada ItemPcp (usado nas receitas)
+// espelhar o nome atual do Produto vinculado. Idempotente.
+router.post('/sync-itempcp-nomes', async (req, res) => {
+    try {
+        const itens = await prisma.itemPcp.findMany({
+            where: { produtoId: { not: null } },
+            select: { id: true, nome: true, produto: { select: { nome: true } } }
+        });
+        const corrigidos = [];
+        for (const it of itens) {
+            const nomeProduto = it.produto?.nome;
+            if (nomeProduto && nomeProduto !== it.nome) {
+                await prisma.itemPcp.update({ where: { id: it.id }, data: { nome: nomeProduto } });
+                corrigidos.push({ de: it.nome, para: nomeProduto });
+            }
+        }
+        return res.json({ ok: true, verificados: itens.length, corrigidos: corrigidos.length, detalhe: corrigidos });
+    } catch (err) {
+        console.error('[sync-itempcp-nomes]', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
