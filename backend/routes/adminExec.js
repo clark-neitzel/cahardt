@@ -29,6 +29,7 @@ router.get('/ping', (req, res) => {
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
         node: process.version,
+        build: 'fix-unidades-dryrun',
     });
 });
 
