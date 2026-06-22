@@ -430,7 +430,7 @@ const contaAzulService = {
                         nome: dadosProduto.nome,
                         codigo: dadosProduto.codigo,
                         valorVenda: dadosProduto.valorVenda,
-                        unidade: dadosProduto.unidade,
+                        // unidade NÃO é atualizada do CA — editável no app (só definida na criação)
                         ean: dadosProduto.ean,
                         ncm: dadosProduto.ncm,
                         status: dadosProduto.status,
@@ -1794,7 +1794,7 @@ const contaAzulService = {
                 estoqueReservado: parseFloat(estoqueObj.quantidade_reservada ?? 0),
                 estoqueTotal: parseFloat(estoqueObj.quantidade_total ?? estoqueDisponivel),
                 valorVenda: parseFloat(estoqueObj.valor_venda ?? p.value ?? p.valor_venda ?? 0) || undefined,
-                unidade: unidadeValor.substring(0, 10),
+                // unidade NÃO é sincronizada do CA — é editável no app e não deve ser sobrescrita
                 status: p.status,
                 ativo: p.status === 'ACTIVE' || p.status === 'ativo' || p.status === 'ATIVO',
                 contaAzulUpdatedAt: new Date(),

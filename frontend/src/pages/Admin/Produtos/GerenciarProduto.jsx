@@ -621,7 +621,14 @@ const GerenciarProduto = () => {
     const handleSaveComercial = async () => {
         setSalvandoComercial(true);
         try {
+            const unidadeLimpa = (formData.unidade || '').trim();
+            if (!unidadeLimpa) {
+                toast.error('Informe a unidade do produto (ex.: UN, KG, CX).');
+                setSalvandoComercial(false);
+                return;
+            }
             await produtoService.atualizar(id, {
+                unidade: unidadeLimpa,
                 categoriaProdutoId: formData.categoriaProdutoId || null,
                 produtoSubstitutoId: formData.produtoSubstitutoId || null,
                 permiteRecomendacao: formData.permiteRecomendacao,
@@ -895,9 +902,14 @@ const GerenciarProduto = () => {
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Unidade</label>
-                                            <input type="text" value={formData.unidade} readOnly
-                                                className="w-full rounded-md border-gray-300 py-2 px-3 border uppercase bg-gray-50 text-gray-700 cursor-not-allowed" />
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Unidade <span className="text-purple-600 font-normal">(editável)</span>
+                                            </label>
+                                            <input type="text" value={formData.unidade} maxLength={10}
+                                                onChange={(e) => setFormData({ ...formData, unidade: e.target.value.toUpperCase() })}
+                                                placeholder="Ex.: UN, KG, CX"
+                                                className="w-full rounded-md border border-gray-300 py-2 px-3 uppercase bg-white text-gray-900 focus:ring-primary focus:border-primary" />
+                                            <p className="text-xs text-gray-500 mt-1">Salve no botão "Salvar" da seção roxa abaixo. Não é sobrescrita pelo Conta Azul.</p>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>

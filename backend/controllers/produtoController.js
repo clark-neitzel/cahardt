@@ -102,14 +102,20 @@ const produtoController = {
             const body = req.body;
 
             // Whitelist: apenas campos gerenciados localmente
+            // 'unidade' é editável no app e NÃO é mais sobrescrita pelo sync do CA
             const CAMPOS_PERMITIDOS = [
-                'ativo', 'descricao', 'estoqueMinimo',
+                'ativo', 'descricao', 'estoqueMinimo', 'unidade',
                 'categoriaProdutoId', 'produtoSubstitutoId',
                 'permiteRecomendacao', 'prioridadeRecomendacao'
             ];
             const data = {};
             for (const campo of CAMPOS_PERMITIDOS) {
                 if (body[campo] !== undefined) data[campo] = body[campo];
+            }
+            // Unidade nunca pode ficar vazia (campo obrigatório no schema)
+            if (data.unidade !== undefined) {
+                data.unidade = String(data.unidade).trim().substring(0, 10);
+                if (!data.unidade) delete data.unidade;
             }
 
             const produto = await prisma.produto.update({

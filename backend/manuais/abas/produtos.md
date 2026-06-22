@@ -34,8 +34,15 @@ Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativ
 ### Editar um produto
 1. Clique no nome ou na linha do produto
 2. A tela de detalhe abre
-3. Edite: nome, código, preço, custo médio, unidade, categoria, EAN, NCM, peso, descrição
-4. Salve
+3. Campos que vêm do Conta Azul (nome, código, preço, custo médio, categoria fiscal, EAN, NCM, peso, descrição) são **somente leitura** — não dá para editar no app, pois são sincronizados do CA
+4. Campos editáveis no app: **unidade de medida**, categoria comercial, produto substituto, prioridade de recomendação, permitir sugestão e imagens
+5. Clique em **Salvar** (botão da seção roxa "Inteligência Comercial") para gravar as alterações
+
+### Alterar a unidade de medida
+1. Abra o detalhe do produto
+2. No bloco "Valores e Classificação", o campo **Unidade** está editável (ex.: UN, KG, CX)
+3. Digite a unidade desejada e clique em **Salvar** na seção roxa abaixo
+4. Importante: a unidade é gerenciada **somente no app** — ela **não** é importada nem sobrescrita pela sincronização com o Conta Azul. Os outros valores (preço, custo, estoque) continuam vindo do CA normalmente.
 
 ### Adicionar/trocar imagem
 - Na tela de detalhe, há a seção de imagens

@@ -29,7 +29,6 @@ router.get('/ping', (req, res) => {
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
         node: process.version,
-        build: 'fix-unidades-dryrun',
     });
 });
 
@@ -1220,74 +1219,6 @@ router.post('/sync-itempcp-nomes', async (req, res) => {
         return res.json({ ok: true, verificados: itens.length, corrigidos: corrigidos.length, detalhe: corrigidos });
     } catch (err) {
         console.error('[sync-itempcp-nomes]', err.message);
-        return res.status(500).json({ error: err.message });
-    }
-});
-
-// POST /api/admin-exec/fix-unidades
-// Correção única: relê a unidade de medida de cada produto direto do Conta Azul
-// e corrige no banco apenas os que estiverem divergentes. Não altera estoque/preço.
-// Necessário porque o sync geral pula produtos cujo timestamp não mudou — então
-// unidades antigas/erradas não se corrigem sozinhas ao sincronizar.
-router.post('/fix-unidades', async (req, res) => {
-    try {
-        // dryRun=1 (ou body.dryRun) apenas SIMULA: lista o que mudaria, sem gravar nada.
-        const dryRun = req.query.dryRun === '1' || req.query.dryRun === 'true' || req.body?.dryRun === true;
-        const contaAzulService = require('../services/contaAzulService');
-        const produtos = await prisma.produto.findMany({
-            where: { contaAzulId: { not: null } },
-            select: { id: true, contaAzulId: true, nome: true, unidade: true }
-        });
-
-        const corrigidos = [];
-        const erros = [];
-        let verificados = 0;
-
-        for (const prod of produtos) {
-            try {
-                const resp = await contaAzulService._axiosGet(
-                    `https://api-v2.contaazul.com/v1/produtos/${prod.contaAzulId}`,
-                    'FIX_UNIDADE'
-                );
-                const p = resp.data || {};
-                const fiscalObj = p.fiscal || {};
-                const unidadeObj = p.unidade_medida || {};
-                const unidadeFiscal = fiscalObj.unidade_medida || {};
-                const unidadeValor = (unidadeFiscal.descricao || unidadeFiscal.codigo ||
-                    unidadeObj.descricao || unidadeObj.codigo ||
-                    (typeof p.unidade_medida === 'string' ? p.unidade_medida : 'UN'))
-                    .substring(0, 10);
-
-                verificados++;
-
-                if (unidadeValor && unidadeValor !== prod.unidade) {
-                    if (!dryRun) {
-                        await prisma.produto.update({
-                            where: { id: prod.id },
-                            data: { unidade: unidadeValor }
-                        });
-                    }
-                    corrigidos.push({ nome: prod.nome, de: prod.unidade, para: unidadeValor });
-                }
-            } catch (e) {
-                erros.push({ nome: prod.nome, contaAzulId: prod.contaAzulId, erro: e.message });
-            }
-            // Folga para não estourar o rate limit do CA
-            await new Promise(r => setTimeout(r, 300));
-        }
-
-        return res.json({
-            ok: true,
-            dryRun,
-            total: produtos.length,
-            verificados,
-            corrigidos: corrigidos.length,
-            erros: erros.length,
-            detalhe: corrigidos,
-            errosDetalhe: erros
-        });
-    } catch (err) {
-        console.error('[fix-unidades]', err.message);
         return res.status(500).json({ error: err.message });
     }
 });
