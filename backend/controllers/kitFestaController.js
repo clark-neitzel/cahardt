@@ -106,26 +106,17 @@ const kitFestaController = {
         try { res.json(await svc.adminListarAgenda({ inicio: req.query.inicio, fim: req.query.fim })); }
         catch (e) { erro(res, e, 'adminAgenda'); }
     },
+    adminGetDia: async (req, res) => {
+        try { res.json(await svc.adminGetDia(req.params.data)); }
+        catch (e) { erro(res, e, 'adminGetDia'); }
+    },
     adminSetStatusDia: async (req, res) => {
         try { res.json(await svc.adminSetStatusDia(req.body)); }
         catch (e) { erro(res, e, 'adminSetStatusDia'); }
     },
-    adminSetStatusLote: async (req, res) => {
-        try { res.json(await svc.adminSetStatusLote(req.body)); }
-        catch (e) { erro(res, e, 'adminSetStatusLote'); }
-    },
-    // Horários
-    adminHorarios: async (req, res) => {
-        try { res.json(await svc.adminListarHorarios()); }
-        catch (e) { erro(res, e, 'adminHorarios'); }
-    },
-    adminSalvarHorario: async (req, res) => {
-        try { res.json(await svc.adminSalvarHorario(req.params.id || null, req.body)); }
-        catch (e) { erro(res, e, 'adminSalvarHorario'); }
-    },
-    adminRemoverHorario: async (req, res) => {
-        try { res.json(await svc.adminRemoverHorario(req.params.id)); }
-        catch (e) { erro(res, e, 'adminRemoverHorario'); }
+    adminSalvarLote: async (req, res) => {
+        try { res.json(await svc.adminSalvarLote(req.body)); }
+        catch (e) { erro(res, e, 'adminSalvarLote'); }
     },
     // Bairros
     adminBairros: async (req, res) => {

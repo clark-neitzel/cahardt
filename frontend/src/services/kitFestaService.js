@@ -12,15 +12,11 @@ export const kitFestaService = {
     salvarCategoria: (id, dados) => (id ? api.put(`/kitfesta/categorias/${id}`, dados) : api.post('/kitfesta/categorias', dados)).then(r => r.data),
     removerCategoria: (id) => api.delete(`/kitfesta/categorias/${id}`).then(r => r.data),
 
-    // Agenda
+    // Agenda (por dia)
     agenda: (inicio, fim) => api.get('/kitfesta/agenda', { params: { inicio, fim } }).then(r => r.data),
+    getDia: (data) => api.get(`/kitfesta/agenda/dia/${data}`).then(r => r.data),
     setStatusDia: (dados) => api.post('/kitfesta/agenda/dia', dados).then(r => r.data),
-    setStatusLote: (dados) => api.post('/kitfesta/agenda/lote', dados).then(r => r.data),
-
-    // Horários (template)
-    horarios: () => api.get('/kitfesta/horarios').then(r => r.data),
-    salvarHorario: (id, dados) => (id ? api.put(`/kitfesta/horarios/${id}`, dados) : api.post('/kitfesta/horarios', dados)).then(r => r.data),
-    removerHorario: (id) => api.delete(`/kitfesta/horarios/${id}`).then(r => r.data),
+    salvarLote: (dados) => api.post('/kitfesta/agenda/lote', dados).then(r => r.data),
 
     // Bairros
     bairros: () => api.get('/kitfesta/bairros').then(r => r.data),

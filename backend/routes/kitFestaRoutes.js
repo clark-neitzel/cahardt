@@ -40,16 +40,11 @@ router.post('/categorias', ctrl.adminSalvarCategoria);
 router.put('/categorias/:id', ctrl.adminSalvarCategoria);
 router.delete('/categorias/:id', ctrl.adminRemoverCategoria);
 
-// ── Agenda ──
-router.get('/agenda', ctrl.adminAgenda);
-router.post('/agenda/dia', ctrl.adminSetStatusDia);
-router.post('/agenda/lote', ctrl.adminSetStatusLote);
-
-// ── Horários (template) ──
-router.get('/horarios', ctrl.adminHorarios);
-router.post('/horarios', ctrl.adminSalvarHorario);
-router.put('/horarios/:id', ctrl.adminSalvarHorario);
-router.delete('/horarios/:id', ctrl.adminRemoverHorario);
+// ── Agenda (por dia) ──
+router.get('/agenda', ctrl.adminAgenda);            // resumo do mês
+router.get('/agenda/dia/:data', ctrl.adminGetDia);  // detalhe de um dia (slots retirada/entrega)
+router.post('/agenda/dia', ctrl.adminSetStatusDia); // muda status de um dia (abrir/fechar)
+router.post('/agenda/lote', ctrl.adminSalvarLote);  // aplica slots/fechamento em vários dias
 
 // ── Bairros ──
 router.get('/bairros', ctrl.adminBairros);

@@ -43,10 +43,19 @@ Fila de pedidos vindos do site, **do mais recente para o mais antigo**, com **p�
 - **Excluir** (ícone de lixeira no topo do pedido): apaga o pedido do Kit Festa de vez. **Só administradores** veem/usam (útil para apagar testes). Não apaga o Pedido normal já convertido — só o registro do Kit Festa.
 
 ### 2. Agenda
-Calendário da cozinha. Cada dia tem um status: **Aberto**, **Últimas vagas**, **Esgotado** ou **Fechado** (cores na legenda). Um número no canto mostra quantos pedidos há no dia.
-- Clique num dia para mudar o status.
-- Atalhos do mês: **Abrir mês**, **Fechar domingos**, **Fechar mês**.
-- **Horários e capacidade:** template de horários por modo (retirada/entrega), com capacidade (nº de pedidos) por horário. O site mostra os horários cheios como "esgotado".
+Os horários são definidos **por data** (não é mais um template que vale pra sempre). Um dia só fica disponível no site se tiver horários configurados e não estiver fechado.
+
+**Configurar horários em lote** (bloco de cima):
+- Escolha o **período** (De / Até — quantos dias quiser) e os **dias da semana** que entram.
+- Escolha o **tipo** (Retirada ou Entrega — são configurados separadamente, podem ter horários diferentes).
+- Defina a **capacidade** (pedidos por horário) e selecione os **horários** na grade de **06:00 às 20:00** (de 30 em 30 min). Atalhos: Todos / Comercial / Limpar.
+- **Aplicar horários ao período:** grava esses horários em todos os dias escolhidos.
+- **Fechar os dias do período:** marca os dias como fechados (indisponíveis no site).
+
+**Calendário + editor do dia** (bloco de baixo):
+- O calendário mostra cada dia: bolinha verde (tem horários), cinza escuro (fechado), cinza claro (sem horários) e o nº de pedidos no canto.
+- Clique num dia para **editar manualmente**: **fechar/reabrir** o dia, e ajustar os horários de **retirada** e **entrega** um a um (mudar a capacidade de um horário, adicionar ou remover horário). Use para fechar dias específicos ou ajustar conforme demandas externas.
+- A capacidade pode variar por horário; no site, horários cheios aparecem como "esgotado" e dias sem vaga como "esgotado/fechado".
 
 ### 3. Produtos
 Define quais **produtos do app** aparecem no site. Busca e filtro (Todos / No site / Fora).

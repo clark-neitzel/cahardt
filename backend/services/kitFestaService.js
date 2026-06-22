@@ -564,28 +564,39 @@ const kitFestaService = {
         return { ok: true };
     },
 
-    // ── Agenda ──
+    // ── Agenda (por dia) ──
+    // Resumo do calendário: por dia, status + nº de slots por modo + nº de pedidos.
     async adminListarAgenda({ inicio, fim }) {
         const dataInicio = inicio ? new Date(inicio) : new Date();
         const dataFim = fim ? new Date(fim) : new Date(Date.now() + 60 * 864e5);
-        const dias = await prisma.kitFestaAgendaDia.findMany({
-            where: { data: { gte: dataInicio, lte: dataFim } },
-            orderBy: { data: 'asc' },
-        });
-        // contagem de pedidos por dia
-        const pedidos = await prisma.kitFestaPedido.groupBy({
-            by: ['data'],
-            where: { data: { gte: dataInicio, lte: dataFim }, status: { notIn: ['RECUSADO', 'CANCELADO'] } },
-            _count: { _all: true },
-        });
-        const cont = {};
-        pedidos.forEach(p => { cont[p.data.toISOString().slice(0, 10)] = p._count._all; });
-        return dias.map(d => ({
-            data: d.data.toISOString().slice(0, 10),
-            status: d.status,
-            observacao: d.observacao,
-            pedidos: cont[d.data.toISOString().slice(0, 10)] || 0,
-        }));
+        const k = (d) => d.toISOString().slice(0, 10);
+
+        const [dias, slots, pedidos] = await Promise.all([
+            prisma.kitFestaAgendaDia.findMany({ where: { data: { gte: dataInicio, lte: dataFim } } }),
+            prisma.kitFestaHorarioDia.groupBy({ by: ['data', 'modo'], where: { data: { gte: dataInicio, lte: dataFim } }, _count: { _all: true } }),
+            prisma.kitFestaPedido.groupBy({ by: ['data'], where: { data: { gte: dataInicio, lte: dataFim }, status: { notIn: ['RECUSADO', 'CANCELADO'] } }, _count: { _all: true } }),
+        ]);
+
+        const out = {};
+        const get = (key) => (out[key] ||= { data: key, status: null, slotsRetirada: 0, slotsEntrega: 0, pedidos: 0 });
+        dias.forEach(d => { get(k(d.data)).status = d.status; });
+        slots.forEach(s => { const e = get(k(s.data)); if (s.modo === 'entrega') e.slotsEntrega = s._count._all; else e.slotsRetirada = s._count._all; });
+        pedidos.forEach(p => { get(k(p.data)).pedidos = p._count._all; });
+        return Object.values(out);
+    },
+
+    // Detalhe de um dia: status + slots de retirada e entrega (com nº de reservas).
+    async adminGetDia(dataStr) {
+        const d = new Date(dataStr);
+        const [dia, slots, reservas] = await Promise.all([
+            prisma.kitFestaAgendaDia.findUnique({ where: { data: d } }),
+            prisma.kitFestaHorarioDia.findMany({ where: { data: d }, orderBy: [{ modo: 'asc' }, { hora: 'asc' }] }),
+            prisma.kitFestaPedido.groupBy({ by: ['modo', 'horario'], where: { data: d, status: { notIn: ['RECUSADO', 'CANCELADO'] } }, _count: { _all: true } }),
+        ]);
+        const usados = {}; reservas.forEach(r => { usados[`${r.modo}|${r.horario}`] = r._count._all; });
+        const porModo = { retirada: [], entrega: [] };
+        slots.forEach(s => { (porModo[s.modo] || (porModo[s.modo] = [])).push({ id: s.id, hora: s.hora, capacidade: s.capacidade, usado: usados[`${s.modo}|${s.hora}`] || 0 }); });
+        return { data: dataStr, status: dia?.status || null, observacao: dia?.observacao || '', retirada: porModo.retirada, entrega: porModo.entrega };
     },
 
     async adminSetStatusDia({ data, status, observacao }) {
@@ -598,36 +609,27 @@ const kitFestaService = {
         });
     },
 
-    // Define status de vários dias de uma vez (ex: abrir todo o mês, fechar domingos)
-    async adminSetStatusLote({ datas, status }) {
-        const ops = datas.map(data => prisma.kitFestaAgendaDia.upsert({
-            where: { data: new Date(data) },
-            create: { data: new Date(data), status },
-            update: { status },
-        }));
+    // Aplicação em LOTE: para cada data, fecha o dia OU abre e (re)define os slots de um modo.
+    // datas: ['YYYY-MM-DD'], modo: 'retirada'|'entrega', slots: [{hora, capacidade}], fecharDia: bool
+    async adminSalvarLote({ datas, modo, slots = [], fecharDia = false }) {
+        if (!Array.isArray(datas) || !datas.length) throw new Error('Selecione ao menos um dia.');
+        if (!fecharDia && modo && !['retirada', 'entrega'].includes(modo)) throw new Error('Modo inválido.');
+        const ops = [];
+        for (const dStr of datas) {
+            const d = new Date(dStr);
+            if (fecharDia) {
+                ops.push(prisma.kitFestaAgendaDia.upsert({ where: { data: d }, create: { data: d, status: 'closed' }, update: { status: 'closed' } }));
+            } else {
+                ops.push(prisma.kitFestaAgendaDia.upsert({ where: { data: d }, create: { data: d, status: 'open' }, update: { status: 'open' } }));
+                ops.push(prisma.kitFestaHorarioDia.deleteMany({ where: { data: d, modo } }));
+                for (const s of slots) {
+                    if (!s.hora) continue;
+                    ops.push(prisma.kitFestaHorarioDia.create({ data: { data: d, modo, hora: s.hora, capacidade: Math.max(1, parseInt(s.capacidade) || 1) } }));
+                }
+            }
+        }
         await prisma.$transaction(ops);
-        return { ok: true, total: datas.length };
-    },
-
-    // ── Template de horários ──
-    async adminListarHorarios() {
-        return prisma.kitFestaHorarioPadrao.findMany({ orderBy: [{ modo: 'asc' }, { ordem: 'asc' }] });
-    },
-    async adminSalvarHorario(id, dados) {
-        const payload = {
-            modo: dados.modo,
-            hora: dados.hora,
-            capacidade: parseInt(dados.capacidade) || 10,
-            diasSemana: Array.isArray(dados.diasSemana) ? dados.diasSemana.map(Number) : [],
-            ativo: dados.ativo != null ? !!dados.ativo : true,
-            ordem: dados.ordem != null ? parseInt(dados.ordem) : 0,
-        };
-        if (id) return prisma.kitFestaHorarioPadrao.update({ where: { id }, data: payload });
-        return prisma.kitFestaHorarioPadrao.create({ data: payload });
-    },
-    async adminRemoverHorario(id) {
-        await prisma.kitFestaHorarioPadrao.delete({ where: { id } });
-        return { ok: true };
+        return { ok: true, dias: datas.length };
     },
 
     // ── Bairros ──

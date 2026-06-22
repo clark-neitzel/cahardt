@@ -27,7 +27,7 @@ export const publicApi = {
   avaliacoes: () => kf.get('/avaliacoes').then(r => r.data),
   bairros: () => kf.get('/bairros').then(r => r.data),
   config: () => kf.get('/config').then(r => r.data),
-  agenda: (inicio, fim) => kf.get('/agenda', { params: { inicio, fim } }).then(r => r.data),
+  agenda: (inicio, fim, modo) => kf.get('/agenda', { params: { inicio, fim, modo } }).then(r => r.data),
   slots: (data, modo) => kf.get('/slots', { params: { data, modo } }).then(r => r.data),
   validarCupom: (codigo, totalCaixas) => kf.post('/validar-cupom', { codigo, totalCaixas }).then(r => r.data),
   // Pedido

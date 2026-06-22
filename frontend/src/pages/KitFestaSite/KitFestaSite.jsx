@@ -396,7 +396,7 @@ function CartDrawer({ cart, produtos, onClose, onAdd, onRemove, coupon, setCoupo
 const MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const DOW = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-function CalendarPicker({ selected, onSelect }) {
+function CalendarPicker({ selected, onSelect, modo }) {
   const today = useMemo(() => new Date(), []);
   const [view, setView] = useState({ y: today.getFullYear(), m: today.getMonth() });
   const [avail, setAvail] = useState({});
@@ -404,8 +404,8 @@ function CalendarPicker({ selected, onSelect }) {
   useEffect(() => {
     const ini = `${view.y}-${String(view.m + 1).padStart(2, '0')}-01`;
     const fim = `${view.y}-${String(view.m + 1).padStart(2, '0')}-${new Date(view.y, view.m + 1, 0).getDate()}`;
-    publicApi.agenda(ini, fim).then(setAvail).catch(() => setAvail({}));
-  }, [view.y, view.m]);
+    publicApi.agenda(ini, fim, modo).then(setAvail).catch(() => setAvail({}));
+  }, [view.y, view.m, modo]);
 
   const firstDow = new Date(view.y, view.m, 1).getDay();
   const days = new Date(view.y, view.m + 1, 0).getDate();
@@ -535,11 +535,11 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
           <div className="co-block">
             <h3><Truck size={20} /> Como você quer receber?</h3>
             <div className="seg">
-              <button className={modo === 'retirada' ? 'on' : ''} onClick={() => { setModo('retirada'); setSlot(null); }}>
+              <button className={modo === 'retirada' ? 'on' : ''} onClick={() => { setModo('retirada'); setDate(null); setSlot(null); }}>
                 <span className="ic"><ShoppingBag size={20} /></span>
                 <span><b>Retirar na loja</b><span>sem taxa</span></span>
               </button>
-              <button className={modo === 'entrega' ? 'on' : ''} onClick={() => { setModo('entrega'); setSlot(null); }}>
+              <button className={modo === 'entrega' ? 'on' : ''} onClick={() => { setModo('entrega'); setDate(null); setSlot(null); }}>
                 <span className="ic"><Truck size={20} /></span>
                 <span><b>Entrega</b><span>taxa por bairro</span></span>
               </button>
@@ -611,7 +611,7 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
             <div className="co-block">
               <h3><Calendar size={20} /> Escolha o dia</h3>
               <p className="sub">A cozinha libera as datas conforme a produção.</p>
-              <CalendarPicker selected={date} onSelect={(k) => { setDate(k); setSlot(null); }} />
+              <CalendarPicker selected={date} modo={modo} onSelect={(k) => { setDate(k); setSlot(null); }} />
               {date && (
                 <>
                   <h3 style={{ marginTop: 22, fontSize: 16 }}><Clock size={18} /> Horário ({modo})</h3>
