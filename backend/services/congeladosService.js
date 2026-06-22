@@ -832,6 +832,7 @@ const DEFAULT_CONFIG = {
         telefone: '(47) 98854-8476',
         whatsapp: '5547988548476',
         instagram: 'hardtsalgados',
+        facebook: '', // usuário/página ou link completo; vazio = não mostra
     },
     logoUrl: null, // logo enviada pelo admin (sobrepõe a padrão)
     // Frases da PÁGINA PRINCIPAL (home)

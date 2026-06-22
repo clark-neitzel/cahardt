@@ -662,6 +662,7 @@ function ConfigTab() {
           <Campo label="WhatsApp (só números)" value={cfg.loja?.whatsapp || ''} onChange={e => up('loja', { whatsapp: e.target.value })} />
         </div>
         <Campo label="Instagram (sem @)" value={cfg.loja?.instagram || ''} onChange={e => up('loja', { instagram: e.target.value })} />
+        <Campo label="Facebook (usuário ou link)" value={cfg.loja?.facebook || ''} onChange={e => up('loja', { facebook: e.target.value })} />
       </Secao>
 
       <Secao titulo="Topo do site (linha pequena)" icon={Megaphone} onSave={() => salvarSecao('hero', cfg.hero)} saving={salvando === 'hero'}>

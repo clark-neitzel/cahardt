@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import publicApi from './api';
-import { WhatsIcon } from './icons';
+import { WhatsIcon, InstagramIcon, FacebookIcon } from './icons';
 import './site.css';
 import { API_URL } from '../../services/api';
 
@@ -74,6 +74,9 @@ export default function HomeSite() {
 
   const wa = `https://wa.me/${loja.whatsapp}`;
   const waMsg = `${wa}?text=${encodeURIComponent('Olá! Vim pelo site da Hardt e gostaria de fazer um pedido.')}`;
+  const social = (v, base) => !v ? null : (String(v).startsWith('http') ? v : `${base}${String(v).replace(/^@/, '')}`);
+  const igUrl = social(loja.instagram, 'https://instagram.com/');
+  const fbUrl = social(loja.facebook, 'https://facebook.com/');
 
   return (
     <div className="cg home tex-board">
@@ -177,15 +180,31 @@ export default function HomeSite() {
       <section className="section" id="contato">
         <div className="wrap contact">
           <div className="contact-card">
-            <div className="contact-row">
-              <div><div className="lab">Onde estamos</div><div className="val" dangerouslySetInnerHTML={{ __html: String(loja.endereco || '').replace(' — ', '<br/>') }} /></div>
+            <div className="contact-rows">
+              <div className="contact-row">
+                <div><div className="lab">Onde estamos</div><div className="val" dangerouslySetInnerHTML={{ __html: String(loja.endereco || '').replace(' — ', '<br/>') }} /></div>
+              </div>
+              <div className="contact-row">
+                <div><div className="lab">WhatsApp</div><a className="val" href={waMsg} target="_blank" rel="noopener noreferrer">{loja.telefone}</a></div>
+              </div>
             </div>
-            <div className="contact-row">
-              <div><div className="lab">WhatsApp</div><a className="val" href={wa} target="_blank" rel="noopener noreferrer">{loja.telefone}</a></div>
-            </div>
-            <div className="contact-row">
-              <div><div className="lab">Instagram</div><a className="val" href={`https://instagram.com/${loja.instagram}`} target="_blank" rel="noopener noreferrer">@{loja.instagram}</a></div>
-            </div>
+            {(igUrl || fbUrl) && (
+              <div className="contact-social">
+                <div className="lab">Redes sociais</div>
+                <div className="social-links">
+                  {igUrl && (
+                    <a className="soc" href={igUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                      <InstagramIcon /><span>{loja.instagram && !String(loja.instagram).startsWith('http') ? `@${String(loja.instagram).replace(/^@/, '')}` : 'Instagram'}</span>
+                    </a>
+                  )}
+                  {fbUrl && (
+                    <a className="soc" href={fbUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                      <FacebookIcon /><span>Facebook</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <div className="contact-map">
             <iframe

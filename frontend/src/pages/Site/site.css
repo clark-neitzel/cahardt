@@ -184,11 +184,18 @@
 .cg .prod-b .pr{ font-family:var(--f-display); color:var(--yellow); font-weight:600; white-space:nowrap; }
 .cg .prod-b small{ color:var(--chalk-dim); font-size:.8rem; }
 
-.cg .contact{ display:grid; grid-template-columns:1.1fr .9fr; gap:clamp(24px,4vw,48px); align-items:center; }
+.cg .contact{ display:grid; grid-template-columns:1fr 1fr; gap:clamp(20px,3vw,36px); align-items:stretch; }
 @media (max-width:820px){ .cg .contact{ grid-template-columns:1fr; } }
-.cg .contact-card{ background:var(--ink-2); border:1px solid var(--line-soft); border-radius:var(--r-lg); padding:clamp(24px,3vw,40px); }
+.cg .contact-card{ background:var(--ink-2); border:1px solid var(--line-soft); border-radius:var(--r-lg); padding:clamp(24px,3vw,38px); display:flex; flex-direction:column; justify-content:space-between; gap:22px; }
 .cg .contact-row{ display:flex; gap:14px; align-items:flex-start; padding:16px 0; border-bottom:1px solid var(--line-soft); }
-.cg .contact-row:last-child{ border-bottom:none; }
+.cg .contact-rows .contact-row:first-child{ padding-top:0; }
+.cg .contact-row:last-child{ border-bottom:none; padding-bottom:0; }
+/* redes sociais */
+.cg .contact-social .lab{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.1em; font-size:.7rem; color:var(--yellow); margin-bottom:10px; }
+.cg .social-links{ display:flex; flex-wrap:wrap; gap:10px; }
+.cg .social-links .soc{ display:inline-flex; align-items:center; gap:9px; padding:.6em 1em; border-radius:999px; border:1px solid var(--line-soft); color:var(--chalk); font-family:var(--f-display); text-transform:uppercase; letter-spacing:.05em; font-size:.8rem; transition:border-color .15s ease, color .15s ease; }
+.cg .social-links .soc:hover{ border-color:var(--yellow); color:var(--yellow); }
+.cg .social-links .soc svg{ flex:0 0 auto; }
 .cg .contact-row .lab{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.1em; font-size:.7rem; color:var(--yellow); margin-bottom:4px; }
 .cg .contact-row .val{ color:var(--chalk); font-size:1.04rem; line-height:1.4; }
 .cg .contact-row a.val:hover{ color:var(--yellow); }
