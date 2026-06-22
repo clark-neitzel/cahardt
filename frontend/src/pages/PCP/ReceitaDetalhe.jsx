@@ -42,8 +42,14 @@ function escaparHtml(str) {
 function fmtQtd(n) {
     const v = parseFloat(n);
     if (Number.isNaN(v)) return '—';
-    // remove zeros a direita: 1.500 -> 1,5  / 2.000 -> 2
-    return v.toFixed(3).replace(/\.?0+$/, '').replace('.', ',');
+    // sempre 3 casas decimais: 7 -> 7,000  / 0.15 -> 0,150
+    return v.toFixed(3).replace('.', ',');
+}
+
+function fmtPerda(n) {
+    const v = parseFloat(n);
+    if (Number.isNaN(v)) return '—';
+    return v.toFixed(2).replace('.', ',');
 }
 
 function montarHtmlImpressao(receita) {
@@ -88,7 +94,7 @@ function montarHtmlImpressao(receita) {
     }).join('');
 
     const rendimento = `${fmtQtd(receita.rendimentoBase)} ${escaparHtml(receita.itemPcp?.unidade || '')}`;
-    const perda = receita.perdaPercentual ? `${fmtQtd(receita.perdaPercentual)}%` : '—';
+    const perda = receita.perdaPercentual ? `${fmtPerda(receita.perdaPercentual)}%` : '—';
     const dataImpressao = new Date().toLocaleDateString('pt-BR');
 
     return `<!DOCTYPE html>
