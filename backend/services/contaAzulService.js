@@ -1794,6 +1794,7 @@ const contaAzulService = {
                 estoqueReservado: parseFloat(estoqueObj.quantidade_reservada ?? 0),
                 estoqueTotal: parseFloat(estoqueObj.quantidade_total ?? estoqueDisponivel),
                 valorVenda: parseFloat(estoqueObj.valor_venda ?? p.value ?? p.valor_venda ?? 0) || undefined,
+                unidade: unidadeValor.substring(0, 10),
                 status: p.status,
                 ativo: p.status === 'ACTIVE' || p.status === 'ativo' || p.status === 'ATIVO',
                 contaAzulUpdatedAt: new Date(),
