@@ -187,14 +187,14 @@ export default function HomeSite() {
               <div><div className="lab">Instagram</div><a className="val" href={`https://instagram.com/${loja.instagram}`} target="_blank" rel="noopener noreferrer">@{loja.instagram}</a></div>
             </div>
           </div>
-          <div className="contact-aside">
-            <div className="kicker">Vamos conversar</div>
-            <h2>Peça hoje, comemore com sabor</h2>
-            <p>Atendemos festas, eventos, empresas e revenda em Joinville e região. Chama no WhatsApp ou já comece montando seu Kit Festa.</p>
-            <div className="hero-cta" style={{ marginTop: 0 }}>
-              <a className="btn btn-wa" href={waMsg} target="_blank" rel="noopener noreferrer">Chamar no WhatsApp</a>
-              <Link className="btn btn-yellow" to="/kit-festa">Montar Kit Festa</Link>
-            </div>
+          <div className="contact-map">
+            <iframe
+              title="Localização da Hardt no mapa"
+              src={`https://www.google.com/maps?q=${encodeURIComponent(String(loja.endereco || '').replace(' — ', ', '))}&output=embed`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+            />
           </div>
         </div>
       </section>
