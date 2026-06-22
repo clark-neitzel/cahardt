@@ -844,6 +844,13 @@ const DEFAULT_CONFIG = {
         titulo: 'Dois jeitos de pedir',
         subtitulo: 'Salgados prontos pra sua festa ou congelados pra revender e ter sempre em estoque. Escolha por onde começar.',
     },
+    // Faixa de diferenciais (4 destaques) da home — editável no admin
+    diferenciais: [
+        { num: 'desde 2007', titulo: 'Tradição', texto: 'Quase 20 anos fazendo salgado em Pirabeiraba, Joinville.' },
+        { num: 'à mão', titulo: 'Feito artesanal', texto: 'Massa fininha, recheio caprichado e padrão em cada caixa.' },
+        { num: '-18°C', titulo: 'Frota própria', texto: 'Entrega em veículos refrigerados, do nosso freezer ao seu.' },
+        { num: 'no link', titulo: 'Pedido fácil', texto: 'Monte, escolha o horário e finalize pelo WhatsApp.' },
+    ],
     // Seção "Nossa História" da home (texto + carrossel de imagens enviadas pelo admin)
     historia: {
         titulo: 'Nossa História',

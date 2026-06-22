@@ -642,6 +642,10 @@ function ConfigTab() {
     finally { setSalvando(null); }
   };
   const up = (chave, patch) => setCfg(c => ({ ...c, [chave]: { ...c[chave], ...patch } }));
+  const upDif = (i, patch) => setCfg(c => ({
+    ...c,
+    diferenciais: (Array.isArray(c.diferenciais) ? c.diferenciais : []).map((d, k) => k === i ? { ...d, ...patch } : d),
+  }));
 
   if (loading || !cfg) return <div className="p-12 text-center text-gray-400"><Loader2 className="h-6 w-6 animate-spin inline" /></div>;
 
@@ -672,6 +676,22 @@ function ConfigTab() {
           <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm h-16" value={cfg.caminhos?.subtitulo || ''}
             onChange={e => up('caminhos', { subtitulo: e.target.value })} />
         </div>
+      </Secao>
+
+      <Secao titulo="Destaques (faixa abaixo dos cards)" icon={Star} onSave={() => salvarSecao('diferenciais', cfg.diferenciais)} saving={salvando === 'diferenciais'}>
+        <p className="text-[11px] text-gray-400">São os 4 quadradinhos da faixa (ex.: “desde 2007 · Tradição”). Edite os textos como quiser.</p>
+        {(cfg.diferenciais || []).map((d, i) => (
+          <div key={i} className="border border-gray-100 rounded-lg p-2.5 space-y-2">
+            <div className="text-xs text-gray-400">Destaque {i + 1}</div>
+            <Campo label="Linha amarela (ex.: desde 2007)" value={d.num || ''} onChange={e => upDif(i, { num: e.target.value })} />
+            <Campo label="Título (ex.: Tradição)" value={d.titulo || ''} onChange={e => upDif(i, { titulo: e.target.value })} />
+            <div>
+              <label className="text-xs text-gray-500">Texto</label>
+              <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm h-14" value={d.texto || ''}
+                onChange={e => upDif(i, { texto: e.target.value })} />
+            </div>
+          </div>
+        ))}
       </Secao>
 
       <Secao titulo="Nossa História (página inicial)" icon={ImageIcon} onSave={() => salvarSecao('historia', cfg.historia)} saving={salvando === 'historia'}>

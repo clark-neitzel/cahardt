@@ -264,51 +264,54 @@ const kitFestaService = {
     },
 
     // ───────── Agenda pública ─────────
-    // Retorna status por dia para um intervalo (mês). status: open|few|full|closed
-    async agendaPublico({ inicio, fim }) {
+    // Status por dia (mode-aware) calculado dos slots por data + capacidade + reservas.
+    // status: open | few | full | closed. Dia só fica disponível se tiver slots configurados.
+    async agendaPublico({ inicio, fim, modo }) {
         const dataInicio = inicio ? new Date(inicio) : new Date();
-        const dataFim = fim ? new Date(fim) : new Date(Date.now() + 45 * 864e5);
+        const dataFim = fim ? new Date(fim) : new Date(Date.now() + 60 * 864e5);
+        const k = (d) => d.toISOString().slice(0, 10);
 
-        const dias = await prisma.kitFestaAgendaDia.findMany({
-            where: { data: { gte: dataInicio, lte: dataFim } },
-        });
+        const [closures, slots, reservas] = await Promise.all([
+            prisma.kitFestaAgendaDia.findMany({ where: { data: { gte: dataInicio, lte: dataFim }, status: 'closed' }, select: { data: true } }),
+            prisma.kitFestaHorarioDia.findMany({ where: { data: { gte: dataInicio, lte: dataFim }, ...(modo ? { modo } : {}) }, select: { data: true, capacidade: true } }),
+            prisma.kitFestaPedido.groupBy({ by: ['data'], where: { data: { gte: dataInicio, lte: dataFim }, ...(modo ? { modo } : {}), status: { notIn: ['RECUSADO', 'CANCELADO'] } }, _count: { _all: true } }),
+        ]);
+        const fechado = new Set(closures.map(c => k(c.data)));
+        const cap = {}; slots.forEach(s => { cap[k(s.data)] = (cap[k(s.data)] || 0) + s.capacidade; });
+        const usados = {}; reservas.forEach(r => { usados[k(r.data)] = r._count._all; });
+
         const map = {};
-        dias.forEach(d => { map[d.data.toISOString().slice(0, 10)] = d.status; });
+        Object.keys(cap).forEach(key => {
+            if (fechado.has(key)) { map[key] = 'closed'; return; }
+            const rem = cap[key] - (usados[key] || 0);
+            map[key] = rem <= 0 ? 'full' : (rem <= cap[key] * 0.2 ? 'few' : 'open');
+        });
+        fechado.forEach(key => { if (!map[key]) map[key] = 'closed'; });
         return map;
     },
 
     // Horários disponíveis para uma data + modo, com flag de esgotado
     async slotsPublico({ data, modo }) {
         if (!data) throw new Error('Data obrigatória.');
-        const d = new Date(data + 'T12:00:00');
-        const dow = d.getDay();
-
-        // Dia fechado?
         const dia = await prisma.kitFestaAgendaDia.findUnique({ where: { data: new Date(data) } });
         if (dia && dia.status === 'closed') return [];
 
-        const templates = await prisma.kitFestaHorarioPadrao.findMany({
-            where: { modo, ativo: true },
-            orderBy: { ordem: 'asc' },
+        const slots = await prisma.kitFestaHorarioDia.findMany({
+            where: { data: new Date(data), modo }, orderBy: { hora: 'asc' },
         });
-        const doDia = templates.filter(t => !t.diasSemana?.length || t.diasSemana.includes(dow));
+        if (!slots.length) return [];
 
-        // Conta pedidos já reservados por horário nesta data/modo
         const reservas = await prisma.kitFestaPedido.groupBy({
             by: ['horario'],
-            where: {
-                data: new Date(data),
-                modo,
-                status: { notIn: ['RECUSADO', 'CANCELADO'] },
-            },
+            where: { data: new Date(data), modo, status: { notIn: ['RECUSADO', 'CANCELADO'] } },
             _count: { _all: true },
         });
         const usados = {};
         reservas.forEach(r => { usados[r.horario] = r._count._all; });
 
-        return doDia.map(t => {
-            const usado = usados[t.hora] || 0;
-            return { hora: t.hora, capacidade: t.capacidade, usado, full: usado >= t.capacidade };
+        return slots.map(s => {
+            const usado = usados[s.hora] || 0;
+            return { hora: s.hora, capacidade: s.capacidade, usado, full: usado >= s.capacidade };
         });
     },
 

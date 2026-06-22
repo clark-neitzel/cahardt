@@ -1787,7 +1787,8 @@ model KitFestaAgendaDia {
   @@map("kitfesta_agenda_dias")
 }
 
-// Template de horários por modo/dia-da-semana. O site gera os slots de cada data a partir daqui.
+// LEGADO — template antigo por dia-da-semana. Mantido para não dropar a coluna em produção.
+// Não é mais a fonte dos slots do site (agora é KitFestaHorarioDia, por data específica).
 model KitFestaHorarioPadrao {
   id         String   @id @default(uuid())
   modo       String // retirada | entrega
@@ -1799,6 +1800,21 @@ model KitFestaHorarioPadrao {
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@map("kitfesta_horarios_padrao")
+}
+
+// Slots de horário POR DATA específica (fonte de verdade da agenda).
+// Configurados em lote (período) e/ou ajustados por dia no admin.
+model KitFestaHorarioDia {
+  id         String   @id @default(uuid())
+  data       DateTime @db.Date
+  modo       String   // retirada | entrega
+  hora       String   // '06:00', '06:30'...
+  capacidade Int      @default(10) // pedidos que esse horário aceita
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([data, modo, hora])
+  @@index([data])
+  @@map("kitfesta_horarios_dia")
 }
 
 // Bairros de entrega com CEP e taxa.

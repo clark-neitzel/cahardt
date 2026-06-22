@@ -17,6 +17,13 @@ const LOJA_PADRAO = {
   instagram: 'hardtsalgados',
 };
 
+const DIFERENCIAIS_PADRAO = [
+  { num: 'desde 2007', titulo: 'Tradição', texto: 'Quase 20 anos fazendo salgado em Pirabeiraba, Joinville.' },
+  { num: 'à mão', titulo: 'Feito artesanal', texto: 'Massa fininha, recheio caprichado e padrão em cada caixa.' },
+  { num: '-18°C', titulo: 'Frota própria', texto: 'Entrega em veículos refrigerados, do nosso freezer ao seu.' },
+  { num: 'no link', titulo: 'Pedido fácil', texto: 'Monte, escolha o horário e finalize pelo WhatsApp.' },
+];
+
 const HISTORIA_PADRAO = {
   titulo: 'Nossa História',
   texto: 'A Hardt Salgados tem suas raízes na paixão compartilhada de uma família pela culinária e pelo sabor autêntico. Tudo começou em Joinville, no norte de Santa Catarina, em 2007, quando uma receita de família virou o sonho de levar o salgado feito à mão para a mesa de mais gente.\nDe uma cozinha pequena para uma produção que abastece festas, eventos e revendedores de toda a região, mantivemos o mesmo cuidado de sempre: massa fininha, recheio caprichado e o ponto certo da fritura.\nHoje, com frota própria refrigerada, garantimos que o sabor sai do nosso freezer e chega fresquinho até você — do jeitinho que a gente faz desde o primeiro dia.',
@@ -62,6 +69,7 @@ export default function HomeSite() {
   const histParas = String(historia.texto || '').split('\n').map(s => s.trim()).filter(Boolean);
   // Imagens do carrossel do topo: as enviadas no admin; se ainda não houver nenhuma, mostra a caixa padrão.
   const heroFotos = histImgs.length ? histImgs.map(imgUrl) : [BOX];
+  const diferenciais = Array.isArray(cfg?.diferenciais) && cfg.diferenciais.length ? cfg.diferenciais : DIFERENCIAIS_PADRAO;
   const LOGO_SRC = cfg?.logoUrl ? imgUrl(cfg.logoUrl) : LOGO;
 
   const wa = `https://wa.me/${loja.whatsapp}`;
@@ -154,10 +162,13 @@ export default function HomeSite() {
       <section className="board-strip" id="diferenciais">
         <div className="wrap">
           <div className="dif">
-            <div className="dif-cell"><div className="num">desde 2007</div><h4>Tradição</h4><p>Quase 20 anos fazendo salgado em Pirabeiraba, Joinville.</p></div>
-            <div className="dif-cell"><div className="num">à mão</div><h4>Feito artesanal</h4><p>Massa fininha, recheio caprichado e padrão em cada caixa.</p></div>
-            <div className="dif-cell"><div className="num">-18°C</div><h4>Frota própria</h4><p>Entrega em veículos refrigerados, do nosso freezer ao seu.</p></div>
-            <div className="dif-cell"><div className="num">no link</div><h4>Pedido fácil</h4><p>Monte, escolha o horário e finalize pelo WhatsApp.</p></div>
+            {diferenciais.map((d, k) => (
+              <div className="dif-cell" key={k}>
+                {d.num ? <div className="num">{d.num}</div> : null}
+                <h4>{d.titulo}</h4>
+                <p>{d.texto}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
