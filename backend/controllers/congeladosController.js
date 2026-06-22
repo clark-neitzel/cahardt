@@ -91,6 +91,12 @@ const congeladosController = {
             res.json({ logoUrl: url });
         } catch (e) { erro(res, e, 'adminUploadLogo'); }
     },
+    adminUploadImagem: async (req, res) => {
+        try {
+            if (!req.file) return res.status(400).json({ error: 'Nenhuma imagem enviada.' });
+            res.json({ url: `/uploads/congelados/${req.file.filename}` });
+        } catch (e) { erro(res, e, 'adminUploadImagem'); }
+    },
     adminPedidos: async (req, res) => {
         try { res.json(await svc.adminListarPedidos({ status: req.query.status, busca: req.query.busca })); }
         catch (e) { erro(res, e, 'adminPedidos'); }

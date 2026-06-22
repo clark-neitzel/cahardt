@@ -17,6 +17,37 @@ const LOJA_PADRAO = {
   instagram: 'hardtsalgados',
 };
 
+const HISTORIA_PADRAO = {
+  titulo: 'Nossa História',
+  texto: 'A Hardt Salgados tem suas raízes na paixão compartilhada de uma família pela culinária e pelo sabor autêntico. Tudo começou em Joinville, no norte de Santa Catarina, em 2007, quando uma receita de família virou o sonho de levar o salgado feito à mão para a mesa de mais gente.\nDe uma cozinha pequena para uma produção que abastece festas, eventos e revendedores de toda a região, mantivemos o mesmo cuidado de sempre: massa fininha, recheio caprichado e o ponto certo da fritura.\nHoje, com frota própria refrigerada, garantimos que o sabor sai do nosso freezer e chega fresquinho até você — do jeitinho que a gente faz desde o primeiro dia.',
+  imagens: [],
+};
+
+// Carrossel da seção "Nossa História" — anima por transform (GPU), sem mexer em box-shadow.
+function HistoriaCarrossel({ imagens }) {
+  const [i, setI] = useState(0);
+  const n = imagens.length;
+  useEffect(() => {
+    if (n <= 1) return;
+    const id = setInterval(() => setI(p => (p + 1) % n), 4500);
+    return () => clearInterval(id);
+  }, [n]);
+  if (!n) return null;
+  const idx = i % n;
+  return (
+    <div className="hist-carousel">
+      <div className="hist-slides" style={{ transform: `translateX(-${idx * 100}%)` }}>
+        {imagens.map((src, k) => <img key={k} src={imgUrl(src)} alt="Hardt Salgados" />)}
+      </div>
+      {n > 1 && (
+        <div className="hist-dots">
+          {imagens.map((_, k) => <span key={k} className={k === idx ? 'on' : ''} onClick={() => setI(k)} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Página principal pública do site da Hardt. Marketing/funil — sem login.
 export default function HomeSite() {
   const [cfg, setCfg] = useState(null);
@@ -26,6 +57,9 @@ export default function HomeSite() {
   const loja = { ...LOJA_PADRAO, ...(cfg?.loja || {}) };
   const hero = cfg?.hero || {};
   const caminhos = cfg?.caminhos || {};
+  const historia = { ...HISTORIA_PADRAO, ...(cfg?.historia || {}) };
+  const histImgs = Array.isArray(historia.imagens) ? historia.imagens : [];
+  const histParas = String(historia.texto || '').split('\n').map(s => s.trim()).filter(Boolean);
   const LOGO_SRC = cfg?.logoUrl ? imgUrl(cfg.logoUrl) : LOGO;
 
   const wa = `https://wa.me/${loja.whatsapp}`;
@@ -42,7 +76,7 @@ export default function HomeSite() {
           </Link>
           <nav className="nav-links">
             <a href="#caminhos" className="hide-sm">Produtos</a>
-            <a href="#diferenciais" className="hide-sm">A Hardt</a>
+            <a href="#historia" className="hide-sm">A Hardt</a>
             <a href="#contato" className="hide-sm">Contato</a>
           </nav>
         </div>
@@ -114,6 +148,21 @@ export default function HomeSite() {
           </div>
         </div>
       </section>
+
+      {/* ===== NOSSA HISTÓRIA ===== */}
+      {(histParas.length > 0 || histImgs.length > 0) && (
+        <section className="section hist" id="historia">
+          <div className={`wrap hist-grid${histImgs.length ? '' : ' hist-solo'}`}>
+            <div className="hist-text">
+              <div className="kicker">A Hardt</div>
+              <img className="hist-logo" src={LOGO_SRC} alt={loja.nome} />
+              <h2>{historia.titulo || 'Nossa História'}</h2>
+              {histParas.map((p, k) => <p key={k}>{p}</p>)}
+            </div>
+            {histImgs.length > 0 && <HistoriaCarrossel imagens={histImgs} />}
+          </div>
+        </section>
+      )}
 
       {/* ===== DIFERENCIAIS ===== */}
       <section className="board-strip" id="diferenciais">

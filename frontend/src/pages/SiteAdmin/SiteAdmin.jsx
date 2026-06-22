@@ -679,6 +679,16 @@ function ConfigTab() {
         </div>
       </Secao>
 
+      <Secao titulo="Nossa História (página inicial)" icon={ImageIcon} onSave={() => salvarSecao('historia', cfg.historia)} saving={salvando === 'historia'}>
+        <Campo label="Título" value={cfg.historia?.titulo || ''} onChange={e => up('historia', { titulo: e.target.value })} />
+        <div>
+          <label className="text-xs text-gray-500">Texto (cada parágrafo em uma linha)</label>
+          <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm h-40" value={cfg.historia?.texto || ''}
+            onChange={e => up('historia', { texto: e.target.value })} />
+        </div>
+        <HistoriaImagens imagens={cfg.historia?.imagens || []} onChange={(imagens) => up('historia', { imagens })} />
+      </Secao>
+
       <Secao titulo="Área de congelados (login)" icon={Settings} onSave={() => salvarSecao('congelados', cfg.congelados)} saving={salvando === 'congelados'}>
         <Campo label="Título do login" value={cfg.congelados?.loginTitulo || ''} onChange={e => up('congelados', { loginTitulo: e.target.value })} />
         <div>
@@ -741,6 +751,63 @@ function LogoUploader({ logoUrl, onChanged }) {
         </div>
         <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
       </div>
+    </div>
+  );
+}
+
+// Gerenciador das imagens do carrossel "Nossa História": envia, remove e reordena.
+function HistoriaImagens({ imagens = [], onChange }) {
+  const inputRef = useRef(null);
+  const [enviando, setEnviando] = useState(false);
+
+  const adicionar = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setEnviando(true);
+    try {
+      const novas = [];
+      for (const f of files) {
+        if (f.size > 3 * 1024 * 1024) { toast.error(`${f.name}: imagem muito grande (máx 3MB)`); continue; }
+        const { url } = await congeladosService.uploadImagem(f);
+        if (url) novas.push(url);
+      }
+      if (novas.length) { onChange([...imagens, ...novas]); toast.success('Imagem enviada — clique em Salvar para publicar'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Erro ao enviar imagem (precisa ser admin).'); }
+    finally { setEnviando(false); if (inputRef.current) inputRef.current.value = ''; }
+  };
+  const remover = (i) => onChange(imagens.filter((_, k) => k !== i));
+  const mover = (i, d) => {
+    const j = i + d; if (j < 0 || j >= imagens.length) return;
+    const arr = [...imagens]; [arr[i], arr[j]] = [arr[j], arr[i]]; onChange(arr);
+  };
+
+  return (
+    <div>
+      <label className="text-xs text-gray-500">Imagens do carrossel</label>
+      <div className="grid grid-cols-3 gap-2 mt-1">
+        {imagens.map((src, i) => (
+          <div key={i} className="relative group rounded-lg overflow-hidden border border-gray-200 aspect-[4/3] bg-gray-100">
+            <img src={imgUrl(src)} alt="" className="w-full h-full object-cover" />
+            <button type="button" onClick={() => remover(i)} title="Remover"
+              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-600">
+              <X size={13} />
+            </button>
+            <div className="absolute bottom-1 left-1 flex gap-1">
+              <button type="button" onClick={() => mover(i, -1)} disabled={i === 0} title="Mover para a esquerda"
+                className="w-6 h-6 rounded bg-black/55 text-white text-sm leading-none disabled:opacity-30">‹</button>
+              <button type="button" onClick={() => mover(i, 1)} disabled={i === imagens.length - 1} title="Mover para a direita"
+                className="w-6 h-6 rounded bg-black/55 text-white text-sm leading-none disabled:opacity-30">›</button>
+            </div>
+          </div>
+        ))}
+        <button type="button" onClick={() => inputRef.current?.click()} disabled={enviando}
+          className="aspect-[4/3] rounded-lg border-2 border-dashed border-gray-300 text-gray-400 hover:border-sky-300 hover:text-sky-500 flex flex-col items-center justify-center gap-1 text-xs disabled:opacity-50">
+          {enviando ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+          {enviando ? 'Enviando…' : 'Adicionar'}
+        </button>
+      </div>
+      <p className="text-[11px] text-gray-400 mt-1">Aparecem em rotação ao lado do texto. As setas mudam a ordem · máx 3MB cada. Lembre de clicar em <b>Salvar</b>.</p>
+      <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={adicionar} />
     </div>
   );
 }

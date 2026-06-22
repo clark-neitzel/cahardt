@@ -38,6 +38,8 @@ router.delete('/produtos/:produtoId', ctrl.adminRemoverProdutoSite);
 router.get('/config', ctrl.adminGetConfig);
 router.put('/config/:chave', ctrl.adminSetConfig);
 router.post('/logo', uploadLogo.single('logo'), ctrl.adminUploadLogo);
+// Imagem avulsa (ex.: carrossel "Nossa História") — devolve a URL; o admin guarda no config
+router.post('/imagem', uploadLogo.single('imagem'), ctrl.adminUploadImagem);
 
 // ── Pedidos (fila) ──
 router.get('/pedidos', ctrl.adminPedidos);

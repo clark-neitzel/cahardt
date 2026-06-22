@@ -844,6 +844,12 @@ const DEFAULT_CONFIG = {
         titulo: 'Dois jeitos de pedir',
         subtitulo: 'Salgados prontos pra sua festa ou congelados pra revender e ter sempre em estoque. Escolha por onde começar.',
     },
+    // Seção "Nossa História" da home (texto + carrossel de imagens enviadas pelo admin)
+    historia: {
+        titulo: 'Nossa História',
+        texto: 'A Hardt Salgados tem suas raízes na paixão compartilhada de uma família pela culinária e pelo sabor autêntico. Tudo começou em Joinville, no norte de Santa Catarina, em 2007, quando uma receita de família virou o sonho de levar o salgado feito à mão para a mesa de mais gente.\nDe uma cozinha pequena para uma produção que abastece festas, eventos e revendedores de toda a região, mantivemos o mesmo cuidado de sempre: massa fininha, recheio caprichado e o ponto certo da fritura.\nHoje, com frota própria refrigerada, garantimos que o sabor sai do nosso freezer e chega fresquinho até você — do jeitinho que a gente faz desde o primeiro dia.',
+        imagens: [],
+    },
     // Texto da área de congelados (login)
     congelados: {
         loginTitulo: 'Área do cliente',
