@@ -1230,6 +1230,8 @@ router.post('/sync-itempcp-nomes', async (req, res) => {
 // unidades antigas/erradas não se corrigem sozinhas ao sincronizar.
 router.post('/fix-unidades', async (req, res) => {
     try {
+        // dryRun=1 (ou body.dryRun) apenas SIMULA: lista o que mudaria, sem gravar nada.
+        const dryRun = req.query.dryRun === '1' || req.query.dryRun === 'true' || req.body?.dryRun === true;
         const contaAzulService = require('../services/contaAzulService');
         const produtos = await prisma.produto.findMany({
             where: { contaAzulId: { not: null } },
@@ -1258,10 +1260,12 @@ router.post('/fix-unidades', async (req, res) => {
                 verificados++;
 
                 if (unidadeValor && unidadeValor !== prod.unidade) {
-                    await prisma.produto.update({
-                        where: { id: prod.id },
-                        data: { unidade: unidadeValor }
-                    });
+                    if (!dryRun) {
+                        await prisma.produto.update({
+                            where: { id: prod.id },
+                            data: { unidade: unidadeValor }
+                        });
+                    }
                     corrigidos.push({ nome: prod.nome, de: prod.unidade, para: unidadeValor });
                 }
             } catch (e) {
@@ -1273,6 +1277,7 @@ router.post('/fix-unidades', async (req, res) => {
 
         return res.json({
             ok: true,
+            dryRun,
             total: produtos.length,
             verificados,
             corrigidos: corrigidos.length,
