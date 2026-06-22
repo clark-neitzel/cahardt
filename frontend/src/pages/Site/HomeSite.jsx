@@ -37,7 +37,7 @@ function HistoriaCarrossel({ imagens }) {
   return (
     <div className="hist-carousel">
       <div className="hist-slides" style={{ transform: `translateX(-${idx * 100}%)` }}>
-        {imagens.map((src, k) => <img key={k} src={imgUrl(src)} alt="Hardt Salgados" />)}
+        {imagens.map((src, k) => <img key={k} src={src} alt="Hardt Salgados" />)}
       </div>
       {n > 1 && (
         <div className="hist-dots">
@@ -60,6 +60,8 @@ export default function HomeSite() {
   const historia = { ...HISTORIA_PADRAO, ...(cfg?.historia || {}) };
   const histImgs = Array.isArray(historia.imagens) ? historia.imagens : [];
   const histParas = String(historia.texto || '').split('\n').map(s => s.trim()).filter(Boolean);
+  // Imagens do carrossel do topo: as enviadas no admin; se ainda não houver nenhuma, mostra a caixa padrão.
+  const heroFotos = histImgs.length ? histImgs.map(imgUrl) : [BOX];
   const LOGO_SRC = cfg?.logoUrl ? imgUrl(cfg.logoUrl) : LOGO;
 
   const wa = `https://wa.me/${loja.whatsapp}`;
@@ -82,20 +84,19 @@ export default function HomeSite() {
         </div>
       </header>
 
-      {/* ===== HERO ===== */}
-      <section className="hero">
+      {/* ===== HERO / NOSSA HISTÓRIA ===== */}
+      <section className="hero" id="historia">
         <div className="wrap hero-grid">
           <div>
             <div className="hero-since kicker"><span className="dot"></span> {hero.kicker || 'Joinville/SC · Frota própria refrigerada'}</div>
-            <h1>Salgado <span className="scr">de verdade,</span><br /><span className="y">feito à mão.</span></h1>
-            <p className="lead">{hero.subtitulo || 'Desde 2007 levando coxinha, bolinha e empadinha pra festa, o coffee break e o freezer da sua casa. Peça pelo link, combine retirada ou entrega e pague depois — sem complicação.'}</p>
-            <div className="hero-cta">
-              <Link className="btn btn-yellow" to="/kit-festa">Pedir Kit Festa →</Link>
-              <Link className="btn btn-ghost" to="/congelados">Pedir Congelados →</Link>
+            <img className="hero-logo" src={LOGO_SRC} alt={loja.nome} />
+            <h1 className="hist-title">{historia.titulo || 'Nossa História'}</h1>
+            <div className="hero-hist">
+              {histParas.map((p, k) => <p key={k} className="lead">{p}</p>)}
             </div>
           </div>
           <div className="hero-art">
-            <div className="plate"><img src={BOX} alt="Caixa Hardt de salgados" /></div>
+            <HistoriaCarrossel imagens={heroFotos} />
             <div className="seal">Sabor<br />sem igual<small>desde 2007</small></div>
           </div>
         </div>
@@ -148,21 +149,6 @@ export default function HomeSite() {
           </div>
         </div>
       </section>
-
-      {/* ===== NOSSA HISTÓRIA ===== */}
-      {(histParas.length > 0 || histImgs.length > 0) && (
-        <section className="section hist" id="historia">
-          <div className={`wrap hist-grid${histImgs.length ? '' : ' hist-solo'}`}>
-            <div className="hist-text">
-              <div className="kicker">A Hardt</div>
-              <img className="hist-logo" src={LOGO_SRC} alt={loja.nome} />
-              <h2>{historia.titulo || 'Nossa História'}</h2>
-              {histParas.map((p, k) => <p key={k}>{p}</p>)}
-            </div>
-            {histImgs.length > 0 && <HistoriaCarrossel imagens={histImgs} />}
-          </div>
-        </section>
-      )}
 
       {/* ===== DIFERENCIAIS ===== */}
       <section className="board-strip" id="diferenciais">

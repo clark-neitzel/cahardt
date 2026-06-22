@@ -660,14 +660,9 @@ function ConfigTab() {
         <Campo label="Instagram (sem @)" value={cfg.loja?.instagram || ''} onChange={e => up('loja', { instagram: e.target.value })} />
       </Secao>
 
-      <Secao titulo="Página inicial (hero)" icon={Megaphone} onSave={() => salvarSecao('hero', cfg.hero)} saving={salvando === 'hero'}>
-        <Campo label="Kicker (linha pequena)" value={cfg.hero?.kicker || ''} onChange={e => up('hero', { kicker: e.target.value })} />
-        <Campo label="Título" value={cfg.hero?.titulo || ''} onChange={e => up('hero', { titulo: e.target.value })} />
-        <div>
-          <label className="text-xs text-gray-500">Subtítulo</label>
-          <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm h-20" value={cfg.hero?.subtitulo || ''}
-            onChange={e => up('hero', { subtitulo: e.target.value })} />
-        </div>
+      <Secao titulo="Topo do site (linha pequena)" icon={Megaphone} onSave={() => salvarSecao('hero', cfg.hero)} saving={salvando === 'hero'}>
+        <Campo label="Linha pequena acima do título" value={cfg.hero?.kicker || ''} onChange={e => up('hero', { kicker: e.target.value })} />
+        <p className="text-[11px] text-gray-400">É a frase de cima do topo (ex.: “Joinville/SC · Frota própria refrigerada”). O título, o texto e as imagens do topo são editados no bloco <b>“Nossa História”</b>.</p>
       </Secao>
 
       <Secao titulo="Seção “Dois jeitos de pedir”" icon={Megaphone} onSave={() => salvarSecao('caminhos', cfg.caminhos)} saving={salvando === 'caminhos'}>
