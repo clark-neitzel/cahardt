@@ -702,6 +702,7 @@ function ConfigTab() {
           <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm h-40" value={cfg.historia?.texto || ''}
             onChange={e => up('historia', { texto: e.target.value })} />
         </div>
+        <Campo label="Frase de destaque (manuscrita, opcional)" value={cfg.historia?.frase || ''} onChange={e => up('historia', { frase: e.target.value })} />
         <HistoriaImagens imagens={cfg.historia?.imagens || []} onChange={(imagens) => up('historia', { imagens })} />
       </Secao>
 

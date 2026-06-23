@@ -26,7 +26,8 @@ const DIFERENCIAIS_PADRAO = [
 
 const HISTORIA_PADRAO = {
   titulo: 'Nossa História',
-  texto: 'A Hardt Salgados tem suas raízes na paixão compartilhada de uma família pela culinária e pelo sabor autêntico. Tudo começou em Joinville, no norte de Santa Catarina, em 2007, quando uma receita de família virou o sonho de levar o salgado feito à mão para a mesa de mais gente.\nDe uma cozinha pequena para uma produção que abastece festas, eventos e revendedores de toda a região, mantivemos o mesmo cuidado de sempre: massa fininha, recheio caprichado e o ponto certo da fritura.\nHoje, com frota própria refrigerada, garantimos que o sabor sai do nosso freezer e chega fresquinho até você — do jeitinho que a gente faz desde o primeiro dia.',
+  texto: 'A Hardt Salgados nasceu da paixão de uma família pela culinária e pelo sabor autêntico. Tudo começou em Joinville, em 2007, quando uma receita de família virou o sonho de levar o salgado feito à mão para a mesa de mais gente.\nDe uma cozinha pequena para uma produção que abastece festas, eventos e revendedores de toda a região — sempre com o mesmo cuidado: massa fininha, recheio caprichado e o ponto certo da fritura.',
+  frase: '— do mesmo jeitinho, desde o primeiro dia',
   imagens: [],
 };
 
@@ -143,35 +144,34 @@ export default function HomeSite() {
         </div>
       </section>
 
-      {/* ===== NOSSA HISTÓRIA ===== */}
-      <section className="hero hist-below" id="historia">
-        <div className="wrap hero-grid">
-          <div>
-            <div className="hero-since kicker"><span className="dot"></span> {hero.kicker || 'Joinville/SC · Frota própria refrigerada'}</div>
-            <img className="hero-logo" src={LOGO_SRC} alt={loja.nome} />
-            <h1 className="hist-title">{historia.titulo || 'Nossa História'}</h1>
-            <div className="hero-hist">
-              {histParas.map((p, k) => <p key={k} className="lead">{p}</p>)}
-            </div>
-          </div>
-          <div className="hero-art">
-            <HistoriaCarrossel imagens={heroFotos} />
-            <div className="seal">Sabor<br />sem igual<small>desde 2007</small></div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== DIFERENCIAIS ===== */}
-      <section className="board-strip" id="diferenciais">
+      {/* ===== NOSSA HISTÓRIA (painel verde + destaques) ===== */}
+      <section className="historia" id="historia">
         <div className="wrap">
-          <div className="dif">
-            {diferenciais.map((d, k) => (
-              <div className="dif-cell" key={k}>
-                {d.num ? <div className="num">{d.num}</div> : null}
-                <h4>{d.titulo}</h4>
-                <p>{d.texto}</p>
+          <div className="hist-panel">
+            <span className="hist-watermark" aria-hidden="true">2007</span>
+            <div className="hist-main">
+              <div className="hist-col-text">
+                <div className="hero-since kicker"><span className="dot"></span> {hero.kicker || 'Joinville/SC · desde 2007'}</div>
+                <h2 className="hist-title">{historia.titulo || 'Nossa História'}</h2>
+                <div className="hist-body">
+                  {histParas.map((p, k) => <p key={k}>{p}</p>)}
+                </div>
+                {historia.frase ? <p className="hist-frase">{historia.frase}</p> : null}
               </div>
-            ))}
+              <div className="hist-col-art">
+                <HistoriaCarrossel imagens={heroFotos} />
+                <div className="seal">Sabor<br />sem igual<small>desde 2007</small></div>
+              </div>
+            </div>
+            <div className="hist-stats">
+              {diferenciais.map((d, k) => (
+                <div className="hist-stat" key={k}>
+                  {d.num ? <div className="num">{d.num}</div> : null}
+                  <h4>{d.titulo}</h4>
+                  <p>{d.texto}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
