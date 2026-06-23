@@ -99,13 +99,15 @@ export default function HomeSite() {
       {/* ===== DOIS CAMINHOS (topo) ===== */}
       <section className="section section-top" id="caminhos">
         <div className="wrap">
-          <div className="brand-mark">
-            <img src={LOGO_SRC} alt={loja.nome} />
-          </div>
-          <div className="sec-head">
-            <div className="kicker">O que você precisa hoje?</div>
-            <h2>{caminhos.titulo || 'Dois jeitos de pedir'}</h2>
-            <p>{caminhos.subtitulo || 'Salgados prontos pra sua festa ou congelados pra revender e ter sempre em estoque. Escolha por onde começar.'}</p>
+          <div className="intro-grid">
+            <div className="brand-mark">
+              <img src={LOGO_SRC} alt={loja.nome} />
+            </div>
+            <div className="sec-head intro-head">
+              <div className="kicker">O que você precisa hoje?</div>
+              <h2>{caminhos.titulo || 'Dois jeitos de pedir'}</h2>
+              <p>{caminhos.subtitulo || 'Salgados prontos pra sua festa ou congelados pra revender e ter sempre em estoque. Escolha por onde começar.'}</p>
+            </div>
           </div>
           <div className="paths">
             <Link className="path path-festa" to="/kit-festa">
