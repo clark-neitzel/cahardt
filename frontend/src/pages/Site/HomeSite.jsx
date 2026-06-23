@@ -95,26 +95,8 @@ export default function HomeSite() {
         </div>
       </header>
 
-      {/* ===== HERO / NOSSA HISTÓRIA ===== */}
-      <section className="hero" id="historia">
-        <div className="wrap hero-grid">
-          <div>
-            <div className="hero-since kicker"><span className="dot"></span> {hero.kicker || 'Joinville/SC · Frota própria refrigerada'}</div>
-            <img className="hero-logo" src={LOGO_SRC} alt={loja.nome} />
-            <h1 className="hist-title">{historia.titulo || 'Nossa História'}</h1>
-            <div className="hero-hist">
-              {histParas.map((p, k) => <p key={k} className="lead">{p}</p>)}
-            </div>
-          </div>
-          <div className="hero-art">
-            <HistoriaCarrossel imagens={heroFotos} />
-            <div className="seal">Sabor<br />sem igual<small>desde 2007</small></div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== DOIS CAMINHOS ===== */}
-      <section className="section" id="caminhos">
+      {/* ===== DOIS CAMINHOS (topo) ===== */}
+      <section className="section section-top" id="caminhos">
         <div className="wrap">
           <div className="sec-head">
             <div className="kicker">O que você precisa hoje?</div>
@@ -157,6 +139,24 @@ export default function HomeSite() {
                 </div>
               </div>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== NOSSA HISTÓRIA ===== */}
+      <section className="hero hist-below" id="historia">
+        <div className="wrap hero-grid">
+          <div>
+            <div className="hero-since kicker"><span className="dot"></span> {hero.kicker || 'Joinville/SC · Frota própria refrigerada'}</div>
+            <img className="hero-logo" src={LOGO_SRC} alt={loja.nome} />
+            <h1 className="hist-title">{historia.titulo || 'Nossa História'}</h1>
+            <div className="hero-hist">
+              {histParas.map((p, k) => <p key={k} className="lead">{p}</p>)}
+            </div>
+          </div>
+          <div className="hero-art">
+            <HistoriaCarrossel imagens={heroFotos} />
+            <div className="seal">Sabor<br />sem igual<small>desde 2007</small></div>
           </div>
         </div>
       </section>
