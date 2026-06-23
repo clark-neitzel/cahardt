@@ -772,12 +772,51 @@ const pedidoController = {
                             id: true,
                             valor: true,
                             quantidade: true,
-                            produto: { select: { nome: true, categoriaProduto: { select: { nome: true } } } }
+                            produto: { select: { id: true, nome: true, categoriaProduto: { select: { nome: true } } } }
                         }
                     }
                 },
                 orderBy: { dataVenda: 'desc' }
             });
+
+            // Custo de produção por produto — a partir da receita ATIVA cadastrada no PCP.
+            // custo unitário = (Σ custoUnitario do ingrediente × quantidade na receita) × (1 + perda%) / rendimentoBase
+            const produtoIds = [...new Set(
+                pedidos.flatMap(p => p.itens.map(i => i.produto?.id).filter(Boolean))
+            )];
+            const custoPorProduto = {};
+            if (produtoIds.length > 0) {
+                const itensPcp = await prisma.itemPcp.findMany({
+                    where: { produtoId: { in: produtoIds } },
+                    select: {
+                        produtoId: true,
+                        receitasComoResultado: {
+                            where: { status: 'ativa' },
+                            orderBy: { versao: 'desc' },
+                            take: 1,
+                            select: {
+                                rendimentoBase: true,
+                                perdaPercentual: true,
+                                itens: { select: { quantidade: true, itemPcp: { select: { custoUnitario: true } } } }
+                            }
+                        }
+                    }
+                });
+                itensPcp.forEach(ip => {
+                    const rec = ip.receitasComoResultado?.[0];
+                    if (!rec) return;
+                    const rend = Number(rec.rendimentoBase || 0);
+                    if (rend <= 0) return;
+                    let soma = 0, temCusto = false;
+                    rec.itens.forEach(it => {
+                        const cu = it.itemPcp?.custoUnitario;
+                        if (cu != null) { soma += Number(cu) * Number(it.quantidade || 0); temCusto = true; }
+                    });
+                    if (!temCusto) return;
+                    const perda = Number(rec.perdaPercentual || 0);
+                    custoPorProduto[ip.produtoId] = (soma * (1 + perda / 100)) / rend;
+                });
+            }
 
             let totalGeral = 0;
             const registros = [];
@@ -800,13 +839,14 @@ const pedidoController = {
                     vendedorTelefone: p.vendedor?.telefone || ''
                 };
                 if (p.itens.length === 0) {
-                    registros.push({ ...base, id: p.id, produto: '-', categoriaComercial: 'Sem categoria', quantidade: 0, valorUnit: 0, valorTotal: 0 });
+                    registros.push({ ...base, id: p.id, produto: '-', categoriaComercial: 'Sem categoria', quantidade: 0, valorUnit: 0, valorTotal: 0, precoCusto: null, custoTotal: null });
                 } else {
                     p.itens.forEach(item => {
                         const valorUnit = Number(item.valor || 0);
                         const quantidade = Number(item.quantidade || 0);
                         const valorTotal = valorUnit * quantidade;
                         totalGeral += valorTotal;
+                        const precoCusto = custoPorProduto[item.produto?.id] ?? null;
                         registros.push({
                             ...base,
                             id: `${p.id}-${item.id}`,
@@ -814,7 +854,9 @@ const pedidoController = {
                             categoriaComercial: item.produto?.categoriaProduto?.nome || 'Sem categoria',
                             quantidade,
                             valorUnit,
-                            valorTotal
+                            valorTotal,
+                            precoCusto,
+                            custoTotal: precoCusto != null ? precoCusto * quantidade : null
                         });
                     });
                 }

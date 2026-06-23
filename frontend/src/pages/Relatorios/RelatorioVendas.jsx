@@ -16,6 +16,8 @@ const COLUNAS = [
     { id: 'quantidade',label: 'Qtd',       field: 'quantidade',            tipo: 'numero', filtravel: false, align: 'right' },
     { id: 'valorUnit', label: 'Vl Unit',   field: 'valorUnit',             tipo: 'numero', filtravel: false, align: 'right' },
     { id: 'valor',     label: 'Valor',     field: 'valorTotal',            tipo: 'numero', filtravel: false, align: 'right' },
+    { id: 'precoCusto',label: 'Vl Custo',  field: 'precoCusto',            tipo: 'numero', filtravel: false, align: 'right' },
+    { id: 'custoTotal',label: 'Custo Total',field: 'custoTotal',           tipo: 'numero', filtravel: false, align: 'right' },
     { id: 'condicao', label: 'Condição',  field: 'nomeCondicaoPagamento', tipo: 'texto',  filtravel: true  },
     { id: 'categoria',label: 'Categoria', field: 'categoriaComercial',    tipo: 'texto',  filtravel: true  },
     { id: 'tipo',     label: 'Tipo',      field: 'tipo',                  tipo: 'texto',  filtravel: true  },
@@ -421,13 +423,14 @@ export default function RelatorioVendas() {
         dadosFiltrados.forEach(row => {
             const key = dimCols.map(c => String(row[c.field] ?? '')).join('\x00');
             if (!map.has(key)) {
-                const g = { _key: key, _count: 0, valorTotal: 0, quantidade: 0, valorUnit: null };
+                const g = { _key: key, _count: 0, valorTotal: 0, quantidade: 0, valorUnit: null, custoTotal: 0, precoCusto: null };
                 dimCols.forEach(c => { g[c.field] = row[c.field]; });
                 map.set(key, g);
             }
             const g = map.get(key);
             g.valorTotal += Number(row.valorTotal || 0);
             g.quantidade += Number(row.quantidade || 0);
+            g.custoTotal += Number(row.custoTotal || 0);
             g._count += 1;
         });
         const result = [...map.values()];
@@ -789,10 +792,16 @@ export default function RelatorioVendas() {
                                                         {col.id === 'valorUnit' && (
                                                             val != null ? <span>R$ {fmt(val)}</span> : <span className="text-gray-400">-</span>
                                                         )}
+                                                        {col.id === 'precoCusto' && (
+                                                            val != null ? <span>R$ {fmt(val)}</span> : <span className="text-gray-400">-</span>
+                                                        )}
+                                                        {col.id === 'custoTotal' && (
+                                                            val != null ? <span className="font-semibold text-rose-700">R$ {fmt(val)}</span> : <span className="text-gray-400">-</span>
+                                                        )}
                                                         {col.id === 'tipo' && (
                                                             <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${TIPO_BADGE[val] || 'bg-gray-100 text-gray-700'}`}>{val}</span>
                                                         )}
-                                                        {!['data','criacao','valor','quantidade','valorUnit','tipo'].includes(col.id) && (val || '-')}
+                                                        {!['data','criacao','valor','quantidade','valorUnit','precoCusto','custoTotal','tipo'].includes(col.id) && (val || '-')}
                                                     </td>
                                                 );
                                             })}
@@ -807,6 +816,7 @@ export default function RelatorioVendas() {
                                                     {i === 0 && `${dadosAgrupados.length} linhas`}
                                                     {col.id === 'quantidade' && dadosAgrupados.reduce((s, r) => s + Number(r.quantidade || 0), 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}
                                                     {col.id === 'valor' && `R$ ${fmt(totalFiltrado)}`}
+                                                    {col.id === 'custoTotal' && `R$ ${fmt(dadosAgrupados.reduce((s, r) => s + Number(r.custoTotal || 0), 0))}`}
                                                 </td>
                                             ))}
                                         </tr>
@@ -868,7 +878,7 @@ export default function RelatorioVendas() {
                                                         {(col.id === 'data' || col.id === 'criacao') ? fmtData(val)
                                                         : col.id === 'valor' ? `R$ ${fmt(val)}${row._count > 1 ? ` (${row._count})` : ''}`
                                                         : col.id === 'quantidade' ? Number(val || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
-                                                        : col.id === 'valorUnit' ? (val != null ? `R$ ${fmt(val)}` : '-')
+                                                        : (col.id === 'valorUnit' || col.id === 'precoCusto' || col.id === 'custoTotal') ? (val != null ? `R$ ${fmt(val)}` : '-')
                                                         : val || '-'}
                                                     </td>
                                                 );
@@ -882,6 +892,7 @@ export default function RelatorioVendas() {
                                             <td key={col.id} className={col.align === 'right' ? 'num' : ''}>
                                                 {i === 0 && `${dadosAgrupados.length} linhas`}
                                                 {col.id === 'valor' && `R$ ${fmt(totalFiltrado)}`}
+                                                {col.id === 'custoTotal' && `R$ ${fmt(dadosAgrupados.reduce((s, r) => s + Number(r.custoTotal || 0), 0))}`}
                                             </td>
                                         ))}
                                     </tr>

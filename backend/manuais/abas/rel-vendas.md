@@ -22,7 +22,8 @@ Relatório analítico de itens vendidos (não de pedidos, mas de linhas de produ
 - Mostrar/ocultar colunas individualmente
 - Reordenar colunas arrastando-as
 - Agrupamento automático quando colunas de dimensão são ocultadas (ex: ocultar "Produto" soma quantidades)
-- Ver totais no rodapé: quantidade total, valor total
+- Ver o **preço de custo (Vl Custo)** e o **Custo Total** de cada produto — o custo é calculado a partir da **receita ativa cadastrada no PCP** (soma do custo dos ingredientes × quantidade, aplicando a perda %, dividido pelo rendimento). Produtos sem receita no PCP aparecem com "-"
+- Ver totais no rodapé: quantidade total, valor total, custo total
 - Imprimir o relatório em formato A4 (fonte monoespaciada, compacto)
 - Exportar para CSV
 - Os filtros aplicados são salvos no navegador (localStorage) e restaurados na próxima visita
@@ -72,6 +73,8 @@ Relatório analítico de itens vendidos (não de pedidos, mas de linhas de produ
 | Qtd | Número | Não |
 | Vl Unit | Número | Não |
 | Valor | Número | Não |
+| Vl Custo | Número | Não |
+| Custo Total | Número | Não |
 | Condição | Texto | Sim |
 | Categoria | Texto | Sim |
 | Tipo | Texto | Sim |
@@ -96,6 +99,7 @@ Relatório analítico de itens vendidos (não de pedidos, mas de linhas de produ
 
 - **Pedidos** — os dados vêm dos itens de pedido; somente leitura
 - **Conta Azul** — o filtro "Situação CA" usa os dados sincronizados (padrão: FATURADO)
+- **PCP (Receitas)** — as colunas Vl Custo / Custo Total usam a receita ativa do produto no PCP; só aparecem se o produto tiver receita com ingredientes que tenham custo unitário preenchido
 
 ---
 

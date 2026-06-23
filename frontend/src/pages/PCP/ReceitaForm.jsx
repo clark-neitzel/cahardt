@@ -396,7 +396,7 @@ export default function ReceitaForm() {
     if (loading) return <div className="text-center py-12 text-gray-400">Carregando...</div>;
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className="max-w-7xl mx-auto px-4 py-6">
             <button onClick={() => navigate('/pcp/receitas')} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
                 <ArrowLeft className="h-4 w-4" /> Voltar
             </button>
@@ -513,17 +513,17 @@ export default function ReceitaForm() {
                         <div className="space-y-3">
                             <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-1">
                                 <div className="col-span-1">#</div>
-                                <div className="col-span-3">Item</div>
+                                <div className="col-span-5">Item</div>
                                 <div className="col-span-2">Quantidade</div>
                                 <div className="col-span-1">Tipo</div>
-                                <div className="col-span-2">Etapa</div>
+                                <div className="col-span-1">Etapa</div>
                                 <div className="col-span-1">Obs</div>
-                                <div className="col-span-2 text-center">Ordem / Ações</div>
+                                <div className="col-span-1 text-center">Ações</div>
                             </div>
                             {itens.map((item, idx) => (
                                 <div key={item._uid || idx} className="grid grid-cols-12 gap-2 items-center">
                                     <div className="col-span-1 text-center text-xs font-semibold text-gray-400">{idx + 1}</div>
-                                    <div className="col-span-3">
+                                    <div className="col-span-5">
                                         <ComboboxBusca
                                             value={item.itemPcpId}
                                             onChange={v => updateItem(idx, 'itemPcpId', v)}
@@ -551,7 +551,7 @@ export default function ReceitaForm() {
                                             {TIPOS_CONSUMO.map(t => <option key={t} value={t}>{t}</option>)}
                                         </select>
                                     </div>
-                                    <div className="col-span-2">
+                                    <div className="col-span-1">
                                         <select
                                             value={item.ordemEtapa}
                                             onChange={e => updateItem(idx, 'ordemEtapa', e.target.value)}
@@ -569,7 +569,7 @@ export default function ReceitaForm() {
                                             placeholder="obs"
                                         />
                                     </div>
-                                    <div className="col-span-2 flex items-center justify-center gap-0.5">
+                                    <div className="col-span-1 flex items-center justify-center gap-0.5">
                                         <button
                                             type="button"
                                             onClick={() => moveItem(idx, -1)}
