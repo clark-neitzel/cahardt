@@ -36,13 +36,14 @@ Uma receita sempre produz um item do PCP (PA = Produto Acabado ou SUB = Subprodu
 4. Informe o **Rendimento Base**: quantas unidades (ou KG, L, etc.) esta receita produz numa batelada normal.
 5. Opcional: **Perda Padrão (%)** — percentual de perda esperado no processo.
 6. Escolha o **Status**: Ativa (pode ser usada em ordens) ou Rascunho (em construção).
-7. Na seção **Componentes**, clique em **Adicionar** para incluir cada ingrediente:
-   - **Item**: busque e selecione o ingrediente (MP, SUB ou EMB)
+7. Na seção **Componentes**, clique em **Adicionar** para incluir cada ingrediente. A nova linha entra **no topo da lista**, já pronta para preencher:
+   - **Item**: clique no campo para abrir a **janela de busca** (um pop-up centralizado). Digite parte do nome para filtrar e clique no ingrediente desejado (MP, SUB ou EMB).
    - **Quantidade**: quanto usar por batelada
    - **Tipo**: preenchido automaticamente conforme o item (MP, SUB ou EMB)
    - **Etapa**: opcional (preparo, modelagem, fritura, cozimento, montagem, embalagem)
    - **Obs**: anotação livre por ingrediente
-8. Clique em **Criar Receita**.
+8. **Ordenar os ingredientes**: use as setas **↑** e **↓** no fim de cada linha para mover o ingrediente para cima ou para baixo. O número (#) à esquerda mostra a posição. Essa ordem é salva e respeitada na visualização e na impressão da receita.
+9. Clique em **Criar Receita**.
 
 > Se você escolher um produto do catálogo como ingrediente ou como item produzido, e ele ainda não existir no PCP, o sistema importa automaticamente.
 
@@ -55,6 +56,8 @@ Uma receita sempre produz um item do PCP (PA = Produto Acabado ou SUB = Subprodu
 3. Ao salvar, o sistema pede um **motivo da alteração** — obrigatório.
 4. Uma nova versão é criada. A versão anterior fica com status "inativa" no histórico.
 5. A tela navega automaticamente para a nova versão.
+
+> Reordenar os ingredientes (setas ↑/↓) também conta como alteração — só essa mudança já permite salvar uma nova versão.
 
 ### Ver o histórico de versões
 

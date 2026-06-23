@@ -36,7 +36,7 @@ const pcpReceitaService = {
                     include: {
                         itemPcp: { select: { id: true, nome: true, codigo: true, tipo: true, unidade: true } }
                     },
-                    orderBy: { ordemEtapa: 'asc' }
+                    orderBy: [{ ordem: 'asc' }, { ordemEtapa: 'asc' }]
                 }
             }
         });
@@ -55,10 +55,11 @@ const pcpReceitaService = {
                 dataFimVigencia: data.dataFimVigencia ? new Date(data.dataFimVigencia) : null,
                 observacoes: data.observacoes || null,
                 itens: {
-                    create: (data.itens || []).map(item => ({
+                    create: (data.itens || []).map((item, idx) => ({
                         itemPcpId: item.itemPcpId,
                         quantidade: parseFloat(item.quantidade),
                         tipo: item.tipo,
+                        ordem: idx,
                         ordemEtapa: item.ordemEtapa || null,
                         observacao: item.observacao || null
                     }))
@@ -78,16 +79,22 @@ const pcpReceitaService = {
     atualizar: async (id, data, { userId, userNome } = {}) => {
         const original = await prisma.receita.findUnique({
             where: { id },
-            include: { itens: { include: { itemPcp: { select: { id: true, nome: true, codigo: true, unidade: true } } } } }
+            include: {
+                itens: {
+                    include: { itemPcp: { select: { id: true, nome: true, codigo: true, unidade: true } } },
+                    orderBy: [{ ordem: 'asc' }, { ordemEtapa: 'asc' }]
+                }
+            }
         });
         if (!original) throw new Error('Receita não encontrada');
         if (original.status === 'inativa') throw new Error('Receitas inativas não podem ser editadas.');
         if (!data.motivo?.trim()) throw new Error('Motivo da alteração é obrigatório.');
 
-        const novosItens = (data.itens || []).map(i => ({
+        const novosItens = (data.itens || []).map((i, idx) => ({
             itemPcpId: i.itemPcpId,
             quantidade: parseFloat(i.quantidade),
             tipo: i.tipo,
+            ordem: idx,
             ordemEtapa: i.ordemEtapa || null,
             observacao: i.observacao || null
         }));
@@ -145,10 +152,18 @@ const pcpReceitaService = {
             }
         }
 
+        // Detecta se apenas a ORDEM dos ingredientes mudou (mesmos itens, sequência diferente)
+        const ordemAntiga = original.itens.map(i => i.itemPcpId);
+        const ordemNova = novosItens.map(i => i.itemPcpId);
+        const ordemAlterada = ordemAntiga.length === ordemNova.length
+            && ordemAntiga.join('|') !== ordemNova.join('|');
+        if (ordemAlterada) alteracoes.ordemAlterada = true;
+
         const houveMudanca = Object.keys(alteracoes.campos).length > 0
             || alteracoes.ingredientes.adicionados.length > 0
             || alteracoes.ingredientes.removidos.length > 0
-            || alteracoes.ingredientes.alterados.length > 0;
+            || alteracoes.ingredientes.alterados.length > 0
+            || ordemAlterada;
 
         if (!houveMudanca) {
             throw new Error('Nenhuma alteração detectada.');
@@ -257,10 +272,11 @@ const pcpReceitaService = {
                     dataInicioVigencia: new Date(),
                     observacoes: original.observacoes,
                     itens: {
-                        create: original.itens.map(item => ({
+                        create: original.itens.map((item, idx) => ({
                             itemPcpId: item.itemPcpId,
                             quantidade: item.quantidade,
                             tipo: item.tipo,
+                            ordem: item.ordem ?? idx,
                             ordemEtapa: item.ordemEtapa,
                             observacao: item.observacao
                         }))
@@ -298,10 +314,11 @@ const pcpReceitaService = {
                     dataInicioVigencia: new Date(),
                     observacoes: original.observacoes,
                     itens: {
-                        create: original.itens.map(item => ({
+                        create: original.itens.map((item, idx) => ({
                             itemPcpId: item.itemPcpId,
                             quantidade: item.quantidade,
                             tipo: item.tipo,
+                            ordem: item.ordem ?? idx,
                             ordemEtapa: item.ordemEtapa,
                             observacao: item.observacao
                         }))
@@ -336,7 +353,8 @@ const pcpReceitaService = {
                 itens: {
                     include: {
                         itemPcp: { select: { id: true, nome: true, tipo: true, unidade: true, estoqueAtual: true } }
-                    }
+                    },
+                    orderBy: [{ ordem: 'asc' }, { ordemEtapa: 'asc' }]
                 }
             }
         });

@@ -1320,6 +1320,7 @@ model ReceitaItem {
   itemPcpId  String  @map("item_pcp_id")
   quantidade Decimal @db.Decimal(12, 3)
   tipo       String // MP | SUB | EMB
+  ordem      Int     @default(0) // ordem de exibição do ingrediente na receita (definida no app)
   ordemEtapa String? @map("ordem_etapa") // preparo, modelagem, fritura, embalagem
   observacao String? @db.Text
 

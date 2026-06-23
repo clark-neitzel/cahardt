@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, Loader2, Search, X, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Loader2, Search, X, ChevronDown, ChevronUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpReceitaService from '../../services/pcpReceitaService';
 import pcpItemService from '../../services/pcpItemService';
@@ -9,19 +9,15 @@ import api from '../../services/api';
 const TIPOS_CONSUMO = ['MP', 'SUB', 'EMB'];
 const ETAPAS = ['', 'preparo', 'modelagem', 'fritura', 'cozimento', 'montagem', 'embalagem'];
 
-// ── Combobox com busca ──
-function ComboboxBusca({ value, onChange, opcoes, placeholder = 'Buscar...', className = '' }) {
+// Gerador de id estável para as linhas de componente (chaves do React ao reordenar)
+let _uidSeq = 0;
+const novoUid = () => `it_${++_uidSeq}`;
+
+// ── Combobox com busca (abre em popup centralizado) ──
+function ComboboxBusca({ value, onChange, opcoes, placeholder = 'Buscar...', titulo = 'Buscar item', className = '' }) {
     const [aberto, setAberto] = useState(false);
     const [busca, setBusca] = useState('');
-    const ref = useRef(null);
     const inputRef = useRef(null);
-
-    // Fechar ao clicar fora
-    useEffect(() => {
-        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setAberto(false); };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
 
     const selecionado = opcoes.find(o => o.id === value);
 
@@ -36,21 +32,25 @@ function ComboboxBusca({ value, onChange, opcoes, placeholder = 'Buscar...', cla
     const truncado = todasFiltradas.length > LIMITE_VISIVEL;
     const filtradas = truncado ? todasFiltradas.slice(0, LIMITE_VISIVEL) : todasFiltradas;
 
-    const handleSelect = (id) => {
-        onChange(id);
-        setAberto(false);
-        setBusca('');
-    };
-
+    const fechar = () => { setAberto(false); setBusca(''); };
+    const handleSelect = (id) => { onChange(id); fechar(); };
     const abrir = () => {
         setAberto(true);
         setBusca('');
         setTimeout(() => inputRef.current?.focus(), 50);
     };
 
+    // ESC fecha o popup
+    useEffect(() => {
+        if (!aberto) return;
+        const onKey = (e) => { if (e.key === 'Escape') fechar(); };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [aberto]);
+
     return (
-        <div ref={ref} className={`relative ${className}`}>
-            {/* Botao que mostra selecionado */}
+        <div className={className}>
+            {/* Botao que mostra o selecionado */}
             <button
                 type="button"
                 onClick={abrir}
@@ -62,61 +62,67 @@ function ComboboxBusca({ value, onChange, opcoes, placeholder = 'Buscar...', cla
                 {value ? (
                     <X className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600 shrink-0" onClick={(e) => { e.stopPropagation(); onChange(''); }} />
                 ) : (
-                    <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                    <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                 )}
             </button>
 
-            {/* Dropdown */}
+            {/* Popup centralizado */}
             {aberto && (
-                <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 flex flex-col">
-                    {/* Campo de busca */}
-                    <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100">
-                        <Search className="h-4 w-4 text-gray-400 shrink-0" />
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            value={busca}
-                            onChange={e => setBusca(e.target.value)}
-                            placeholder="Digite para buscar..."
-                            className="flex-1 text-sm bg-transparent outline-none placeholder-gray-400"
-                        />
-                        {busca && (
-                            <button type="button" onClick={() => setBusca('')} className="text-gray-400 hover:text-gray-600">
-                                <X className="h-3.5 w-3.5" />
+                <div
+                    className="fixed inset-0 z-[100] flex items-start justify-center bg-black/40 p-4"
+                    onMouseDown={fechar}
+                >
+                    <div
+                        className="mt-[10vh] w-full max-w-lg bg-white rounded-xl shadow-2xl flex flex-col max-h-[75vh] overflow-hidden"
+                        onMouseDown={e => e.stopPropagation()}
+                    >
+                        {/* Cabeçalho com busca */}
+                        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                            <Search className="h-5 w-5 text-gray-400 shrink-0" />
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={busca}
+                                onChange={e => setBusca(e.target.value)}
+                                placeholder={`${titulo} — digite para filtrar...`}
+                                className="flex-1 text-base bg-transparent outline-none placeholder-gray-400"
+                            />
+                            <button type="button" onClick={fechar} className="p-1 text-gray-400 hover:text-gray-600 shrink-0">
+                                <X className="h-5 w-5" />
                             </button>
-                        )}
-                    </div>
+                        </div>
 
-                    {/* Lista */}
-                    <div className="flex-1 overflow-y-auto">
-                        {filtradas.length === 0 ? (
-                            <div className="px-3 py-4 text-center text-sm text-gray-400">Nenhum resultado</div>
-                        ) : (
-                            filtradas.map((o, i) => {
-                                if (o.tipo === 'grupo') {
+                        {/* Lista */}
+                        <div className="flex-1 overflow-y-auto">
+                            {filtradas.length === 0 ? (
+                                <div className="px-3 py-8 text-center text-sm text-gray-400">Nenhum resultado</div>
+                            ) : (
+                                filtradas.map((o, i) => {
+                                    if (o.tipo === 'grupo') {
+                                        return (
+                                            <div key={`g-${i}`} className="px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-400 bg-gray-50 sticky top-0">
+                                                {o.label}
+                                            </div>
+                                        );
+                                    }
                                     return (
-                                        <div key={`g-${i}`} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-gray-50 sticky top-0">
+                                        <button
+                                            key={o.id}
+                                            type="button"
+                                            onClick={() => handleSelect(o.id)}
+                                            className={`w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors ${o.id === value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                                        >
                                             {o.label}
-                                        </div>
+                                        </button>
                                     );
-                                }
-                                return (
-                                    <button
-                                        key={o.id}
-                                        type="button"
-                                        onClick={() => handleSelect(o.id)}
-                                        className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${o.id === value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
-                                    >
-                                        {o.label}
-                                    </button>
-                                );
-                            })
-                        )}
-                        {truncado && (
-                            <div className="px-3 py-2 text-center text-[11px] text-gray-400 border-t border-gray-100 bg-gray-50">
-                                Mostrando os primeiros {LIMITE_VISIVEL}. Digite para encontrar o item.
-                            </div>
-                        )}
+                                })
+                            )}
+                            {truncado && (
+                                <div className="px-4 py-2 text-center text-[11px] text-gray-400 border-t border-gray-100 bg-gray-50">
+                                    Mostrando os primeiros {LIMITE_VISIVEL}. Digite para encontrar o item.
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
@@ -196,6 +202,7 @@ export default function ReceitaForm() {
                         observacoes: receita.observacoes || '',
                     });
                     setItens(receita.itens.map(i => ({
+                        _uid: novoUid(),
                         itemPcpId: i.itemPcpId,
                         quantidade: String(i.quantidade),
                         tipo: i.tipo,
@@ -219,7 +226,7 @@ export default function ReceitaForm() {
                 const temConteudo = draft?.form?.nome?.trim() || (Array.isArray(draft?.itens) && draft.itens.length > 0);
                 if (temConteudo) {
                     if (draft.form) setForm(draft.form);
-                    if (Array.isArray(draft.itens)) setItens(draft.itens);
+                    if (Array.isArray(draft.itens)) setItens(draft.itens.map(it => ({ ...it, _uid: it._uid || novoUid() })));
                     setRascunhoRestaurado(true);
                 }
             }
@@ -281,10 +288,22 @@ export default function ReceitaForm() {
     const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
     const addItem = () => {
-        setItens(prev => [...prev, { itemPcpId: '', quantidade: '', tipo: 'MP', ordemEtapa: '', observacao: '' }]);
+        // Nova linha entra no TOPO da lista (para preencher logo de cima)
+        setItens(prev => [{ _uid: novoUid(), itemPcpId: '', quantidade: '', tipo: 'MP', ordemEtapa: '', observacao: '' }, ...prev]);
     };
 
     const removeItem = (idx) => setItens(prev => prev.filter((_, i) => i !== idx));
+
+    // Move um ingrediente para cima (dir=-1) ou para baixo (dir=+1)
+    const moveItem = (idx, dir) => {
+        setItens(prev => {
+            const alvo = idx + dir;
+            if (alvo < 0 || alvo >= prev.length) return prev;
+            const novo = [...prev];
+            [novo[idx], novo[alvo]] = [novo[alvo], novo[idx]];
+            return novo;
+        });
+    };
 
     const updateItem = (idx, field, value) => {
         setItens(prev => prev.map((item, i) => {
@@ -411,6 +430,7 @@ export default function ReceitaForm() {
                                 onChange={v => handleChange('itemPcpId', v)}
                                 opcoes={opcoesResultado}
                                 placeholder="Buscar produto..."
+                                titulo="Buscar produto (PA ou SUB)"
                             />
                         </div>
                         <div>
@@ -492,21 +512,24 @@ export default function ReceitaForm() {
                     ) : (
                         <div className="space-y-3">
                             <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-1">
-                                <div className="col-span-4">Item</div>
+                                <div className="col-span-1">#</div>
+                                <div className="col-span-3">Item</div>
                                 <div className="col-span-2">Quantidade</div>
                                 <div className="col-span-1">Tipo</div>
                                 <div className="col-span-2">Etapa</div>
-                                <div className="col-span-2">Obs</div>
-                                <div className="col-span-1"></div>
+                                <div className="col-span-1">Obs</div>
+                                <div className="col-span-2 text-center">Ordem / Ações</div>
                             </div>
                             {itens.map((item, idx) => (
-                                <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                                    <div className="col-span-4">
+                                <div key={item._uid || idx} className="grid grid-cols-12 gap-2 items-center">
+                                    <div className="col-span-1 text-center text-xs font-semibold text-gray-400">{idx + 1}</div>
+                                    <div className="col-span-3">
                                         <ComboboxBusca
                                             value={item.itemPcpId}
                                             onChange={v => updateItem(idx, 'itemPcpId', v)}
                                             opcoes={opcoesIngredientes}
                                             placeholder="Buscar ingrediente..."
+                                            titulo="Buscar ingrediente"
                                         />
                                     </div>
                                     <div className="col-span-2">
@@ -537,7 +560,7 @@ export default function ReceitaForm() {
                                             {ETAPAS.map(e => <option key={e} value={e}>{e || '—'}</option>)}
                                         </select>
                                     </div>
-                                    <div className="col-span-2">
+                                    <div className="col-span-1">
                                         <input
                                             type="text"
                                             value={item.observacao}
@@ -546,8 +569,26 @@ export default function ReceitaForm() {
                                             placeholder="obs"
                                         />
                                     </div>
-                                    <div className="col-span-1 text-center">
-                                        <button type="button" onClick={() => removeItem(idx)} className="p-1 text-red-400 hover:text-red-600">
+                                    <div className="col-span-2 flex items-center justify-center gap-0.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => moveItem(idx, -1)}
+                                            disabled={idx === 0}
+                                            title="Subir"
+                                            className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                                        >
+                                            <ChevronUp className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => moveItem(idx, 1)}
+                                            disabled={idx === itens.length - 1}
+                                            title="Descer"
+                                            className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                                        >
+                                            <ChevronDown className="h-4 w-4" />
+                                        </button>
+                                        <button type="button" onClick={() => removeItem(idx)} title="Remover" className="p-1 text-red-400 hover:text-red-600">
                                             <Trash2 className="h-4 w-4" />
                                         </button>
                                     </div>
