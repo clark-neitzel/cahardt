@@ -13,6 +13,12 @@ const ETAPAS = ['', 'preparo', 'modelagem', 'fritura', 'cozimento', 'montagem', 
 let _uidSeq = 0;
 const novoUid = () => `it_${++_uidSeq}`;
 
+const fmtMoeda = (n, casas = 2) => {
+    const v = parseFloat(n);
+    if (!Number.isFinite(v)) return '—';
+    return `R$ ${v.toFixed(casas).replace('.', ',')}`;
+};
+
 // ── Combobox com busca (abre em popup centralizado) ──
 function ComboboxBusca({ value, onChange, opcoes, placeholder = 'Buscar...', titulo = 'Buscar item', className = '' }) {
     const [aberto, setAberto] = useState(false);
@@ -140,6 +146,7 @@ export default function ReceitaForm() {
     const [subprodutos, setSubprodutos] = useState([]);
     const [itensImportados, setItensImportados] = useState([]); // MP/EMB/PA ja existentes no PCP
     const [produtos, setProdutos] = useState([]);
+    const [custoMap, setCustoMap] = useState({ itensPcp: {}, produtos: {} });
 
     const [form, setForm] = useState({
         itemPcpId: '',
@@ -181,6 +188,11 @@ export default function ReceitaForm() {
                     page++;
                 }
                 setProdutos(todosProdutos);
+
+                try {
+                    const custos = await pcpReceitaService.custosItens();
+                    setCustoMap({ itensPcp: custos?.itensPcp || {}, produtos: custos?.produtos || {} });
+                } catch { /* sem custos: segue sem mostrar valores */ }
             } catch {
                 toast.error('Erro ao carregar dados');
             }
@@ -286,6 +298,27 @@ export default function ReceitaForm() {
     ];
 
     const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+
+    // ── Custo ao vivo ──
+    const custoUnitItem = (itemPcpId) => {
+        if (!itemPcpId) return 0;
+        if (itemPcpId.startsWith('produto:')) return custoMap.produtos[itemPcpId.slice(8)] || 0;
+        return custoMap.itensPcp[itemPcpId] || 0;
+    };
+    const custoLinha = (item) => custoUnitItem(item.itemPcpId) * (parseFloat(item.quantidade) || 0);
+    const custoTotalReceita = itens.reduce((s, it) => s + custoLinha(it), 0);
+    const rendBaseNum = parseFloat(form.rendimentoBase) || 0;
+    const perdaNum = parseFloat(form.perdaPercentual) || 0;
+    const rendLiquido = rendBaseNum > 0 ? rendBaseNum * (1 - perdaNum / 100) : 0;
+    const custoPorUnidade = rendLiquido > 0 ? custoTotalReceita / rendLiquido : 0;
+    const unidadeResultado = (() => {
+        const fromPcp = [...subprodutos, ...itensImportados].find(i => i.id === form.itemPcpId)?.unidade;
+        if (fromPcp) return fromPcp;
+        if (form.itemPcpId?.startsWith('produto:')) {
+            return produtos.find(p => p.id === form.itemPcpId.slice(8))?.unidade || 'un';
+        }
+        return 'un';
+    })();
 
     const addItem = () => {
         // Nova linha entra no TOPO da lista (para preencher logo de cima)
@@ -510,90 +543,122 @@ export default function ReceitaForm() {
                     {itens.length === 0 ? (
                         <p className="text-center py-6 text-gray-400 text-sm">Nenhum componente. Clique em "Adicionar" acima.</p>
                     ) : (
-                        <div className="space-y-3">
-                            <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-1">
-                                <div className="col-span-1">#</div>
-                                <div className="col-span-5">Item</div>
-                                <div className="col-span-2">Quantidade</div>
-                                <div className="col-span-1">Tipo</div>
-                                <div className="col-span-1">Etapa</div>
-                                <div className="col-span-1">Obs</div>
-                                <div className="col-span-1 text-center">Ações</div>
-                            </div>
-                            {itens.map((item, idx) => (
-                                <div key={item._uid || idx} className="grid grid-cols-12 gap-2 items-center">
-                                    <div className="col-span-1 text-center text-xs font-semibold text-gray-400">{idx + 1}</div>
-                                    <div className="col-span-5">
-                                        <ComboboxBusca
-                                            value={item.itemPcpId}
-                                            onChange={v => updateItem(idx, 'itemPcpId', v)}
-                                            opcoes={opcoesIngredientes}
-                                            placeholder="Buscar ingrediente..."
-                                            titulo="Buscar ingrediente"
-                                        />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <input
-                                            type="number"
-                                            step="0.001"
-                                            value={item.quantidade}
-                                            onChange={e => updateItem(idx, 'quantidade', e.target.value)}
-                                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-                                            placeholder="0.000"
-                                        />
-                                    </div>
-                                    <div className="col-span-1">
-                                        <select
-                                            value={item.tipo}
-                                            onChange={e => updateItem(idx, 'tipo', e.target.value)}
-                                            className="w-full px-1 py-1.5 border border-gray-300 rounded text-xs"
-                                        >
-                                            {TIPOS_CONSUMO.map(t => <option key={t} value={t}>{t}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="col-span-1">
-                                        <select
-                                            value={item.ordemEtapa}
-                                            onChange={e => updateItem(idx, 'ordemEtapa', e.target.value)}
-                                            className="w-full px-1 py-1.5 border border-gray-300 rounded text-xs"
-                                        >
-                                            {ETAPAS.map(e => <option key={e} value={e}>{e || '—'}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="col-span-1">
-                                        <input
-                                            type="text"
-                                            value={item.observacao}
-                                            onChange={e => updateItem(idx, 'observacao', e.target.value)}
-                                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                                            placeholder="obs"
-                                        />
-                                    </div>
-                                    <div className="col-span-1 flex items-center justify-center gap-0.5">
-                                        <button
-                                            type="button"
-                                            onClick={() => moveItem(idx, -1)}
-                                            disabled={idx === 0}
-                                            title="Subir"
-                                            className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                                        >
-                                            <ChevronUp className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => moveItem(idx, 1)}
-                                            disabled={idx === itens.length - 1}
-                                            title="Descer"
-                                            className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                                        >
-                                            <ChevronDown className="h-4 w-4" />
-                                        </button>
-                                        <button type="button" onClick={() => removeItem(idx)} title="Remover" className="p-1 text-red-400 hover:text-red-600">
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
-                                    </div>
+                        <div className="overflow-x-auto">
+                            <div className="min-w-[920px] space-y-3">
+                                <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-1">
+                                    <div className="col-span-1">#</div>
+                                    <div className="col-span-4">Item</div>
+                                    <div className="col-span-2">Quantidade</div>
+                                    <div className="col-span-1 text-right">Custo</div>
+                                    <div className="col-span-1">Tipo</div>
+                                    <div className="col-span-1">Etapa</div>
+                                    <div className="col-span-1">Obs</div>
+                                    <div className="col-span-1 text-center">Ações</div>
                                 </div>
-                            ))}
+                                {itens.map((item, idx) => {
+                                    const cLinha = custoLinha(item);
+                                    const temItem = !!item.itemPcpId;
+                                    const semCusto = temItem && custoUnitItem(item.itemPcpId) <= 0;
+                                    return (
+                                        <div key={item._uid || idx} className="grid grid-cols-12 gap-2 items-center">
+                                            <div className="col-span-1 text-center text-xs font-semibold text-gray-400">{idx + 1}</div>
+                                            <div className="col-span-4">
+                                                <ComboboxBusca
+                                                    value={item.itemPcpId}
+                                                    onChange={v => updateItem(idx, 'itemPcpId', v)}
+                                                    opcoes={opcoesIngredientes}
+                                                    placeholder="Buscar ingrediente..."
+                                                    titulo="Buscar ingrediente"
+                                                />
+                                            </div>
+                                            <div className="col-span-2">
+                                                <input
+                                                    type="number"
+                                                    step="0.001"
+                                                    value={item.quantidade}
+                                                    onChange={e => updateItem(idx, 'quantidade', e.target.value)}
+                                                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                                                    placeholder="0.000"
+                                                />
+                                            </div>
+                                            <div className="col-span-1 text-right text-sm font-mono">
+                                                {semCusto ? (
+                                                    <span className="text-amber-600 text-xs" title="Sem custo cadastrado">s/ custo</span>
+                                                ) : (
+                                                    <span className="text-gray-700">{cLinha > 0 ? fmtMoeda(cLinha) : '—'}</span>
+                                                )}
+                                            </div>
+                                            <div className="col-span-1">
+                                                <select
+                                                    value={item.tipo}
+                                                    onChange={e => updateItem(idx, 'tipo', e.target.value)}
+                                                    className="w-full px-1 py-1.5 border border-gray-300 rounded text-xs"
+                                                >
+                                                    {TIPOS_CONSUMO.map(t => <option key={t} value={t}>{t}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="col-span-1">
+                                                <select
+                                                    value={item.ordemEtapa}
+                                                    onChange={e => updateItem(idx, 'ordemEtapa', e.target.value)}
+                                                    className="w-full px-1 py-1.5 border border-gray-300 rounded text-xs"
+                                                >
+                                                    {ETAPAS.map(e => <option key={e} value={e}>{e || '—'}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="col-span-1">
+                                                <input
+                                                    type="text"
+                                                    value={item.observacao}
+                                                    onChange={e => updateItem(idx, 'observacao', e.target.value)}
+                                                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                                                    placeholder="obs"
+                                                />
+                                            </div>
+                                            <div className="col-span-1 flex items-center justify-center gap-0.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => moveItem(idx, -1)}
+                                                    disabled={idx === 0}
+                                                    title="Subir"
+                                                    className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                >
+                                                    <ChevronUp className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => moveItem(idx, 1)}
+                                                    disabled={idx === itens.length - 1}
+                                                    title="Descer"
+                                                    className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                >
+                                                    <ChevronDown className="h-4 w-4" />
+                                                </button>
+                                                <button type="button" onClick={() => removeItem(idx)} title="Remover" className="p-1 text-red-400 hover:text-red-600">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Resumo de custo ao vivo */}
+                    {itens.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-end gap-x-8 gap-y-2">
+                            <div className="text-right">
+                                <span className="text-xs text-gray-400 block">Custo Total</span>
+                                <span className="text-lg font-semibold text-gray-800">{fmtMoeda(custoTotalReceita)}</span>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-xs text-emerald-700 block">Custo por {unidadeResultado}</span>
+                                <span className="text-lg font-bold text-emerald-800">{custoPorUnidade > 0 ? fmtMoeda(custoPorUnidade, 4) : '—'}</span>
+                                {perdaNum > 0 && rendBaseNum > 0 && (
+                                    <span className="block text-[11px] text-emerald-600">já com {perdaNum}% de perda</span>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>

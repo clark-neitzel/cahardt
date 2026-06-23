@@ -44,7 +44,8 @@ Uma receita sempre produz um item do PCP (PA = Produto Acabado ou SUB = Subprodu
    - **Etapa**: opcional (preparo, modelagem, fritura, cozimento, montagem, embalagem)
    - **Obs**: anotação livre por ingrediente
 8. **Ordenar os ingredientes**: use as setas **↑** e **↓** no fim de cada linha para mover o ingrediente para cima ou para baixo. O número (#) à esquerda mostra a posição. Essa ordem é salva e respeitada na visualização e na impressão da receita.
-9. Clique em **Criar Receita**.
+9. **Custo ao vivo**: enquanto você escolhe o ingrediente e digita a quantidade, o sistema já mostra o **custo de cada linha** e, no rodapé, o **Custo Total** e o **Custo por unidade** (atualizam na hora). Se aparecer "s/ custo" numa linha, é porque aquele item não tem custo cadastrado.
+10. Clique em **Criar Receita**.
 
 > Se você escolher um produto do catálogo como ingrediente ou como item produzido, e ele ainda não existir no PCP, o sistema importa automaticamente.
 
@@ -102,12 +103,14 @@ A simulação calcula quantos ingredientes serão necessários para produzir uma
 
 > O simulador é somente para consulta — não cria nenhuma ordem.
 
-### Imprimir a receita para a cozinha
+### Imprimir a receita (duas versões)
 
-1. Abra a receita e clique em **Imprimir**.
-2. Abre uma janela já formatada em folha **A4** (retrato), com letra grande e legível para uso na cozinha.
-3. A impressão mostra: nome da receita, o que produz, rendimento, perda padrão e versão no cabeçalho; os ingredientes **agrupados por etapa** (Preparo, Modelagem, Fritura, Embalagem) com quantidade, unidade e observação de cada um; e as observações gerais da receita no rodapé.
-4. A janela do navegador abre a caixa de impressão automaticamente — basta confirmar (ou salvar como PDF).
+Há **dois botões** de impressão na tela de detalhe:
+
+- **Imprimir (cozinha)** — versão para a cozinha, **sem custos**. Folha A4 retrato, letra grande, ingredientes **agrupados por etapa** (Preparo, Modelagem, Fritura, Embalagem) com quantidade, unidade e observação. É a impressão do dia a dia da produção.
+- **Imprimir com custos** — versão **interna**, com o **custo unitário e o custo de cada ingrediente**, o **custo total** e o **custo por unidade**. Use para análise de custo, não para a cozinha.
+
+Passos: abra a receita, clique no botão desejado, a caixa de impressão abre sozinha — confirme (ou salve como PDF).
 
 > Se nada abrir, libere os **pop-ups** do site no navegador.
 

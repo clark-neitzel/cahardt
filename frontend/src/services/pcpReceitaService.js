@@ -13,6 +13,7 @@ const pcpReceitaService = {
     historico: (itemPcpId) => api.get(`/pcp/receitas/historico/${itemPcpId}`).then(r => r.data),
     logs: (id) => api.get(`/pcp/receitas/${id}/logs`).then(r => r.data),
     calcularCusto: (id) => api.get(`/pcp/receitas/${id}/custo`).then(r => r.data),
+    custosItens: () => api.get('/pcp/receitas/custos-itens').then(r => r.data),
 };
 
 export default pcpReceitaService;

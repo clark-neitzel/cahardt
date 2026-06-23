@@ -27,6 +27,19 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET /api/pcp/receitas/custos-itens — custo unitário de todos os itens (p/ cálculo ao vivo no formulário)
+router.get('/custos-itens', async (req, res) => {
+    try {
+        const permissoes = await getPermsFromDB(req.user.id);
+        if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
+        const mapa = await pcpReceitaService.custosUnitarios();
+        return res.json(mapa);
+    } catch (err) {
+        console.error('[PCP Receitas] Erro custos-itens:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/pcp/receitas/historico/:itemPcpId — todas as versões de um item
 router.get('/historico/:itemPcpId', async (req, res) => {
     try {

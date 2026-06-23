@@ -190,6 +190,102 @@ function montarHtmlImpressao(receita) {
 </html>`;
 }
 
+// Impressão COM custos — tabela única (alinhada por índice com custo.itens), total e custo por unidade.
+function montarHtmlImpressaoComCustos(receita, custo) {
+    const itens = receita.itens || [];
+    const fmtM = (n, c = 2) => {
+        const v = parseFloat(n);
+        if (Number.isNaN(v)) return '—';
+        return `R$ ${v.toFixed(c).replace('.', ',')}`;
+    };
+
+    const linhas = itens.map((it, idx) => {
+        const c = custo?.itens?.[idx];
+        return `
+        <tr>
+            <td class="nome">${escaparHtml(it.itemPcp?.nome || '—')}</td>
+            <td class="qtd">${fmtQtd(it.quantidade)}</td>
+            <td class="un">${escaparHtml(it.itemPcp?.unidade || '')}</td>
+            <td class="qtd">${c ? (c.custoUnitario > 0 ? fmtM(c.custoUnitario, 4) : 'sem custo') : '—'}</td>
+            <td class="qtd">${c ? fmtM(c.custoTotal) : '—'}</td>
+        </tr>`;
+    }).join('');
+
+    const rendimento = `${fmtQtd(receita.rendimentoBase)} ${escaparHtml(receita.itemPcp?.unidade || '')}`;
+    const perda = receita.perdaPercentual ? `${fmtPerda(receita.perdaPercentual)}%` : '—';
+    const dataImpressao = new Date().toLocaleDateString('pt-BR');
+    const custoTotal = custo ? fmtM(custo.custoTotal) : '—';
+    const custoUnidade = custo ? fmtM(custo.custoPorUnidade, 4) : '—';
+    const un = escaparHtml(receita.itemPcp?.unidade || 'un');
+
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Receita (custos) - ${escaparHtml(receita.nome)}</title>
+<style>
+    @page { size: A4 portrait; margin: 14mm; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #111; font-size: 12pt; line-height: 1.3; }
+    .folha { width: 182mm; margin: 0 auto; }
+    header { border-bottom: 3px solid #111; padding-bottom: 8px; margin-bottom: 14px; }
+    h1 { font-size: 22pt; margin: 0 0 4px; }
+    .produz { font-size: 12pt; color: #333; margin: 0; }
+    .meta { display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap; }
+    .meta .rotulo { color: #555; font-size: 9pt; text-transform: uppercase; letter-spacing: .5px; display: block; }
+    .meta .valor { font-weight: bold; font-size: 13pt; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #ccc; }
+    th { font-size: 9pt; text-transform: uppercase; color: #555; border-bottom: 2px solid #111; }
+    td.nome { font-weight: bold; }
+    .qtd, th.qtd { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .un, th.un { text-align: center; width: 60px; color: #333; }
+    tfoot td { border-top: 2px solid #111; font-weight: bold; font-size: 13pt; }
+    .resumo { margin-top: 18px; display: flex; gap: 16px; }
+    .resumo .box { flex: 1; border: 2px solid #111; border-radius: 6px; padding: 10px 12px; }
+    .resumo .rotulo { font-size: 9pt; text-transform: uppercase; letter-spacing: .5px; color: #555; }
+    .resumo .valor { font-size: 18pt; font-weight: bold; }
+    footer { margin-top: 20px; padding-top: 8px; border-top: 1px solid #ccc; font-size: 9pt; color: #777; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+<div class="folha">
+    <header>
+        <h1>${escaparHtml(receita.nome)}</h1>
+        <p class="produz">Produz: <strong>${escaparHtml(receita.itemPcp?.nome || '—')}</strong>${receita.itemPcp?.tipo ? ` (${escaparHtml(TIPO_LABELS[receita.itemPcp.tipo] || receita.itemPcp.tipo)})` : ''}</p>
+        <div class="meta">
+            <div><span class="rotulo">Rendimento</span><span class="valor">${rendimento}</span></div>
+            <div><span class="rotulo">Perda padrão</span><span class="valor">${perda}</span></div>
+            <div><span class="rotulo">Versão</span><span class="valor">v${escaparHtml(receita.versao)}</span></div>
+        </div>
+    </header>
+    <table>
+        <thead>
+            <tr>
+                <th class="nome">Ingrediente</th>
+                <th class="qtd">Qtd</th>
+                <th class="un">Un.</th>
+                <th class="qtd">Custo Unit.</th>
+                <th class="qtd">Custo</th>
+            </tr>
+        </thead>
+        <tbody>${linhas || '<tr><td colspan="5">Sem ingredientes.</td></tr>'}</tbody>
+        <tfoot>
+            <tr><td colspan="4" class="qtd">Custo total</td><td class="qtd">${custoTotal}</td></tr>
+        </tfoot>
+    </table>
+    <div class="resumo">
+        <div class="box"><div class="rotulo">Custo Total da Receita</div><div class="valor">${custoTotal}</div></div>
+        <div class="box"><div class="rotulo">Custo por ${un}</div><div class="valor">${custoUnidade}</div></div>
+    </div>
+    ${receita.observacoes ? `<div class="resumo" style="margin-top:12px"><div class="box" style="flex:1"><div class="rotulo">Observações</div><p style="margin:4px 0 0;white-space:pre-wrap">${escaparHtml(receita.observacoes)}</p></div></div>` : ''}
+    <footer><span>Impresso em ${dataImpressao}</span><span>Documento interno — contém custos</span></footer>
+</div>
+</body>
+</html>`;
+}
+
 export default function ReceitaDetalhe() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -265,11 +361,24 @@ export default function ReceitaDetalhe() {
         setTimeout(() => win.print(), 300);
     };
 
+    const imprimirComCustos = () => {
+        if (!receita) return;
+        const win = window.open('', '_blank');
+        if (!win) {
+            toast.error('Permita pop-ups para imprimir');
+            return;
+        }
+        win.document.write(montarHtmlImpressaoComCustos(receita, custo));
+        win.document.close();
+        win.focus();
+        setTimeout(() => win.print(), 300);
+    };
+
     if (loading) return <div className="text-center py-12 text-gray-400">Carregando...</div>;
     if (!receita) return <div className="text-center py-12 text-gray-500">Receita nao encontrada</div>;
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className="max-w-6xl mx-auto px-4 py-6">
             <button onClick={() => navigate('/pcp/receitas')} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
                 <ArrowLeft className="h-4 w-4" /> Voltar
             </button>
@@ -373,9 +482,17 @@ export default function ReceitaDetalhe() {
                     </button>
                     <button
                         onClick={imprimirReceita}
+                        title="Versão para a cozinha, sem custos"
                         className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-800 text-white rounded-lg hover:bg-gray-900"
                     >
-                        <Printer className="h-3.5 w-3.5" /> Imprimir
+                        <Printer className="h-3.5 w-3.5" /> Imprimir (cozinha)
+                    </button>
+                    <button
+                        onClick={imprimirComCustos}
+                        title="Versão interna, com os custos"
+                        className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                    >
+                        <Printer className="h-3.5 w-3.5" /> Imprimir com custos
                     </button>
                     <button
                         onClick={excluirReceita}
@@ -548,7 +665,8 @@ export default function ReceitaDetalhe() {
                     Componentes ({receita.itens?.length || 0})
                 </h2>
 
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[640px]">
                     <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th className="text-left px-3 py-2 font-medium text-gray-600">Item</th>
@@ -603,6 +721,7 @@ export default function ReceitaDetalhe() {
                         </tfoot>
                     )}
                 </table>
+                </div>
             </div>
         </div>
     );

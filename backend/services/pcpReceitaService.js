@@ -571,6 +571,61 @@ const pcpReceitaService = {
             temCustoFaltando,
             itens: itensCusto
         };
+    },
+
+    // Mapa de custo unitário de TODOS os itens, para o formulário calcular o custo ao vivo.
+    // - itensPcp[id]  → custo por unidade do item PCP (SUB calculado pela receita ativa)
+    // - produtos[id]  → custo por unidade do produto (custoMedio do CA ou, na falta, custoManual)
+    custosUnitarios: async () => {
+        const [itens, produtos] = await Promise.all([
+            prisma.itemPcp.findMany({
+                select: { id: true, tipo: true, custoUnitario: true, produto: { select: { custoMedio: true, custoManual: true } } }
+            }),
+            prisma.produto.findMany({ select: { id: true, custoMedio: true, custoManual: true } })
+        ]);
+
+        const custoProduto = (p) => {
+            const ca = p?.custoMedio != null ? parseFloat(p.custoMedio) : 0;
+            if (ca > 0) return ca;
+            const man = p?.custoManual != null ? parseFloat(p.custoManual) : 0;
+            return man > 0 ? man : 0;
+        };
+
+        const produtosMap = {};
+        for (const p of produtos) produtosMap[p.id] = custoProduto(p);
+
+        const itensMap = {};
+        const subs = [];
+        for (const it of itens) {
+            if (it.tipo === 'SUB') { subs.push(it); continue; }
+            const base = custoProduto(it.produto);
+            const cu = it.custoUnitario != null ? parseFloat(it.custoUnitario) : 0;
+            itensMap[it.id] = base > 0 ? base : (cu > 0 ? cu : 0);
+        }
+        for (const sub of subs) {
+            try {
+                const rec = await prisma.receita.findFirst({
+                    where: {
+                        itemPcpId: sub.id,
+                        status: 'ativa',
+                        dataInicioVigencia: { lte: new Date() },
+                        OR: [{ dataFimVigencia: null }, { dataFimVigencia: { gte: new Date() } }]
+                    },
+                    orderBy: { versao: 'desc' },
+                    select: { id: true }
+                });
+                if (rec) {
+                    const c = await pcpReceitaService.calcularCusto(rec.id);
+                    itensMap[sub.id] = c.custoPorUnidade || 0;
+                } else {
+                    itensMap[sub.id] = sub.custoUnitario != null ? parseFloat(sub.custoUnitario) : 0;
+                }
+            } catch {
+                itensMap[sub.id] = sub.custoUnitario != null ? parseFloat(sub.custoUnitario) : 0;
+            }
+        }
+
+        return { itensPcp: itensMap, produtos: produtosMap };
     }
 };
 
