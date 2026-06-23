@@ -92,7 +92,7 @@
 .cg .nav{ position:sticky; top:0; z-index:50; background:rgba(20,22,18,.86); backdrop-filter:blur(8px); border-bottom:1px solid var(--line-soft); }
 .cg .nav-in{ display:flex; align-items:center; gap:18px; height:74px; }
 .cg .nav-logo{ display:flex; align-items:center; gap:12px; }
-.cg .nav-logo img{ height:46px; width:auto; }
+.cg .nav-logo img{ height:54px; width:auto; }
 .cg .nav-logo span{ font-family:var(--f-script); color:var(--yellow); font-size:1rem; }
 .cg .nav-links{ margin-left:auto; display:flex; align-items:center; gap:8px; }
 .cg .nav-links a{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.08em; font-size:.82rem; color:var(--chalk-dim); padding:.5em .8em; border-radius:8px; }
@@ -121,6 +121,9 @@
 .cg .section{ padding:clamp(48px,7vw,90px) 0; }
 /* Primeira seção (cards) no topo: respiro abaixo da barra fixa */
 .cg .section-top{ padding-top:clamp(28px,5vw,56px); }
+/* Logo grande de marca no começo da página */
+.cg .brand-mark{ display:flex; justify-content:center; margin:0 0 clamp(24px,4vw,44px); }
+.cg .brand-mark img{ height:clamp(100px,15vw,176px); width:auto; filter:drop-shadow(0 10px 26px rgba(0,0,0,.45)); }
 /* Nossa História agora vem depois dos cards: precisa do respiro de baixo */
 .cg .hist-below{ padding-bottom:clamp(48px,7vw,90px); }
 .cg .sec-head{ text-align:center; max-width:680px; margin:0 auto clamp(28px,4vw,48px); }
