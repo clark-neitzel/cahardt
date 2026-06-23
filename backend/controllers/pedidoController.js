@@ -4,6 +4,7 @@ const prisma = new PrismaClient();
 const axios = require('axios');
 const contaAzulService = require('../services/contaAzulService');
 const estoqueService = require('../services/estoqueService');
+const pcpReceitaService = require('../services/pcpReceitaService');
 
 const pedidoController = {
     resumoPendencias: async (req, res) => {
@@ -779,71 +780,55 @@ const pedidoController = {
                 orderBy: { dataVenda: 'desc' }
             });
 
-            // Custo de produção por produto, a partir das receitas ATIVAS do PCP.
-            // O custo de um item é:
-            //   - se tem receita ativa: (Σ custo do ingrediente × quantidade) × (1 + perda%) / rendimentoBase
-            //   - senão: o custo unitário cadastrado direto no item (MP/EMB)
-            // Subprodutos (SUB) são resolvidos RECURSIVAMENTE — o custo do SUB vem da receita dele.
+            // Custo de produção por produto — usa a MESMA função oficial do PCP
+            // (pcpReceitaService.calcularCusto), garantindo que o relatório bate com a tela
+            // da receita. Ela resolve SUB recursivamente, pega o custo da MP em
+            // Produto.custoMedio → custoManual → ItemPcp.custoUnitario, e aplica a perda
+            // (custoPorUnidade = custoTotal / (rendimentoBase × (1 - perda%))).
             const produtoIds = [...new Set(
                 pedidos.flatMap(p => p.itens.map(i => i.produto?.id).filter(Boolean))
             )];
             const custoPorProduto = {};
             if (produtoIds.length > 0) {
-                const [itensPcp, receitas] = await Promise.all([
-                    prisma.itemPcp.findMany({ select: { id: true, produtoId: true, custoUnitario: true } }),
-                    prisma.receita.findMany({
-                        where: { status: 'ativa' },
-                        orderBy: { versao: 'desc' },
-                        select: {
-                            itemPcpId: true,
-                            rendimentoBase: true,
-                            perdaPercentual: true,
-                            itens: { select: { itemPcpId: true, quantidade: true } }
-                        }
-                    })
-                ]);
-
-                const custoUnitDireto = {};   // itemPcpId -> custo cadastrado (number|null)
-                const itemPcpPorProduto = {}; // produtoId  -> itemPcpId
-                itensPcp.forEach(ip => {
-                    custoUnitDireto[ip.id] = ip.custoUnitario != null ? Number(ip.custoUnitario) : null;
-                    if (ip.produtoId) itemPcpPorProduto[ip.produtoId] = ip.id;
+                const itensPcp = await prisma.itemPcp.findMany({
+                    where: { produtoId: { in: produtoIds } },
+                    select: { id: true, produtoId: true }
                 });
+                const agora = new Date();
+                const receitas = await prisma.receita.findMany({
+                    where: {
+                        itemPcpId: { in: itensPcp.map(i => i.id) },
+                        status: 'ativa',
+                        dataInicioVigencia: { lte: agora },
+                        OR: [{ dataFimVigencia: null }, { dataFimVigencia: { gte: agora } }]
+                    },
+                    orderBy: { versao: 'desc' },
+                    select: { id: true, itemPcpId: true }
+                });
+                const receitaPorItem = {}; // itemPcpId -> receitaId (ativa mais recente)
+                receitas.forEach(r => { if (!receitaPorItem[r.itemPcpId]) receitaPorItem[r.itemPcpId] = r.id; });
 
-                const receitaPorItem = {};    // itemPcpId -> receita ativa mais recente (maior versão)
-                receitas.forEach(r => { if (!receitaPorItem[r.itemPcpId]) receitaPorItem[r.itemPcpId] = r; });
-
-                const memo = {};
-                const custoDoItem = (itemPcpId, visitando) => {
-                    if (itemPcpId in memo) return memo[itemPcpId];
-                    const receita = receitaPorItem[itemPcpId];
-                    let resultado = null;
-                    if (receita && !visitando.has(itemPcpId)) {
-                        const rend = Number(receita.rendimentoBase || 0);
-                        if (rend > 0) {
-                            visitando.add(itemPcpId);
-                            let soma = 0, algum = false;
-                            for (const ing of receita.itens) {
-                                const c = custoDoItem(ing.itemPcpId, visitando);
-                                if (c != null) { soma += c * Number(ing.quantidade || 0); algum = true; }
-                            }
-                            visitando.delete(itemPcpId);
-                            if (algum) {
-                                const perda = Number(receita.perdaPercentual || 0);
-                                resultado = (soma * (1 + perda / 100)) / rend;
-                            }
+                // calcula o custo por unidade de cada receita (em lotes p/ não esgotar conexões)
+                const recipeIds = [...new Set(Object.values(receitaPorItem))];
+                const custoPorReceita = {};
+                const LOTE = 8;
+                for (let i = 0; i < recipeIds.length; i += LOTE) {
+                    const lote = recipeIds.slice(i, i + LOTE);
+                    await Promise.all(lote.map(async (rid) => {
+                        try {
+                            const c = await pcpReceitaService.calcularCusto(rid);
+                            custoPorReceita[rid] = (c && c.custoPorUnidade != null) ? Number(c.custoPorUnidade) : null;
+                        } catch {
+                            custoPorReceita[rid] = null;
                         }
-                    }
-                    if (resultado == null) resultado = custoUnitDireto[itemPcpId] ?? null;
-                    memo[itemPcpId] = resultado;
-                    return resultado;
-                };
+                    }));
+                }
 
-                produtoIds.forEach(pid => {
-                    const ipId = itemPcpPorProduto[pid];
-                    if (!ipId) return;
-                    const custo = custoDoItem(ipId, new Set());
-                    if (custo != null) custoPorProduto[pid] = custo;
+                itensPcp.forEach(ip => {
+                    const rid = receitaPorItem[ip.id];
+                    if (!rid) return;
+                    const c = custoPorReceita[rid];
+                    if (c != null && c > 0) custoPorProduto[ip.produtoId] = c;
                 });
             }
 

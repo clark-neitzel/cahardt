@@ -302,7 +302,15 @@ export default function RelatorioVendas() {
     const [sortDir, setSortDir] = useState('desc');
     const [colsVisiveis, setColsVisiveis] = useState(() => new Set(COLUNAS.map(c => c.id)));
     const [colOrdem, setColOrdem] = useState(() => COLUNAS.map(c => c.id));
-    const [filtrosAtivos, setFiltrosAtivos] = useState({});
+    const [filtrosAtivos, setFiltrosAtivos] = useState(() => {
+        const fa = saved.filtrosAtivos;
+        if (!fa || typeof fa !== 'object') return {};
+        const out = {};
+        for (const [k, arr] of Object.entries(fa)) {
+            if (Array.isArray(arr) && arr.length) out[k] = new Set(arr);
+        }
+        return out;
+    });
     const [dropdownAberto, setDropdownAberto] = useState(null);
     const dragColRef = useRef(null);
 
@@ -313,8 +321,12 @@ export default function RelatorioVendas() {
     }, [podeVerTodos]);
 
     useEffect(() => {
-        salvar({ dataVendaDe, dataVendaAte, dataCriacaoDe, dataCriacaoAte, vendedorId, situacaoCA, excluirBonificacao });
-    }, [dataVendaDe, dataVendaAte, dataCriacaoDe, dataCriacaoAte, vendedorId, situacaoCA, excluirBonificacao]);
+        const fa = {};
+        for (const [k, set] of Object.entries(filtrosAtivos)) {
+            if (set && set.size) fa[k] = [...set];
+        }
+        salvar({ dataVendaDe, dataVendaAte, dataCriacaoDe, dataCriacaoAte, vendedorId, situacaoCA, excluirBonificacao, filtrosAtivos: fa });
+    }, [dataVendaDe, dataVendaAte, dataCriacaoDe, dataCriacaoAte, vendedorId, situacaoCA, excluirBonificacao, filtrosAtivos]);
 
     const fetchRelatorio = useCallback(async () => {
         try {
@@ -330,7 +342,7 @@ export default function RelatorioVendas() {
             const { data } = await api.get('/pedidos/relatorio-vendas', { params });
             setPedidos(data.pedidos || []);
             setResumo(data.resumo || {});
-            setFiltrosAtivos({});
+            // mantém a seleção de filtros do usuário (não zera ao gerar de novo)
             setShowFiltros(false);
         } catch {
             toast.error('Erro ao gerar relatório de vendas.');
@@ -343,6 +355,7 @@ export default function RelatorioVendas() {
         setDataVendaDe(''); setDataVendaAte('');
         setDataCriacaoDe(''); setDataCriacaoAte('');
         setVendedorId(''); setSituacaoCA('FATURADO'); setExcluirBonificacao('true');
+        setFiltrosAtivos({});
         localStorage.removeItem(STORAGE_KEY);
     };
 
@@ -423,17 +436,23 @@ export default function RelatorioVendas() {
         dadosFiltrados.forEach(row => {
             const key = dimCols.map(c => String(row[c.field] ?? '')).join('\x00');
             if (!map.has(key)) {
-                const g = { _key: key, _count: 0, valorTotal: 0, quantidade: 0, valorUnit: null, custoTotal: 0, precoCusto: null };
+                const g = { _key: key, _count: 0, valorTotal: 0, quantidade: 0, valorUnit: null, custoTotal: 0, precoCusto: null, _temCusto: false };
                 dimCols.forEach(c => { g[c.field] = row[c.field]; });
                 map.set(key, g);
             }
             const g = map.get(key);
             g.valorTotal += Number(row.valorTotal || 0);
             g.quantidade += Number(row.quantidade || 0);
-            g.custoTotal += Number(row.custoTotal || 0);
+            if (row.custoTotal != null) { g.custoTotal += Number(row.custoTotal); g._temCusto = true; }
             g._count += 1;
         });
         const result = [...map.values()];
+        // Custo unitário do grupo = custo total / quantidade (constante por produto).
+        // Sem nenhum custo no grupo → mostra "-" em vez de R$ 0,00.
+        result.forEach(g => {
+            if (!g._temCusto) { g.custoTotal = null; g.precoCusto = null; }
+            else g.precoCusto = g.quantidade > 0 ? g.custoTotal / g.quantidade : null;
+        });
         const col = COLUNAS.find(c => c.id === sortCol);
         if (col && colsVisiveis.has(col.id)) {
             result.sort((a, b) => {
