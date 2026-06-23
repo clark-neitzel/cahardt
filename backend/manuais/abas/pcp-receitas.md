@@ -19,6 +19,7 @@ Uma receita sempre produz um item do PCP (PA = Produto Acabado ou SUB = Subprodu
 - Ver detalhes de uma receita: composição, versão, rendimento, perda, vigência
 - Editar receita (gera nova versão automática com registro de motivo)
 - Clonar uma receita para criar uma variação
+- Ver o **custo** da receita: custo total e custo por unidade (por KG), calculado automaticamente
 - Simular o escalonamento (calcular ingredientes para qualquer quantidade)
 - Ver histórico de versões e o que mudou em cada uma
 - Imprimir a receita em folha A4 para a cozinha (letra grande, ingredientes por etapa)
@@ -73,6 +74,21 @@ Uma receita sempre produz um item do PCP (PA = Produto Acabado ou SUB = Subprodu
 2. Digite o nome da nova receita.
 3. O sistema cria uma cópia com um novo subproduto intermediário.
 4. A nova receita abre no modo de edição para você ajustar.
+
+### Ver o custo da receita
+
+Na tela de detalhe da receita o sistema mostra automaticamente:
+
+- **Custo Total da Receita**: soma do custo de cada ingrediente (custo unitário × quantidade usada).
+- **Custo por unidade (por KG)**: custo total dividido pelo rendimento, já **descontada a perda padrão** (se houver). Ex.: rendimento 100 KG com 5% de perda → o custo é dividido por 95 KG.
+- Na tabela de componentes aparecem duas colunas novas: **Custo Unit.** (custo de 1 unidade do ingrediente) e **Custo** (custo daquele ingrediente na receita).
+
+**De onde vem o custo de cada ingrediente:**
+
+- **Matéria-prima / embalagem (MP, EMB)**: usa o **custo médio do Conta Azul** do produto. Se o CA ainda não tiver custo, usa o **custo manual** digitado no cadastro do produto (aba Produtos → abrir o produto → campo "Custo Manual"). Assim que o CA passar a ter custo, o do CA assume automaticamente.
+- **Subproduto (SUB)**: o custo é calculado **a partir da própria receita do subproduto** — custo da receita dele dividido pelo rendimento dele (custo por KG). Esse valor é multiplicado pela quantidade usada. Funciona em **cascata**: uma receita usa o custo por KG do subproduto, que por sua vez vem da receita dele, e assim por diante.
+
+> Se aparecer "sem custo" em algum ingrediente (ou um aviso amarelo), é porque aquele produto não tem custo no CA nem custo manual, ou o subproduto ainda não tem receita ativa. Cadastre o custo para o total ficar completo.
 
 ### Simular o escalonamento
 

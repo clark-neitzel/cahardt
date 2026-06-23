@@ -464,6 +464,113 @@ const pcpReceitaService = {
             },
             orderBy: { versao: 'desc' }
         });
+    },
+
+    // Calcula o custo de uma receita (recursivo para subprodutos).
+    // Fonte do custo de cada ingrediente:
+    //  - MP/EMB/PA: custoMedio do produto (Conta Azul); se não houver, custoManual do produto; senão custoUnitario do item PCP.
+    //  - SUB: custo por unidade da receita ATIVA do subproduto (custoTotal ÷ rendimento líquido), calculado recursivamente.
+    // Custo por unidade da receita = custoTotal ÷ (rendimentoBase já descontada a perda %).
+    calcularCusto: async (receitaId, _visitados = new Set()) => {
+        // Proteção contra ciclo (SUB que se referencia em cascata)
+        if (_visitados.has(receitaId)) {
+            return { receitaId, custoTotal: 0, custoPorUnidade: 0, rendimentoBase: 0, rendimentoLiquido: 0, perdaPercentual: 0, temCustoFaltando: true, ciclo: true, itens: [] };
+        }
+        const visitados = new Set(_visitados);
+        visitados.add(receitaId);
+
+        const receita = await prisma.receita.findUnique({
+            where: { id: receitaId },
+            include: {
+                itemPcp: { select: { id: true, nome: true, unidade: true, tipo: true } },
+                itens: {
+                    include: {
+                        itemPcp: {
+                            select: {
+                                id: true, nome: true, codigo: true, tipo: true, unidade: true,
+                                custoUnitario: true, produtoId: true,
+                                produto: { select: { custoMedio: true, custoManual: true } }
+                            }
+                        }
+                    },
+                    orderBy: [{ ordem: 'asc' }, { ordemEtapa: 'asc' }]
+                }
+            }
+        });
+        if (!receita) throw new Error('Receita não encontrada');
+
+        let custoTotal = 0;
+        let temCustoFaltando = false;
+        const itensCusto = [];
+
+        for (const item of receita.itens) {
+            const ip = item.itemPcp;
+            let custoUnitario = 0;
+            let origem = 'manual';
+
+            if (ip?.tipo === 'SUB') {
+                const sub = await prisma.receita.findFirst({
+                    where: {
+                        itemPcpId: ip.id,
+                        status: 'ativa',
+                        dataInicioVigencia: { lte: new Date() },
+                        OR: [{ dataFimVigencia: null }, { dataFimVigencia: { gte: new Date() } }]
+                    },
+                    orderBy: { versao: 'desc' },
+                    select: { id: true }
+                });
+                if (sub) {
+                    const custoSub = await pcpReceitaService.calcularCusto(sub.id, visitados);
+                    custoUnitario = custoSub.custoPorUnidade;
+                    origem = 'receita';
+                    if (custoSub.temCustoFaltando) temCustoFaltando = true;
+                } else if (ip.custoUnitario != null) {
+                    custoUnitario = parseFloat(ip.custoUnitario);
+                    origem = 'manual';
+                } else {
+                    temCustoFaltando = true; // SUB sem receita ativa e sem custo manual
+                }
+            } else {
+                const ca = ip?.produto?.custoMedio != null ? parseFloat(ip.produto.custoMedio) : 0;
+                if (ca > 0) {
+                    custoUnitario = ca;
+                    origem = 'ca';
+                } else {
+                    const manualProd = ip?.produto?.custoManual != null ? parseFloat(ip.produto.custoManual) : 0;
+                    const manualItem = ip?.custoUnitario != null ? parseFloat(ip.custoUnitario) : 0;
+                    custoUnitario = manualProd > 0 ? manualProd : manualItem;
+                    origem = 'manual';
+                    if (!(custoUnitario > 0)) temCustoFaltando = true;
+                }
+            }
+
+            const qtd = parseFloat(item.quantidade) || 0;
+            const custoItem = custoUnitario * qtd;
+            custoTotal += custoItem;
+            itensCusto.push({
+                itemPcpId: ip?.id,
+                custoUnitario: Math.round(custoUnitario * 10000) / 10000,
+                custoTotal: Math.round(custoItem * 10000) / 10000,
+                origem
+            });
+        }
+
+        const rendimentoBase = parseFloat(receita.rendimentoBase) || 0;
+        const perda = receita.perdaPercentual != null ? parseFloat(receita.perdaPercentual) : 0;
+        const rendimentoLiquido = rendimentoBase > 0 ? rendimentoBase * (1 - perda / 100) : 0;
+        const custoPorUnidade = rendimentoLiquido > 0 ? custoTotal / rendimentoLiquido : 0;
+
+        return {
+            receitaId: receita.id,
+            unidade: receita.itemPcp?.unidade || null,
+            rendimentoBase,
+            perdaPercentual: perda,
+            rendimentoLiquido: Math.round(rendimentoLiquido * 1000) / 1000,
+            custoTotal: Math.round(custoTotal * 10000) / 10000,
+            custoPorUnidade: Math.round(custoPorUnidade * 10000) / 10000,
+            temCustoFaltando,
+            itens: itensCusto
+        };
     }
 };
 

@@ -12,6 +12,7 @@ const pcpReceitaService = {
     excluir: (id) => api.delete(`/pcp/receitas/${id}`).then(r => r.data),
     historico: (itemPcpId) => api.get(`/pcp/receitas/historico/${itemPcpId}`).then(r => r.data),
     logs: (id) => api.get(`/pcp/receitas/${id}/logs`).then(r => r.data),
+    calcularCusto: (id) => api.get(`/pcp/receitas/${id}/custo`).then(r => r.data),
 };
 
 export default pcpReceitaService;

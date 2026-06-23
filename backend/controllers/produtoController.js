@@ -104,7 +104,7 @@ const produtoController = {
             // Whitelist: apenas campos gerenciados localmente
             // 'unidade' é editável no app e NÃO é mais sobrescrita pelo sync do CA
             const CAMPOS_PERMITIDOS = [
-                'ativo', 'descricao', 'estoqueMinimo', 'unidade',
+                'ativo', 'descricao', 'estoqueMinimo', 'unidade', 'custoManual',
                 'categoriaProdutoId', 'produtoSubstitutoId',
                 'permiteRecomendacao', 'prioridadeRecomendacao'
             ];
@@ -116,6 +116,11 @@ const produtoController = {
             if (data.unidade !== undefined) {
                 data.unidade = String(data.unidade).trim().substring(0, 10);
                 if (!data.unidade) delete data.unidade;
+            }
+            // Custo manual: aceita número ou vazio (null). Usado só quando o CA não tem custo.
+            if (data.custoManual !== undefined) {
+                const n = parseFloat(data.custoManual);
+                data.custoManual = Number.isFinite(n) && n >= 0 ? n : null;
             }
 
             const produto = await prisma.produto.update({

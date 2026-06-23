@@ -53,6 +53,20 @@ router.get('/:id/logs', async (req, res) => {
     }
 });
 
+// GET /api/pcp/receitas/:id/custo — cálculo de custo (recursivo p/ subprodutos)
+router.get('/:id/custo', async (req, res) => {
+    try {
+        const permissoes = await getPermsFromDB(req.user.id);
+        if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
+
+        const custo = await pcpReceitaService.calcularCusto(req.params.id);
+        return res.json(custo);
+    } catch (err) {
+        console.error('[PCP Receitas] Erro custo:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/pcp/receitas/:id — detalhe com itens
 router.get('/:id', async (req, res) => {
     try {

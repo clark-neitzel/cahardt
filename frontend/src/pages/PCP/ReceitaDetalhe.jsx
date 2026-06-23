@@ -52,6 +52,12 @@ function fmtPerda(n) {
     return v.toFixed(2).replace('.', ',');
 }
 
+function fmtMoeda(n, casas = 2) {
+    const v = parseFloat(n);
+    if (Number.isNaN(v)) return '—';
+    return `R$ ${v.toFixed(casas).replace('.', ',')}`;
+}
+
 function montarHtmlImpressao(receita) {
     const itens = receita.itens || [];
 
@@ -194,9 +200,12 @@ export default function ReceitaDetalhe() {
     const [logs, setLogs] = useState([]);
     const [showHistorico, setShowHistorico] = useState(false);
     const [itensMap, setItensMap] = useState({});
+    const [custo, setCusto] = useState(null);
 
     useEffect(() => {
         setLoading(true);
+        setCusto(null);
+        pcpReceitaService.calcularCusto(id).then(setCusto).catch(() => setCusto(null));
         pcpReceitaService.buscarPorId(id)
             .then(async (r) => {
                 setReceita(r);
@@ -303,6 +312,32 @@ export default function ReceitaDetalhe() {
                         </p>
                     </div>
                 </div>
+
+                {/* Resumo de custo */}
+                <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
+                    <div className="rounded-lg bg-gray-50 px-4 py-3">
+                        <p className="text-xs text-gray-400">Custo Total da Receita</p>
+                        <p className="text-lg font-semibold text-gray-800">
+                            {custo ? fmtMoeda(custo.custoTotal) : '...'}
+                        </p>
+                    </div>
+                    <div className="rounded-lg bg-emerald-50 px-4 py-3">
+                        <p className="text-xs text-emerald-700">Custo por {receita.itemPcp?.unidade || 'unidade'}</p>
+                        <p className="text-lg font-bold text-emerald-800">
+                            {custo ? fmtMoeda(custo.custoPorUnidade, 4) : '...'}
+                        </p>
+                        {custo && custo.perdaPercentual > 0 && (
+                            <p className="text-[11px] text-emerald-600 mt-0.5">
+                                já com perda de {fmtPerda(custo.perdaPercentual)}% (rende {fmtQtd(custo.rendimentoLiquido)} {receita.itemPcp?.unidade})
+                            </p>
+                        )}
+                    </div>
+                </div>
+                {custo?.temCustoFaltando && (
+                    <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        Alguns itens estão sem custo cadastrado — o valor acima pode estar incompleto. Cadastre o custo do produto (no Conta Azul ou manualmente no app) ou crie a receita do subproduto.
+                    </p>
+                )}
 
                 {receita.observacoes && (
                     <p className="text-sm text-gray-500 mt-3 pt-3 border-t border-gray-100">{receita.observacoes}</p>
@@ -520,33 +555,53 @@ export default function ReceitaDetalhe() {
                             <th className="text-center px-3 py-2 font-medium text-gray-600">Tipo</th>
                             <th className="text-right px-3 py-2 font-medium text-gray-600">Quantidade</th>
                             <th className="text-center px-3 py-2 font-medium text-gray-600">Unidade</th>
+                            <th className="text-right px-3 py-2 font-medium text-gray-600">Custo Unit.</th>
+                            <th className="text-right px-3 py-2 font-medium text-gray-600">Custo</th>
                             <th className="text-center px-3 py-2 font-medium text-gray-600">Etapa</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {receita.itens?.map(item => (
-                            <tr key={item.id} className="hover:bg-gray-50">
-                                <td className="px-3 py-2">
-                                    <span className="font-medium">{item.itemPcp?.nome}</span>
-                                    <span className="ml-2 text-xs text-gray-400">{item.itemPcp?.codigo}</span>
-                                </td>
-                                <td className="px-3 py-2 text-center">
-                                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${TIPO_CORES[item.itemPcp?.tipo]}`}>
-                                        {item.tipo}
-                                    </span>
-                                </td>
-                                <td className="px-3 py-2 text-right font-mono">
-                                    {parseFloat(item.quantidade).toFixed(3)}
-                                </td>
-                                <td className="px-3 py-2 text-center text-gray-500">
-                                    {item.itemPcp?.unidade}
-                                </td>
-                                <td className="px-3 py-2 text-center text-gray-400 text-xs">
-                                    {item.ordemEtapa || '—'}
-                                </td>
-                            </tr>
-                        ))}
+                        {receita.itens?.map((item, idx) => {
+                            const c = custo?.itens?.[idx];
+                            return (
+                                <tr key={item.id} className="hover:bg-gray-50">
+                                    <td className="px-3 py-2">
+                                        <span className="font-medium">{item.itemPcp?.nome}</span>
+                                        <span className="ml-2 text-xs text-gray-400">{item.itemPcp?.codigo}</span>
+                                    </td>
+                                    <td className="px-3 py-2 text-center">
+                                        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${TIPO_CORES[item.itemPcp?.tipo]}`}>
+                                            {item.tipo}
+                                        </span>
+                                    </td>
+                                    <td className="px-3 py-2 text-right font-mono">
+                                        {parseFloat(item.quantidade).toFixed(3)}
+                                    </td>
+                                    <td className="px-3 py-2 text-center text-gray-500">
+                                        {item.itemPcp?.unidade}
+                                    </td>
+                                    <td className="px-3 py-2 text-right font-mono text-gray-600">
+                                        {c ? (c.custoUnitario > 0 ? fmtMoeda(c.custoUnitario, 4) : <span className="text-amber-600">sem custo</span>) : '...'}
+                                    </td>
+                                    <td className="px-3 py-2 text-right font-mono font-medium text-gray-800">
+                                        {c ? fmtMoeda(c.custoTotal) : '...'}
+                                    </td>
+                                    <td className="px-3 py-2 text-center text-gray-400 text-xs">
+                                        {item.ordemEtapa || '—'}
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
+                    {custo && (
+                        <tfoot className="border-t-2 border-gray-200">
+                            <tr>
+                                <td colSpan={5} className="px-3 py-2 text-right font-medium text-gray-600">Custo total</td>
+                                <td className="px-3 py-2 text-right font-mono font-bold text-gray-900">{fmtMoeda(custo.custoTotal)}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    )}
                 </table>
             </div>
         </div>

@@ -35,8 +35,13 @@ Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativ
 1. Clique no nome ou na linha do produto
 2. A tela de detalhe abre
 3. Campos que vêm do Conta Azul (nome, código, preço, custo médio, categoria fiscal, EAN, NCM, peso, descrição) são **somente leitura** — não dá para editar no app, pois são sincronizados do CA
-4. Campos editáveis no app: **unidade de medida**, categoria comercial, produto substituto, prioridade de recomendação, permitir sugestão e imagens
+4. Campos editáveis no app: **unidade de medida**, **custo manual**, categoria comercial, produto substituto, prioridade de recomendação, permitir sugestão e imagens
 5. Clique em **Salvar** (botão da seção roxa "Inteligência Comercial") para gravar as alterações
+
+### Custo do produto (Custo Médio CA × Custo Manual)
+- **Custo Médio CA**: vem do Conta Azul, somente leitura. É o custo usado oficialmente (inclusive no cálculo de custo das receitas do PCP).
+- **Custo Manual**: campo editável no app, usado como **reserva** — só entra no lugar do custo do CA **quando o CA ainda não tem custo** para aquele produto. Assim que o Conta Azul passar a ter um custo, ele assume automaticamente e o manual fica de reserva.
+- Use o Custo Manual para produtos que ainda não têm custo no CA, para que o custo das receitas que usam esse produto não fique incompleto.
 
 ### Alterar a unidade de medida
 1. Abra o detalhe do produto
