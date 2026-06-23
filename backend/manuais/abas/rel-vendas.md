@@ -15,8 +15,10 @@ Relatório analítico de itens vendidos (não de pedidos, mas de linhas de produ
 ## O que dá pra fazer aqui
 
 - Filtrar por data de venda, data de criação, vendedor, situação no Conta Azul e tipo de pedido (excluindo bonificações)
+- **Filtrar por Condição de Pagamento (múltipla escolha)** direto no painel principal — escolha uma ou várias condições e o card "Filtrado" mostra na hora quantos itens e o valor total venderam naquelas condições
+- **Filtrar por Categoria Comercial (múltipla escolha)** direto no painel principal — escolha uma ou várias categorias de produto. As opções dos dois filtros vêm dos dados já carregados (precisa Gerar o relatório primeiro)
 - Ordenar qualquer coluna clicando no cabeçalho
-- Filtrar por valor de coluna (dropdown estilo Excel) — clicando no ícone de filtro em cada coluna
+- Filtrar por valor de coluna (dropdown estilo Excel) — clicando no ícone de filtro em cada coluna (Condição e Categoria também têm o filtro de coluna, sincronizado com os do painel)
 - Mostrar/ocultar colunas individualmente
 - Reordenar colunas arrastando-as
 - Agrupamento automático quando colunas de dimensão são ocultadas (ex: ocultar "Produto" soma quantidades)
@@ -35,6 +37,12 @@ Relatório analítico de itens vendidos (não de pedidos, mas de linhas de produ
 3. Ajuste as datas e demais filtros desejados
 4. Clique em **Gerar**
 5. A tabela aparece com uma linha por item vendido
+
+### Filtrar por Condição de Pagamento ou Categoria Comercial (painel principal)
+1. Gere o relatório uma vez (os filtros usam os dados carregados)
+2. Abra o painel de filtros (botão **Filtros**)
+3. Em **Condição de Pagamento** ou **Categoria Comercial**, abra a lista e marque uma ou mais opções (há busca e "Selecionar todas")
+4. O resultado é aplicado na hora — o card **Filtrado** mostra quantos itens e o valor total das opções escolhidas
 
 ### Filtrar por valor de coluna (estilo Excel)
 1. Clique no ícone de funil na coluna desejada (ex: "Cidade")
@@ -65,6 +73,7 @@ Relatório analítico de itens vendidos (não de pedidos, mas de linhas de produ
 | Vl Unit | Número | Não |
 | Valor | Número | Não |
 | Condição | Texto | Sim |
+| Categoria | Texto | Sim |
 | Tipo | Texto | Sim |
 | Cidade | Texto | Sim |
 | Bairro | Texto | Sim |

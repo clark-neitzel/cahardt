@@ -17,6 +17,7 @@ const COLUNAS = [
     { id: 'valorUnit', label: 'Vl Unit',   field: 'valorUnit',             tipo: 'numero', filtravel: false, align: 'right' },
     { id: 'valor',     label: 'Valor',     field: 'valorTotal',            tipo: 'numero', filtravel: false, align: 'right' },
     { id: 'condicao', label: 'Condição',  field: 'nomeCondicaoPagamento', tipo: 'texto',  filtravel: true  },
+    { id: 'categoria',label: 'Categoria', field: 'categoriaComercial',    tipo: 'texto',  filtravel: true  },
     { id: 'tipo',     label: 'Tipo',      field: 'tipo',                  tipo: 'texto',  filtravel: true  },
     { id: 'cidade',   label: 'Cidade',    field: 'cidade',                tipo: 'texto',  filtravel: true  },
     { id: 'bairro',   label: 'Bairro',    field: 'bairro',                tipo: 'texto',  filtravel: true  },
@@ -176,6 +177,84 @@ function FilterDropdown({ col, allData, selecao, onChange, onClose }) {
     );
 }
 
+// Multi-seleção para o painel principal (Condição de Pagamento, Categoria Comercial).
+// As opções vêm dos dados já carregados — garante que casam exatamente com a tabela.
+// Aplica direto no mesmo estado dos filtros de coluna (instantâneo, sem recarregar).
+function MultiSelectFiltro({ options, selecao, onChange, placeholderVazio }) {
+    const ref = useRef();
+    const [aberto, setAberto] = useState(false);
+    const [busca, setBusca] = useState('');
+
+    useEffect(() => {
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setAberto(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const todosMarcados = !selecao || selecao.size >= options.length;
+    const qtdSel = selecao ? selecao.size : options.length;
+
+    const visiveis = busca.trim()
+        ? options.filter(v => v.toLowerCase().includes(busca.toLowerCase()))
+        : options;
+
+    const toggle = (val) => {
+        const base = selecao ? new Set(selecao) : new Set(options.map(v => v.toLowerCase()));
+        const key = val.toLowerCase();
+        base.has(key) ? base.delete(key) : base.add(key);
+        onChange(base.size >= options.length ? undefined : base);
+    };
+
+    const toggleTodos = () => onChange(todosMarcados ? new Set() : undefined);
+
+    const resumo = options.length === 0
+        ? (placeholderVazio || 'Sem opções')
+        : todosMarcados ? 'Todas' : qtdSel === 0 ? 'Nenhuma' : `${qtdSel} de ${options.length}`;
+
+    return (
+        <div className="relative" ref={ref}>
+            <button type="button"
+                onClick={() => options.length && setAberto(a => !a)}
+                disabled={options.length === 0}
+                className={`w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-left flex items-center justify-between gap-2 ${options.length === 0 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-900 hover:border-gray-400'}`}>
+                <span className="truncate">{resumo}</span>
+                <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
+            </button>
+            {aberto && options.length > 0 && (
+                <div className="absolute top-full left-0 z-[100] bg-white border border-gray-200 rounded-lg shadow-2xl w-full min-w-[14rem] mt-1">
+                    <div className="p-2 border-b">
+                        <div className="relative">
+                            <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
+                            <input autoFocus type="text" value={busca} onChange={e => setBusca(e.target.value)}
+                                placeholder="Buscar..."
+                                className="w-full pl-7 pr-2 py-1.5 text-xs border rounded-md bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+                        </div>
+                    </div>
+                    <div className="px-3 py-1.5 border-b bg-gray-50 flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={todosMarcados} onChange={toggleTodos} className="rounded text-indigo-600" />
+                            <span className="text-xs font-medium text-gray-600">Selecionar todas</span>
+                        </label>
+                        <span className="text-[10px] text-gray-400">{qtdSel}/{options.length}</span>
+                    </div>
+                    <div className="max-h-56 overflow-y-auto py-1">
+                        {visiveis.length === 0 && <p className="text-xs text-gray-400 text-center py-4">Nenhum resultado</p>}
+                        {visiveis.map(val => (
+                            <label key={val} className="flex items-center gap-2 px-3 py-1.5 hover:bg-indigo-50 cursor-pointer">
+                                <input type="checkbox"
+                                    checked={!selecao || selecao.has(val.toLowerCase())}
+                                    onChange={() => toggle(val)}
+                                    className="rounded text-indigo-600 flex-shrink-0" />
+                                <span className="text-xs text-gray-700 truncate">{val || '(vazio)'}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 const PRINT_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
 .rv-print-container, .rv-print-container * { font-family: 'Courier Prime', 'Courier New', Courier, monospace !important; }
@@ -290,6 +369,19 @@ export default function RelatorioVendas() {
             return next;
         });
     };
+
+    // Opções dos multi-filtros do painel — derivadas dos dados carregados (casam exatamente com a tabela)
+    const opcoesDe = useCallback((field) => {
+        const map = new Map();
+        pedidos.forEach(r => {
+            const v = String(r[field] ?? '');
+            const k = v.toLowerCase();
+            if (!map.has(k)) map.set(k, v);
+        });
+        return [...map.values()].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+    }, [pedidos]);
+    const opcoesCondicao = useMemo(() => opcoesDe('nomeCondicaoPagamento'), [opcoesDe]);
+    const opcoesCategoria = useMemo(() => opcoesDe('categoriaComercial'), [opcoesDe]);
 
     const dadosFiltrados = useMemo(() => {
         let result = [...pedidos];
@@ -518,6 +610,26 @@ export default function RelatorioVendas() {
                                     <option value="true">Excluir bonificações</option>
                                     <option value="false">Incluir tudo</option>
                                 </select>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                            <div>
+                                <label className="text-xs text-gray-500 font-medium">Condição de Pagamento</label>
+                                <MultiSelectFiltro
+                                    options={opcoesCondicao}
+                                    selecao={filtrosAtivos.condicao}
+                                    onChange={(sel) => handleFiltroChange('condicao', sel)}
+                                    placeholderVazio="Gere o relatório primeiro"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-500 font-medium">Categoria Comercial</label>
+                                <MultiSelectFiltro
+                                    options={opcoesCategoria}
+                                    selecao={filtrosAtivos.categoria}
+                                    onChange={(sel) => handleFiltroChange('categoria', sel)}
+                                    placeholderVazio="Gere o relatório primeiro"
+                                />
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 mt-4">

@@ -772,7 +772,7 @@ const pedidoController = {
                             id: true,
                             valor: true,
                             quantidade: true,
-                            produto: { select: { nome: true } }
+                            produto: { select: { nome: true, categoriaProduto: { select: { nome: true } } } }
                         }
                     }
                 },
@@ -800,7 +800,7 @@ const pedidoController = {
                     vendedorTelefone: p.vendedor?.telefone || ''
                 };
                 if (p.itens.length === 0) {
-                    registros.push({ ...base, id: p.id, produto: '-', quantidade: 0, valorUnit: 0, valorTotal: 0 });
+                    registros.push({ ...base, id: p.id, produto: '-', categoriaComercial: 'Sem categoria', quantidade: 0, valorUnit: 0, valorTotal: 0 });
                 } else {
                     p.itens.forEach(item => {
                         const valorUnit = Number(item.valor || 0);
@@ -811,6 +811,7 @@ const pedidoController = {
                             ...base,
                             id: `${p.id}-${item.id}`,
                             produto: item.produto?.nome || '-',
+                            categoriaComercial: item.produto?.categoriaProduto?.nome || 'Sem categoria',
                             quantidade,
                             valorUnit,
                             valorTotal
