@@ -22,7 +22,7 @@ Relatório analítico de itens vendidos (não de pedidos, mas de linhas de produ
 - Mostrar/ocultar colunas individualmente
 - Reordenar colunas arrastando-as
 - Agrupamento automático quando colunas de dimensão são ocultadas (ex: ocultar "Produto" soma quantidades)
-- Ver o **preço de custo (Vl Custo)** e o **Custo Total** de cada produto — o custo é calculado a partir da **receita ativa cadastrada no PCP** (soma do custo dos ingredientes × quantidade, aplicando a perda %, dividido pelo rendimento). Produtos sem receita no PCP aparecem com "-"
+- Ver o **preço de custo (Vl Custo)** e o **Custo Total** de cada produto — o custo é calculado a partir da **receita ativa cadastrada no PCP** (soma do custo dos ingredientes × quantidade, aplicando a perda %, dividido pelo rendimento). Quando um ingrediente é um **subproduto (SUB)**, o custo dele é calculado pela própria receita, de forma recursiva, até chegar nas matérias-primas. Para o custo aparecer, as **matérias-primas (MP) precisam ter "custo unitário" preenchido no PCP**. Produtos sem receita (ou com matérias-primas sem custo) aparecem com "-"
 - Ver totais no rodapé: quantidade total, valor total, custo total
 - Imprimir o relatório em formato A4 (fonte monoespaciada, compacto)
 - Exportar para CSV

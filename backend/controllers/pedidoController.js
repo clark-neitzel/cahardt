@@ -779,42 +779,71 @@ const pedidoController = {
                 orderBy: { dataVenda: 'desc' }
             });
 
-            // Custo de produção por produto — a partir da receita ATIVA cadastrada no PCP.
-            // custo unitário = (Σ custoUnitario do ingrediente × quantidade na receita) × (1 + perda%) / rendimentoBase
+            // Custo de produção por produto, a partir das receitas ATIVAS do PCP.
+            // O custo de um item é:
+            //   - se tem receita ativa: (Σ custo do ingrediente × quantidade) × (1 + perda%) / rendimentoBase
+            //   - senão: o custo unitário cadastrado direto no item (MP/EMB)
+            // Subprodutos (SUB) são resolvidos RECURSIVAMENTE — o custo do SUB vem da receita dele.
             const produtoIds = [...new Set(
                 pedidos.flatMap(p => p.itens.map(i => i.produto?.id).filter(Boolean))
             )];
             const custoPorProduto = {};
             if (produtoIds.length > 0) {
-                const itensPcp = await prisma.itemPcp.findMany({
-                    where: { produtoId: { in: produtoIds } },
-                    select: {
-                        produtoId: true,
-                        receitasComoResultado: {
-                            where: { status: 'ativa' },
-                            orderBy: { versao: 'desc' },
-                            take: 1,
-                            select: {
-                                rendimentoBase: true,
-                                perdaPercentual: true,
-                                itens: { select: { quantidade: true, itemPcp: { select: { custoUnitario: true } } } }
+                const [itensPcp, receitas] = await Promise.all([
+                    prisma.itemPcp.findMany({ select: { id: true, produtoId: true, custoUnitario: true } }),
+                    prisma.receita.findMany({
+                        where: { status: 'ativa' },
+                        orderBy: { versao: 'desc' },
+                        select: {
+                            itemPcpId: true,
+                            rendimentoBase: true,
+                            perdaPercentual: true,
+                            itens: { select: { itemPcpId: true, quantidade: true } }
+                        }
+                    })
+                ]);
+
+                const custoUnitDireto = {};   // itemPcpId -> custo cadastrado (number|null)
+                const itemPcpPorProduto = {}; // produtoId  -> itemPcpId
+                itensPcp.forEach(ip => {
+                    custoUnitDireto[ip.id] = ip.custoUnitario != null ? Number(ip.custoUnitario) : null;
+                    if (ip.produtoId) itemPcpPorProduto[ip.produtoId] = ip.id;
+                });
+
+                const receitaPorItem = {};    // itemPcpId -> receita ativa mais recente (maior versão)
+                receitas.forEach(r => { if (!receitaPorItem[r.itemPcpId]) receitaPorItem[r.itemPcpId] = r; });
+
+                const memo = {};
+                const custoDoItem = (itemPcpId, visitando) => {
+                    if (itemPcpId in memo) return memo[itemPcpId];
+                    const receita = receitaPorItem[itemPcpId];
+                    let resultado = null;
+                    if (receita && !visitando.has(itemPcpId)) {
+                        const rend = Number(receita.rendimentoBase || 0);
+                        if (rend > 0) {
+                            visitando.add(itemPcpId);
+                            let soma = 0, algum = false;
+                            for (const ing of receita.itens) {
+                                const c = custoDoItem(ing.itemPcpId, visitando);
+                                if (c != null) { soma += c * Number(ing.quantidade || 0); algum = true; }
+                            }
+                            visitando.delete(itemPcpId);
+                            if (algum) {
+                                const perda = Number(receita.perdaPercentual || 0);
+                                resultado = (soma * (1 + perda / 100)) / rend;
                             }
                         }
                     }
-                });
-                itensPcp.forEach(ip => {
-                    const rec = ip.receitasComoResultado?.[0];
-                    if (!rec) return;
-                    const rend = Number(rec.rendimentoBase || 0);
-                    if (rend <= 0) return;
-                    let soma = 0, temCusto = false;
-                    rec.itens.forEach(it => {
-                        const cu = it.itemPcp?.custoUnitario;
-                        if (cu != null) { soma += Number(cu) * Number(it.quantidade || 0); temCusto = true; }
-                    });
-                    if (!temCusto) return;
-                    const perda = Number(rec.perdaPercentual || 0);
-                    custoPorProduto[ip.produtoId] = (soma * (1 + perda / 100)) / rend;
+                    if (resultado == null) resultado = custoUnitDireto[itemPcpId] ?? null;
+                    memo[itemPcpId] = resultado;
+                    return resultado;
+                };
+
+                produtoIds.forEach(pid => {
+                    const ipId = itemPcpPorProduto[pid];
+                    if (!ipId) return;
+                    const custo = custoDoItem(ipId, new Set());
+                    if (custo != null) custoPorProduto[pid] = custo;
                 });
             }
 
