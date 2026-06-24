@@ -53,7 +53,7 @@ export default function EtiquetaImprimir() {
 <head>
   <meta charset="UTF-8">
   <style>
-    @page { size: 80mm 100mm; margin: 0; }
+    @page { size: 80mm 100mm; margin: 2mm; }
     * { box-sizing: border-box; margin: 0; padding: 0;
         print-color-adjust: exact !important;
         -webkit-print-color-adjust: exact !important; }

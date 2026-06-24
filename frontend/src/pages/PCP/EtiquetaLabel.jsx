@@ -90,7 +90,7 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
     ].filter(r => r.always || r.raw);
 
     const style = {
-        width: '80mm', height: '100mm', fontSize: '6pt',
+        width: '76mm', height: '95mm', fontSize: '6pt',
         fontFamily: 'Arial, sans-serif', border: '0.4pt solid #000',
         padding: '1mm', boxSizing: 'border-box', lineHeight: 1.12,
         background: '#fff', color: '#000', overflow: 'hidden',
