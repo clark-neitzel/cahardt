@@ -151,6 +151,8 @@ function sanitize(body) {
         contemLactose:         Boolean(body.contemLactose),
         contemOvo:             Boolean(body.contemOvo),
         alergenos:             Array.isArray(body.alergenos) ? body.alergenos.filter(Boolean) : [],
+        especieCrustaceos:     body.especieCrustaceos   || null,
+        especiePeixes:         body.especiePeixes        || null,
         outrosAlergenos:       body.outrosAlergenos    || null,
         avisosRotulo:          body.avisosRotulo        || null,
         armazenamento:         body.armazenamento       || null,

@@ -67,7 +67,12 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
         }
     }, [et.codigoBarras]);
 
-    const alergenos = Array.isArray(et.alergenos) ? et.alergenos.filter(Boolean) : [];
+    // Alérgenos com espécie entre parênteses (RDC 26/2015) p/ crustáceos e peixes
+    const alergenos = (Array.isArray(et.alergenos) ? et.alergenos.filter(Boolean) : []).map(a => {
+        if (a === 'Crustáceos' && et.especieCrustaceos) return `${a} (${et.especieCrustaceos})`;
+        if (a === 'Peixes' && et.especiePeixes)         return `${a} (${et.especiePeixes})`;
+        return a;
+    });
     const peso = Number(et.pesoTabelaNutricional) || Number(et.pesoUnitario) || 0;
 
     // Linhas da tabela nutricional. dec = casas decimais, indent = nível de recuo.

@@ -1645,9 +1645,11 @@ model EtiquetaProduto {
   contemGluten    Boolean  @default(false) @map("contem_gluten")
   contemLactose   Boolean  @default(false) @map("contem_lactose")
   contemOvo       Boolean  @default(false) @map("contem_ovo")
-  alergenos       String[] @default([]) // lista RDC 26/2015 marcada (ex: ["Leite","Soja","Ovos"])
-  outrosAlergenos String?  @map("outros_alergenos")
-  avisosRotulo    String?  @map("avisos_rotulo")
+  alergenos        String[] @default([]) // lista RDC 26/2015 marcada (ex: ["Leite","Soja","Ovos"])
+  especieCrustaceos String? @map("especie_crustaceos") // nomes das espécies, ex: "camarão"
+  especiePeixes     String? @map("especie_peixes")     // nomes das espécies, ex: "tilápia"
+  outrosAlergenos  String?  @map("outros_alergenos")
+  avisosRotulo     String?  @map("avisos_rotulo")
 
   // Conservação
   armazenamento String?

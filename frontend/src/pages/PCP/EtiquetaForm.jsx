@@ -32,6 +32,8 @@ const VAZIO = {
     contemLactose: false,
     contemOvo: false,
     alergenos: [],
+    especieCrustaceos: '',
+    especiePeixes: '',
     outrosAlergenos: '',
     avisosRotulo: '',
     armazenamento: '',
@@ -83,6 +85,8 @@ export default function EtiquetaForm() {
                 ...et,
                 produtoId:    et.produtoId    ?? '',
                 alergenos:    Array.isArray(et.alergenos) ? et.alergenos : [],
+                especieCrustaceos: et.especieCrustaceos ?? '',
+                especiePeixes:     et.especiePeixes     ?? '',
                 outrosAlergenos: et.outrosAlergenos ?? '',
                 avisosRotulo:    et.avisosRotulo    ?? '',
                 armazenamento:   et.armazenamento   ?? '',
@@ -312,6 +316,18 @@ export default function EtiquetaForm() {
                         })}
                     </div>
 
+                    {/* Espécies (obrigatório p/ crustáceos e peixes pela RDC 26/2015) */}
+                    {(form.alergenos || []).includes('Crustáceos') && (
+                        <Campo label="Espécie(s) de Crustáceo">
+                            <input type="text" value={form.especieCrustaceos} onChange={e => set('especieCrustaceos', e.target.value)} className={inputCls} placeholder="Ex: camarão" />
+                        </Campo>
+                    )}
+                    {(form.alergenos || []).includes('Peixes') && (
+                        <Campo label="Espécie(s) de Peixe">
+                            <input type="text" value={form.especiePeixes} onChange={e => set('especiePeixes', e.target.value)} className={inputCls} placeholder="Ex: tilápia" />
+                        </Campo>
+                    )}
+
                     <Campo label="Aviso adicional no rótulo (ex: pode conter traços)">
                         <input type="text" value={form.avisosRotulo} onChange={e => set('avisosRotulo', e.target.value)} className={inputCls} placeholder="Pode conter traços: Leite, Soja, Ovos" />
                     </Campo>
@@ -320,7 +336,11 @@ export default function EtiquetaForm() {
                     <div className="mt-3 p-3 bg-gray-900 text-white rounded-lg text-xs font-bold uppercase leading-relaxed">
                         {form.contemGluten ? 'CONTÉM GLÚTEN' : 'NÃO CONTÉM GLÚTEN'}
                         {form.contemLactose && ' · CONTÉM LACTOSE'}
-                        {(form.alergenos || []).length > 0 && ` · ALÉRGICOS: CONTÉM ${(form.alergenos || []).join(', ').toUpperCase()}.`}
+                        {(form.alergenos || []).length > 0 && ` · ALÉRGICOS: CONTÉM ${(form.alergenos || []).map(a => {
+                            if (a === 'Crustáceos' && form.especieCrustaceos) return `${a} (${form.especieCrustaceos})`;
+                            if (a === 'Peixes' && form.especiePeixes) return `${a} (${form.especiePeixes})`;
+                            return a;
+                        }).join(', ').toUpperCase()}.`}
                         {form.avisosRotulo && ` ${form.avisosRotulo.toUpperCase()}`}
                     </div>
                 </section>

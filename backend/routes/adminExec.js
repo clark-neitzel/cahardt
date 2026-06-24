@@ -993,6 +993,8 @@ router.post('/import-etiquetas', async (req, res) => {
                     contemLactose:         Boolean(et.contemLactose),
                     contemOvo:             Boolean(et.contemOvo),
                     alergenos:             Array.isArray(et.alergenos) ? et.alergenos.filter(Boolean) : [],
+                    especieCrustaceos:     et.especieCrustaceos   || null,
+                    especiePeixes:         et.especiePeixes        || null,
                     outrosAlergenos:       et.outrosAlergenos    || null,
                     avisosRotulo:          et.avisosRotulo        || null,
                     armazenamento:         et.armazenamento       || null,
