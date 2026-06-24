@@ -105,6 +105,15 @@ const HomeRedirect = () => {
   return <DashboardVendedor />;
 };
 
+// Raiz do domínio: visitante (não logado) vê o site público de início;
+// funcionário logado é levado para o painel do sistema.
+const RootRoute = () => {
+  const { signed, loading } = useAuth();
+  if (loading) return <div className="p-8 text-center text-gray-500">Carregando...</div>;
+  if (!signed) return <HomeSite />;
+  return <HomeRedirect />;
+};
+
 // ── Sidebar helpers ──
 const SidebarItem = ({ to, icon: Icon, label, end }) => {
   const location = useLocation();
@@ -508,8 +517,8 @@ function App() {
 
               <Route path="/login" element={<Login />} />
 
-              {/* Dashboard / Tela Inicial */}
-              <Route path="/" element={<PrivateRoute><HomeRedirect /></PrivateRoute>} />
+              {/* Raiz: visitante vê o site público; logado vai pro painel */}
+              <Route path="/" element={<RootRoute />} />
 
               {/* Catálogo */}
               <Route path="/catalogo" element={<PrivateRoute tab="catalogo"><Catalogo /></PrivateRoute>} />
