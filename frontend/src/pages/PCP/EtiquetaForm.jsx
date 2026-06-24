@@ -4,6 +4,7 @@ import { ChevronLeft, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
 import produtoService from '../../services/produtoService';
+import { ALERGENOS_LISTA } from './EtiquetaLabel';
 
 const VAZIO = {
     produtoId: '',
@@ -28,7 +29,9 @@ const VAZIO = {
     codigoBarras: '',
     contemLeite: false,
     contemGluten: false,
+    contemLactose: false,
     contemOvo: false,
+    alergenos: [],
     outrosAlergenos: '',
     avisosRotulo: '',
     armazenamento: '',
@@ -79,6 +82,7 @@ export default function EtiquetaForm() {
                 ...VAZIO,
                 ...et,
                 produtoId:    et.produtoId    ?? '',
+                alergenos:    Array.isArray(et.alergenos) ? et.alergenos : [],
                 outrosAlergenos: et.outrosAlergenos ?? '',
                 avisosRotulo:    et.avisosRotulo    ?? '',
                 armazenamento:   et.armazenamento   ?? '',
@@ -264,29 +268,60 @@ export default function EtiquetaForm() {
                     </div>
                 </section>
 
-                {/* Alérgenos */}
+                {/* Glúten / Lactose / Alérgenos */}
                 <section className="bg-white rounded-xl border border-gray-200 p-5">
-                    <h2 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Alérgenos</h2>
-                    <div className="flex flex-wrap gap-4 mb-4">
-                        {[['contemLeite', 'Contém Leite'], ['contemGluten', 'Contém Glúten'], ['contemOvo', 'Contém Ovo']].map(([field, label]) => (
-                            <label key={field} className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={form[field]}
-                                    onChange={e => set(field, e.target.checked)}
-                                    className="w-4 h-4 rounded accent-indigo-600"
-                                />
-                                <span className="text-sm text-gray-700">{label}</span>
-                            </label>
-                        ))}
+                    <h2 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Glúten, Lactose e Alérgenos</h2>
+
+                    {/* Glúten e Lactose */}
+                    <div className="flex flex-wrap gap-6 mb-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={form.contemGluten} onChange={e => set('contemGluten', e.target.checked)} className="w-4 h-4 rounded accent-indigo-600" />
+                            <span className="text-sm text-gray-700">
+                                {form.contemGluten ? 'CONTÉM GLÚTEN' : 'NÃO CONTÉM GLÚTEN'}
+                                <span className="text-xs text-gray-400 ml-1">(sempre aparece na etiqueta)</span>
+                            </span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={form.contemLactose} onChange={e => set('contemLactose', e.target.checked)} className="w-4 h-4 rounded accent-indigo-600" />
+                            <span className="text-sm text-gray-700">
+                                Contém lactose
+                                <span className="text-xs text-gray-400 ml-1">(só aparece se marcado)</span>
+                            </span>
+                        </label>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Campo label="Outros Alérgenos">
-                            <input type="text" value={form.outrosAlergenos} onChange={e => set('outrosAlergenos', e.target.value)} className={inputCls} placeholder="Ex: Sim - frutos do mar" />
-                        </Campo>
-                        <Campo label="Aviso no Rótulo">
-                            <input type="text" value={form.avisosRotulo} onChange={e => set('avisosRotulo', e.target.value)} className={inputCls} placeholder="Pode conter traços: Leite, Soja, Ovos" />
-                        </Campo>
+
+                    {/* Lista de alérgenos (RDC 26/2015) */}
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Alérgicos — marque os que o produto contém</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 mb-4 border border-gray-200 rounded-lg p-3 bg-gray-50">
+                        {ALERGENOS_LISTA.map(nome => {
+                            const marcado = (form.alergenos || []).includes(nome);
+                            return (
+                                <label key={nome} className="flex items-center gap-1.5 cursor-pointer text-sm hover:bg-white rounded px-1 py-0.5">
+                                    <input
+                                        type="checkbox"
+                                        checked={marcado}
+                                        onChange={e => {
+                                            const atual = form.alergenos || [];
+                                            set('alergenos', e.target.checked ? [...atual, nome] : atual.filter(a => a !== nome));
+                                        }}
+                                        className="w-4 h-4 rounded accent-indigo-600"
+                                    />
+                                    <span className="text-gray-700">{nome}</span>
+                                </label>
+                            );
+                        })}
+                    </div>
+
+                    <Campo label="Aviso adicional no rótulo (ex: pode conter traços)">
+                        <input type="text" value={form.avisosRotulo} onChange={e => set('avisosRotulo', e.target.value)} className={inputCls} placeholder="Pode conter traços: Leite, Soja, Ovos" />
+                    </Campo>
+
+                    {/* Preview do bloco */}
+                    <div className="mt-3 p-3 bg-gray-900 text-white rounded-lg text-xs font-bold uppercase leading-relaxed">
+                        {form.contemGluten ? 'CONTÉM GLÚTEN' : 'NÃO CONTÉM GLÚTEN'}
+                        {form.contemLactose && ' · CONTÉM LACTOSE'}
+                        {(form.alergenos || []).length > 0 && ` · ALÉRGICOS: CONTÉM ${(form.alergenos || []).join(', ').toUpperCase()}.`}
+                        {form.avisosRotulo && ` ${form.avisosRotulo.toUpperCase()}`}
                     </div>
                 </section>
 

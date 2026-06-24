@@ -990,7 +990,9 @@ router.post('/import-etiquetas', async (req, res) => {
                     codigoBarras:          et.codigoBarras       || null,
                     contemLeite:           Boolean(et.contemLeite),
                     contemGluten:          Boolean(et.contemGluten),
+                    contemLactose:         Boolean(et.contemLactose),
                     contemOvo:             Boolean(et.contemOvo),
+                    alergenos:             Array.isArray(et.alergenos) ? et.alergenos.filter(Boolean) : [],
                     outrosAlergenos:       et.outrosAlergenos    || null,
                     avisosRotulo:          et.avisosRotulo        || null,
                     armazenamento:         et.armazenamento       || null,
@@ -1013,6 +1015,30 @@ router.post('/import-etiquetas', async (req, res) => {
         return res.json({ ok: true, criados: criados.length, atualizados: atualizados.length, erros, detalhe: { criados, atualizados } });
     } catch (err) {
         console.error('[import-etiquetas]', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/admin-exec/migrar-alergenos
+// Converte os booleans antigos (contemLeite/contemOvo) para a lista alergenos[]
+router.post('/migrar-alergenos', async (req, res) => {
+    try {
+        const todas = await prisma.etiquetaProduto.findMany({
+            select: { id: true, nomeProduto: true, contemLeite: true, contemOvo: true, alergenos: true }
+        });
+        const atualizadas = [];
+        for (const et of todas) {
+            if (Array.isArray(et.alergenos) && et.alergenos.length > 0) continue; // já tem
+            const lista = [];
+            if (et.contemLeite) lista.push('Leite');
+            if (et.contemOvo)   lista.push('Ovos');
+            if (lista.length === 0) continue;
+            await prisma.etiquetaProduto.update({ where: { id: et.id }, data: { alergenos: lista } });
+            atualizadas.push({ nome: et.nomeProduto, alergenos: lista });
+        }
+        return res.json({ ok: true, atualizadas: atualizadas.length, detalhe: atualizadas });
+    } catch (err) {
+        console.error('[migrar-alergenos]', err.message);
         return res.status(500).json({ error: err.message });
     }
 });

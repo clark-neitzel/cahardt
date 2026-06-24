@@ -1641,11 +1641,13 @@ model EtiquetaProduto {
   codigoBarras         String? @map("codigo_barras")
 
   // Alérgenos
-  contemLeite     Boolean @default(false) @map("contem_leite")
-  contemGluten    Boolean @default(false) @map("contem_gluten")
-  contemOvo       Boolean @default(false) @map("contem_ovo")
-  outrosAlergenos String? @map("outros_alergenos")
-  avisosRotulo    String? @map("avisos_rotulo")
+  contemLeite     Boolean  @default(false) @map("contem_leite")
+  contemGluten    Boolean  @default(false) @map("contem_gluten")
+  contemLactose   Boolean  @default(false) @map("contem_lactose")
+  contemOvo       Boolean  @default(false) @map("contem_ovo")
+  alergenos       String[] @default([]) // lista RDC 26/2015 marcada (ex: ["Leite","Soja","Ovos"])
+  outrosAlergenos String?  @map("outros_alergenos")
+  avisosRotulo    String?  @map("avisos_rotulo")
 
   // Conservação
   armazenamento String?

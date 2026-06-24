@@ -4,6 +4,15 @@ import JsBarcode from 'jsbarcode';
 // SKU do catálogo tem prioridade; cai para o código interno se não vinculado
 export const codExibir = (et) => et.produto?.codigo || et.codigoProduto;
 
+// Lista oficial de alérgenos (RDC 26/2015 / IN 75/2020) para os checks do formulário
+export const ALERGENOS_LISTA = [
+    'Trigo', 'Centeio', 'Cevada', 'Aveia',
+    'Crustáceos', 'Ovos', 'Peixes', 'Amendoim', 'Soja', 'Leite',
+    'Amêndoa', 'Avelã', 'Castanha-de-caju', 'Castanha-do-pará',
+    'Macadâmia', 'Nozes', 'Pecã', 'Pistache', 'Pinoli', 'Castanhas',
+    'Látex natural',
+];
+
 // ─── Parsers de valores nutricionais ──────────────────────────────────────────
 // Valores armazenados como "34kcal (2% VD)", "5,7g (2% VD)", "147mg (6% VD)"
 
@@ -58,13 +67,7 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
         }
     }, [et.codigoBarras]);
 
-    const alergenos = [];
-    if (et.contemLeite)  alergenos.push('leite');
-    if (et.contemGluten) alergenos.push('glúten');
-    if (et.contemOvo)    alergenos.push('ovos');
-    if (et.outrosAlergenos && et.outrosAlergenos.toLowerCase() !== 'não')
-        alergenos.push(et.outrosAlergenos);
-
+    const alergenos = Array.isArray(et.alergenos) ? et.alergenos.filter(Boolean) : [];
     const peso = Number(et.pesoTabelaNutricional) || Number(et.pesoUnitario) || 0;
 
     // Linhas da tabela nutricional. dec = casas decimais, indent = nível de recuo.
@@ -93,13 +96,13 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
 
     return (
         <div style={style}>
-            {/* Nome do produto (tarja preta opcional) */}
-            <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'9.5pt', borderBottom:'0.5pt solid #000', paddingBottom:'1mm', marginBottom:'1mm', lineHeight:1.2, background: et.tarjaPreta ? '#000' : 'transparent', color: et.tarjaPreta ? '#fff' : '#000', margin: et.tarjaPreta ? '-1.5mm -1.5mm 1mm -1.5mm' : undefined, padding: et.tarjaPreta ? '1.5mm' : undefined }}>
+            {/* Nome do produto (tarja preta opcional) — sem linha separadora */}
+            <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'9.5pt', marginBottom:'0.5mm', lineHeight:1.2, background: et.tarjaPreta ? '#000' : 'transparent', color: et.tarjaPreta ? '#fff' : '#000', margin: et.tarjaPreta ? '-1.5mm -1.5mm 0.5mm -1.5mm' : undefined, padding: et.tarjaPreta ? '1.5mm' : undefined }}>
                 {et.nomeProduto}
             </div>
 
-            {/* Código + peso líquido */}
-            <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'7pt', borderBottom:'0.5pt solid #000', paddingBottom:'0.8mm', marginBottom:'0.8mm' }}>
+            {/* Código + peso líquido — sem linha separadora */}
+            <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'7pt', marginBottom:'0.8mm' }}>
                 CÓD.{codExibir(et)}&nbsp;&nbsp;&nbsp;PESO LÍQUIDO {pesoLiquidoStr(et)}
             </div>
 
@@ -141,23 +144,23 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
                 </div>
             </div>
 
-            {/* Ingredientes + Alérgicos (inline) */}
+            {/* Ingredientes (sempre maiúsculo) + declarações de alérgenos */}
             <div style={{ border:'0.5pt solid #000', padding:'0.5mm 1mm', marginBottom:'0.8mm', fontSize:'6pt', lineHeight:1.3 }}>
-                <span style={{ fontWeight:'bold' }}>INGREDIENTES:</span> {et.composicao}
-                {alergenos.length > 0 && (
-                    <> <span style={{ fontWeight:'bold' }}>ALÉRGICOS:</span> Contém {alergenos.join(', ')}.{et.avisosRotulo ? ` ${et.avisosRotulo}` : ''}</>
-                )}
-                {!alergenos.length && et.avisosRotulo && (
-                    <> <span style={{ fontWeight:'bold' }}>ALÉRGICOS:</span> {et.avisosRotulo}</>
-                )}
+                <span style={{ fontWeight:'bold' }}>INGREDIENTES:</span> {String(et.composicao || '').toUpperCase()}
+                {/* Bloco Glúten → Lactose → Alérgicos, sempre MAIÚSCULO e NEGRITO */}
+                <div style={{ fontWeight:'bold', marginTop:'0.5mm' }}>
+                    {et.contemGluten ? 'CONTÉM GLÚTEN' : 'NÃO CONTÉM GLÚTEN'}
+                    {et.contemLactose && <> · CONTÉM LACTOSE</>}
+                    {alergenos.length > 0 && (
+                        <> · ALÉRGICOS: CONTÉM {alergenos.join(', ').toUpperCase()}.</>
+                    )}
+                    {et.avisosRotulo && <> {String(et.avisosRotulo).toUpperCase()}</>}
+                </div>
             </div>
 
-            {/* Modo de preparo */}
-            <div style={{ border:'0.5pt solid #000', textAlign:'center', fontWeight:'bold', fontSize:'6.5pt', padding:'0.5mm', borderBottom:'none' }}>
-                MODO DE PREPARO
-            </div>
-            <div style={{ border:'0.5pt solid #000', borderTop:'none', padding:'0.5mm 1mm', marginBottom:'0.8mm', fontSize:'6pt', lineHeight:1.25 }}>
-                {et.modoPreparo}
+            {/* Modo de preparo (inline para economizar espaço) */}
+            <div style={{ border:'0.5pt solid #000', padding:'0.5mm 1mm', marginBottom:'0.8mm', fontSize:'6pt', lineHeight:1.25 }}>
+                <span style={{ fontWeight:'bold' }}>MODO PREPARO:</span> {et.modoPreparo}
             </div>
 
             {/* Conservação */}
