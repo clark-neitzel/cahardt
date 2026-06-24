@@ -5,7 +5,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Bitter:ital,wght@0,400;0,500;0,600;1,400&family=Kaushan+Script&display=swap');
 
 /* .cg é o container de rolagem — isola o sticky do overflow-x:hidden global do app */
-.cg{ height:100dvh; overflow-y:auto; overflow-x:hidden; }
+/* color-scheme:dark — o site é escuro por design; impede o Android Chrome de
+   "forçar tema escuro" por cima (que invertia o mapa/cores). */
+.cg{ height:100dvh; overflow-y:auto; overflow-x:hidden; color-scheme:dark; }
 
 .cg{
   --ink:#191b17; --ink-2:#20231e; --ink-3:#2b2f28;
