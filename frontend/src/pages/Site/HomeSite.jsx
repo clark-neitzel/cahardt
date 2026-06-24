@@ -92,6 +92,7 @@ export default function HomeSite() {
             <a href="#caminhos" className="hide-sm">Produtos</a>
             <a href="#historia" className="hide-sm">A Hardt</a>
             <a href="#contato" className="hide-sm">Contato</a>
+            <Link to="/login" className="btn btn-ghost btn-sm">Área Restrita</Link>
           </nav>
         </div>
       </header>
