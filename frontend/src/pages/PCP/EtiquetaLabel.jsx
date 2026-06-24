@@ -117,10 +117,12 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
                 <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'6.5pt', borderBottom:'0.4pt solid #000', padding:'0.2mm 0' }}>
                     INFORMAÇÃO NUTRICIONAL
                 </div>
-                <div style={{ fontSize:'5.5pt', padding:'0.3mm 0.8mm', borderBottom:'0.4pt solid #000', lineHeight:1.2 }}>
+                <div style={{ fontSize:'5.5pt', padding:'0.3mm 0.8mm', lineHeight:1.2 }}>
                     Porções por embalagem: {et.quantidadeEmbalagem} porções<br />
                     Porção {peso} g (1 unidade)
                 </div>
+                {/* Linha grossa recuada (padrão da tabela nutricional) */}
+                <div style={{ borderTop:'1.2pt solid #000', margin:'0 1mm' }} />
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'5.5pt' }}>
                     <thead>
                         <tr style={{ borderBottom:'0.3pt solid #000', fontWeight:'bold' }}>
@@ -152,7 +154,7 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
 
             {/* Ingredientes (sempre maiúsculo) + declarações de alérgenos */}
             <div style={{ border:'0.4pt solid #000', padding:'0.4mm 0.8mm', marginBottom:'0.5mm', fontSize:'5.5pt', lineHeight:1.2 }}>
-                <span style={{ fontWeight:'bold' }}>INGREDIENTES:</span> {String(et.composicao || '').toUpperCase()}
+                <span style={{ fontWeight:'bold' }}>INGREDIENTES:</span> {String(et.composicao || '').toLowerCase()}
                 {/* Bloco Glúten → Lactose → Alérgicos, sempre MAIÚSCULO e NEGRITO */}
                 <span style={{ fontWeight:'bold' }}>
                     {' '}{et.contemGluten ? 'CONTÉM GLÚTEN' : 'NÃO CONTÉM GLÚTEN'}
