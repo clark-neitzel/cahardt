@@ -974,6 +974,8 @@ router.post('/import-etiquetas', async (req, res) => {
                     pesoTabelaNutricional: parseInt(et.pesoTabelaNutricional) || 0,
                     valorEnergetico:       et.valorEnergetico   || null,
                     carboidratos:          et.carboidratos       || null,
+                    acucaresTotais:        et.acucaresTotais      || null,
+                    acucaresAdicionados:   et.acucaresAdicionados || null,
                     proteinas:             et.proteinas          || null,
                     gordurasTotais:        et.gordurasTotais     || null,
                     gordurasSaturadas:     et.gordurasSaturadas  || null,

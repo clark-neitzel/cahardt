@@ -1622,14 +1622,16 @@ model EtiquetaProduto {
   pesoTabelaNutricional Int    @map("peso_tabela_nutricional") // gramas (porção)
 
   // Informação Nutricional (texto com unidade + %VD, ex: "34kcal (2% VD)")
-  valorEnergetico   String? @map("valor_energetico")
-  carboidratos      String?
-  proteinas         String?
-  gordurasTotais    String? @map("gorduras_totais")
-  gordurasSaturadas String? @map("gorduras_saturadas")
-  gordurasTrans     String? @map("gorduras_trans")
-  fibraAlimentar    String? @map("fibra_alimentar")
-  sodio             String?
+  valorEnergetico     String? @map("valor_energetico")
+  carboidratos        String?
+  acucaresTotais      String? @map("acucares_totais")
+  acucaresAdicionados String? @map("acucares_adicionados")
+  proteinas           String?
+  gordurasTotais      String? @map("gorduras_totais")
+  gordurasSaturadas   String? @map("gorduras_saturadas")
+  gordurasTrans       String? @map("gorduras_trans")
+  fibraAlimentar      String? @map("fibra_alimentar")
+  sodio               String?
 
   // Conteúdo do rótulo
   quantidadeEmbalagem  Int     @map("quantidade_embalagem")

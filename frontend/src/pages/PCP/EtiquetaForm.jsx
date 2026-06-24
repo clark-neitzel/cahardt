@@ -13,6 +13,8 @@ const VAZIO = {
     pesoTabelaNutricional: '',
     valorEnergetico: '',
     carboidratos: '',
+    acucaresTotais: '',
+    acucaresAdicionados: '',
     proteinas: '',
     gordurasTotais: '',
     gordurasSaturadas: '',
@@ -231,10 +233,12 @@ export default function EtiquetaForm() {
                 {/* Informação Nutricional */}
                 <section className="bg-white rounded-xl border border-gray-200 p-5">
                     <h2 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Informação Nutricional</h2>
-                    <p className="text-xs text-gray-400 mb-4">Preencha com o valor e o %VD, ex: <span className="font-mono">34kcal (2% VD)</span></p>
+                    <p className="text-xs text-gray-400 mb-4">Preencha o valor da <b>porção</b> com unidade e %VD, ex: <span className="font-mono">34kcal (2% VD)</span>. A coluna "100g" é calculada automaticamente.</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Campo label="Valor Energético"><input type="text" value={form.valorEnergetico} onChange={e => set('valorEnergetico', e.target.value)} className={inputCls} placeholder="34kcal (2% VD)" /></Campo>
-                        <Campo label="Carboidratos"><input type="text" value={form.carboidratos} onChange={e => set('carboidratos', e.target.value)} className={inputCls} placeholder="5,7g (2% VD)" /></Campo>
+                        <Campo label="Carboidratos totais"><input type="text" value={form.carboidratos} onChange={e => set('carboidratos', e.target.value)} className={inputCls} placeholder="5,7g (2% VD)" /></Campo>
+                        <Campo label="Açúcares totais"><input type="text" value={form.acucaresTotais} onChange={e => set('acucaresTotais', e.target.value)} className={inputCls} placeholder="0g (0% VD)" /></Campo>
+                        <Campo label="Açúcares adicionados"><input type="text" value={form.acucaresAdicionados} onChange={e => set('acucaresAdicionados', e.target.value)} className={inputCls} placeholder="0g (0% VD)" /></Campo>
                         <Campo label="Proteínas"><input type="text" value={form.proteinas} onChange={e => set('proteinas', e.target.value)} className={inputCls} placeholder="0,9g (1% VD)" /></Campo>
                         <Campo label="Gorduras Totais"><input type="text" value={form.gordurasTotais} onChange={e => set('gordurasTotais', e.target.value)} className={inputCls} placeholder="0,8g (1% VD)" /></Campo>
                         <Campo label="Gorduras Saturadas"><input type="text" value={form.gordurasSaturadas} onChange={e => set('gordurasSaturadas', e.target.value)} className={inputCls} placeholder="0,3g (2% VD)" /></Campo>

@@ -3,6 +3,7 @@ import { Search, Printer, X, Minus, Plus, Tag } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
+import EtiquetaLabel, { codExibir } from './EtiquetaLabel';
 
 // ─── Utilidades de data ───────────────────────────────────────────────────────
 
@@ -51,117 +52,6 @@ function BarcodeEl({ value, height = 28 }) {
     }, [value, height]);
     if (!value) return null;
     return <svg ref={svgRef} style={{ maxWidth: '100%', display: 'block', margin: '0 auto' }} />;
-}
-
-// ─── Etiqueta visual (para preview e impressão) ───────────────────────────────
-
-function LabelView({ et, dataFab, dataVal }) {
-    const svgRef = useRef(null);
-    useEffect(() => {
-        if (!svgRef.current || !et.codigoBarras) return;
-        try {
-            JsBarcode(svgRef.current, et.codigoBarras, {
-                format: 'EAN13', width: 1.1, height: 22,
-                displayValue: true, fontSize: 6, margin: 1, textMargin: 0,
-            });
-        } catch {
-            try {
-                JsBarcode(svgRef.current, et.codigoBarras, {
-                    format: 'CODE128', width: 1.1, height: 22,
-                    displayValue: true, fontSize: 6, margin: 1, textMargin: 0,
-                });
-            } catch { /* ignore */ }
-        }
-    }, [et.codigoBarras]);
-
-    const alergenos = [];
-    if (et.contemLeite)  alergenos.push('leite');
-    if (et.contemGluten) alergenos.push('glúten');
-    if (et.contemOvo)    alergenos.push('ovos');
-    if (et.outrosAlergenos && et.outrosAlergenos.toLowerCase() !== 'não')
-        alergenos.push(et.outrosAlergenos);
-
-    const style = {
-        width: '80mm', minHeight: '100mm', fontSize: '6.5pt',
-        fontFamily: 'Arial, sans-serif', border: '0.5pt solid #000',
-        padding: '1.5mm', boxSizing: 'border-box', lineHeight: 1.25,
-        background: '#fff', color: '#000',
-    };
-
-    return (
-        <div style={style}>
-            <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'9.5pt', borderBottom:'0.5pt solid #000', paddingBottom:'1mm', marginBottom:'1mm', lineHeight:1.2, background: et.tarjaPreta ? '#000' : 'transparent', color: et.tarjaPreta ? '#fff' : '#000', margin: et.tarjaPreta ? '-1.5mm -1.5mm 1mm -1.5mm' : undefined, padding: et.tarjaPreta ? '1.5mm' : undefined }}>
-                {et.nomeProduto}
-            </div>
-            <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'7pt', borderBottom:'0.5pt solid #000', paddingBottom:'0.8mm', marginBottom:'0.8mm' }}>
-                CÓD.{codExibir(et)}&nbsp;&nbsp;&nbsp;PESO UNITÁRIO {et.pesoUnitario} gramas
-            </div>
-            <div style={{ border:'0.5pt solid #000', marginBottom:'0.8mm' }}>
-                <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'6.5pt', borderBottom:'0.5pt solid #000', padding:'0.5mm 0' }}>
-                    INFORMAÇÃO NUTRICIONAL - PORÇÃO {et.pesoTabelaNutricional}g
-                </div>
-                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'6pt' }}>
-                    <tbody>
-                        {[
-                            ['Valor Energético', et.valorEnergetico],
-                            ['Carboidratos',     et.carboidratos],
-                            ['Proteínas',        et.proteinas],
-                            ['Gorduras Trans',   et.gordurasTrans],
-                            ['Fibra Alimentar',  et.fibraAlimentar],
-                            ['Sódio',            et.sodio],
-                        ].filter(([,v]) => v).map(([nome, valor]) => (
-                            <tr key={nome} style={{ borderBottom:'0.3pt solid #000' }}>
-                                <td style={{ padding:'0.3mm 1mm', width:'55%' }}>{nome}</td>
-                                <td style={{ padding:'0.3mm 1mm', textAlign:'right' }}>{valor}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                <div style={{ fontSize:'5pt', fontStyle:'italic', padding:'0.5mm 1mm', borderTop:'0.3pt solid #000', lineHeight:1.2 }}>
-                    % Valores diários com base em uma dieta de 2.000 kcal ou 8.400 kJ. Seus valores diários podem ser maiores ou menores dependendo das suas necessidades energéticas.
-                </div>
-            </div>
-            <div style={{ border:'0.5pt solid #000', textAlign:'center', fontWeight:'bold', fontSize:'6.5pt', padding:'0.5mm', borderBottom:'none' }}>
-                CONTÉM {et.quantidadeAproximada ? 'APROXIMADAMENTE ' : ''}{et.quantidadeEmbalagem} UNIDADES
-            </div>
-            <div style={{ border:'0.5pt solid #000', textAlign:'center', fontWeight:'bold', fontSize:'6.5pt', padding:'0.5mm 0' }}>
-                INGREDIENTES:
-            </div>
-            <div style={{ border:'0.5pt solid #000', borderTop:'none', padding:'0.5mm 1mm', marginBottom:'0.8mm', fontSize:'6pt', lineHeight:1.25 }}>
-                {et.composicao}
-            </div>
-            {alergenos.length > 0 && (
-                <div style={{ fontStyle:'italic', fontSize:'6pt', marginBottom:'0.8mm' }}>
-                    <strong>ALÉRGICOS:</strong> Contém {alergenos.join(', ')}.
-                    {et.avisosRotulo && ` ${et.avisosRotulo}`}
-                </div>
-            )}
-            {!alergenos.length && et.avisosRotulo && (
-                <div style={{ fontStyle:'italic', fontSize:'6pt', marginBottom:'0.8mm' }}>{et.avisosRotulo}</div>
-            )}
-            <div style={{ border:'0.5pt solid #000', textAlign:'center', fontWeight:'bold', fontSize:'6.5pt', padding:'0.5mm', borderBottom:'none' }}>
-                MODO DE PREPARO
-            </div>
-            <div style={{ border:'0.5pt solid #000', borderTop:'none', padding:'0.5mm 1mm', marginBottom:'0.8mm', fontSize:'6pt', lineHeight:1.25 }}>
-                {et.modoPreparo}
-            </div>
-            {et.armazenamento && (
-                <div style={{ fontStyle:'italic', fontSize:'6pt', marginBottom:'0.5mm', lineHeight:1.2 }}>
-                    ❄ Conservação em FREEZER (-12°C ou mais frio)<br />
-                    Uma vez descongelado não recongelar o produto.
-                </div>
-            )}
-            {/* Código de barras */}
-            {et.codigoBarras && (
-                <div style={{ textAlign:'center', marginBottom:'0.5mm' }}>
-                    <svg ref={svgRef} style={{ maxWidth:'100%', display:'block', margin:'0 auto' }} />
-                </div>
-            )}
-            <div style={{ border:'0.5pt solid #000', textAlign:'center', fontWeight:'bold', fontSize:'7pt', padding:'0.8mm' }}>
-                Fabricação - {dataFab}&nbsp;&nbsp;Validade - {dataVal}
-            </div>
-        </div>
-    );
 }
 
 // ─── Modal de impressão ───────────────────────────────────────────────────────
@@ -275,7 +165,7 @@ ${Array.from({ length: copies }, () => `<div class="pg">${conteudo.innerHTML}</d
                     <div>
                         <p className="text-xs text-gray-400 text-center mb-3">Preview — 80mm × 100mm</p>
                         <div ref={labelRef} style={{ transform:'scale(1.9)', transformOrigin:'top center', marginBottom:'190px' }}>
-                            <LabelView et={et} dataFab={dataFabDisplay} dataVal={dataValDisplay} />
+                            <EtiquetaLabel et={et} dataFab={dataFabDisplay} dataVal={dataValDisplay} />
                         </div>
                     </div>
                 </div>
@@ -283,9 +173,6 @@ ${Array.from({ length: copies }, () => `<div class="pg">${conteudo.innerHTML}</d
         </div>
     );
 }
-
-// SKU do catálogo tem prioridade; cai para o código interno se não vinculado
-const codExibir = (et) => et.produto?.codigo || et.codigoProduto;
 
 // ─── Card de etiqueta ─────────────────────────────────────────────────────────
 

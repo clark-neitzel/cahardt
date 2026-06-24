@@ -133,6 +133,8 @@ function sanitize(body) {
         pesoTabelaNutricional: parseInt(body.pesoTabelaNutricional) || 0,
         valorEnergetico:       body.valorEnergetico   || null,
         carboidratos:          body.carboidratos       || null,
+        acucaresTotais:        body.acucaresTotais      || null,
+        acucaresAdicionados:   body.acucaresAdicionados || null,
         proteinas:             body.proteinas          || null,
         gordurasTotais:        body.gordurasTotais     || null,
         gordurasSaturadas:     body.gordurasSaturadas  || null,
