@@ -25,7 +25,7 @@ O Kit Festa é a linha de salgados de festa (caixas de 25 unidades, mínimo de 4
    - **Dia e horário:** calendário liberado pela cozinha + horário com vaga.
    - **Observações** (opcional).
 5. **Confirma o WhatsApp:** o cliente confirma o número (ou informa, se não tiver) — fica registrado no pedido.
-6. **Finaliza:** o pedido é salvo e aparece a tela "Pedido registrado!" com o botão **"Enviar pedido pelo WhatsApp"** — o próprio cliente envia o pedido à loja **pelo WhatsApp dele** (a loja **não** dispara mais mensagem automática, para evitar bloqueio do número). Se o número for novo/corrigido, o pedido é marcado como **"celular alterado"** para a equipe atualizar no cadastro. O pagamento é combinado depois (pix ou na entrega).
+6. **Finaliza:** o pedido é salvo e aparece a tela "Pedido registrado!" com o botão **"Enviar pedido pelo WhatsApp"** (o cliente pode, opcionalmente, abrir a conversa com a loja por ali). Além disso, **assim que o pedido é finalizado, o nosso WhatsApp (BotConversa) envia automaticamente uma mensagem de confirmação para o celular do cliente**, com o resumo do pedido (itens, data/horário, retirada ou entrega e total). Se o número for novo/corrigido, o pedido é marcado como **"celular alterado"** para a equipe atualizar no cadastro. O pagamento é combinado depois (pix ou na entrega).
 
 No site o cliente logado também vê a seção **"Indique e ganhe"** com o código de indicação dele (quando o programa de indicação está ativo nas Configurações).
 

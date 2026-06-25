@@ -219,6 +219,98 @@ const webhookService = {
     },
 
     /**
+     * Envia ao CLIENTE do site Kit Festa, via BotConversa, a confirmação do
+     * pedido que ele acabou de finalizar (resumo + data/horário + total).
+     * Retorna { ok: true } ou { ok: false, motivo: '...' }
+     */
+    notificarPedidoKitFesta: async (pedidoId) => {
+        const salvarStatus = async (ok) => {
+            try {
+                await prisma.kitFestaPedido.update({
+                    where: { id: pedidoId },
+                    data: { whatsappEnviado: ok }
+                });
+            } catch (e) { console.error('[Webhook-KitFesta] Erro ao salvar status:', e.message); }
+        };
+
+        try {
+            const webhookUrl = await getWebhookUrl();
+            if (!webhookUrl) return { ok: false, motivo: 'URL do webhook não configurada' };
+
+            const pedido = await prisma.kitFestaPedido.findUnique({
+                where: { id: pedidoId },
+                include: { itens: true, bairro: true }
+            });
+            if (!pedido) return { ok: false, motivo: 'Pedido não encontrado' };
+
+            // Telefone do cliente (snapshot do pedido)
+            let phone = (pedido.telefoneCliente || '').replace(/\D/g, '');
+            if (phone.length < 10) { await salvarStatus(false); return { ok: false, motivo: 'Cliente sem telefone celular válido' }; }
+            if (!phone.startsWith('55')) phone = '55' + phone;
+
+            const nome = (pedido.nomeCliente || '').split(' ')[0] || pedido.nomeCliente || 'Cliente';
+
+            const linhasItens = pedido.itens.map(i => {
+                const nomeProd = i.opcao ? `${i.nomeProduto} (${i.opcao})` : i.nomeProduto;
+                const qtd = Number(i.quantidade);
+                const valorUn = Number(i.precoUnitario || 0).toFixed(2).replace('.', ',');
+                return `\`${nomeProd}\`\n${qtd} cx x R$ ${valorUn}`;
+            }).join('\n\n');
+
+            const entregaLinha = pedido.modo === 'retirada'
+                ? '🏬 *Retirada na loja*'
+                : `🚚 *Entrega*${pedido.bairro ? ` — ${pedido.bairro.nome}` : ''}`;
+
+            const totalStr = Number(pedido.total || 0).toFixed(2).replace('.', ',');
+
+            const partes = [
+                `Olá, *${nome}*! 👋`,
+                '',
+                `Recebemos seu pedido *Kit Festa* #${pedido.numero} ✅`,
+                '',
+                entregaLinha,
+                `📅 *${formatDateMsg(pedido.data)}* às *${pedido.horario}*`,
+            ];
+            if (pedido.modo === 'entrega' && pedido.enderecoEntrega) {
+                partes.push(`📍 ${pedido.enderecoEntrega}`);
+            }
+            partes.push(
+                '',
+                '────────────────────',
+                linhasItens,
+                '────────────────────',
+                ''
+            );
+            if (Number(pedido.taxaEntrega || 0) > 0) {
+                partes.push(`🛵 *Taxa de entrega:* R$ ${Number(pedido.taxaEntrega).toFixed(2).replace('.', ',')}`);
+            }
+            partes.push(`💰 *Total: R$ ${totalStr}*`);
+            if (pedido.observacoes) {
+                partes.push('', `📝 *Obs:* ${pedido.observacoes}`);
+            }
+            partes.push('', 'Em breve confirmaremos seu pedido. Obrigado pela preferência! 🙏');
+
+            const mensagem = partes.join('\n');
+
+            const payload = {
+                phone, nome, mensagem,
+                data_entrega: formatDate(pedido.data),
+                total: Number(pedido.total || 0).toFixed(2),
+                condicao: pedido.modo === 'retirada' ? 'Retirada' : 'Entrega'
+            };
+
+            await enviarWebhook(webhookUrl, payload);
+            await salvarStatus(true);
+            console.log(`[Webhook-KitFesta] Confirmação enviada para ${nome} (${phone}) - KF#${pedido.numero}`);
+            return { ok: true };
+        } catch (error) {
+            console.error('[Webhook-KitFesta] Erro:', error.message);
+            await salvarStatus(false);
+            return { ok: false, motivo: error.message };
+        }
+    },
+
+    /**
      * Notifica movimentação de etapa no Delivery (Kit Festa).
      * Envia pro Bot interno (se configurado em delivery_bot_phone)
      * e pro cliente via WhatsApp. Log salvo em delivery_webhook_logs.

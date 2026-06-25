@@ -448,8 +448,11 @@ const kitFestaService = {
             include: { itens: true, bairro: true },
         });
 
-        // NÃO enviamos mais cópia automática pelo nosso WhatsApp (risco de bloqueio).
-        // O próprio cliente envia o pedido à loja pelo WhatsApp dele, na tela de confirmação.
+        // Confirmação automática pelo nosso WhatsApp (BotConversa) para o CELULAR DO CLIENTE.
+        // Não bloqueia a resposta: se o webhook falhar, o pedido já está salvo.
+        webhookService.notificarPedidoKitFesta(pedido.id).catch(err =>
+            console.error('[Webhook-KitFesta] Erro async:', err.message)
+        );
         return pedido;
     },
 
