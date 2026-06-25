@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { Snowflake, Package, ClipboardList, Settings, Search, Check, X, Link2, Trash2, RefreshCw, Plus, Star, ImageOff, Save, Loader2, Store, Megaphone, Upload, Image as ImageIcon, Tag } from 'lucide-react';
+import { Snowflake, Package, ClipboardList, Settings, Search, Check, X, Link2, Trash2, RefreshCw, Plus, Star, ImageOff, Save, Loader2, Store, Megaphone, Upload, Image as ImageIcon, Tag, Truck, Calendar, MapPin, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import congeladosService from '../../services/congeladosService';
 import api, { API_URL } from '../../services/api';
@@ -77,6 +77,7 @@ function PedidosTab() {
   const [loading, setLoading] = useState(true);
   const [aprovar, setAprovar] = useState(null);
   const [vincular, setVincular] = useState(null);
+  const [detalhe, setDetalhe] = useState(null);
 
   const carregar = useCallback((silent) => {
     if (!silent) setLoading(true);
@@ -148,9 +149,7 @@ function PedidosTab() {
           : (
             <div className="space-y-3">
               {lista.map(p => (
-                <PedidoCard key={p.id} p={p}
-                  onAprovar={() => setAprovar(p)} onVincular={() => setVincular(p)}
-                  onRecusar={() => recusar(p)} onExcluir={() => excluir(p)} />
+                <PedidoCard key={p.id} p={p} onAbrir={() => setDetalhe(p)} />
               ))}
             </div>
           )}
@@ -160,23 +159,34 @@ function PedidosTab() {
         .cg-pulse{ animation:cg-attn 1.4s ease-in-out infinite; will-change:opacity; }
       `}</style>
 
+      {detalhe && <PedidoDetalhe pedido={detalhe} onClose={() => setDetalhe(null)}
+        onAprovar={() => { setAprovar(detalhe); setDetalhe(null); }}
+        onVincular={() => { setVincular(detalhe); setDetalhe(null); }}
+        onRecusar={() => { const p = detalhe; setDetalhe(null); recusar(p); }}
+        onExcluir={() => { const p = detalhe; setDetalhe(null); excluir(p); }} />}
       {aprovar && <AprovarModal pedido={aprovar} onClose={() => setAprovar(null)} onDone={() => { setAprovar(null); carregar(); }} />}
       {vincular && <VincularModal pedido={vincular} onClose={() => setVincular(null)} onDone={() => { setVincular(null); carregar(); }} />}
     </div>
   );
 }
 
-function PedidoCard({ p, onAprovar, onVincular, onRecusar, onExcluir }) {
+// helpers de exibição do pedido (usados no card e no detalhe)
+const fmtDataPedido = (p) => p.dataEntrega ? String(p.dataEntrega).slice(0, 10).split('-').reverse().join('/') : (p.diaEntrega || '');
+const ehRetirada = (p) => p.modo === 'retirada';
+
+// Card-resumo: clicável, abre o detalhe completo
+function PedidoCard({ p, onAbrir }) {
   const s = STATUS_INFO[p.status] || { label: p.status, cls: 'bg-gray-100 text-gray-600' };
   const atencao = p.status === 'AGUARDANDO' || p.status === 'PENDENTE_CADASTRO';
   const inativo = p.status === 'CANCELADO' || p.status === 'RECUSADO';
   const cli = p.congeladosCliente?.cliente;
-  const fantasia = cli?.NomeFantasia && cli.NomeFantasia !== p.nomeCliente ? cli.NomeFantasia : '';
   const cidade = cli?.End_Cidade || '';
+  const data = fmtDataPedido(p);
   return (
-    <div className={`rounded-xl p-4 bg-white border ${atencao ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-200'} ${inativo ? 'opacity-60' : ''}`}>
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
+    <button onClick={onAbrir}
+      className={`w-full text-left rounded-xl p-4 bg-white border hover:shadow-md transition ${atencao ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-200'} ${inativo ? 'opacity-60' : ''}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-sky-50 text-sky-600">#{p.numero}</span>
             <b className="text-gray-800">{p.nomeCliente}</b>
@@ -186,60 +196,120 @@ function PedidoCard({ p, onAprovar, onVincular, onRecusar, onExcluir }) {
                 <span className="cg-pulse" style={{ width: 6, height: 6, borderRadius: 999, background: '#fff', flex: 'none' }} /> Novo
               </span>
             )}
-            {p.celularAlterado && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">telefone novo</span>}
             {p.encaixe && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">Encaixe</span>}
+            {p.celularAlterado && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">telefone novo</span>}
           </div>
-          <div className="text-xs text-gray-500 mt-1">
-            Doc: {p.documentoCliente}{fantasia ? ` · ${fantasia}` : ''}{cidade ? ` · ${cidade}` : ''}{p.telefoneCliente ? ` · ${p.telefoneCliente}` : ''}
-            {p.condicaoNome ? ` · ${p.condicaoNome}` : ''}{p.dataEntrega ? ` · ${p.modo === 'retirada' ? 'retirada' : 'entrega'} ${String(p.dataEntrega).slice(0, 10).split('-').reverse().join('/')}` : (p.diaEntrega ? ` · entrega ${p.diaEntrega}` : '')}
+          <div className="text-xs text-gray-500 mt-1 truncate">
+            Doc: {p.documentoCliente}{cidade ? ` · ${cidade}` : ''}{p.telefoneCliente ? ` · ${p.telefoneCliente}` : ''}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${ehRetirada(p) ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700'}`}>
+              {ehRetirada(p) ? <Store className="h-3 w-3" /> : <Truck className="h-3 w-3" />}
+              {ehRetirada(p) ? 'Retirada' : 'Entrega'}{data ? ` · ${data}` : ''}
+            </span>
+            {p.condicaoNome && <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{p.condicaoNome}</span>}
+            {p.pedido?.numero && <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">→ #{p.pedido.numero}</span>}
           </div>
         </div>
-        <div className="text-right">
+        <div className="text-right shrink-0">
           <div className="font-bold text-gray-800">{money(p.total)}</div>
-          <div className="text-xs text-gray-400">{p.totalCaixas} cx</div>
+          <div className="text-xs text-gray-400">{p.totalCaixas} cx · {p.itens?.length || 0} itens</div>
+          <div className="text-[11px] text-sky-600 mt-1 font-medium">ver detalhes ›</div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// Detalhe completo do pedido (modal) + ações
+function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, onExcluir }) {
+  const s = STATUS_INFO[p.status] || { label: p.status, cls: 'bg-gray-100 text-gray-600' };
+  const cli = p.congeladosCliente?.cliente;
+  const fantasia = cli?.NomeFantasia && cli.NomeFantasia !== p.nomeCliente ? cli.NomeFantasia : '';
+  const cidade = cli?.End_Cidade || '';
+  const data = fmtDataPedido(p);
+  return (
+    <Modal onClose={onClose} max="max-w-lg" title={`Pedido #${p.numero}`}>
+      <div className="flex items-center gap-2 flex-wrap mb-3">
+        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
+        {p.encaixe && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">Encaixe</span>}
+        {p.celularAlterado && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">telefone novo</span>}
+      </div>
+
+      {/* Cliente */}
+      <div className="rounded-lg bg-gray-50 p-3 text-sm mb-3">
+        <div className="font-semibold text-gray-800">{p.nomeCliente}</div>
+        {fantasia && <div className="text-gray-500 text-xs">{fantasia}</div>}
+        <div className="text-gray-500 text-xs mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+          <span>Doc: {p.documentoCliente}</span>
+          {cidade && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> {cidade}</span>}
+          {p.telefoneCliente && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" /> {p.telefoneCliente}</span>}
         </div>
       </div>
 
-      <div className="mt-3 text-sm text-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-        {p.itens.map(it => (
-          <div key={it.id} className="flex justify-between py-0.5 border-b border-gray-50">
-            <span>{it.quantidade}× {it.nomeProduto}</span>
-            <span className="text-gray-400">{money(it.precoUnitario * it.quantidade)}</span>
+      {/* Entrega / pagamento */}
+      <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
+        <div className="rounded-lg border border-gray-100 p-2.5">
+          <div className="text-[11px] uppercase tracking-wide text-gray-400 flex items-center gap-1">
+            {ehRetirada(p) ? <Store className="h-3 w-3" /> : <Truck className="h-3 w-3" />} {ehRetirada(p) ? 'Retirada' : 'Entrega'}
           </div>
-        ))}
+          <div className="text-gray-800 font-medium flex items-center gap-1 mt-0.5"><Calendar className="h-3.5 w-3.5 text-gray-400" /> {data || '—'}</div>
+          {p.encaixe && <div className="text-[11px] text-orange-600 mt-0.5">a confirmar viabilidade</div>}
+        </div>
+        <div className="rounded-lg border border-gray-100 p-2.5">
+          <div className="text-[11px] uppercase tracking-wide text-gray-400">Pagamento</div>
+          <div className="text-gray-800 font-medium mt-0.5">{p.condicaoNome || '—'}</div>
+        </div>
       </div>
-      {p.observacoes && <p className="mt-2 text-xs text-gray-500 italic">Obs: {p.observacoes}</p>}
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        {p.status === 'CANCELADO' ? (
-          <span className="inline-flex items-center gap-1 text-sm text-gray-500 font-medium">
-            <X size={15} /> Pedido {p.pedido?.numero ? `#${p.pedido.numero} ` : ''}excluído no sistema
-          </span>
-        ) : p.pedido ? (
-          <span className="inline-flex items-center gap-1 text-sm text-green-700 font-medium">
-            <Check size={15} /> Virou pedido {p.pedido.especial ? 'especial' : ''} {p.pedido.numero ? `#${p.pedido.numero}` : ''}
-          </span>
-        ) : p.status === 'PENDENTE_CADASTRO' ? (
-          <>
-            <button onClick={onVincular} className="btn-sky"><Link2 size={15} /> Vincular cliente</button>
-            <button onClick={onRecusar} className="btn-ghost-red"><X size={15} /> Recusar</button>
-          </>
-        ) : p.status === 'AGUARDANDO' ? (
-          <>
-            <button onClick={onAprovar} className="btn-sky"><Check size={15} /> Aprovar e gerar pedido</button>
-            <button onClick={onRecusar} className="btn-ghost-red"><X size={15} /> Recusar</button>
-          </>
-        ) : null}
-        <button onClick={onExcluir} className="ml-auto text-gray-400 hover:text-red-500 p-1.5" title="Excluir"><Trash2 size={15} /></button>
+      {/* Itens */}
+      <div className="border border-gray-100 rounded-lg overflow-hidden mb-3">
+        <div className="px-3 py-2 bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500 flex justify-between">
+          <span>Itens ({p.totalCaixas} cx)</span><span>valor</span>
+        </div>
+        <div className="divide-y divide-gray-50 max-h-64 overflow-y-auto">
+          {p.itens.map(it => (
+            <div key={it.id} className="flex justify-between gap-3 px-3 py-1.5 text-sm">
+              <span className="text-gray-700"><b>{it.quantidade}×</b> {it.nomeProduto}</span>
+              <span className="text-gray-500 whitespace-nowrap">{money(it.precoUnitario * it.quantidade)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-between px-3 py-2 bg-gray-50 font-bold text-gray-800">
+          <span>Total</span><span>{money(p.total)}</span>
+        </div>
+      </div>
+
+      {p.observacoes && <p className="text-sm text-gray-600 bg-amber-50 border border-amber-100 rounded-lg p-2.5 mb-3"><b>Obs:</b> {p.observacoes}</p>}
+
+      {/* Vínculo com pedido do sistema */}
+      {p.status === 'CANCELADO' ? (
+        <p className="text-sm text-gray-500 flex items-center gap-1 mb-3"><X size={15} /> Pedido {p.pedido?.numero ? `#${p.pedido.numero} ` : ''}excluído no sistema</p>
+      ) : p.pedido ? (
+        <p className="text-sm text-green-700 font-medium flex items-center gap-1 mb-3"><Check size={15} /> Virou pedido {p.pedido.especial ? 'especial' : ''} {p.pedido.numero ? `#${p.pedido.numero}` : ''}</p>
+      ) : null}
+
+      {/* Ações */}
+      <div className="flex flex-wrap gap-2 items-center pt-1">
+        {!p.pedido && p.status === 'PENDENTE_CADASTRO' && (
+          <button onClick={onVincular} className="btn-sky"><Link2 size={15} /> Vincular cliente</button>
+        )}
+        {!p.pedido && p.status === 'AGUARDANDO' && (
+          <button onClick={onAprovar} className="btn-sky"><Check size={15} /> Aprovar e gerar pedido</button>
+        )}
+        {!p.pedido && (p.status === 'AGUARDANDO' || p.status === 'PENDENTE_CADASTRO') && (
+          <button onClick={onRecusar} className="btn-ghost-red"><X size={15} /> Recusar</button>
+        )}
+        <button onClick={onExcluir} className="ml-auto text-gray-400 hover:text-red-500 p-1.5 inline-flex items-center gap-1 text-sm" title="Excluir"><Trash2 size={15} /> Excluir</button>
       </div>
 
       <style>{`
-        .btn-sky{display:inline-flex;align-items:center;gap:6px;background:#0284c7;color:#fff;font-size:.82rem;font-weight:600;padding:.45em .9em;border-radius:8px}
+        .btn-sky{display:inline-flex;align-items:center;gap:6px;background:#0284c7;color:#fff;font-size:.82rem;font-weight:600;padding:.5em 1em;border-radius:8px}
         .btn-sky:hover{background:#0369a1}
-        .btn-ghost-red{display:inline-flex;align-items:center;gap:6px;border:1px solid #fca5a5;color:#dc2626;font-size:.82rem;font-weight:600;padding:.45em .9em;border-radius:8px}
+        .btn-ghost-red{display:inline-flex;align-items:center;gap:6px;border:1px solid #fca5a5;color:#dc2626;font-size:.82rem;font-weight:600;padding:.5em 1em;border-radius:8px}
         .btn-ghost-red:hover{background:#fef2f2}
       `}</style>
-    </div>
+    </Modal>
   );
 }
 
@@ -843,10 +913,10 @@ function HistoriaImagens({ imagens = [], onChange }) {
 }
 
 /* ===================== MODAL ===================== */
-function Modal({ title, children, onClose }) {
+function Modal({ title, children, onClose, max = 'max-w-md' }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+      <div className={`bg-white rounded-2xl shadow-xl w-full ${max} max-h-[90vh] overflow-y-auto p-5`} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-gray-800">{title}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
