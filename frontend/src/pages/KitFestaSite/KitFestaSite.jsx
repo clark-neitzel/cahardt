@@ -809,10 +809,10 @@ function Footer({ cfg, logo }) {
             <h5>Onde estamos</h5>
             <div className="row"><MapPin size={16} />
               {l.mapsUrl
-                ? <a href={l.mapsUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--chalk)', textDecoration: 'underline', textUnderlineOffset: 2 }}>{l.endereco}</a>
+                ? <a href={l.mapsUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--ink)', textDecoration: 'underline', textUnderlineOffset: 2 }}>{l.endereco}</a>
                 : l.endereco}
             </div>
-            {l.mapsUrl && <div className="row"><MapPin size={16} style={{ opacity: 0 }} /><a href={l.mapsUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--yellow)' }}>📍 Ver no mapa / traçar rota</a></div>}
+            {l.mapsUrl && <div className="row"><MapPin size={16} style={{ opacity: 0 }} /><a href={l.mapsUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--green-dd)' }}>📍 Ver no mapa / traçar rota</a></div>}
           </div>
           <div>
             <h5>Fale com a gente</h5>

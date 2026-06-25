@@ -442,3 +442,12 @@
 .kf .co-back:hover { color:var(--green-dd); }
 /* tela de carregamento inicial: mantém fundo escuro p/ o spinner branco aparecer */
 .kf .login.tex-board { background:var(--green-dd); }
+/* faixa "como funciona" (estava com texto branco sobre fundo escuro) */
+.kf .how-step { color:var(--ink); }
+.kf .how-step .nm { background:rgba(18,130,64,.1); color:var(--green-dd); }
+.kf .how-step p { color:#6a5f4c; }
+/* botão fantasma (ex.: WhatsApp no hero) legível no creme */
+.kf .btn-ghost { border:2px solid rgba(25,27,23,.22); color:var(--ink); }
+.kf .btn-ghost:hover { border-color:var(--green); color:var(--green-dd); }
+/* kicker (linha pequena) com mais contraste no creme */
+.kf .hero .kicker { color:var(--green-dd); }
