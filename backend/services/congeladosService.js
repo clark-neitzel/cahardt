@@ -446,17 +446,39 @@ const congeladosService = {
         };
     },
 
-    // Produtos comprados nas últimas N compras do cliente (para "Você sempre pede")
-    async _produtoIdsHistorico(clienteUuid, ultimas = 3) {
+    // Produtos das últimas N compras REAIS do cliente (para "Você sempre pede").
+    // Regras: últimos N pedidos NÃO bonificação e não excluídos; desconta o que foi
+    // devolvido (devolução ATIVA) — produto totalmente devolvido e ausente nos demais
+    // pedidos não entra na lista. Sem limite de itens: traz todos os que sobraram.
+    async _produtoIdsHistorico(clienteUuid, ultimas = 5) {
         if (!clienteUuid) return new Set();
         const pedidos = await prisma.pedido.findMany({
-            where: { clienteId: clienteUuid },
+            where: { clienteId: clienteUuid, bonificacao: false, statusEnvio: { not: 'EXCLUIDO' } },
             orderBy: { createdAt: 'desc' }, // últimas compras = pedidos feitos por último
             take: ultimas,
-            include: { itens: { select: { produtoId: true } } },
+            select: { id: true, itens: { select: { produtoId: true, quantidade: true } } },
         });
+        if (!pedidos.length) return new Set();
+
+        // quantidade pedida por produto nesses pedidos
+        const net = {};
+        pedidos.forEach(p => p.itens.forEach(i => {
+            if (!i.produtoId) return;
+            net[i.produtoId] = (net[i.produtoId] || 0) + Number(i.quantidade || 0);
+        }));
+
+        // subtrai as devoluções ATIVAS desses pedidos
+        const devs = await prisma.devolucao.findMany({
+            where: { pedidoOriginalId: { in: pedidos.map(p => p.id) }, status: 'ATIVA' },
+            select: { itens: { select: { produtoId: true, quantidade: true } } },
+        });
+        devs.forEach(d => d.itens.forEach(i => {
+            if (net[i.produtoId] == null) return;
+            net[i.produtoId] -= Number(i.quantidade || 0);
+        }));
+
         const ids = new Set();
-        pedidos.forEach(p => p.itens.forEach(i => ids.add(i.produtoId)));
+        Object.keys(net).forEach(pid => { if (net[pid] > 0.0001) ids.add(pid); });
         return ids;
     },
 
@@ -469,7 +491,7 @@ const congeladosService = {
             : null;
         const catalogo = await this.catalogoPublico();
 
-        const compradosIds = await this._produtoIdsHistorico(clienteUuid, 3);
+        const compradosIds = await this._produtoIdsHistorico(clienteUuid, 5);
         catalogo.forEach(p => { p.comprado = compradosIds.has(p.produtoId); });
 
         // Preço idêntico ao que o vendedor vê: condição padrão + último preço real + piso do flex
