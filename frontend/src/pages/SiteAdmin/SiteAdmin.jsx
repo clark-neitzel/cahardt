@@ -663,6 +663,8 @@ function ConfigTab() {
         </div>
         <Campo label="Instagram (sem @)" value={cfg.loja?.instagram || ''} onChange={e => up('loja', { instagram: e.target.value })} />
         <Campo label="Facebook (usuário ou link)" value={cfg.loja?.facebook || ''} onChange={e => up('loja', { facebook: e.target.value })} />
+        <Campo label="E-mail de atendimento" value={cfg.loja?.email || ''} onChange={e => up('loja', { email: e.target.value })} />
+        <Campo label="Link do mapa (Google Maps)" value={cfg.loja?.mapsUrl || ''} onChange={e => up('loja', { mapsUrl: e.target.value })} placeholder="https://maps.app.goo.gl/..." />
       </Secao>
 
       <Secao titulo="Topo do site (linha pequena)" icon={Megaphone} onSave={() => salvarSecao('hero', cfg.hero)} saving={salvando === 'hero'}>

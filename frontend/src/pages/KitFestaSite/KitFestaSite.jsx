@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, User, Home, Plus, Minus, X, Ticket, ArrowRight, MessageCircle, ChevronLeft, ChevronRight, Clock, Calendar, Truck, ShoppingBag, Edit3, Sparkles, Check, Loader2, MapPin } from 'lucide-react';
+import { ShoppingCart, User, Home, Plus, Minus, X, Ticket, ArrowRight, MessageCircle, ChevronLeft, ChevronRight, Clock, Calendar, Truck, ShoppingBag, Edit3, Sparkles, Check, Loader2, MapPin, Mail } from 'lucide-react';
 import publicApi, { getToken, setToken } from './api';
 import Login from './Login';
 import './kitfesta.css';
@@ -819,6 +819,7 @@ function Footer({ cfg, logo }) {
             <div className="row"><MessageCircle size={16} />
               <a href={`https://wa.me/${l.whatsapp}`} style={{ color: 'var(--ink)' }} target="_blank" rel="noreferrer">{l.telefone}</a>
             </div>
+            {l.email && <div className="row"><Mail size={16} /><a href={`mailto:${l.email}`} style={{ color: 'var(--ink)' }}>{l.email}</a></div>}
           </div>
         </div>
         <div className="ft-bottom">

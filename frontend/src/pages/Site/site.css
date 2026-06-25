@@ -252,6 +252,19 @@
 .cg .foot-links{ display:flex; gap:18px; }
 .cg .foot-links a{ color:var(--chalk-dim); font-family:var(--f-display); text-transform:uppercase; letter-spacing:.06em; font-size:.8rem; }
 .cg .foot-links a:hover{ color:var(--yellow); }
+/* Rodapé padronizado: marca · onde estamos · fale com a gente */
+.cg .foot-grid{ display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:30px; padding:46px 0 26px; }
+@media (max-width:820px){ .cg .foot-grid{ grid-template-columns:1fr 1fr; gap:28px; } }
+@media (max-width:560px){ .cg .foot-grid{ grid-template-columns:1fr; gap:24px; } }
+.cg .foot h5{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.1em; font-size:.82rem; color:var(--ink); margin:0 0 12px; }
+.cg .foot-row{ display:block; font-size:.92rem; line-height:1.5; margin-bottom:8px; color:#6a5f4c; }
+.cg .foot-link{ color:var(--ink); }
+.cg .foot-link:hover{ color:var(--green-dd); }
+.cg .foot-maplink{ display:inline-block; margin-top:4px; color:var(--green-dd); font-weight:600; font-size:.9rem; }
+.cg .foot-maplink:hover{ text-decoration:underline; }
+.cg .foot-bottom{ border-top:1px solid rgba(25,27,23,.12); padding:16px 0 30px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.cg .foot-copy{ color:#6a5f4c; font-size:.8rem; }
+@media (max-width:560px){ .cg .foot-bottom{ flex-direction:column; gap:6px; } }
 
 /* WhatsApp flutuante (acompanha o scroll) */
 .cg .wa-float{ position:fixed; right:18px; bottom:18px; z-index:80; width:58px; height:58px; border-radius:50%; background:#25d366; color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 26px -8px rgba(0,0,0,.5); transition:transform .15s ease, filter .15s ease; }

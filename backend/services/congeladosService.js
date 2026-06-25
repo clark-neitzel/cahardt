@@ -847,6 +847,8 @@ const DEFAULT_CONFIG = {
         whatsapp: '5547988548476',
         instagram: 'hardtsalgados',
         facebook: '', // usuário/página ou link completo; vazio = não mostra
+        email: 'atendimento@hardtsalgados.com.br',
+        mapsUrl: 'https://maps.app.goo.gl/DHD5J5xC4toi4sRj6',
     },
     logoUrl: null, // logo enviada pelo admin (sobrepõe a padrão)
     // Frases da PÁGINA PRINCIPAL (home)

@@ -861,6 +861,7 @@ const DEFAULT_CONFIG = {
         telefone: '(47) 98854-8476',
         whatsapp: '5547988548476',
         mapsUrl: 'https://maps.app.goo.gl/DHD5J5xC4toi4sRj6',
+        email: 'atendimento@hardtsalgados.com.br',
     },
     regras: {
         minCaixas: 4,

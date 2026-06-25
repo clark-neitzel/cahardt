@@ -53,6 +53,7 @@ export default function AbaConfig() {
           <Campo label="Telefone (exibição)" value={cfg.loja?.telefone || ''} onChange={e => up('loja', { telefone: e.target.value })} />
           <Campo label="WhatsApp (só números)" value={cfg.loja?.whatsapp || ''} onChange={e => up('loja', { whatsapp: e.target.value })} />
         </div>
+        <Campo label="E-mail de atendimento" value={cfg.loja?.email || ''} onChange={e => up('loja', { email: e.target.value })} />
       </Secao>
 
       {/* Regras */}
