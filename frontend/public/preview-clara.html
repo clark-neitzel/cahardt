@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<title>Hardt — Página principal (versão CLARA · preview)</title>
+<!--
+  PREVIEW da página principal numa VERSÃO CLARA (fundo creme, igual ao Kit Festa).
+  Arquivo autossuficiente (HTML + CSS juntos), só para avaliar o visual.
+  Não faz parte do site em produção. Logo/caixa vêm por link do site real;
+  as fotos do carrossel são exemplos. CSS escopado em ".cg".
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Bitter:ital,wght@0,400;0,500;0,600;1,400&family=Kaushan+Script&display=swap');
+
+*{ box-sizing:border-box; }
+html,body{ margin:0; }
+
+.cg{
+  --ink:#191b17; --ink-2:#20231e; --ink-3:#2b2f28;
+  --chalk:#f3ecdc; --chalk-dim:#b9b6a4;
+  --paper:#f3e7cd; --paper-2:#ecdcbb; --paper-line:#d8c39a;
+  --cream-card:#fffaf0;
+  --muted:#6a5f4c;
+  --green:#128240; --green-d:#0b5e2c; --green-dd:#08431f; --green-l:#1ba252;
+  --yellow:#f6c21b; --yellow-d:#e0a500; --kraft:#b3793f; --kraft-l:#c99262;
+  --tomato:#c8492f;
+  --line-soft:rgba(25,27,23,.12);
+  --shadow:0 18px 44px -22px rgba(8,20,10,.4);
+  --shadow-sm:0 8px 22px -14px rgba(8,20,10,.32);
+  --r:14px; --r-lg:22px; --maxw:1460px;
+  --f-display:'Oswald',system-ui,sans-serif;
+  --f-body:'Bitter',Georgia,serif;
+  --f-script:'Kaushan Script',cursive;
+  font-family:var(--f-body); color:var(--ink); background:var(--paper);
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+.cg *{ box-sizing:border-box; }
+.cg img{ display:block; max-width:100%; }
+.cg a{ text-decoration:none; color:inherit; }
+.cg ::selection{ background:var(--yellow); color:var(--ink); }
+
+/* textura clara (papel) */
+.cg.home{ min-height:100vh; background-color:var(--paper);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='.05'/%3E%3C/svg%3E"); }
+
+/* serrilhado amarelo */
+.cg .sawtooth{ height:13px;
+  background:linear-gradient(135deg, var(--yellow) 50%, transparent 51%) 0 0 / 13px 13px repeat-x,
+            linear-gradient(-135deg, var(--yellow) 50%, transparent 51%) 6.5px 0 / 13px 13px repeat-x;
+  background-color:transparent; }
+
+.cg .kicker{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.28em; font-weight:600; font-size:.72rem; color:var(--green-dd); }
+
+/* botões */
+.cg .btn{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.06em; font-weight:600; border-radius:999px; padding:.85em 1.5em; font-size:.95rem; display:inline-flex; align-items:center; justify-content:center; gap:.55em; transition:transform .12s ease, box-shadow .2s ease, filter .2s ease; white-space:nowrap; cursor:pointer; border:0; }
+.cg .btn:active{ transform:translateY(1px) scale(.99); }
+.cg .btn-yellow{ background:var(--yellow); color:var(--green-dd); box-shadow:0 6px 0 var(--yellow-d); }
+.cg .btn-green{ background:var(--green); color:#fff; box-shadow:0 6px 0 var(--green-dd); }
+.cg .btn-wa{ background:#25d366; color:#073d1c; box-shadow:0 6px 0 #128c3e; }
+.cg .btn-ghost{ border:2px solid var(--line-soft); color:var(--chalk); background:transparent; }
+.cg .btn-ghost:hover{ border-color:var(--yellow); color:var(--yellow); }
+.cg .btn-outline-ink{ border:2px solid rgba(18,130,64,.4); color:var(--green-dd); background:transparent; }
+.cg .btn-outline-ink:hover{ border-color:var(--green); background:rgba(18,130,64,.06); }
+
+.cg .wrap{ max-width:var(--maxw); margin:0 auto; padding:0 clamp(16px,4vw,40px); }
+
+/* ===== NAV (clara) ===== */
+.cg .nav{ position:sticky; top:0; z-index:50; background:rgba(243,231,205,.86); backdrop-filter:blur(8px); border-bottom:1px solid var(--line-soft); }
+.cg .nav-in{ display:flex; align-items:center; gap:18px; height:74px; }
+.cg .nav-logo{ display:flex; align-items:center; gap:12px; }
+.cg .nav-logo img{ height:54px; width:auto; }
+.cg .nav-logo span{ font-family:var(--f-script); color:var(--green-d); font-size:1rem; }
+.cg .nav-links{ margin-left:auto; display:flex; align-items:center; gap:8px; }
+.cg .nav-links a{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.08em; font-size:.82rem; color:var(--muted); padding:.5em .8em; border-radius:8px; }
+.cg .nav-links a:hover{ color:var(--green-dd); }
+
+/* ===== ABERTURA: logo + título ===== */
+.cg .section{ padding:clamp(48px,7vw,90px) 0; }
+.cg .section-top{ padding-top:clamp(28px,5vw,56px); }
+.cg .intro-grid{ display:grid; grid-template-columns:auto 1fr; gap:clamp(24px,5vw,72px); align-items:center; margin:0 0 clamp(30px,4vw,52px); }
+.cg .brand-mark{ display:flex; justify-content:center; }
+.cg .brand-mark img{ height:clamp(120px,17vw,240px); width:auto; filter:drop-shadow(0 12px 30px rgba(8,20,10,.22)); }
+.cg .sec-head{ text-align:center; max-width:680px; margin:0 auto clamp(28px,4vw,48px); }
+.cg .intro-head{ text-align:left; max-width:none; margin:0; }
+.cg .sec-head h2{ font-family:var(--f-display); text-transform:uppercase; color:var(--ink); font-weight:700; font-size:clamp(1.9rem,4vw,3rem); line-height:1; margin:.3em 0 .35em; }
+.cg .sec-head p{ color:var(--muted); font-size:1.06rem; line-height:1.55; margin:0; }
+@media (max-width:880px){ .cg .intro-grid{ grid-template-columns:1fr; justify-items:center; text-align:center; } .cg .intro-head{ text-align:center; } }
+
+/* ===== CARDS ===== */
+.cg .paths{ display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+@media (max-width:820px){ .cg .paths{ grid-template-columns:1fr; } }
+.cg .path{ position:relative; border-radius:var(--r-lg); overflow:hidden; display:flex; flex-direction:column; box-shadow:var(--shadow); transition:transform .18s ease; }
+.cg .path:hover{ transform:translateY(-4px); }
+.cg .path-festa{ background:linear-gradient(160deg,#147a3e,#0b5e2c 55%,#08431f); }
+.cg .path-cong{ background:var(--cream-card); border:1px solid var(--line-soft); }
+.cg .path .sawtooth{ flex:0 0 auto; }
+.cg .path-body{ padding:clamp(24px,3vw,38px); display:flex; flex-direction:column; flex:1; }
+.cg .path-eyebrow{ display:flex; align-items:center; gap:10px; }
+.cg .path .badge{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.1em; font-weight:600; font-size:.66rem; padding:.4em .7em; border-radius:999px; }
+.cg .badge-live{ background:var(--yellow); color:var(--green-dd); }
+.cg .badge-soon{ background:rgba(18,130,64,.1); color:var(--green-dd); border:1px solid rgba(18,130,64,.25); }
+.cg .path h3{ font-family:var(--f-display); text-transform:uppercase; font-weight:700; color:#fff; font-size:clamp(1.8rem,3.5vw,2.5rem); line-height:.98; margin:.5em 0 .35em; }
+.cg .path-cong h3{ color:var(--ink); }
+.cg .path p{ color:rgba(255,255,255,.85); line-height:1.55; margin:0 0 18px; max-width:40ch; }
+.cg .path-cong p{ color:var(--muted); }
+.cg .path ul{ list-style:none; padding:0; margin:0 0 26px; display:flex; flex-direction:column; gap:9px; }
+.cg .path li{ display:flex; align-items:flex-start; gap:10px; color:rgba(255,255,255,.92); font-size:.96rem; line-height:1.4; }
+.cg .path-cong li{ color:var(--muted); }
+.cg .path li .mk{ flex:0 0 auto; margin-top:.32em; width:7px; height:7px; transform:rotate(45deg); background:var(--yellow); }
+.cg .path-cong li .mk{ background:var(--green); }
+.cg .path-foot{ margin-top:auto; display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+.cg .path-note{ font-size:.82rem; color:rgba(255,255,255,.65); }
+.cg .path-cong .path-note{ color:var(--muted); }
+
+/* ===== NOSSA HISTÓRIA (painel verde sobre o creme) ===== */
+.cg .historia{ padding:clamp(36px,5vw,72px) 0; }
+.cg .hist-panel{ position:relative; overflow:hidden; border-radius:var(--r-lg); background:linear-gradient(150deg,#1a8048,#0c5e2e 55%,#08431f); box-shadow:var(--shadow); padding:clamp(26px,4vw,56px); }
+.cg .hist-watermark{ position:absolute; top:-.22em; right:.04em; z-index:0; pointer-events:none; font-family:var(--f-display); font-weight:700; line-height:.8; font-size:clamp(7rem,20vw,18rem); color:rgba(255,255,255,.06); letter-spacing:-.02em; }
+.cg .hist-main{ position:relative; z-index:1; display:grid; grid-template-columns:1.02fr .98fr; gap:clamp(24px,4vw,56px); align-items:center; }
+@media (max-width:880px){ .cg .hist-main{ grid-template-columns:1fr; } }
+.cg .hist-col-text .hist-kicker{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.28em; font-weight:600; font-size:.72rem; color:var(--yellow); display:inline-flex; align-items:center; gap:10px; }
+.cg .hist-col-text .hist-kicker .dot{ width:7px; height:7px; border-radius:50%; background:var(--yellow); box-shadow:0 0 0 4px rgba(246,194,27,.18); }
+.cg .hist-title{ font-family:var(--f-display); text-transform:uppercase; font-weight:700; color:var(--chalk); line-height:.92; font-size:clamp(2.4rem,6vw,4.4rem); margin:.14em 0 .5em; }
+.cg .hist-body p{ color:rgba(243,236,220,.88); font-size:clamp(1rem,1.5vw,1.12rem); line-height:1.6; margin:0 0 16px; max-width:50ch; }
+.cg .hist-body p:last-child{ margin-bottom:0; }
+.cg .hist-frase{ font-family:var(--f-script); color:var(--yellow); font-size:clamp(1.35rem,2.6vw,2rem); line-height:1.2; margin:22px 0 0; }
+.cg .hist-col-art{ position:relative; display:flex; justify-content:center; }
+.cg .hist-carousel{ position:relative; overflow:hidden; width:100%; max-width:560px; aspect-ratio:4/3; border:8px solid var(--chalk); border-radius:8px; box-shadow:0 24px 54px -24px rgba(0,0,0,.55); transform:rotate(1.6deg); background:#eef0ec; }
+.cg .hist-carousel img{ width:100%; height:100%; object-fit:cover; }
+.cg .hist-col-art .seal{ position:absolute; right:1%; top:30%; z-index:3; background:var(--tomato); color:#fff; transform:rotate(-6deg); font-family:var(--f-display); text-transform:uppercase; letter-spacing:.06em; font-weight:600; font-size:.86rem; padding:.7em 1em; border-radius:12px; box-shadow:var(--shadow-sm); line-height:1.05; text-align:center; }
+.cg .hist-col-art .seal small{ display:block; font-size:.62rem; letter-spacing:.14em; opacity:.85; font-weight:500; }
+.cg .hist-stats{ position:relative; z-index:1; margin-top:clamp(28px,4vw,52px); padding-top:clamp(20px,3vw,30px); border-top:1px solid rgba(255,255,255,.16); display:grid; grid-template-columns:repeat(4,1fr); }
+@media (max-width:820px){ .cg .hist-stats{ grid-template-columns:1fr 1fr; row-gap:22px; } }
+.cg .hist-stat{ padding:0 clamp(14px,2vw,28px); border-right:1px solid rgba(255,255,255,.14); }
+.cg .hist-stat:first-child{ padding-left:0; }
+.cg .hist-stat:last-child{ border-right:none; }
+@media (max-width:820px){ .cg .hist-stat{ border-right:none; padding-left:0; } }
+.cg .hist-stat .num{ font-family:var(--f-script); color:var(--yellow); font-size:1.5rem; line-height:1; }
+.cg .hist-stat h4{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.04em; color:var(--chalk); font-weight:600; font-size:1.02rem; margin:.45em 0 .3em; }
+.cg .hist-stat p{ color:rgba(243,236,220,.72); font-size:.9rem; line-height:1.45; margin:0; }
+
+/* ===== CONTATO (claro) ===== */
+.cg .contact{ display:grid; grid-template-columns:1fr 1fr; gap:clamp(20px,3vw,36px); align-items:stretch; }
+@media (max-width:820px){ .cg .contact{ grid-template-columns:1fr; } }
+.cg .contact-card{ background:var(--cream-card); border:1px solid var(--line-soft); border-radius:var(--r-lg); padding:clamp(24px,3vw,38px); display:flex; flex-direction:column; justify-content:space-between; gap:22px; box-shadow:var(--shadow-sm); }
+.cg .contact-top{ display:flex; flex-direction:column; gap:22px; }
+.cg .contact-row{ display:flex; gap:14px; align-items:flex-start; padding:16px 0; border-bottom:1px solid var(--line-soft); }
+.cg .contact-rows .contact-row:first-child{ padding-top:0; }
+.cg .contact-row:last-child{ border-bottom:none; padding-bottom:0; }
+.cg .contact-row .lab{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.1em; font-size:.7rem; color:var(--green-dd); margin-bottom:4px; }
+.cg .contact-row .val{ color:var(--ink); font-size:1.04rem; line-height:1.4; }
+.cg .contact-row .val-big{ font-family:var(--f-display); font-size:clamp(1.45rem,2.6vw,2rem); font-weight:700; line-height:1.1; }
+.cg .contact-social .lab{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.1em; font-size:.7rem; color:var(--green-dd); margin-bottom:10px; }
+.cg .social-links{ display:flex; flex-wrap:wrap; gap:10px; }
+.cg .social-links .soc{ display:inline-flex; align-items:center; gap:9px; padding:.6em 1em; border-radius:999px; border:1px solid var(--line-soft); color:var(--ink); font-family:var(--f-display); text-transform:uppercase; letter-spacing:.05em; font-size:.8rem; transition:.15s; }
+.cg .social-links .soc:hover{ border-color:var(--green); color:var(--green-dd); }
+.cg .contact-map{ border-radius:var(--r-lg); overflow:hidden; box-shadow:var(--shadow-sm); border:1px solid var(--line-soft); }
+.cg .contact-map iframe{ display:block; width:100%; height:100%; min-height:clamp(300px,36vw,420px); border:0; }
+
+/* ===== FOOTER (claro) ===== */
+.cg .foot{ background:var(--paper-2); border-top:1px solid var(--line-soft); }
+.cg .foot-in{ padding:40px 0 30px; display:flex; flex-wrap:wrap; gap:24px; align-items:center; justify-content:space-between; }
+.cg .foot-logo{ display:flex; align-items:center; gap:14px; }
+.cg .foot-logo img{ height:54px; }
+.cg .foot-logo b{ font-family:var(--f-display); text-transform:uppercase; color:var(--ink); letter-spacing:.04em; }
+.cg .foot-logo span{ display:block; font-family:var(--f-script); color:var(--green-d); font-size:.9rem; }
+.cg .foot-links{ display:flex; gap:18px; }
+.cg .foot-links a{ color:var(--muted); font-family:var(--f-display); text-transform:uppercase; letter-spacing:.06em; font-size:.8rem; }
+.cg .foot-links a:hover{ color:var(--green-dd); }
+.cg .foot-copy{ color:var(--muted); font-size:.78rem; }
+
+.cg .wa-float{ position:fixed; right:18px; bottom:18px; z-index:80; width:58px; height:58px; border-radius:50%; background:#25d366; color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 26px -8px rgba(0,0,0,.35); }
+.cg .wa-float svg{ width:30px; height:30px; }
+</style>
+</head>
+<body>
+<div class="cg home">
+
+  <!-- ===== NAV ===== -->
+  <header class="nav">
+    <div class="wrap nav-in">
+      <a href="#" class="nav-logo">
+        <img src="https://cahardt-github.xrqvlq.easypanel.host/cong/logo.png" alt="Hardt" />
+        <span>desde 2007</span>
+      </a>
+      <nav class="nav-links">
+        <a href="#caminhos">Produtos</a>
+        <a href="#historia">A Hardt</a>
+        <a href="#contato">Contato</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ===== ABERTURA + CARDS ===== -->
+  <section class="section section-top" id="caminhos">
+    <div class="wrap">
+      <div class="intro-grid">
+        <div class="brand-mark">
+          <img src="https://cahardt-github.xrqvlq.easypanel.host/cong/logo.png" alt="Hardt Doces e Salgados" />
+        </div>
+        <div class="sec-head intro-head">
+          <div class="kicker">O que você precisa hoje?</div>
+          <h2>Dois jeitos de pedir</h2>
+          <p>Salgados prontos pra sua festa ou congelados pra revender e ter sempre em estoque. Escolha por onde começar.</p>
+        </div>
+      </div>
+      <div class="paths">
+        <a class="path path-festa" href="#">
+          <div class="sawtooth"></div>
+          <div class="path-body">
+            <div class="path-eyebrow"><span class="badge badge-live">Pedido online</span></div>
+            <h3>Kit Festa</h3>
+            <p>Caixas de 25 salgados, um sabor por caixa. Monte do seu jeito a partir de 4 caixas.</p>
+            <ul>
+              <li><span class="mk"></span> Coxinha, bolinha, empadinha, churros e mais</li>
+              <li><span class="mk"></span> Escolha data e horário de retirada ou entrega</li>
+              <li><span class="mk"></span> Cupons, indicação e pagamento combinado depois</li>
+            </ul>
+            <div class="path-foot">
+              <span class="btn btn-yellow">Fazer pedido →</span>
+              <span class="path-note">Pra festas, eventos e coffee break</span>
+            </div>
+          </div>
+        </a>
+
+        <a class="path path-cong" href="#">
+          <div class="sawtooth"></div>
+          <div class="path-body">
+            <div class="path-eyebrow"><span class="badge badge-soon">Área de clientes</span></div>
+            <h3>Congelados</h3>
+            <p>Catálogo completo de salgados congelados — minis, médios, grandes e gigantes — pra revenda e estoque.</p>
+            <ul>
+              <li><span class="mk"></span> Seus produtos e preços liberados pra você</li>
+              <li><span class="mk"></span> Condições de pagamento do seu cadastro</li>
+              <li><span class="mk"></span> Recompra rápida do que você já costuma pedir</li>
+            </ul>
+            <div class="path-foot">
+              <span class="btn btn-outline-ink">Entrar / fazer pedido →</span>
+              <span class="path-note">Preços e condições do seu cadastro</span>
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== NOSSA HISTÓRIA ===== -->
+  <section class="historia" id="historia">
+    <div class="wrap">
+      <div class="hist-panel">
+        <span class="hist-watermark">2007</span>
+        <div class="hist-main">
+          <div class="hist-col-text">
+            <div class="hist-kicker"><span class="dot"></span> Joinville/SC · desde 2007</div>
+            <h2 class="hist-title">Nossa História</h2>
+            <div class="hist-body">
+              <p>A Hardt Salgados nasceu da paixão de uma família pela culinária e pelo sabor autêntico. Tudo começou em Joinville, em 2007, quando uma receita de família virou o sonho de levar o salgado feito à mão para a mesa de mais gente.</p>
+              <p>De uma cozinha pequena para uma produção que abastece festas, eventos e revendedores de toda a região — sempre com o mesmo cuidado: massa fininha, recheio caprichado e o ponto certo da fritura.</p>
+            </div>
+            <p class="hist-frase">— do mesmo jeitinho, desde o primeiro dia</p>
+          </div>
+          <div class="hist-col-art">
+            <div class="hist-carousel"><img src="https://picsum.photos/seed/hardtcoxinha/900/700" alt="" /></div>
+            <div class="seal">Sabor<br />sem igual<small>desde 2007</small></div>
+          </div>
+        </div>
+        <div class="hist-stats">
+          <div class="hist-stat"><div class="num">desde 2007</div><h4>Tradição</h4><p>Quase 20 anos fazendo salgado em Pirabeiraba, Joinville.</p></div>
+          <div class="hist-stat"><div class="num">à mão</div><h4>Feito artesanal</h4><p>Massa fininha, recheio caprichado e padrão em cada caixa.</p></div>
+          <div class="hist-stat"><div class="num">-18°C</div><h4>Frota própria</h4><p>Entrega em veículos refrigerados, do nosso freezer ao seu.</p></div>
+          <div class="hist-stat"><div class="num">no link</div><h4>Pedido fácil</h4><p>Monte, escolha o horário e finalize pelo WhatsApp.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CONTATO ===== -->
+  <section class="section" id="contato">
+    <div class="wrap contact">
+      <div class="contact-card">
+        <div class="contact-top">
+          <div class="contact-rows">
+            <div class="contact-row">
+              <div><div class="lab">Onde estamos</div><div class="val">Rua XV de Outubro, 170<br/>Pirabeiraba, Joinville/SC</div></div>
+            </div>
+            <div class="contact-row">
+              <div><div class="lab">WhatsApp</div><a class="val val-big" href="#">(47) 98854-8476</a></div>
+            </div>
+          </div>
+          <div class="contact-social">
+            <div class="lab">Redes sociais</div>
+            <div class="social-links">
+              <a class="soc" href="#" aria-label="Instagram">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                <span>@hardtsalgados</span>
+              </a>
+              <a class="soc" href="#" aria-label="Facebook">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z"/></svg>
+                <span>Facebook</span>
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="path-foot" style="margin-top:0; display:flex; gap:14px; flex-wrap:wrap;">
+          <a class="btn btn-wa" href="#">Chamar no WhatsApp</a>
+          <a class="btn btn-yellow" href="#">Montar Kit Festa</a>
+        </div>
+      </div>
+      <div class="contact-map">
+        <iframe title="Localização da Hardt no mapa"
+          src="https://www.google.com/maps?q=Rua%20XV%20de%20Outubro%2C%20170%2C%20Pirabeiraba%2C%20Joinville%2FSC&output=embed"
+          loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <div class="sawtooth"></div>
+  <footer class="foot">
+    <div class="wrap foot-in">
+      <a href="#" class="foot-logo">
+        <img src="https://cahardt-github.xrqvlq.easypanel.host/cong/logo.png" alt="Hardt" />
+        <b>Hardt Doces e Salgados<span>Sabor sem igual · desde 2007</span></b>
+      </a>
+      <div class="foot-links">
+        <a href="#">Kit Festa</a>
+        <a href="#">Congelados</a>
+        <a href="#contato">Contato</a>
+      </div>
+    </div>
+    <div class="wrap" style="padding-bottom:22px;">
+      <small class="foot-copy">© 2026 Hardt Doces e Salgados · Rua XV de Outubro, 170 · Pirabeiraba, Joinville/SC · (47) 98854-8476</small>
+    </div>
+  </footer>
+
+  <a class="wa-float" href="#" aria-label="Falar no WhatsApp">
+    <svg viewBox="0 0 32 32" width="30" height="30" fill="currentColor"><path d="M16 3C9.4 3 4 8.4 4 15c0 2.1.6 4.1 1.6 5.9L4 29l8.3-1.6c1.7.9 3.6 1.4 5.7 1.4 6.6 0 12-5.4 12-12S22.6 3 16 3zm0 21.8c-1.8 0-3.5-.5-5-1.3l-.4-.2-3.7.7.7-3.6-.2-.4c-.9-1.6-1.4-3.4-1.4-5.3C6 9.9 10.5 5.5 16 5.5S26 9.9 26 15.4 21.5 24.8 16 24.8zm5.5-7c-.3-.2-1.8-.9-2-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-1.8-.9-3-1.6-4.2-3.6-.3-.5.3-.5.9-1.6.1-.2 0-.4 0-.5-.1-.2-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3 1.8.8 2.5.8 3.4.7.5-.1 1.8-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.2-.3-.2-.6-.4z"/></svg>
+  </a>
+
+</div>
+</body>
+</html>
