@@ -17,6 +17,10 @@ const tileGradient = (seed) => {
   const hue = 20 + (h % 40); // 20–60: dourado / caramelo / marrom
   return `linear-gradient(150deg, hsl(${hue} 46% 44%), hsl(${hue} 50% 33%))`;
 };
+// Parsers dos valores nutricionais da etiqueta ("169kcal (12% VD)") — mesma lógica da etiqueta impressa
+const parseValor = (s) => { if (!s) return null; const m = String(s).replace(',', '.').match(/-?[\d.]+/); return m ? parseFloat(m[0]) : null; };
+const parseVD = (s) => { const m = String(s || '').match(/(\d+)\s*%/); return m ? m[1] : null; };
+const fmtNum = (n, d) => { if (n == null || isNaN(n)) return '0'; const f = Math.pow(10, d); return String(Math.round(n * f) / f).replace('.', ','); };
 
 export default function CongeladosSite() {
   const [cliente, setCliente] = useState(null);   // cliente logado (com condições, dias…)
@@ -412,13 +416,27 @@ function FichaModal({ ficha, onClose }) {
   const next = (e) => { e.stopPropagation(); setIdx(i => (i + 1) % imgs.length); };
   const et = ficha.etiqueta;
   const nut = et?.nutricional || {};
+  const pesoPorc = Number(et?.pesoPorcao) || 0;
+  // linhas da tabela nutricional (padrão ANVISA) — dec=casas decimais, indent=recuo
   const linhasNut = [
-    ['Valor energético', nut.valorEnergetico], ['Carboidratos', nut.carboidratos], ['Proteínas', nut.proteinas],
-    ['Gorduras totais', nut.gordurasTotais], ['Gorduras saturadas', nut.gordurasSaturadas], ['Gorduras trans', nut.gordurasTrans],
-    ['Fibra alimentar', nut.fibraAlimentar], ['Sódio', nut.sodio],
-  ].filter(([, v]) => v);
-  const alerg = et?.alergenos || {};
-  const listaAlerg = [alerg.leite && 'leite', alerg.gluten && 'glúten', alerg.ovo && 'ovo', alerg.outros].filter(Boolean).join(', ');
+    { label: 'Valor energético (kcal)',  raw: nut.valorEnergetico,     dec: 0, indent: 0 },
+    { label: 'Carboidratos totais (g)',  raw: nut.carboidratos,        dec: 1, indent: 0 },
+    { label: 'Açúcares totais (g)',      raw: nut.acucaresTotais,      dec: 1, indent: 1, always: true },
+    { label: 'Açúcares adicionados (g)', raw: nut.acucaresAdicionados, dec: 1, indent: 2, always: true },
+    { label: 'Proteínas (g)',            raw: nut.proteinas,           dec: 1, indent: 0 },
+    { label: 'Gorduras totais (g)',      raw: nut.gordurasTotais,      dec: 1, indent: 0 },
+    { label: 'Gorduras saturadas (g)',   raw: nut.gordurasSaturadas,   dec: 1, indent: 1 },
+    { label: 'Gorduras trans (g)',       raw: nut.gordurasTrans,       dec: 1, indent: 1 },
+    { label: 'Fibras alimentares (g)',   raw: nut.fibraAlimentar,      dec: 1, indent: 0 },
+    { label: 'Sódio (mg)',               raw: nut.sodio,               dec: 0, indent: 0 },
+  ].filter(r => r.always || r.raw);
+  const temNut = pesoPorc > 0 && linhasNut.some(r => r.raw);
+  // declaração de alérgenos (mesma lógica da etiqueta impressa: espécie p/ crustáceos/peixes)
+  const alergenos = (Array.isArray(et?.alergenos) ? et.alergenos.filter(Boolean) : []).map(a => {
+    if (a === 'Crustáceos' && et.especieCrustaceos) return `${a} (${et.especieCrustaceos})`;
+    if (a === 'Peixes' && et.especiePeixes) return `${a} (${et.especiePeixes})`;
+    return a;
+  });
 
   return (
     <div className="cg-fmodal-ov" onClick={onClose}>
@@ -458,12 +476,55 @@ function FichaModal({ ficha, onClose }) {
 
             {et && (
               <>
-                <div className="cg-fgrid">
-                  {et.validadeDias != null && <div className="cg-fcard"><b>{et.validadeDias} dias</b><span>validade</span></div>}
-                  {et.armazenamento && <div className="cg-fcard"><b>{et.armazenamento}</b><span>conservação</span></div>}
-                  {et.quantidadeEmbalagem != null && <div className="cg-fcard"><b>{et.quantidadeEmbalagem}{et.quantidadeAproximada ? '±' : ''} un</b><span>por embalagem</span></div>}
-                </div>
+                {/* Tabela nutricional — padrão ANVISA (IN 75/2020) */}
+                {temNut && (
+                  <div className="cg-fsec">
+                    <div className="cg-nut">
+                      <div className="cg-nut-cab">Informação Nutricional</div>
+                      <table className="cg-nut-tb">
+                        <colgroup><col style={{ width: '44%' }} /><col style={{ width: '18%' }} /><col style={{ width: '24%' }} /><col style={{ width: '14%' }} /></colgroup>
+                        <tbody>
+                          <tr className="porc"><td colSpan={4}>Porções por embalagem: {et.quantidadeEmbalagem}{et.quantidadeAproximada ? '±' : ''} porções<br />Porção: {pesoPorc} g (1 unidade)</td></tr>
+                          <tr className="rule"><td colSpan={4}><div className="thick" /></td></tr>
+                          <tr className="hdr"><td></td><td>100 g</td><td>Porção {pesoPorc} g</td><td>%VD*</td></tr>
+                          {linhasNut.map(r => {
+                            const porc = parseValor(r.raw);
+                            const cem = (porc != null && pesoPorc) ? (porc / pesoPorc) * 100 : null;
+                            const vd = parseVD(r.raw);
+                            const ind = r.indent === 1 ? 'ind1' : r.indent === 2 ? 'ind2' : '';
+                            return (
+                              <tr className="body-row" key={r.label}>
+                                <td className={ind}>{r.label}</td>
+                                <td className="val">{fmtNum(cem, r.dec)}</td>
+                                <td className="val">{fmtNum(porc, r.dec)}</td>
+                                <td className="val">{vd != null ? vd : '—'}</td>
+                              </tr>
+                            );
+                          })}
+                          <tr className="nota"><td colSpan={4}>*Percentual de valores diários fornecidos pela porção.</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
+                {/* Ingredientes + declaração de alérgenos */}
+                {et.composicao && (
+                  <div className="cg-fsec">
+                    <h4>Ingredientes</h4>
+                    <div className="cg-declar">
+                      <div className="ing">{et.composicao}</div>
+                      <div className="alert">
+                        {et.contemGluten ? 'CONTÉM GLÚTEN' : 'NÃO CONTÉM GLÚTEN'}
+                        {et.contemLactose ? ' · CONTÉM LACTOSE' : ''}
+                        {alergenos.length > 0 ? ` · ALÉRGICOS: CONTÉM ${alergenos.join(', ').toUpperCase()}.` : ''}
+                        {et.avisosRotulo ? ` ${String(et.avisosRotulo).toUpperCase()}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Modo de preparo (depois dos ingredientes) */}
                 {et.modoPreparo && (
                   <div className="cg-fsec">
                     <h4>Modo de preparo</h4>
@@ -471,27 +532,11 @@ function FichaModal({ ficha, onClose }) {
                   </div>
                 )}
 
-                {linhasNut.length > 0 && (
-                  <div className="cg-fsec">
-                    <h4>Informação nutricional {et.pesoPorcao ? <span className="cg-fporc">porção {et.pesoPorcao}g</span> : null}</h4>
-                    <table className="cg-ftable">
-                      <tbody>{linhasNut.map(([k, v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}</tbody>
-                    </table>
-                  </div>
-                )}
-
-                {et.composicao && (
-                  <div className="cg-fsec">
-                    <h4>Ingredientes</h4>
-                    <p>{et.composicao}</p>
-                  </div>
-                )}
-
-                {(listaAlerg || alerg.avisos) && (
-                  <div className="cg-fsec">
-                    <h4>Alérgicos</h4>
-                    {listaAlerg && <p>Contém: {listaAlerg}.</p>}
-                    {alerg.avisos && <p style={{ color: 'var(--chalk-dim)' }}>{alerg.avisos}</p>}
+                {/* Validade + conservação no final */}
+                {(et.validadeDias != null || et.armazenamento) && (
+                  <div className="cg-fgrid cg-fgrid-2">
+                    {et.validadeDias != null && <div className="cg-fcard"><b>{et.validadeDias} dias</b><span>validade</span></div>}
+                    {et.armazenamento && <div className="cg-fcard"><b>{et.armazenamento}</b><span>conservação</span></div>}
                   </div>
                 )}
               </>
