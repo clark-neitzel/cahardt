@@ -501,20 +501,31 @@ const congeladosService = {
             p.preco = precoVendedor({ base: p.preco, acrescimoPct: ctx.acrescimoPct, ultimoPreco: ultimaMap[p.produtoId], maxDescontoPct: ctx.maxDescontoPct });
         });
 
-        // Último pedido (para "repetir último pedido") — mapeado ao catálogo de congelados
+        // Último pedido (para "repetir último pedido") — mapeado ao catálogo de congelados.
+        // Usa o último pedido REAL (não bonificação, não excluído) e desconta devoluções:
+        // item totalmente devolvido não volta no carrinho.
         let ultimoPedido = [];
         if (clienteUuid) {
             const ultimo = await prisma.pedido.findFirst({
-                where: { clienteId: clienteUuid },
-                orderBy: { createdAt: 'desc' }, // o pedido feito por último
-                include: { itens: { select: { produtoId: true, quantidade: true } } },
+                where: { clienteId: clienteUuid, bonificacao: false, statusEnvio: { not: 'EXCLUIDO' } },
+                orderBy: { createdAt: 'desc' }, // o pedido real feito por último
+                select: { id: true, itens: { select: { produtoId: true, quantidade: true } } },
             });
             if (ultimo) {
                 const porProduto = {};
                 catalogo.forEach(p => { porProduto[p.produtoId] = p.id; });
-                ultimoPedido = ultimo.itens
-                    .filter(i => porProduto[i.produtoId])
-                    .map(i => ({ congeladosProdutoId: porProduto[i.produtoId], quantidade: Math.round(Number(i.quantidade)) || 1 }));
+                // quantidade pedida por produto (só os que estão no site)
+                const qtd = {};
+                ultimo.itens.forEach(i => { if (porProduto[i.produtoId]) qtd[i.produtoId] = (qtd[i.produtoId] || 0) + Number(i.quantidade || 0); });
+                // desconta as devoluções ATIVAS desse pedido
+                const devs = await prisma.devolucao.findMany({
+                    where: { pedidoOriginalId: ultimo.id, status: 'ATIVA' },
+                    select: { itens: { select: { produtoId: true, quantidade: true } } },
+                });
+                devs.forEach(d => d.itens.forEach(i => { if (qtd[i.produtoId] != null) qtd[i.produtoId] -= Number(i.quantidade || 0); }));
+                ultimoPedido = Object.keys(qtd)
+                    .filter(pid => qtd[pid] > 0.0001)
+                    .map(pid => ({ congeladosProdutoId: porProduto[pid], quantidade: Math.round(qtd[pid]) || 1 }));
             }
         }
         return { catalogo, ultimoPedido };
