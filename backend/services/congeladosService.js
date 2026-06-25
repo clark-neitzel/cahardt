@@ -541,7 +541,7 @@ const congeladosService = {
     },
 
     // ───────── Criação de pedido (cliente logado ou visitante) ─────────
-    async criarPedidoSite({ clienteId, visitante, itens, diaEntrega, dataEntrega, observacoes, telefone }) {
+    async criarPedidoSite({ clienteId, visitante, itens, diaEntrega, dataEntrega, modo, observacoes, telefone }) {
         if (!Array.isArray(itens) || itens.length === 0) throw new Error('Carrinho vazio.');
 
         let auth;
@@ -625,24 +625,27 @@ const congeladosService = {
         // - Cliente usando o dia regular do cadastro → pedido normal.
         // - Data fora do dia regular (ou cliente sem dia / visitante) → "encaixe": a equipe verifica.
         // - Fim de semana só é permitido em datas de calendário se o admin liberar (regular do cadastro é sempre honrado).
+        const modoFinal = modo === 'retirada' ? 'retirada' : 'entrega';
         let dataEntregaFinal = null;
         let encaixe = false;
         let diaEntregaLabel = diaEntrega || null;
         if (dataEntrega) {
             const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dataEntrega));
-            if (!m) throw new Error('Data de entrega inválida.');
+            if (!m) throw new Error('Data inválida.');
             const dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
             const wd = dt.getUTCDay(); // 0=Dom..6=Sáb
             const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-            if (String(dataEntrega) <= hojeStr) throw new Error('A data de entrega deve ser a partir de amanhã.');
-            const regularNums = cliente ? diasEntregaNums(cliente.Dia_de_entrega) : [];
+            const palavra = modoFinal === 'retirada' ? 'retirada' : 'entrega';
+            if (String(dataEntrega) <= hojeStr) throw new Error(`A data de ${palavra} deve ser a partir de amanhã.`);
+            // Retirada: não considera o dia regular do cadastro e nunca é "encaixe".
+            const regularNums = (modoFinal === 'entrega' && cliente) ? diasEntregaNums(cliente.Dia_de_entrega) : [];
             const ehRegular = regularNums.includes(wd);
             if (!ehRegular) {
                 const cfg = await this.configPublico();
-                if (wd === 0 && !cfg.entregas?.domingo) throw new Error('Não atendemos entregas aos domingos.');
-                if (wd === 6 && !cfg.entregas?.sabado) throw new Error('Não atendemos entregas aos sábados.');
+                if (wd === 0 && !cfg.entregas?.domingo) throw new Error(`Não atendemos ${palavra} aos domingos.`);
+                if (wd === 6 && !cfg.entregas?.sabado) throw new Error(`Não atendemos ${palavra} aos sábados.`);
             }
-            encaixe = !ehRegular;
+            encaixe = modoFinal === 'entrega' && !ehRegular;
             dataEntregaFinal = dt;
             diaEntregaLabel = DIA_LABEL[TOKEN_POR_NUM[wd]];
         }
@@ -659,6 +662,7 @@ const congeladosService = {
                 condicaoNome,
                 diaEntrega: diaEntregaLabel,
                 dataEntrega: dataEntregaFinal,
+                modo: modoFinal,
                 encaixe,
                 subtotal,
                 total: subtotal,

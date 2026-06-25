@@ -46,7 +46,7 @@ export default function CongeladosSite() {
   const [erroEnvio, setErroEnvio] = useState('');
   const [loginModal, setLoginModal] = useState(false);
 
-  const [hdr, setHdr] = useState({ tabelaPrecoId: '', dia: '', obs: '', telefone: '', dataEntrega: '' });
+  const [hdr, setHdr] = useState({ tabelaPrecoId: '', dia: '', obs: '', telefone: '', dataEntrega: '', modo: 'entrega' });
   const [trocarData, setTrocarData] = useState(false);
   const [erroData, setErroData] = useState('');
 
@@ -135,19 +135,27 @@ export default function CongeladosSite() {
     for (let i = 1; i <= 28; i++) { const d = new Date(t); d.setDate(t.getDate() + i); if (nums.includes(d.getDay())) return ISO(d); }
     return '';
   }, [cliente]);
-  useEffect(() => { if (sugeridaISO) setHdr(h => (h.dataEntrega ? h : { ...h, dataEntrega: sugeridaISO })); }, [sugeridaISO]);
-  // "encaixe": data fora dos dias regulares do cliente (ou sem dia regular / visitante)
-  const ehEncaixe = !!hdr.dataEntrega && !(cliente?.diasEntregaNums || []).includes(weekdayISO(hdr.dataEntrega));
+  // só sugere o dia regular do cadastro quando é ENTREGA (retirada o cliente escolhe)
+  useEffect(() => { if (sugeridaISO && hdr.modo === 'entrega') setHdr(h => (h.dataEntrega ? h : { ...h, dataEntrega: sugeridaISO })); }, [sugeridaISO, hdr.modo]);
+  // "encaixe": só na ENTREGA, quando a data foge dos dias regulares do cliente
+  const ehEncaixe = hdr.modo === 'entrega' && !!hdr.dataEntrega && !(cliente?.diasEntregaNums || []).includes(weekdayISO(hdr.dataEntrega));
   const escolherData = (iso) => {
     if (!iso) { setErroData(''); setHdr(h => ({ ...h, dataEntrega: '' })); return; }
-    if (iso < amanhaISO) { setErroData('A data de entrega deve ser a partir de amanhã.'); return; }
+    const palavra = hdr.modo === 'retirada' ? 'retirada' : 'entrega';
+    if (iso < amanhaISO) { setErroData(`A data de ${palavra} deve ser a partir de amanhã.`); return; }
     const wd = weekdayISO(iso);
-    const regular = (cliente?.diasEntregaNums || []).includes(wd);
+    // retirada não considera o dia regular do cadastro
+    const regular = hdr.modo === 'entrega' && (cliente?.diasEntregaNums || []).includes(wd);
     if (!regular) {
-      if (wd === 0 && !cfg?.entregas?.domingo) { setErroData('Não atendemos entregas aos domingos.'); return; }
-      if (wd === 6 && !cfg?.entregas?.sabado) { setErroData('Não atendemos entregas aos sábados.'); return; }
+      if (wd === 0 && !cfg?.entregas?.domingo) { setErroData(`Não atendemos ${palavra} aos domingos.`); return; }
+      if (wd === 6 && !cfg?.entregas?.sabado) { setErroData(`Não atendemos ${palavra} aos sábados.`); return; }
     }
     setErroData(''); setHdr(h => ({ ...h, dataEntrega: iso })); setTrocarData(false);
+  };
+  const setModo = (m) => {
+    setErroData(''); setTrocarData(false);
+    // entrega → sugere o dia regular; retirada → limpa para o cliente escolher
+    setHdr(h => ({ ...h, modo: m, dataEntrega: m === 'entrega' ? sugeridaISO : '' }));
   };
 
   const repetirUltimo = () => {
@@ -208,6 +216,7 @@ export default function CongeladosSite() {
     const payload = {
       itens,
       dataEntrega: hdr.dataEntrega || null,
+      modo: hdr.modo || 'entrega',
       observacoes: hdr.obs || null,
       telefone: soDigitos(hdr.telefone) || (visitante?.telefone || ''),
     };
@@ -243,7 +252,7 @@ export default function CongeladosSite() {
       ``,
       confirm.condicaoNome ? `Pagamento: ${confirm.condicaoNome}` : null,
       confirm.dataEntrega
-        ? `Entrega: ${dataBR(String(confirm.dataEntrega).slice(0, 10))}${confirm.encaixe ? ' (encaixe — a confirmar)' : ''}`
+        ? `${confirm.modo === 'retirada' ? 'Retirada na loja' : 'Entrega'}: ${dataBR(String(confirm.dataEntrega).slice(0, 10))}${confirm.encaixe ? ' (encaixe — a confirmar)' : ''}`
         : (confirm.diaEntrega ? `Entrega: ${confirm.diaEntrega}` : null),
       confirm.observacoes ? `Obs: ${confirm.observacoes}` : null,
       ``,
@@ -259,7 +268,7 @@ export default function CongeladosSite() {
           <div className="cg-login-in">
             <img className="logo" src={siteLogo} alt="Hardt" />
             <h1>Pedido registrado!</h1>
-            <p className="sub">Seu pedido <b style={{ color: 'var(--green-dd)' }}>#{confirm.numero}</b> foi registrado{confirm.dataEntrega ? <> para <b style={{ color: 'var(--green-dd)' }}>{dataBR(String(confirm.dataEntrega).slice(0, 10))}</b></> : ''}. Para a loja já começar a separar, <b style={{ color: 'var(--green-dd)' }}>envie pelo seu WhatsApp</b> tocando no botão abaixo. O pagamento é combinado conforme a sua condição.</p>
+            <p className="sub">Seu pedido <b style={{ color: 'var(--green-dd)' }}>#{confirm.numero}</b> foi registrado{confirm.dataEntrega ? <> para <b style={{ color: 'var(--green-dd)' }}>{confirm.modo === 'retirada' ? 'retirada' : 'entrega'} em {dataBR(String(confirm.dataEntrega).slice(0, 10))}</b></> : ''}. Para a loja já começar a separar, <b style={{ color: 'var(--green-dd)' }}>envie pelo seu WhatsApp</b> tocando no botão abaixo. O pagamento é combinado conforme a sua condição.</p>
             {confirm.encaixe && <p className="sub" style={{ marginTop: 6, color: 'var(--green-dd)' }}><b>Atenção:</b> essa data é um <b>encaixe</b> — a equipe vai confirmar a viabilidade da entrega e te avisar.</p>}
             <a className="btn btn-wa btn-block" href={waLink} target="_blank" rel="noreferrer" style={{ marginTop: 8 }}>
               <WhatsIcon w={19} /> Enviar pedido pelo WhatsApp
@@ -403,7 +412,13 @@ export default function CongeladosSite() {
                   </>
                 )}
 
-                <h4>Data de entrega</h4>
+                <h4>Como receber</h4>
+                <div className="cg-modo">
+                  <button type="button" className={hdr.modo !== 'retirada' ? 'on' : ''} onClick={() => setModo('entrega')}>Entrega</button>
+                  <button type="button" className={hdr.modo === 'retirada' ? 'on' : ''} onClick={() => setModo('retirada')}>Retirar na loja</button>
+                </div>
+
+                <h4>{hdr.modo === 'retirada' ? 'Data de retirada' : 'Data de entrega'}</h4>
                 {hdr.dataEntrega && !trocarData ? (
                   <div className="cg-delivery">
                     <div className="dd"><b>{dataBR(hdr.dataEntrega)}</b><span>{diaSemanaISO(hdr.dataEntrega)}</span></div>
@@ -413,7 +428,7 @@ export default function CongeladosSite() {
                   <>
                     <input type="date" className="cg-select" min={amanhaISO} value={hdr.dataEntrega || ''}
                       onChange={e => escolherData(e.target.value)} />
-                    {sugeridaISO && trocarData && (
+                    {hdr.modo === 'entrega' && sugeridaISO && trocarData && (
                       <button type="button" className="cg-trocar" style={{ marginTop: 6 }}
                         onClick={() => { setErroData(''); setHdr(h => ({ ...h, dataEntrega: sugeridaISO })); setTrocarData(false); }}>
                         usar data sugerida ({dataBR(sugeridaISO)})
@@ -422,7 +437,10 @@ export default function CongeladosSite() {
                   </>
                 )}
                 {erroData && <p className="cg-minwarn"><Icon n="tag" w={13} /> {erroData}</p>}
-                {hdr.dataEntrega && ehEncaixe && (
+                {hdr.modo === 'retirada' && cfg?.loja?.endereco && (
+                  <p className="cg-retira">Retirar em: {cfg.loja.endereco}</p>
+                )}
+                {ehEncaixe && (
                   <p className="cg-encaixe"><Icon n="tag" w={13} /> Pedido <b>encaixe</b>: a equipe vai confirmar a viabilidade da entrega nessa data.</p>
                 )}
 

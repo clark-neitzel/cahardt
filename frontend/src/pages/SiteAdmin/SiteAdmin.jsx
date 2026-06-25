@@ -191,7 +191,7 @@ function PedidoCard({ p, onAprovar, onVincular, onRecusar, onExcluir }) {
           </div>
           <div className="text-xs text-gray-500 mt-1">
             Doc: {p.documentoCliente}{fantasia ? ` · ${fantasia}` : ''}{cidade ? ` · ${cidade}` : ''}{p.telefoneCliente ? ` · ${p.telefoneCliente}` : ''}
-            {p.condicaoNome ? ` · ${p.condicaoNome}` : ''}{p.dataEntrega ? ` · entrega ${String(p.dataEntrega).slice(0, 10).split('-').reverse().join('/')}` : (p.diaEntrega ? ` · entrega ${p.diaEntrega}` : '')}
+            {p.condicaoNome ? ` · ${p.condicaoNome}` : ''}{p.dataEntrega ? ` · ${p.modo === 'retirada' ? 'retirada' : 'entrega'} ${String(p.dataEntrega).slice(0, 10).split('-').reverse().join('/')}` : (p.diaEntrega ? ` · entrega ${p.diaEntrega}` : '')}
           </div>
         </div>
         <div className="text-right">

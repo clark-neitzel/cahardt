@@ -2037,7 +2037,8 @@ model CongeladosPedido {
   tabelaPrecoId String? @map("tabela_preco_id") // id da TabelaPreco (condição) escolhida
   condicaoNome  String? @map("condicao_nome")
   diaEntrega    String? @map("dia_entrega")
-  dataEntrega   DateTime? @map("data_entrega") // data de entrega escolhida no site
+  dataEntrega   DateTime? @map("data_entrega") // data de entrega/retirada escolhida no site
+  modo          String  @default("entrega") // entrega | retirada (retirar na loja)
   encaixe       Boolean   @default(false) // pedido fora do dia regular do cliente (equipe verifica viabilidade)
 
   // Valores
