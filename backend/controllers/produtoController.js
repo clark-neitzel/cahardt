@@ -95,6 +95,78 @@ const produtoController = {
         }
     },
 
+    // Ficha do produto (popup do catálogo) — dados + tabela nutricional/ingredientes da etiqueta.
+    // Mesma lógica do site de congelados (services/congeladosService.fichaPublico): a etiqueta é
+    // procurada pelo produtoId e, se não houver vínculo, pelo código do produto. O front calcula
+    // 100g/porção/%VD a partir dos valores crus (ex.: "169kcal (12% VD)").
+    ficha: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const p = await prisma.produto.findUnique({
+                where: { id },
+                include: {
+                    imagens: { orderBy: [{ principal: 'desc' }, { ordem: 'asc' }] },
+                    categoriaProduto: { select: { id: true, nome: true, corTag: true } }
+                }
+            });
+            if (!p) return res.status(404).json({ error: 'Produto não encontrado' });
+
+            let et = await prisma.etiquetaProduto.findFirst({ where: { produtoId: p.id, ativo: true }, orderBy: { updatedAt: 'desc' } });
+            if (!et && p.codigo) et = await prisma.etiquetaProduto.findFirst({ where: { codigoProduto: p.codigo, ativo: true }, orderBy: { updatedAt: 'desc' } });
+
+            const imagens = [...p.imagens]
+                .sort((a, b) => (b.principal === true ? 1 : 0) - (a.principal === true ? 1 : 0))
+                .map(i => i.url)
+                .filter(Boolean);
+
+            res.json({
+                id: p.id,
+                nome: p.nome,
+                codigo: p.codigo,
+                unidade: p.unidade,
+                categoria: p.categoria,
+                grupoNome: p.categoriaProduto?.nome || null,
+                descricao: p.descricao || '',
+                valorVenda: p.valorVenda,
+                estoqueDisponivel: p.estoqueDisponivel,
+                ativo: p.ativo,
+                imagem: imagens[0] || null,
+                imagens,
+                etiqueta: et ? {
+                    pesoUnitario: et.pesoUnitario,
+                    pesoPorcao: et.pesoTabelaNutricional,
+                    quantidadeEmbalagem: et.quantidadeEmbalagem,
+                    quantidadeAproximada: et.quantidadeAproximada,
+                    nutricional: {
+                        valorEnergetico: et.valorEnergetico,
+                        carboidratos: et.carboidratos,
+                        acucaresTotais: et.acucaresTotais,
+                        acucaresAdicionados: et.acucaresAdicionados,
+                        proteinas: et.proteinas,
+                        gordurasTotais: et.gordurasTotais,
+                        gordurasSaturadas: et.gordurasSaturadas,
+                        gordurasTrans: et.gordurasTrans,
+                        fibraAlimentar: et.fibraAlimentar,
+                        sodio: et.sodio,
+                    },
+                    composicao: et.composicao,
+                    modoPreparo: et.modoPreparo,
+                    armazenamento: et.armazenamento,
+                    validadeDias: et.validadeDias,
+                    contemGluten: et.contemGluten,
+                    contemLactose: et.contemLactose,
+                    alergenos: Array.isArray(et.alergenos) ? et.alergenos : [],
+                    especieCrustaceos: et.especieCrustaceos,
+                    especiePeixes: et.especiePeixes,
+                    avisosRotulo: et.avisosRotulo,
+                } : null,
+            });
+        } catch (error) {
+            console.error('Erro ao buscar ficha do produto:', error);
+            res.status(500).json({ error: 'Erro ao buscar ficha do produto' });
+        }
+    },
+
     // Atualizar produto (somente campos locais — dados do CA são imutáveis)
     atualizar: async (req, res) => {
         try {

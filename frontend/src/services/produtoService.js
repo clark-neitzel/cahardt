@@ -11,6 +11,11 @@ const produtoService = {
         return response.data;
     },
 
+    ficha: async (id) => {
+        const response = await api.get(`/produtos/${id}/ficha`);
+        return response.data;
+    },
+
     atualizar: async (id, data) => {
         const response = await api.put(`/produtos/${id}`, data);
         return response.data;

@@ -13,6 +13,7 @@ const exigeAdmin = (req, res, next) => {
 // Leitura (qualquer autenticado)
 router.get('/categorias-ca', produtoController.categoriasCA);
 router.get('/', produtoController.listar);
+router.get('/:id/ficha', produtoController.ficha);
 router.get('/:id', produtoController.detalhar);
 
 // Escrita (somente admin/produtos)
