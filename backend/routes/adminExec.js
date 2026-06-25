@@ -32,6 +32,24 @@ router.get('/ping', (req, res) => {
     });
 });
 
+// POST /api/admin-exec/kitfesta-reenviar-whatsapp/:numero
+// Reenvia (ou envia) ao celular do cliente a confirmação de um pedido do Kit Festa.
+// Útil para pedidos criados antes do recurso entrar no ar ou que falharam no envio.
+router.post('/kitfesta-reenviar-whatsapp/:numero', async (req, res) => {
+    try {
+        const numero = parseInt(req.params.numero, 10);
+        if (!numero) return res.status(400).json({ error: 'Número de pedido inválido.' });
+        const pedido = await prisma.kitFestaPedido.findUnique({ where: { numero } });
+        if (!pedido) return res.status(404).json({ error: 'Pedido Kit Festa não encontrado.' });
+        const webhookService = require('../services/webhookService');
+        const result = await webhookService.notificarPedidoKitFesta(pedido.id);
+        res.json({ numero, telefoneCliente: pedido.telefoneCliente, ...result });
+    } catch (error) {
+        console.error('[admin-exec] Erro kitfesta-reenviar-whatsapp:', error);
+        res.status(500).json({ ok: false, motivo: error.message });
+    }
+});
+
 // GET /api/admin-exec/diag-colunas
 // SOMENTE LEITURA. Conta, por tabela, colunas vivas vs "fantasma" (dropped) que
 // ainda ocupam vaga no limite de 1600 do Postgres. Usado para diagnosticar o
