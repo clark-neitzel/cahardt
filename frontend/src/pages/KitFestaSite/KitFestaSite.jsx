@@ -462,8 +462,13 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
   const [obs, setObs] = useState('');
   const [bairros, setBairros] = useState([]);
   const [bairroId, setBairroId] = useState('');
-  const maskTel = (v) => v.replace(/\D/g, '').slice(0, 11)
-    .replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2').replace(/(\d{4})(\d)/, '$1-$2');
+  const maskTel = (v) => {
+    const d = v.replace(/\D/g, '').slice(0, 11);
+    // 11 dígitos = celular (47) 99999-9999 · 10 = fixo (47) 9999-9999
+    return d.length > 10
+      ? d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2')
+      : d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d)/, '$1-$2');
+  };
   const maskCep = (v) => v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d)/, '$1-$2');
   const [telefone, setTelefone] = useState(telefoneAtual ? maskTel(telefoneAtual) : '');
   const telOk = telefone.replace(/\D/g, '').length >= 10;

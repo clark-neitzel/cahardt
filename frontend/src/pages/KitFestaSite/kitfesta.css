@@ -58,7 +58,9 @@
 }
 .kf img { display:block; max-width:100%; }
 .kf button { font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
-.kf input, .kf textarea, .kf select { font-family:inherit; }
+/* Campos ficam sobre cartões claros: forçar modo claro p/ não herdar o color-scheme:dark
+   do container (que pintava o input de preto no celular em tema escuro). */
+.kf input, .kf textarea, .kf select { font-family:inherit; color-scheme:light; color:var(--ink); background:transparent; }
 .kf ::selection { background:var(--yellow); color:var(--ink); }
 .kf .tex-board {
   background-color:var(--ink);
