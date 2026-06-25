@@ -817,7 +817,7 @@ function Footer({ cfg, logo }) {
           <div>
             <h5>Fale com a gente</h5>
             <div className="row"><MessageCircle size={16} />
-              <a href={`https://wa.me/${l.whatsapp}`} style={{ color: 'var(--chalk)' }} target="_blank" rel="noreferrer">{l.telefone}</a>
+              <a href={`https://wa.me/${l.whatsapp}`} style={{ color: 'var(--ink)' }} target="_blank" rel="noreferrer">{l.telefone}</a>
             </div>
           </div>
         </div>
