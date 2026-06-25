@@ -257,6 +257,53 @@
 .cg .wa-float svg{ width:30px; height:30px; }
 
 /* ============================================================
+   TEMA CLARO da PÁGINA PRINCIPAL (.cg.home) — fundo creme estilo Kit Festa.
+   Escopado em .cg.home: a área de congelados/login (.cg sem .home) NÃO muda.
+   A seção "Nossa História" continua sendo o painel verde (contrasta no creme).
+   ============================================================ */
+.cg.home{ color:var(--ink); background-color:var(--paper);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='.05'/%3E%3C/svg%3E"); }
+
+/* menu */
+.cg.home .nav{ background:rgba(243,231,205,.86); border-bottom:1px solid rgba(25,27,23,.12); }
+.cg.home .nav-logo span{ color:var(--green-d); }
+.cg.home .nav-links a{ color:#6a5f4c; }
+.cg.home .nav-links a:hover{ color:var(--green-dd); }
+.cg.home .btn-ghost{ border:2px solid rgba(18,130,64,.4); color:var(--green-dd); }
+.cg.home .btn-ghost:hover{ border-color:var(--green); color:var(--green); background:rgba(18,130,64,.06); }
+
+/* abertura: kicker/título/subtítulo */
+.cg.home .intro-head .kicker{ color:var(--green-dd); }
+.cg.home .sec-head h2{ color:var(--ink); }
+.cg.home .sec-head p{ color:#6a5f4c; }
+.cg.home .brand-mark img{ filter:drop-shadow(0 12px 30px rgba(8,20,10,.22)); }
+
+/* card "Congelados" -> claro (o "Kit Festa" segue verde) */
+.cg.home .path-cong{ background:#fffaf0; border:1px solid rgba(25,27,23,.1); }
+.cg.home .path-cong h3{ color:var(--ink); }
+.cg.home .path-cong p, .cg.home .path-cong li, .cg.home .path-cong .path-note{ color:#6a5f4c; }
+.cg.home .path-cong li .mk{ background:var(--green); }
+.cg.home .path-cong .badge-soon{ background:rgba(18,130,64,.1); color:var(--green-dd); border:1px solid rgba(18,130,64,.25); }
+
+/* contato -> claro */
+.cg.home .contact-card{ background:#fffaf0; border:1px solid rgba(25,27,23,.1); box-shadow:var(--shadow-sm); }
+.cg.home .contact-row{ border-bottom-color:rgba(25,27,23,.12); }
+.cg.home .contact-row .lab, .cg.home .contact-social .lab{ color:var(--green-dd); }
+.cg.home .contact-row .val{ color:var(--ink); }
+.cg.home .contact-row a.val:hover{ color:var(--green-dd); }
+.cg.home .social-links .soc{ border-color:rgba(25,27,23,.14); color:var(--ink); }
+.cg.home .social-links .soc:hover{ border-color:var(--green); color:var(--green-dd); }
+.cg.home .contact-map{ border-color:rgba(25,27,23,.12); }
+
+/* rodapé -> claro */
+.cg.home .foot{ background:var(--paper-2); border-top:1px solid rgba(25,27,23,.12); }
+.cg.home .foot-logo b{ color:var(--ink); }
+.cg.home .foot-logo span{ color:var(--green-d); }
+.cg.home .foot-links a{ color:#6a5f4c; }
+.cg.home .foot-links a:hover{ color:var(--green-dd); }
+.cg.home .foot-copy{ color:#6a5f4c; }
+
+/* ============================================================
    CONGELADOS (área do cliente / revenda)
    ============================================================ */
 .cg-login{ min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:24px; }

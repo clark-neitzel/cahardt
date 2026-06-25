@@ -80,7 +80,7 @@ export default function HomeSite() {
   const fbUrl = social(loja.facebook, 'https://facebook.com/');
 
   return (
-    <div className="cg home tex-board">
+    <div className="cg home">
       {/* ===== NAV ===== */}
       <header className="nav">
         <div className="wrap nav-in">
@@ -245,7 +245,7 @@ export default function HomeSite() {
           </div>
         </div>
         <div className="wrap" style={{ paddingBottom: 22 }}>
-          <small style={{ color: 'var(--chalk-dim)', fontSize: '.78rem' }}>© {new Date().getFullYear()} {loja.nome} · {loja.endereco} · {loja.telefone}</small>
+          <small className="foot-copy" style={{ fontSize: '.78rem' }}>© {new Date().getFullYear()} {loja.nome} · {loja.endereco} · {loja.telefone}</small>
         </div>
       </footer>
 
