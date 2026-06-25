@@ -38,7 +38,7 @@ export default function CongeladosSite() {
   const [grupos, setGrupos] = useState([]);
   const [ultimoPedido, setUltimoPedido] = useState([]);
 
-  const [cart, setCart] = useState({});
+  const [cart, setCart] = useState(() => { try { return JSON.parse(localStorage.getItem('cg_cart') || '{}') || {}; } catch { return {}; } });
   const [filtro, setFiltro] = useState('todos');
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
@@ -90,7 +90,21 @@ export default function CongeladosSite() {
     setHdr(h => ({ ...h, telefone: h.telefone || cliente.telefone || '' }));
   }, [cliente]);
 
+  // Salva o carrinho (sobrevive a refresh). Guarda só as quantidades — o preço é
+  // sempre lido do catálogo ao vivo, então mudança de preço atualiza sozinha.
+  useEffect(() => { try { localStorage.setItem('cg_cart', JSON.stringify(cart)); } catch {} }, [cart]);
+  // Reconcilia: remove do carrinho os itens que saíram do catálogo (produto inativado/fora do site).
+  useEffect(() => {
+    if (!produtos.length) return;
+    setCart(c => {
+      let mudou = false; const valido = {};
+      Object.keys(c).forEach(id => { if (produtos.some(p => p.id === id)) valido[id] = c[id]; else mudou = true; });
+      return mudou ? valido : c;
+    });
+  }, [produtos]);
+
   const qtyOf = (id) => cart[id] || 0;
+  const limparCarrinho = () => { if (window.confirm('Esvaziar o carrinho?')) { setCart({}); setOpen(false); } };
   const addItem = (id) => {
     if (!logado) { setLoginModal(true); return; }
     setCart(c => ({ ...c, [id]: (c[id] || 0) + 1 }));
@@ -343,6 +357,7 @@ export default function CongeladosSite() {
         <div className="cg-dhead">
           <Icon n="cart" w={20} />
           <h3>Seu pedido</h3>
+          {totals.boxes > 0 && <button className="cg-limpar" onClick={limparCarrinho}><Icon n="trash" w={14} /> Limpar</button>}
           <button className="x" onClick={() => setOpen(false)}><Icon n="x" w={18} /></button>
         </div>
 
