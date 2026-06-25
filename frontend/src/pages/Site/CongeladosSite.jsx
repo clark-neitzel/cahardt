@@ -296,6 +296,8 @@ export default function CongeladosSite() {
         </div>
       </main>
 
+      <FinalSite cfg={cfg} logo={siteLogo} />
+
       {/* mobile fab */}
       <div className={'cg-fab' + (totals.boxes > 0 && !open ? ' show' : '')}>
         <button className="btn btn-yellow btn-block" onClick={() => setOpen(true)}>
@@ -595,5 +597,67 @@ function Card({ p, preco, qty, add, dec, onAbrir }) {
         </div>
       </div>
     </article>
+  );
+}
+
+/* ---------- Final padrão (igual à home/Kit Festa): contato + mapa + rodapé simples ---------- */
+function FinalSite({ cfg, logo }) {
+  const l = cfg?.loja || {};
+  const wa = `https://wa.me/${l.whatsapp || '5547988548476'}`;
+  const waMsg = `${wa}?text=${encodeURIComponent('Olá! Vim pelo site da Hardt e gostaria de fazer um pedido.')}`;
+  const social = (v, base) => !v ? null : (String(v).startsWith('http') ? v : `${base}${String(v).replace(/^@/, '')}`);
+  const igUrl = social(l.instagram, 'https://instagram.com/');
+  const fbUrl = social(l.facebook, 'https://facebook.com/');
+  const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(String(l.endereco || '').replace(' — ', ', '))}&output=embed`;
+  return (
+    <div className="cg-fim">
+      <section className="section" id="contato">
+        <div className="wrap contact">
+          <div className="contact-card">
+            <div className="contact-top">
+              <div className="contact-rows">
+                <div className="contact-row"><div><div className="lab">Onde estamos</div><div className="val" dangerouslySetInnerHTML={{ __html: String(l.endereco || '').replace(' — ', '<br/>') }} /></div></div>
+                <div className="contact-row"><div><div className="lab">WhatsApp</div><a className="val val-big" href={waMsg} target="_blank" rel="noopener noreferrer">{l.telefone}</a></div></div>
+                {l.email && <div className="contact-row"><div><div className="lab">E-mail</div><a className="val" href={`mailto:${l.email}`}>{l.email}</a></div></div>}
+              </div>
+              {(igUrl || fbUrl) && (
+                <div className="contact-social">
+                  <div className="lab">Redes sociais</div>
+                  <div className="social-links">
+                    {igUrl && (
+                      <a className="soc" href={igUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg>
+                        <span>{l.instagram && !String(l.instagram).startsWith('http') ? `@${String(l.instagram).replace(/^@/, '')}` : 'Instagram'}</span>
+                      </a>
+                    )}
+                    {fbUrl && (
+                      <a className="soc" href={fbUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z" /></svg>
+                        <span>Facebook</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="hero-cta contact-cta">
+              <a className="btn btn-wa" href={waMsg} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+              <Link className="btn btn-yellow" to="/kit-festa">Kit-Festa</Link>
+              <Link className="btn btn-ghost" to="/congelados">Congelados</Link>
+            </div>
+          </div>
+          <div className="contact-map">
+            <iframe title="Localização da Hardt no mapa" src={mapSrc} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
+          </div>
+        </div>
+      </section>
+      <div className="sawtooth"></div>
+      <footer className="foot">
+        <div className="wrap foot-simple-in">
+          <img className="foot-mark" src={logo || LOGO} alt="Hardt" />
+          <span>Hardt Doces e Salgados Ltda® — Todos os direitos reservados.</span>
+        </div>
+      </footer>
+    </div>
   );
 }

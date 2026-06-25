@@ -29,6 +29,7 @@ Módulo do **site público da Hardt** voltado à revenda de congelados (B2B), co
    - Não há pagamento online — o pedido é registrado e o pagamento é combinado depois.
 7. **Envio do pedido (WhatsApp):** ao finalizar, aparece "Pedido registrado!" com o botão **"Enviar pedido pelo WhatsApp"** — o **próprio cliente** envia o pedido à loja pelo WhatsApp dele. A loja **não** dispara mais mensagem automática (evita bloqueio do número). O pedido fica registrado na fila do admin de qualquer forma.
 8. **Promoções:** ainda não são tratadas no site de congelados.
+9. **Final da página (padrão):** depois do último produto, a página termina com o **mesmo final das outras** (Início e Kit Festa): cartão **"Onde estamos"** (endereço, WhatsApp, e-mail, redes sociais e botões WhatsApp/Kit-Festa/Congelados) ao lado do **mapa do Google**, e o **rodapé simples** (logo + "Hardt Doces e Salgados Ltda® — Todos os direitos reservados.").
 
 ## Painel admin (`/site-admin`)
 Duas abas:
