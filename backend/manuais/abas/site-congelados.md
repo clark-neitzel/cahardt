@@ -20,7 +20,8 @@ Módulo do **site público da Hardt** voltado à revenda de congelados (B2B), co
    - **Fotos do produto:** o card usa **todas as imagens cadastradas no produto** (as mesmas do cadastro). Se o produto tem **mais de uma foto**, o card fica **passando as imagens** automaticamente (com bolinhas indicando quantas são).
    - **Ficha do produto:** clicar na foto (ou no nome) abre um **popup** com uma **imagem grande** do produto no topo — se houver mais de uma foto, tem **setas** (‹ ›) e bolinhas para trocar — e abaixo a ficha técnica vinda da **etiqueta** do produto, no mesmo padrão da etiqueta impressa: **tabela nutricional padrão ANVISA** (colunas 100 g · porção · %VD, com sub-itens recuados), **ingredientes + declaração de alérgenos** (CONTÉM/NÃO CONTÉM GLÚTEN · CONTÉM LACTOSE · ALÉRGICOS: CONTÉM…), **modo de preparo** e, no final, as pílulas de **validade** e **conservação**. Se o produto não tiver etiqueta cadastrada, mostra só a descrição.
 3. **Repetir último pedido:** botão que recria o carrinho com os itens da última compra do cliente.
-4. **Carrinho (gaveta lateral):** mostra a **condição de pagamento padrão** do cliente (o site usa só a padrão), **dia de entrega** (somente os dias do cadastro), telefone e observações.
+4. **Carrinho (gaveta lateral):** mostra a **condição de pagamento padrão** do cliente (o site usa só a padrão), a **data de entrega**, telefone e observações.
+   - **Data de entrega:** o site já sugere a **próxima data do dia regular** do cadastro do cliente (ex.: cadastro com Quarta → sugere a próxima quarta; nunca hoje). O cliente pode **trocar a data** num **calendário** — não pode ser hoje nem fim de semana (sábado/domingo só se o admin liberar). Se a data escolhida **não for o dia regular** do cliente (ou cliente sem dia definido / visitante), o pedido vira um **"encaixe"**: o cliente é avisado de que a equipe vai **confirmar a viabilidade** da entrega naquela data. É obrigatório escolher uma data para enviar o pedido.
 5. **Pedido mínimo:** para cliente logado, vem da **condição padrão** dele; para visitante (sem login), vem da **tabela "Site"** (valor mínimo cadastrado nela). Se o subtotal for menor, o envio fica bloqueado.
 6. **Preços — dependem de quem está vendo:**
    - **Visitante (sem login):** preço pela **tabela de preço "Site"** (condição com `ID = SITE`) — preço de venda do produto **+ o acréscimo % dessa tabela**. O valor mínimo do pedido também é o da tabela "Site".
@@ -37,7 +38,7 @@ Duas abas:
 ### Pedidos do site
 Lista a fila de pedidos recebidos pelo site, **do mais recente para o mais antigo**. A busca é por **nome, razão social, nome fantasia, cidade, CPF ou CNPJ** (e telefone). A lista **atualiza sozinha a cada 45 segundos**, então pedidos novos e mudanças de status aparecem sem precisar recarregar.
 
-No topo há **pílulas de status com a contagem** de cada um (Todos / Aguardando / Sem cadastro / Convertido / Recusado / Cancelado) — clicar filtra a lista. Quando há pedidos novos esperando, aparece um **aviso amarelo pulsante** ("X pedidos novos aguardando") e cada pedido novo ganha a etiqueta **"Novo"** e borda destacada, para o operador tratar na hora.
+No topo há **pílulas de status com a contagem** de cada um (Todos / Aguardando / Sem cadastro / Convertido / Recusado / Cancelado) — clicar filtra a lista. Quando há pedidos novos esperando, aparece um **aviso amarelo pulsante** ("X pedidos novos aguardando") e cada pedido novo ganha a etiqueta **"Novo"** e borda destacada, para o operador tratar na hora. Cada pedido mostra a **data de entrega** escolhida; pedidos fora do dia regular do cliente vêm marcados com a etiqueta **"Encaixe"** (a equipe deve confirmar a viabilidade da entrega antes de aprovar).
 
 Status:
 - **Aguardando** — pedido de cliente com cadastro, pronto para aprovar.
@@ -57,6 +58,8 @@ Define **quais produtos** aparecem no catálogo de congelados (igual ao Kit Fest
 Configura a aparência e os textos do site (igual ao Kit Festa): **logo**, dados da loja (nome, slogan, endereço, telefone, WhatsApp, Instagram, Facebook, **e-mail de atendimento** e **link do mapa**), a **linha pequena do topo** (kicker), a seção **"Nossa História"** (logo abaixo dos cards na página principal), os **4 destaques** (que aparecem na base do painel Nossa História), o texto da seção "Dois jeitos de pedir" e os textos da tela de login dos congelados. Cada bloco tem seu botão **Salvar**.
 
 No bloco **"Destaques"** você edita os 4 quadradinhos (ex.: “desde 2007 · Tradição”): cada um tem a **linha amarela**, o **título** e o **texto**. Eles aparecem na **base do painel da Nossa História**.
+
+No bloco **"Entregas — fim de semana"** você liga/desliga se o cliente pode escolher **sábado** e/ou **domingo** como data de entrega no calendário do site. Se desligado, esses dias ficam bloqueados para todos (o **dia regular** do cadastro do cliente é sempre aceito, mesmo que caia no fim de semana).
 
 A seção **"Nossa História"** é um **painel verde** que aparece **logo abaixo dos cards** na página principal: ali você edita o **título**, o **texto** (cada parágrafo em uma linha), a **frase de destaque** (manuscrita, opcional) e envia as **imagens do carrossel** que aparece ao lado (botão **Adicionar**; as setas ‹ › mudam a ordem e o **×** remove; máx 3MB cada). Os **4 destaques** ficam na base do painel. Enquanto não houver nenhuma imagem enviada, mostra a caixa padrão da Hardt. Depois de mexer nas imagens, clique em **Salvar** para publicar.
 

@@ -21,10 +21,19 @@ const mascararTelefone = (t) => {
 
 // Tokens de dia salvos no cadastro do cliente (Dia_de_entrega: "SEG,QUA") → rótulo amigável
 const DIA_LABEL = { DOM: 'Domingo', SEG: 'Segunda', TER: 'Terça', QUA: 'Quarta', QUI: 'Quinta', SEX: 'Sexta', SAB: 'Sábado' };
+const DIA_NUM = { DOM: 0, SEG: 1, TER: 2, QUA: 3, QUI: 4, SEX: 5, SAB: 6 }; // 0=Domingo .. 6=Sábado (igual JS getUTCDay)
+const TOKEN_POR_NUM = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 function diasEntregaLabels(str) {
     if (!str) return [];
     return String(str).split(/[,;/ ]+/).map(t => t.trim().toUpperCase()).filter(Boolean)
         .map(t => DIA_LABEL[t] || DIA_LABEL[t.slice(0, 3)] || t);
+}
+// Dias de entrega do cadastro como números da semana (0=Dom..6=Sáb), para sugerir a próxima data.
+function diasEntregaNums(str) {
+    if (!str) return [];
+    return String(str).split(/[,;/ ]+/).map(t => t.trim().toUpperCase()).filter(Boolean)
+        .map(t => (DIA_NUM[t] != null ? DIA_NUM[t] : DIA_NUM[t.slice(0, 3)]))
+        .filter(n => n != null);
 }
 
 function gerarTokenCliente(c) {
@@ -316,6 +325,8 @@ const congeladosService = {
             email: auth.email,
             temCadastroApp: !!auth.clienteUuid,
             diasEntrega: diasEntregaLabels(cliente?.Dia_de_entrega),
+            diasEntregaNums: diasEntregaNums(cliente?.Dia_de_entrega), // dias regulares como números da semana
+
             condicaoPadrao: ctx.condicaoPadrao, // o site usa SÓ a condição padrão do cliente
         };
     },
@@ -497,7 +508,7 @@ const congeladosService = {
     },
 
     // ───────── Criação de pedido (cliente logado ou visitante) ─────────
-    async criarPedidoSite({ clienteId, visitante, itens, diaEntrega, observacoes, telefone }) {
+    async criarPedidoSite({ clienteId, visitante, itens, diaEntrega, dataEntrega, observacoes, telefone }) {
         if (!Array.isArray(itens) || itens.length === 0) throw new Error('Carrinho vazio.');
 
         let auth;
@@ -577,6 +588,32 @@ const congeladosService = {
             }
         }
 
+        // ── Data de entrega + "encaixe" ──
+        // - Cliente usando o dia regular do cadastro → pedido normal.
+        // - Data fora do dia regular (ou cliente sem dia / visitante) → "encaixe": a equipe verifica.
+        // - Fim de semana só é permitido em datas de calendário se o admin liberar (regular do cadastro é sempre honrado).
+        let dataEntregaFinal = null;
+        let encaixe = false;
+        let diaEntregaLabel = diaEntrega || null;
+        if (dataEntrega) {
+            const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dataEntrega));
+            if (!m) throw new Error('Data de entrega inválida.');
+            const dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+            const wd = dt.getUTCDay(); // 0=Dom..6=Sáb
+            const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+            if (String(dataEntrega) <= hojeStr) throw new Error('A data de entrega deve ser a partir de amanhã.');
+            const regularNums = cliente ? diasEntregaNums(cliente.Dia_de_entrega) : [];
+            const ehRegular = regularNums.includes(wd);
+            if (!ehRegular) {
+                const cfg = await this.configPublico();
+                if (wd === 0 && !cfg.entregas?.domingo) throw new Error('Não atendemos entregas aos domingos.');
+                if (wd === 6 && !cfg.entregas?.sabado) throw new Error('Não atendemos entregas aos sábados.');
+            }
+            encaixe = !ehRegular;
+            dataEntregaFinal = dt;
+            diaEntregaLabel = DIA_LABEL[TOKEN_POR_NUM[wd]];
+        }
+
         const pedido = await prisma.congeladosPedido.create({
             data: {
                 congeladosClienteId: auth.id,
@@ -587,7 +624,9 @@ const congeladosService = {
                 semCadastro,
                 tabelaPrecoId: tabelaIdFinal,
                 condicaoNome,
-                diaEntrega: diaEntrega || null,
+                diaEntrega: diaEntregaLabel,
+                dataEntrega: dataEntregaFinal,
+                encaixe,
                 subtotal,
                 total: subtotal,
                 totalCaixas,
@@ -880,6 +919,8 @@ const DEFAULT_CONFIG = {
         loginTitulo: 'Área do cliente',
         loginSub: 'Entre para ver seus produtos, preços e condições e fazer seu pedido de congelados.',
     },
+    // Entrega no fim de semana — liberada pelo admin (vale para datas escolhidas no calendário).
+    entregas: { sabado: false, domingo: false },
     // Nome exibido no site para cada categoria comercial: { [categoriaId]: { nome, ordem, oculto } }
     categoriasNomes: {},
     // Opções de embalagem disponíveis no "Configurar" do produto (lista editável)

@@ -21,6 +21,12 @@ const tileGradient = (seed) => {
 const parseValor = (s) => { if (!s) return null; const m = String(s).replace(',', '.').match(/-?[\d.]+/); return m ? parseFloat(m[0]) : null; };
 const parseVD = (s) => { const m = String(s || '').match(/(\d+)\s*%/); return m ? m[1] : null; };
 const fmtNum = (n, d) => { if (n == null || isNaN(n)) return '0'; const f = Math.pow(10, d); return String(Math.round(n * f) / f).replace('.', ','); };
+// ── Datas de entrega ──
+const ISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const DIAS_SEMANA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+const dataBR = (iso) => { if (!iso) return ''; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
+const weekdayISO = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)).getUTCDay(); };
+const diaSemanaISO = (iso) => DIAS_SEMANA[weekdayISO(iso)] || '';
 
 export default function CongeladosSite() {
   const [cliente, setCliente] = useState(null);   // cliente logado (com condições, dias…)
@@ -40,7 +46,9 @@ export default function CongeladosSite() {
   const [erroEnvio, setErroEnvio] = useState('');
   const [loginModal, setLoginModal] = useState(false);
 
-  const [hdr, setHdr] = useState({ tabelaPrecoId: '', dia: '', obs: '', telefone: '' });
+  const [hdr, setHdr] = useState({ tabelaPrecoId: '', dia: '', obs: '', telefone: '', dataEntrega: '' });
+  const [trocarData, setTrocarData] = useState(false);
+  const [erroData, setErroData] = useState('');
 
   const logado = cliente || visitante;
   const siteLogo = cfg?.logoUrl ? imgUrl(cfg.logoUrl) : LOGO;
@@ -76,14 +84,10 @@ export default function CongeladosSite() {
     }).catch(() => {});
   }, [cliente]);
 
-  // pré-seleciona dia de entrega e telefone do perfil
+  // pré-seleciona telefone do perfil
   useEffect(() => {
     if (!cliente) return;
-    setHdr(h => ({
-      ...h,
-      dia: h.dia || (cliente.diasEntrega || [])[0] || '',
-      telefone: h.telefone || cliente.telefone || '',
-    }));
+    setHdr(h => ({ ...h, telefone: h.telefone || cliente.telefone || '' }));
   }, [cliente]);
 
   const qtyOf = (id) => cart[id] || 0;
@@ -107,6 +111,30 @@ export default function CongeladosSite() {
   }, [cart, produtos]);
 
   const below = minimo > 0 && totals.subtotal < minimo;
+
+  // ── Data de entrega: sugere o próximo dia regular do cadastro; senão, calendário ──
+  const amanhaISO = useMemo(() => { const d = new Date(); d.setDate(d.getDate() + 1); return ISO(d); }, []);
+  const sugeridaISO = useMemo(() => {
+    const nums = cliente?.diasEntregaNums || [];
+    if (!nums.length) return '';
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    for (let i = 1; i <= 28; i++) { const d = new Date(t); d.setDate(t.getDate() + i); if (nums.includes(d.getDay())) return ISO(d); }
+    return '';
+  }, [cliente]);
+  useEffect(() => { if (sugeridaISO) setHdr(h => (h.dataEntrega ? h : { ...h, dataEntrega: sugeridaISO })); }, [sugeridaISO]);
+  // "encaixe": data fora dos dias regulares do cliente (ou sem dia regular / visitante)
+  const ehEncaixe = !!hdr.dataEntrega && !(cliente?.diasEntregaNums || []).includes(weekdayISO(hdr.dataEntrega));
+  const escolherData = (iso) => {
+    if (!iso) { setErroData(''); setHdr(h => ({ ...h, dataEntrega: '' })); return; }
+    if (iso < amanhaISO) { setErroData('A data de entrega deve ser a partir de amanhã.'); return; }
+    const wd = weekdayISO(iso);
+    const regular = (cliente?.diasEntregaNums || []).includes(wd);
+    if (!regular) {
+      if (wd === 0 && !cfg?.entregas?.domingo) { setErroData('Não atendemos entregas aos domingos.'); return; }
+      if (wd === 6 && !cfg?.entregas?.sabado) { setErroData('Não atendemos entregas aos sábados.'); return; }
+    }
+    setErroData(''); setHdr(h => ({ ...h, dataEntrega: iso })); setTrocarData(false);
+  };
 
   const repetirUltimo = () => {
     const novo = {};
@@ -155,11 +183,12 @@ export default function CongeladosSite() {
   };
 
   async function finalizar() {
+    if (!hdr.dataEntrega) { setErroData('Escolha a data de entrega.'); return; }
     setErroEnvio(''); setEnviando(true);
     const itens = Object.keys(cart).map(id => ({ congeladosProdutoId: id, quantidade: cart[id] }));
     const payload = {
       itens,
-      diaEntrega: hdr.dia || null,
+      dataEntrega: hdr.dataEntrega || null,
       observacoes: hdr.obs || null,
       telefone: soDigitos(hdr.telefone) || (visitante?.telefone || ''),
     };
@@ -194,12 +223,14 @@ export default function CongeladosSite() {
       linhas,
       ``,
       confirm.condicaoNome ? `Pagamento: ${confirm.condicaoNome}` : null,
-      confirm.diaEntrega ? `Entrega: ${confirm.diaEntrega}` : null,
+      confirm.dataEntrega
+        ? `Entrega: ${dataBR(String(confirm.dataEntrega).slice(0, 10))}${confirm.encaixe ? ' (encaixe — a confirmar)' : ''}`
+        : (confirm.diaEntrega ? `Entrega: ${confirm.diaEntrega}` : null),
       confirm.observacoes ? `Obs: ${confirm.observacoes}` : null,
       ``,
       `*Total: ${money(confirm.total)}*`,
       ``,
-      `Aguardo a confirmação. Obrigado!`,
+      confirm.encaixe ? 'Esta data é um encaixe — aguardo a equipe confirmar a viabilidade. Obrigado!' : 'Aguardo a confirmação. Obrigado!',
     ].filter(x => x !== null);
     const txt = encodeURIComponent(partes.join('\n'));
     const waLink = `https://wa.me/${whatsapp}?text=${txt}`;
@@ -209,7 +240,8 @@ export default function CongeladosSite() {
           <div className="cg-login-in">
             <img className="logo" src={siteLogo} alt="Hardt" />
             <h1>Pedido registrado!</h1>
-            <p className="sub">Seu pedido <b style={{ color: 'var(--green-dd)' }}>#{confirm.numero}</b> foi registrado. Para a loja já começar a separar, <b style={{ color: 'var(--green-dd)' }}>envie pelo seu WhatsApp</b> tocando no botão abaixo. O pagamento é combinado conforme a sua condição.</p>
+            <p className="sub">Seu pedido <b style={{ color: 'var(--green-dd)' }}>#{confirm.numero}</b> foi registrado{confirm.dataEntrega ? <> para <b style={{ color: 'var(--green-dd)' }}>{dataBR(String(confirm.dataEntrega).slice(0, 10))}</b></> : ''}. Para a loja já começar a separar, <b style={{ color: 'var(--green-dd)' }}>envie pelo seu WhatsApp</b> tocando no botão abaixo. O pagamento é combinado conforme a sua condição.</p>
+            {confirm.encaixe && <p className="sub" style={{ marginTop: 6, color: 'var(--green-dd)' }}><b>Atenção:</b> essa data é um <b>encaixe</b> — a equipe vai confirmar a viabilidade da entrega e te avisar.</p>}
             <a className="btn btn-wa btn-block" href={waLink} target="_blank" rel="noreferrer" style={{ marginTop: 8 }}>
               <WhatsIcon w={19} /> Enviar pedido pelo WhatsApp
             </a>
@@ -351,15 +383,27 @@ export default function CongeladosSite() {
                   </>
                 )}
 
-                {cliente && (cliente.diasEntrega || []).length > 0 && (
+                <h4>Data de entrega</h4>
+                {hdr.dataEntrega && !trocarData ? (
+                  <div className="cg-delivery">
+                    <div className="dd"><b>{dataBR(hdr.dataEntrega)}</b><span>{diaSemanaISO(hdr.dataEntrega)}</span></div>
+                    <button type="button" className="cg-trocar" onClick={() => setTrocarData(true)}>trocar data</button>
+                  </div>
+                ) : (
                   <>
-                    <h4>Dia de entrega</h4>
-                    <div className="cg-dayrow">
-                      {(cliente.diasEntrega || []).map(d => (
-                        <button key={d} className={'cg-day' + (hdr.dia === d ? ' on' : '')} onClick={() => setHdr({ ...hdr, dia: d })}>{d}</button>
-                      ))}
-                    </div>
+                    <input type="date" className="cg-select" min={amanhaISO} value={hdr.dataEntrega || ''}
+                      onChange={e => escolherData(e.target.value)} />
+                    {sugeridaISO && trocarData && (
+                      <button type="button" className="cg-trocar" style={{ marginTop: 6 }}
+                        onClick={() => { setErroData(''); setHdr(h => ({ ...h, dataEntrega: sugeridaISO })); setTrocarData(false); }}>
+                        usar data sugerida ({dataBR(sugeridaISO)})
+                      </button>
+                    )}
                   </>
+                )}
+                {erroData && <p className="cg-minwarn"><Icon n="tag" w={13} /> {erroData}</p>}
+                {hdr.dataEntrega && ehEncaixe && (
+                  <p className="cg-encaixe"><Icon n="tag" w={13} /> Pedido <b>encaixe</b>: a equipe vai confirmar a viabilidade da entrega nessa data.</p>
                 )}
 
                 {!cliente?.temCadastroApp && (
@@ -382,8 +426,8 @@ export default function CongeladosSite() {
             <div className="cg-totrow grand"><span>Total</span><b>{money(totals.subtotal)}</b></div>
             {below && <p className="cg-minwarn"><Icon n="tag" w={13} /> Pedido mínimo de {money(minimo)} para esta condição — faltam {money(minimo - totals.subtotal)}.</p>}
             {erroEnvio && <p className="cg-minwarn"><Icon n="tag" w={13} /> {erroEnvio}</p>}
-            <button className="btn btn-wa btn-block cg-cta" disabled={below || enviando} onClick={finalizar}>
-              <Icon n="check" w={18} /> {enviando ? 'Enviando…' : 'Enviar pedido pelo WhatsApp'}
+            <button className="btn btn-wa btn-block cg-cta" disabled={below || enviando || !hdr.dataEntrega} onClick={finalizar}>
+              <Icon n="check" w={18} /> {enviando ? 'Enviando…' : !hdr.dataEntrega ? 'Escolha a data de entrega' : 'Enviar pedido pelo WhatsApp'}
             </button>
             <p className="cg-login-note" style={{ marginTop: 10 }}>Pagamento combinado depois, conforme sua condição — nada é cobrado online.</p>
           </div>

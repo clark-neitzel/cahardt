@@ -694,3 +694,17 @@
 /* botão fantasma legível no creme */
 .cg.cong .btn-ghost{ border:2px solid rgba(18,130,64,.4); color:var(--green-dd); }
 .cg.cong .btn-ghost:hover{ border-color:var(--green); color:var(--green); background:rgba(18,130,64,.06); }
+
+/* ============================================================
+   DATA DE ENTREGA (carrinho) — data sugerida + calendário + encaixe
+   ============================================================ */
+.cg-drawer .cg-delivery{ display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background:#fff; border:1.6px solid var(--paper-line); border-radius:10px; padding:.55em .9em; }
+.cg-drawer .cg-delivery .dd b{ font-family:var(--f-display); color:var(--ink); font-size:1rem; line-height:1.1; }
+.cg-drawer .cg-delivery .dd span{ display:block; font-size:.76rem; color:#8a7d63; text-transform:capitalize; margin-top:1px; }
+.cg-drawer .cg-trocar{ background:none; border:none; color:var(--green); font-size:.82rem; font-weight:600;
+  text-decoration:underline; text-underline-offset:2px; cursor:pointer; padding:0; white-space:nowrap; }
+.cg-drawer input[type=date].cg-select{ color-scheme:light; } /* calendário/letras legíveis no tema claro */
+.cg-drawer .cg-encaixe{ display:flex; gap:6px; align-items:flex-start; font-size:.8rem; line-height:1.4;
+  color:#7a5a00; background:#fff4d6; border:1px solid var(--yellow); border-radius:10px; padding:8px 11px; margin-top:8px; }
+.cg-drawer .cg-encaixe svg{ flex:none; margin-top:1px; color:var(--yellow-d); }

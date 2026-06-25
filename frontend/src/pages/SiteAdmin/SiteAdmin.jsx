@@ -187,10 +187,11 @@ function PedidoCard({ p, onAprovar, onVincular, onRecusar, onExcluir }) {
               </span>
             )}
             {p.celularAlterado && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">telefone novo</span>}
+            {p.encaixe && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">Encaixe</span>}
           </div>
           <div className="text-xs text-gray-500 mt-1">
             Doc: {p.documentoCliente}{fantasia ? ` · ${fantasia}` : ''}{cidade ? ` · ${cidade}` : ''}{p.telefoneCliente ? ` · ${p.telefoneCliente}` : ''}
-            {p.condicaoNome ? ` · ${p.condicaoNome}` : ''}{p.diaEntrega ? ` · entrega ${p.diaEntrega}` : ''}
+            {p.condicaoNome ? ` · ${p.condicaoNome}` : ''}{p.dataEntrega ? ` · entrega ${String(p.dataEntrega).slice(0, 10).split('-').reverse().join('/')}` : (p.diaEntrega ? ` · entrega ${p.diaEntrega}` : '')}
           </div>
         </div>
         <div className="text-right">
@@ -706,6 +707,16 @@ function ConfigTab() {
         </div>
         <Campo label="Frase de destaque (manuscrita, opcional)" value={cfg.historia?.frase || ''} onChange={e => up('historia', { frase: e.target.value })} />
         <HistoriaImagens imagens={cfg.historia?.imagens || []} onChange={(imagens) => up('historia', { imagens })} />
+      </Secao>
+
+      <Secao titulo="Entregas — fim de semana" icon={Settings} onSave={() => salvarSecao('entregas', cfg.entregas || {})} saving={salvando === 'entregas'}>
+        <p className="text-[11px] text-gray-400">Quando o cliente escolhe uma data no calendário do site, sábado e domingo só ficam disponíveis se você liberar aqui. O dia regular do cadastro do cliente é sempre aceito.</p>
+        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input type="checkbox" checked={!!cfg.entregas?.sabado} onChange={e => up('entregas', { sabado: e.target.checked })} /> Permitir entrega no <b>sábado</b>
+        </label>
+        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input type="checkbox" checked={!!cfg.entregas?.domingo} onChange={e => up('entregas', { domingo: e.target.checked })} /> Permitir entrega no <b>domingo</b>
+        </label>
       </Secao>
 
       <Secao titulo="Área de congelados (login)" icon={Settings} onSave={() => salvarSecao('congelados', cfg.congelados)} saving={salvando === 'congelados'}>
