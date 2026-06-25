@@ -734,7 +734,7 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
         <div className="modal-top">
           <div className="ok">{salvando ? <Loader2 size={34} className="animate-spin" /> : erro ? <X size={34} /> : <Check size={34} />}</div>
           <h3>{salvando ? 'Registrando…' : erro ? 'Ops!' : 'Pedido registrado!'}</h3>
-          <p>{salvando ? 'Estamos salvando seu pedido' : erro ? erro : 'Toque abaixo para enviar pelo seu WhatsApp 📲'}</p>
+          <p>{salvando ? 'Estamos salvando seu pedido' : erro ? erro : 'Falta só 1 passo: envie pelo seu WhatsApp para a loja confirmar 📲'}</p>
         </div>
         <div className="modal-body">
           {!salvando && !erro && (
@@ -746,6 +746,9 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
               </div>
               <a className="btn btn-wa btn-block" href={link} target="_blank" rel="noreferrer" style={{ marginTop: 14 }}>
                 <MessageCircle size={19} /> Enviar pedido pelo WhatsApp</a>
+              <p style={{ fontSize: 12, color: '#8a7d63', textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
+                É esse envio que confirma seu pedido com a loja e agiliza o preparo.
+              </p>
             </>
           )}
           <button className="btn btn-outline-ink btn-block" style={{ marginTop: 10 }} onClick={onClose}>
