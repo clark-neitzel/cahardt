@@ -186,7 +186,12 @@ export default function CongeladosSite() {
       }));
   }, [matched, grupos, filtro]);
 
-  const logout = () => { setToken(null); setCliente(null); setVisitante(null); setCart({}); setProdutos([]); };
+  const logout = () => {
+    setToken(null); setCliente(null); setVisitante(null); setCart({}); setUltimoPedido([]); setFiltro('todos');
+    // recarrega o catálogo público (preços do site) para não ficar tela vazia
+    publicApi.catalogo().then(setProdutos).catch(() => setProdutos([]));
+    publicApi.grupos().then(setGrupos).catch(() => {});
+  };
 
   // Popup de ficha do produto (etiqueta)
   const [ficha, setFicha] = useState(null);
