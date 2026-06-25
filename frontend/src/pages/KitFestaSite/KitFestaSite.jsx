@@ -98,8 +98,8 @@ export default function KitFestaSite() {
               </div>
             </Section>
           )}
-          {cfg.indicacao?.ativo && cliente?.codigoIndicacao && (
-            <Referral code={cliente.codigoIndicacao} credito={cfg.indicacao?.credito} />
+          {cfg.indicacao?.ativo && (
+            <Referral code={cliente?.codigoIndicacao} credito={cfg.indicacao?.credito} onEntrar={() => setLoginModal(true)} />
           )}
           <Contato cfg={cfg} logo={siteLogo} />
 
@@ -761,7 +761,7 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
 }
 
 /* ---------- Indique e ganhe ---------- */
-function Referral({ code, credito }) {
+function Referral({ code, credito, onEntrar }) {
   const [copied, setCopied] = useState(false);
   const c = credito || 20;
   const copy = () => { try { navigator.clipboard.writeText(code); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
@@ -773,12 +773,18 @@ function Referral({ code, credito }) {
             <span className="kicker" style={{ color: 'var(--green-dd)' }}>Indique &amp; ganhe</span>
             <h2>Indicou, os dois ganham</h2>
             <p>Compartilhe seu código. Seu amigo ganha <b>R${c} OFF</b> na primeira compra e você ganha <b>R${c} de crédito</b> quando ele fizer o pedido.</p>
-            <div className="ref-code">
-              <span className="code">{code}</span>
-              <button className="btn btn-green btn-sm" onClick={copy}>
-                {copied ? <><Check size={16} /> Copiado!</> : 'Copiar código'}
-              </button>
-            </div>
+            {code ? (
+              <div className="ref-code">
+                <span className="code">{code}</span>
+                <button className="btn btn-green btn-sm" onClick={copy}>
+                  {copied ? <><Check size={16} /> Copiado!</> : 'Copiar código'}
+                </button>
+              </div>
+            ) : (
+              <div className="ref-code">
+                <button className="btn btn-green" onClick={onEntrar}>Entrar / criar conta para pegar seu código</button>
+              </div>
+            )}
           </div>
           <div className="ref-steps">
             <div className="ref-step"><span className="n">1</span><div><b>Compartilhe</b><p>Mande seu código pra família, amigos ou no grupo da empresa.</p></div></div>
