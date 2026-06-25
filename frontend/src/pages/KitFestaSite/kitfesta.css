@@ -7,7 +7,7 @@
 /* .kf é o próprio container de rolagem — isola o sticky do header do
    overflow-x:hidden global do app (que quebraria position:sticky) */
 /* color-scheme:dark — site escuro por design; impede o "tema escuro forçado" do Android Chrome. */
-.kf{ height:100dvh; overflow-y:auto; overflow-x:hidden; color-scheme:dark; }
+.kf{ height:100dvh; overflow-y:auto; overflow-x:hidden; color-scheme:dark; overscroll-behavior:none; }
 
 .kf {
 

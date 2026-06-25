@@ -7,7 +7,9 @@
 /* .cg é o container de rolagem — isola o sticky do overflow-x:hidden global do app */
 /* color-scheme:dark — o site é escuro por design; impede o Android Chrome de
    "forçar tema escuro" por cima (que invertia o mapa/cores). */
-.cg{ height:100dvh; overflow-y:auto; overflow-x:hidden; color-scheme:dark; }
+/* overscroll-behavior:none — evita o efeito elástico do iOS revelar o fundo
+   cinza do app (#f3f4f6) como uma "barra branca" no topo/rodapé do site. */
+.cg{ height:100dvh; overflow-y:auto; overflow-x:hidden; color-scheme:dark; overscroll-behavior:none; }
 
 .cg{
   --ink:#191b17; --ink-2:#20231e; --ink-3:#2b2f28;
@@ -302,6 +304,11 @@
 .cg.home .foot-links a{ color:#6a5f4c; }
 .cg.home .foot-links a:hover{ color:var(--green-dd); }
 .cg.home .foot-copy{ color:#6a5f4c; }
+/* rodapé no celular: empilha e alinha à esquerda (evita "cortar" na lateral) */
+@media (max-width:600px){
+  .cg .foot-in{ flex-direction:column; align-items:flex-start; gap:18px; }
+  .cg .foot-links{ flex-wrap:wrap; }
+}
 
 /* ============================================================
    CONGELADOS (área do cliente / revenda)
