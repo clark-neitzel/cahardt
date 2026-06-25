@@ -78,7 +78,6 @@ export default function HomeSite() {
   const social = (v, base) => !v ? null : (String(v).startsWith('http') ? v : `${base}${String(v).replace(/^@/, '')}`);
   const igUrl = social(loja.instagram, 'https://instagram.com/');
   const fbUrl = social(loja.facebook, 'https://facebook.com/');
-  const mapsUrl = loja.mapsUrl || `https://www.google.com/maps?q=${encodeURIComponent(String(loja.endereco || '').replace(' — ', ', '))}`;
 
   return (
     <div className="cg home">
@@ -195,6 +194,11 @@ export default function HomeSite() {
                 <div className="contact-row">
                   <div><div className="lab">WhatsApp</div><a className="val val-big" href={waMsg} target="_blank" rel="noopener noreferrer">{loja.telefone}</a></div>
                 </div>
+                {loja.email && (
+                  <div className="contact-row">
+                    <div><div className="lab">E-mail</div><a className="val" href={`mailto:${loja.email}`}>{loja.email}</a></div>
+                  </div>
+                )}
               </div>
               {(igUrl || fbUrl) && (
                 <div className="contact-social">
@@ -231,32 +235,12 @@ export default function HomeSite() {
         </div>
       </section>
 
-      {/* ===== FOOTER (padrão: marca · onde estamos · fale com a gente) ===== */}
+      {/* ===== FOOTER (simples: logo + marca registrada) ===== */}
       <div className="sawtooth"></div>
       <footer className="foot">
-        <div className="wrap">
-          <div className="foot-grid">
-            <div className="foot-brand">
-              <Link to="/inicio" className="foot-logo">
-                <img src={LOGO_SRC} alt="Hardt" />
-                <b>{loja.nome}<span>{loja.slogan} · {loja.desde}</span></b>
-              </Link>
-            </div>
-            <div className="foot-col">
-              <h5>Onde estamos</h5>
-              <div className="foot-row" dangerouslySetInnerHTML={{ __html: String(loja.endereco || '').replace(' — ', '<br/>') }} />
-              {mapsUrl && <a className="foot-maplink" href={mapsUrl} target="_blank" rel="noopener noreferrer">📍 Ver no mapa / traçar rota</a>}
-            </div>
-            <div className="foot-col">
-              <h5>Fale com a gente</h5>
-              <a className="foot-row foot-link" href={waMsg} target="_blank" rel="noopener noreferrer">{loja.telefone}</a>
-              {loja.email && <a className="foot-row foot-link" href={`mailto:${loja.email}`}>{loja.email}</a>}
-            </div>
-          </div>
-          <div className="foot-bottom">
-            <small className="foot-copy">© {new Date().getFullYear()} {loja.nome} · Todos os direitos reservados.</small>
-            <small className="foot-copy">{loja.slogan || 'Salgados de festa feitos à mão'}.</small>
-          </div>
+        <div className="wrap foot-simple-in">
+          <img className="foot-mark" src={LOGO_SRC} alt="Hardt" />
+          <span>Hardt Doces e Salgados Ltda® — Todos os direitos reservados.</span>
         </div>
       </footer>
 
