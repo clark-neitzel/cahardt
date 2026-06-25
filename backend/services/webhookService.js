@@ -292,8 +292,11 @@ const webhookService = {
 
             const mensagem = partes.join('\n');
 
+            // O BotConversa espera EXATAMENTE estes campos (mesmos do pedido normal);
+            // se faltar algum (ex.: data_pedido), ele recusa com HTTP 400.
             const payload = {
                 phone, nome, mensagem,
+                data_pedido: formatDate(pedido.createdAt),
                 data_entrega: formatDate(pedido.data),
                 total: Number(pedido.total || 0).toFixed(2),
                 condicao: pedido.modo === 'retirada' ? 'Retirada' : 'Entrega'
