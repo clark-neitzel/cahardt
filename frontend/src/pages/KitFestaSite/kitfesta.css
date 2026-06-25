@@ -52,7 +52,7 @@
 .kf {
   font-family:var(--f-body);
   color:var(--ink);
-  background:var(--ink);
+  background:var(--paper);
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
 }
@@ -62,12 +62,12 @@
    do container (que pintava o input de preto no celular em tema escuro). */
 .kf input, .kf textarea, .kf select { font-family:inherit; color-scheme:light; color:var(--ink); background:transparent; }
 .kf ::selection { background:var(--yellow); color:var(--ink); }
+/* tex-board agora é CLARO (creme) — o site do Kit Festa virou tema claro.
+   As seções que eram escuras passam a usar o mesmo papel do catálogo. */
 .kf .tex-board {
-  background-color:var(--ink);
+  background-color:var(--paper);
   background-image:
-    radial-gradient(circle at 18% 12%, rgba(255,255,255,.05), transparent 38%),
-    radial-gradient(circle at 82% 78%, rgba(255,255,255,.04), transparent 42%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='.05'/%3E%3C/svg%3E");
 }
 .kf .tex-paper {
   background-color:var(--paper);
@@ -401,3 +401,44 @@
 .kf .login-err { background:#fde8e8; color:#b3261e; padding:9px 12px; border-radius:9px; font-size:.85rem; margin-bottom:12px; text-align:center; }
 .kf .bairro-sel { width:100%; border:1.6px solid rgba(25,27,23,.16); border-radius:11px; padding:.75em .85em; font-family:var(--f-body); font-size:.95rem; background:#fff; color:var(--ink); outline:none; }
 .kf .bairro-sel:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(18,130,64,.12); }
+
+/* ============================================================
+   TEMA CLARO do Kit Festa — recolore as seções que eram escuras (tex-board).
+   Cabeçalho, hero, avaliações, rodapé e topo do checkout viram creme; textos
+   passam a ser escuros. Seções verdes/amarelas (how, ref, drawer, modal) não mudam.
+   ============================================================ */
+/* cabeçalho */
+.kf .hd { border-bottom:1px solid rgba(25,27,23,.1); }
+.kf .hd-logo .who .who-label { color:var(--green-d); }
+.kf .hd-logo .who .who-nome { color:var(--ink); }
+.kf .hd-pill { color:var(--ink); border-color:rgba(25,27,23,.18); }
+.kf .hd-pill:hover { border-color:var(--green); color:var(--green-dd); }
+.kf .hd-cart .badge { box-shadow:0 0 0 2px var(--paper); }
+/* hero */
+.kf .hero h1 { color:var(--ink); }
+.kf .hero h1 .y { color:var(--green); }
+.kf .hero .lead { color:#6a5f4c; }
+.kf .hero-trust .t { color:var(--ink); }
+.kf .hero-trust .t b { color:var(--green-dd); }
+.kf .hero-trust .t span { color:#6a5f4c; }
+/* títulos/chips de seção que estavam sobre fundo escuro */
+.kf .on-board h2 { color:var(--green-dd); }
+.kf .on-board .lead { color:#6a5a3a; }
+.kf .on-board .chip { color:var(--ink); border-color:rgba(25,27,23,.16); background:rgba(255,255,255,.4); }
+.kf .on-board .chip:hover { border-color:var(--green); }
+.kf .on-board .chip.active { background:var(--green); color:#fff; border-color:var(--green); }
+/* avaliações (cards) */
+.kf .rev { background:#fffaf0; border:1px solid rgba(25,27,23,.08); color:var(--ink); }
+.kf .rev .q { color:var(--ink); }
+.kf .rev .who span { color:#8a7d63; }
+/* rodapé */
+.kf .ft { color:#6a5f4c; }
+.kf .ft h5 { color:var(--ink); }
+.kf .ft .row svg { color:var(--green); }
+.kf .ft-bottom { border-top-color:rgba(25,27,23,.12); }
+/* topo do checkout */
+.kf .co-top { border-bottom:1px solid rgba(25,27,23,.1); }
+.kf .co-back { color:var(--ink); }
+.kf .co-back:hover { color:var(--green-dd); }
+/* tela de carregamento inicial: mantém fundo escuro p/ o spinner branco aparecer */
+.kf .login.tex-board { background:var(--green-dd); }
