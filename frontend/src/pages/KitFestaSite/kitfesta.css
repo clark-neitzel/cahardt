@@ -458,3 +458,32 @@
   .kf .hero-trust .t b { display:inline; font-size:1.3rem; flex:none; }
   .kf .hero-trust .t span { font-size:.9rem; }
 }
+
+/* ============================================================
+   FINAL PADRÃO (igual à home): contato (card + mapa) + rodapé simples
+   ============================================================ */
+.kf .contact { display:grid; grid-template-columns:1fr 1fr; gap:clamp(20px,3vw,36px); align-items:stretch; }
+@media (max-width:820px) { .kf .contact { grid-template-columns:1fr; } }
+.kf .contact-card { background:#fffaf0; border:1px solid rgba(25,27,23,.1); border-radius:var(--r-lg); padding:clamp(24px,3vw,38px); display:flex; flex-direction:column; justify-content:space-between; gap:22px; box-shadow:var(--shadow-sm); }
+.kf .contact-top { display:flex; flex-direction:column; gap:22px; }
+.kf .contact-row { display:flex; gap:14px; align-items:flex-start; padding:16px 0; border-bottom:1px solid rgba(25,27,23,.12); }
+.kf .contact-rows .contact-row:first-child { padding-top:0; }
+.kf .contact-row:last-child { border-bottom:none; padding-bottom:0; }
+.kf .contact-row .lab { font-family:var(--f-display); text-transform:uppercase; letter-spacing:.1em; font-size:.7rem; color:var(--green-dd); margin-bottom:4px; }
+.kf .contact-row .val { color:var(--ink); font-size:1.04rem; line-height:1.4; }
+.kf .contact-row a.val:hover { color:var(--green-dd); }
+.kf .contact-row .val-big { font-family:var(--f-display); font-size:clamp(1.45rem,2.6vw,2rem); font-weight:700; line-height:1.1; }
+.kf .contact-social .lab { font-family:var(--f-display); text-transform:uppercase; letter-spacing:.1em; font-size:.7rem; color:var(--green-dd); margin-bottom:10px; }
+.kf .social-links { display:flex; flex-wrap:wrap; gap:10px; }
+.kf .social-links .soc { display:inline-flex; align-items:center; gap:9px; padding:.6em 1em; border-radius:999px; border:1px solid rgba(25,27,23,.14); color:var(--ink); font-family:var(--f-display); text-transform:uppercase; letter-spacing:.05em; font-size:.8rem; transition:.15s; }
+.kf .social-links .soc:hover { border-color:var(--green); color:var(--green-dd); }
+.kf .social-links .soc svg { flex:0 0 auto; }
+.kf .contact-cta { margin-top:0; }
+.kf .contact-cta .btn-ghost { border-color:rgba(18,130,64,.4); color:var(--green-dd); }
+.kf .contact-cta .btn-ghost:hover { border-color:var(--green); color:var(--green); background:rgba(18,130,64,.06); }
+.kf .contact-map { border-radius:var(--r-lg); overflow:hidden; box-shadow:var(--shadow-sm); border:1px solid rgba(25,27,23,.12); }
+.kf .contact-map iframe { display:block; width:100%; height:100%; min-height:clamp(300px,36vw,420px); border:0; }
+.kf .ft-simple { background:var(--paper-2); border-top:1px solid rgba(25,27,23,.12); }
+.kf .foot-simple-in { display:flex; align-items:center; gap:14px; padding:26px 0; flex-wrap:wrap; }
+.kf .foot-mark { height:46px; width:auto; flex:none; }
+.kf .foot-simple-in span { font-size:.85rem; color:#6a5f4c; line-height:1.4; }

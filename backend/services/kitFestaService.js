@@ -862,6 +862,8 @@ const DEFAULT_CONFIG = {
         whatsapp: '5547988548476',
         mapsUrl: 'https://maps.app.goo.gl/DHD5J5xC4toi4sRj6',
         email: 'atendimento@hardtsalgados.com.br',
+        instagram: 'hardtsalgados',
+        facebook: '',
     },
     regras: {
         minCaixas: 4,

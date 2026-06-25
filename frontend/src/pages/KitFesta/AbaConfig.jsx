@@ -54,6 +54,10 @@ export default function AbaConfig() {
           <Campo label="WhatsApp (só números)" value={cfg.loja?.whatsapp || ''} onChange={e => up('loja', { whatsapp: e.target.value })} />
         </div>
         <Campo label="E-mail de atendimento" value={cfg.loja?.email || ''} onChange={e => up('loja', { email: e.target.value })} />
+        <div className="grid grid-cols-2 gap-2">
+          <Campo label="Instagram (sem @)" value={cfg.loja?.instagram || ''} onChange={e => up('loja', { instagram: e.target.value })} />
+          <Campo label="Facebook (usuário ou link)" value={cfg.loja?.facebook || ''} onChange={e => up('loja', { facebook: e.target.value })} />
+        </div>
       </Secao>
 
       {/* Regras */}
