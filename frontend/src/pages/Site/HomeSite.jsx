@@ -220,7 +220,8 @@ export default function HomeSite() {
             </div>
             <div className="hero-cta contact-cta">
               <a className="btn btn-wa" href={waMsg} target="_blank" rel="noopener noreferrer">Chamar no WhatsApp</a>
-              <Link className="btn btn-yellow" to="/kit-festa">Montar Kit Festa</Link>
+              <Link className="btn btn-yellow" to="/kit-festa">Kit-Festa</Link>
+              <Link className="btn btn-ghost" to="/congelados">Congelados</Link>
             </div>
           </div>
           <div className="contact-map">
