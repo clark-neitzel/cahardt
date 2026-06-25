@@ -451,3 +451,10 @@
 .kf .btn-ghost:hover { border-color:var(--green); color:var(--green-dd); }
 /* kicker (linha pequena) com mais contraste no creme */
 .kf .hero .kicker { color:var(--green-dd); }
+/* hero: estatísticas (+18 anos / 25un / mín. 4) empilhadas e alinhadas no celular */
+@media (max-width:560px) {
+  .kf .hero-trust { flex-direction:column; gap:11px; margin-top:22px; }
+  .kf .hero-trust .t { display:flex; align-items:baseline; gap:10px; }
+  .kf .hero-trust .t b { display:inline; font-size:1.3rem; flex:none; }
+  .kf .hero-trust .t span { font-size:.9rem; }
+}
