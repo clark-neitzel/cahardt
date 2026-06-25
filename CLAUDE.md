@@ -7,6 +7,33 @@
 
 ---
 
+## Integração WhatsApp / BotConversa (NÃO ESQUECER)
+
+Todo envio de WhatsApp do sistema (pedido normal, especial, amostra, delivery e Kit Festa) passa por **um único webhook do BotConversa**, cuja URL fica no banco em `app_configs` chave `webhook_botconversa_url` (configurável em **Configurações → Notificação WhatsApp**). O código fica em `backend/services/webhookService.js`.
+
+### O webhook RECUSA com HTTP 400 se faltar qualquer campo esperado
+
+A automação do BotConversa ("catch" webhook, painel **Automação → AppHardt**) captura uma estrutura fixa de campos. Se o `POST` não enviar **todos** eles, o BotConversa responde **HTTP 400 com corpo vazio** e a mensagem **não é enviada**.
+
+**Campos obrigatórios no payload (todos):**
+```js
+{ phone, nome, mensagem, data_pedido, data_entrega, total, condicao }
+```
+- `phone`: só dígitos, **com DDI 55** (ex.: `5547999999999`).
+- `total`: string com ponto decimal (ex.: `"110.00"`), via `.toFixed(2)`.
+- `data_pedido` / `data_entrega`: via `formatDate()` → `DD.MM.YYYY`.
+
+**Regra:** qualquer função nova que dispare mensagem **deve mandar o conjunto completo** acima — espelhe o `notificarPedido` (envio que comprovadamente funciona). Omitir um campo (ex.: `data_pedido`) = 400 silencioso.
+
+### Diagnóstico quando "a mensagem não chega"
+
+1. Confira o toggle **Configurações → Notificação WhatsApp** (`whatsapp_ativo`). Pausado = pedido normal não envia e **não loga nada** (`webhookService.js` retorna cedo).
+2. Veja o motivo gravado no pedido (`whatsappErro`) ou os logs `[Webhook...]`.
+3. Para Kit Festa, reenviar um pedido: `POST /api/admin-exec/kitfesta-reenviar-whatsapp/:numero` (header `x-admin-secret`). A resposta traz `{ ok, motivo }` — `HTTP 400` = falta campo ou BotConversa recusando.
+4. O Kit Festa **não** depende do toggle `whatsapp_ativo` (confirmação transacional, sempre envia).
+
+---
+
 ## Regras de CSS e Animações
 
 ### NÃO animar `box-shadow` em mobile
