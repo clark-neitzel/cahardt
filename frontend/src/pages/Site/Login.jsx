@@ -121,8 +121,8 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
 
           {etapa === 'senha' && (
             <form onSubmit={entrar}>
-              <p className="sub" style={{ marginBottom: 16 }}>Olá, <b style={{ color: 'var(--chalk)' }}>{nome}</b>! Digite sua senha.</p>
-              {origem === 'kitfesta' && <p className="cg-login-note" style={{ marginTop: 0, marginBottom: 12 }}>Use a <b style={{ color: 'var(--chalk)' }}>mesma senha do seu Kit Festa</b>.</p>}
+              <p className="sub" style={{ marginBottom: 16 }}>Olá, <b style={{ color: 'var(--green-dd)' }}>{nome}</b>! Digite sua senha.</p>
+              {origem === 'kitfesta' && <p className="cg-login-note" style={{ marginTop: 0, marginBottom: 12 }}>Use a <b style={{ color: 'var(--green-dd)' }}>mesma senha do seu Kit Festa</b>.</p>}
               <div className="cg-field">
                 <label>Senha</label>
                 <input className="cg-input" type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="••••••••" autoFocus />
@@ -153,7 +153,7 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
 
           {etapa === 'reset' && (
             <form onSubmit={redefinir}>
-              <p className="sub" style={{ marginBottom: 16 }}>Enviamos um código para o seu WhatsApp{telMasc ? <> <b style={{ color: 'var(--chalk)' }}>{telMasc}</b></> : ''}. Informe abaixo e crie uma nova senha.</p>
+              <p className="sub" style={{ marginBottom: 16 }}>Enviamos um código para o seu WhatsApp{telMasc ? <> <b style={{ color: 'var(--ink)' }}>{telMasc}</b></> : ''}. Informe abaixo e crie uma nova senha.</p>
               <div className="cg-field">
                 <label>Código recebido</label>
                 <input className="cg-input" value={codigo} onChange={e => setCodigo(e.target.value.toUpperCase())} placeholder="ex: A1B2C3" autoFocus />

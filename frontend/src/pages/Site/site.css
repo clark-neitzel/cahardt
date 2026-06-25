@@ -652,3 +652,45 @@
 
 /* duas pílulas (validade + conservação) no final da ficha */
 .cg-fgrid-2{ grid-template-columns:1fr 1fr; margin-top:18px; }
+
+/* ============================================================
+   TEMA CLARO DO CONGELADOS (.cg.cong)
+   Mesmo visual do Kit Festa: fundo creme, textos escuros.
+   Vem depois de .cg.tex-board na cascata, então sobrescreve o
+   fundo escuro. Drawer, cards do catálogo e popup já eram claros.
+   ============================================================ */
+.cg.cong{
+  color:var(--ink);
+  background-color:var(--paper);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='.05'/%3E%3C/svg%3E");
+}
+
+/* topbar claro (igual ao cabeçalho do Kit Festa) */
+.cg.cong .cg-top{ background:rgba(243,231,205,.92); backdrop-filter:blur(10px); border-bottom:1px solid rgba(25,27,23,.12); }
+
+/* marca */
+.cg.cong .cg-brand .who-label{ color:var(--green-d); }
+.cg.cong .cg-brand .who-nome{ color:var(--ink); }
+
+/* pílulas de navegação */
+.cg.cong .cg-pill{ color:var(--ink); border-color:rgba(25,27,23,.18); }
+.cg.cong .cg-pill:hover{ border-color:var(--green); color:var(--green-dd); }
+.cg.cong .cg-pill-cart .badge{ box-shadow:0 0 0 2px var(--paper); }
+
+/* card de login / confirmação de pedido */
+.cg.cong .cg-login-card{ background:#fffaf0; border:1px solid rgba(25,27,23,.1); }
+.cg.cong .cg-login-in h1{ color:var(--green-dd); }
+.cg.cong .cg-login-in .sub{ color:#7a6c52; }
+.cg.cong .cg-field label{ color:#6a5f4c; }
+.cg.cong .cg-input{ background:#fff; border:1.6px solid rgba(25,27,23,.16); color:var(--ink); }
+.cg.cong .cg-input:focus{ border-color:var(--green); box-shadow:0 0 0 3px rgba(18,130,64,.13); }
+.cg.cong .cg-input::placeholder{ color:rgba(25,27,23,.3); }
+.cg.cong .cg-login-note{ color:#8a7d63; }
+.cg.cong .cg-login-note a{ color:var(--green-dd); }
+.cg.cong .cg-login-err{ background:#fde8e8; border-color:var(--tomato); color:#b3261e; }
+.cg.cong .cg-back{ color:#8a7d63; }
+.cg.cong .cg-back:hover{ color:var(--green-dd); }
+
+/* botão fantasma legível no creme */
+.cg.cong .btn-ghost{ border:2px solid rgba(18,130,64,.4); color:var(--green-dd); }
+.cg.cong .btn-ghost:hover{ border-color:var(--green); color:var(--green); background:rgba(18,130,64,.06); }

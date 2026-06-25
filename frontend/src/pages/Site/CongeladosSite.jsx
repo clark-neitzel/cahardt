@@ -173,7 +173,7 @@ export default function CongeladosSite() {
     } finally { setEnviando(false); }
   }
 
-  if (booting) return <div className="cg tex-board" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon n="cart" w={28} /></div>;
+  if (booting) return <div className="cg tex-board cong" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon n="cart" w={28} /></div>;
 
 
   // tela de confirmação
@@ -204,17 +204,17 @@ export default function CongeladosSite() {
     const txt = encodeURIComponent(partes.join('\n'));
     const waLink = `https://wa.me/${whatsapp}?text=${txt}`;
     return (
-      <div className="cg tex-board">
+      <div className="cg tex-board cong">
         <div className="cg-login"><div className="cg-login-card"><div className="sawtooth"></div>
           <div className="cg-login-in">
             <img className="logo" src={siteLogo} alt="Hardt" />
             <h1>Pedido registrado!</h1>
-            <p className="sub">Seu pedido <b style={{ color: 'var(--chalk)' }}>#{confirm.numero}</b> foi registrado. Para a loja já começar a separar, <b style={{ color: 'var(--chalk)' }}>envie pelo seu WhatsApp</b> tocando no botão abaixo. O pagamento é combinado conforme a sua condição.</p>
+            <p className="sub">Seu pedido <b style={{ color: 'var(--green-dd)' }}>#{confirm.numero}</b> foi registrado. Para a loja já começar a separar, <b style={{ color: 'var(--green-dd)' }}>envie pelo seu WhatsApp</b> tocando no botão abaixo. O pagamento é combinado conforme a sua condição.</p>
             <a className="btn btn-wa btn-block" href={waLink} target="_blank" rel="noreferrer" style={{ marginTop: 8 }}>
               <WhatsIcon w={19} /> Enviar pedido pelo WhatsApp
             </a>
             <button className="btn btn-yellow btn-block" onClick={() => setConfirm(null)} style={{ marginTop: 10 }}>Fazer outro pedido</button>
-            <p className="cg-login-note"><Link to="/inicio" style={{ color: 'var(--chalk-dim)' }}>← voltar ao site</Link></p>
+            <p className="cg-login-note"><Link to="/inicio">← voltar ao site</Link></p>
           </div>
         </div></div>
       </div>
@@ -225,7 +225,7 @@ export default function CongeladosSite() {
   const gruposFiltro = [{ id: 'todos', nome: 'Todos' }, ...(cliente ? [{ id: 'recompra', nome: 'Recomprar' }] : []), ...grupos];
 
   return (
-    <div className="cg tex-board">
+    <div className="cg tex-board cong">
       {/* TOPBAR */}
       <header className="cg-top">
         <div className="wrap cg-top-in">
