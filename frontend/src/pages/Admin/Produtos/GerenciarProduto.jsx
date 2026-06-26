@@ -725,264 +725,348 @@ const GerenciarProduto = () => {
     if (!produto) return <div className="p-8 text-center text-red-500">Produto não encontrado.</div>;
 
     const imagensExibir = imagensLocal.length > 0 ? imagensLocal : [{ url: null }];
+    const estoqueReservado = Math.max(0, (produto.estoqueTotal || 0) - (produto.estoqueDisponivel || 0));
+    const margem = Number(formData.custoMedio) > 0 && Number(formData.valorVenda) > 0
+        ? (((Number(formData.valorVenda) - Number(formData.custoMedio)) / Number(formData.valorVenda)) * 100).toFixed(1)
+        : null;
 
     return (
-        <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
-            {/* Header compacto */}
-            <div className="bg-white border-b shadow-sm px-4 flex-shrink-0">
-                <div className="container mx-auto max-w-6xl flex items-center gap-3 py-2">
-                    <button onClick={handleBack} className="text-gray-500 hover:text-gray-800 p-1 rounded hover:bg-gray-100 flex-shrink-0">
-                        <ArrowLeft className="h-5 w-5" />
-                    </button>
-                    <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <h1 className="text-base font-bold text-gray-900 truncate">{formData.nome || 'Produto'}</h1>
-                            <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${formData.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                {formData.ativo ? 'Ativo' : 'Inativo'}
-                            </span>
-                        </div>
-                        <span className="text-xs text-gray-400">Código: {formData.codigo}</span>
-                    </div>
-                    <div className="flex flex-shrink-0">
-                        <button
-                            onClick={() => setAbaAtiva('dados')}
-                            className={`px-3 py-1.5 text-sm font-medium rounded-l border ${abaAtiva === 'dados' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
-                            Dados
+        <div className="min-h-screen" style={{ background: '#F4F5FA' }}>
+            {/* TOPBAR */}
+            <header className="sticky top-0 z-10 bg-white border-b" style={{ borderColor: '#E7E9F2', boxShadow: '0 1px 2px rgba(16,20,40,.04)' }}>
+                <div className="flex items-center justify-between gap-4 px-6" style={{ height: 78 }}>
+                    <div className="flex items-center gap-3.5 min-w-0">
+                        <button onClick={handleBack} className="flex items-center justify-center rounded-xl border flex-shrink-0 transition-colors hover:bg-gray-50" style={{ width: 42, height: 42, borderColor: '#E4E7F2', color: '#5A6072' }}>
+                            <ArrowLeft className="h-5 w-5" />
                         </button>
-                        <button
-                            onClick={() => setAbaAtiva('promocoes')}
-                            className={`px-3 py-1.5 text-sm font-medium rounded-r border-t border-b border-r flex items-center gap-1 ${abaAtiva === 'promocoes' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
+                        {imagensLocal.length > 0 && (
+                            <div className="flex-shrink-0 rounded-xl border flex items-center justify-center bg-white overflow-hidden" style={{ width: 46, height: 46, borderColor: '#ECEEF5' }}>
+                                <img src={`${API_URL}${imagensLocal.find(i => i.principal)?.url || imagensLocal[0]?.url}`} className="w-full h-full object-contain" alt="" />
+                            </div>
+                        )}
+                        <div className="min-w-0">
+                            <h1 className="font-extrabold leading-tight truncate" style={{ fontSize: 19, color: '#16192B' }}>{formData.nome || 'Produto'}</h1>
+                            <div className="flex items-center gap-2.5 mt-1">
+                                <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full" style={formData.ativo ? { color: '#15A05A', background: '#E6F7EE' } : { color: '#ef4444', background: '#fee2e2' }}>
+                                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'currentColor' }} />
+                                    {formData.ativo ? 'Ativo' : 'Inativo'}
+                                </span>
+                                <span className="text-sm font-mono" style={{ color: '#8A90A2' }}>Cód. {formData.codigo}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex rounded-xl p-1 flex-shrink-0" style={{ background: '#EEF0F7', gap: 2 }}>
+                        <button onClick={() => setAbaAtiva('dados')}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+                            style={abaAtiva === 'dados' ? { background: '#fff', color: '#2563EB', fontWeight: 700, boxShadow: '0 1px 2px rgba(16,20,40,.10)' } : { color: '#7A8094' }}>
+                            <Save className="h-3.5 w-3.5" /> Dados
+                        </button>
+                        <button onClick={() => setAbaAtiva('promocoes')}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+                            style={abaAtiva === 'promocoes' ? { background: '#fff', color: '#2563EB', fontWeight: 700, boxShadow: '0 1px 2px rgba(16,20,40,.10)' } : { color: '#7A8094' }}>
                             <Tag className="h-3.5 w-3.5" /> Promoções
                         </button>
                     </div>
                 </div>
-            </div>
+            </header>
 
-            <div className="flex-1 overflow-hidden px-4 py-3">
-                <div className="container mx-auto max-w-6xl h-full">
-                    {error && (
-                        <div className="mb-3 bg-red-50 border-l-4 border-red-500 p-3 flex items-center">
-                            <AlertCircle className="h-4 w-4 text-red-500 mr-2" />
-                            <p className="text-red-700 text-sm">{error}</p>
+            <main className="px-6 py-5 flex flex-col gap-[18px]" style={{ maxWidth: 1440, margin: '0 auto' }}>
+
+                {error && (
+                    <div className="bg-red-50 border-l-4 border-red-500 p-3 flex items-center gap-2 rounded-lg">
+                        <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                        <p className="text-red-700 text-sm">{error}</p>
+                    </div>
+                )}
+
+                {/* ABA DADOS */}
+                {abaAtiva === 'dados' && (
+                    <>
+                        {/* KPI STRIP */}
+                        <div className="bg-white rounded-2xl border flex" style={{ borderColor: '#E7E9F2', boxShadow: '0 1px 2px rgba(16,20,40,.04)' }}>
+                            {[
+                                { label: 'Valor de Venda', value: `R$ ${Number(formData.valorVenda || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, color: '#16192B' },
+                                { label: 'Custo (Conta Azul)', value: `R$ ${Number(formData.custoMedio || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, color: '#16192B' },
+                                { label: 'Margem', value: margem ? `${margem}%` : '—', color: '#15A05A', showIcon: !!margem },
+                                { label: 'Disponível', value: String(produto.estoqueDisponivel ?? 0), color: '#15A05A' },
+                                { label: 'Total', value: String(produto.estoqueTotal ?? 0), color: '#2563EB' },
+                                { label: 'Reservado', value: String(estoqueReservado), color: '#B0863A' },
+                            ].map((kpi, i, arr) => (
+                                <div key={kpi.label} className="flex-1 py-4 px-[22px]" style={i < arr.length - 1 ? { borderRight: '1px solid #EEF0F7' } : {}}>
+                                    <div className="font-bold tracking-[.05em] uppercase mb-1.5" style={{ fontSize: 11, color: '#9AA0B4' }}>{kpi.label}</div>
+                                    <div className="flex items-center gap-1.5 font-extrabold font-mono" style={{ fontSize: 22, color: kpi.color }}>
+                                        {kpi.value}
+                                        {kpi.showIcon && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17l6-6 4 4 5-7" /></svg>}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    )}
 
-                    {/* ABA DADOS */}
-                    {abaAtiva === 'dados' && (
-                        <div className="grid grid-cols-4 gap-3 items-start">
-                            {/* Coluna 1: Imagens + Estoque */}
-                            <div className="flex flex-col gap-3">
-                                <div className="bg-white rounded-lg border flex flex-col overflow-hidden">
-                                    <div className="flex justify-between items-center px-3 py-1.5 bg-gray-50 border-b flex-shrink-0">
-                                        <span className="text-xs font-semibold text-gray-600">Imagens</span>
-                                        <button
-                                            onClick={() => fileInputRef.current?.click()}
-                                            disabled={uploadingImagem}
-                                            className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 disabled:opacity-50">
-                                            <Upload className="h-3 w-3" />
+                        {/* TWO-COLUMN */}
+                        <div className="grid gap-[18px]" style={{ gridTemplateColumns: '392px 1fr', alignItems: 'start' }}>
+
+                            {/* LEFT: Images + Dados */}
+                            <div className="flex flex-col gap-4">
+
+                                {/* IMAGES */}
+                                <div className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: '#E7E9F2' }}>
+                                    <div className="flex items-center justify-between px-[18px] border-b" style={{ height: 58, borderColor: '#EEF0F7' }}>
+                                        <div className="flex items-center gap-2.5">
+                                            <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: '#EFF4FF', color: '#2563EB' }}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="M21 15l-5-5L5 21" /></svg>
+                                            </span>
+                                            <span className="font-extrabold" style={{ fontSize: 15, color: '#16192B' }}>Imagens</span>
+                                        </div>
+                                        <button onClick={() => fileInputRef.current?.click()} disabled={uploadingImagem} className="flex items-center gap-1.5 text-sm font-bold disabled:opacity-50 transition-colors" style={{ color: '#2563EB' }}>
+                                            <Upload className="h-3.5 w-3.5" />
                                             {uploadingImagem ? 'Enviando...' : 'Enviar'}
                                         </button>
                                         <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleUploadImagens} />
                                     </div>
-                                    <div className="h-36 bg-gray-100 relative flex-shrink-0">
-                                        <img
-                                            src={imagensExibir[imagemAtual]?.url ? `${API_URL}${imagensExibir[imagemAtual].url}` : 'https://via.placeholder.com/400?text=Sem+Imagem'}
-                                            alt="Produto"
-                                            className="w-full h-full object-contain p-2"
-                                            onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=Erro'; }}
-                                        />
-                                        {imagensExibir[imagemAtual]?.principal && (
-                                            <span className="absolute top-1 left-1 bg-yellow-400 text-yellow-900 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                                                <Star className="h-2.5 w-2.5" /> CAPA
-                                            </span>
-                                        )}
-                                    </div>
-                                    {imagensLocal.length > 0 && (
-                                        <div className="p-2 border-t flex flex-wrap gap-1 max-h-24 overflow-y-auto">
-                                            {imagensLocal.map((img, idx) => (
-                                                <div key={img.id}
-                                                    className={`relative group h-10 w-10 rounded overflow-hidden border-2 cursor-pointer flex-shrink-0 ${idx === imagemAtual ? 'border-primary' : 'border-gray-200'}`}
-                                                    onClick={() => setImagemAtual(idx)}>
-                                                    <img src={`${API_URL}${img.url}`} className="w-full h-full object-cover" alt="" />
-                                                    <div className="absolute inset-0 bg-black/50 hidden group-hover:flex flex-col items-center justify-center gap-0.5">
-                                                        <button onClick={(e) => { e.stopPropagation(); handleDefinirPrincipal(img.id); }}
-                                                            className={img.principal ? 'text-yellow-400' : 'text-white'} title="Definir capa">
-                                                            <Star className={`h-3 w-3 ${img.principal ? 'fill-current' : ''}`} />
-                                                        </button>
-                                                        <button onClick={(e) => { e.stopPropagation(); handleMoverImagem(idx, -1); }}
-                                                            disabled={idx === 0} className="text-white disabled:opacity-30" title="Mover p/ cima">
-                                                            <ArrowUp className="h-3 w-3" />
-                                                        </button>
-                                                        <button onClick={(e) => { e.stopPropagation(); handleMoverImagem(idx, 1); }}
-                                                            disabled={idx === imagensLocal.length - 1} className="text-white disabled:opacity-30" title="Mover p/ baixo">
-                                                            <ArrowDown className="h-3 w-3" />
-                                                        </button>
-                                                        <button onClick={(e) => { e.stopPropagation(); handleRemoverImagem(img.id); }}
-                                                            className="text-red-400" title="Remover">
-                                                            <Trash2 className="h-3 w-3" />
-                                                        </button>
+                                    <div className="flex gap-3 p-4">
+                                        <div className="relative rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ width: 150, height: 150, background: '#F7F8FC', border: '1px solid #ECEEF5' }}>
+                                            <img
+                                                src={imagensExibir[imagemAtual]?.url ? `${API_URL}${imagensExibir[imagemAtual].url}` : 'https://via.placeholder.com/400?text=Sem+Imagem'}
+                                                alt="Produto"
+                                                className="object-contain"
+                                                style={{ maxWidth: '84%', maxHeight: '80%' }}
+                                                onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=Erro'; }}
+                                            />
+                                            {imagensExibir[imagemAtual]?.principal && (
+                                                <span className="absolute top-2 left-2 flex items-center gap-1 font-extrabold rounded-lg" style={{ fontSize: 10.5, color: '#8a6a00', background: '#FFE08A', padding: '4px 9px' }}>
+                                                    <Star className="h-2.5 w-2.5 fill-current" /> CAPA
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 flex flex-col min-w-0">
+                                            <div className="font-bold tracking-[.05em] uppercase mb-2" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Ordem · use as setas</div>
+                                            <div className="flex flex-col gap-1.5 overflow-y-auto" style={{ maxHeight: 160 }}>
+                                                {imagensLocal.length > 0 ? imagensLocal.map((img, idx) => (
+                                                    <div key={img.id}
+                                                        className="flex items-center gap-2.5 rounded-xl p-2 cursor-pointer transition-all"
+                                                        style={idx === imagemAtual ? { border: '1.5px solid #BBD3FF', background: '#EFF5FF' } : { border: '1.5px solid transparent' }}
+                                                        onClick={() => setImagemAtual(idx)}>
+                                                        <div className="flex-shrink-0 rounded-lg overflow-hidden flex items-center justify-center" style={{ width: 40, height: 40, border: '1px solid #D9E2F2', background: '#fff' }}>
+                                                            <img src={`${API_URL}${img.url}`} className="w-full h-full object-contain" alt="" />
+                                                        </div>
+                                                        <span className="text-sm font-bold flex-1 truncate" style={{ color: '#16192B' }}>#{idx + 1}{img.principal ? ' — Capa' : ''}</span>
+                                                        <div className="flex items-center gap-0.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                                                            <button onClick={() => handleMoverImagem(idx, -1)} disabled={idx === 0} className="flex items-center justify-center rounded-lg transition-colors hover:bg-gray-100 disabled:opacity-20" style={{ width: 30, height: 30, color: '#7A8094' }}>
+                                                                <ArrowUp className="h-3.5 w-3.5" />
+                                                            </button>
+                                                            <button onClick={() => handleMoverImagem(idx, 1)} disabled={idx === imagensLocal.length - 1} className="flex items-center justify-center rounded-lg transition-colors hover:bg-gray-100 disabled:opacity-20" style={{ width: 30, height: 30, color: '#7A8094' }}>
+                                                                <ArrowDown className="h-3.5 w-3.5" />
+                                                            </button>
+                                                            <button onClick={() => handleDefinirPrincipal(img.id)} className="flex items-center justify-center rounded-lg transition-colors" style={{ width: 30, height: 30, border: `1px solid ${img.principal ? '#FBE6A8' : '#E4E7F2'}`, background: img.principal ? '#FFFAF0' : 'transparent' }}>
+                                                                <Star className={`h-3.5 w-3.5 ${img.principal ? 'fill-current' : ''}`} style={{ color: img.principal ? '#F4B400' : '#9AA0B4' }} />
+                                                            </button>
+                                                            <button onClick={() => handleRemoverImagem(img.id)} className="flex items-center justify-center rounded-lg transition-colors hover:text-red-500" style={{ width: 30, height: 30, color: '#9AA0B4' }}>
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                )) : (
+                                                    <div className="text-sm text-center py-6" style={{ color: '#9AA0B4' }}>Nenhuma imagem. Clique em Enviar.</div>
+                                                )}
+                                            </div>
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
 
-                                {/* Estoque */}
-                                <div className="bg-white rounded-lg border p-3 grid grid-cols-2 gap-2">
-                                    <div className="bg-green-50 rounded p-2 text-center">
-                                        <div className="text-[10px] text-green-700 font-semibold uppercase">Disponível</div>
-                                        <div className="text-xl font-bold text-green-800">{produto.estoqueDisponivel}</div>
-                                    </div>
-                                    <div className="bg-blue-50 rounded p-2 text-center">
-                                        <div className="text-[10px] text-blue-700 font-semibold uppercase">Total</div>
-                                        <div className="text-xl font-bold text-blue-800">{produto.estoqueTotal}</div>
+                                {/* DADOS DO PRODUTO */}
+                                <div className="bg-white rounded-2xl border" style={{ borderColor: '#E7E9F2' }}>
+                                    <div className="p-[18px]">
+                                        <div className="flex items-center gap-2.5 mb-4">
+                                            <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: '#EFF4FF', color: '#2563EB' }}>
+                                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /></svg>
+                                            </span>
+                                            <span className="font-extrabold" style={{ fontSize: 15, color: '#16192B' }}>Dados do Produto</span>
+                                            <span className="ml-auto inline-flex items-center gap-1 font-bold rounded-full" style={{ fontSize: 10.5, color: '#2563EB', background: '#EFF4FF', padding: '4px 9px' }}>
+                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                                                CONTA AZUL
+                                            </span>
+                                        </div>
+                                        <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                                            <div style={{ gridColumn: 'span 2' }}>
+                                                <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Nome</div>
+                                                <div className="font-bold" style={{ fontSize: 14, color: '#16192B' }}>{formData.nome}</div>
+                                            </div>
+                                            <div style={{ gridColumn: 'span 2' }}>
+                                                <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>EAN</div>
+                                                <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{formData.ean || '—'}</div>
+                                            </div>
+                                            <div>
+                                                <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Código</div>
+                                                <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{formData.codigo}</div>
+                                            </div>
+                                            <div>
+                                                <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>NCM</div>
+                                                <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{formData.ncm || '—'}</div>
+                                            </div>
+                                            <div>
+                                                <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Categoria</div>
+                                                <div className="font-semibold" style={{ fontSize: 14, color: '#16192B' }}>{formData.categoria || '—'}</div>
+                                            </div>
+                                            <div>
+                                                <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Peso</div>
+                                                <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{formData.pesoLiquido || '0'} <span className="font-sans" style={{ fontSize: 11, color: '#9AA0B4' }}>kg</span></div>
+                                            </div>
+                                            {formData.contaAzulUpdatedAt && (
+                                                <div style={{ gridColumn: 'span 2' }}>
+                                                    <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Atualizado</div>
+                                                    <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{new Date(formData.contaAzulUpdatedAt).toLocaleDateString('pt-BR')}</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px dashed #EEF0F7', color: '#9AA0B4', fontSize: 11.5 }}>
+                                            <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                                            Sincronizado da Conta Azul — somente leitura.
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Coluna 2: Dados read-only (Conta Azul) */}
-                            <div className="bg-white rounded-lg border overflow-hidden flex flex-col">
-                                <div className="px-3 py-1.5 bg-gray-50 border-b">
-                                    <span className="text-xs font-semibold text-gray-600">Dados do Produto</span>
-                                    <span className="text-[10px] text-gray-400 ml-1">(Conta Azul)</span>
+                            {/* RIGHT: IC CARD */}
+                            <div className="rounded-2xl border flex flex-col" style={{ background: 'linear-gradient(180deg,#FCFBFF,#fff)', borderColor: '#ECE5FB', boxShadow: '0 1px 2px rgba(16,20,40,.04)' }}>
+                                <div className="flex items-start gap-3 px-6 pt-[22px] pb-6">
+                                    <span className="flex items-center justify-center rounded-[9px] flex-shrink-0" style={{ width: 34, height: 34, background: 'linear-gradient(135deg,#7C3AED,#9F67FF)', color: '#fff' }}>
+                                        <Sparkles className="h-[18px] w-[18px]" />
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-extrabold" style={{ fontSize: 16, color: '#16192B', lineHeight: 1.2 }}>Inteligência Comercial</div>
+                                        <div className="font-medium mt-0.5" style={{ fontSize: 12, color: '#9AA0B4' }}>Ajustes exclusivos do app — não alteram a Conta Azul</div>
+                                    </div>
+                                    <span className="flex-shrink-0 font-bold rounded-full" style={{ fontSize: 11, color: '#7C3AED', background: '#F1EAFF', padding: '5px 11px' }}>EXCLUSIVO APP</span>
                                 </div>
-                                <div className="p-3 space-y-2.5">
-                                    <InfoField label="Nome" value={formData.nome} />
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <InfoField label="Código" value={formData.codigo} />
-                                        <InfoField label="EAN" value={formData.ean} />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <InfoField label="Vl. Venda" value={`R$ ${Number(formData.valorVenda || 0).toFixed(2)}`} />
-                                        <InfoField label="Custo CA" value={`R$ ${Number(formData.custoMedio || 0).toFixed(2)}`} />
-                                    </div>
-                                    <InfoField label="Categoria" value={formData.categoria} />
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <InfoField label="NCM" value={formData.ncm} />
-                                        <InfoField label="Peso (kg)" value={String(formData.pesoLiquido || '0')} />
-                                    </div>
-                                    {formData.descricao && (
-                                        <div>
-                                            <div className="text-xs text-gray-400 mb-0.5">Descrição</div>
-                                            <p className="text-xs text-gray-700 line-clamp-4">{formData.descricao}</p>
-                                        </div>
-                                    )}
-                                    {formData.contaAzulUpdatedAt && (
-                                        <div className="pt-1 border-t">
-                                            <p className="text-[10px] text-gray-400">Atualizado: {new Date(formData.contaAzulUpdatedAt).toLocaleDateString('pt-BR')}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
 
-                            {/* Colunas 3-4: Campos editáveis */}
-                            <div className="col-span-2 bg-white rounded-lg border overflow-hidden flex flex-col">
-                                <div className="px-3 py-1.5 bg-purple-50 border-b flex items-center gap-2">
-                                    <Sparkles className="h-4 w-4 text-purple-600" />
-                                    <span className="text-xs font-semibold text-purple-800">Inteligência Comercial (Exclusivo App)</span>
-                                </div>
-                                <div className="p-4">
-                                    <div className="grid grid-cols-2 gap-4">
+                                <div className="px-6 flex-1">
+                                    <div className="grid grid-cols-2 gap-x-6 gap-y-[22px]">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Custo Manual (R$) <span className="text-purple-600 font-normal text-xs">(editável)</span>
-                                            </label>
-                                            <div className="relative">
-                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <span className="text-gray-500 text-sm">R$</span>
-                                                </div>
+                                            <div className="flex items-center mb-2">
+                                                <span className="text-sm font-bold" style={{ color: '#3A3F52' }}>Custo Manual (R$)</span>
+                                                <span className="ml-2 font-bold rounded-full" style={{ fontSize: 10.5, color: '#7C3AED', background: '#F1EAFF', padding: '2px 7px' }}>EDITÁVEL</span>
+                                            </div>
+                                            <div className="flex items-center gap-2.5 rounded-xl border" style={{ height: 50, padding: '0 16px', borderColor: '#D8C9FB', background: '#fff' }}>
+                                                <span className="text-sm font-medium" style={{ color: '#3A3F52' }}>R$</span>
                                                 <input type="number" step="0.01" min="0" value={formData.custoManual}
                                                     onChange={(e) => setFormData({ ...formData, custoManual: e.target.value })}
-                                                    placeholder="0.00"
-                                                    className="w-full pl-10 rounded border border-gray-300 py-2 px-3 bg-white text-gray-900 focus:ring-primary focus:border-primary text-sm" />
+                                                    placeholder="0,00"
+                                                    className="flex-1 bg-transparent outline-none font-medium font-mono"
+                                                    style={{ fontSize: 15, color: '#16192B' }} />
                                             </div>
-                                            <p className="text-xs text-gray-400 mt-0.5">
-                                                {parseFloat(formData.custoMedio) > 0 ? 'CA já tem custo — este fica de reserva.' : 'Usado no cálculo de receitas.'}
-                                            </p>
+                                            <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>{parseFloat(formData.custoMedio) > 0 ? 'CA já tem custo — este fica de reserva.' : 'Usado no cálculo de receitas.'}</div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Unidade <span className="text-purple-600 font-normal text-xs">(editável)</span>
-                                            </label>
-                                            <input type="text" value={formData.unidade} maxLength={10}
-                                                onChange={(e) => setFormData({ ...formData, unidade: e.target.value.toUpperCase() })}
-                                                placeholder="Ex.: UN, KG, CX"
-                                                className="w-full rounded border border-gray-300 py-2 px-3 uppercase bg-white text-gray-900 focus:ring-primary focus:border-primary text-sm" />
+                                            <div className="flex items-center mb-2">
+                                                <span className="text-sm font-bold" style={{ color: '#3A3F52' }}>Unidade</span>
+                                                <span className="ml-2 font-bold rounded-full" style={{ fontSize: 10.5, color: '#7C3AED', background: '#F1EAFF', padding: '2px 7px' }}>EDITÁVEL</span>
+                                            </div>
+                                            <div className="flex items-center rounded-xl border" style={{ height: 50, padding: '0 16px', borderColor: '#D8C9FB', background: '#fff' }}>
+                                                <input type="text" value={formData.unidade} maxLength={10}
+                                                    onChange={(e) => setFormData({ ...formData, unidade: e.target.value.toUpperCase() })}
+                                                    placeholder="Ex.: UN, KG, PT"
+                                                    className="flex-1 bg-transparent outline-none font-semibold uppercase"
+                                                    style={{ fontSize: 15, color: '#16192B' }} />
+                                            </div>
+                                            <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>Unidade de venda no app.</div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Categoria Comercial</label>
-                                            <select
-                                                className="w-full rounded border border-gray-300 py-2 px-3 bg-white text-gray-900 focus:ring-primary focus:border-primary text-sm"
-                                                value={formData.categoriaProdutoId}
-                                                onChange={(e) => setFormData({ ...formData, categoriaProdutoId: e.target.value })}
-                                            >
-                                                <option value="">Selecione...</option>
-                                                {categoriasProduto.map(c => (
-                                                    <option key={c.id} value={c.id}>{c.nome}</option>
-                                                ))}
-                                            </select>
+                                            <div className="text-sm font-bold mb-2" style={{ color: '#3A3F52' }}>Categoria Comercial</div>
+                                            <div className="flex items-center rounded-xl border" style={{ height: 50, padding: '0 16px', borderColor: '#E4E7F2', background: '#fff' }}>
+                                                <select
+                                                    className="flex-1 bg-transparent outline-none font-medium appearance-none truncate"
+                                                    style={{ fontSize: 15, color: formData.categoriaProdutoId ? '#16192B' : '#A6ABBD' }}
+                                                    value={formData.categoriaProdutoId}
+                                                    onChange={(e) => setFormData({ ...formData, categoriaProdutoId: e.target.value })}>
+                                                    <option value="">Selecione...</option>
+                                                    {categoriasProduto.map(c => (<option key={c.id} value={c.id}>{c.nome}</option>))}
+                                                </select>
+                                                <ChevronDown className="h-4 w-4 flex-shrink-0 ml-2" style={{ color: '#9AA0B4' }} />
+                                            </div>
+                                            <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>Agrupamento dentro do app.</div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Produto Substituto</label>
-                                            <div className="h-[38px] flex items-center">
+                                            <div className="text-sm font-bold mb-2" style={{ color: '#3A3F52' }}>Produto Substituto</div>
+                                            <div className="flex items-center rounded-xl border" style={{ minHeight: 50, padding: '6px 12px', borderColor: '#E4E7F2', background: '#fff' }}>
                                                 <BuscaProduto
                                                     value={formData.produtoSubstitutoId}
                                                     onChange={(val) => setFormData({ ...formData, produtoSubstitutoId: val })}
                                                     todosOsProdutos={todosProdutos}
                                                 />
                                             </div>
-                                            <p className="text-xs text-gray-400 mt-0.5">Sugerido em falta de estoque.</p>
+                                            <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>Sugerido em falta de estoque.</div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Prioridade Recomendação</label>
-                                            <input
-                                                type="number" min="1" max="99"
-                                                value={formData.prioridadeRecomendacao}
-                                                onChange={(e) => setFormData({ ...formData, prioridadeRecomendacao: e.target.value })}
-                                                className="w-full rounded border border-gray-300 py-2 px-3 bg-white text-gray-900 focus:ring-primary focus:border-primary text-sm"
-                                            />
-                                            <p className="text-xs text-gray-400 mt-0.5">1 é a mais alta.</p>
+                                            <div className="text-sm font-bold mb-2" style={{ color: '#3A3F52' }}>Prioridade de Recomendação</div>
+                                            <div className="flex items-center justify-between rounded-xl border" style={{ height: 50, padding: '0 8px 0 16px', borderColor: '#E4E7F2', background: '#fff' }}>
+                                                <input type="number" min="1" max="99"
+                                                    value={formData.prioridadeRecomendacao}
+                                                    onChange={(e) => setFormData({ ...formData, prioridadeRecomendacao: e.target.value })}
+                                                    className="flex-1 bg-transparent outline-none font-semibold font-mono"
+                                                    style={{ fontSize: 15, color: '#16192B' }} />
+                                                <div className="flex flex-col gap-[3px] flex-shrink-0">
+                                                    <button onClick={() => setFormData({ ...formData, prioridadeRecomendacao: Math.max(1, parseInt(formData.prioridadeRecomendacao || 1) - 1) })} className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 18, background: '#F2F3F8', color: '#9AA0B4' }}>
+                                                        <ChevronUp className="h-3 w-3" />
+                                                    </button>
+                                                    <button onClick={() => setFormData({ ...formData, prioridadeRecomendacao: Math.min(99, parseInt(formData.prioridadeRecomendacao || 1) + 1) })} className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 18, background: '#F2F3F8', color: '#9AA0B4' }}>
+                                                        <ChevronDown className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>1 é a mais alta.</div>
                                         </div>
-                                        <div className="flex items-center gap-2 mt-4">
-                                            <input
-                                                type="checkbox"
-                                                checked={formData.permiteRecomendacao}
-                                                onChange={(e) => setFormData({ ...formData, permiteRecomendacao: e.target.checked })}
-                                                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                                            />
-                                            <span className="text-sm font-medium text-gray-900">Permitir Sugestão do Produto</span>
+                                        <div>
+                                            <div className="text-sm font-bold mb-2" style={{ color: '#3A3F52' }}>Sugestão do Produto</div>
+                                            <div className="flex items-center justify-between rounded-xl border" style={{ height: 50, padding: '0 16px', borderColor: '#E4E7F2', background: '#fff' }}>
+                                                <span className="font-semibold" style={{ fontSize: 14, color: '#16192B' }}>Permitir sugestão</span>
+                                                <button
+                                                    onClick={() => setFormData({ ...formData, permiteRecomendacao: !formData.permiteRecomendacao })}
+                                                    className="flex items-center rounded-full flex-shrink-0 transition-all"
+                                                    style={{ width: 48, height: 27, background: formData.permiteRecomendacao ? '#7C3AED' : '#D1D5DB', padding: '0 3px', justifyContent: formData.permiteRecomendacao ? 'flex-end' : 'flex-start' }}>
+                                                    <span className="rounded-full bg-white flex-shrink-0" style={{ width: 21, height: 21, boxShadow: '0 1px 3px rgba(0,0,0,.25)' }} />
+                                                </button>
+                                            </div>
+                                            <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>Aparece como alternativa no app.</div>
                                         </div>
                                     </div>
-                                    <div className="mt-4 pt-3 border-t flex justify-end">
-                                        <button
-                                            onClick={handleSaveComercial}
-                                            disabled={salvandoComercial}
-                                            className="px-5 py-2 bg-purple-600 font-semibold text-white rounded hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
-                                        >
-                                            <Save className="h-4 w-4" />
+                                </div>
+
+                                {/* IC Footer */}
+                                <div className="flex items-center justify-between gap-3 px-6 py-[18px] mt-6 border-t" style={{ borderColor: '#F0EEF7' }}>
+                                    <div className="flex items-center gap-2" style={{ fontSize: 11.5, color: '#9AA0B4' }}>
+                                        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                                        As alterações entram em vigor no próximo sync do app.
+                                    </div>
+                                    <div className="flex items-center gap-2.5 flex-shrink-0">
+                                        <button onClick={handleBack} className="flex items-center font-bold text-sm rounded-xl border transition-colors hover:bg-gray-50" style={{ height: 46, padding: '0 18px', borderColor: '#E4E7F2', color: '#5A6072', background: 'none' }}>
+                                            Cancelar
+                                        </button>
+                                        <button onClick={handleSaveComercial} disabled={salvandoComercial}
+                                            className="flex items-center gap-2 font-bold text-white rounded-xl disabled:opacity-50 transition-all"
+                                            style={{ height: 46, padding: '0 22px', fontSize: 14.5, background: 'linear-gradient(135deg,#7C3AED,#6D28D9)', boxShadow: '0 6px 18px rgba(124,58,237,.35)' }}>
+                                            <Save className="h-[17px] w-[17px]" />
                                             {salvandoComercial ? 'Salvando...' : 'Salvar e Voltar'}
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    )}
+                    </>
+                )}
 
-                    {/* ABA PROMOÇÕES */}
-                    {abaAtiva === 'promocoes' && (
-                        <div className="bg-white rounded-lg border overflow-hidden h-full flex flex-col">
-                            <div className="p-3 border-b bg-green-50 flex items-center gap-2 flex-shrink-0">
-                                <Tag className="h-4 w-4 text-green-600" />
-                                <h3 className="font-semibold text-green-800 text-sm">Promoções — {formData.nome}</h3>
-                            </div>
-                            <div className="p-4 overflow-y-auto flex-1">
-                                <SecaoPromocoes produtoId={id} valorVendaBase={formData.valorVenda} />
-                            </div>
+                {/* ABA PROMOÇÕES */}
+                {abaAtiva === 'promocoes' && (
+                    <div className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: '#E7E9F2' }}>
+                        <div className="p-4 border-b flex items-center gap-2" style={{ background: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                            <Tag className="h-4 w-4" style={{ color: '#15A05A' }} />
+                            <h3 className="font-bold text-sm" style={{ color: '#166534' }}>Promoções — {formData.nome}</h3>
                         </div>
-                    )}
-                </div>
-            </div>
+                        <div className="p-6">
+                            <SecaoPromocoes produtoId={id} valorVendaBase={formData.valorVenda} />
+                        </div>
+                    </div>
+                )}
+            </main>
         </div>
     );
 };
