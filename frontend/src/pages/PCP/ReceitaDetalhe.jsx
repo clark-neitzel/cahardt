@@ -38,6 +38,42 @@ function unidadeDe(itemPcp) {
     return itemPcp?.produto?.unidade || itemPcp?.unidade || '';
 }
 
+// Impressão via iframe oculto — funciona dentro do PWA instalado (não abre aba/janela externa).
+function imprimirViaIframe(html) {
+    const anterior = document.getElementById('iframe-impressao-receita');
+    if (anterior) anterior.remove();
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'iframe-impressao-receita';
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;';
+    document.body.appendChild(iframe);
+
+    const limpar = () => { try { iframe.remove(); } catch { /* ignora */ } };
+
+    const imprimir = () => {
+        const win = iframe.contentWindow;
+        if (!win) { limpar(); return; }
+        try {
+            win.focus();
+            win.onafterprint = limpar;
+            win.print();
+            // fallback caso onafterprint não dispare (alguns navegadores)
+            setTimeout(limpar, 60000);
+        } catch {
+            limpar();
+        }
+    };
+
+    iframe.onload = () => setTimeout(imprimir, 350);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) { limpar(); return; }
+    doc.open();
+    doc.write(html);
+    doc.close();
+}
+
 function escaparHtml(str) {
     return String(str ?? '').replace(/[&<>"']/g, c => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -354,29 +390,12 @@ export default function ReceitaDetalhe() {
 
     const imprimirReceita = () => {
         if (!receita) return;
-        const win = window.open('', '_blank');
-        if (!win) {
-            toast.error('Permita pop-ups para imprimir');
-            return;
-        }
-        win.document.write(montarHtmlImpressao(receita));
-        win.document.close();
-        win.focus();
-        // espera o layout montar antes de chamar a impressao
-        setTimeout(() => win.print(), 300);
+        imprimirViaIframe(montarHtmlImpressao(receita));
     };
 
     const imprimirComCustos = () => {
         if (!receita) return;
-        const win = window.open('', '_blank');
-        if (!win) {
-            toast.error('Permita pop-ups para imprimir');
-            return;
-        }
-        win.document.write(montarHtmlImpressaoComCustos(receita, custo));
-        win.document.close();
-        win.focus();
-        setTimeout(() => win.print(), 300);
+        imprimirViaIframe(montarHtmlImpressaoComCustos(receita, custo));
     };
 
     if (loading) return <div className="text-center py-12 text-gray-400">Carregando...</div>;

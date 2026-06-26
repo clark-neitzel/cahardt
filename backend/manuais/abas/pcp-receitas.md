@@ -112,7 +112,7 @@ Há **dois botões** de impressão na tela de detalhe:
 
 Passos: abra a receita, clique no botão desejado, a caixa de impressão abre sozinha — confirme (ou salve como PDF).
 
-> Se nada abrir, libere os **pop-ups** do site no navegador.
+> A impressão abre **dentro do próprio app** (não abre outra aba/janela), funcionando normalmente mesmo com o app instalado na tela inicial (atalho/PWA).
 
 > **Unidade dos ingredientes:** a unidade que aparece na receita e nas impressões vem da **unidade do produto** (a que você edita em Produtos → abrir o produto). Se a unidade estiver errada na impressão, corrija no cadastro do produto. Subprodutos (SUB) usam a unidade definida no próprio subproduto.
 
