@@ -31,10 +31,11 @@ const pcpReceitaService = {
         return prisma.receita.findUnique({
             where: { id },
             include: {
-                itemPcp: { select: { id: true, nome: true, codigo: true, tipo: true, unidade: true } },
+                itemPcp: { select: { id: true, nome: true, codigo: true, tipo: true, unidade: true, produto: { select: { unidade: true } } } },
                 itens: {
                     include: {
-                        itemPcp: { select: { id: true, nome: true, codigo: true, tipo: true, unidade: true } }
+                        // produto.unidade = unidade "do app" (editável); tem prioridade sobre a do PCP na exibição
+                        itemPcp: { select: { id: true, nome: true, codigo: true, tipo: true, unidade: true, produto: { select: { unidade: true } } } }
                     },
                     orderBy: [{ ordem: 'asc' }, { ordemEtapa: 'asc' }]
                 }

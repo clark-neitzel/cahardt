@@ -33,6 +33,11 @@ const TIPO_LABELS = {
     EMB: 'Embalagem',
 };
 
+// Unidade exibida: a do PRODUTO (editável no app) tem prioridade; cai para a do item PCP (subprodutos não têm produto)
+function unidadeDe(itemPcp) {
+    return itemPcp?.produto?.unidade || itemPcp?.unidade || '';
+}
+
 function escaparHtml(str) {
     return String(str ?? '').replace(/[&<>"']/g, c => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -79,7 +84,7 @@ function montarHtmlImpressao(receita) {
         <tr>
             <td class="nome">${escaparHtml(it.itemPcp?.nome || '—')}</td>
             <td class="qtd">${fmtQtd(it.quantidade)}</td>
-            <td class="un">${escaparHtml(it.itemPcp?.unidade || '')}</td>
+            <td class="un">${escaparHtml(unidadeDe(it.itemPcp))}</td>
             ${it.observacao ? `<td class="obs">${escaparHtml(it.observacao)}</td>` : '<td class="obs"></td>'}
         </tr>`;
 
@@ -99,7 +104,7 @@ function montarHtmlImpressao(receita) {
             </section>`;
     }).join('');
 
-    const rendimento = `${fmtQtd(receita.rendimentoBase)} ${escaparHtml(receita.itemPcp?.unidade || '')}`;
+    const rendimento = `${fmtQtd(receita.rendimentoBase)} ${escaparHtml(unidadeDe(receita.itemPcp))}`;
     const perda = receita.perdaPercentual ? `${fmtPerda(receita.perdaPercentual)}%` : '—';
     const dataImpressao = new Date().toLocaleDateString('pt-BR');
 
@@ -205,18 +210,18 @@ function montarHtmlImpressaoComCustos(receita, custo) {
         <tr>
             <td class="nome">${escaparHtml(it.itemPcp?.nome || '—')}</td>
             <td class="qtd">${fmtQtd(it.quantidade)}</td>
-            <td class="un">${escaparHtml(it.itemPcp?.unidade || '')}</td>
+            <td class="un">${escaparHtml(unidadeDe(it.itemPcp))}</td>
             <td class="qtd">${c ? (c.custoUnitario > 0 ? fmtM(c.custoUnitario, 4) : 'sem custo') : '—'}</td>
             <td class="qtd">${c ? fmtM(c.custoTotal) : '—'}</td>
         </tr>`;
     }).join('');
 
-    const rendimento = `${fmtQtd(receita.rendimentoBase)} ${escaparHtml(receita.itemPcp?.unidade || '')}`;
+    const rendimento = `${fmtQtd(receita.rendimentoBase)} ${escaparHtml(unidadeDe(receita.itemPcp))}`;
     const perda = receita.perdaPercentual ? `${fmtPerda(receita.perdaPercentual)}%` : '—';
     const dataImpressao = new Date().toLocaleDateString('pt-BR');
     const custoTotal = custo ? fmtM(custo.custoTotal) : '—';
     const custoUnidade = custo ? fmtM(custo.custoPorUnidade, 4) : '—';
-    const un = escaparHtml(receita.itemPcp?.unidade || 'un');
+    const un = escaparHtml(unidadeDe(receita.itemPcp) || 'un');
 
     return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -404,7 +409,7 @@ export default function ReceitaDetalhe() {
                     <div>
                         <p className="text-xs text-gray-400">Rendimento Base</p>
                         <p className="text-lg font-semibold text-gray-800">
-                            {parseFloat(receita.rendimentoBase).toFixed(3)} {receita.itemPcp?.unidade}
+                            {parseFloat(receita.rendimentoBase).toFixed(3)} {unidadeDe(receita.itemPcp)}
                         </p>
                     </div>
                     <div>
@@ -431,7 +436,7 @@ export default function ReceitaDetalhe() {
                         </p>
                     </div>
                     <div className="rounded-lg bg-emerald-50 px-4 py-3">
-                        <p className="text-xs text-emerald-700">Custo por {receita.itemPcp?.unidade || 'unidade'}</p>
+                        <p className="text-xs text-emerald-700">Custo por {unidadeDe(receita.itemPcp) || 'unidade'}</p>
                         <p className="text-lg font-bold text-emerald-800">
                             {custo ? fmtMoeda(custo.custoPorUnidade, 4) : '...'}
                         </p>
@@ -696,7 +701,7 @@ export default function ReceitaDetalhe() {
                                         {parseFloat(item.quantidade).toFixed(3)}
                                     </td>
                                     <td className="px-3 py-2 text-center text-gray-500">
-                                        {item.itemPcp?.unidade}
+                                        {unidadeDe(item.itemPcp)}
                                     </td>
                                     <td className="px-3 py-2 text-right font-mono text-gray-600">
                                         {c ? (c.custoUnitario > 0 ? fmtMoeda(c.custoUnitario, 4) : <span className="text-amber-600">sem custo</span>) : '...'}

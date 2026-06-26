@@ -114,6 +114,8 @@ Passos: abra a receita, clique no botão desejado, a caixa de impressão abre so
 
 > Se nada abrir, libere os **pop-ups** do site no navegador.
 
+> **Unidade dos ingredientes:** a unidade que aparece na receita e nas impressões vem da **unidade do produto** (a que você edita em Produtos → abrir o produto). Se a unidade estiver errada na impressão, corrija no cadastro do produto. Subprodutos (SUB) usam a unidade definida no próprio subproduto.
+
 ## Status da receita
 
 | Status | Cor | Significado |
