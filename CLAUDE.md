@@ -159,14 +159,17 @@ function imprimirConteudo(estilos, corpoHtml) {
     document.getElementById('estilo-impressao')?.remove();
     const style = document.createElement('style');
     style.id = 'estilo-impressao';
+    const estilosSemPage = (estilos||'').replace(/@page\s*{[^}]*}/g, ''); // @page só no nível raiz (iOS)
     style.textContent = `
+        @page { size: A4 portrait; margin: 12mm; }
         #area-impressao { display: none; }
         @media print {
             html, body { margin:0!important; padding:0!important; background:#fff!important; }
-            body > *:not(#area-impressao) { display: none !important; }
-            #area-impressao { display: block !important; }
+            body * { visibility: hidden !important; }                       /* esconde TUDO */
+            #area-impressao, #area-impressao * { visibility: visible !important; } /* mostra só a folha */
+            #area-impressao { display:block!important; position:absolute!important; left:0; top:0; width:100%; }
             #area-impressao * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            ${estilos}
+            ${estilosSemPage}
         }`;
     document.head.appendChild(style);
     const area = document.createElement('div');
@@ -176,14 +179,17 @@ function imprimirConteudo(estilos, corpoHtml) {
     const limpar = () => { area.remove(); style.remove(); window.removeEventListener('afterprint', limpar); };
     window.addEventListener('afterprint', limpar);
     setTimeout(limpar, 60000); // fallback
-    setTimeout(() => { window.focus(); window.print(); }, 150);
+    void area.offsetHeight;             // força layout
+    window.print();                     // SÍNCRONO no clique (senão iOS bloqueia "imprimir automaticamente")
 }
 // Para HTML completo (com <style>): extrair estilos + corpo e remover <script> (não roda via innerHTML).
 ```
 
 **Regras:**
 - Impressão (folha A4, etiqueta, comprovante, recibo) → sempre `@media print` na própria página. Referência: `frontend/src/pages/PCP/ReceitaDetalhe.jsx` (`imprimirConteudo` / `imprimirHtml`).
-- `body > *:not(#area-impressao){display:none}` esconde o `#root` na impressão; o conteúdo da folha fica dentro de `#area-impressao`.
+- Usar a técnica de **`visibility`** (esconde `body *`, reexibe `#area-impressao *`) — NÃO depende da estrutura/DOM do app. `display:none` em irmãos do `#root` é menos confiável (no iOS pode acabar imprimindo a tela do app).
+- `print()` **síncrono no clique** (sem `setTimeout`) — senão o iOS bloqueia com "site proibido de imprimir automaticamente".
+- `@page` no **nível raiz**, fora do `@media` (iOS não lida bem com `@page` aninhado).
 - Incluir `print-color-adjust: exact` para imprimir fundos/cores (ex.: cabeçalhos pretos).
 - Limpar sempre o `#area-impressao` e o `<style>` no `afterprint` (+ fallback por timeout), senão sobra lixo no DOM e a próxima impressão falha.
 - `window.open` continua **OK apenas para links externos** (mapa/Google Maps, site de terceiro), que devem mesmo abrir fora do app.
