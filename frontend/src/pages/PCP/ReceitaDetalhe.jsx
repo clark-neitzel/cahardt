@@ -56,15 +56,11 @@ function imprimirConteudo(estilos, corpoHtml) {
         @page { size: A4 portrait; margin: 12mm; }
         #${ID_AREA} { display: none; }
         @media print {
-            html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
-            /* técnica de visibility: esconde TUDO e mostra só a folha (não depende da estrutura do app) */
-            body * { visibility: hidden !important; }
-            #${ID_AREA}, #${ID_AREA} * { visibility: visible !important; }
-            #${ID_AREA} {
-                display: block !important;
-                position: absolute !important;
-                left: 0; top: 0; width: 100%;
-            }
+            html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; }
+            /* remove o app do LAYOUT (não só esconde) — senão sobra altura "fantasma" = páginas em branco */
+            body > *:not(#${ID_AREA}) { display: none !important; }
+            #root { display: none !important; }
+            #${ID_AREA} { display: block !important; }
             #${ID_AREA} * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             ${estilosSemPage}
         }
