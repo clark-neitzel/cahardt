@@ -145,6 +145,47 @@ O app é PWA. Sempre que fizer deploy de mudanças visíveis, incluir o ícone d
 
 ---
 
+## Regras de Impressão (PWA) — NUNCA usar `window.open` para imprimir
+
+O app roda instalado na tela inicial (PWA, modo standalone). `window.open(..., '_blank')` para gerar a folha de impressão **abre uma aba/janela externa e tira o usuário de dentro do app** — ele precisa fechar e reabrir o app. Por isso **toda impressão deve ser feita por um `<iframe>` oculto dentro da própria página**.
+
+**Errado — quebra o PWA instalado:**
+```js
+const win = window.open('', '_blank');
+win.document.write(html);
+win.document.close();
+win.print();
+```
+
+**Certo — iframe oculto, sem sair do app:**
+```js
+function imprimirViaIframe(html) {
+    const anterior = document.getElementById('iframe-impressao');
+    if (anterior) anterior.remove();
+    const iframe = document.createElement('iframe');
+    iframe.id = 'iframe-impressao';
+    // off-screen com tamanho A4 = render confiável (inclusive iOS)
+    iframe.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;';
+    document.body.appendChild(iframe);
+    const limpar = () => { try { iframe.remove(); } catch {} };
+    iframe.onload = () => setTimeout(() => {
+        const win = iframe.contentWindow;
+        win.focus(); win.onafterprint = limpar; win.print();
+        setTimeout(limpar, 60000); // fallback se onafterprint não disparar
+    }, 350);
+    const doc = iframe.contentWindow.document;
+    doc.open(); doc.write(html); doc.close();
+}
+```
+
+**Regras:**
+- Impressão (folha A4, etiqueta, comprovante, recibo) → sempre `iframe` oculto, nunca aba nova. Referência: `frontend/src/pages/PCP/ReceitaDetalhe.jsx` (`imprimirViaIframe`).
+- Não exigir "liberar pop-ups" — o iframe não depende disso.
+- `window.open` continua **OK apenas para links externos** (mapa/Google Maps, site de terceiro), que devem mesmo abrir fora do app.
+- Pontos legados ainda usando `window.open` para imprimir (migrar quando tocar neles): `frontend/src/pages/Pedidos/ImpressaoPedido.jsx`, `frontend/src/pages/Financeiro/ContasReceberTabela.jsx`.
+
+---
+
 ## Manual das Abas e Clippy — atualizar SEMPRE (não esperar o usuário pedir)
 
 Cada aba/tela do app tem um manual em `backend/manuais/abas/<slug>.md` (índice em `backend/manuais/abas/README.md`). Esses manuais são a **fonte de conhecimento do assistente Clippy** (`backend/services/copilotoService.js` lê os arquivos em runtime + a tabela `ABAS` com as rotas/permissões reais). O Clippy passa a usar a versão nova **ao publicar o backend**.
