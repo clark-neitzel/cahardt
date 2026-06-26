@@ -398,7 +398,14 @@ export default function ReceitaDetalhe() {
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-400">v{receita.versao}</span>
+                        <button
+                            type="button"
+                            onClick={() => setShowHistorico(true)}
+                            title="Ver histórico de versões e o que mudou"
+                            className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors"
+                        >
+                            <History className="h-3 w-3" /> Versão {receita.versao}
+                        </button>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_CORES[receita.status]}`}>
                             {receita.status}
                         </span>

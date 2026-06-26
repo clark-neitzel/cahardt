@@ -104,7 +104,7 @@ export default function ReceitasList() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <span className="text-xs text-gray-400">v{receita.versao}</span>
+                                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">v{receita.versao}</span>
                                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_CORES[receita.status]}`}>
                                         {receita.status}
                                     </span>

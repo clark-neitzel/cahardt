@@ -64,7 +64,7 @@ Uma receita sempre produz um item do PCP (PA = Produto Acabado ou SUB = Subprodu
 ### Ver o histórico de versões
 
 1. Abra qualquer receita.
-2. Clique em **Histórico** (mostra o número de versões entre parênteses).
+2. Clique em **Histórico** (mostra o número de versões entre parênteses) — ou clique na **pílula da versão** (ex.: "Versão 2") no topo da receita, que também abre o histórico. Na lista de receitas, cada receita mostra a pílula com a sua versão atual.
 3. O histórico exibe: número da versão, status, quem alterou, quando e o motivo.
 4. Para cada alteração, mostra exatamente o que mudou: campos do cabeçalho, ingredientes adicionados, removidos ou com quantidade alterada.
 5. Clique em qualquer versão para abrí-la.
