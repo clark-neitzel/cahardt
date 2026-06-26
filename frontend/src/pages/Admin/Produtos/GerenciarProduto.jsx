@@ -87,6 +87,16 @@ const BuscaProduto = ({ value, onChange, todosOsProdutos }) => {
 };
 
 // -------------------------------------------------------
+// Helper: campo informativo compacto (read-only)
+// -------------------------------------------------------
+const InfoField = ({ label, value }) => (
+    <div>
+        <div className="text-xs text-gray-400">{label}</div>
+        <div className="text-sm font-medium text-gray-800 truncate" title={String(value ?? '')}>{value || '—'}</div>
+    </div>
+);
+
+// -------------------------------------------------------
 // Sub-componente: Seção de Promoções
 // -------------------------------------------------------
 const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
@@ -639,6 +649,7 @@ const GerenciarProduto = () => {
                 prioridadeRecomendacao: parseInt(formData.prioridadeRecomendacao) || 1
             });
             toast.success('Configurações comerciais salvas!');
+            handleBack();
         } catch (error) {
             console.error(error);
             toast.error('Erro ao salvar as configurações.');
@@ -716,269 +727,193 @@ const GerenciarProduto = () => {
     const imagensExibir = imagensLocal.length > 0 ? imagensLocal : [{ url: null }];
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-20">
-            {/* Header Sticky */}
-            <div className="sticky top-0 z-10 bg-white border-b shadow-sm px-4 py-4 mb-6">
-                <div className="container mx-auto max-w-5xl flex justify-between items-center">
-                    <div className="flex items-center space-x-4 w-full min-w-0">
-                        <button onClick={handleBack} className="text-gray-500 hover:text-gray-800 transition-colors p-1 rounded-full hover:bg-gray-100 flex-shrink-0">
-                            <ArrowLeft className="h-6 w-6" />
-                        </button>
-                        <div className="min-w-0 flex-1">
-                            <h1 className="text-xl font-bold text-gray-900 leading-tight truncate">{formData.nome || 'Produto'}</h1>
-                            <div className="flex items-center space-x-2 text-sm mt-1 flex-wrap gap-y-1">
-                                <span className="text-gray-500 whitespace-nowrap">Código: {formData.codigo}</span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${formData.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                    {formData.ativo ? 'Ativo' : 'Inativo'}
-                                </span>
-                            </div>
+        <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+            {/* Header compacto */}
+            <div className="bg-white border-b shadow-sm px-4 flex-shrink-0">
+                <div className="container mx-auto max-w-6xl flex items-center gap-3 py-2">
+                    <button onClick={handleBack} className="text-gray-500 hover:text-gray-800 p-1 rounded hover:bg-gray-100 flex-shrink-0">
+                        <ArrowLeft className="h-5 w-5" />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <h1 className="text-base font-bold text-gray-900 truncate">{formData.nome || 'Produto'}</h1>
+                            <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${formData.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {formData.ativo ? 'Ativo' : 'Inativo'}
+                            </span>
                         </div>
+                        <span className="text-xs text-gray-400">Código: {formData.codigo}</span>
                     </div>
-                </div>
-                {/* Tabs no header */}
-                <div className="container mx-auto max-w-5xl mt-3 flex gap-0 border-b border-gray-200">
-                    <button
-                        onClick={() => setAbaAtiva('dados')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${abaAtiva === 'dados' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-                        Dados
-                    </button>
-                    <button
-                        onClick={() => setAbaAtiva('promocoes')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1 ${abaAtiva === 'promocoes' ? 'border-green-500 text-green-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-                        <Tag className="h-4 w-4" /> Promoções
-                    </button>
+                    <div className="flex flex-shrink-0">
+                        <button
+                            onClick={() => setAbaAtiva('dados')}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-l border ${abaAtiva === 'dados' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
+                            Dados
+                        </button>
+                        <button
+                            onClick={() => setAbaAtiva('promocoes')}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-r border-t border-b border-r flex items-center gap-1 ${abaAtiva === 'promocoes' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
+                            <Tag className="h-3.5 w-3.5" /> Promoções
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div className="container mx-auto max-w-5xl px-4">
-                {error && (
-                    <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 flex items-center">
-                        <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-                        <p className="text-red-700">{error}</p>
-                    </div>
-                )}
+            <div className="flex-1 overflow-hidden px-4 py-3">
+                <div className="container mx-auto max-w-6xl h-full">
+                    {error && (
+                        <div className="mb-3 bg-red-50 border-l-4 border-red-500 p-3 flex items-center">
+                            <AlertCircle className="h-4 w-4 text-red-500 mr-2" />
+                            <p className="text-red-700 text-sm">{error}</p>
+                        </div>
+                    )}
 
-                {/* ABA DADOS */}
-                {abaAtiva === 'dados' && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Esquerda: Imagem + Estoque */}
-                        <div className="space-y-6">
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                                    <h3 className="font-semibold text-gray-700">Imagens</h3>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            ref={fileInputRef}
-                                            type="file"
-                                            accept="image/jpeg,image/png,image/webp"
-                                            multiple
-                                            className="hidden"
-                                            onChange={handleUploadImagens}
-                                        />
+                    {/* ABA DADOS */}
+                    {abaAtiva === 'dados' && (
+                        <div className="h-full grid grid-cols-4 gap-3">
+                            {/* Coluna 1: Imagens + Estoque */}
+                            <div className="flex flex-col gap-3 min-h-0">
+                                <div className="bg-white rounded-lg border flex flex-col overflow-hidden flex-1 min-h-0">
+                                    <div className="flex justify-between items-center px-3 py-1.5 bg-gray-50 border-b flex-shrink-0">
+                                        <span className="text-xs font-semibold text-gray-600">Imagens</span>
                                         <button
                                             onClick={() => fileInputRef.current?.click()}
                                             disabled={uploadingImagem}
-                                            className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 disabled:opacity-50"
-                                        >
-                                            <Upload className="h-3.5 w-3.5" />
+                                            className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 disabled:opacity-50">
+                                            <Upload className="h-3 w-3" />
                                             {uploadingImagem ? 'Enviando...' : 'Enviar'}
                                         </button>
+                                        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleUploadImagens} />
                                     </div>
-                                </div>
-                                {/* Preview grande */}
-                                <div className="aspect-square bg-gray-100 relative">
-                                    <img
-                                        src={imagensExibir[imagemAtual]?.url ? `${API_URL}${imagensExibir[imagemAtual].url}` : 'https://via.placeholder.com/400?text=Sem+Imagem'}
-                                        alt="Produto"
-                                        className="w-full h-full object-contain p-4"
-                                        onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=Erro'; }}
-                                    />
-                                    {imagensExibir[imagemAtual]?.principal && (
-                                        <span className="absolute top-2 left-2 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
-                                            <Star className="h-3 w-3" /> CAPA
-                                        </span>
+                                    <div className="h-36 bg-gray-100 relative flex-shrink-0">
+                                        <img
+                                            src={imagensExibir[imagemAtual]?.url ? `${API_URL}${imagensExibir[imagemAtual].url}` : 'https://via.placeholder.com/400?text=Sem+Imagem'}
+                                            alt="Produto"
+                                            className="w-full h-full object-contain p-2"
+                                            onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=Erro'; }}
+                                        />
+                                        {imagensExibir[imagemAtual]?.principal && (
+                                            <span className="absolute top-1 left-1 bg-yellow-400 text-yellow-900 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                                                <Star className="h-2.5 w-2.5" /> CAPA
+                                            </span>
+                                        )}
+                                    </div>
+                                    {imagensLocal.length > 0 && (
+                                        <div className="p-2 border-t flex flex-wrap gap-1 overflow-y-auto">
+                                            {imagensLocal.map((img, idx) => (
+                                                <div key={img.id}
+                                                    className={`relative group h-10 w-10 rounded overflow-hidden border-2 cursor-pointer flex-shrink-0 ${idx === imagemAtual ? 'border-primary' : 'border-gray-200'}`}
+                                                    onClick={() => setImagemAtual(idx)}>
+                                                    <img src={`${API_URL}${img.url}`} className="w-full h-full object-cover" alt="" />
+                                                    <div className="absolute inset-0 bg-black/50 hidden group-hover:flex flex-col items-center justify-center gap-0.5">
+                                                        <button onClick={(e) => { e.stopPropagation(); handleDefinirPrincipal(img.id); }}
+                                                            className={img.principal ? 'text-yellow-400' : 'text-white'} title="Definir capa">
+                                                            <Star className={`h-3 w-3 ${img.principal ? 'fill-current' : ''}`} />
+                                                        </button>
+                                                        <button onClick={(e) => { e.stopPropagation(); handleMoverImagem(idx, -1); }}
+                                                            disabled={idx === 0} className="text-white disabled:opacity-30" title="Mover p/ cima">
+                                                            <ArrowUp className="h-3 w-3" />
+                                                        </button>
+                                                        <button onClick={(e) => { e.stopPropagation(); handleMoverImagem(idx, 1); }}
+                                                            disabled={idx === imagensLocal.length - 1} className="text-white disabled:opacity-30" title="Mover p/ baixo">
+                                                            <ArrowDown className="h-3 w-3" />
+                                                        </button>
+                                                        <button onClick={(e) => { e.stopPropagation(); handleRemoverImagem(img.id); }}
+                                                            className="text-red-400" title="Remover">
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
-                                {/* Thumbnails com ações */}
-                                {imagensLocal.length > 0 && (
-                                    <div className="p-3 space-y-2 border-t border-gray-100">
-                                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Arraste a ordem ou use as setas</p>
-                                        {imagensLocal.map((img, idx) => (
-                                            <div key={img.id} className={`flex items-center gap-2 p-1.5 rounded-lg border ${idx === imagemAtual ? 'border-primary bg-blue-50' : 'border-gray-100 bg-white'}`}>
-                                                <button onClick={() => setImagemAtual(idx)} className="h-12 w-12 flex-shrink-0 rounded overflow-hidden border border-gray-200">
-                                                    <img src={`${API_URL}${img.url}`} className="w-full h-full object-cover" alt="" />
-                                                </button>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-[11px] text-gray-500 truncate">#{idx + 1}{img.principal ? ' — Capa' : ''}</p>
-                                                </div>
-                                                <div className="flex items-center gap-0.5 flex-shrink-0">
-                                                    <button onClick={() => handleMoverImagem(idx, -1)} disabled={idx === 0}
-                                                        className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-20" title="Mover para cima">
-                                                        <ArrowUp className="h-3.5 w-3.5" />
-                                                    </button>
-                                                    <button onClick={() => handleMoverImagem(idx, 1)} disabled={idx === imagensLocal.length - 1}
-                                                        className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-20" title="Mover para baixo">
-                                                        <ArrowDown className="h-3.5 w-3.5" />
-                                                    </button>
-                                                    <button onClick={() => handleDefinirPrincipal(img.id)}
-                                                        className={`p-1 ${img.principal ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-500'}`} title="Definir como capa">
-                                                        <Star className={`h-3.5 w-3.5 ${img.principal ? 'fill-current' : ''}`} />
-                                                    </button>
-                                                    <button onClick={() => handleRemoverImagem(img.id)}
-                                                        className="p-1 text-gray-300 hover:text-red-500" title="Remover imagem">
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
 
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                                <div className="p-4 border-b border-gray-100 bg-gray-50">
-                                    <h3 className="font-semibold text-gray-700">Estoque</h3>
-                                </div>
-                                <div className="p-4 grid grid-cols-2 gap-4">
-                                    <div className="bg-green-50 p-3 rounded border border-green-100">
-                                        <p className="text-xs text-green-700 uppercase font-semibold">Disponível</p>
-                                        <p className="text-2xl font-bold text-green-800">{produto.estoqueDisponivel}</p>
+                                {/* Estoque */}
+                                <div className="bg-white rounded-lg border p-3 grid grid-cols-2 gap-2 flex-shrink-0">
+                                    <div className="bg-green-50 rounded p-2 text-center">
+                                        <div className="text-[10px] text-green-700 font-semibold uppercase">Disponível</div>
+                                        <div className="text-xl font-bold text-green-800">{produto.estoqueDisponivel}</div>
                                     </div>
-                                    <div className="bg-blue-50 p-3 rounded border border-blue-100">
-                                        <p className="text-xs text-blue-700 uppercase font-semibold">Total</p>
-                                        <p className="text-xl font-bold text-blue-800">{produto.estoqueTotal}</p>
+                                    <div className="bg-blue-50 rounded p-2 text-center">
+                                        <div className="text-[10px] text-blue-700 font-semibold uppercase">Total</div>
+                                        <div className="text-xl font-bold text-blue-800">{produto.estoqueTotal}</div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Direita: Formulário read-only */}
-                        <div className="md:col-span-2 space-y-6">
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                                <div className="p-4 border-b border-gray-100 bg-gray-50">
-                                    <h3 className="font-semibold text-gray-700">Identificação</h3>
+                            {/* Coluna 2: Dados read-only (Conta Azul) */}
+                            <div className="bg-white rounded-lg border overflow-hidden flex flex-col min-h-0">
+                                <div className="px-3 py-1.5 bg-gray-50 border-b flex-shrink-0">
+                                    <span className="text-xs font-semibold text-gray-600">Dados do Produto</span>
+                                    <span className="text-[10px] text-gray-400 ml-1">(Conta Azul)</span>
                                 </div>
-                                <div className="p-6 space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto</label>
-                                        <input type="text" value={formData.nome} readOnly
-                                            className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed" />
+                                <div className="p-3 space-y-2.5 overflow-y-auto flex-1">
+                                    <InfoField label="Nome" value={formData.nome} />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <InfoField label="Código" value={formData.codigo} />
+                                        <InfoField label="EAN" value={formData.ean} />
                                     </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <InfoField label="Vl. Venda" value={`R$ ${Number(formData.valorVenda || 0).toFixed(2)}`} />
+                                        <InfoField label="Custo CA" value={`R$ ${Number(formData.custoMedio || 0).toFixed(2)}`} />
+                                    </div>
+                                    <InfoField label="Categoria" value={formData.categoria} />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <InfoField label="NCM" value={formData.ncm} />
+                                        <InfoField label="Peso (kg)" value={String(formData.pesoLiquido || '0')} />
+                                    </div>
+                                    {formData.descricao && (
+                                        <div>
+                                            <div className="text-xs text-gray-400 mb-0.5">Descrição</div>
+                                            <p className="text-xs text-gray-700 line-clamp-4">{formData.descricao}</p>
+                                        </div>
+                                    )}
+                                    {formData.contaAzulUpdatedAt && (
+                                        <div className="pt-1 border-t">
+                                            <p className="text-[10px] text-gray-400">Atualizado: {new Date(formData.contaAzulUpdatedAt).toLocaleDateString('pt-BR')}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Colunas 3-4: Campos editáveis */}
+                            <div className="col-span-2 bg-white rounded-lg border overflow-hidden flex flex-col min-h-0">
+                                <div className="px-3 py-1.5 bg-purple-50 border-b flex items-center gap-2 flex-shrink-0">
+                                    <Sparkles className="h-4 w-4 text-purple-600" />
+                                    <span className="text-xs font-semibold text-purple-800">Inteligência Comercial (Exclusivo App)</span>
+                                </div>
+                                <div className="p-4 overflow-y-auto flex-1">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Código (SKU)</label>
-                                            <input type="text" value={formData.codigo} readOnly
-                                                className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">EAN / GTIN</label>
-                                            <input type="text" value={formData.ean} readOnly
-                                                className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                                <div className="p-4 border-b border-gray-100 bg-gray-50">
-                                    <h3 className="font-semibold text-gray-700">Valores e Classificação</h3>
-                                </div>
-                                <div className="p-6 space-y-4">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Valor de Venda (R$)</label>
-                                            <div className="relative rounded-md shadow-sm">
-                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <span className="text-gray-500 sm:text-sm">R$</span>
-                                                </div>
-                                                <input type="number" value={formData.valorVenda} readOnly
-                                                    className="w-full pl-10 rounded-md border-gray-300 shadow-sm py-2 px-3 border font-bold bg-gray-50 text-gray-700 cursor-not-allowed" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Custo Médio CA (R$)</label>
-                                            <div className="relative rounded-md shadow-sm">
-                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <span className="text-gray-500 sm:text-sm">R$</span>
-                                                </div>
-                                                <input type="number" value={formData.custoMedio} readOnly
-                                                    className="w-full pl-10 rounded-md border-gray-300 py-2 px-3 border bg-gray-100 text-gray-500 cursor-not-allowed" />
-                                            </div>
-                                            <p className="text-xs text-gray-500 mt-1">Vem do Conta Azul (não editável).</p>
-                                        </div>
-                                        <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Custo Manual (R$) <span className="text-purple-600 font-normal">(editável)</span>
+                                                Custo Manual (R$) <span className="text-purple-600 font-normal text-xs">(editável)</span>
                                             </label>
-                                            <div className="relative rounded-md shadow-sm">
+                                            <div className="relative">
                                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <span className="text-gray-500 sm:text-sm">R$</span>
+                                                    <span className="text-gray-500 text-sm">R$</span>
                                                 </div>
                                                 <input type="number" step="0.01" min="0" value={formData.custoManual}
                                                     onChange={(e) => setFormData({ ...formData, custoManual: e.target.value })}
                                                     placeholder="0.00"
-                                                    className="w-full pl-10 rounded-md border border-gray-300 py-2 px-3 bg-white text-gray-900 focus:ring-primary focus:border-primary" />
+                                                    className="w-full pl-10 rounded border border-gray-300 py-2 px-3 bg-white text-gray-900 focus:ring-primary focus:border-primary text-sm" />
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                {parseFloat(formData.custoMedio) > 0
-                                                    ? 'O CA já tem custo — ele tem prioridade. Este valor fica de reserva.'
-                                                    : 'Usado no cálculo de custo das receitas enquanto o CA não tiver custo deste produto.'}
+                                            <p className="text-xs text-gray-400 mt-0.5">
+                                                {parseFloat(formData.custoMedio) > 0 ? 'CA já tem custo — este fica de reserva.' : 'Usado no cálculo de receitas.'}
                                             </p>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Unidade <span className="text-purple-600 font-normal">(editável)</span>
+                                                Unidade <span className="text-purple-600 font-normal text-xs">(editável)</span>
                                             </label>
                                             <input type="text" value={formData.unidade} maxLength={10}
                                                 onChange={(e) => setFormData({ ...formData, unidade: e.target.value.toUpperCase() })}
                                                 placeholder="Ex.: UN, KG, CX"
-                                                className="w-full rounded-md border border-gray-300 py-2 px-3 uppercase bg-white text-gray-900 focus:ring-primary focus:border-primary" />
-                                            <p className="text-xs text-gray-500 mt-1">Salve no botão "Salvar" da seção roxa abaixo. Não é sobrescrita pelo Conta Azul.</p>
+                                                className="w-full rounded border border-gray-300 py-2 px-3 uppercase bg-white text-gray-900 focus:ring-primary focus:border-primary text-sm" />
                                         </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                                            <input type="text" value={formData.categoria} readOnly
-                                                className="w-full rounded-md border-gray-300 py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed" />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">NCM</label>
-                                            <input type="text" value={formData.ncm} readOnly
-                                                className="w-full rounded-md border-gray-300 py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Peso Líquido (kg)</label>
-                                            <input type="number" value={formData.pesoLiquido} readOnly
-                                                className="w-full rounded-md border-gray-300 py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                                <div className="p-4 border-b border-gray-100 bg-gray-50">
-                                    <h3 className="font-semibold text-gray-700">Descrição/Obs</h3>
-                                </div>
-                                <div className="p-4">
-                                    <textarea rows={4} value={formData.descricao} readOnly
-                                        className="w-full rounded-md border-gray-300 py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed" />
-                                </div>
-                            </div>
-
-                            {/* INTELIGÊNCIA COMERCIAL (Editável) */}
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                                <div className="p-4 border-b border-gray-100 bg-purple-50 flex justify-between items-center">
-                                    <h3 className="font-semibold text-purple-800 flex items-center">
-                                        <Sparkles className="h-4 w-4 mr-2" /> Inteligência Comercial (Exclusivo App)
-                                    </h3>
-                                </div>
-                                <div className="p-6 space-y-4">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Categoria Comercial</label>
                                             <select
-                                                className="w-full rounded-md border border-gray-300 py-2 px-3 bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                                                className="w-full rounded border border-gray-300 py-2 px-3 bg-white text-gray-900 focus:ring-primary focus:border-primary text-sm"
                                                 value={formData.categoriaProdutoId}
                                                 onChange={(e) => setFormData({ ...formData, categoriaProdutoId: e.target.value })}
                                             >
@@ -989,70 +924,64 @@ const GerenciarProduto = () => {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Produto Substituto Base</label>
-                                            <div className="w-full h-[38px] flex items-center">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Produto Substituto</label>
+                                            <div className="h-[38px] flex items-center">
                                                 <BuscaProduto
                                                     value={formData.produtoSubstitutoId}
                                                     onChange={(val) => setFormData({ ...formData, produtoSubstitutoId: val })}
                                                     todosOsProdutos={todosProdutos}
                                                 />
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1">Sugerido caso haja falta de estoque.</p>
+                                            <p className="text-xs text-gray-400 mt-0.5">Sugerido em falta de estoque.</p>
                                         </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-2">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Prioridade Recomendação</label>
                                             <input
-                                                type="number"
-                                                min="1"
-                                                max="99"
+                                                type="number" min="1" max="99"
                                                 value={formData.prioridadeRecomendacao}
                                                 onChange={(e) => setFormData({ ...formData, prioridadeRecomendacao: e.target.value })}
-                                                className="w-full rounded-md border border-gray-300 py-2 px-3 bg-white text-gray-900 focus:ring-primary focus:border-primary"
+                                                className="w-full rounded border border-gray-300 py-2 px-3 bg-white text-gray-900 focus:ring-primary focus:border-primary text-sm"
                                             />
-                                            <p className="text-xs text-gray-500 mt-1">1 é a mais alta.</p>
+                                            <p className="text-xs text-gray-400 mt-0.5">1 é a mais alta.</p>
                                         </div>
-                                        <div className="flex items-center space-x-2 mt-4">
+                                        <div className="flex items-center gap-2 mt-4">
                                             <input
                                                 type="checkbox"
                                                 checked={formData.permiteRecomendacao}
                                                 onChange={(e) => setFormData({ ...formData, permiteRecomendacao: e.target.checked })}
-                                                className="h-4 w-4 text-primary bg-white focus:ring-primary border-gray-300 rounded"
+                                                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
                                             />
-                                            <span className="text-gray-900 text-sm font-medium">Permitir Sugestão do Produto</span>
+                                            <span className="text-sm font-medium text-gray-900">Permitir Sugestão do Produto</span>
                                         </div>
                                     </div>
-
-                                    <div className="pt-4 flex justify-end">
+                                    <div className="mt-4 pt-3 border-t flex justify-end">
                                         <button
                                             onClick={handleSaveComercial}
                                             disabled={salvandoComercial}
-                                            className="px-4 py-2 bg-purple-600 font-semibold text-white rounded hover:bg-purple-700 disabled:opacity-50 flex items-center"
+                                            className="px-5 py-2 bg-purple-600 font-semibold text-white rounded hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
                                         >
-                                            <Save className="h-4 w-4 mr-2" />
-                                            {salvandoComercial ? 'Salvando...' : 'Salvar Dados Comerciais'}
+                                            <Save className="h-4 w-4" />
+                                            {salvandoComercial ? 'Salvando...' : 'Salvar e Voltar'}
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* ABA PROMOÇÕES */}
-                {abaAtiva === 'promocoes' && (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                        <div className="p-4 border-b border-gray-100 bg-green-50 flex items-center gap-2">
-                            <Tag className="h-5 w-5 text-green-600" />
-                            <h3 className="font-semibold text-green-800">Promoções — {formData.nome}</h3>
+                    {/* ABA PROMOÇÕES */}
+                    {abaAtiva === 'promocoes' && (
+                        <div className="bg-white rounded-lg border overflow-hidden h-full flex flex-col">
+                            <div className="p-3 border-b bg-green-50 flex items-center gap-2 flex-shrink-0">
+                                <Tag className="h-4 w-4 text-green-600" />
+                                <h3 className="font-semibold text-green-800 text-sm">Promoções — {formData.nome}</h3>
+                            </div>
+                            <div className="p-4 overflow-y-auto flex-1">
+                                <SecaoPromocoes produtoId={id} valorVendaBase={formData.valorVenda} />
+                            </div>
                         </div>
-                        <div className="p-6">
-                            <SecaoPromocoes produtoId={id} valorVendaBase={formData.valorVenda} />
-                        </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );
