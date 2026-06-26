@@ -732,9 +732,40 @@ const GerenciarProduto = () => {
 
     return (
         <div className="min-h-screen" style={{ background: '#F4F5FA' }}>
-            {/* TOPBAR */}
+            {/* ── TOPBAR MOBILE ── */}
             <header className="sticky top-0 z-10 bg-white border-b" style={{ borderColor: '#E7E9F2', boxShadow: '0 1px 2px rgba(16,20,40,.04)' }}>
-                <div className="flex items-center justify-between gap-4 px-6" style={{ height: 78 }}>
+              <div className="md:hidden">
+                <div className="flex items-center gap-3 px-4 pt-3 pb-2">
+                  <button onClick={handleBack} className="flex items-center justify-center rounded-xl border flex-shrink-0" style={{ width: 38, height: 38, borderColor: '#E4E7F2', color: '#5A6072' }}>
+                    <ArrowLeft className="h-5 w-5" />
+                  </button>
+                  {imagensLocal.length > 0 && (
+                    <div className="flex-shrink-0 rounded-xl border flex items-center justify-center bg-white overflow-hidden" style={{ width: 40, height: 40, borderColor: '#ECEEF5' }}>
+                      <img src={`${API_URL}${imagensLocal.find(i => i.principal)?.url || imagensLocal[0]?.url}`} className="w-full h-full object-contain" alt="" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-extrabold truncate" style={{ fontSize: 15, color: '#16192B' }}>{formData.nome || 'Produto'}</div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full" style={{ fontSize: 11, ...(formData.ativo ? { color: '#15A05A', background: '#E6F7EE' } : { color: '#ef4444', background: '#fee2e2' }) }}>
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'currentColor' }} />{formData.ativo ? 'Ativo' : 'Inativo'}
+                      </span>
+                      <span className="text-xs font-mono" style={{ color: '#8A90A2' }}>Cód. {formData.codigo}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-1.5 px-4 pb-3">
+                  <button onClick={() => setAbaAtiva('dados')} className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl text-sm font-semibold" style={abaAtiva === 'dados' ? { background: '#EFF4FF', color: '#2563EB' } : { background: '#EEF0F7', color: '#7A8094' }}>
+                    <Save className="h-3.5 w-3.5" /> Dados
+                  </button>
+                  <button onClick={() => setAbaAtiva('promocoes')} className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl text-sm font-semibold" style={abaAtiva === 'promocoes' ? { background: '#EFF4FF', color: '#2563EB' } : { background: '#EEF0F7', color: '#7A8094' }}>
+                    <Tag className="h-3.5 w-3.5" /> Promoções
+                  </button>
+                </div>
+              </div>
+
+              {/* ── TOPBAR DESKTOP ── */}
+              <div className="hidden md:flex items-center justify-between gap-4 px-6" style={{ height: 78 }}>
                     <div className="flex items-center gap-3.5 min-w-0">
                         <button onClick={handleBack} className="flex items-center justify-center rounded-xl border flex-shrink-0 transition-colors hover:bg-gray-50" style={{ width: 42, height: 42, borderColor: '#E4E7F2', color: '#5A6072' }}>
                             <ArrowLeft className="h-5 w-5" />
@@ -768,9 +799,219 @@ const GerenciarProduto = () => {
                         </button>
                     </div>
                 </div>
+              </div>{/* fim desktop topbar */}
             </header>
 
-            <main className="px-6 py-5 flex flex-col gap-[18px]" style={{ maxWidth: 1440, margin: '0 auto' }}>
+            {/* ══════════════════════════════════
+                MOBILE LAYOUT  (md:hidden)
+            ══════════════════════════════════ */}
+            <div className="md:hidden pb-28">
+              {abaAtiva === 'dados' && (
+                <div className="px-3.5 pt-3.5 flex flex-col gap-3.5">
+                  {/* KPI grid 2x3 */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {[
+                      { label: 'Valor de Venda', value: `R$ ${Number(formData.valorVenda||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`, color: '#16192B' },
+                      { label: 'Custo (CA)',      value: `R$ ${Number(formData.custoMedio||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`, color: '#16192B' },
+                      { label: 'Margem',          value: margem ? `${margem}%` : '—', color: '#15A05A', showIcon: !!margem },
+                      { label: 'Disponível',      value: String(produto.estoqueDisponivel??0), color: '#15A05A' },
+                      { label: 'Total',           value: String(produto.estoqueTotal??0), color: '#2563EB' },
+                      { label: 'Reservado',       value: String(estoqueReservado), color: '#B0863A' },
+                    ].map(kpi => (
+                      <div key={kpi.label} className="bg-white rounded-2xl border p-3" style={{ borderColor: '#E7E9F2' }}>
+                        <div className="font-bold tracking-[.04em] uppercase mb-1" style={{ fontSize: 10, color: '#9AA0B4' }}>{kpi.label}</div>
+                        <div className="flex items-center gap-1 font-extrabold font-mono" style={{ fontSize: 19, color: kpi.color }}>
+                          {kpi.value}
+                          {kpi.showIcon && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17l6-6 4 4 5-7"/></svg>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Imagens card */}
+                  <div className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: '#E7E9F2' }}>
+                    <div className="flex items-center justify-between px-4 border-b" style={{ height: 52, borderColor: '#EEF0F7' }}>
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 30, height: 30, background: '#EFF4FF', color: '#2563EB' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
+                        </span>
+                        <span className="font-extrabold" style={{ fontSize: 15, color: '#16192B' }}>Imagens</span>
+                      </div>
+                      <button onClick={() => fileInputRef.current?.click()} disabled={uploadingImagem} className="flex items-center gap-1.5 text-sm font-bold disabled:opacity-50" style={{ color: '#2563EB' }}>
+                        <Upload className="h-3.5 w-3.5" />{uploadingImagem ? 'Enviando...' : 'Enviar'}
+                      </button>
+                      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleUploadImagens} />
+                    </div>
+                    <div className="p-4">
+                      <div className="relative w-full rounded-xl flex items-center justify-center overflow-hidden mb-3" style={{ height: 210, background: '#F7F8FC', border: '1px solid #ECEEF5' }}>
+                        <img src={imagensExibir[imagemAtual]?.url ? `${API_URL}${imagensExibir[imagemAtual].url}` : 'https://via.placeholder.com/400?text=Sem+Imagem'}
+                          alt="Produto" className="object-contain" style={{ maxWidth: '70%', maxHeight: '80%' }}
+                          onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=Erro'; }} />
+                        {imagensExibir[imagemAtual]?.principal && (
+                          <span className="absolute top-2.5 left-2.5 flex items-center gap-1 font-extrabold rounded-lg" style={{ fontSize: 11, color: '#8a6a00', background: '#FFE08A', padding: '4px 10px' }}>
+                            <Star className="h-3 w-3 fill-current"/> CAPA
+                          </span>
+                        )}
+                      </div>
+                      {imagensLocal.length > 0 && (
+                        <div className="flex flex-col gap-2">
+                          <div className="font-bold tracking-[.05em] uppercase mb-0.5" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Ordem · use as setas</div>
+                          {imagensLocal.map((img, idx) => (
+                            <div key={img.id} className="flex items-center gap-2.5 rounded-xl p-2 cursor-pointer"
+                              style={idx === imagemAtual ? { border: '1.5px solid #BBD3FF', background: '#EFF5FF' } : { border: '1.5px solid transparent', background: '#F7F8FC' }}
+                              onClick={() => setImagemAtual(idx)}>
+                              <div className="flex-shrink-0 rounded-lg overflow-hidden flex items-center justify-center" style={{ width: 44, height: 44, border: '1px solid #D9E2F2', background: '#fff' }}>
+                                <img src={`${API_URL}${img.url}`} className="w-full h-full object-contain" alt=""/>
+                              </div>
+                              <span className="flex-1 font-bold truncate" style={{ fontSize: 14, color: '#16192B' }}>#{idx+1}{img.principal?' — Capa':''}</span>
+                              <div className="flex items-center gap-1 flex-shrink-0" onClick={e=>e.stopPropagation()}>
+                                <button onClick={()=>handleMoverImagem(idx,-1)} disabled={idx===0} className="flex items-center justify-center rounded-lg disabled:opacity-20" style={{width:34,height:34,color:'#7A8094'}}><ArrowUp className="h-4 w-4"/></button>
+                                <button onClick={()=>handleMoverImagem(idx,1)} disabled={idx===imagensLocal.length-1} className="flex items-center justify-center rounded-lg disabled:opacity-20" style={{width:34,height:34,color:'#7A8094'}}><ArrowDown className="h-4 w-4"/></button>
+                                <button onClick={()=>handleDefinirPrincipal(img.id)} className="flex items-center justify-center rounded-lg" style={{width:34,height:34,border:`1px solid ${img.principal?'#FBE6A8':'#E4E7F2'}`,background:img.principal?'#FFFAF0':'#F7F8FC'}}>
+                                  <Star className={`h-4 w-4 ${img.principal?'fill-current':''}`} style={{color:img.principal?'#F4B400':'#9AA0B4'}}/>
+                                </button>
+                                <button onClick={()=>handleRemoverImagem(img.id)} className="flex items-center justify-center rounded-lg" style={{width:34,height:34,color:'#9AA0B4'}}><Trash2 className="h-4 w-4"/></button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Dados card mobile */}
+                  <div className="bg-white rounded-2xl border" style={{ borderColor: '#E7E9F2' }}>
+                    <div className="px-4 pt-4 pb-3">
+                      <div className="flex items-center gap-2.5 mb-3">
+                        <span className="flex items-center justify-center rounded-lg flex-shrink-0" style={{width:30,height:30,background:'#EFF4FF',color:'#2563EB'}}>
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+                        </span>
+                        <span className="font-extrabold" style={{ fontSize: 15, color: '#16192B' }}>Dados do Produto</span>
+                        <span className="ml-auto inline-flex items-center gap-1 font-bold rounded-full" style={{ fontSize: 10.5, color: '#2563EB', background: '#EFF4FF', padding: '4px 9px' }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>CONTA AZUL
+                        </span>
+                      </div>
+                      {[
+                        { k: 'Nome', v: formData.nome },
+                        { k: 'Código', v: formData.codigo, mono: true },
+                        { k: 'EAN', v: formData.ean || '—', mono: true },
+                        { k: 'Categoria', v: formData.categoria || '—' },
+                        { k: 'NCM', v: formData.ncm || '—', mono: true },
+                        { k: 'Peso', v: `${formData.pesoLiquido||'0'} kg`, mono: true },
+                        ...(formData.contaAzulUpdatedAt ? [{ k: 'Atualizado', v: new Date(formData.contaAzulUpdatedAt).toLocaleDateString('pt-BR'), mono: true }] : []),
+                      ].map((row, i, arr) => (
+                        <div key={row.k} className="flex items-center justify-between py-2.5 gap-3" style={{ borderBottom: i < arr.length-1 ? '1px solid #F2F3F8' : 'none' }}>
+                          <span className="text-sm" style={{ color: '#8A90A2' }}>{row.k}</span>
+                          <span className={`text-sm font-semibold text-right ${row.mono?'font-mono':''}`} style={{ color: '#16192B' }}>{row.v}</span>
+                        </div>
+                      ))}
+                      <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px dashed #EEF0F7', color: '#9AA0B4', fontSize: 11.5 }}>
+                        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0"/>Sincronizado da Conta Azul — somente leitura.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* IC card mobile */}
+                  <div className="rounded-2xl border" style={{ background: 'linear-gradient(180deg,#FCFBFF,#fff)', borderColor: '#ECE5FB' }}>
+                    <div className="flex items-start gap-3 px-4 pt-4 pb-4 border-b" style={{ borderColor: '#F0EEF7' }}>
+                      <span className="flex items-center justify-center rounded-[9px] flex-shrink-0" style={{ width: 34, height: 34, background: 'linear-gradient(135deg,#7C3AED,#9F67FF)', color: '#fff' }}>
+                        <Sparkles className="h-[18px] w-[18px]"/>
+                      </span>
+                      <div>
+                        <div className="font-extrabold" style={{ fontSize: 15, color: '#16192B', lineHeight: 1.2 }}>Inteligência Comercial</div>
+                        <div className="font-medium mt-0.5" style={{ fontSize: 11.5, color: '#9AA0B4' }}>Exclusivo do app — não altera a Conta Azul</div>
+                      </div>
+                    </div>
+                    <div className="px-4 py-4 flex flex-col gap-4">
+                      {[
+                        { key: 'custoManual', label: 'Custo Manual (R$)', tag: 'EDITÁVEL', helper: parseFloat(formData.custoMedio)>0?'CA já tem custo — este fica de reserva.':'Usado no cálculo de receitas.',
+                          input: <div className="flex items-center gap-2.5 rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#D8C9FB',background:'#fff'}}>
+                            <span className="text-sm font-medium" style={{color:'#3A3F52'}}>R$</span>
+                            <input type="number" step="0.01" min="0" value={formData.custoManual} onChange={e=>setFormData({...formData,custoManual:e.target.value})} placeholder="0,00" className="flex-1 bg-transparent outline-none font-medium font-mono" style={{fontSize:15,color:'#16192B'}}/>
+                          </div> },
+                        { key: 'unidade', label: 'Unidade', tag: 'EDITÁVEL', helper: 'Unidade de venda no app.',
+                          input: <div className="flex items-center rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#D8C9FB',background:'#fff'}}>
+                            <input type="text" value={formData.unidade} maxLength={10} onChange={e=>setFormData({...formData,unidade:e.target.value.toUpperCase()})} placeholder="Ex.: UN, KG, PT" className="flex-1 bg-transparent outline-none font-semibold uppercase" style={{fontSize:15,color:'#16192B'}}/>
+                          </div> },
+                      ].map(f => (
+                        <div key={f.key}>
+                          <div className="flex items-center mb-2">
+                            <span className="text-sm font-bold" style={{color:'#3A3F52'}}>{f.label}</span>
+                            <span className="ml-2 font-bold rounded-full" style={{fontSize:10,color:'#7C3AED',background:'#F1EAFF',padding:'2px 7px'}}>{f.tag}</span>
+                          </div>
+                          {f.input}
+                          <div className="mt-1.5 text-xs" style={{color:'#9AA0B4'}}>{f.helper}</div>
+                        </div>
+                      ))}
+                      <div>
+                        <div className="text-sm font-bold mb-2" style={{color:'#3A3F52'}}>Categoria Comercial</div>
+                        <div className="flex items-center rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#E4E7F2',background:'#fff'}}>
+                          <select className="flex-1 bg-transparent outline-none font-medium appearance-none" style={{fontSize:15,color:formData.categoriaProdutoId?'#16192B':'#A6ABBD'}} value={formData.categoriaProdutoId} onChange={e=>setFormData({...formData,categoriaProdutoId:e.target.value})}>
+                            <option value="">Selecione...</option>
+                            {categoriasProduto.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
+                          </select>
+                          <ChevronDown className="h-4 w-4 flex-shrink-0 ml-2" style={{color:'#9AA0B4'}}/>
+                        </div>
+                        <div className="mt-1.5 text-xs" style={{color:'#9AA0B4'}}>Agrupamento dentro do app.</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold mb-2" style={{color:'#3A3F52'}}>Produto Substituto</div>
+                        <div className="flex items-center rounded-xl border" style={{minHeight:52,padding:'6px 12px',borderColor:'#E4E7F2',background:'#fff'}}>
+                          <BuscaProduto value={formData.produtoSubstitutoId} onChange={val=>setFormData({...formData,produtoSubstitutoId:val})} todosOsProdutos={todosProdutos}/>
+                        </div>
+                        <div className="mt-1.5 text-xs" style={{color:'#9AA0B4'}}>Sugerido em falta de estoque.</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold mb-2" style={{color:'#3A3F52'}}>Prioridade de Recomendação</div>
+                        <div className="flex items-center justify-between rounded-xl border" style={{height:52,padding:'0 8px 0 16px',borderColor:'#E4E7F2',background:'#fff'}}>
+                          <input type="number" min="1" max="99" value={formData.prioridadeRecomendacao} onChange={e=>setFormData({...formData,prioridadeRecomendacao:e.target.value})} className="flex-1 bg-transparent outline-none font-semibold font-mono" style={{fontSize:15,color:'#16192B'}}/>
+                          <div className="flex flex-col gap-1.5 flex-shrink-0">
+                            <button onClick={()=>setFormData({...formData,prioridadeRecomendacao:Math.max(1,parseInt(formData.prioridadeRecomendacao||1)-1)})} className="flex items-center justify-center rounded-lg" style={{width:38,height:36,background:'#F2F3F8',color:'#9AA0B4'}}><ChevronUp className="h-3.5 w-3.5"/></button>
+                            <button onClick={()=>setFormData({...formData,prioridadeRecomendacao:Math.min(99,parseInt(formData.prioridadeRecomendacao||1)+1)})} className="flex items-center justify-center rounded-lg" style={{width:38,height:36,background:'#F2F3F8',color:'#9AA0B4'}}><ChevronDown className="h-3.5 w-3.5"/></button>
+                          </div>
+                        </div>
+                        <div className="mt-1.5 text-xs" style={{color:'#9AA0B4'}}>1 é a mais alta.</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold mb-2" style={{color:'#3A3F52'}}>Sugestão do Produto</div>
+                        <div className="flex items-center justify-between rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#E4E7F2',background:'#fff'}}>
+                          <span className="font-semibold" style={{fontSize:14,color:'#16192B'}}>Permitir sugestão</span>
+                          <button onClick={()=>setFormData({...formData,permiteRecomendacao:!formData.permiteRecomendacao})} className="flex items-center rounded-full flex-shrink-0 transition-all" style={{width:48,height:27,background:formData.permiteRecomendacao?'#7C3AED':'#D1D5DB',padding:'0 3px',justifyContent:formData.permiteRecomendacao?'flex-end':'flex-start'}}>
+                            <span className="rounded-full bg-white flex-shrink-0" style={{width:21,height:21,boxShadow:'0 1px 3px rgba(0,0,0,.25)'}}/>
+                          </button>
+                        </div>
+                        <div className="mt-1.5 text-xs" style={{color:'#9AA0B4'}}>Aparece como alternativa no app.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {abaAtiva === 'promocoes' && (
+                <div className="mx-3.5 mt-3.5 bg-white rounded-2xl border overflow-hidden" style={{ borderColor: '#E7E9F2' }}>
+                  <div className="p-4 border-b flex items-center gap-2" style={{ background: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                    <Tag className="h-4 w-4" style={{ color: '#15A05A' }}/><h3 className="font-bold text-sm" style={{ color: '#166534' }}>Promoções — {formData.nome}</h3>
+                  </div>
+                  <div className="p-4"><SecaoPromocoes produtoId={id} valorVendaBase={formData.valorVenda}/></div>
+                </div>
+              )}
+
+              {/* Sticky savebar */}
+              <div className="fixed bottom-0 left-0 right-0 z-20 flex gap-3 p-3" style={{ background: 'rgba(255,255,255,.93)', backdropFilter: 'blur(8px)', borderTop: '1px solid #E7E9F2' }}>
+                <button onClick={handleBack} className="flex items-center justify-center font-bold text-sm rounded-xl border" style={{ height: 50, padding: '0 20px', borderColor: '#E4E7F2', color: '#5A6072', background: '#fff' }}>Cancelar</button>
+                <button onClick={handleSaveComercial} disabled={salvandoComercial || abaAtiva !== 'dados'}
+                  className="flex-1 flex items-center justify-center gap-2 font-bold text-white rounded-xl disabled:opacity-50 transition-all"
+                  style={{ height: 50, fontSize: 15, background: abaAtiva==='dados'?'linear-gradient(135deg,#7C3AED,#6D28D9)':'#9CA3AF', boxShadow: abaAtiva==='dados'?'0 6px 18px rgba(124,58,237,.32)':'none' }}>
+                  <Save className="h-[18px] w-[18px]"/>
+                  {salvandoComercial ? 'Salvando...' : 'Salvar e Voltar'}
+                </button>
+              </div>
+            </div>
+
+            {/* ══════════════════════════════════
+                DESKTOP LAYOUT  (hidden md:block)
+            ══════════════════════════════════ */}
+            <main className="hidden md:block px-6 py-5" style={{ maxWidth: 1440, margin: '0 auto' }}>
 
                 {error && (
                     <div className="bg-red-50 border-l-4 border-red-500 p-3 flex items-center gap-2 rounded-lg">
