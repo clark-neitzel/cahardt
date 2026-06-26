@@ -181,7 +181,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             .print-container .page-produtos th { font-size: 13px; line-height: 1.4; padding: 5px 7px; font-weight: bold; white-space: nowrap; }
                             .print-container .page-produtos td { font-size: 13px; line-height: 1.4; padding: 5px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                             .print-container .page-produtos td.wrap-cell { white-space: normal; word-break: break-word; font-size: 11px; }
-                            .print-container .page-produtos td.qty-cell { font-size: 22px; font-weight: 900; text-align: center; vertical-align: middle; letter-spacing: -0.5px; }
+                            .print-container .page-produtos td.qty-cell { font-size: 16px; font-weight: 900; text-align: center; vertical-align: middle; }
                             .print-container th { background-color: #f3f4f6; color: #000; font-weight: bold; }
                             .print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; color: #000; text-transform: uppercase; }
                             .print-container h2 { font-size: 11px; font-weight: bold; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px; color: #000; }
@@ -197,9 +197,10 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                 .print-container .page-produtos th { font-size: 13px !important; padding: 5px 7px !important; line-height: 1.4 !important; white-space: nowrap !important; }
                                 .print-container .page-produtos td { font-size: 13px !important; padding: 5px 7px !important; line-height: 1.4 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
                                 .print-container .page-produtos td.wrap-cell { white-space: normal !important; word-break: break-word !important; font-size: 11px !important; }
-                                .print-container .page-produtos td.qty-cell { font-size: 22px !important; font-weight: 900 !important; text-align: center !important; }
+                                .print-container .page-produtos td.qty-cell { font-size: 16px !important; font-weight: 900 !important; text-align: center !important; }
                                 .print-container td.wrap-text { white-space: normal !important; word-wrap: break-word !important; }
-                                .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: 0 !important; height: auto !important; padding: 0 5mm !important; page-break-after: always; break-after: always; }
+                                .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: 0 !important; height: auto !important; padding: 0 8mm !important; page-break-after: always; break-after: always; }
+                                .print-page.page-produtos { padding: 6mm 12mm !important; }
                                 .print-page:last-child { page-break-after: auto !important; break-after: auto !important; }
                             }
                             `}
@@ -325,12 +326,12 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             const thisPage = globalPageCount++;
                             return (
                                 <React.Fragment key={`separacao-${idx}`}>
-                                    <div className="print-page page-produtos bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ width: '210mm', padding: '0mm 6mm' }}>
+                                    <div className="print-page page-produtos bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ width: '210mm', padding: '8mm 12mm' }}>
                                         <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">
                                             Página {thisPage} de {totalPages}
                                         </div>
 
-                                        <h1 className="pt-4">Separação Produtos - Carga #{embarque?.numero || '000'}</h1>
+                                        <h1 className="pt-2">Separação Produtos - Carga #{embarque?.numero || '000'}</h1>
                                         <div className="text-[9px] flex justify-between border-b border-black pb-2 mb-2 text-black font-semibold">
                                             <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
                                             <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
@@ -369,12 +370,12 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             const isLastPage = idx === rastreabilidadePaginada.length - 1;
                             return (
                                 <React.Fragment key={`rastreio-${idx}`}>
-                                    <div className="print-page page-produtos bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ width: '210mm', padding: '0mm 6mm', ...(isLastPage ? { pageBreakAfter: 'auto', breakAfter: 'auto' } : {}) }}>
+                                    <div className="print-page page-produtos bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ width: '210mm', padding: '8mm 12mm', ...(isLastPage ? { pageBreakAfter: 'auto', breakAfter: 'auto' } : {}) }}>
                                         <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">
                                             Página {thisPage} de {totalPages}
                                         </div>
 
-                                        <h1 className="pt-4">Conferência por Produto - Carga #{embarque?.numero || '000'}</h1>
+                                        <h1 className="pt-2">Conferência por Produto - Carga #{embarque?.numero || '000'}</h1>
                                         <div className="text-[9px] flex justify-between border-b border-black pb-2 mb-2 text-black font-semibold">
                                             <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
                                             <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
