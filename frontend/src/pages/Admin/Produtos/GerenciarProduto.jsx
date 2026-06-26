@@ -799,7 +799,6 @@ const GerenciarProduto = () => {
                         </button>
                     </div>
                 </div>
-              </div>{/* fim desktop topbar */}
             </header>
 
             {/* ══════════════════════════════════
