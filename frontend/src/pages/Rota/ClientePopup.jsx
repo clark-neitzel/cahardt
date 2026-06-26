@@ -107,7 +107,7 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
     return (
         <div className="fixed inset-0 z-[80] flex">
             {/* Overlay */}
-            <div className="flex-1 bg-black/40" onClick={onClose} />
+            <div className="flex-1 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
             {/* Drawer */}
             <div className="w-full max-w-sm h-full bg-white shadow-2xl flex flex-col overflow-hidden animate-slide-left">
@@ -139,12 +139,12 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                         <div className="flex items-center gap-1">
                             <button
                                 onClick={() => setShowHistorico(true)}
-                                className="text-gray-400 hover:text-white p-1.5"
+                                className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors"
                                 title="Ver histórico completo"
                             >
                                 <ClipboardList className="h-5 w-5" />
                             </button>
-                            <button onClick={onClose} className="text-gray-400 hover:text-white p-1.5 -mr-1 mt-0.5">
+                            <button onClick={onClose} className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors -mr-1 mt-0.5">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>

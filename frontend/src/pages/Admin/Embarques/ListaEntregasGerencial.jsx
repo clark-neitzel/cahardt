@@ -131,18 +131,19 @@ const ListaEntregasGerencial = () => {
 
     return (
         <>
-            <div className="flex justify-between items-center mb-6">
+            {/* Topbar */}
+            <div className="flex items-center gap-3 mb-5">
+                <div className="bg-sky-100 p-2 rounded-lg">
+                    <Truck className="h-5 w-5 text-sky-600" />
+                </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Truck className="h-6 w-6 text-primary" />
-                        Histórico de Entregas
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-1">Visão gerencial de todas as viagens e baixas logísticas.</p>
+                    <h1 className="text-lg font-bold text-gray-900">Histórico de Entregas</h1>
+                    <p className="text-xs text-gray-500">Visão gerencial de todas as viagens e baixas logísticas.</p>
                 </div>
             </div>
 
             {/* Filtros */}
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 space-y-4 sticky top-16 z-40">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-5 space-y-4 sticky top-16 z-40">
                 <div className="flex items-center gap-4">
                     <div className="relative flex-1">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -236,7 +237,7 @@ const ListaEntregasGerencial = () => {
             </div>
 
             {/* Tabela Desktop */}
-            <div className="hidden md:block bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+            <div className="hidden md:block bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
@@ -250,9 +251,19 @@ const ListaEntregasGerencial = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {loading ? (
-                            <tr><td colSpan="6" className="text-center py-10 text-gray-500">Buscando histórico...</td></tr>
+                            <tr><td colSpan="6" className="py-10">
+                                <div className="flex items-center justify-center gap-2 text-gray-500">
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-sky-600"></div>
+                                    <span className="text-sm">Buscando histórico…</span>
+                                </div>
+                            </td></tr>
                         ) : entregas.length === 0 ? (
-                            <tr><td colSpan="6" className="text-center py-10 text-gray-500">Nenhuma entrega encontrada para estes filtros.</td></tr>
+                            <tr><td colSpan="6" className="py-10">
+                                <div className="flex flex-col items-center gap-2 text-gray-400">
+                                    <Truck className="h-10 w-10 text-gray-200" />
+                                    <span className="text-sm">Nenhuma entrega encontrada para estes filtros.</span>
+                                </div>
+                            </td></tr>
                         ) : (
                             entregas.map((entrega) => (
                                 <tr key={entrega.id} className="hover:bg-gray-50 transition-colors">
@@ -306,8 +317,18 @@ const ListaEntregasGerencial = () => {
 
             {/* Mobile Cards */}
             <div className="md:hidden space-y-3">
-                {loading && <div className="text-center py-10 text-gray-500">Buscando histórico...</div>}
-                {!loading && entregas.length === 0 && <div className="text-center py-10 text-gray-500">Nenhuma entrega encontrada.</div>}
+                {loading && (
+                    <div className="flex items-center justify-center gap-2 py-10 text-gray-500">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-sky-600"></div>
+                        <span className="text-sm">Buscando histórico…</span>
+                    </div>
+                )}
+                {!loading && entregas.length === 0 && (
+                    <div className="flex flex-col items-center gap-2 py-10 text-gray-400">
+                        <Truck className="h-10 w-10 text-gray-200" />
+                        <span className="text-sm">Nenhuma entrega encontrada.</span>
+                    </div>
+                )}
 
                 {entregas.map((entrega) => (
                     <div key={entrega.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
@@ -355,7 +376,7 @@ const ListaEntregasGerencial = () => {
                     <button
                         disabled={page === 1}
                         onClick={() => setPage(page - 1)}
-                        className="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white hover:bg-gray-50 disabled:opacity-50"
+                        className="px-3 py-1.5 border border-gray-300 rounded-xl text-sm bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
                     >
                         Anterior
                     </button>
@@ -363,7 +384,7 @@ const ListaEntregasGerencial = () => {
                     <button
                         disabled={page >= totalPages}
                         onClick={() => setPage(page + 1)}
-                        className="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white hover:bg-gray-50 disabled:opacity-50"
+                        className="px-3 py-1.5 border border-gray-300 rounded-xl text-sm bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
                     >
                         Próxima
                     </button>

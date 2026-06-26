@@ -73,7 +73,7 @@ const HistoricoModal = ({ cliente, onClose }) => {
     return (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
             {/* Overlay */}
-            <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
             {/* Modal */}
             <div className="relative w-full max-w-lg h-[85vh] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
@@ -84,7 +84,7 @@ const HistoricoModal = ({ cliente, onClose }) => {
                         <p className="text-[10px] text-gray-400 uppercase tracking-wider">Histórico</p>
                         <h2 className="text-[15px] font-bold leading-tight">{nome}</h2>
                     </div>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white p-1.5">
+                    <button onClick={onClose} className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors">
                         <X className="h-5 w-5" />
                     </button>
                 </div>

@@ -97,7 +97,7 @@ const MetaCidadeHojeBanner = ({ cidadesDeHoje, conversaoHoje }) => {
                         const pctMes = c.metaMensal > 0 ? Math.min((c.realizadoMes / c.metaMensal) * 100, 100) : 0;
 
                         return (
-                            <div key={c.cidade} className="bg-white rounded-lg px-3 py-2.5 border border-orange-100">
+                            <div key={c.cidade} className="bg-white rounded-xl px-3 py-2.5 border border-orange-100">
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-1.5 mb-1">

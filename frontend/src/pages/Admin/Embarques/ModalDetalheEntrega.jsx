@@ -36,7 +36,7 @@ const ModalDetalheEntrega = ({ entregaId, onClose }) => {
     const statusInfo = STATUS_LABEL[dados?.statusEntrega] || { label: dados?.statusEntrega, cls: 'bg-gray-100 text-gray-700' };
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4" onClick={onClose}>
             <div
                 className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
                 onClick={e => e.stopPropagation()}
@@ -62,7 +62,10 @@ const ModalDetalheEntrega = ({ entregaId, onClose }) => {
                 </div>
 
                 {loading && (
-                    <div className="p-10 text-center text-gray-500 text-sm">Carregando detalhes...</div>
+                    <div className="flex items-center justify-center gap-2 p-10 text-gray-500">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-sky-600"></div>
+                        <span className="text-sm">Carregando detalhes…</span>
+                    </div>
                 )}
 
                 {erro && (

@@ -338,17 +338,22 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
                 onAtualizado={() => setShowClientePopupGps(false)}
             />
         )}
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end">
             <div className="bg-white w-full rounded-t-2xl max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-                    <div>
-                        <h2 className="font-bold text-[16px] text-gray-900">Registrar Atendimento</h2>
-                        <p className="text-[12px] text-gray-500 mt-0.5 truncate max-w-xs">
-                            {isLead ? `Lead #${item.numero} · ${item.nomeEstabelecimento}` : (item.NomeFantasia || item.Nome)}
-                        </p>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-2xl">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-blue-100 p-1.5 rounded-lg flex-shrink-0">
+                            <Navigation className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                            <h2 className="font-bold text-sm text-gray-900">Registrar Atendimento</h2>
+                            <p className="text-xs text-gray-500 truncate max-w-[220px]">
+                                {isLead ? `Lead #${item.numero} · ${item.nomeEstabelecimento}` : (item.NomeFantasia || item.Nome)}
+                            </p>
+                        </div>
                     </div>
-                    <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600">
+                    <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
@@ -546,7 +551,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
                     <button
                         onClick={handleSalvar}
                         disabled={saving || loadingGps || !gps}
-                        className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl text-[15px] flex items-center justify-center gap-2 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2 mt-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         {saving ? <Loader className="h-5 w-5 animate-spin" /> : loadingGps ? <Loader className="h-5 w-5 animate-spin" /> : null}
                         {saving ? 'Salvando...' : loadingGps ? 'Aguardando GPS...' : !gps ? 'GPS necessário para continuar' : acaoSelecionada?.abrePedidoAmostra ? 'Prosseguir para Amostra' : 'Confirmar Atendimento'}

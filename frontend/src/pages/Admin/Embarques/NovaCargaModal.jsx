@@ -29,25 +29,29 @@ const NovaCargaModal = ({ onClose, vendedores, onSuccess }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col">
-                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-gray-900">Novo Embarque (Carga)</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-                        <X className="h-6 w-6" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-sky-100 p-1.5 rounded-lg">
+                            <Truck className="h-4 w-4 text-sky-600" />
+                        </div>
+                        <h3 className="text-sm font-bold text-gray-900">Novo Embarque (Carga)</h3>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+                        <X className="h-5 w-5" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6">
+                <form onSubmit={handleSubmit} className="p-5">
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                <Calendar className="inline h-4 w-4 mr-1 text-gray-400" />
-                                Data Programada de Saída
+                            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+                                <Calendar className="h-3.5 w-3.5" /> Data Programada de Saída
                             </label>
                             <input
                                 type="date"
-                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 p-2 border"
+                                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-1 focus:ring-sky-500 focus:border-sky-500 focus:outline-none"
                                 value={dataSaida}
                                 onChange={(e) => setDataSaida(e.target.value)}
                                 required
@@ -55,17 +59,16 @@ const NovaCargaModal = ({ onClose, vendedores, onSuccess }) => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                <User className="inline h-4 w-4 mr-1 text-gray-400" />
-                                Motorista / Responsável
+                            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1">
+                                <User className="h-3.5 w-3.5" /> Motorista / Responsável
                             </label>
                             <select
-                                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 p-2 border"
+                                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:ring-1 focus:ring-sky-500 focus:border-sky-500 focus:outline-none"
                                 value={responsavelId}
                                 onChange={(e) => setResponsavelId(e.target.value)}
                                 required
                             >
-                                <option value="" disabled>Selecione quem vai entregar...</option>
+                                <option value="" disabled>Selecione quem vai entregar…</option>
                                 {vendedores.map((v) => (
                                     <option key={v.id} value={v.id}>{v.nome}</option>
                                 ))}
@@ -73,21 +76,21 @@ const NovaCargaModal = ({ onClose, vendedores, onSuccess }) => {
                         </div>
                     </div>
 
-                    <div className="mt-6 flex justify-end space-x-3">
+                    <div className="mt-5 flex justify-end gap-3 pt-4 border-t border-gray-100">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                            className="px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             disabled={saving}
-                            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50"
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50 transition-colors shadow-sm"
                         >
-                            <Save className="h-4 w-4 mr-2" />
-                            {saving ? 'Gerando...' : 'Montar Carga'}
+                            <Save className="h-4 w-4" />
+                            {saving ? 'Gerando…' : 'Montar Carga'}
                         </button>
                     </div>
                 </form>

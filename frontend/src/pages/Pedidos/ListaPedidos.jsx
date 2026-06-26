@@ -547,15 +547,16 @@ const ListaPedidos = () => {
     // Retorno do render
     return (
         <>
-        <div className="w-full py-4 sm:py-6 overflow-x-hidden">
-            <div className="flex justify-between items-center mb-4">
-                <h1 className="text-lg sm:text-2xl font-black text-gray-900 flex items-center gap-2">
-                    <Package className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                    Pedidos
-                </h1>
+        <div className="w-full py-3 sm:py-5 overflow-x-hidden px-3 sm:px-0">
+            {/* Topbar */}
+            <div className="flex items-center gap-3 mb-4">
+                <div className="bg-blue-100 p-2 rounded-lg">
+                    <Package className="h-5 w-5 text-blue-600" />
+                </div>
+                <h1 className="text-lg font-bold text-gray-900">Pedidos</h1>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 mb-4">
                 <div className="flex gap-2 w-full">
                     <div className="relative flex-1 min-w-0">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -594,7 +595,7 @@ const ListaPedidos = () => {
 
             {/* Painel de Filtros Avançados */}
             {showFilters && (
-                <div className="mb-3 bg-white p-3 rounded-lg border border-gray-200 shadow-sm animate-in fade-in slide-in-from-top-2 space-y-2">
+                <div className="mb-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm animate-in fade-in slide-in-from-top-2 space-y-2">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <DateRangeField
                             icon={<Calendar className="h-3 w-3" />}
@@ -845,12 +846,18 @@ const ListaPedidos = () => {
             {abaAtiva === 'devolucoes' ? (
                 <ListaDevolucoes filtros={filtros} />
             ) : abaAtiva === 'amostras' ? (
-                <div className="bg-white rounded overflow-hidden border border-gray-200">
+                <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
                     <div className="divide-y divide-gray-200">
                         {loadingAmostras ? (
-                            <div className="p-8 text-center text-gray-500">Carregando...</div>
+                            <div className="flex items-center justify-center gap-2 p-10">
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                                <span className="text-sm text-gray-500">Carregando amostras…</span>
+                            </div>
                         ) : amostras.length === 0 ? (
-                            <div className="p-8 text-center text-gray-500">Nenhuma amostra encontrada no período.</div>
+                            <div className="flex flex-col items-center justify-center p-10 gap-2">
+                                <Package className="h-10 w-10 text-gray-200" />
+                                <span className="text-sm text-gray-400">Nenhuma amostra encontrada no período.</span>
+                            </div>
                         ) : (
                             amostras.map(amostra => {
                                 const isExpanded = expandedAmostra === amostra.id;
@@ -947,12 +954,18 @@ const ListaPedidos = () => {
                 </div>
             ) : (
                 /* Conteúdo: Pedidos e Especiais */
-                <div className="bg-white rounded overflow-hidden border border-gray-200">
+                <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
                     <div className="divide-y divide-gray-200">
                         {loading ? (
-                            <div className="p-8 text-center text-gray-500">Carregando pedidos...</div>
+                            <div className="flex items-center justify-center gap-2 p-10">
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                                <span className="text-sm text-gray-500">Carregando pedidos…</span>
+                            </div>
                         ) : pedidos.length === 0 ? (
-                            <div className="p-8 text-center text-gray-500">Nenhum pedido encontrado nos filtros aplicados.</div>
+                            <div className="flex flex-col items-center justify-center p-10 gap-2">
+                                <Package className="h-10 w-10 text-gray-200" />
+                                <span className="text-sm text-gray-400">Nenhum pedido encontrado nos filtros aplicados.</span>
+                            </div>
                         ) : (
                             pedidos.filter(p => {
                                 if (filtroStatus === 'TODOS') return true;
@@ -1160,8 +1173,8 @@ const ListaPedidos = () => {
 
             {/* Modal de Detalhes */}
             {selectedPedido && (
-                <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-end sm:items-center justify-center sm:p-2 z-50 animate-in fade-in">
-                    <div className="bg-white rounded-t-xl sm:rounded-lg shadow-2xl w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 z-50 animate-in fade-in">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col">
                         <div className="flex justify-between items-center p-3 sm:p-4 border-b">
                             <div className="min-w-0">
                                 <h2 className="text-base sm:text-lg font-black text-gray-900 truncate">

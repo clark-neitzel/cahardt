@@ -244,11 +244,16 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end">
             <div className="bg-white w-full rounded-t-2xl max-h-[92vh] overflow-y-auto">
-                <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 sticky top-0 bg-white">
-                    <h2 className="font-bold text-[16px] text-gray-900">Novo Lead</h2>
-                    <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-orange-100 p-1.5 rounded-lg">
+                            <MapPin className="h-4 w-4 text-orange-600" />
+                        </div>
+                        <h2 className="font-bold text-sm text-gray-900">Novo Lead</h2>
+                    </div>
+                    <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
@@ -463,7 +468,7 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                     </div>
 
                     <button onClick={handleSalvar} disabled={saving}
-                        className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-[15px] flex items-center justify-center gap-2 disabled:opacity-70">
+                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-70 transition-colors">
                         {saving ? <Loader className="h-5 w-5 animate-spin" /> : null}
                         {saving ? 'Salvando...' : 'Criar Lead'}
                     </button>

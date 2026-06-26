@@ -4,7 +4,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import produtoService from '../../services/produtoService';
 import configService from '../../services/configService';
 import { API_URL } from '../../services/api';
-import { ArrowLeft, Loader, AlertCircle, Camera } from 'lucide-react';
+import { ArrowLeft, Loader, AlertCircle, Camera, Tag, DollarSign, FileText, Layers } from 'lucide-react';
 
 const DetalheProduto = () => {
     const { id } = useParams();
@@ -97,12 +97,18 @@ const DetalheProduto = () => {
     };
 
     if (loading) return (
-        <div className="flex justify-center items-center h-screen bg-gray-50">
-            <Loader className="animate-spin h-8 w-8 text-primary" />
+        <div className="flex items-center justify-center h-screen bg-gray-50 gap-2">
+            <Loader className="animate-spin h-6 w-6 text-primary" />
+            <span className="text-sm text-gray-500">Carregando produto…</span>
         </div>
     );
 
-    if (!produto) return <div className="p-8 text-center text-red-500">Produto não encontrado.</div>;
+    if (!produto) return (
+        <div className="flex flex-col items-center justify-center p-10 gap-3 text-center">
+            <AlertCircle className="h-10 w-10 text-red-400" />
+            <p className="text-sm text-red-600 font-medium">Produto não encontrado.</p>
+        </div>
+    );
 
     const imagens = produto.imagens && produto.imagens.length > 0
         ? produto.imagens
@@ -111,62 +117,58 @@ const DetalheProduto = () => {
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
             {/* Header Sticky */}
-            <div className="sticky top-0 z-10 bg-white border-b shadow-sm px-4 py-4 mb-6">
-                <div className="container mx-auto max-w-5xl flex justify-between items-center">
-                    <div className="flex items-center space-x-4">
-                        <button onClick={handleBack} className="text-gray-500 hover:text-gray-800 transition-colors p-1 rounded-full hover:bg-gray-100" title="Voltar para a lista">
-                            <ArrowLeft className="h-6 w-6" />
-                        </button>
-                        <div>
-                            <h1 className="text-xl font-bold text-gray-900 leading-tight">
-                                {formData.nome || 'Novo Produto'}
-                            </h1>
-                            <div className="flex items-center space-x-2 text-sm">
-                                <span className="text-gray-500">Código: {formData.codigo}</span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${formData.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                    {formData.ativo ? 'Ativo' : 'Inativo'}
-                                </span>
-                            </div>
+            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm px-4 py-3 mb-5">
+                <div className="flex items-center gap-3 max-w-5xl mx-auto">
+                    <button onClick={handleBack} className="p-2 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0" title="Voltar">
+                        <ArrowLeft className="h-5 w-5" />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                        <h1 className="text-base md:text-lg font-bold text-gray-900 leading-tight truncate">
+                            {formData.nome || 'Produto'}
+                        </h1>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 font-mono">{formData.codigo}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${formData.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {formData.ativo ? 'Ativo' : 'Inativo'}
+                            </span>
                         </div>
                     </div>
-
-
                 </div>
             </div>
 
-            <div className="container mx-auto max-w-5xl px-4">
-                {/* Feedback Messages */}
+            <div className="max-w-5xl mx-auto px-3 md:px-6">
+                {/* Feedback de erro */}
                 {error && (
-                    <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 flex items-center">
-                        <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-                        <p className="text-red-700">{error}</p>
+                    <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                        <p className="text-sm text-red-700">{error}</p>
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                     {/* Coluna Esquerda: Imagens e Estoque */}
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         {/* Card Imagem */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                                <h3 className="font-semibold text-gray-700">Imagens</h3>
-                                <Camera className="h-4 w-4 text-gray-400" />
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                                <Camera className="h-4 w-4 text-purple-600" />
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Imagens</span>
                             </div>
-                            <div className="aspect-square bg-gray-100 relative group">
+                            <div className="aspect-square bg-gray-100 relative">
                                 <img
                                     src={imagens[imagemAtual].url ? `${API_URL}${imagens[imagemAtual].url}` : 'https://via.placeholder.com/400?text=Sem+Imagem'}
                                     alt="Produto"
                                     className="w-full h-full object-contain p-4"
-                                    onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=Erro'; }}
+                                    onError={(e) => { e.target.src = 'https://via.placeholder.com/400?text=Sem+imagem'; }}
                                 />
                             </div>
                             {imagens.length > 1 && (
-                                <div className="p-4 flex gap-2 overflow-x-auto">
+                                <div className="p-3 flex gap-2 overflow-x-auto hide-scrollbar">
                                     {imagens.map((img, idx) => (
                                         <button
                                             key={idx}
                                             onClick={() => setImagemAtual(idx)}
-                                            className={`h-16 w-16 flex-shrink-0 rounded border-2 overflow-hidden ${idx === imagemAtual ? 'border-primary' : 'border-transparent'}`}
+                                            className={`h-14 w-14 flex-shrink-0 rounded-lg border-2 overflow-hidden transition-colors ${idx === imagemAtual ? 'border-primary' : 'border-gray-200 hover:border-gray-400'}`}
                                         >
                                             <img src={`${API_URL}${img.url}`} className="w-full h-full object-cover" alt="" />
                                         </button>
@@ -176,150 +178,132 @@ const DetalheProduto = () => {
                         </div>
 
                         {/* Card Estoque */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                            <div className="p-4 border-b border-gray-100 bg-gray-50">
-                                <h3 className="font-semibold text-gray-700">Estoque</h3>
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                                <Layers className="h-4 w-4 text-blue-600" />
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Estoque</span>
                             </div>
-                            <div className="p-4 grid grid-cols-2 gap-4">
-                                <div className="bg-green-50 p-3 rounded border border-green-100">
-                                    <p className="text-xs text-green-700 uppercase font-semibold">Disponível</p>
-                                    <p className="text-2xl font-bold text-green-800">{produto.estoqueDisponivel}</p>
+                            <div className="p-4 grid grid-cols-2 gap-3">
+                                <div className="bg-green-50 rounded-lg border border-green-100 p-3 text-center">
+                                    <p className="text-xs text-green-700 font-semibold uppercase tracking-wide">Disponível</p>
+                                    <p className="text-2xl font-bold text-green-800 mt-0.5">{produto.estoqueDisponivel}</p>
                                 </div>
-                                <div className="bg-blue-50 p-3 rounded border border-blue-100">
-                                    <p className="text-xs text-blue-700 uppercase font-semibold">Total</p>
-                                    <p className="text-xl font-bold text-blue-800">{produto.estoqueTotal}</p>
+                                <div className="bg-blue-50 rounded-lg border border-blue-100 p-3 text-center">
+                                    <p className="text-xs text-blue-700 font-semibold uppercase tracking-wide">Total</p>
+                                    <p className="text-2xl font-bold text-blue-800 mt-0.5">{produto.estoqueTotal}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Coluna Direita: Formulário - Wrapped in Fragment to ensure render */}
-                    <div className="md:col-span-2 space-y-6">
-                        {/* Card Dados Principais */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                            <div className="p-4 border-b border-gray-100 bg-gray-50">
-                                <h3 className="font-semibold text-gray-700">Identificação</h3>
+                    {/* Coluna Direita: Campos */}
+                    <div className="md:col-span-2 space-y-4">
+                        {/* Card Identificação */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                                <Tag className="h-4 w-4 text-blue-600" />
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Identificação</span>
                             </div>
-                            <div className="p-6 space-y-4">
+                            <div className="p-4 md:p-5 space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto</label>
+                                    <label className="block text-xs font-medium text-gray-500 mb-1">Nome do Produto</label>
                                     <input
                                         type="text"
-                                        name="nome"
                                         value={formData.nome}
                                         readOnly
-                                        className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
+                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 px-3 text-sm text-gray-700 cursor-default"
                                     />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Código (SKU)</label>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">Código (SKU)</label>
                                         <input
                                             type="text"
-                                            name="codigo"
                                             value={formData.codigo}
                                             readOnly
-                                            className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 px-3 text-sm text-gray-700 cursor-default font-mono"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">EAN / GTIN</label>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">EAN / GTIN</label>
                                         <input
                                             type="text"
-                                            name="ean"
                                             value={formData.ean}
                                             readOnly
-                                            className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 px-3 text-sm text-gray-700 cursor-default font-mono"
                                         />
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Card Valores e Categoria */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                            <div className="p-4 border-b border-gray-100 bg-gray-50">
-                                <h3 className="font-semibold text-gray-700">Valores e Classificação</h3>
+                        {/* Card Valores e Classificação */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                                <DollarSign className="h-4 w-4 text-green-600" />
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Valores e Classificação</span>
                             </div>
-                            <div className="p-6 space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="p-4 md:p-5 space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Valor de Venda (R$)</label>
-                                        <div className="relative rounded-md shadow-sm">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <span className="text-gray-500 sm:text-sm">R$</span>
-                                            </div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">Valor de Venda</label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">R$</span>
                                             <input
-                                                type="number"
-                                                name="valorVenda"
-                                                step="0.01"
+                                                type="text"
                                                 value={formData.valorVenda}
                                                 readOnly
-                                                className="w-full pl-10 rounded-md border-gray-300 shadow-sm py-2 px-3 border font-bold bg-gray-50 text-gray-700 cursor-not-allowed"
+                                                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-8 pr-3 text-sm font-bold text-gray-800 cursor-default"
                                             />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Custo Médio (R$)</label>
-                                        <div className="relative rounded-md shadow-sm">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <span className="text-gray-500 sm:text-sm">R$</span>
-                                            </div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">Custo Médio</label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">R$</span>
                                             <input
-                                                type="number"
-                                                name="custoMedio"
-                                                step="0.01"
+                                                type="text"
                                                 value={formData.custoMedio}
                                                 readOnly
-                                                className="w-full pl-10 rounded-md border-gray-300 shadow-sm bg-gray-100 text-gray-500 cursor-not-allowed py-2 px-3 border"
                                                 title="Sincronizado do Conta Azul"
+                                                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-8 pr-3 text-sm text-gray-500 cursor-default"
                                             />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Unidade</label>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">Unidade</label>
                                         <input
                                             type="text"
-                                            name="unidade"
                                             value={formData.unidade}
                                             readOnly
-                                            className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border uppercase bg-gray-50 text-gray-700 cursor-not-allowed"
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 px-3 text-sm text-gray-700 cursor-default uppercase"
                                         />
                                     </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                                    <input
-                                        type="text"
-                                        name="categoria"
-                                        value={formData.categoria}
-                                        readOnly
-                                        className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
-                                    />
-
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">NCM</label>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">Categoria</label>
                                         <input
                                             type="text"
-                                            name="ncm"
-                                            value={formData.ncm}
+                                            value={formData.categoria}
                                             readOnly
-                                            className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 px-3 text-sm text-gray-700 cursor-default"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Peso Líquido (kg)</label>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">NCM</label>
                                         <input
-                                            type="number"
-                                            step="0.001"
-                                            name="pesoLiquido"
+                                            type="text"
+                                            value={formData.ncm}
+                                            readOnly
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 px-3 text-sm text-gray-700 cursor-default font-mono"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">Peso Líquido (kg)</label>
+                                        <input
+                                            type="text"
                                             value={formData.pesoLiquido}
                                             readOnly
-                                            className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 px-3 text-sm text-gray-700 cursor-default"
                                         />
                                     </div>
                                 </div>
@@ -327,21 +311,20 @@ const DetalheProduto = () => {
                         </div>
 
                         {/* Card Descrição */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                            <div className="p-4 border-b border-gray-100 bg-gray-50">
-                                <h3 className="font-semibold text-gray-700">Descrição/Obs</h3>
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                                <FileText className="h-4 w-4 text-gray-500" />
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Descrição / Obs</span>
                             </div>
-                            <div className="p-4">
+                            <div className="p-4 md:p-5">
                                 <textarea
-                                    name="descricao"
                                     rows={4}
                                     value={formData.descricao}
                                     readOnly
-                                    className="w-full rounded-md border-gray-300 shadow-sm py-2 px-3 border bg-gray-50 text-gray-700 cursor-not-allowed"
+                                    className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 px-3 text-sm text-gray-700 cursor-default resize-none"
                                 />
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>

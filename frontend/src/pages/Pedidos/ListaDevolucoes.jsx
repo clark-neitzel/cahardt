@@ -64,15 +64,25 @@ const ListaDevolucoes = ({ filtros }) => {
     };
 
     if (loading) {
-        return <div className="p-8 text-center text-gray-500">Carregando devoluções...</div>;
+        return (
+            <div className="flex items-center justify-center gap-2 p-10 bg-white rounded-xl border border-gray-200">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                <span className="text-sm text-gray-500">Carregando devoluções…</span>
+            </div>
+        );
     }
 
     if (devolucoes.length === 0) {
-        return <div className="p-8 text-center text-gray-500">Nenhuma devolução encontrada no período.</div>;
+        return (
+            <div className="flex flex-col items-center justify-center p-10 gap-2 bg-white rounded-xl border border-gray-200">
+                <RotateCcw className="h-10 w-10 text-gray-200" />
+                <span className="text-sm text-gray-400">Nenhuma devolução encontrada no período.</span>
+            </div>
+        );
     }
 
     return (
-        <div className="bg-white rounded overflow-hidden border border-gray-200">
+        <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
             <div className="divide-y divide-gray-200">
                 {devolucoes.map(dev => {
                     const isExpanded = expandedId === dev.id;
@@ -188,19 +198,19 @@ const ListaDevolucoes = ({ filtros }) => {
 
                                     {/* Botão reverter */}
                                     {podeReverter && dev.status === 'ATIVA' && (
-                                        <div className="border-t pt-3 space-y-2">
+                                        <div className="border-t border-gray-100 pt-3 space-y-2">
                                             <textarea
                                                 value={revertendo === dev.id ? motivoReversao : ''}
                                                 onChange={e => { setRevertendo(dev.id); setMotivoReversao(e.target.value); }}
                                                 onFocus={() => setRevertendo(dev.id)}
                                                 placeholder="Motivo da reversão..."
-                                                className="w-full border rounded p-2 text-xs resize-none"
+                                                className="w-full border border-gray-300 rounded-lg p-2 text-xs resize-none focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                                                 rows={2}
                                             />
                                             <button
                                                 onClick={() => handleReverter(dev.id)}
                                                 disabled={revertendo === dev.id && !motivoReversao.trim()}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 text-white rounded text-xs font-bold hover:bg-amber-700 disabled:opacity-50"
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-bold hover:bg-amber-600 disabled:opacity-50 transition-colors"
                                             >
                                                 {revertendo === dev.id && motivoReversao === '...' ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
                                                 Reverter Devolução

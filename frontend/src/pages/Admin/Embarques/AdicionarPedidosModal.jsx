@@ -159,13 +159,18 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
         : amostrasSelecionadas.size === amostrasFiltradas.length && amostrasFiltradas.length > 0;
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-60 px-2 py-4 sm:px-4 sm:py-6">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-2 py-4 sm:px-4 sm:py-6">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[95vh] flex flex-col">
 
                 {/* Header */}
-                <div className="px-4 sm:px-5 py-3.5 border-b border-gray-200 flex items-center justify-between bg-gray-50 rounded-t-xl">
-                    <h3 className="text-base font-bold text-gray-900">Embarcar Pedidos e Amostras</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <div className="px-4 sm:px-5 py-3.5 border-b border-gray-200 flex items-center justify-between rounded-t-xl">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-sky-100 p-1.5 rounded-lg">
+                            <Package className="h-4 w-4 text-sky-600" />
+                        </div>
+                        <h3 className="text-sm font-bold text-gray-900">Embarcar Pedidos e Amostras</h3>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
@@ -268,7 +273,10 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
                 {/* Lista */}
                 <div className="flex-1 overflow-y-auto bg-gray-50">
                     {loading ? (
-                        <div className="text-center py-12 text-gray-400 text-sm">Carregando...</div>
+                        <div className="flex items-center justify-center gap-2 py-12 text-gray-400">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-sky-600"></div>
+                            <span className="text-sm">Carregando…</span>
+                        </div>
                     ) : aba === 'pedidos' ? (
                         pedidosFiltrados.length === 0 ? (
                             <div className="text-center py-12 text-gray-400 text-sm">

@@ -56,28 +56,28 @@ const PainelEmbarque = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-3 md:px-0 py-4 md:py-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 md:p-6 rounded-t-lg shadow-sm border-b gap-3">
-                <div className="flex items-center space-x-3">
+        <div className="max-w-7xl mx-auto px-3 md:px-0 py-4 md:py-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 md:p-5 rounded-t-xl shadow-sm border border-gray-200 border-b-0 gap-3">
+                <div className="flex items-center gap-3">
                     <div className="bg-sky-100 p-2 rounded-lg">
-                        <Truck className="h-5 w-5 md:h-6 md:w-6 text-sky-600" />
+                        <Truck className="h-5 w-5 text-sky-600" />
                     </div>
                     <div>
-                        <h1 className="text-lg md:text-2xl font-bold text-gray-900 tracking-tight">Painel de Expedição</h1>
-                        <p className="text-xs md:text-sm text-gray-500 hidden sm:block">Gestão Logística de Romaneios, Veículos e Motoristas da Rota</p>
+                        <h1 className="text-lg font-bold text-gray-900">Painel de Expedição</h1>
+                        <p className="text-xs text-gray-500 hidden sm:block">Gestão logística de romaneios, veículos e motoristas</p>
                     </div>
                 </div>
                 <button
                     onClick={() => setIsNovaCargaOpen(true)}
-                    className="inline-flex items-center px-3 md:px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 transition-colors w-full sm:w-auto justify-center"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl shadow-sm text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 transition-colors w-full sm:w-auto justify-center"
                 >
-                    <Plus className="-ml-1 mr-2 h-5 w-5" />
+                    <Plus className="h-4 w-4" />
                     Montar Nova Carga
                 </button>
             </div>
 
             {/* Desktop: Tabela */}
-            <div className="hidden md:block bg-white shadow overflow-hidden sm:rounded-b-lg">
+            <div className="hidden md:block bg-white shadow-sm overflow-hidden rounded-b-xl border border-gray-200 border-t-0">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
@@ -91,15 +91,20 @@ const PainelEmbarque = () => {
                     <tbody className="bg-white divide-y divide-gray-200 text-sm">
                         {loading ? (
                             <tr>
-                                <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                                    <Truck className="h-8 w-8 text-gray-300 animate-bounce mb-2 mx-auto" />
-                                    Buscando frota...
+                                <td colSpan="5" className="px-6 py-10 text-center">
+                                    <div className="flex items-center justify-center gap-2 text-gray-500">
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-sky-600"></div>
+                                        <span className="text-sm">Buscando frota…</span>
+                                    </div>
                                 </td>
                             </tr>
                         ) : embarques.length === 0 ? (
                             <tr>
-                                <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                                    Nenhuma carga despachada recentemente.
+                                <td colSpan="5" className="px-6 py-10 text-center">
+                                    <div className="flex flex-col items-center gap-2 text-gray-400">
+                                        <Truck className="h-10 w-10 text-gray-200" />
+                                        <span className="text-sm">Nenhuma carga despachada recentemente.</span>
+                                    </div>
                                 </td>
                             </tr>
                         ) : embarques.map((emb) => (
@@ -131,14 +136,17 @@ const PainelEmbarque = () => {
             </div>
 
             {/* Mobile: Cards */}
-            <div className="md:hidden bg-white rounded-b-lg shadow-sm">
+            <div className="md:hidden bg-white rounded-b-xl shadow-sm border border-gray-200 border-t-0">
                 {loading ? (
-                    <div className="text-center py-8 text-gray-500">
-                        <Truck className="h-8 w-8 text-gray-300 animate-bounce mb-2 mx-auto" />
-                        Buscando frota...
+                    <div className="flex items-center justify-center gap-2 py-10 text-gray-500">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-sky-600"></div>
+                        <span className="text-sm">Buscando frota…</span>
                     </div>
                 ) : embarques.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">Nenhuma carga despachada recentemente.</div>
+                    <div className="flex flex-col items-center gap-2 py-10 text-gray-400">
+                        <Truck className="h-10 w-10 text-gray-200" />
+                        <span className="text-sm">Nenhuma carga despachada recentemente.</span>
+                    </div>
                 ) : (
                     <div className="divide-y divide-gray-100">
                         {embarques.map((emb) => (

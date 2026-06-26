@@ -980,11 +980,9 @@ const NovoPedido = () => {
     };
 
     if (loading) return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3"></div>
-                <p className="text-sm text-gray-500">Carregando...</p>
-            </div>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center gap-2">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <p className="text-sm text-gray-500">Carregando…</p>
         </div>
     );
 
@@ -1324,35 +1322,35 @@ const NovoPedido = () => {
     return (
         <div className="bg-gray-50 min-h-screen flex flex-col">
             {/* ===== HEADER COMPACTO ===== */}
-            <div className="bg-white shadow-sm sticky top-0 z-20">
-                <div className="flex items-center justify-between px-3 py-2">
-                    <div className="flex items-center gap-2">
+            <div className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-20">
+                <div className="flex items-center justify-between px-3 py-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
                         <button
                             onClick={() => {
                                 localStorage.removeItem('@CAHardt:NovoPedido_Draft');
                                 navigate(-1);
                             }}
-                            className="text-gray-600 p-1"
+                            className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 flex-shrink-0"
                         >
                             <ArrowLeft className="h-5 w-5" />
                         </button>
-                        <h1 className="text-base font-bold text-gray-900">
+                        <h1 className="text-sm font-bold text-gray-900 truncate">
                             {editId ? 'Editar Pedido' : bonificacao ? 'Nova Bonificação' : especial ? 'Novo Especial' : 'Novo Pedido'}
                         </h1>
                         {isEncaixe && (
-                            <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">ENCAIXE</span>
+                            <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0">ENCAIXE</span>
                         )}
                         {bonificacao && (
-                            <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">BONIFICAÇÃO</span>
+                            <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0">BONIFICAÇÃO</span>
                         )}
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                         {editId && (
-                            <button onClick={handleExcluir} className="text-red-500 text-xs font-semibold">
+                            <button onClick={handleExcluir} className="p-1.5 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50">
                                 <Trash2 className="h-4 w-4" />
                             </button>
                         )}
-                        <button onClick={() => handleSalvar('ABERTO')} className="text-blue-600 font-semibold text-xs">
+                        <button onClick={() => handleSalvar('ABERTO')} className="px-3 py-1.5 text-primary font-bold text-xs border border-primary/30 rounded-lg hover:bg-blue-50 transition-colors">
                             Salvar
                         </button>
                     </div>

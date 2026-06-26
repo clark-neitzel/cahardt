@@ -181,21 +181,19 @@ const AuditoriaEntregas = () => {
     };
 
     return (
-        <div className="w-full py-4 md:py-8 px-3 md:px-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-2">
+        <div className="w-full py-4 md:py-6 px-3 md:px-6">
+            <div className="flex items-center gap-3 mb-5">
+                <div className="bg-amber-100 p-2 rounded-lg">
+                    <AlertTriangle className="h-5 w-5 text-amber-600" />
+                </div>
                 <div>
-                    <h1 className="text-lg md:text-2xl font-bold text-gray-900 flex items-center">
-                        <AlertTriangle className="h-5 w-5 md:h-6 md:w-6 text-amber-500 mr-2" />
-                        Auditoria Logística
-                    </h1>
-                    <p className="mt-0.5 text-xs md:text-sm text-gray-500">
-                        Monitoramento contábil e reversão de viagens finalizadas.
-                    </p>
+                    <h1 className="text-lg font-bold text-gray-900">Auditoria Logística</h1>
+                    <p className="text-xs text-gray-500">Monitoramento contábil e reversão de viagens finalizadas.</p>
                 </div>
             </div>
 
             {/* Filtros */}
-            <div className="bg-white p-3 md:p-4 rounded-t-lg shadow-sm border-b space-y-3">
+            <div className="bg-white p-3 md:p-4 rounded-t-xl shadow-sm border border-gray-200 border-b-0 space-y-3">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
                     <div>
                         <label className="block text-[10px] uppercase font-semibold text-gray-500 mb-1">Data</label>
@@ -260,7 +258,7 @@ const AuditoriaEntregas = () => {
             </div>
 
             {/* Desktop: Tabela */}
-            <div className="hidden md:block bg-white shadow rounded-b-lg">
+            <div className="hidden md:block bg-white shadow-sm rounded-b-xl border border-gray-200 border-t-0">
                 <table className="w-full table-fixed divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
@@ -274,9 +272,19 @@ const AuditoriaEntregas = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200 text-sm">
                         {loading ? (
-                            <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">Varrendo histórico logístico...</td></tr>
+                            <tr><td colSpan="6" className="py-10">
+                                <div className="flex items-center justify-center gap-2 text-gray-500">
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-sky-600"></div>
+                                    <span className="text-sm">Varrendo histórico logístico…</span>
+                                </div>
+                            </td></tr>
                         ) : entregas.length === 0 ? (
-                            <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">Nenhuma viagem finalizada encontrada.</td></tr>
+                            <tr><td colSpan="6" className="py-10">
+                                <div className="flex flex-col items-center gap-2 text-gray-400">
+                                    <Truck className="h-10 w-10 text-gray-200" />
+                                    <span className="text-sm">Nenhuma viagem finalizada encontrada.</span>
+                                </div>
+                            </td></tr>
                         ) : entregas.map((entrega) => (
                             <tr key={entrega.id} className={entrega.divergenciaPagamento ? "bg-amber-50" : "hover:bg-gray-50"}>
                                 <td className="px-4 py-4 text-gray-500 text-xs">
@@ -356,9 +364,15 @@ const AuditoriaEntregas = () => {
             {/* Mobile: Cards */}
             <div className="md:hidden space-y-2 mt-2">
                 {loading ? (
-                    <div className="text-center py-8 text-gray-500">Varrendo histórico...</div>
+                    <div className="flex items-center justify-center gap-2 py-10 text-gray-500">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-sky-600"></div>
+                        <span className="text-sm">Varrendo histórico…</span>
+                    </div>
                 ) : entregas.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">Nenhuma viagem encontrada.</div>
+                    <div className="flex flex-col items-center gap-2 py-10 text-gray-400">
+                        <Truck className="h-10 w-10 text-gray-200" />
+                        <span className="text-sm">Nenhuma viagem encontrada.</span>
+                    </div>
                 ) : entregas.map(entrega => (
                     <div key={entrega.id} className={`bg-white rounded-xl border shadow-sm p-3 ${entrega.divergenciaPagamento ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200'}`}>
                         <div className="flex items-center justify-between mb-1.5">
@@ -417,16 +431,16 @@ const AuditoriaEntregas = () => {
 
         {/* Modal Editar Pagamento */}
         {editandoEntrega && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-                    <div className="flex items-center justify-between px-5 py-4 border-b">
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                         <div>
-                            <h2 className="text-base font-bold text-gray-900">Editar Pagamentos</h2>
+                            <h2 className="text-sm font-bold text-gray-900">Editar Pagamentos</h2>
                             <p className="text-xs text-gray-500 mt-0.5">
                                 {editandoEntrega.cliente?.NomeFantasia || editandoEntrega.cliente?.Nome} — Ped CA: {editandoEntrega.numero}
                             </p>
                         </div>
-                        <button onClick={() => setEditandoEntrega(null)} className="text-gray-400 hover:text-gray-600">
+                        <button onClick={() => setEditandoEntrega(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
                             <X className="h-5 w-5" />
                         </button>
                     </div>

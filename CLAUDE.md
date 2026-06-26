@@ -34,6 +34,167 @@ A automação do BotConversa ("catch" webhook, painel **Automação → AppHardt
 
 ---
 
+## Padrão Visual do Sistema (Design System)
+
+> Referência visual completa: `design-system.html` na raiz do projeto. Sempre seguir este padrão ao criar ou alterar telas.
+
+### Tokens Principais
+
+| Token | Valor |
+|---|---|
+| Cor primária | `#005fcc` (classe `primary`) |
+| Background geral | `#f3f4f6` (classe `secondary`) |
+| Surface (cards) | `#ffffff` |
+| Texto principal | `#1f2937` (gray-900) |
+| Fonte | SF Pro Text, -apple-system, Roboto, sans-serif |
+
+### Estrutura de Card (padrão de toda seção de conteúdo)
+```jsx
+<div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+  <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
+    <Icon className="h-4 w-4 text-blue-600" />
+    <span className="text-xs font-bold uppercase tracking-widest text-gray-600">TÍTULO DA SEÇÃO</span>
+  </div>
+  <div className="p-5">{children}</div>
+</div>
+```
+
+### Botões
+- **Primário:** `px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-sm`
+- **Secundário:** `px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm`
+- **Perigo:** `px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md font-semibold text-sm`
+- **Ícone sutil:** `p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100`
+
+### Badges de Status
+Sempre `px-2 py-1 text-xs font-semibold rounded-full` com as cores:
+- Verde (`bg-green-100 text-green-800`): Ativo, Pago, Aprovado
+- Azul (`bg-blue-100 text-blue-800`): Aberto, Em Andamento
+- Cinza (`bg-gray-100 text-gray-700`): Pendente, Sem Estoque
+- Amarelo (`bg-yellow-100 text-yellow-800`): Parcial, Baixo Estoque
+- Âmbar (`bg-amber-100 text-amber-700`): Atenção, Faturamento
+- Vermelho (`bg-red-100 text-red-700`): Cancelado, Vencido, Inativo
+- Roxo (`bg-purple-100 text-purple-700`): Especial
+
+### Tabelas
+```jsx
+<table className="min-w-full divide-y divide-gray-200">
+  <thead className="bg-gray-50">
+    <tr><th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Col</th></tr>
+  </thead>
+  <tbody className="bg-white divide-y divide-gray-200 text-sm">
+    <tr className="hover:bg-gray-50"><td className="px-5 py-3 text-gray-900">dado</td></tr>
+  </tbody>
+</table>
+```
+
+### Formulários — inputs
+```jsx
+<input className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+```
+
+### Ícones de Módulo (topbar)
+Sempre: `bg-[cor]-100 p-2 rounded-lg` + ícone `h-5 w-5 text-[cor]-600`. Cada módulo tem sua cor:
+- Pedidos: blue | Clientes: green | Produtos: purple | Financeiro: amber
+- Expedição: sky | Dashboard: red | Rota: orange | PCP: teal
+
+### Regras de Raio de Borda
+- Inputs/botões: `rounded` (4px) ou `rounded-md` (6px)
+- Cards simples: `rounded-lg` (8px)
+- Cards com header: `rounded-xl` (12px)
+- Modais/painéis grandes: `rounded-2xl` (16px)
+- Badges: `rounded-full`
+
+### Barras de Progresso (metas) — cor por %
+- 0–50%: `bg-red-500` | 50–80%: `bg-blue-500` | 80–99%: `bg-yellow-400` | 100%+: `bg-green-500`
+
+### Tipografia
+- Título de página: `text-2xl font-bold text-gray-900` (mobile: `text-lg`)
+- Cabeçalho de seção: `text-xs font-bold uppercase tracking-widest text-gray-600`
+- Label de campo: `text-sm font-medium text-gray-700`
+- Texto corrido: `text-sm text-gray-600`
+- Cabeçalho de tabela: `text-xs font-semibold text-gray-500 uppercase tracking-wide`
+
+### OBRIGATÓRIO ao criar ou editar qualquer tela
+
+**Ao criar uma tela nova ou alterar uma existente, SEMPRE:**
+1. Usar os tokens e padrões acima (cards com `rounded-xl border border-gray-200 shadow-sm`, botões com as classes definidas, badges com as cores de status corretas, etc.)
+2. Garantir que a tela funciona no mobile (ver seção "Responsividade Mobile" abaixo)
+3. Não inventar estilos novos — reutilizar os padrões do design system
+
+---
+
+## Responsividade Mobile — OBRIGATÓRIO em toda tela
+
+O app é acessado no celular por vendedores e no iPad pela equipe interna. **Toda tela deve funcionar bem em mobile (≥ 320px)**. Seguir estas regras sem exceção:
+
+### Estrutura geral mobile-first
+- Começar sempre pelo layout mobile (sem prefixo) e adaptar para desktop com `md:` e `lg:`
+- Nunca deixar scroll horizontal — testar com `max-w-full overflow-x-hidden` no container raiz da página
+- Padding de página: `p-3 md:p-6` (compacto no mobile, espaçoso no desktop)
+
+### Listas e grids
+- **Tabelas:** em mobile exibir como cards (`block md:hidden` para a versão card, `hidden md:block` para a tabela). Estrutura de card mobile para linha de tabela:
+```jsx
+{/* Mobile: cards */}
+<div className="md:hidden space-y-3 p-3">
+  {itens.map(item => (
+    <div key={item.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-semibold text-gray-900">{item.titulo}</span>
+        <BadgeStatus status={item.status} />
+      </div>
+      <div className="text-sm text-gray-500">{item.detalhe}</div>
+    </div>
+  ))}
+</div>
+{/* Desktop: tabela */}
+<div className="hidden md:block overflow-x-auto">
+  <table className="min-w-full divide-y divide-gray-200">...</table>
+</div>
+```
+- **Grids de KPI:** `grid-cols-2 md:grid-cols-4` — nunca `grid-cols-4` sem prefixo `md:`
+- **Formulários:** `grid-cols-1 md:grid-cols-2` com `gap-4`
+
+### Topbar de página
+```jsx
+{/* Mobile: título + botão empilhados ou compactos */}
+<div className="flex items-center justify-between p-3 md:p-6 bg-white border-b border-gray-200">
+  <div className="flex items-center gap-2">
+    <div className="bg-blue-100 p-1.5 md:p-2 rounded-lg">
+      <Icon className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
+    </div>
+    <h1 className="text-base md:text-2xl font-bold text-gray-900">Título</h1>
+  </div>
+  <button className="px-3 py-1.5 md:px-4 md:py-2 bg-primary text-white rounded-md text-xs md:text-sm font-semibold">
+    Ação
+  </button>
+</div>
+```
+
+### Filtros
+- Em mobile: empilhar verticalmente (`flex flex-col gap-2`) ou usar scroll horizontal (`flex gap-2 overflow-x-auto hide-scrollbar`)
+- Inputs de filtro: `w-full` no mobile, largura fixa no desktop (`md:w-48`)
+
+### Botões de ação em formulários
+- Barra flutuante: `fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3 md:static md:border-0 md:bg-transparent md:p-0`
+
+### Textos e truncamento
+- Títulos longos: `truncate` ou `line-clamp-1` para não quebrar layout
+- Evitar `whitespace-nowrap` em colunas que podem ter texto variável
+
+### Toque (tap targets)
+- Botões e links clicáveis: mínimo `44px` de altura em mobile (`min-h-[44px]` ou `py-3`)
+- Ícones clicáveis: sempre com padding ao redor (`p-2` mínimo)
+
+### Checklist antes de considerar uma tela pronta
+- [ ] Funciona em 375px de largura (iPhone SE) sem scroll horizontal?
+- [ ] Tabelas viram cards no mobile?
+- [ ] Grids não ficam com mais de 2 colunas no mobile?
+- [ ] Botões e campos têm tamanho confortável para toque?
+- [ ] Textos não saem cortados ou sobrepostos?
+
+---
+
 ## Regras de CSS e Animações
 
 ### NÃO animar `box-shadow` em mobile

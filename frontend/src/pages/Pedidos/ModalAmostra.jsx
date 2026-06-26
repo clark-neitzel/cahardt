@@ -98,20 +98,22 @@ const ModalAmostra = ({ dados, onClose, onCriada }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[60] bg-black/50 flex items-end">
+        <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-end">
             <div className="bg-white w-full rounded-t-2xl max-h-[95vh] flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10">
-                    <div>
-                        <h2 className="font-bold text-[16px] text-gray-900 flex items-center gap-2">
-                            <Package className="h-5 w-5 text-orange-500" />
-                            Pedido de Amostra
-                        </h2>
-                        <p className="text-[12px] text-gray-500 mt-0.5 truncate max-w-xs">
-                            {nomeDestinatario || 'Sem destinatário'}
-                        </p>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-2xl">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-orange-100 p-1.5 rounded-lg">
+                            <Package className="h-4 w-4 text-orange-600" />
+                        </div>
+                        <div>
+                            <h2 className="font-bold text-sm text-gray-900">Pedido de Amostra</h2>
+                            <p className="text-xs text-gray-500 truncate max-w-[220px]">
+                                {nomeDestinatario || 'Sem destinatário'}
+                            </p>
+                        </div>
                     </div>
-                    <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600">
+                    <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
@@ -264,14 +266,14 @@ const ModalAmostra = ({ dados, onClose, onCriada }) => {
                 </div>
 
                 {/* Footer */}
-                <div className="px-4 py-3 border-t border-gray-100 bg-white sticky bottom-0">
+                <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 sticky bottom-0">
                     <button
                         onClick={handleConfirmar}
                         disabled={saving || itensArray.length === 0}
-                        className="w-full bg-orange-500 text-white font-bold py-3.5 rounded-xl text-[15px] flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
                     >
                         {saving ? <Loader className="h-5 w-5 animate-spin" /> : <Package className="h-5 w-5" />}
-                        {saving ? 'Criando Amostra...' : `Confirmar Amostra (${itensArray.length} ${itensArray.length === 1 ? 'item' : 'itens'})`}
+                        {saving ? 'Criando Amostra…' : `Confirmar Amostra (${itensArray.length} ${itensArray.length === 1 ? 'item' : 'itens'})`}
                     </button>
                 </div>
             </div>

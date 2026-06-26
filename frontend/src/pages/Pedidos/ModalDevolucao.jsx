@@ -139,22 +139,27 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
             <div
-                className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto shadow-xl"
+                className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="sticky top-0 bg-white border-b px-5 py-4 flex items-center justify-between z-10 rounded-t-2xl">
-                    <div>
-                        <h2 className="text-lg font-bold text-gray-900">Registrar Devolução</h2>
-                        <p className="text-xs text-gray-500">
-                            {entrega.numero ? `Pedido #${entrega.numero}` : entrega.pedidoId.slice(0, 8)} · {entrega.clienteNome}
-                            {isCA && <span className="ml-1 text-blue-600 font-medium">(Conta Azul)</span>}
-                        </p>
+                <div className="sticky top-0 bg-white border-b border-gray-200 px-5 py-3 flex items-center justify-between z-10 rounded-t-2xl">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-red-100 p-1.5 rounded-lg">
+                            <Package className="h-4 w-4 text-red-600" />
+                        </div>
+                        <div>
+                            <h2 className="text-sm font-bold text-gray-900">Registrar Devolução</h2>
+                            <p className="text-xs text-gray-500">
+                                {entrega.numero ? `Pedido #${entrega.numero}` : entrega.pedidoId.slice(0, 8)} · {entrega.clienteNome}
+                                {isCA && <span className="ml-1 text-blue-600 font-medium">(Conta Azul)</span>}
+                            </p>
+                        </div>
                     </div>
-                    <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full">
-                        <X className="h-5 w-5" />
+                    <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+                        <X className="h-5 w-5 text-gray-400" />
                     </button>
                 </div>
 

@@ -6,7 +6,7 @@ import configService from '../../services/configService';
 import { API_URL } from '../../services/api';
 import StatusBadge from '../../components/StatusBadge';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, X, ChevronLeft, ChevronRight, Package } from 'lucide-react';
 
 /* ------- helpers ------- */
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
@@ -122,16 +122,27 @@ const Catalogo = () => {
     const handleSearch = (e) => setSearch(e.target.value);
 
     return (
-        <div className="container mx-auto px-4 py-6">
+        <div className="px-3 py-4 md:px-6 md:py-6">
+            {/* Topbar */}
+            <div className="flex items-center gap-3 mb-4">
+                <div className="bg-purple-100 p-2 rounded-lg">
+                    <Package className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                    <h1 className="text-lg font-bold text-gray-900 leading-tight">Catálogo</h1>
+                    {!loading && <p className="text-xs text-gray-500">{produtos.length} produtos</p>}
+                </div>
+            </div>
+
             {/* Busca */}
-            <div className="mb-4 relative">
+            <div className="mb-3 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-gray-400" />
+                    <Search className="h-4 w-4 text-gray-400" />
                 </div>
                 <input
                     type="text"
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm text-gray-900"
-                    placeholder="Buscar produto por nome ou código..."
+                    className="block w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-xl bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm text-gray-900"
+                    placeholder="Buscar por nome ou código…"
                     value={search}
                     onChange={handleSearch}
                 />
@@ -139,7 +150,7 @@ const Catalogo = () => {
 
             {/* Pílulas de categoria */}
             {categorias.length > 0 && (
-                <div className="mb-5 flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                <div className="mb-5 flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
                     <Pill active={filtro === 'todos'} onClick={() => setFiltro('todos')}>Todos</Pill>
                     {categorias.map(c => (
                         <Pill key={c.id} cor={c.cor} active={filtro === c.id} onClick={() => setFiltro(c.id)}>
@@ -150,20 +161,29 @@ const Catalogo = () => {
             )}
 
             {loading ? (
-                <div className="flex justify-center p-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div className="flex items-center justify-center py-16 gap-2">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                    <span className="text-sm text-gray-500">Carregando produtos…</span>
                 </div>
             ) : secoes.length === 0 ? (
-                <div className="text-center py-10 text-gray-500">Nenhum produto encontrado.</div>
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                    <Package className="h-12 w-12 text-gray-200" />
+                    <p className="text-sm text-gray-400">Nenhum produto encontrado.</p>
+                    {search && (
+                        <button onClick={() => setSearch('')} className="text-xs text-primary hover:underline">
+                            Limpar busca
+                        </button>
+                    )}
+                </div>
             ) : (
                 secoes.map(sec => (
-                    <section key={sec.id} className="mb-8">
+                    <section key={sec.id} className="mb-7">
                         <div className="flex items-center gap-2 mb-3">
-                            <span className="inline-block w-1.5 h-5 rounded-full" style={{ backgroundColor: sec.cor || '#9ca3af' }} />
-                            <h2 className="text-base font-semibold text-gray-800">{sec.nome}</h2>
-                            <span className="text-xs text-gray-400">({sec.produtos.length})</span>
+                            <span className="inline-block w-1.5 h-5 rounded-full flex-shrink-0" style={{ backgroundColor: sec.cor || '#9ca3af' }} />
+                            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">{sec.nome}</h2>
+                            <span className="text-xs text-gray-400 font-medium">({sec.produtos.length})</span>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                             {sec.produtos.map(p => (
                                 <CatalogoCard key={p.id} produto={p} onAbrir={() => setFichaId(p.id)} />
                             ))}
@@ -179,7 +199,7 @@ const Catalogo = () => {
 
 /* ------- Pílula de categoria ------- */
 function Pill({ active, cor, onClick, children }) {
-    const base = 'px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap border transition-colors shrink-0';
+    const base = 'px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-colors shrink-0';
     if (active) {
         return (
             <button onClick={onClick} className={base + ' text-white'}
@@ -205,12 +225,12 @@ function CatalogoCard({ produto, onAbrir }) {
             type="button"
             onClick={onAbrir}
             title="Ver detalhes do produto"
-            className="group text-left bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col"
+            className="group text-left bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md active:scale-[0.98] transition-all flex flex-col"
         >
             <div className="relative aspect-[4/3] bg-gray-100" style={!img ? { background: tileGradient(produto.codigo || produto.nome) } : undefined}>
                 {img
                     ? <img src={img} alt={produto.nome} loading="lazy" className="w-full h-full object-cover" />
-                    : <span className="absolute inset-0 flex items-center justify-center text-xs text-white/90 px-2 text-center">{produto.nome}</span>}
+                    : <span className="absolute inset-0 flex items-center justify-center text-xs text-white/90 px-2 text-center leading-snug font-medium">{produto.nome}</span>}
                 <div className="absolute top-2 right-2">
                     <StatusBadge ativo={produto.ativo} estoque={Number(produto.estoqueDisponivel)} />
                 </div>
@@ -219,11 +239,11 @@ function CatalogoCard({ produto, onAbrir }) {
                 </span>
             </div>
             <div className="p-3 flex flex-col flex-1">
-                <p className="text-xs text-gray-400">{produto.codigo}</p>
-                <h3 className="text-sm font-medium text-gray-900 line-clamp-2 leading-snug">{produto.nome}</h3>
-                <div className="mt-auto pt-2 flex items-end justify-between">
-                    <span className="text-lg font-bold text-primary">{money(produto.valorVenda)}</span>
-                    <span className="text-xs text-gray-500">Disp: {Number(produto.estoqueDisponivel)} {produto.unidade}</span>
+                <p className="text-[10px] text-gray-400 font-mono">{produto.codigo}</p>
+                <h3 className="text-sm font-medium text-gray-900 line-clamp-2 leading-snug mt-0.5">{produto.nome}</h3>
+                <div className="mt-auto pt-2 flex items-end justify-between gap-1">
+                    <span className="text-base font-bold text-primary">{money(produto.valorVenda)}</span>
+                    <span className="text-[10px] text-gray-400 text-right">{Number(produto.estoqueDisponivel)} {produto.unidade}</span>
                 </div>
             </div>
         </button>
@@ -279,8 +299,8 @@ function FichaModal({ produtoId, onClose }) {
     const indentCls = (n) => n === 1 ? 'pl-6' : n === 2 ? 'pl-10' : '';
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center overflow-y-auto p-3 sm:p-6" onClick={onClose}>
-            <div className="bg-white rounded-2xl w-full max-w-2xl my-4 shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-start justify-center overflow-y-auto p-3 sm:p-6" onClick={onClose}>
+            <div className="bg-white rounded-2xl w-full max-w-2xl my-4 shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
                 {/* Hero / carrossel */}
                 <div className="relative aspect-[16/10] bg-gray-100"
                     style={!imgs.length ? { background: tileGradient(ficha?.codigo || ficha?.nome) } : undefined}>
@@ -314,9 +334,12 @@ function FichaModal({ produtoId, onClose }) {
 
                 <div className="p-5 max-h-[calc(100vh-16rem)] overflow-y-auto">
                     {loading ? (
-                        <p className="text-center text-gray-500 py-8">Carregando informações…</p>
+                        <div className="flex items-center justify-center gap-2 py-10">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                            <span className="text-sm text-gray-500">Carregando…</span>
+                        </div>
                     ) : !ficha ? (
-                        <p className="text-center text-gray-500 py-8">Não foi possível carregar a ficha do produto.</p>
+                        <p className="text-center text-sm text-gray-400 py-10">Não foi possível carregar a ficha do produto.</p>
                     ) : (
                         <>
                             {/* Cabeçalho */}
@@ -439,8 +462,8 @@ function FichaModal({ produtoId, onClose }) {
                     )}
                 </div>
 
-                <div className="p-4 border-t border-gray-200">
-                    <button onClick={onClose} className="w-full py-2.5 rounded-lg bg-primary text-white font-medium hover:opacity-90 transition-opacity">
+                <div className="px-5 py-3 border-t border-gray-100 bg-gray-50">
+                    <button onClick={onClose} className="w-full py-2.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
                         Fechar
                     </button>
                 </div>

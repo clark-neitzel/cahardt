@@ -142,12 +142,10 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
         if (pedidosPaginados.length === 0) pedidosPaginados.push([]); // Garante Pelo menos 1 página vazia
 
         const arrConsolidado = Object.entries(consolidado).sort((a, b) => a[0].localeCompare(b[0]));
-        const produtosPaginados = chunkArray(arrConsolidado, 55);
-        if (produtosPaginados.length === 0) produtosPaginados.push([]);
-
+        // Separação e Conferência sempre em uma única folha (sem paginação)
+        const produtosPaginados = [arrConsolidado.length > 0 ? arrConsolidado : []];
         // Rastreabilidade: produto -> qtde -> pedidos vinculados
-        const rastreabilidadePaginada = chunkArray(arrConsolidado, 55);
-        if (rastreabilidadePaginada.length === 0) rastreabilidadePaginada.push([]);
+        const rastreabilidadePaginada = [arrConsolidado.length > 0 ? arrConsolidado : []];
 
         const amostrasEmbarque = embarque?.amostras || [];
         const hasAmostras = amostrasEmbarque.length > 0;
@@ -180,7 +178,10 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             .print-container, .print-container * { font-family: 'Courier Prime', 'Courier New', Courier, monospace !important; }
                             .print-container table { width: 100%; border-collapse: collapse; margin-top: 5px; }
                             .print-container th, .print-container td { border: 1px solid #000; padding: 2px 4px; text-align: left; font-size: 8px; line-height: 1.1; color: #000; }
-                            .print-container .page-produtos th, .print-container .page-produtos td { font-size: 10px; line-height: 1.2; padding: 3px 5px; }
+                            .print-container .page-produtos th { font-size: 13px; line-height: 1.4; padding: 5px 7px; font-weight: bold; white-space: nowrap; }
+                            .print-container .page-produtos td { font-size: 13px; line-height: 1.4; padding: 5px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                            .print-container .page-produtos td.wrap-cell { white-space: normal; word-break: break-word; font-size: 11px; }
+                            .print-container .page-produtos td.qty-cell { font-size: 28px; font-weight: 900; text-align: center; vertical-align: middle; letter-spacing: -0.5px; }
                             .print-container th { background-color: #f3f4f6; color: #000; font-weight: bold; }
                             .print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; color: #000; text-transform: uppercase; }
                             .print-container h2 { font-size: 11px; font-weight: bold; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px; color: #000; }
@@ -193,7 +194,10 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                 * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #000 !important; }
                                 .print-container { transform: scale(1) !important; margin: 0 !important; gap: 0 !important; display: block !important; font-family: 'Courier Prime', 'Courier New', Courier, monospace !important; }
                                 .print-container th, .print-container td { font-size: 8px !important; padding: 2px 3px !important; line-height: 1.1 !important; color: #000 !important; border: 1px solid #000 !important; font-family: 'Courier Prime', 'Courier New', Courier, monospace !important; }
-                                .print-container .page-produtos th, .print-container .page-produtos td { font-size: 10px !important; padding: 3px 5px !important; line-height: 1.2 !important; }
+                                .print-container .page-produtos th { font-size: 13px !important; padding: 5px 7px !important; line-height: 1.4 !important; white-space: nowrap !important; }
+                                .print-container .page-produtos td { font-size: 13px !important; padding: 5px 7px !important; line-height: 1.4 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+                                .print-container .page-produtos td.wrap-cell { white-space: normal !important; word-break: break-word !important; font-size: 11px !important; }
+                                .print-container .page-produtos td.qty-cell { font-size: 28px !important; font-weight: 900 !important; text-align: center !important; }
                                 .print-container td.wrap-text { white-space: normal !important; word-wrap: break-word !important; }
                                 .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: 0 !important; height: auto !important; padding: 0 5mm !important; page-break-after: always; break-after: always; }
                                 .print-page:last-child { page-break-after: auto !important; break-after: auto !important; }
@@ -321,12 +325,12 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             const thisPage = globalPageCount++;
                             return (
                                 <React.Fragment key={`separacao-${idx}`}>
-                                    <div className="print-page page-produtos bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '0mm 6mm' }}>
+                                    <div className="print-page page-produtos bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ width: '210mm', padding: '0mm 6mm' }}>
                                         <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">
                                             Página {thisPage} de {totalPages}
                                         </div>
 
-                                        <h1 className="pt-4">Separação Produtos - Carga #{embarque?.numero || '000'} {produtosPaginados.length > 1 ? `(Pt. ${idx + 1})` : ''}</h1>
+                                        <h1 className="pt-4">Separação Produtos - Carga #{embarque?.numero || '000'}</h1>
                                         <div className="text-[9px] flex justify-between border-b border-black pb-2 mb-2 text-black font-semibold">
                                             <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
                                             <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
@@ -335,18 +339,16 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                         <table>
                                             <thead>
                                                 <tr>
-                                                    <th style={{ width: '55%' }}>Produto</th>
-                                                    <th style={{ width: '10%' }}>Unidade</th>
+                                                    <th style={{ width: '68%' }}>Produto</th>
                                                     <th style={{ width: '20%', textAlign: 'center' }}>Quantidade</th>
-                                                    <th style={{ width: '15%', textAlign: 'center' }}>Conferido</th>
+                                                    <th style={{ width: '12%', textAlign: 'center' }}>Conferido</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {chunkProdutos.map(([nome, info]) => (
                                                     <tr key={nome}>
-                                                        <td className="font-bold">{nome}</td>
-                                                        <td className="text-center">{info.und}</td>
-                                                        <td className="text-center font-bold">{Number(info.qtde).toFixed(2)}</td>
+                                                        <td style={{ maxWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{nome}</td>
+                                                        <td className="qty-cell">{Number(info.qtde).toFixed(info.qtde % 1 === 0 ? 0 : 2)}</td>
                                                         <td></td>
                                                     </tr>
                                                 ))}
@@ -367,12 +369,12 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             const isLastPage = idx === rastreabilidadePaginada.length - 1;
                             return (
                                 <React.Fragment key={`rastreio-${idx}`}>
-                                    <div className="print-page page-produtos bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ minHeight: '297mm', width: '210mm', padding: '0mm 6mm', ...(isLastPage ? { pageBreakAfter: 'auto', breakAfter: 'auto' } : {}) }}>
+                                    <div className="print-page page-produtos bg-white shadow-2xl w-full text-black mx-auto relative group" style={{ width: '210mm', padding: '0mm 6mm', ...(isLastPage ? { pageBreakAfter: 'auto', breakAfter: 'auto' } : {}) }}>
                                         <div className="absolute top-2 right-2 text-[8px] text-gray-300 font-bold uppercase tracking-wider print:hidden group-hover:text-gray-400">
                                             Página {thisPage} de {totalPages}
                                         </div>
 
-                                        <h1 className="pt-4">Conferência por Produto - Carga #{embarque?.numero || '000'} {rastreabilidadePaginada.length > 1 ? `(Pt. ${idx + 1})` : ''}</h1>
+                                        <h1 className="pt-4">Conferência por Produto - Carga #{embarque?.numero || '000'}</h1>
                                         <div className="text-[9px] flex justify-between border-b border-black pb-2 mb-2 text-black font-semibold">
                                             <div><strong>Motorista:</strong> {embarque?.responsavel?.nome}</div>
                                             <div><strong>Data Base:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString() : ''}</div>
@@ -381,17 +383,17 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                         <table>
                                             <thead>
                                                 <tr>
-                                                    <th style={{ width: '40%' }}>Produto</th>
-                                                    <th style={{ width: '8%', textAlign: 'center' }}>Qtde</th>
-                                                    <th style={{ width: '52%' }}>Pedidos Vinculados</th>
+                                                    <th style={{ width: '42%' }}>Produto</th>
+                                                    <th style={{ width: '10%', textAlign: 'center' }}>Qtde</th>
+                                                    <th style={{ width: '48%' }}>Pedidos Vinculados</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {chunkRastreio.map(([nome, info]) => (
                                                     <tr key={nome}>
-                                                        <td className="font-bold">{nome}</td>
-                                                        <td className="text-center font-bold">{Number(info.qtde).toFixed(0)}</td>
-                                                        <td className="wrap-text text-[7px]">{info.pedidos.join(', ')}</td>
+                                                        <td style={{ maxWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{nome}</td>
+                                                        <td className="qty-cell">{Number(info.qtde).toFixed(0)}</td>
+                                                        <td className="wrap-cell">{info.pedidos.join(', ')}</td>
                                                     </tr>
                                                 ))}
                                                 {chunkRastreio.length === 0 && (
@@ -413,18 +415,22 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4 py-8">
-            <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
-                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 rounded-t-lg shadow-sm z-10 flex-shrink-0">
-                    <h3 className="text-lg font-bold text-gray-900 flex items-center">
-                        <Package className="h-5 w-5 mr-2 text-sky-600" />
-                        Gerenciamento da Carga #{embarque?.numero || '...'}
-                    </h3>
-                    <div className="flex space-x-2">
-                        <button onClick={() => setShowPreview(true)} disabled={!embarque} className="px-4 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 rounded-md transition-colors flex items-center font-bold text-sm shadow-sm" title="Visualizar Relatório e Imprimir">
-                            <Printer className="h-4 w-4 mr-2" /> Relatório Múltiplo / Imprimir
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 py-8">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-sky-100 p-1.5 rounded-lg">
+                            <Package className="h-4 w-4 text-sky-600" />
+                        </div>
+                        <h3 className="text-sm font-bold text-gray-900">
+                            Gerenciamento da Carga #{embarque?.numero || '…'}
+                        </h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => setShowPreview(true)} disabled={!embarque} className="flex items-center gap-2 px-3 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 rounded-xl transition-colors font-semibold text-xs shadow-sm disabled:opacity-50">
+                            <Printer className="h-3.5 w-3.5" /> Relatório / Imprimir
                         </button>
-                        <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-md">
+                        <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
                             <X className="h-5 w-5" />
                         </button>
                     </div>
@@ -432,9 +438,14 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
 
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-white">
                     {loading ? (
-                        <div className="text-center py-20 text-gray-500">Lendo escopo do caminhão...</div>
+                        <div className="flex items-center justify-center gap-2 py-20 text-gray-500">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-sky-600"></div>
+                            <span className="text-sm">Lendo escopo do caminhão…</span>
+                        </div>
                     ) : !embarque ? (
-                        <div className="text-center py-20 text-red-500">Falha ao localizar os dados.</div>
+                        <div className="flex flex-col items-center gap-2 py-20 text-red-500">
+                            <span className="text-sm font-medium">Falha ao localizar os dados.</span>
+                        </div>
                     ) : (
                         <div>
                             <div className="flex justify-between items-start mb-6 gap-4">
@@ -510,7 +521,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                 </div>
                             </div>
 
-                            <div className="border border-gray-200 rounded-md overflow-hidden">
+                            <div className="border border-gray-200 rounded-xl overflow-hidden">
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-gray-50">
                                         <tr>
@@ -582,7 +593,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                         <Package className="h-4 w-4" />
                                         Amostras na Carga ({embarque.amostras.length})
                                     </h4>
-                                    <div className="border border-orange-200 rounded-md overflow-hidden">
+                                    <div className="border border-orange-200 rounded-xl overflow-hidden">
                                         <table className="min-w-full divide-y divide-orange-100">
                                             <thead className="bg-orange-50">
                                                 <tr>
