@@ -38,40 +38,62 @@ function unidadeDe(itemPcp) {
     return itemPcp?.produto?.unidade || itemPcp?.unidade || '';
 }
 
-// Impressão via iframe oculto — funciona dentro do PWA instalado (não abre aba/janela externa).
-function imprimirViaIframe(html) {
-    const anterior = document.getElementById('iframe-impressao-receita');
-    if (anterior) anterior.remove();
+// Impressão dentro do PWA — funciona no iPad/iOS (onde imprimir um iframe sai em branco/só URL).
+// Em vez de abrir aba ou iframe, montamos o conteúdo na própria página e usamos @media print
+// para esconder o app e mostrar só a folha. Depois limpamos tudo.
+function imprimirConteudo(estilos, corpoHtml) {
+    const ID_AREA = 'area-impressao';
+    const ID_ESTILO = 'estilo-impressao';
+    document.getElementById(ID_AREA)?.remove();
+    document.getElementById(ID_ESTILO)?.remove();
 
-    const iframe = document.createElement('iframe');
-    iframe.id = 'iframe-impressao-receita';
-    iframe.setAttribute('aria-hidden', 'true');
-    iframe.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;';
-    document.body.appendChild(iframe);
+    // @page precisa ficar no nível raiz (iOS não lida bem com @page dentro de @media)
+    const estilosSemPage = (estilos || '').replace(/@page\s*{[^}]*}/g, '');
 
-    const limpar = () => { try { iframe.remove(); } catch { /* ignora */ } };
-
-    const imprimir = () => {
-        const win = iframe.contentWindow;
-        if (!win) { limpar(); return; }
-        try {
-            win.focus();
-            win.onafterprint = limpar;
-            win.print();
-            // fallback caso onafterprint não dispare (alguns navegadores)
-            setTimeout(limpar, 60000);
-        } catch {
-            limpar();
+    const style = document.createElement('style');
+    style.id = ID_ESTILO;
+    style.textContent = `
+        @page { size: A4 portrait; margin: 12mm; }
+        #${ID_AREA} { display: none; }
+        @media print {
+            html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+            body > *:not(#${ID_AREA}) { display: none !important; }
+            #${ID_AREA} { display: block !important; }
+            #${ID_AREA} * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            ${estilosSemPage}
         }
+    `;
+    document.head.appendChild(style);
+
+    const area = document.createElement('div');
+    area.id = ID_AREA;
+    area.innerHTML = corpoHtml;
+    document.body.appendChild(area);
+
+    const limpar = () => {
+        area.remove();
+        style.remove();
+        window.removeEventListener('afterprint', limpar);
     };
+    window.addEventListener('afterprint', limpar);
+    setTimeout(limpar, 60000); // fallback se afterprint não disparar
 
-    iframe.onload = () => setTimeout(imprimir, 350);
+    // IMPORTANTE (iOS/iPad): chamar print() AGORA, dentro do gesto do usuário (sem setTimeout),
+    // senão o Safari bloqueia com "site proibido de imprimir automaticamente".
+    void area.offsetHeight; // força o layout antes de imprimir
+    try { window.print(); } catch { limpar(); }
+}
 
-    const doc = iframe.contentWindow?.document;
-    if (!doc) { limpar(); return; }
-    doc.open();
-    doc.write(html);
-    doc.close();
+// Extrai estilos + corpo de um HTML completo e imprime na própria página (sem aba/iframe).
+function imprimirHtml(htmlCompleto) {
+    try {
+        const doc = new DOMParser().parseFromString(htmlCompleto, 'text/html');
+        const estilos = [...doc.querySelectorAll('style')].map(s => s.textContent).join('\n');
+        doc.querySelectorAll('script').forEach(s => s.remove()); // scripts não rodam via innerHTML
+        imprimirConteudo(estilos, doc.body.innerHTML);
+    } catch {
+        imprimirConteudo('', htmlCompleto);
+    }
 }
 
 function escaparHtml(str) {
@@ -390,12 +412,12 @@ export default function ReceitaDetalhe() {
 
     const imprimirReceita = () => {
         if (!receita) return;
-        imprimirViaIframe(montarHtmlImpressao(receita));
+        imprimirHtml(montarHtmlImpressao(receita));
     };
 
     const imprimirComCustos = () => {
         if (!receita) return;
-        imprimirViaIframe(montarHtmlImpressaoComCustos(receita, custo));
+        imprimirHtml(montarHtmlImpressaoComCustos(receita, custo));
     };
 
     if (loading) return <div className="text-center py-12 text-gray-400">Carregando...</div>;
