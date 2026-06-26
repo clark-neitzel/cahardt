@@ -181,7 +181,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             .print-container .page-produtos th { font-size: 13px; line-height: 1.4; padding: 5px 7px; font-weight: bold; white-space: nowrap; }
                             .print-container .page-produtos td { font-size: 13px; line-height: 1.4; padding: 5px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                             .print-container .page-produtos td.wrap-cell { white-space: normal; word-break: break-word; font-size: 11px; }
-                            .print-container .page-produtos td.qty-cell { font-size: 28px; font-weight: 900; text-align: center; vertical-align: middle; letter-spacing: -0.5px; }
+                            .print-container .page-produtos td.qty-cell { font-size: 22px; font-weight: 900; text-align: center; vertical-align: middle; letter-spacing: -0.5px; }
                             .print-container th { background-color: #f3f4f6; color: #000; font-weight: bold; }
                             .print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; color: #000; text-transform: uppercase; }
                             .print-container h2 { font-size: 11px; font-weight: bold; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px; color: #000; }
@@ -197,7 +197,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                 .print-container .page-produtos th { font-size: 13px !important; padding: 5px 7px !important; line-height: 1.4 !important; white-space: nowrap !important; }
                                 .print-container .page-produtos td { font-size: 13px !important; padding: 5px 7px !important; line-height: 1.4 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
                                 .print-container .page-produtos td.wrap-cell { white-space: normal !important; word-break: break-word !important; font-size: 11px !important; }
-                                .print-container .page-produtos td.qty-cell { font-size: 28px !important; font-weight: 900 !important; text-align: center !important; }
+                                .print-container .page-produtos td.qty-cell { font-size: 22px !important; font-weight: 900 !important; text-align: center !important; }
                                 .print-container td.wrap-text { white-space: normal !important; word-wrap: break-word !important; }
                                 .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: 0 !important; height: auto !important; padding: 0 5mm !important; page-break-after: always; break-after: always; }
                                 .print-page:last-child { page-break-after: auto !important; break-after: auto !important; }
