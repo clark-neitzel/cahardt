@@ -16,21 +16,24 @@ FROM nginx:alpine
 
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
-# Configuração opcional para SPA (React Router)
+# Configuração para SPA (React Router) + cache correto.
+# - /assets/ (arquivos com hash no nome): cache longo e imutável.
+# - index.html e demais: no-cache (sempre revalida via ETag), senão o PWA/iOS
+#   fica preso numa versão antiga e nunca pega o JS novo após um deploy.
 RUN echo 'server { \
     listen 80; \
     include /etc/nginx/mime.types; \
+    location /assets/ { \
+    root /usr/share/nginx/html; \
+    expires 1y; \
+    add_header Cache-Control "public, immutable"; \
+    access_log off; \
+    } \
     location / { \
     root /usr/share/nginx/html; \
     index index.html index.htm; \
     try_files $uri $uri/ /index.html; \
-    } \
-    # Serve static assets efficiently with correct MIME types
-    location /assets/ { \
-    root /usr/share/nginx/html; \
-    expires 1y; \
-    add_header Cache-Control "public"; \
-    access_log off; \
+    add_header Cache-Control "no-cache"; \
     } \
     }' > /etc/nginx/conf.d/default.conf
 

@@ -143,6 +143,8 @@ Isso se aplica a qualquer campo que já existia em produção — mesmo que não
 
 O app é PWA. Sempre que fizer deploy de mudanças visíveis, incluir o ícone de refresh na UI e o hook `useVersionCheck` para que o usuário seja notificado automaticamente.
 
+**Cache do `index.html` (NÃO cachear):** o frontend é servido por nginx (`frontend/Dockerfile`). O `index.html` deve sair com `Cache-Control: no-cache` (sempre revalida via ETag); só `/assets/` (arquivos com hash no nome) podem ter cache longo/imutável. Se o `index.html` for cacheado, o app instalado no iOS (atalho/standalone, **sem service worker** — só `manifest.json`) fica preso numa versão antiga e **nunca pega o JS novo** após o deploy (sintoma: comportamento antigo persiste mesmo após publicar). Se um usuário ficar preso numa versão velha, orientar a **remover e re-adicionar o atalho** na tela inicial (uma vez) para limpar o cache heurístico.
+
 ---
 
 ## Regras de Impressão (PWA / iPad) — imprimir NA PRÓPRIA PÁGINA, nunca `window.open` nem iframe
