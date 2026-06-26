@@ -769,10 +769,10 @@ const GerenciarProduto = () => {
 
                     {/* ABA DADOS */}
                     {abaAtiva === 'dados' && (
-                        <div className="h-full grid grid-cols-4 gap-3">
+                        <div className="grid grid-cols-4 gap-3 items-start">
                             {/* Coluna 1: Imagens + Estoque */}
-                            <div className="flex flex-col gap-3 min-h-0">
-                                <div className="bg-white rounded-lg border flex flex-col overflow-hidden flex-1 min-h-0">
+                            <div className="flex flex-col gap-3">
+                                <div className="bg-white rounded-lg border flex flex-col overflow-hidden">
                                     <div className="flex justify-between items-center px-3 py-1.5 bg-gray-50 border-b flex-shrink-0">
                                         <span className="text-xs font-semibold text-gray-600">Imagens</span>
                                         <button
@@ -798,7 +798,7 @@ const GerenciarProduto = () => {
                                         )}
                                     </div>
                                     {imagensLocal.length > 0 && (
-                                        <div className="p-2 border-t flex flex-wrap gap-1 overflow-y-auto">
+                                        <div className="p-2 border-t flex flex-wrap gap-1 max-h-24 overflow-y-auto">
                                             {imagensLocal.map((img, idx) => (
                                                 <div key={img.id}
                                                     className={`relative group h-10 w-10 rounded overflow-hidden border-2 cursor-pointer flex-shrink-0 ${idx === imagemAtual ? 'border-primary' : 'border-gray-200'}`}
@@ -829,7 +829,7 @@ const GerenciarProduto = () => {
                                 </div>
 
                                 {/* Estoque */}
-                                <div className="bg-white rounded-lg border p-3 grid grid-cols-2 gap-2 flex-shrink-0">
+                                <div className="bg-white rounded-lg border p-3 grid grid-cols-2 gap-2">
                                     <div className="bg-green-50 rounded p-2 text-center">
                                         <div className="text-[10px] text-green-700 font-semibold uppercase">Disponível</div>
                                         <div className="text-xl font-bold text-green-800">{produto.estoqueDisponivel}</div>
@@ -842,12 +842,12 @@ const GerenciarProduto = () => {
                             </div>
 
                             {/* Coluna 2: Dados read-only (Conta Azul) */}
-                            <div className="bg-white rounded-lg border overflow-hidden flex flex-col min-h-0">
-                                <div className="px-3 py-1.5 bg-gray-50 border-b flex-shrink-0">
+                            <div className="bg-white rounded-lg border overflow-hidden flex flex-col">
+                                <div className="px-3 py-1.5 bg-gray-50 border-b">
                                     <span className="text-xs font-semibold text-gray-600">Dados do Produto</span>
                                     <span className="text-[10px] text-gray-400 ml-1">(Conta Azul)</span>
                                 </div>
-                                <div className="p-3 space-y-2.5 overflow-y-auto flex-1">
+                                <div className="p-3 space-y-2.5">
                                     <InfoField label="Nome" value={formData.nome} />
                                     <div className="grid grid-cols-2 gap-2">
                                         <InfoField label="Código" value={formData.codigo} />
@@ -877,12 +877,12 @@ const GerenciarProduto = () => {
                             </div>
 
                             {/* Colunas 3-4: Campos editáveis */}
-                            <div className="col-span-2 bg-white rounded-lg border overflow-hidden flex flex-col min-h-0">
-                                <div className="px-3 py-1.5 bg-purple-50 border-b flex items-center gap-2 flex-shrink-0">
+                            <div className="col-span-2 bg-white rounded-lg border overflow-hidden flex flex-col">
+                                <div className="px-3 py-1.5 bg-purple-50 border-b flex items-center gap-2">
                                     <Sparkles className="h-4 w-4 text-purple-600" />
                                     <span className="text-xs font-semibold text-purple-800">Inteligência Comercial (Exclusivo App)</span>
                                 </div>
-                                <div className="p-4 overflow-y-auto flex-1">
+                                <div className="p-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
