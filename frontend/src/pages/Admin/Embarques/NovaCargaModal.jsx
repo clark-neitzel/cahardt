@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, Calendar, User } from 'lucide-react';
+import { X, Save, Calendar, User, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
 
