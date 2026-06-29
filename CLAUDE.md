@@ -1,5 +1,28 @@
 # Diretrizes do Projeto CA-Hardt
 
+## REGRA INEGOCIÁVEL — Verificação antes de todo commit
+
+**Toda alteração em arquivos frontend (JSX/JS) deve passar pelo build antes do commit.**
+
+```bash
+cd frontend && npm run build
+```
+
+- Se o build **falhar** → corrigir o erro antes de commitar. Jamais subir código que não compila.
+- Se o build **passar** → commitar e fazer push normalmente.
+- **Não há exceções.** Nem para mudanças "pequenas" de CSS, ícone ou import.
+
+### Por que isso é crítico
+O app roda em produção 24h. Um import faltando (`ReferenceError: Can't find variable`) derruba toda a tela para todos os usuários — vendedores em campo, motoristas, escritório. Uma linha esquecida para toda a operação da empresa.
+
+### O que o build detecta
+- Variável/componente usado mas não importado (`Can't find variable: Truck`)
+- Import de arquivo que não existe
+- JSX mal formado
+- Erro de sintaxe JavaScript
+
+---
+
 ## Stack
 - **Frontend:** React + Vite + Tailwind CSS (PWA)
 - **Backend:** Node.js + Express + Prisma (PostgreSQL)
