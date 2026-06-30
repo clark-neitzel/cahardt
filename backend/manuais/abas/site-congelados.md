@@ -45,6 +45,8 @@ No topo há **pílulas de status com a contagem** de cada um (Todos / Aguardando
 
 Cada pedido aparece como um **card-resumo** (cliente, status, total, e uma **pílula colorida** mostrando **Entrega** (azul, ícone de caminhão) ou **Retirada** (roxo, ícone de loja) com a data, além da condição de pagamento). Pedidos fora do dia regular do cliente trazem a etiqueta **"Encaixe"** (a equipe confirma a viabilidade antes de aprovar). **Clicar no card abre o detalhe completo** (modal): a **hora em que o cliente enviou** o pedido, dados do cliente (com o **vendedor responsável** do cadastro), entrega/retirada + data, pagamento, **todos os itens** com valores, observações e os botões de ação (Vincular / Aprovar / Recusar / Excluir).
 
+**Popup de alerta (a cada 15 min):** para quem tem acesso às abas **Kit Festa** e **Congelados** (permissão `kitFesta` ou admin), enquanto houver **pedido novo do site aguardando** (Kit Festa **ou** Congelados), aparece um **popup com bip** listando os pedidos (origem, cliente, valor, há quanto tempo, encaixe). Ele **incomoda a cada 15 minutos até o pedido ser aprovado** — fechar só adia para o próximo ciclo. Os botões levam direto para **Ver Kit Festa** ou **Ver Congelados**.
+
 Status:
 - **Aguardando** — pedido de cliente com cadastro, pronto para aprovar.
 - **Sem cadastro** — visitante sem Cliente no sistema; é preciso **Vincular cliente** antes.

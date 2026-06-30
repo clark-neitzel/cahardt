@@ -810,6 +810,22 @@ const congeladosService = {
         });
     },
 
+    // Pedidos NOVOS do site (Kit Festa + Congelados) aguardando aprovação — para o popup de alerta.
+    async pedidosNovosSite() {
+        const novos = { status: { in: ['AGUARDANDO', 'PENDENTE_CADASTRO'] } };
+        const [kf, cg] = await Promise.all([
+            prisma.kitFestaPedido.findMany({
+                where: novos, orderBy: { createdAt: 'desc' },
+                select: { id: true, numero: true, nomeCliente: true, total: true, totalCaixas: true, status: true, createdAt: true },
+            }).catch(() => []),
+            prisma.congeladosPedido.findMany({
+                where: novos, orderBy: { createdAt: 'desc' },
+                select: { id: true, numero: true, nomeCliente: true, total: true, totalCaixas: true, status: true, createdAt: true, encaixe: true },
+            }).catch(() => []),
+        ]);
+        return { total: kf.length + cg.length, kitFesta: kf, congelados: cg };
+    },
+
     async adminRecusarPedido(id, motivo) {
         return prisma.congeladosPedido.update({ where: { id }, data: { status: 'RECUSADO', motivoRecusa: motivo || null } });
     },

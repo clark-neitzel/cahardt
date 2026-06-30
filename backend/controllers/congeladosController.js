@@ -101,6 +101,10 @@ const congeladosController = {
         try { res.json(await svc.adminListarPedidos({ status: req.query.status, busca: req.query.busca })); }
         catch (e) { erro(res, e, 'adminPedidos'); }
     },
+    pedidosNovosSite: async (req, res) => {
+        try { res.json(await svc.pedidosNovosSite()); }
+        catch (e) { erro(res, e, 'pedidosNovosSite'); }
+    },
     adminAprovarPedido: async (req, res) => {
         try { res.json(await svc.adminAprovarPedido(req.params.id, { ...req.body, aprovadoPorId: req.user?.id })); }
         catch (e) { erro(res, e, 'adminAprovarPedido'); }

@@ -42,6 +42,7 @@ router.post('/logo', uploadLogo.single('logo'), ctrl.adminUploadLogo);
 router.post('/imagem', uploadLogo.single('imagem'), ctrl.adminUploadImagem);
 
 // ── Pedidos (fila) ──
+router.get('/pedidos-novos', ctrl.pedidosNovosSite); // popup de alerta (Kit Festa + Congelados)
 router.get('/pedidos', ctrl.adminPedidos);
 router.post('/pedidos/:id/aprovar', ctrl.adminAprovarPedido);
 router.post('/pedidos/:id/recusar', ctrl.adminRecusarPedido);

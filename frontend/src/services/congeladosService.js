@@ -30,6 +30,7 @@ export const congeladosService = {
 
     // Pedidos (fila)
     pedidos: (params) => api.get('/congelados/pedidos', { params }).then(r => r.data),
+    pedidosNovos: () => api.get('/congelados/pedidos-novos').then(r => r.data), // Kit Festa + Congelados, para o popup
     aprovarPedido: (id, dados) => api.post(`/congelados/pedidos/${id}/aprovar`, dados).then(r => r.data),
     recusarPedido: (id, motivo) => api.post(`/congelados/pedidos/${id}/recusar`, { motivo }).then(r => r.data),
     vincularCliente: (id, clienteUuid) => api.post(`/congelados/pedidos/${id}/vincular`, { clienteUuid }).then(r => r.data),
