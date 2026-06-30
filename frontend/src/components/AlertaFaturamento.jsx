@@ -7,6 +7,24 @@ import { useNavigate } from 'react-router-dom';
 const INTERVALO_MS = 10 * 60 * 1000; // 10 minutos
 const DELAY_INICIAL_MS = 5000; // 5s de delay para não bloquear o carregamento inicial
 
+function bip() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const toque = (freq, t0) => {
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination); o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.28);
+      o.start(t0); o.stop(t0 + 0.3);
+    };
+    toque(880, ctx.currentTime);
+    toque(1175, ctx.currentTime + 0.2);
+  } catch { /* áudio bloqueado antes de interação — ignora */ }
+}
+
 const AlertaFaturamento = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -22,6 +40,7 @@ const AlertaFaturamento = () => {
                 setPedidos(data.pedidos);
                 if (!dismissedAtRef.current) {
                     setVisivel(true);
+                    bip();
                 }
             } else {
                 setPedidos([]);
