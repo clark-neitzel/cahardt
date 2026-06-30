@@ -43,7 +43,7 @@ Lista a fila de pedidos recebidos pelo site, **do mais recente para o mais antig
 
 No topo há **pílulas de status com a contagem** de cada um (Todos / Aguardando / Sem cadastro / Convertido / Recusado / Cancelado) — clicar filtra a lista. Quando há pedidos novos esperando, aparece um **aviso amarelo pulsante** ("X pedidos novos aguardando") e cada pedido novo ganha a etiqueta **"Novo"** e borda destacada, para o operador tratar na hora.
 
-Cada pedido aparece como um **card-resumo** (cliente, status, total, e uma **pílula colorida** mostrando **Entrega** (azul, ícone de caminhão) ou **Retirada** (roxo, ícone de loja) com a data, além da condição de pagamento). Pedidos fora do dia regular do cliente trazem a etiqueta **"Encaixe"** (a equipe confirma a viabilidade antes de aprovar). **Clicar no card abre o detalhe completo** (modal): dados do cliente, entrega/retirada + data, pagamento, **todos os itens** com valores, observações e os botões de ação (Vincular / Aprovar / Recusar / Excluir).
+Cada pedido aparece como um **card-resumo** (cliente, status, total, e uma **pílula colorida** mostrando **Entrega** (azul, ícone de caminhão) ou **Retirada** (roxo, ícone de loja) com a data, além da condição de pagamento). Pedidos fora do dia regular do cliente trazem a etiqueta **"Encaixe"** (a equipe confirma a viabilidade antes de aprovar). **Clicar no card abre o detalhe completo** (modal): a **hora em que o cliente enviou** o pedido, dados do cliente (com o **vendedor responsável** do cadastro), entrega/retirada + data, pagamento, **todos os itens** com valores, observações e os botões de ação (Vincular / Aprovar / Recusar / Excluir).
 
 Status:
 - **Aguardando** — pedido de cliente com cadastro, pronto para aprovar.

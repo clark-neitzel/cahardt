@@ -803,7 +803,7 @@ const congeladosService = {
             orderBy: { createdAt: 'desc' }, // mais recente primeiro
             include: {
                 itens: true,
-                congeladosCliente: { include: { cliente: { select: { Nome: true, NomeFantasia: true, End_Cidade: true } } } },
+                congeladosCliente: { include: { cliente: { select: { Nome: true, NomeFantasia: true, End_Cidade: true, vendedor: { select: { nome: true } } } } } },
                 pedido: { select: { id: true, numero: true, especial: true, statusEnvio: true } },
             },
             take: 300,

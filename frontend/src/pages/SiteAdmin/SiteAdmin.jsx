@@ -227,14 +227,17 @@ function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, o
   const cli = p.congeladosCliente?.cliente;
   const fantasia = cli?.NomeFantasia && cli.NomeFantasia !== p.nomeCliente ? cli.NomeFantasia : '';
   const cidade = cli?.End_Cidade || '';
+  const vendedor = cli?.vendedor?.nome || '';
   const data = fmtDataPedido(p);
+  const feitoEm = p.createdAt ? new Date(p.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
   return (
     <Modal onClose={onClose} max="max-w-lg" title={`Pedido #${p.numero}`}>
-      <div className="flex items-center gap-2 flex-wrap mb-3">
+      <div className="flex items-center gap-2 flex-wrap mb-1">
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
         {p.encaixe && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">Encaixe</span>}
         {p.celularAlterado && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">telefone novo</span>}
       </div>
+      {feitoEm && <p className="text-xs text-gray-400 mb-3">Pedido enviado em <b className="text-gray-600">{feitoEm}</b></p>}
 
       {/* Cliente */}
       <div className="rounded-lg bg-gray-50 p-3 text-sm mb-3">
@@ -245,6 +248,7 @@ function PedidoDetalhe({ pedido: p, onClose, onAprovar, onVincular, onRecusar, o
           {cidade && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> {cidade}</span>}
           {p.telefoneCliente && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" /> {p.telefoneCliente}</span>}
         </div>
+        {vendedor && <div className="text-gray-500 text-xs mt-1">Vendedor: <b className="text-gray-700">{vendedor}</b></div>}
       </div>
 
       {/* Entrega / pagamento */}
