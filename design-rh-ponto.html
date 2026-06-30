@@ -4,508 +4,415 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>RH — Ponto & Funcionários (Mockup)</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config={theme:{extend:{colors:{primary:'#005fcc'}}}}</script>
 <style>
-  body{font-family:-apple-system,'SF Pro Text',Roboto,sans-serif;background:#f3f4f6}
-  .tabnav::-webkit-scrollbar{display:none}
-  .sec{scroll-margin-top:70px}
+  :root{
+    --primary:#005fcc; --primary-dark:#0047a3;
+    --bg:#f3f4f6; --surface:#fff; --line:#e5e7eb; --line2:#f3f4f6;
+    --g900:#1f2937; --g700:#374151; --g600:#4b5563; --g500:#6b7280; --g400:#9ca3af;
+    --green-bg:#dcfce7; --green-fg:#166534; --green:#22c55e;
+    --red-bg:#fee2e2; --red-fg:#b91c1c; --red:#dc2626;
+    --amber-bg:#fef3c7; --amber-fg:#b45309;
+    --gray-bg:#f3f4f6; --gray-fg:#374151;
+    --purple-bg:#f3e8ff; --purple-fg:#7e22ce;
+    --blue-bg:#dbeafe; --blue-fg:#1e40af;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,'SF Pro Text','Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--g900);line-height:1.4;-webkit-font-smoothing:antialiased}
+  a{color:var(--primary);text-decoration:none}
+  code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:.85em}
+  h2{font-size:18px;margin:0 0 2px}
+  .muted{color:var(--g500)} .sm{font-size:13px} .xs{font-size:12px} .b{font-weight:700} .sb{font-weight:600}
+  .num{font-variant-numeric:tabular-nums}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+  /* nav */
+  .nav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .nav .row{display:flex;gap:14px;align-items:center;overflow-x:auto;padding:10px 16px}
+  .nav a{font-size:12px;font-weight:600;color:var(--g600);white-space:nowrap}
+  .nav .tag{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--primary)}
+  /* sections */
+  section{padding-top:18px;scroll-margin-top:60px}
+  .lead{font-size:13px;color:var(--g500);margin:2px 0 14px}
+  /* cards */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .card-2xl{border-radius:16px}
+  .card-h{display:flex;align-items:center;gap:8px;padding:14px 20px;border-bottom:1px solid var(--line2)}
+  .card-h .ttl{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g600)}
+  .pad{padding:20px}
+  .box{border:1px solid var(--line);border-radius:8px}
+  /* grid */
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:1fr 1fr} .g3{grid-template-columns:1fr 1fr 1fr} .g4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr 1fr}.g3-1{grid-template-columns:1fr}}
+  @media(max-width:480px){.g2,.g3{grid-template-columns:1fr}}
+  /* buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:6px;font-size:14px;font-weight:600;padding:8px 16px;border:1px solid transparent;cursor:pointer}
+  .btn-pri{background:var(--primary);color:#fff} .btn-pri:hover{background:var(--primary-dark)}
+  .btn-sec{background:#fff;border-color:#d1d5db;color:var(--g700)} .btn-sec:hover{background:#f9fafb}
+  .btn-danger{background:var(--red);color:#fff}
+  .btn-sm{padding:6px 12px;font-size:12px}
+  .btn-lg{width:100%;min-height:64px;font-size:18px;font-weight:700;border-radius:12px}
+  .btn-block{display:flex;width:100%}
+  .btn[disabled]{background:#e5e7eb;color:#9ca3af;cursor:not-allowed}
+  .link{color:var(--primary);font-weight:600;cursor:pointer}
+  .link-dot{color:var(--primary);text-decoration:underline;text-decoration-style:dotted;cursor:pointer;background:none;border:0;font:inherit;padding:0}
+  /* badges */
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;font-size:12px;font-weight:600;border-radius:999px}
+  .b-green{background:var(--green-bg);color:var(--green-fg)} .b-red{background:var(--red-bg);color:var(--red-fg)}
+  .b-amber{background:var(--amber-bg);color:var(--amber-fg)} .b-gray{background:var(--gray-bg);color:var(--gray-fg)}
+  .b-purple{background:var(--purple-bg);color:var(--purple-fg)} .b-blue{background:var(--blue-bg);color:var(--blue-fg)}
+  .dot{height:8px;width:8px;border-radius:999px}
+  /* inputs */
+  label.fld{display:block} label.fld>span{font-size:14px;font-weight:500;color:var(--g700)}
+  input,select{width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:14px;margin-top:4px;font-family:inherit;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+  input[readonly]{background:#f9fafb;color:var(--g600)}
+  .inline-in{margin-top:0}
+  /* tables */
+  table{width:100%;border-collapse:collapse}
+  thead{background:#f9fafb} th{text-align:left;font-size:11px;font-weight:600;color:var(--g500);text-transform:uppercase;letter-spacing:.04em;padding:12px 16px}
+  td{padding:12px 16px;font-size:14px;border-top:1px solid var(--line)}
+  tbody tr:hover{background:#f9fafb}
+  .tc{text-align:center} .tr{text-align:right}
+  .scroll-x{overflow-x:auto}
+  /* phone */
+  .phone{max-width:360px}
+  .clock{font-size:46px;font-weight:700;letter-spacing:-1px;margin:14px 0 0}
+  .avatar{height:56px;width:56px;border-radius:999px;background:var(--blue-bg);color:var(--blue-fg);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700}
+  /* tabs */
+  .tabs{display:flex;gap:4px;padding:12px 12px 0;overflow-x:auto;border-bottom:1px solid var(--line2)}
+  .tabs span{padding:8px 12px;font-size:14px;font-weight:500;color:var(--g500);white-space:nowrap;border-bottom:2px solid transparent}
+  .tabs span.on{color:var(--primary);font-weight:600;border-bottom-color:var(--primary)}
+  /* map */
+  .map{height:128px;background:linear-gradient(135deg,#dbeafe,#bfdbfe);position:relative;display:flex;align-items:center;justify-content:center}
+  .map .pin{width:0;height:0}
+  .pin-i{font-size:30px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
+  .map .coord{position:absolute;bottom:4px;right:8px;font-size:10px;color:#64748b}
+  .fence{height:96px;width:96px;border-radius:999px;background:rgba(0,95,204,.15);border:2px solid rgba(0,95,204,.4);display:flex;align-items:center;justify-content:center}
+  .stat{background:#f9fafb;border-radius:8px;padding:12px;text-align:center}
+  .stat .v{font-size:22px;font-weight:700}
+  .divider{border-top:1px solid var(--line2)}
+  .mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mb12{margin-bottom:12px}
+  .between{display:flex;align-items:center;justify-content:space-between}
+  .listrow{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--line2)}
+  .listrow:first-child{border-top:0}
+  .prog{height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+  .prog>div{height:100%;background:var(--green)}
+  .note{background:#f9fafb;border-top:1px solid var(--line2);padding:8px 16px;font-size:12px;color:var(--g500)}
+  .rowflex{display:flex;gap:8px;flex-wrap:wrap}
+  .alert-red{background:var(--red-bg);border:1px solid #fecaca;border-radius:8px;padding:12px;text-align:center}
+  .modalbox{border:2px dashed #d1d5db;border-radius:8px;padding:16px;background:#f9fafb;margin:16px}
 </style>
 </head>
-<body class="text-gray-900">
+<body>
 
-<!-- ====== BARRA DE NAVEGAÇÃO DO MOCKUP ====== -->
-<div class="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-  <div class="max-w-6xl mx-auto px-4 py-2 flex items-center gap-3 overflow-x-auto tabnav">
-    <span class="text-xs font-bold uppercase tracking-widest text-primary whitespace-nowrap">RH · Mockup</span>
-    <a href="#a" class="text-xs font-semibold text-gray-600 hover:text-primary whitespace-nowrap">A · Bater ponto</a>
-    <a href="#b" class="text-xs font-semibold text-gray-600 hover:text-primary whitespace-nowrap">B · Funcionários</a>
-    <a href="#c" class="text-xs font-semibold text-gray-600 hover:text-primary whitespace-nowrap">C · Novo</a>
-    <a href="#d" class="text-xs font-semibold text-gray-600 hover:text-primary whitespace-nowrap">D · Ficha</a>
-    <a href="#e" class="text-xs font-semibold text-gray-600 hover:text-primary whitespace-nowrap">E · Painel</a>
-    <a href="#f" class="text-xs font-semibold text-gray-600 hover:text-primary whitespace-nowrap">F · Config</a>
-  </div>
-</div>
+<div class="nav"><div class="row">
+  <span class="tag">RH · Mockup</span>
+  <a href="#a">A · Bater ponto</a><a href="#b">B · Funcionários</a><a href="#c">C · Novo</a>
+  <a href="#d">D · Ficha</a><a href="#e">E · Painel</a><a href="#f">F · Config</a>
+</div></div>
 
-<div class="max-w-6xl mx-auto px-4 py-6 space-y-12">
+<div class="wrap">
 
-<!-- =================================================================== -->
-<!-- A · TELA DO FUNCIONÁRIO — BATER PONTO (link público /ponto/:token)  -->
-<!-- =================================================================== -->
-<section id="a" class="sec">
-  <h2 class="text-lg font-bold mb-1">A · Bater ponto <span class="text-gray-400 font-normal text-sm">— link público do funcionário <code>/ponto/abc123</code></span></h2>
-  <p class="text-sm text-gray-500 mb-4">Abre sem login. Relógio ao vivo, botão único que alterna Entrada/Saída, GPS obrigatório (geofence). Clicar no horário mostra o mapa.</p>
+<!-- A · BATER PONTO -->
+<section id="a">
+  <h2>A · Bater ponto <span class="muted sm">— link público <code>/ponto/abc123</code></span></h2>
+  <p class="lead">Abre sem login. Relógio ao vivo, botão único que alterna Entrada/Saída, GPS obrigatório (geofence). Clicar no horário mostra o mapa.</p>
+  <div class="grid g3 g3-1">
 
-  <div class="grid md:grid-cols-3 gap-5">
-
-    <!-- A1 · estado FORA -->
+    <!-- A1 fora -->
     <div>
-      <p class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Estado: fora do expediente</p>
-      <div class="max-w-sm bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div class="bg-primary text-white px-5 py-4 flex items-center gap-3">
-          <div class="bg-white/20 p-2 rounded-lg">
-            <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-          </div>
-          <div><p class="text-xs text-blue-100 leading-none">Registro de Ponto</p><p class="text-base font-bold leading-tight">CA-Hardt</p></div>
+      <p class="xs b" style="text-transform:uppercase;letter-spacing:.1em;color:var(--g500);margin:0 0 8px">Estado: fora do expediente</p>
+      <div class="card card-2xl phone" style="overflow:hidden">
+        <div style="background:var(--primary);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px">
+          <div style="background:rgba(255,255,255,.2);padding:8px;border-radius:8px;font-size:20px">🕐</div>
+          <div><div class="xs" style="color:#bfdbfe">Registro de Ponto</div><div class="b" style="font-size:16px">CA-Hardt</div></div>
         </div>
-        <div class="px-5 pt-5 text-center">
-          <p class="text-sm text-gray-500">Olá,</p>
-          <p class="text-lg font-bold">João da Silva</p>
-          <p class="mt-4 text-5xl font-bold tabular-nums tracking-tight">08:01</p>
-          <p class="text-sm text-gray-500">terça-feira, 30 de junho</p>
-          <div class="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold"><span class="h-2 w-2 rounded-full bg-gray-400"></span> Fora do expediente</div>
+        <div class="tc" style="padding:20px 20px 0">
+          <div class="sm muted">Olá,</div><div class="b" style="font-size:18px">João da Silva</div>
+          <div class="clock num">08:01</div><div class="sm muted">terça-feira, 30 de junho</div>
+          <div style="margin-top:14px"><span class="badge b-gray"><span class="dot" style="background:var(--g400)"></span> Fora do expediente</span></div>
         </div>
-        <div class="p-5">
-          <button class="w-full min-h-[64px] bg-primary hover:bg-blue-700 text-white rounded-xl shadow-sm font-bold text-lg flex items-center justify-center gap-2">
-            <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg> Registrar Entrada
-          </button>
-          <p class="mt-2 text-center text-xs text-gray-400 flex items-center justify-center gap-1">
-            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 21s-7-5.5-7-11a7 7 0 1114 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg> Localização será registrada na batida
-          </p>
+        <div class="pad">
+          <button class="btn btn-pri btn-lg btn-block">→ &nbsp;Registrar Entrada</button>
+          <p class="tc xs muted mt8">📍 Localização será registrada na batida</p>
         </div>
-        <div class="border-t border-gray-100 px-5 py-4">
-          <p class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Hoje</p>
-          <p class="text-center text-gray-400 text-xs py-2">Nenhuma batida registrada ainda</p>
+        <div style="border-top:1px solid var(--line2);padding:14px 20px">
+          <p class="xs b" style="text-transform:uppercase;letter-spacing:.12em;color:var(--g500);margin:0 0 6px">Hoje</p>
+          <p class="tc xs muted" style="padding:6px 0">Nenhuma batida registrada ainda</p>
         </div>
       </div>
     </div>
 
-    <!-- A2 · estado TRABALHANDO + popover mapa -->
+    <!-- A2 trabalhando + mapa -->
     <div>
-      <p class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Trabalhando · clicar no horário → mapa</p>
-      <div class="max-w-sm bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div class="px-5 pt-5 text-center">
-          <p class="text-lg font-bold">João da Silva</p>
-          <p class="mt-3 text-5xl font-bold tabular-nums">12:03</p>
-          <div class="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs font-semibold"><span class="h-2 w-2 rounded-full bg-green-500"></span> Trabalhando desde 08:01</div>
+      <p class="xs b" style="text-transform:uppercase;letter-spacing:.1em;color:var(--g500);margin:0 0 8px">Trabalhando · clicar no horário → mapa</p>
+      <div class="card card-2xl phone" style="overflow:hidden">
+        <div class="tc" style="padding:20px 20px 0">
+          <div class="b" style="font-size:18px">João da Silva</div>
+          <div class="clock num">12:03</div>
+          <div style="margin-top:12px"><span class="badge b-green"><span class="dot" style="background:var(--green)"></span> Trabalhando desde 08:01</span></div>
         </div>
-        <div class="p-5">
-          <button class="w-full min-h-[64px] bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-sm font-bold text-lg flex items-center justify-center gap-2">
-            <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg> Registrar Saída
-          </button>
-        </div>
-        <div class="border-t border-gray-100 px-5 py-4">
-          <p class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Hoje</p>
-          <ul class="space-y-2 text-sm">
-            <li class="flex items-center justify-between">
-              <span class="px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-semibold">Entrada</span>
-              <button class="tabular-nums font-semibold text-primary underline decoration-dotted">08:01 📍</button>
-            </li>
-          </ul>
-          <!-- popover mapa -->
-          <div class="mt-3 border border-gray-200 rounded-lg overflow-hidden">
-            <div class="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-              <span class="text-xs font-semibold text-gray-600">Local da batida · 08:01</span>
-              <span class="text-xs text-green-700 font-semibold">✓ dentro da cerca · 4 m</span>
+        <div class="pad"><button class="btn btn-danger btn-lg btn-block">← &nbsp;Registrar Saída</button></div>
+        <div style="border-top:1px solid var(--line2);padding:14px 20px">
+          <p class="xs b" style="text-transform:uppercase;letter-spacing:.12em;color:var(--g500);margin:0 0 10px">Hoje</p>
+          <div class="between"><span class="badge b-green">Entrada</span><button class="link-dot num sb">08:01 📍</button></div>
+          <div class="box mt12" style="overflow:hidden">
+            <div class="between" style="padding:8px 12px;background:#f9fafb;border-bottom:1px solid var(--line2)">
+              <span class="xs sb" style="color:var(--g600)">Local da batida · 08:01</span><span class="xs sb" style="color:var(--green-fg)">✓ dentro · 4 m</span>
             </div>
-            <div class="h-32 bg-[linear-gradient(135deg,#dbeafe,#bfdbfe)] relative">
-              <div class="absolute inset-0 flex items-center justify-center">
-                <svg class="h-8 w-8 text-red-600 drop-shadow" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7zm0 9.5A2.5 2.5 0 1112 6a2.5 2.5 0 010 5.5z"/></svg>
-              </div>
-              <span class="absolute bottom-1 right-2 text-[10px] text-gray-500">-26.9056, -48.6580</span>
-            </div>
-            <a class="block text-center text-xs font-semibold text-primary py-2 hover:bg-gray-50">Abrir no Google Maps</a>
+            <div class="map"><span class="pin-i">📍</span><span class="coord">-26.9056, -48.6580</span></div>
+            <a class="tc xs sb" style="display:block;padding:8px;color:var(--primary)">Abrir no Google Maps</a>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- A3 · estado FORA DA CERCA / erro -->
+    <!-- A3 bloqueado -->
     <div>
-      <p class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Bloqueado (fora da cerca) / erro</p>
-      <div class="max-w-sm bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div class="px-5 pt-5 text-center">
-          <p class="text-lg font-bold">João da Silva</p>
-          <p class="mt-3 text-5xl font-bold tabular-nums">08:01</p>
-          <div class="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold"><span class="h-2 w-2 rounded-full bg-red-500"></span> Fora da área permitida</div>
+      <p class="xs b" style="text-transform:uppercase;letter-spacing:.1em;color:var(--g500);margin:0 0 8px">Bloqueado (fora da cerca)</p>
+      <div class="card card-2xl phone" style="overflow:hidden">
+        <div class="tc" style="padding:20px 20px 0">
+          <div class="b" style="font-size:18px">João da Silva</div>
+          <div class="clock num">08:01</div>
+          <div style="margin-top:12px"><span class="badge b-red"><span class="dot" style="background:var(--red)"></span> Fora da área permitida</span></div>
         </div>
-        <div class="p-5">
-          <button class="w-full min-h-[64px] bg-gray-200 text-gray-400 rounded-xl font-bold text-lg flex items-center justify-center gap-2 cursor-not-allowed">Registrar Entrada</button>
-          <div class="mt-3 bg-red-50 border border-red-200 rounded-lg p-3 text-center">
-            <p class="text-sm font-semibold text-red-700">Você está a 320 m da empresa</p>
-            <p class="text-xs text-red-600 mt-0.5">O ponto só pode ser batido a até <b>10 m</b> do local. Aproxime-se e tente de novo.</p>
+        <div class="pad">
+          <button class="btn btn-lg btn-block" disabled>Registrar Entrada</button>
+          <div class="alert-red mt12">
+            <p class="sm sb" style="color:var(--red-fg);margin:0">Você está a 320 m da empresa</p>
+            <p class="xs" style="color:var(--red-fg);margin:4px 0 0">O ponto só pode ser batido a até <b>10 m</b> do local. Aproxime-se e tente de novo.</p>
           </div>
         </div>
-        <div class="border-t border-gray-100 px-5 py-3 text-center">
-          <p class="text-xs text-gray-400">Variações: link inválido → "Link não encontrado, fale com o RH".</p>
-        </div>
+        <div class="tc note">Variações: link inválido → "Link não encontrado, fale com o RH".</div>
       </div>
     </div>
 
   </div>
 </section>
 
-<!-- =================================================================== -->
-<!-- B · RH → LISTA DE FUNCIONÁRIOS                                       -->
-<!-- =================================================================== -->
-<section id="b" class="sec">
-  <h2 class="text-lg font-bold mb-1">B · Funcionários <span class="text-gray-400 font-normal text-sm">— RH › Funcionários (<code>/rh/funcionarios</code>)</span></h2>
-  <p class="text-sm text-gray-500 mb-4">Lista com status do dia e alertas (exame vencendo).</p>
-
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-    <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-      <div class="flex items-center gap-2">
-        <div class="bg-blue-100 p-2 rounded-lg"><svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z"/></svg></div>
-        <h1 class="text-base md:text-xl font-bold">Funcionários</h1>
-      </div>
-      <button class="px-3 py-1.5 md:px-4 md:py-2 bg-primary hover:bg-blue-700 text-white rounded-md text-xs md:text-sm font-semibold">+ Novo funcionário</button>
+<!-- B · FUNCIONÁRIOS -->
+<section id="b">
+  <h2>B · Funcionários <span class="muted sm">— <code>/rh/funcionarios</code></span></h2>
+  <p class="lead">Lista com status do dia, banco de horas e alertas (exame vencendo).</p>
+  <div class="card">
+    <div class="between" style="padding:14px 20px;border-bottom:1px solid var(--line2)">
+      <div style="display:flex;align-items:center;gap:8px"><span style="background:var(--blue-bg);padding:8px;border-radius:8px">👥</span><span class="b" style="font-size:18px">Funcionários</span></div>
+      <button class="btn btn-pri btn-sm">+ Novo funcionário</button>
     </div>
-    <div class="p-4 flex flex-col md:flex-row gap-2">
-      <input placeholder="Buscar por nome, CPF, cargo…" class="w-full md:w-72 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
-      <select class="w-full md:w-44 border border-gray-300 rounded px-3 py-2 text-sm"><option>Todos os status</option><option>Trabalhando</option><option>Fora</option><option>Inativos</option></select>
+    <div class="pad" style="display:flex;gap:8px;flex-wrap:wrap">
+      <input placeholder="Buscar por nome, CPF, cargo…" style="max-width:280px" />
+      <select style="max-width:180px"><option>Todos os status</option><option>Trabalhando</option><option>Fora</option></select>
     </div>
-
-    <!-- mobile cards -->
-    <div class="md:hidden space-y-3 p-3 pt-0">
-      <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-        <div class="flex items-center justify-between mb-1"><span class="font-semibold">João da Silva</span><span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Trabalhando</span></div>
-        <div class="text-sm text-gray-500">Motorista · desde 08:01</div>
-        <div class="text-xs text-amber-700 mt-1">⚠ ASO vence em 12 dias</div>
-      </div>
-      <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-        <div class="flex items-center justify-between mb-1"><span class="font-semibold">Maria Souza</span><span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Fora</span></div>
-        <div class="text-sm text-gray-500">Vendedora · saiu 18:02 ontem</div>
-      </div>
-    </div>
-
-    <!-- desktop table -->
-    <div class="hidden md:block overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50"><tr>
-          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Funcionário</th>
-          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Cargo</th>
-          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status hoje</th>
-          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Banco de horas</th>
-          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Alertas</th>
-        </tr></thead>
-        <tbody class="bg-white divide-y divide-gray-200 text-sm">
-          <tr class="hover:bg-gray-50 cursor-pointer">
-            <td class="px-5 py-3 font-medium">João da Silva</td><td class="px-5 py-3 text-gray-600">Motorista</td>
-            <td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Trabalhando · 08:01</span></td>
-            <td class="px-5 py-3 tabular-nums text-green-700 font-semibold">+04:20</td>
-            <td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">ASO vence 12d</span></td>
-          </tr>
-          <tr class="hover:bg-gray-50 cursor-pointer">
-            <td class="px-5 py-3 font-medium">Maria Souza</td><td class="px-5 py-3 text-gray-600">Vendedora</td>
-            <td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Fora</span></td>
-            <td class="px-5 py-3 tabular-nums text-red-700 font-semibold">−01:10</td>
-            <td class="px-5 py-3 text-gray-400">—</td>
-          </tr>
-          <tr class="hover:bg-gray-50 cursor-pointer">
-            <td class="px-5 py-3 font-medium">Carlos Lima</td><td class="px-5 py-3 text-gray-600">Expedição</td>
-            <td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Trabalhando · 07:32</span></td>
-            <td class="px-5 py-3 tabular-nums text-gray-500 font-semibold">00:00</td>
-            <td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Atestado hoje</span></td>
-          </tr>
+    <div class="scroll-x">
+      <table>
+        <thead><tr><th>Funcionário</th><th>Cargo</th><th>Status hoje</th><th>Banco de horas</th><th>Alertas</th></tr></thead>
+        <tbody>
+          <tr><td class="sb">João da Silva</td><td class="muted">Motorista</td><td><span class="badge b-green">Trabalhando · 08:01</span></td><td class="num sb" style="color:var(--green-fg)">+04:20</td><td><span class="badge b-amber">ASO vence 12d</span></td></tr>
+          <tr><td class="sb">Maria Souza</td><td class="muted">Vendedora</td><td><span class="badge b-gray">Fora</span></td><td class="num sb" style="color:var(--red-fg)">−01:10</td><td class="muted">—</td></tr>
+          <tr><td class="sb">Carlos Lima</td><td class="muted">Expedição</td><td><span class="badge b-green">Trabalhando · 07:32</span></td><td class="num sb muted">00:00</td><td><span class="badge b-red">Atestado hoje</span></td></tr>
         </tbody>
       </table>
     </div>
   </div>
 </section>
 
-<!-- =================================================================== -->
-<!-- C · RH → NOVO FUNCIONÁRIO (buscar no cadastro de Cliente)            -->
-<!-- =================================================================== -->
-<section id="c" class="sec">
-  <h2 class="text-lg font-bold mb-1">C · Novo funcionário <span class="text-gray-400 font-normal text-sm">— ativar a partir do cadastro de Cliente</span></h2>
-  <p class="text-sm text-gray-500 mb-4">Busca a pessoa no cadastro de Cliente e puxa nome/CPF/telefone/endereço; depois preenche os dados de RH.</p>
-
-  <div class="max-w-2xl bg-white rounded-xl border border-gray-200 shadow-sm">
-    <div class="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100"><span class="text-xs font-bold uppercase tracking-widest text-gray-600">1 · Encontrar a pessoa</span></div>
-    <div class="p-5">
-      <input placeholder="Buscar no cadastro de clientes por nome ou CPF…" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" value="joão da silva" />
-      <div class="mt-3 border border-gray-200 rounded-lg divide-y divide-gray-100">
-        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
-          <div><p class="font-medium text-sm">João da Silva</p><p class="text-xs text-gray-500">CPF 123.456.789-00 · (47) 99999-9999 · Itajaí/SC</p></div>
-          <button class="px-3 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-semibold">Selecionar</button>
-        </div>
-        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
-          <div><p class="font-medium text-sm">João da Silva Júnior</p><p class="text-xs text-gray-500">CPF 987.654.321-00 · (47) 98888-8888</p></div>
-          <button class="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-xs font-medium">Selecionar</button>
-        </div>
+<!-- C · NOVO -->
+<section id="c">
+  <h2>C · Novo funcionário <span class="muted sm">— ativar a partir do cadastro de Cliente</span></h2>
+  <p class="lead">Busca a pessoa no cadastro de Cliente e puxa nome/CPF/telefone/endereço; depois preenche os dados de RH.</p>
+  <div class="card" style="max-width:680px">
+    <div class="card-h"><span class="ttl">1 · Encontrar a pessoa</span></div>
+    <div class="pad">
+      <input value="joão da silva" />
+      <div class="box mt12">
+        <div class="listrow"><div><div class="sm sb">João da Silva</div><div class="xs muted">CPF 123.456.789-00 · (47) 99999-9999 · Itajaí/SC</div></div><button class="btn btn-pri btn-sm">Selecionar</button></div>
+        <div class="listrow"><div><div class="sm sb">João da Silva Júnior</div><div class="xs muted">CPF 987.654.321-00 · (47) 98888-8888</div></div><button class="btn btn-sec btn-sm">Selecionar</button></div>
       </div>
-      <p class="mt-3 text-xs text-gray-400">Não está no cadastro? <a class="text-primary font-semibold">Cadastrar manualmente</a></p>
+      <p class="xs muted mt12">Não está no cadastro? <a class="link">Cadastrar manualmente</a></p>
     </div>
-    <div class="flex items-center gap-2 px-5 py-3.5 border-t border-b border-gray-100"><span class="text-xs font-bold uppercase tracking-widest text-gray-600">2 · Dados de RH</span></div>
-    <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-      <label class="block"><span class="text-sm font-medium text-gray-700">Nome</span><input value="João da Silva" class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
-      <label class="block"><span class="text-sm font-medium text-gray-700">CPF</span><input value="123.456.789-00" class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
-      <label class="block"><span class="text-sm font-medium text-gray-700">Cargo</span><input placeholder="Motorista" class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
-      <label class="block"><span class="text-sm font-medium text-gray-700">Admissão</span><input type="date" class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
-      <label class="block"><span class="text-sm font-medium text-gray-700">Salário (R$)</span><input placeholder="2.500,00" class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
-      <label class="block"><span class="text-sm font-medium text-gray-700">Hora extra</span><select class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm"><option>Banco de horas (compensatório)</option><option>Hora extra paga (50%/100%)</option></select></label>
+    <div class="card-h" style="border-top:1px solid var(--line2)"><span class="ttl">2 · Dados de RH</span></div>
+    <div class="pad grid g2">
+      <label class="fld"><span>Nome</span><input value="João da Silva" /></label>
+      <label class="fld"><span>CPF</span><input value="123.456.789-00" /></label>
+      <label class="fld"><span>Cargo</span><input placeholder="Motorista" /></label>
+      <label class="fld"><span>Admissão</span><input type="date" /></label>
+      <label class="fld"><span>Salário (R$)</span><input placeholder="2.500,00" /></label>
+      <label class="fld"><span>Hora extra</span><select><option>Banco de horas (compensatório)</option><option>Hora extra paga (50%/100%)</option></select></label>
     </div>
-    <div class="px-5 py-3 border-t border-gray-100 flex justify-end gap-3">
-      <button class="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm">Cancelar</button>
-      <button class="px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-md font-semibold text-sm">Ativar como funcionário</button>
+    <div class="between" style="padding:12px 20px;border-top:1px solid var(--line2)">
+      <span></span><span class="rowflex"><button class="btn btn-sec">Cancelar</button><button class="btn btn-pri">Ativar como funcionário</button></span>
     </div>
   </div>
 </section>
 
-<!-- =================================================================== -->
-<!-- D · RH → FICHA DO FUNCIONÁRIO (abas)                                 -->
-<!-- =================================================================== -->
-<section id="d" class="sec">
-  <h2 class="text-lg font-bold mb-1">D · Ficha do funcionário <span class="text-gray-400 font-normal text-sm">— <code>/rh/funcionarios/:id</code></span></h2>
-  <p class="text-sm text-gray-500 mb-4">Abas: Dados · Documentos · Exames · Atestados · Cartão de ponto · Desempenho.</p>
-
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-    <!-- cabeçalho da ficha -->
-    <div class="p-5 flex items-center gap-4 border-b border-gray-100">
-      <div class="h-14 w-14 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xl font-bold">JS</div>
-      <div class="flex-1">
-        <p class="text-lg font-bold">João da Silva</p>
-        <p class="text-sm text-gray-500">Motorista · admitido em 03/2024 · <span class="text-green-700 font-semibold">Trabalhando desde 08:01</span></p>
-      </div>
-      <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Ativo</span>
+<!-- D · FICHA -->
+<section id="d">
+  <h2>D · Ficha do funcionário <span class="muted sm">— <code>/rh/funcionarios/:id</code></span></h2>
+  <p class="lead">Abas: Dados · Documentos · Exames · Atestados · Cartão de ponto · Desempenho.</p>
+  <div class="card">
+    <div style="padding:20px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--line2)">
+      <div class="avatar">JS</div>
+      <div style="flex:1"><div class="b" style="font-size:18px">João da Silva</div><div class="sm muted">Motorista · admitido em 03/2024 · <span class="sb" style="color:var(--green-fg)">Trabalhando desde 08:01</span></div></div>
+      <span class="badge b-green">Ativo</span>
     </div>
-    <!-- abas -->
-    <div class="flex gap-1 px-3 pt-3 overflow-x-auto tabnav border-b border-gray-100">
-      <span class="px-3 py-2 text-sm font-semibold text-primary border-b-2 border-primary whitespace-nowrap">Dados</span>
-      <span class="px-3 py-2 text-sm font-medium text-gray-500 whitespace-nowrap">Documentos</span>
-      <span class="px-3 py-2 text-sm font-medium text-gray-500 whitespace-nowrap">Exames</span>
-      <span class="px-3 py-2 text-sm font-medium text-gray-500 whitespace-nowrap">Atestados</span>
-      <span class="px-3 py-2 text-sm font-medium text-gray-500 whitespace-nowrap">Cartão de ponto</span>
-      <span class="px-3 py-2 text-sm font-medium text-gray-500 whitespace-nowrap">Desempenho</span>
-    </div>
+    <div class="tabs"><span class="on">Dados</span><span>Documentos</span><span>Exames</span><span>Atestados</span><span>Cartão de ponto</span><span>Desempenho</span></div>
 
-    <!-- D1 · ABA DADOS (escala + link) -->
-    <div class="p-5 space-y-5">
-      <p class="text-xs font-bold uppercase tracking-widest text-gray-500">Aba "Dados" — contrato, escala e link de ponto</p>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <label class="block"><span class="text-sm font-medium text-gray-700">Cargo</span><input value="Motorista" class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
-        <label class="block"><span class="text-sm font-medium text-gray-700">Salário (R$)</span><input value="2.500,00" class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
-        <label class="block"><span class="text-sm font-medium text-gray-700">Hora extra</span><select class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm"><option>Banco de horas</option><option>Hora extra paga</option></select></label>
+    <div class="pad" style="display:flex;flex-direction:column;gap:20px">
+      <p class="xs b" style="text-transform:uppercase;letter-spacing:.1em;color:var(--g500);margin:0">Aba "Dados" — contrato, escala e link de ponto</p>
+      <div class="grid g3">
+        <label class="fld"><span>Cargo</span><input value="Motorista" /></label>
+        <label class="fld"><span>Salário (R$)</span><input value="2.500,00" /></label>
+        <label class="fld"><span>Hora extra</span><select><option>Banco de horas</option><option>Hora extra paga</option></select></label>
       </div>
 
-      <!-- escala por dia -->
-      <div class="border border-gray-200 rounded-lg">
-        <div class="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-100">
-          <span class="text-xs font-bold uppercase tracking-widest text-gray-600">Escala semanal</span>
-          <label class="flex items-center gap-2 text-xs font-medium text-gray-600"><input type="checkbox" checked class="rounded" /> Janela móvel (desloca mantendo a carga)</label>
+      <div class="box">
+        <div class="between" style="padding:10px 16px;background:#f9fafb;border-bottom:1px solid var(--line2)">
+          <span class="ttl" style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g600)">Escala semanal</span>
+          <label class="xs sb" style="display:flex;align-items:center;gap:6px;color:var(--g600)"><input type="checkbox" checked class="inline-in" style="width:auto;margin:0"> Janela móvel (desloca mantendo a carga)</label>
         </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full text-sm">
-            <thead class="bg-white text-gray-500"><tr class="text-xs uppercase">
-              <th class="px-4 py-2 text-left">Dia</th><th class="px-4 py-2">Entrada</th><th class="px-4 py-2">Saída almoço</th><th class="px-4 py-2">Volta</th><th class="px-4 py-2">Saída</th><th class="px-4 py-2">Carga</th>
-            </tr></thead>
-            <tbody class="divide-y divide-gray-100">
-              <tr><td class="px-4 py-2 font-medium">Seg–Sex</td><td class="px-4 py-2 text-center tabular-nums">07:30</td><td class="px-4 py-2 text-center tabular-nums">11:30</td><td class="px-4 py-2 text-center tabular-nums">13:00</td><td class="px-4 py-2 text-center tabular-nums">17:48</td><td class="px-4 py-2 text-center tabular-nums font-semibold">8:48</td></tr>
-              <tr><td class="px-4 py-2 font-medium">Sábado</td><td class="px-4 py-2 text-center tabular-nums">07:30</td><td class="px-4 py-2 text-center tabular-nums">—</td><td class="px-4 py-2 text-center tabular-nums">—</td><td class="px-4 py-2 text-center tabular-nums">11:30</td><td class="px-4 py-2 text-center tabular-nums font-semibold">4:00</td></tr>
-              <tr class="text-gray-400"><td class="px-4 py-2 font-medium">Domingo</td><td class="px-4 py-2 text-center" colspan="4">Folga</td><td class="px-4 py-2 text-center">—</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="px-4 py-2 text-xs text-gray-500 bg-gray-50 border-t border-gray-100">Ex.: entrou 05:30 → saída esperada 15:48 (mesma carga 8:48). O que passar disso vira banco/hora extra.</p>
+        <div class="scroll-x"><table>
+          <thead><tr><th>Dia</th><th class="tc">Entrada</th><th class="tc">Saída almoço</th><th class="tc">Volta</th><th class="tc">Saída</th><th class="tc">Carga</th></tr></thead>
+          <tbody>
+            <tr><td class="sb">Seg–Sex</td><td class="tc num">07:30</td><td class="tc num">11:30</td><td class="tc num">13:00</td><td class="tc num">17:48</td><td class="tc num sb">8:48</td></tr>
+            <tr><td class="sb">Sábado</td><td class="tc num">07:30</td><td class="tc num">—</td><td class="tc num">—</td><td class="tc num">11:30</td><td class="tc num sb">4:00</td></tr>
+            <tr class="muted"><td class="sb">Domingo</td><td class="tc" colspan="4">Folga</td><td class="tc">—</td></tr>
+          </tbody>
+        </table></div>
+        <div class="note">Ex.: entrou 05:30 → saída esperada 15:48 (mesma carga 8:48). O que passar disso vira banco/hora extra.</div>
       </div>
 
-      <!-- link de ponto -->
-      <div class="border border-gray-200 rounded-lg p-4">
-        <p class="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Link de ponto do funcionário</p>
-        <div class="flex flex-col md:flex-row gap-2">
-          <input readonly value="https://app.cahardt.com/ponto/abc123def456" class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm bg-gray-50 text-gray-600" />
-          <button class="px-3 py-2 bg-primary hover:bg-blue-700 text-white rounded-md text-sm font-semibold">Copiar</button>
-          <button class="px-3 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-sm font-medium">WhatsApp</button>
-          <button class="px-3 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-sm font-medium">Gerar novo</button>
+      <div class="box pad">
+        <p class="xs b mb12" style="text-transform:uppercase;letter-spacing:.12em;color:var(--g600);margin:0 0 8px">Link de ponto do funcionário</p>
+        <div class="rowflex">
+          <input readonly value="https://app.cahardt.com/ponto/abc123def456" style="flex:1;min-width:220px" />
+          <button class="btn btn-pri btn-sm">Copiar</button><button class="btn btn-sec btn-sm">WhatsApp</button><button class="btn btn-sec btn-sm">Gerar novo</button>
         </div>
       </div>
     </div>
 
-    <!-- D2..D5 lado a lado em cards-amostra -->
-    <div class="grid md:grid-cols-2 gap-5 p-5 pt-0">
-
-      <!-- DOCUMENTOS -->
-      <div class="border border-gray-200 rounded-lg">
-        <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-100"><span class="text-xs font-bold uppercase tracking-widest text-gray-600">Aba "Documentos"</span><button class="text-xs font-semibold text-primary">+ Anexar</button></div>
-        <ul class="divide-y divide-gray-100 text-sm">
-          <li class="flex items-center justify-between px-4 py-2.5"><span class="flex items-center gap-2"><span class="text-red-600">📄</span> RG.pdf <span class="text-xs text-gray-400">· RG</span></span><span class="flex gap-2 text-xs"><a class="text-primary font-semibold">Ver</a><a class="text-gray-500">Baixar</a></span></li>
-          <li class="flex items-center justify-between px-4 py-2.5"><span class="flex items-center gap-2"><span class="text-red-600">📄</span> CTPS.pdf <span class="text-xs text-gray-400">· CTPS</span></span><span class="flex gap-2 text-xs"><a class="text-primary font-semibold">Ver</a><a class="text-gray-500">Baixar</a></span></li>
-          <li class="flex items-center justify-between px-4 py-2.5"><span class="flex items-center gap-2"><span class="text-blue-600">🖼️</span> comprovante-residencia.jpg <span class="text-xs text-gray-400">· Residência</span></span><span class="flex gap-2 text-xs"><a class="text-primary font-semibold">Ver</a><a class="text-gray-500">Baixar</a></span></li>
-        </ul>
-        <p class="px-4 py-2 text-xs text-gray-400 bg-gray-50 border-t border-gray-100">Categorias: RG, CPF, CTPS, Residência, Contrato, Outro (pasta livre).</p>
+    <div class="grid g2 pad" style="padding-top:0">
+      <!-- documentos -->
+      <div class="box">
+        <div class="between" style="padding:10px 16px;border-bottom:1px solid var(--line2)"><span class="ttl" style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g600)">Aba "Documentos"</span><button class="link xs" style="border:0;background:none">+ Anexar</button></div>
+        <div class="listrow"><span class="sm">📄 RG.pdf <span class="xs muted">· RG</span></span><span class="rowflex xs"><a class="link">Ver</a><a class="muted">Baixar</a></span></div>
+        <div class="listrow"><span class="sm">📄 CTPS.pdf <span class="xs muted">· CTPS</span></span><span class="rowflex xs"><a class="link">Ver</a><a class="muted">Baixar</a></span></div>
+        <div class="listrow"><span class="sm">🖼️ residencia.jpg <span class="xs muted">· Residência</span></span><span class="rowflex xs"><a class="link">Ver</a><a class="muted">Baixar</a></span></div>
+        <div class="note">Categorias: RG, CPF, CTPS, Residência, Contrato, Outro (pasta livre).</div>
       </div>
-
-      <!-- EXAMES -->
-      <div class="border border-gray-200 rounded-lg">
-        <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-100"><span class="text-xs font-bold uppercase tracking-widest text-gray-600">Aba "Exames (ASO)"</span><button class="text-xs font-semibold text-primary">+ Exame</button></div>
-        <ul class="divide-y divide-gray-100 text-sm">
-          <li class="flex items-center justify-between px-4 py-2.5"><span><b>Admissional</b> · 04/03/2024<br><span class="text-xs text-gray-500">Apto</span></span><span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Válido</span></li>
-          <li class="flex items-center justify-between px-4 py-2.5"><span><b>Periódico</b> · 04/03/2025<br><span class="text-xs text-gray-500">Apto · vence 04/03/2026</span></span><span class="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Vence 12d</span></li>
-          <li class="flex items-center justify-between px-4 py-2.5 opacity-70"><span><b>Periódico</b> · 04/03/2024<br><span class="text-xs text-gray-500">Apto</span></span><span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Vencido</span></li>
-        </ul>
+      <!-- exames -->
+      <div class="box">
+        <div class="between" style="padding:10px 16px;border-bottom:1px solid var(--line2)"><span class="ttl" style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g600)">Aba "Exames (ASO)"</span><button class="link xs" style="border:0;background:none">+ Exame</button></div>
+        <div class="listrow"><span class="sm"><b>Admissional</b> · 04/03/2024<br><span class="xs muted">Apto</span></span><span class="badge b-green">Válido</span></div>
+        <div class="listrow"><span class="sm"><b>Periódico</b> · 04/03/2025<br><span class="xs muted">Apto · vence 04/03/2026</span></span><span class="badge b-amber">Vence 12d</span></div>
+        <div class="listrow" style="opacity:.7"><span class="sm"><b>Periódico</b> · 04/03/2024<br><span class="xs muted">Apto</span></span><span class="badge b-red">Vencido</span></div>
       </div>
-
-      <!-- ATESTADOS -->
-      <div class="border border-gray-200 rounded-lg">
-        <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-100"><span class="text-xs font-bold uppercase tracking-widest text-gray-600">Aba "Atestados"</span><button class="text-xs font-semibold text-primary">+ Atestado</button></div>
-        <ul class="divide-y divide-gray-100 text-sm">
-          <li class="flex items-center justify-between px-4 py-2.5"><span><b>30/06/2026</b> · 1 dia<br><span class="text-xs text-gray-500">CID J11 · atestado.pdf</span></span><a class="text-primary font-semibold text-xs">Ver</a></li>
-          <li class="flex items-center justify-between px-4 py-2.5"><span><b>12/05/2026</b> · 3 dias<br><span class="text-xs text-gray-500">— · atestado-mai.pdf</span></span><a class="text-primary font-semibold text-xs">Ver</a></li>
-        </ul>
+      <!-- atestados -->
+      <div class="box">
+        <div class="between" style="padding:10px 16px;border-bottom:1px solid var(--line2)"><span class="ttl" style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g600)">Aba "Atestados"</span><button class="link xs" style="border:0;background:none">+ Atestado</button></div>
+        <div class="listrow"><span class="sm"><b>30/06/2026</b> · 1 dia<br><span class="xs muted">CID J11 · atestado.pdf</span></span><a class="link xs">Ver</a></div>
+        <div class="listrow"><span class="sm"><b>12/05/2026</b> · 3 dias<br><span class="xs muted">— · atestado-mai.pdf</span></span><a class="link xs">Ver</a></div>
       </div>
-
-      <!-- DESEMPENHO -->
-      <div class="border border-gray-200 rounded-lg">
-        <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-100"><span class="text-xs font-bold uppercase tracking-widest text-gray-600">Aba "Desempenho & Assiduidade"</span><button class="text-xs font-semibold text-primary">+ Avaliação</button></div>
-        <div class="p-4 grid grid-cols-3 gap-3 text-center">
-          <div class="bg-gray-50 rounded-lg p-3"><p class="text-2xl font-bold text-green-600">97%</p><p class="text-xs text-gray-500">Presença</p></div>
-          <div class="bg-gray-50 rounded-lg p-3"><p class="text-2xl font-bold text-amber-600">3</p><p class="text-xs text-gray-500">Atrasos/mês</p></div>
-          <div class="bg-gray-50 rounded-lg p-3"><p class="text-2xl font-bold text-primary">8,5</p><p class="text-xs text-gray-500">Nota média</p></div>
+      <!-- desempenho -->
+      <div class="box">
+        <div class="between" style="padding:10px 16px;border-bottom:1px solid var(--line2)"><span class="ttl" style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g600)">Aba "Desempenho & Assiduidade"</span><button class="link xs" style="border:0;background:none">+ Avaliação</button></div>
+        <div class="grid g3 pad" style="gap:12px">
+          <div class="stat"><div class="v" style="color:var(--green-fg)">97%</div><div class="xs muted">Presença</div></div>
+          <div class="stat"><div class="v" style="color:var(--amber-fg)">3</div><div class="xs muted">Atrasos/mês</div></div>
+          <div class="stat"><div class="v" style="color:var(--primary)">8,5</div><div class="xs muted">Nota média</div></div>
         </div>
-        <div class="px-4 pb-4">
-          <div class="flex items-center justify-between text-xs text-gray-500 mb-1"><span>Meta de assiduidade</span><span>97%</span></div>
-          <div class="h-2 bg-gray-200 rounded-full overflow-hidden"><div class="h-full bg-green-500" style="width:97%"></div></div>
+        <div class="pad" style="padding-top:0">
+          <div class="between xs muted" style="margin-bottom:4px"><span>Meta de assiduidade</span><span>97%</span></div>
+          <div class="prog"><div style="width:97%"></div></div>
         </div>
       </div>
-
     </div>
   </div>
 
-  <!-- D-cartão · CARTÃO DE PONTO / ESPELHO -->
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm mt-5">
-    <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-      <span class="text-xs font-bold uppercase tracking-widest text-gray-600">Aba "Cartão de ponto" — Junho/2026</span>
-      <div class="flex items-center gap-2">
-        <select class="border border-gray-300 rounded px-2 py-1 text-xs"><option>Junho/2026</option></select>
-        <button class="px-3 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-semibold">+ Adicionar batida</button>
-      </div>
+  <!-- cartão de ponto -->
+  <div class="card mt16">
+    <div class="between" style="padding:14px 20px;border-bottom:1px solid var(--line2)">
+      <span class="ttl" style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g600)">Aba "Cartão de ponto" — Junho/2026</span>
+      <span class="rowflex"><select style="width:auto;padding:4px 8px;font-size:12px;margin:0"><option>Junho/2026</option></select><button class="btn btn-pri btn-sm">+ Adicionar batida</button></span>
     </div>
-    <!-- KPIs do mês -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 p-4">
-      <div class="bg-gray-50 rounded-lg p-3 text-center"><p class="text-xl font-bold tabular-nums">184:12</p><p class="text-xs text-gray-500">Trabalhadas</p></div>
-      <div class="bg-gray-50 rounded-lg p-3 text-center"><p class="text-xl font-bold tabular-nums text-green-600">+04:20</p><p class="text-xs text-gray-500">Banco de horas</p></div>
-      <div class="bg-gray-50 rounded-lg p-3 text-center"><p class="text-xl font-bold tabular-nums text-amber-600">02:10</p><p class="text-xs text-gray-500">Hora extra</p></div>
-      <div class="bg-gray-50 rounded-lg p-3 text-center"><p class="text-xl font-bold tabular-nums text-red-600">1</p><p class="text-xs text-gray-500">Falta/atraso</p></div>
+    <div class="grid g4 pad">
+      <div class="stat"><div class="v num">184:12</div><div class="xs muted">Trabalhadas</div></div>
+      <div class="stat"><div class="v num" style="color:var(--green-fg)">+04:20</div><div class="xs muted">Banco de horas</div></div>
+      <div class="stat"><div class="v num" style="color:var(--amber-fg)">02:10</div><div class="xs muted">Hora extra</div></div>
+      <div class="stat"><div class="v num" style="color:var(--red-fg)">1</div><div class="xs muted">Falta/atraso</div></div>
     </div>
-    <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50"><tr>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Dia</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Batidas</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Previsto</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Trabalhado</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Saldo</th>
-          <th class="px-4 py-3"></th>
-        </tr></thead>
-        <tbody class="bg-white divide-y divide-gray-200 text-sm">
-          <tr class="hover:bg-gray-50">
-            <td class="px-4 py-3 font-medium">Seg 30/06</td>
-            <td class="px-4 py-3 tabular-nums"><button class="text-primary underline decoration-dotted">07:30 📍</button> · <button class="text-primary underline decoration-dotted">11:31 📍</button> · 13:00 · 17:50</td>
-            <td class="px-4 py-3 tabular-nums">8:48</td><td class="px-4 py-3 tabular-nums font-semibold">8:50</td>
-            <td class="px-4 py-3 tabular-nums text-green-700 font-semibold">+0:02</td>
-            <td class="px-4 py-3 text-right"><button class="text-gray-400 hover:text-gray-600 text-xs">editar</button></td>
-          </tr>
-          <tr class="hover:bg-gray-50 bg-amber-50/40">
-            <td class="px-4 py-3 font-medium">Sáb 28/06</td>
-            <td class="px-4 py-3 tabular-nums">05:30 · 15:50 <span class="text-xs text-amber-700">(janela móvel)</span></td>
-            <td class="px-4 py-3 tabular-nums">8:48</td><td class="px-4 py-3 tabular-nums font-semibold">10:20</td>
-            <td class="px-4 py-3 tabular-nums text-amber-700 font-semibold">+1:32 extra</td>
-            <td class="px-4 py-3 text-right"><button class="text-gray-400 hover:text-gray-600 text-xs">editar</button></td>
-          </tr>
-          <tr class="hover:bg-gray-50 bg-red-50/40">
-            <td class="px-4 py-3 font-medium">Sex 27/06</td>
-            <td class="px-4 py-3 text-red-600 text-xs">Sem batida — <b>Atestado (1 dia)</b></td>
-            <td class="px-4 py-3 tabular-nums">8:48</td><td class="px-4 py-3 tabular-nums">—</td>
-            <td class="px-4 py-3 tabular-nums text-gray-500 font-semibold">abonado</td>
-            <td class="px-4 py-3 text-right"><button class="text-gray-400 hover:text-gray-600 text-xs">editar</button></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- modal ajuste/adicionar batida (amostra) -->
-    <div class="m-4 border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
-      <p class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Modal: adicionar/ajustar batida (esqueceu de bater)</p>
-      <div class="bg-white rounded-lg border border-gray-200 p-4 max-w-md">
-        <div class="grid grid-cols-2 gap-3">
-          <label class="block"><span class="text-sm font-medium text-gray-700">Data</span><input type="date" class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
-          <label class="block"><span class="text-sm font-medium text-gray-700">Hora</span><input type="time" value="13:00" class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
-          <label class="block"><span class="text-sm font-medium text-gray-700">Tipo</span><select class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm"><option>Entrada</option><option>Saída</option></select></label>
-          <label class="block"><span class="text-sm font-medium text-gray-700">Motivo</span><input placeholder="Esqueceu de bater" class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
+    <div class="scroll-x"><table>
+      <thead><tr><th>Dia</th><th>Batidas</th><th>Previsto</th><th>Trabalhado</th><th>Saldo</th><th></th></tr></thead>
+      <tbody>
+        <tr><td class="sb">Seg 30/06</td><td class="num"><button class="link-dot">07:30 📍</button> · <button class="link-dot">11:31 📍</button> · 13:00 · 17:50</td><td class="num">8:48</td><td class="num sb">8:50</td><td class="num sb" style="color:var(--green-fg)">+0:02</td><td class="tr"><button class="link-dot xs">editar</button></td></tr>
+        <tr style="background:#fffbeb"><td class="sb">Sáb 28/06</td><td class="num">05:30 · 15:50 <span class="xs" style="color:var(--amber-fg)">(janela móvel)</span></td><td class="num">8:48</td><td class="num sb">10:20</td><td class="num sb" style="color:var(--amber-fg)">+1:32 extra</td><td class="tr"><button class="link-dot xs">editar</button></td></tr>
+        <tr style="background:#fef2f2"><td class="sb">Sex 27/06</td><td class="xs" style="color:var(--red-fg)">Sem batida — <b>Atestado (1 dia)</b></td><td class="num">8:48</td><td class="num">—</td><td class="num sb muted">abonado</td><td class="tr"><button class="link-dot xs">editar</button></td></tr>
+      </tbody>
+    </table></div>
+    <div class="modalbox">
+      <p class="xs b" style="text-transform:uppercase;letter-spacing:.1em;color:var(--g500);margin:0 0 12px">Modal: adicionar/ajustar batida (esqueceu de bater)</p>
+      <div class="card pad" style="max-width:440px">
+        <div class="grid g2">
+          <label class="fld"><span>Data</span><input type="date" /></label>
+          <label class="fld"><span>Hora</span><input type="time" value="13:00" /></label>
+          <label class="fld"><span>Tipo</span><select><option>Entrada</option><option>Saída</option></select></label>
+          <label class="fld"><span>Motivo</span><input placeholder="Esqueceu de bater" /></label>
         </div>
-        <div class="flex items-center gap-2 mt-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700">Ajuste manual</span><span class="text-xs text-gray-400">registra quem ajustou</span></div>
-        <div class="flex justify-end gap-2 mt-3">
-          <button class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md font-medium text-sm">Cancelar</button>
-          <button class="px-4 py-2 bg-primary text-white rounded-md font-semibold text-sm">Salvar batida</button>
-        </div>
+        <div class="rowflex mt12" style="align-items:center"><span class="badge b-purple">Ajuste manual</span><span class="xs muted">registra quem ajustou</span></div>
+        <div class="rowflex mt12" style="justify-content:flex-end"><button class="btn btn-sec btn-sm">Cancelar</button><button class="btn btn-pri btn-sm">Salvar batida</button></div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- =================================================================== -->
-<!-- E · RH → PAINEL DE PONTO (admin, tempo real)                         -->
-<!-- =================================================================== -->
-<section id="e" class="sec">
-  <h2 class="text-lg font-bold mb-1">E · Painel de Ponto <span class="text-gray-400 font-normal text-sm">— RH › Ponto (<code>/rh/ponto</code>)</span></h2>
-  <p class="text-sm text-gray-500 mb-4">Acompanhamento do dia: quem está trabalhando agora, batidas em tempo real, alertas.</p>
-
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center"><p class="text-2xl font-bold text-green-600">8</p><p class="text-xs text-gray-500">Trabalhando agora</p></div>
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center"><p class="text-2xl font-bold text-gray-700">12</p><p class="text-xs text-gray-500">Total ativos</p></div>
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center"><p class="text-2xl font-bold text-amber-600">2</p><p class="text-xs text-gray-500">Atrasados hoje</p></div>
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center"><p class="text-2xl font-bold text-red-600">1</p><p class="text-xs text-gray-500">Atestado hoje</p></div>
+<!-- E · PAINEL -->
+<section id="e">
+  <h2>E · Painel de Ponto <span class="muted sm">— <code>/rh/ponto</code></span></h2>
+  <p class="lead">Acompanhamento do dia: quem está trabalhando agora, batidas em tempo real, alertas.</p>
+  <div class="grid g4 mb12" style="margin-bottom:16px">
+    <div class="card pad tc"><div style="font-size:22px;font-weight:700;color:var(--green-fg)">8</div><div class="xs muted">Trabalhando agora</div></div>
+    <div class="card pad tc"><div style="font-size:22px;font-weight:700;color:var(--g700)">12</div><div class="xs muted">Total ativos</div></div>
+    <div class="card pad tc"><div style="font-size:22px;font-weight:700;color:var(--amber-fg)">2</div><div class="xs muted">Atrasados hoje</div></div>
+    <div class="card pad tc"><div style="font-size:22px;font-weight:700;color:var(--red-fg)">1</div><div class="xs muted">Atestado hoje</div></div>
   </div>
-
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-    <div class="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100"><span class="text-xs font-bold uppercase tracking-widest text-gray-600">Batidas de hoje · 30/06</span></div>
-    <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50"><tr>
-          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Funcionário</th>
-          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Entrada</th>
-          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Saída</th>
-          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-          <th class="px-5 py-3"></th>
-        </tr></thead>
-        <tbody class="bg-white divide-y divide-gray-200 text-sm">
-          <tr class="hover:bg-gray-50"><td class="px-5 py-3 font-medium">João da Silva</td><td class="px-5 py-3 tabular-nums"><button class="text-primary underline decoration-dotted">08:01 📍</button></td><td class="px-5 py-3 text-gray-400">—</td><td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Trabalhando</span></td><td class="px-5 py-3 text-right"><button class="text-xs text-primary font-semibold">Ajustar</button></td></tr>
-          <tr class="hover:bg-gray-50"><td class="px-5 py-3 font-medium">Carlos Lima</td><td class="px-5 py-3 tabular-nums"><button class="text-primary underline decoration-dotted">07:32 📍</button></td><td class="px-5 py-3 text-gray-400">—</td><td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Trabalhando</span></td><td class="px-5 py-3 text-right"><button class="text-xs text-primary font-semibold">Ajustar</button></td></tr>
-          <tr class="hover:bg-gray-50"><td class="px-5 py-3 font-medium">Ana Paula</td><td class="px-5 py-3 tabular-nums">08:15</td><td class="px-5 py-3 text-gray-400">—</td><td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Atrasou 45min</span></td><td class="px-5 py-3 text-right"><button class="text-xs text-primary font-semibold">Ajustar</button></td></tr>
-          <tr class="hover:bg-gray-50 bg-red-50/40"><td class="px-5 py-3 font-medium">Pedro Alves</td><td class="px-5 py-3 text-red-600 text-xs" colspan="2">Atestado (1 dia)</td><td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Ausente</span></td><td class="px-5 py-3 text-right"><button class="text-xs text-primary font-semibold">Ajustar</button></td></tr>
-        </tbody>
-      </table>
-    </div>
+  <div class="card">
+    <div class="card-h"><span class="ttl">Batidas de hoje · 30/06</span></div>
+    <div class="scroll-x"><table>
+      <thead><tr><th>Funcionário</th><th>Entrada</th><th>Saída</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        <tr><td class="sb">João da Silva</td><td class="num"><button class="link-dot">08:01 📍</button></td><td class="muted">—</td><td><span class="badge b-green">Trabalhando</span></td><td class="tr"><button class="link xs" style="border:0;background:none">Ajustar</button></td></tr>
+        <tr><td class="sb">Carlos Lima</td><td class="num"><button class="link-dot">07:32 📍</button></td><td class="muted">—</td><td><span class="badge b-green">Trabalhando</span></td><td class="tr"><button class="link xs" style="border:0;background:none">Ajustar</button></td></tr>
+        <tr><td class="sb">Ana Paula</td><td class="num">08:15</td><td class="muted">—</td><td><span class="badge b-amber">Atrasou 45min</span></td><td class="tr"><button class="link xs" style="border:0;background:none">Ajustar</button></td></tr>
+        <tr style="background:#fef2f2"><td class="sb">Pedro Alves</td><td class="xs" style="color:var(--red-fg)" colspan="2">Atestado (1 dia)</td><td><span class="badge b-red">Ausente</span></td><td class="tr"><button class="link xs" style="border:0;background:none">Ajustar</button></td></tr>
+      </tbody>
+    </table></div>
   </div>
 </section>
 
-<!-- =================================================================== -->
-<!-- F · CONFIGURAÇÃO DA EMPRESA (geofence)                               -->
-<!-- =================================================================== -->
-<section id="f" class="sec">
-  <h2 class="text-lg font-bold mb-1">F · Configuração da empresa <span class="text-gray-400 font-normal text-sm">— GPS + raio do geofence</span></h2>
-  <p class="text-sm text-gray-500 mb-4">Define o local da empresa e a distância máxima para bater o ponto.</p>
-
-  <div class="max-w-2xl bg-white rounded-xl border border-gray-200 shadow-sm">
-    <div class="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100"><svg class="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 21s-7-5.5-7-11a7 7 0 1114 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="text-xs font-bold uppercase tracking-widest text-gray-600">Área permitida para o ponto</span></div>
-    <div class="p-5 space-y-4">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <label class="block"><span class="text-sm font-medium text-gray-700">Latitude</span><input value="-26.9056" class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
-        <label class="block"><span class="text-sm font-medium text-gray-700">Longitude</span><input value="-48.6580" class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
-        <label class="block"><span class="text-sm font-medium text-gray-700">Raio (metros)</span><input value="10" class="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
+<!-- F · CONFIG -->
+<section id="f">
+  <h2>F · Configuração da empresa <span class="muted sm">— GPS + raio do geofence</span></h2>
+  <p class="lead">Define o local da empresa e a distância máxima para bater o ponto.</p>
+  <div class="card" style="max-width:680px">
+    <div class="card-h">📍 <span class="ttl">Área permitida para o ponto</span></div>
+    <div class="pad" style="display:flex;flex-direction:column;gap:16px">
+      <div class="grid g3">
+        <label class="fld"><span>Latitude</span><input value="-26.9056" /></label>
+        <label class="fld"><span>Longitude</span><input value="-48.6580" /></label>
+        <label class="fld"><span>Raio (metros)</span><input value="10" /></label>
       </div>
-      <button class="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm">📍 Usar minha localização atual</button>
-      <div class="border border-gray-200 rounded-lg overflow-hidden">
-        <div class="h-40 bg-[linear-gradient(135deg,#dbeafe,#bfdbfe)] relative">
-          <div class="absolute inset-0 flex items-center justify-center">
-            <div class="relative">
-              <div class="h-24 w-24 rounded-full bg-primary/20 border-2 border-primary/40"></div>
-              <svg class="h-7 w-7 text-red-600 absolute inset-0 m-auto" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7zm0 9.5A2.5 2.5 0 1112 6a2.5 2.5 0 010 5.5z"/></svg>
-            </div>
-          </div>
-          <span class="absolute bottom-1 right-2 text-[10px] text-gray-500">cerca de 10 m ao redor da empresa</span>
-        </div>
+      <button class="btn btn-sec" style="align-self:flex-start">📍 Usar minha localização atual</button>
+      <div class="box" style="overflow:hidden">
+        <div class="map" style="height:160px"><div class="fence"><span class="pin-i">📍</span></div><span class="coord">cerca de 10 m ao redor da empresa</span></div>
       </div>
-      <div class="flex items-center justify-between">
-        <label class="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked class="rounded" /> Bloquear batida fora da área</label>
-        <button class="px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-md font-semibold text-sm">Salvar</button>
+      <div class="between">
+        <label class="sm" style="display:flex;align-items:center;gap:6px;color:var(--g700)"><input type="checkbox" checked style="width:auto;margin:0"> Bloquear batida fora da área</label>
+        <button class="btn btn-pri">Salvar</button>
       </div>
     </div>
   </div>
 </section>
 
-<p class="text-center text-xs text-gray-400 pt-4 pb-10">Mockup estático para aprovação · CA-Hardt RH</p>
+<p class="tc xs muted" style="padding:16px 0 40px">Mockup estático para aprovação · CA-Hardt RH</p>
 
 </div>
 </body>
