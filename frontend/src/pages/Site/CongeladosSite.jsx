@@ -5,6 +5,7 @@ import { Icon, WhatsIcon } from './icons';
 import Login from './Login';
 import './site.css';
 import { API_URL } from '../../services/api';
+import { useVisitorPing } from '../../hooks/useVisitorPing';
 
 const LOGO = '/cong/logo.png';
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
@@ -102,6 +103,8 @@ export default function CongeladosSite() {
       return mudou ? valido : c;
     });
   }, [produtos]);
+
+  useVisitorPing('congelados', Object.keys(cart).length > 0);
 
   const qtyOf = (id) => cart[id] || 0;
   const limparCarrinho = () => { if (window.confirm('Esvaziar o carrinho?')) { setCart({}); setOpen(false); } };

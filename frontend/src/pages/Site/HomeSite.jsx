@@ -4,6 +4,7 @@ import publicApi from './api';
 import { WhatsIcon, InstagramIcon, FacebookIcon } from './icons';
 import './site.css';
 import { API_URL } from '../../services/api';
+import { useVisitorPing } from '../../hooks/useVisitorPing';
 
 const LOGO = '/cong/logo.png';
 const BOX = '/cong/box.gif';
@@ -59,6 +60,7 @@ function HistoriaCarrossel({ imagens }) {
 // Página principal pública do site da Hardt. Marketing/funil — sem login.
 export default function HomeSite() {
   const [cfg, setCfg] = useState(null);
+  useVisitorPing('inicio');
 
   useEffect(() => { publicApi.config().then(setCfg).catch(() => {}); }, []);
 

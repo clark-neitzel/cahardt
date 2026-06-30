@@ -57,6 +57,7 @@ const kitFestaRoutes = require('./routes/kitFestaRoutes'); // Kit Festa: painel 
 const kitFestaPublicRoutes = require('./routes/kitFestaPublicRoutes'); // Kit Festa: site público do cliente
 const congeladosRoutes = require('./routes/congeladosRoutes'); // Site Congelados: painel admin
 const congeladosPublicRoutes = require('./routes/congeladosPublicRoutes'); // Site Congelados: site público do cliente
+const visitorRoutes = require('./routes/visitorRoutes'); // Rastreio de visitantes online (ping público + stats admin)
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -80,6 +81,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/kitfesta-publico', kitFestaPublicRoutes); // Kit Festa: site público (auth do cliente é interna)
 app.use('/api/congelados-publico', congeladosPublicRoutes); // Site Congelados: site público (auth do cliente é interna)
+app.use('/api/visitors', visitorRoutes); // ping público + stats protegida (auth interna na rota)
 
 
 // (Protegidas)

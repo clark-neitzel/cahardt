@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import VisitorBar from './components/VisitorBar';
 import { BrowserRouter as Router, Routes, Route, Link, NavLink, Navigate, useLocation } from 'react-router-dom';
 import Catalogo from './pages/Produtos/Catalogo';
 import DetalheProduto from './pages/Produtos/DetalheProduto';
@@ -166,6 +167,7 @@ const MobileMenuSection = ({ label, icon: Icon, children, defaultOpen = false })
 
 const Layout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [visitorBar, setVisitorBar] = useState(true);
   const { user, logout, hasPermission, loading } = useAuth();
   const { updateAvailable } = useVersionCheck();
 
@@ -307,9 +309,14 @@ const Layout = ({ children }) => {
       </aside>
 
       {/* ═══════════════════════════════════════════ */}
+      {/* BARRA DE VISITANTES ONLINE (desktop)       */}
+      {/* ═══════════════════════════════════════════ */}
+      {visitorBar && <VisitorBar onClose={() => setVisitorBar(false)} />}
+
+      {/* ═══════════════════════════════════════════ */}
       {/* MAIN CONTENT AREA                          */}
       {/* ═══════════════════════════════════════════ */}
-      <div className="flex-1 md:ml-16 flex flex-col min-h-screen min-w-0">
+      <div className={`flex-1 md:ml-16 flex flex-col min-h-screen min-w-0${visitorBar ? ' md:pt-[38px]' : ''}`}>
         {/* ── Mobile top bar ── */}
         <nav className="no-print md:hidden bg-white shadow-sm fixed top-0 left-0 right-0 z-50">
           <div className="px-4 flex justify-between h-14 items-center">

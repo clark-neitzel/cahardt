@@ -5,6 +5,7 @@ import publicApi, { getToken, setToken } from './api';
 import Login from './Login';
 import './kitfesta.css';
 import { API_URL } from '../../services/api';
+import { useVisitorPing } from '../../hooks/useVisitorPing';
 
 const LOGO = '/kitfesta/logo.png';
 const BOX = '/kitfesta/box.gif';
@@ -41,6 +42,8 @@ export default function KitFestaSite() {
       restore,
     ]).finally(() => setBooting(false));
   }, []);
+
+  useVisitorPing('kit-festa', Object.keys(cart).length > 0);
 
   const siteLogo = (cfg && cfg.logoUrl) ? imgUrl(cfg.logoUrl) : LOGO;
   const logado = cliente || visitante;
