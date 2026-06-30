@@ -62,6 +62,8 @@
 | Aba | Rota | Descrição | Manual |
 |-----|------|-----------|--------|
 | Currículos | `/rh/curriculos` | Funil de seleção de candidatos com status e área de interesse | [curriculos.md](curriculos.md) |
+| Funcionários | `/rh/funcionarios` | Cadastro completo do funcionário: documentos, exames (ASO), atestados, escala, link de ponto e desempenho | [rh-funcionarios.md](rh-funcionarios.md) |
+| Ponto | `/rh/ponto` | Ponto eletrônico por link com GPS/geofence, painel do dia, ajuste manual e importação do relógio (CSV) | [rh-ponto.md](rh-ponto.md) |
 
 ---
 
