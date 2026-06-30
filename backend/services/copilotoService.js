@@ -62,6 +62,8 @@ const ABAS = [
     { slug: 'sincronizar',        nome: 'Sincronizar',                  rota: '/admin/sync',                         perm: 'sync' },
     // ── RH ───────────────────────────────────────
     { slug: 'curriculos',         nome: 'Currículos',                   rota: '/rh/curriculos',                      perm: ['Pode_Ver_RH', 'Pode_Editar_RH'] },
+    { slug: 'rh-funcionarios',    nome: 'Funcionários (RH)',            rota: '/rh/funcionarios',                    perm: ['Pode_Ver_RH', 'Pode_Editar_RH'] },
+    { slug: 'rh-ponto',           nome: 'Ponto',                        rota: '/rh/ponto',                           perm: ['Pode_Ver_RH', 'Pode_Editar_RH'] },
     // ── PCP — sub-permissões específicas ─────────
     { slug: 'pcp-itens',          nome: 'PCP — Itens',                  rota: '/pcp/itens',                          perm: 'pcp.itens' },
     { slug: 'pcp-receitas',       nome: 'PCP — Receitas',               rota: '/pcp/receitas',                       perm: 'pcp.receitas' },

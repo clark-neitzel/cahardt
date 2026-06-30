@@ -64,6 +64,12 @@ import MensagensAgendadas from './pages/Admin/MensagensAgendadas/MensagensAgenda
 import Candidatura from './pages/Candidatura/Candidatura';
 import ListaCurriculos from './pages/RH/ListaCurriculos';
 import DetalheCurriculo from './pages/RH/DetalheCurriculo';
+import FuncionariosLista from './pages/RH/FuncionariosLista';
+import FuncionarioNovo from './pages/RH/FuncionarioNovo';
+import FuncionarioFicha from './pages/RH/FuncionarioFicha';
+import PontoPainel from './pages/RH/PontoPainel';
+import ImportarPonto from './pages/RH/ImportarPonto';
+import BaterPonto from './pages/Ponto/BaterPonto';
 import KitFestaAdmin from './pages/KitFesta/KitFestaAdmin';
 import KitFestaSite from './pages/KitFestaSite/KitFestaSite';
 import HomeSite from './pages/Site/HomeSite';
@@ -76,7 +82,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, PartyPopper, Snowflake
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, PartyPopper, Snowflake, Clock, Fingerprint
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -250,6 +256,8 @@ const Layout = ({ children }) => {
           {/* RH */}
           {showRH && <SidebarSection label="RH" />}
           {showRH && <SidebarItem to="/rh/curriculos" icon={UserCheck} label="Currículos" />}
+          {showRH && <SidebarItem to="/rh/funcionarios" icon={Fingerprint} label="Funcionários" />}
+          {showRH && <SidebarItem to="/rh/ponto" icon={Clock} label="Ponto" />}
 
           {/* PCP */}
           {showPcp && <SidebarSection label="PCP" />}
@@ -422,6 +430,8 @@ const Layout = ({ children }) => {
             {showRH && (
               <MobileMenuSection label="RH" icon={UserCheck}>
                 <NavLink to="/rh/curriculos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Currículos</NavLink>
+                <NavLink to="/rh/funcionarios" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Funcionários</NavLink>
+                <NavLink to="/rh/ponto" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Ponto</NavLink>
               </MobileMenuSection>
             )}
 
@@ -518,6 +528,9 @@ function App() {
             <Routes>
               {/* Página pública de candidatura (sem autenticação) */}
               <Route path="/candidatura" element={<Candidatura />} />
+
+              {/* Bater ponto pelo link pessoal (sem autenticação) */}
+              <Route path="/ponto/:token" element={<BaterPonto />} />
 
               {/* Site público do Kit Festa (sem autenticação do app) */}
               <Route path="/kit-festa" element={<KitFestaSite />} />
@@ -631,6 +644,13 @@ function App() {
               {/* RH — Currículos */}
               <Route path="/rh/curriculos" element={<PrivateRoute tab="Pode_Ver_RH"><ListaCurriculos /></PrivateRoute>} />
               <Route path="/rh/curriculos/:id" element={<PrivateRoute tab="Pode_Ver_RH"><DetalheCurriculo /></PrivateRoute>} />
+
+              {/* RH — Funcionários e Ponto */}
+              <Route path="/rh/funcionarios" element={<PrivateRoute tab="Pode_Ver_RH"><FuncionariosLista /></PrivateRoute>} />
+              <Route path="/rh/funcionarios/novo" element={<PrivateRoute tab="Pode_Ver_RH"><FuncionarioNovo /></PrivateRoute>} />
+              <Route path="/rh/funcionarios/:id" element={<PrivateRoute tab="Pode_Ver_RH"><FuncionarioFicha /></PrivateRoute>} />
+              <Route path="/rh/ponto" element={<PrivateRoute tab="Pode_Ver_RH"><PontoPainel /></PrivateRoute>} />
+              <Route path="/rh/ponto/importar" element={<PrivateRoute tab="Pode_Ver_RH"><ImportarPonto /></PrivateRoute>} />
             </Routes>
           </Layout>
           <Toaster position="top-right" />
