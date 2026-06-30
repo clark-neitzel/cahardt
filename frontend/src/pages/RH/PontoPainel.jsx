@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, RefreshCw, Loader2, Upload } from 'lucide-react';
+import { Clock, RefreshCw, Loader2, Upload, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import funcionarioService from '../../services/funcionarioService';
 
@@ -25,6 +25,7 @@ export default function PontoPainel() {
           <h1 className="text-base md:text-2xl font-bold text-gray-900">Painel de Ponto</h1>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => navigate('/rh/ponto/config')} className="inline-flex items-center gap-1 px-3 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm"><MapPin className="h-4 w-4" /> Configurar</button>
           <button onClick={() => navigate('/rh/ponto/importar')} className="inline-flex items-center gap-1 px-3 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm"><Upload className="h-4 w-4" /> Importar</button>
           <button onClick={carregar} className="p-2 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"><RefreshCw className={`h-4 w-4 ${carregando ? 'animate-spin' : ''}`} /></button>
         </div>

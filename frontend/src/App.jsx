@@ -69,6 +69,7 @@ import FuncionarioNovo from './pages/RH/FuncionarioNovo';
 import FuncionarioFicha from './pages/RH/FuncionarioFicha';
 import PontoPainel from './pages/RH/PontoPainel';
 import ImportarPonto from './pages/RH/ImportarPonto';
+import ConfigPonto from './pages/RH/ConfigPonto';
 import BaterPonto from './pages/Ponto/BaterPonto';
 import KitFestaAdmin from './pages/KitFesta/KitFestaAdmin';
 import KitFestaSite from './pages/KitFestaSite/KitFestaSite';
@@ -651,6 +652,7 @@ function App() {
               <Route path="/rh/funcionarios/:id" element={<PrivateRoute tab="Pode_Ver_RH"><FuncionarioFicha /></PrivateRoute>} />
               <Route path="/rh/ponto" element={<PrivateRoute tab="Pode_Ver_RH"><PontoPainel /></PrivateRoute>} />
               <Route path="/rh/ponto/importar" element={<PrivateRoute tab="Pode_Ver_RH"><ImportarPonto /></PrivateRoute>} />
+              <Route path="/rh/ponto/config" element={<PrivateRoute tab="Pode_Ver_RH"><ConfigPonto /></PrivateRoute>} />
             </Routes>
           </Layout>
           <Toaster position="top-right" />

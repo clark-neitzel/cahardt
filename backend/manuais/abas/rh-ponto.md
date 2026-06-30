@@ -10,6 +10,10 @@ Controle de ponto eletrônico da equipe. O funcionário bate o ponto por um **li
 - Cada batida registra a **localização (GPS)**. Tocando no horário de uma batida, abre o **mapa** do local.
 - **Geofence:** se houver ponto da empresa configurado, o ponto só pode ser batido dentro do **raio** definido (ex.: 10 m). Fora da área, o registro é bloqueado com aviso da distância.
 
+## Configurar a área da empresa (geofence)
+- No Painel de Ponto → **Configurar** (`/rh/ponto/config`): define a **latitude/longitude** da empresa e o **raio em metros**. Há o botão **Usar minha localização atual** (captura o GPS do aparelho) e um **mapa** de prévia.
+- A opção **Bloquear batida fora da área** liga/desliga o bloqueio. Sem localização configurada, o ponto é registrado sem checagem de área.
+
 ## Painel de Ponto (admin)
 - KPIs do dia: **trabalhando agora**, total de ativos e fora.
 - Tabela com as **batidas de hoje** de cada funcionário, com link do mapa em cada horário e status (Trabalhando / Fora).
