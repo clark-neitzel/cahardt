@@ -93,7 +93,10 @@ function AbaDados({ f, onSaved }) {
 
   // Base do link de ponto configurável (ex.: domínio hardtsalgados); cai no domínio atual
   useEffect(() => {
-    configService.get('ponto_link_base').then((v) => { if (v && typeof v === 'string') setLinkBase(v.replace(/\/$/, '')); }).catch(() => {});
+    configService.get('ponto_link_base').then((v) => {
+      const base = v && (typeof v === 'string' ? v : v.url);
+      if (base) setLinkBase(String(base).replace(/\/$/, ''));
+    }).catch(() => {});
   }, []);
 
   const set = (c) => (e) => setForm((s) => ({ ...s, [c]: e.target.value }));

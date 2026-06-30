@@ -27,7 +27,8 @@ export default function ConfigPonto() {
       } catch { /* sem config ainda */ }
       try {
         const base = await configService.get('ponto_link_base');
-        if (base && typeof base === 'string') setLinkBase(base);
+        // armazenado como { url }; tolera string antiga
+        if (base) setLinkBase(typeof base === 'string' ? base : (base.url || ''));
       } catch { /* sem config ainda */ }
       finally { setCarregando(false); }
     })();
@@ -57,7 +58,7 @@ export default function ConfigPonto() {
     setSalvando(true);
     try {
       await configService.save('empresa_geofence', { lat, lng, raioMetros, bloquear: !!form.bloquear });
-      await configService.save('ponto_link_base', (linkBase || '').trim().replace(/\/$/, ''));
+      await configService.save('ponto_link_base', { url: (linkBase || '').trim().replace(/\/$/, '') });
       toast.success('Configuração salva!');
     } catch {
       toast.error('Erro ao salvar.');
