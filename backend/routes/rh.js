@@ -33,6 +33,23 @@ function checkDeleteRH(req, res, next) {
   next();
 }
 
+// Ponto & Funcionários têm permissão própria (independente de Currículos)
+function checkPonto(req, res, next) {
+  const p = req.user?.permissoes || {};
+  if (!isAdmin(p) && !p.Pode_Ver_Ponto && !p.Pode_Editar_Ponto) {
+    return res.status(403).json({ erro: 'Sem permissão para acessar Ponto/Funcionários' });
+  }
+  next();
+}
+
+function checkEditPonto(req, res, next) {
+  const p = req.user?.permissoes || {};
+  if (!isAdmin(p) && !p.Pode_Editar_Ponto) {
+    return res.status(403).json({ erro: 'Sem permissão para editar Ponto/Funcionários' });
+  }
+  next();
+}
+
 router.get('/curriculos/contagens', checkRH, ctrl.contagens);
 router.get('/curriculos', checkRH, ctrl.listar);
 router.get('/curriculos/:id', checkRH, ctrl.detalhe);
@@ -41,27 +58,27 @@ router.get('/curriculos/:id/whatsapp', checkEditRH, ctrl.linkWhatsapp);
 router.delete('/curriculos/:id', checkDeleteRH, ctrl.excluir);
 
 // ─── Ponto: painel e ajustes manuais (rotas fixas antes das com :id) ──────────
-router.get('/ponto/hoje', checkRH, func.pontoHoje);
-router.post('/ponto/importar', checkEditRH, func.importar);
-router.post('/ponto/registros', checkEditRH, func.addBatidaManual);
-router.put('/ponto/registros/:id', checkEditRH, func.updateBatida);
-router.delete('/ponto/registros/:id', checkEditRH, func.delBatida);
+router.get('/ponto/hoje', checkPonto, func.pontoHoje);
+router.post('/ponto/importar', checkEditPonto, func.importar);
+router.post('/ponto/registros', checkEditPonto, func.addBatidaManual);
+router.put('/ponto/registros/:id', checkEditPonto, func.updateBatida);
+router.delete('/ponto/registros/:id', checkEditPonto, func.delBatida);
 
 // ─── Funcionários ─────────────────────────────────────────────────────────────
-router.get('/funcionarios', checkRH, func.listar);
-router.post('/funcionarios', checkEditRH, func.criar);
-router.get('/funcionarios/:id', checkRH, func.detalhe);
-router.put('/funcionarios/:id', checkEditRH, func.atualizar);
-router.post('/funcionarios/:id/gerar-link', checkEditRH, func.gerarLink);
-router.put('/funcionarios/:id/jornada', checkEditRH, func.salvarJornada);
-router.get('/funcionarios/:id/cartao', checkRH, func.cartao);
+router.get('/funcionarios', checkPonto, func.listar);
+router.post('/funcionarios', checkEditPonto, func.criar);
+router.get('/funcionarios/:id', checkPonto, func.detalhe);
+router.put('/funcionarios/:id', checkEditPonto, func.atualizar);
+router.post('/funcionarios/:id/gerar-link', checkEditPonto, func.gerarLink);
+router.put('/funcionarios/:id/jornada', checkEditPonto, func.salvarJornada);
+router.get('/funcionarios/:id/cartao', checkPonto, func.cartao);
 
-router.post('/funcionarios/:id/documentos', checkEditRH, uploadFuncionario.single('arquivo'), func.addDocumento);
-router.delete('/funcionarios/:id/documentos/:docId', checkEditRH, func.delDocumento);
-router.post('/funcionarios/:id/exames', checkEditRH, uploadFuncionario.single('arquivo'), func.addExame);
-router.delete('/funcionarios/:id/exames/:exameId', checkEditRH, func.delExame);
-router.post('/funcionarios/:id/atestados', checkEditRH, uploadFuncionario.single('arquivo'), func.addAtestado);
-router.delete('/funcionarios/:id/atestados/:atestadoId', checkEditRH, func.delAtestado);
-router.post('/funcionarios/:id/avaliacoes', checkEditRH, func.addAvaliacao);
+router.post('/funcionarios/:id/documentos', checkEditPonto, uploadFuncionario.single('arquivo'), func.addDocumento);
+router.delete('/funcionarios/:id/documentos/:docId', checkEditPonto, func.delDocumento);
+router.post('/funcionarios/:id/exames', checkEditPonto, uploadFuncionario.single('arquivo'), func.addExame);
+router.delete('/funcionarios/:id/exames/:exameId', checkEditPonto, func.delExame);
+router.post('/funcionarios/:id/atestados', checkEditPonto, uploadFuncionario.single('arquivo'), func.addAtestado);
+router.delete('/funcionarios/:id/atestados/:atestadoId', checkEditPonto, func.delAtestado);
+router.post('/funcionarios/:id/avaliacoes', checkEditPonto, func.addAvaliacao);
 
 module.exports = router;

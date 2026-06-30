@@ -198,6 +198,7 @@ const Layout = ({ children }) => {
   const canPcp = (key) => isAdmin || !!pcpPerms[key];
   const showConfig = hasPermission('configuracoes');
   const showRH = isAdmin || hasPermission('Pode_Ver_RH') || hasPermission('Pode_Editar_RH');
+  const showPonto = isAdmin || hasPermission('Pode_Ver_Ponto') || hasPermission('Pode_Editar_Ponto');
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -255,10 +256,10 @@ const Layout = ({ children }) => {
           {hasPermission('sync') && <SidebarItem to="/admin/sync" icon={RefreshCw} label="Sincronizar" />}
 
           {/* RH */}
-          {showRH && <SidebarSection label="RH" />}
+          {(showRH || showPonto) && <SidebarSection label="RH" />}
           {showRH && <SidebarItem to="/rh/curriculos" icon={UserCheck} label="Currículos" />}
-          {showRH && <SidebarItem to="/rh/funcionarios" icon={Fingerprint} label="Funcionários" />}
-          {showRH && <SidebarItem to="/rh/ponto" icon={Clock} label="Ponto" />}
+          {showPonto && <SidebarItem to="/rh/funcionarios" icon={Fingerprint} label="Funcionários" />}
+          {showPonto && <SidebarItem to="/rh/ponto" icon={Clock} label="Ponto" />}
 
           {/* PCP */}
           {showPcp && <SidebarSection label="PCP" />}
@@ -428,11 +429,11 @@ const Layout = ({ children }) => {
             )}
 
             {/* RH */}
-            {showRH && (
+            {(showRH || showPonto) && (
               <MobileMenuSection label="RH" icon={UserCheck}>
-                <NavLink to="/rh/curriculos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Currículos</NavLink>
-                <NavLink to="/rh/funcionarios" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Funcionários</NavLink>
-                <NavLink to="/rh/ponto" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Ponto</NavLink>
+                {showRH && <NavLink to="/rh/curriculos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Currículos</NavLink>}
+                {showPonto && <NavLink to="/rh/funcionarios" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Funcionários</NavLink>}
+                {showPonto && <NavLink to="/rh/ponto" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Ponto</NavLink>}
               </MobileMenuSection>
             )}
 
@@ -647,12 +648,12 @@ function App() {
               <Route path="/rh/curriculos/:id" element={<PrivateRoute tab="Pode_Ver_RH"><DetalheCurriculo /></PrivateRoute>} />
 
               {/* RH — Funcionários e Ponto */}
-              <Route path="/rh/funcionarios" element={<PrivateRoute tab="Pode_Ver_RH"><FuncionariosLista /></PrivateRoute>} />
-              <Route path="/rh/funcionarios/novo" element={<PrivateRoute tab="Pode_Ver_RH"><FuncionarioNovo /></PrivateRoute>} />
-              <Route path="/rh/funcionarios/:id" element={<PrivateRoute tab="Pode_Ver_RH"><FuncionarioFicha /></PrivateRoute>} />
-              <Route path="/rh/ponto" element={<PrivateRoute tab="Pode_Ver_RH"><PontoPainel /></PrivateRoute>} />
-              <Route path="/rh/ponto/importar" element={<PrivateRoute tab="Pode_Ver_RH"><ImportarPonto /></PrivateRoute>} />
-              <Route path="/rh/ponto/config" element={<PrivateRoute tab="Pode_Ver_RH"><ConfigPonto /></PrivateRoute>} />
+              <Route path="/rh/funcionarios" element={<PrivateRoute tab="Pode_Ver_Ponto"><FuncionariosLista /></PrivateRoute>} />
+              <Route path="/rh/funcionarios/novo" element={<PrivateRoute tab="Pode_Ver_Ponto"><FuncionarioNovo /></PrivateRoute>} />
+              <Route path="/rh/funcionarios/:id" element={<PrivateRoute tab="Pode_Ver_Ponto"><FuncionarioFicha /></PrivateRoute>} />
+              <Route path="/rh/ponto" element={<PrivateRoute tab="Pode_Ver_Ponto"><PontoPainel /></PrivateRoute>} />
+              <Route path="/rh/ponto/importar" element={<PrivateRoute tab="Pode_Ver_Ponto"><ImportarPonto /></PrivateRoute>} />
+              <Route path="/rh/ponto/config" element={<PrivateRoute tab="Pode_Ver_Ponto"><ConfigPonto /></PrivateRoute>} />
             </Routes>
           </Layout>
           <Toaster position="top-right" />

@@ -107,6 +107,9 @@ const DEFAULT_PERMISSIONS = {
     Pode_Ver_RH: false,
     Pode_Editar_RH: false,
     Pode_Excluir_RH: false,
+    // Módulo RH — Ponto & Funcionários
+    Pode_Ver_Ponto: false,
+    Pode_Editar_Ponto: false,
     // Tela inicial preferida
     telaInicial: '/',
     // Barra de visitantes online (site ao vivo no topo do admin)
@@ -909,6 +912,27 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 label="Excluir Currículos"
                                 sublabel="Pode excluir permanentemente um currículo e sua foto"
                                 icon={Users}
+                            />
+                        )}
+                    </DeptSection>
+
+                    {/* ── RH — Ponto & Funcionários ── */}
+                    <DeptSection label="RH — Ponto & Funcionários" icon={Clock} color="indigo"
+                        badge={`${[permissoes.Pode_Ver_Ponto, permissoes.Pode_Editar_Ponto].filter(Boolean).length} ativo${[permissoes.Pode_Ver_Ponto, permissoes.Pode_Editar_Ponto].filter(Boolean).length !== 1 ? 's' : ''}`}>
+                        <Toggle
+                            checked={!!permissoes.Pode_Ver_Ponto}
+                            onChange={v => setPermissoes(p => ({ ...p, Pode_Ver_Ponto: v }))}
+                            label="Ver Ponto e Funcionários"
+                            sublabel="Acessa as abas /rh/funcionarios e /rh/ponto e o cartão de ponto"
+                            icon={Clock}
+                        />
+                        {permissoes.Pode_Ver_Ponto && (
+                            <Toggle
+                                checked={!!permissoes.Pode_Editar_Ponto}
+                                onChange={v => setPermissoes(p => ({ ...p, Pode_Editar_Ponto: v }))}
+                                label="Editar Ponto e Funcionários"
+                                sublabel="Cadastrar funcionário, documentos/exames, gerar link, ajustar batidas, importar CSV e configurar o geofence"
+                                icon={Clock}
                             />
                         )}
                     </DeptSection>
