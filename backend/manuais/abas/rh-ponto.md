@@ -6,12 +6,15 @@ Controle de ponto eletrônico da equipe. O funcionário bate o ponto por um **li
 
 ## Como o funcionário bate o ponto (link público)
 - Cada funcionário tem um **link fixo** (`/ponto/<token>`), gerado na ficha dele em Funcionários → aba Dados.
-- Ao abrir o link, vê o relógio ao vivo, o status (Fora / Trabalhando) e um **botão único que alterna**: 1º toque = Entrada, 2º = Saída, 3º = Entrada… (modelo livre).
+- O acesso exige **senha** (definida pelo RH na ficha → aba Dados → "Senha de acesso ao ponto"). Sem senha definida, o link mostra "acesso ainda não liberado". A sessão fica salva no aparelho por alguns dias para não pedir a senha toda vez.
+- **Bloquear acesso:** na ficha → aba Dados, desmarque **"Acesso liberado"** (campo `ativo`) quando a pessoa deixar de ser funcionário/prestador — o link recusa o login na hora.
+- Ao entrar, o funcionário vê o relógio ao vivo, o status (Fora / Trabalhando) e um **botão único que alterna**: 1º toque = Entrada, 2º = Saída, 3º = Entrada… (modelo livre).
 - Cada batida registra a **localização (GPS)**. Tocando no horário de uma batida, abre o **mapa** do local.
 - **Geofence:** se houver ponto da empresa configurado, o ponto só pode ser batido dentro do **raio** definido (ex.: 10 m). Fora da área, o registro é bloqueado com aviso da distância.
 
-## Configurar a área da empresa (geofence)
+## Configurar a área da empresa (geofence) e o link
 - No Painel de Ponto → **Configurar** (`/rh/ponto/config`): define a **latitude/longitude** da empresa e o **raio em metros**. Há o botão **Usar minha localização atual** (captura o GPS do aparelho) e um **mapa** de prévia.
+- **Domínio do link de ponto:** define o início do link enviado ao funcionário (ex.: domínio da hardtsalgados). Em branco, usa o domínio em que o app está aberto.
 - A opção **Bloquear batida fora da área** liga/desliga o bloqueio. Sem localização configurada, o ponto é registrado sem checagem de área.
 
 ## Painel de Ponto (admin)

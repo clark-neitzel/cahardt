@@ -471,6 +471,8 @@ model Funcionario {
 
   // Link pessoal de ponto (token permanente)
   pontoToken String? @unique @map("ponto_token")
+  // Senha de acesso ao link de ponto (bcrypt). Sem senha = acesso não liberado.
+  senhaHash  String? @map("senha_hash")
 
   ativo      Boolean @default(true)
   observacao String? @db.Text

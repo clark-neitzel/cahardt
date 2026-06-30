@@ -7,6 +7,7 @@ import configService from '../../services/configService';
 export default function ConfigPonto() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ lat: '', lng: '', raioMetros: 10, bloquear: true });
+  const [linkBase, setLinkBase] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [localizando, setLocalizando] = useState(false);
@@ -23,6 +24,10 @@ export default function ConfigPonto() {
             bloquear: v.bloquear !== false
           });
         }
+      } catch { /* sem config ainda */ }
+      try {
+        const base = await configService.get('ponto_link_base');
+        if (base && typeof base === 'string') setLinkBase(base);
       } catch { /* sem config ainda */ }
       finally { setCarregando(false); }
     })();
@@ -52,6 +57,7 @@ export default function ConfigPonto() {
     setSalvando(true);
     try {
       await configService.save('empresa_geofence', { lat, lng, raioMetros, bloquear: !!form.bloquear });
+      await configService.save('ponto_link_base', (linkBase || '').trim().replace(/\/$/, ''));
       toast.success('Configuração salva!');
     } catch {
       toast.error('Erro ao salvar.');
@@ -100,6 +106,12 @@ export default function ConfigPonto() {
                 <div className="h-40 bg-gray-50 flex items-center justify-center text-sm text-gray-400">Informe a localização para ver o mapa</div>
               )}
             </div>
+
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">Domínio do link de ponto</span>
+              <input value={linkBase} onChange={(e) => setLinkBase(e.target.value)} placeholder="https://app.hardtsalgados.com.br" className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+              <span className="text-xs text-gray-400">Define o início do link enviado ao funcionário (ex.: hardtsalgados). Em branco, usa o domínio em que o app está aberto.</span>
+            </label>
 
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm text-gray-700">

@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const prisma = require('../config/database');
 const pontoService = require('../services/pontoService');
 
@@ -106,10 +107,27 @@ const funcionarioController = {
             });
             if (!f) return res.status(404).json({ erro: 'Funcionário não encontrado.' });
             const estado = await pontoService.statusDoDia(f.id);
-            res.json({ ...f, estado });
+            const { senhaHash, ...semHash } = f; // nunca expor o hash
+            res.json({ ...semHash, temSenha: !!senhaHash, estado });
         } catch (error) {
             console.error('[RH] detalhe funcionário:', error);
             res.status(500).json({ erro: 'Erro ao carregar funcionário.' });
+        }
+    },
+
+    // ─── Definir/resetar a senha de acesso ao ponto ───────────────────────────
+    definirSenha: async (req, res) => {
+        try {
+            const { senha } = req.body || {};
+            if (!senha || String(senha).length < 4) {
+                return res.status(400).json({ erro: 'A senha deve ter ao menos 4 caracteres.' });
+            }
+            const senhaHash = await bcrypt.hash(String(senha), 10);
+            await prisma.funcionario.update({ where: { id: req.params.id }, data: { senhaHash } });
+            res.json({ ok: true, temSenha: true });
+        } catch (error) {
+            console.error('[RH] definir senha:', error);
+            res.status(500).json({ erro: 'Erro ao definir a senha.' });
         }
     },
 

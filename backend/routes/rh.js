@@ -70,6 +70,7 @@ router.post('/funcionarios', checkEditPonto, func.criar);
 router.get('/funcionarios/:id', checkPonto, func.detalhe);
 router.put('/funcionarios/:id', checkEditPonto, func.atualizar);
 router.post('/funcionarios/:id/gerar-link', checkEditPonto, func.gerarLink);
+router.put('/funcionarios/:id/senha', checkEditPonto, func.definirSenha);
 router.put('/funcionarios/:id/jornada', checkEditPonto, func.salvarJornada);
 router.get('/funcionarios/:id/cartao', checkPonto, func.cartao);
 

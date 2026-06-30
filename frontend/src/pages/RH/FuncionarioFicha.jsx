@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Copy, MessageCircle, RefreshCw, Loader2, Upload, Trash2, Plus, MapPin } from 'lucide-react';
+import { ChevronLeft, Copy, MessageCircle, RefreshCw, Loader2, Upload, Trash2, Plus, MapPin, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import funcionarioService from '../../services/funcionarioService';
+import configService from '../../services/configService';
 import { API_URL } from '../../services/api';
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -85,9 +86,26 @@ function AbaDados({ f, onSaved }) {
   });
   const [salvando, setSalvando] = useState(false);
   const [token, setToken] = useState(f.pontoToken);
+  const [linkBase, setLinkBase] = useState('');
+  const [senha, setSenha] = useState('');
+  const [salvandoSenha, setSalvandoSenha] = useState(false);
+  const [temSenha, setTemSenha] = useState(!!f.temSenha);
+
+  // Base do link de ponto configurável (ex.: domínio hardtsalgados); cai no domínio atual
+  useEffect(() => {
+    configService.get('ponto_link_base').then((v) => { if (v && typeof v === 'string') setLinkBase(v.replace(/\/$/, '')); }).catch(() => {});
+  }, []);
 
   const set = (c) => (e) => setForm((s) => ({ ...s, [c]: e.target.value }));
   const setJ = (i, c, v) => setJornadas((arr) => arr.map((j, idx) => idx === i ? { ...j, [c]: v } : j));
+
+  const salvarSenha = async () => {
+    if (!senha || senha.length < 4) { toast.error('A senha deve ter ao menos 4 caracteres.'); return; }
+    setSalvandoSenha(true);
+    try { await funcionarioService.definirSenha(f.id, senha); setTemSenha(true); setSenha(''); toast.success('Senha definida!'); }
+    catch (e) { toast.error(e?.response?.data?.erro || 'Erro ao definir senha.'); }
+    finally { setSalvandoSenha(false); }
+  };
 
   const salvar = async () => {
     setSalvando(true);
@@ -105,7 +123,7 @@ function AbaDados({ f, onSaved }) {
     catch { toast.error('Erro ao gerar link.'); }
   };
 
-  const linkPonto = token ? `${window.location.origin}/ponto/${token}` : '';
+  const linkPonto = token ? `${linkBase || window.location.origin}/ponto/${token}` : '';
   const copiar = () => { navigator.clipboard.writeText(linkPonto); toast.success('Link copiado!'); };
   const whats = () => window.open(`https://wa.me/?text=${encodeURIComponent('Seu link de ponto: ' + linkPonto)}`, '_blank');
 
@@ -167,8 +185,26 @@ function AbaDados({ f, onSaved }) {
         )}
       </div>
 
-      <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={form.ativo} onChange={(e) => setForm(s => ({ ...s, ativo: e.target.checked }))} /> Funcionário ativo</label>
+      {/* senha de acesso */}
+      <div className="border border-gray-200 rounded-lg p-4">
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2 flex items-center gap-1"><Lock className="h-3.5 w-3.5" /> Senha de acesso ao ponto</p>
+        <p className="text-xs text-gray-500 mb-2">
+          {temSenha
+            ? 'O funcionário já tem senha. Defina uma nova abaixo para substituir.'
+            : 'Defina uma senha — sem ela o funcionário não consegue bater o ponto pelo link.'}
+        </p>
+        <div className="flex flex-col md:flex-row gap-2">
+          <input type="text" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Nova senha (mín. 4)" className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm" />
+          <button onClick={salvarSenha} disabled={salvandoSenha} className="px-3 py-2 bg-primary hover:bg-blue-700 text-white rounded-md text-sm font-semibold disabled:opacity-60 inline-flex items-center gap-1">{salvandoSenha && <Loader2 className="h-4 w-4 animate-spin" />} {temSenha ? 'Trocar senha' : 'Definir senha'}</button>
+        </div>
+        {temSenha && <p className="mt-2 text-xs text-green-700 font-semibold">✓ Senha definida</p>}
+      </div>
+
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={form.ativo} onChange={(e) => setForm(s => ({ ...s, ativo: e.target.checked }))} />
+          Acesso liberado <span className="text-gray-400">(desmarque para bloquear quando não for mais funcionário/prestador)</span>
+        </label>
         <button onClick={salvar} disabled={salvando} className="px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-md font-semibold text-sm disabled:opacity-60 inline-flex items-center gap-1">{salvando && <Loader2 className="h-4 w-4 animate-spin" />} Salvar</button>
       </div>
     </div>

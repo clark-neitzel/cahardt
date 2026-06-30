@@ -8,6 +8,7 @@ const funcionarioService = {
     criar: async (dados) => (await api.post('/rh/funcionarios', dados)).data,
     atualizar: async (id, dados) => (await api.put(`/rh/funcionarios/${id}`, dados)).data,
     gerarLink: async (id) => (await api.post(`/rh/funcionarios/${id}/gerar-link`)).data,
+    definirSenha: async (id, senha) => (await api.put(`/rh/funcionarios/${id}/senha`, { senha })).data,
     salvarJornada: async (id, dados) => (await api.put(`/rh/funcionarios/${id}/jornada`, dados)).data,
     cartao: async (id, mes) => (await api.get(`/rh/funcionarios/${id}/cartao`, { params: { mes } })).data,
 
