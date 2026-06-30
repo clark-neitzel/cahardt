@@ -20,8 +20,10 @@ export default function FuncionarioNovo() {
     if (!termo || termo.length < 2) { setResultados([]); return; }
     setBuscando(true);
     try {
-      const data = await clienteService.buscarGlobal(termo, 15);
-      setResultados(Array.isArray(data) ? data : []);
+      const resp = await clienteService.buscarGlobal(termo, 15);
+      // buscar-global retorna { data: [...] }; tolera também array direto
+      const arr = Array.isArray(resp) ? resp : (resp?.data || []);
+      setResultados(arr);
     } catch { setResultados([]); }
     finally { setBuscando(false); }
   }, [termo]);
