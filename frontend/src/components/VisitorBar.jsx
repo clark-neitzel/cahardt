@@ -58,8 +58,9 @@ export default function VisitorBar({ onClose }) {
     return () => clearInterval(tick);
   }, [user]);
 
-  // Apenas desktop; não renderiza se não houver usuário
-  if (!user) return null;
+  // Apenas para quem tem a permissão (ou admin); apenas desktop
+  const podeVer = !!user?.permissoes?.admin || !!user?.permissoes?.Pode_Ver_Barra_Online;
+  if (!user || !podeVer) return null;
 
   const { total = 0, inicio = 0, congelados = 0, kitFesta = 0, comCarrinho = 0 } = stats || {};
 

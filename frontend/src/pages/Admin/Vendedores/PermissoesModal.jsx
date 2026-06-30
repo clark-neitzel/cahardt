@@ -109,6 +109,8 @@ const DEFAULT_PERMISSIONS = {
     Pode_Excluir_RH: false,
     // Tela inicial preferida
     telaInicial: '/',
+    // Barra de visitantes online (site ao vivo no topo do admin)
+    Pode_Ver_Barra_Online: false,
 };
 
 const TELAS_INICIAIS = [
@@ -429,6 +431,22 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 <option key={t.value} value={t.value}>{t.label}</option>
                             ))}
                         </select>
+                    </div>
+
+                    {/* ── Barra de visitantes online ── */}
+                    <div className="flex items-center justify-between bg-teal-50 p-4 rounded-lg border border-teal-200">
+                        <div>
+                            <h4 className="font-bold text-teal-900 text-sm">Barra de Visitantes Online</h4>
+                            <p className="text-xs text-teal-700 mt-0.5">Mostra no topo quantas pessoas estão nos sites públicos (Início, Congelados, Kit Festa)</p>
+                        </div>
+                        <button
+                            type="button" role="switch" aria-checked={!!permissoes.admin || !!permissoes.Pode_Ver_Barra_Online}
+                            onClick={() => !permissoes.admin && toggleBool('Pode_Ver_Barra_Online')}
+                            className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${(permissoes.admin || permissoes.Pode_Ver_Barra_Online) ? 'bg-teal-600' : 'bg-gray-200'} ${permissoes.admin ? 'opacity-60 cursor-not-allowed' : ''}`}
+                            title={permissoes.admin ? 'Administrador vê tudo automaticamente' : ''}
+                        >
+                            <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${(permissoes.admin || permissoes.Pode_Ver_Barra_Online) ? 'translate-x-5' : 'translate-x-0'}`} />
+                        </button>
                     </div>
 
                     {/* ═══════════════════════════════════════════ */}
