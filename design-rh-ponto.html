@@ -108,7 +108,7 @@
 <div class="nav"><div class="row">
   <span class="tag">RH · Mockup</span>
   <a href="#a">A · Bater ponto</a><a href="#b">B · Funcionários</a><a href="#c">C · Novo</a>
-  <a href="#d">D · Ficha</a><a href="#e">E · Painel</a><a href="#f">F · Config</a>
+  <a href="#d">D · Ficha</a><a href="#e">E · Painel</a><a href="#f">F · Config</a><a href="#g">G · Importar</a>
 </div></div>
 
 <div class="wrap">
@@ -408,6 +408,60 @@
         <label class="sm" style="display:flex;align-items:center;gap:6px;color:var(--g700)"><input type="checkbox" checked style="width:auto;margin:0"> Bloquear batida fora da área</label>
         <button class="btn btn-pri">Salvar</button>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- G · IMPORTAR PONTO (CSV) -->
+<section id="g">
+  <h2>G · Importar ponto <span class="muted sm">— do relógio de ponto (CSV/Excel)</span></h2>
+  <p class="lead">Sobe a planilha exportada pelo relógio, mapeia as colunas, confere a prévia e confirma. Batidas importadas entram sem GPS, marcadas como "Importado (CSV)". Duplicadas são ignoradas.</p>
+
+  <div class="card" style="max-width:860px">
+
+    <!-- passo 1: upload -->
+    <div class="card-h"><span class="ttl">1 · Enviar a planilha</span></div>
+    <div class="pad">
+      <div class="box" style="border-style:dashed;text-align:center;padding:28px;background:#f9fafb">
+        <div style="font-size:30px">📄</div>
+        <p class="sm sb" style="margin:8px 0 2px">Arraste o arquivo .csv ou .xlsx aqui</p>
+        <p class="xs muted" style="margin:0">ou <a class="link">selecione do computador</a> · exportado pelo software do relógio</p>
+        <p class="xs sb mt12" style="color:var(--green-fg)">✓ batidas_junho.csv · 1.284 linhas</p>
+      </div>
+    </div>
+
+    <!-- passo 2: mapear colunas -->
+    <div class="card-h" style="border-top:1px solid var(--line2)"><span class="ttl">2 · Mapear as colunas</span></div>
+    <div class="pad grid g4" style="gap:14px">
+      <label class="fld"><span>Identificação (CPF/matrícula)</span><select><option>Coluna "CPF"</option><option>Coluna "Matrícula"</option><option>Coluna "PIS"</option></select></label>
+      <label class="fld"><span>Data</span><select><option>Coluna "Data"</option><option>Coluna "DataHora"</option></select></label>
+      <label class="fld"><span>Hora</span><select><option>Coluna "Hora"</option><option>Coluna "DataHora"</option></select></label>
+      <label class="fld"><span>Tipo (opcional)</span><select><option>Auto (alterna E/S)</option><option>Coluna "Tipo"</option></select></label>
+    </div>
+    <div class="note">Se não houver coluna de tipo, o sistema alterna Entrada/Saída pela ordem das batidas do dia (mesma regra do link).</div>
+
+    <!-- passo 3: prévia -->
+    <div class="card-h" style="border-top:1px solid var(--line2)"><span class="ttl">3 · Conferir antes de importar</span></div>
+    <div class="grid g4 pad">
+      <div class="stat"><div class="v num">1.284</div><div class="xs muted">Batidas no arquivo</div></div>
+      <div class="stat"><div class="v num" style="color:var(--green-fg)">1.190</div><div class="xs muted">Reconhecidas</div></div>
+      <div class="stat"><div class="v num" style="color:var(--amber-fg)">62</div><div class="xs muted">Já existem (ignorar)</div></div>
+      <div class="stat"><div class="v num" style="color:var(--red-fg)">32</div><div class="xs muted">Sem funcionário</div></div>
+    </div>
+    <div class="scroll-x"><table>
+      <thead><tr><th>Identificação</th><th>Funcionário</th><th>Data</th><th>Hora</th><th>Tipo</th><th>Situação</th></tr></thead>
+      <tbody>
+        <tr><td class="num">123.456.789-00</td><td class="sb">João da Silva</td><td class="num">30/06</td><td class="num">07:30</td><td><span class="badge b-green">Entrada</span></td><td><span class="badge b-green">Importar</span></td></tr>
+        <tr><td class="num">123.456.789-00</td><td class="sb">João da Silva</td><td class="num">30/06</td><td class="num">11:31</td><td><span class="badge b-gray">Saída</span></td><td><span class="badge b-green">Importar</span></td></tr>
+        <tr style="background:#fffbeb"><td class="num">987.654.321-00</td><td class="sb">Maria Souza</td><td class="num">30/06</td><td class="num">08:00</td><td><span class="badge b-green">Entrada</span></td><td><span class="badge b-amber">Já existe</span></td></tr>
+        <tr style="background:#fef2f2"><td class="num">555.444.333-22</td><td class="muted">— não encontrado —</td><td class="num">30/06</td><td class="num">07:45</td><td class="muted">—</td><td><span class="badge b-red">Vincular</span></td></tr>
+      </tbody>
+    </table></div>
+    <div class="note">As 32 sem funcionário podem ser vinculadas manualmente (associar a matrícula a um funcionário) ou puladas.</div>
+
+    <div class="between" style="padding:14px 20px;border-top:1px solid var(--line2)">
+      <span class="xs muted">Serão importadas <b>1.190</b> batidas · 62 ignoradas · 32 pendentes</span>
+      <span class="rowflex"><button class="btn btn-sec">Cancelar</button><button class="btn btn-pri">Importar 1.190 batidas</button></span>
     </div>
   </div>
 </section>
