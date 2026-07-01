@@ -102,7 +102,7 @@ export default function KitFestaSite() {
             </Section>
           )}
           {cfg.indicacao?.ativo && (
-            <Referral code={cliente?.codigoIndicacao} credito={cfg.indicacao?.credito} onEntrar={() => setLoginModal(true)} />
+            <Referral code={cliente?.codigoIndicacao} credito={cfg.indicacao?.credito} indicacao={cliente?.indicacao} onEntrar={() => setLoginModal(true)} />
           )}
           <Contato cfg={cfg} logo={siteLogo} />
 
@@ -124,6 +124,7 @@ export default function KitFestaSite() {
 
       {cartOpen && (
         <CartDrawer cart={cart} produtos={produtos} totals={totals} coupon={coupon} setCoupon={setCoupon} minCaixas={minCaixas}
+          cliente={cliente} cfg={cfg}
           onClose={() => setCartOpen(false)} onAdd={addItem} onRemove={removeItem}
           onCheckout={() => {
             if (!logado) { setCartOpen(false); setLoginModal(true); return; }
@@ -312,18 +313,32 @@ function ProdGrid({ produtos, qtyOf, onAdd, onRemove }) {
 }
 
 /* ---------- Carrinho ---------- */
-function CartDrawer({ cart, produtos, onClose, onAdd, onRemove, coupon, setCoupon, totals, onCheckout, minCaixas }) {
+function CartDrawer({ cart, produtos, onClose, onAdd, onRemove, coupon, setCoupon, totals, onCheckout, minCaixas, cliente, cfg }) {
   const [code, setCode] = useState('');
+  const [codeInd, setCodeInd] = useState('');
   const [err, setErr] = useState('');
   const ids = Object.keys(cart).filter(id => cart[id] > 0);
   const boxes = totals.boxes;
   const prodById = (id) => produtos.find(p => p.id === id);
 
+  const podeIndicar = cliente && !cliente.jaIndicado; // 1ª compra e ainda não usou código
+  const creditos = cliente?.indicacao?.creditosDisponiveis || 0;
+  const valorCredito = Number(cfg?.indicacao?.credito) || 0;
+
   const apply = async () => {
     try {
       const c = await publicApi.validarCupom(code.trim().toUpperCase(), boxes);
-      setErr(''); setCoupon(c);
+      setErr(''); setCoupon({ ...c, fonte: 'cupom' });
     } catch (e) { setErr(e.response?.data?.error || 'Cupom inválido.'); }
+  };
+  const applyIndicacao = async () => {
+    try {
+      const c = await publicApi.validarIndicacao(codeInd.trim().toUpperCase());
+      setErr(''); setCoupon({ fonte: 'indicacao', tipo: c.tipo, valor: c.valor, codigo: c.codigo, label: `Indicação de ${c.indicadorNome}` });
+    } catch (e) { setErr(e.response?.data?.error || 'Código inválido.'); }
+  };
+  const usarCredito = () => {
+    setErr(''); setCoupon({ fonte: 'credito', tipo: 'brl', valor: valorCredito, label: `Crédito de indicação (R$ ${valorCredito.toFixed(2).replace('.', ',')})` });
   };
 
   return (
@@ -364,14 +379,30 @@ function CartDrawer({ cart, produtos, onClose, onAdd, onRemove, coupon, setCoupo
 
               {coupon ? (
                 <div className="coupon-ok"><span><Ticket size={15} /> {coupon.label || coupon.codigo}</span>
-                  <button onClick={() => { setCoupon(null); setCode(''); }}>remover</button></div>
+                  <button onClick={() => { setCoupon(null); setCode(''); setCodeInd(''); }}>remover</button></div>
               ) : (
                 <>
-                  <div className="coupon">
+                  {/* Crédito de indicação (para quem tem crédito disponível) */}
+                  {creditos > 0 && valorCredito > 0 && (
+                    <button className="btn btn-green btn-block btn-sm" style={{ marginTop: 12 }} onClick={usarCredito}>
+                      <Sparkles size={15} /> Usar 1 crédito de indicação (R$ {valorCredito.toFixed(2).replace('.', ',')}) · {creditos} disponível(is)
+                    </button>
+                  )}
+                  {/* Código de indicação (1ª compra) */}
+                  {podeIndicar && (
+                    <div className="coupon" style={{ marginTop: 10 }}>
+                      <div className="ip"><Sparkles size={16} color="#9a8c70" />
+                        <input placeholder="código de indicação" value={codeInd} onChange={e => { setCodeInd(e.target.value); setErr(''); }} /></div>
+                      <button className="btn btn-outline-ink btn-sm" onClick={applyIndicacao}>Usar</button>
+                    </div>
+                  )}
+                  {/* Cupom normal */}
+                  <div className="coupon" style={{ marginTop: 10 }}>
                     <div className="ip"><Ticket size={16} color="#9a8c70" />
                       <input placeholder="cupom de desconto" value={code} onChange={e => { setCode(e.target.value); setErr(''); }} /></div>
                     <button className="btn btn-outline-ink btn-sm" onClick={apply}>Aplicar</button>
                   </div>
+                  {(podeIndicar || creditos > 0) && <div className="legend" style={{ fontSize: 11, color: '#8a7d63', marginTop: 6 }}>Use só um: cupom, código de indicação ou crédito.</div>}
                   {err && <div className="coupon-err">{err}</div>}
                 </>
               )}
@@ -654,7 +685,7 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
             ); })}
             <div className="tot" style={{ marginTop: 10 }}>
               <div className="row"><span>{totals.boxes} caixas</span><span>{money(totals.subtotal)}</span></div>
-              {totals.discount > 0 && <div className="row disc"><span>Cupom {coupon?.codigo}</span><span>– {money(totals.discount)}</span></div>}
+              {totals.discount > 0 && <div className="row disc"><span>{coupon?.fonte === 'credito' ? 'Crédito de indicação' : coupon?.fonte === 'indicacao' ? 'Desconto de indicação' : `Cupom ${coupon?.codigo || ''}`}</span><span>– {money(totals.discount)}</span></div>}
               {taxa > 0 && <div className="row"><span>Taxa entrega</span><span>{money(taxa)}</span></div>}
               <div className="grand"><span>Total</span><b>{money(totalFinal)}</b></div>
             </div>
@@ -707,7 +738,10 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
     const payload = {
       itens, modo: info.modo, data: info.date, horario: info.slot,
       bairroId: info.bairroId || null, enderecoEntrega: info.endereco || null,
-      cupomCodigo: coupon?.codigo || null, observacoes: info.obs || null,
+      cupomCodigo: coupon?.fonte === 'cupom' ? coupon.codigo : null,
+      indicacaoCodigo: coupon?.fonte === 'indicacao' ? coupon.codigo : null,
+      usarCredito: coupon?.fonte === 'credito',
+      observacoes: info.obs || null,
       telefone: info.telefone || null,
       visitante: visitanteFinal,
     };
@@ -720,7 +754,7 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
           `${info.modo === 'retirada' ? 'Retirada na loja' : `Entrega${info.bairro ? ` · ${info.bairro.nome}` : ''}`}\n` +
           `Data: ${info.dateLabel} às ${info.slot}` +
           (info.endereco ? `\nEndereço: ${info.endereco}` : '') +
-          (coupon ? `\nCupom: ${coupon.codigo}` : '') +
+          (coupon ? `\nDesconto: ${coupon.label || coupon.codigo}` : '') +
           (info.obs ? `\nObs: ${info.obs}` : '') +
           `\n\nTotal: ${money(totals.total + (info.taxa || 0))}`
         );
@@ -764,10 +798,11 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
 }
 
 /* ---------- Indique e ganhe ---------- */
-function Referral({ code, credito, onEntrar }) {
+function Referral({ code, credito, indicacao, onEntrar }) {
   const [copied, setCopied] = useState(false);
   const c = credito || 20;
   const copy = () => { try { navigator.clipboard.writeText(code); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
+  const temSaldo = indicacao && (indicacao.creditosDisponiveis > 0 || indicacao.indicados > 0);
   return (
     <section className="sec tex-board">
       <div className="wrap">
@@ -775,7 +810,7 @@ function Referral({ code, credito, onEntrar }) {
           <div>
             <span className="kicker" style={{ color: 'var(--green-dd)' }}>Indique &amp; ganhe</span>
             <h2>Indicou, os dois ganham</h2>
-            <p>Compartilhe seu código. Seu amigo ganha <b>R${c} OFF</b> na primeira compra e você ganha <b>R${c} de crédito</b> quando ele fizer o pedido.</p>
+            <p>Compartilhe seu código. Seu amigo ganha <b>desconto</b> na primeira compra e você ganha <b>R${c} de crédito</b> quando ele quitar o pedido — 1 crédito por pedido seu.</p>
             {code ? (
               <div className="ref-code">
                 <span className="code">{code}</span>
@@ -786,6 +821,13 @@ function Referral({ code, credito, onEntrar }) {
             ) : (
               <div className="ref-code">
                 <button className="btn btn-green" onClick={onEntrar}>Entrar / criar conta para pegar seu código</button>
+              </div>
+            )}
+            {temSaldo && (
+              <div style={{ display: 'flex', gap: 10, flexwrap: 'wrap', marginTop: 16 }}>
+                <div className="credmini-c"><b>{indicacao.indicados}</b><span>indicados</span></div>
+                <div className="credmini-c" style={{ background: 'var(--green)', color: '#fff' }}><b style={{ color: '#fff' }}>{indicacao.creditosDisponiveis}</b><span style={{ color: '#dff0e4' }}>créditos p/ usar</span></div>
+                <div className="credmini-c"><b>R$ {Number(indicacao.valorDisponivel || 0).toFixed(0)}</b><span>disponível</span></div>
               </div>
             )}
           </div>

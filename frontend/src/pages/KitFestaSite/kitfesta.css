@@ -487,3 +487,8 @@
 .kf .foot-simple-in { display:flex; align-items:center; gap:14px; padding:26px 0; flex-wrap:wrap; }
 .kf .foot-mark { height:46px; width:auto; flex:none; }
 .kf .foot-simple-in span { font-size:.85rem; color:#6a5f4c; line-height:1.4; }
+
+/* Mini-cards de crédito no painel de indicação */
+.kf .credmini-c { background:#fff; border-radius:12px; padding:10px 14px; text-align:center; min-width:96px; }
+.kf .credmini-c b { font-family:var(--f-display); font-size:24px; color:var(--green-dd); display:block; line-height:1; }
+.kf .credmini-c span { font-size:11px; color:#8a7d63; text-transform:uppercase; letter-spacing:.03em; }

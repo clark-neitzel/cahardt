@@ -200,6 +200,21 @@ const kitFestaService = {
                 };
             }
         }
+        // Saldo de créditos de indicação + resumo de indicados
+        const [creds, indicadosCount] = await Promise.all([
+            prisma.kitFestaCredito.findMany({ where: { donoId: auth.id }, select: { status: true, valor: true } }),
+            prisma.kitFestaCliente.count({ where: { indicadoPorId: auth.id } }),
+        ]);
+        const disponiveis = creds.filter(c => c.status === 'DISPONIVEL');
+        const usados = creds.filter(c => c.status === 'USADO');
+        const indicacao = {
+            codigo: auth.codigoIndicacao,
+            indicados: indicadosCount,
+            creditosDisponiveis: disponiveis.length,
+            creditosUsados: usados.length,
+            valorDisponivel: disponiveis.reduce((s, c) => s + dec(c.valor), 0),
+            valorUsado: usados.reduce((s, c) => s + dec(c.valor), 0),
+        };
         return {
             id: auth.id,
             cpf: auth.cpf,
@@ -210,8 +225,35 @@ const kitFestaService = {
             codigoIndicacao: auth.codigoIndicacao,
             creditoIndicacao: dec(auth.creditoIndicacao),
             temCadastroApp: !!auth.clienteUuid,
+            jaIndicado: !!auth.indicadoPorId,
+            indicacao,
             endereco,
         };
+    },
+
+    // Valida um código de indicação para o cliente logado (o INDICADO).
+    async validarIndicacao({ clienteId, codigo }) {
+        const cfg = await this.configPublico();
+        if (!cfg.indicacao?.ativo) throw new Error('Programa de indicação indisponível.');
+        const cod = String(codigo || '').toUpperCase().trim();
+        if (!cod) throw new Error('Informe o código.');
+
+        const cliente = await prisma.kitFestaCliente.findUnique({ where: { id: clienteId } });
+        if (!cliente) throw new Error('Faça login para usar um código de indicação.');
+        if (cliente.indicadoPorId) throw new Error('Você já usou um código de indicação.');
+        if ((cliente.codigoIndicacao || '').toUpperCase() === cod) throw new Error('Você não pode usar seu próprio código.');
+
+        const indicador = await prisma.kitFestaCliente.findFirst({ where: { codigoIndicacao: cod } });
+        if (!indicador) throw new Error('Código de indicação inválido.');
+        if (indicador.id === clienteId) throw new Error('Você não pode usar seu próprio código.');
+
+        // Precisa ser primeira compra (nenhum pedido válido ainda)
+        const jaPediu = await prisma.kitFestaPedido.count({ where: { kitFestaClienteId: clienteId, status: { notIn: ['RECUSADO', 'CANCELADO'] } } });
+        if (jaPediu > 0) throw new Error('O código de indicação vale só na primeira compra.');
+
+        const tipo = cfg.indicacao.descontoIndicadoTipo === 'pct' ? 'pct' : 'brl';
+        const valor = dec(cfg.indicacao.descontoIndicado);
+        return { codigo: cod, indicadorId: indicador.id, indicadorNome: indicador.nome, tipo, valor };
     },
 
     async perfil(clienteId) {
@@ -328,7 +370,7 @@ const kitFestaService = {
     },
 
     // ───────── Criação de pedido (cliente logado ou visitante) ─────────
-    async criarPedidoSite({ clienteId, visitante, itens, modo, data, horario, bairroId, enderecoEntrega, cupomCodigo, observacoes, telefone }) {
+    async criarPedidoSite({ clienteId, visitante, itens, modo, data, horario, bairroId, enderecoEntrega, cupomCodigo, indicacaoCodigo, usarCredito, observacoes, telefone }) {
         if (!Array.isArray(itens) || itens.length === 0) throw new Error('Carrinho vazio.');
 
         // Cliente autenticado ou visitante (cria registro sem cadastro)
@@ -398,16 +440,29 @@ const kitFestaService = {
             taxaEntrega = dec(bairro?.taxa);
         }
 
-        // Cupom
-        let descontoValor = 0;
-        let cupomAplicado = null;
+        // Desconto: EXCLUSIVO — cupom OU código de indicação OU crédito (nunca combinados)
+        let descontoValor = 0, cupomAplicado = null, origemDesconto = null;
+        let indicadorId = null, creditoParaUsar = null;
+        const fontes = [!!cupomCodigo, !!indicacaoCodigo, !!usarCredito].filter(Boolean).length;
+        if (fontes > 1) throw new Error('Use apenas um desconto: cupom, código de indicação ou crédito.');
+
         if (cupomCodigo) {
             try {
                 const cup = await this.validarCupom({ codigo: cupomCodigo, totalCaixas });
                 descontoValor = cup.tipo === 'pct' ? subtotal * cup.valor / 100 : Math.min(cup.valor, subtotal);
-                cupomAplicado = cup.codigo;
-            } catch (_) { /* cupom inválido: ignora silenciosamente no servidor */ }
+                cupomAplicado = cup.codigo; origemDesconto = 'CUPOM';
+            } catch (_) { /* cupom inválido: ignora silenciosamente */ }
+        } else if (indicacaoCodigo && clienteId) {
+            try {
+                const ind = await this.validarIndicacao({ clienteId, codigo: indicacaoCodigo });
+                descontoValor = ind.tipo === 'pct' ? subtotal * ind.valor / 100 : Math.min(ind.valor, subtotal);
+                indicadorId = ind.indicadorId; origemDesconto = 'INDICACAO';
+            } catch (_) { /* código inválido: ignora */ }
+        } else if (usarCredito && clienteId) {
+            creditoParaUsar = await prisma.kitFestaCredito.findFirst({ where: { donoId: auth.id, status: 'DISPONIVEL' }, orderBy: { createdAt: 'asc' } });
+            if (creditoParaUsar) { descontoValor = Math.min(dec(creditoParaUsar.valor), subtotal); origemDesconto = 'CREDITO'; }
         }
+        descontoValor = Math.round(descontoValor * 100) / 100;
 
         const total = Math.max(0, subtotal - descontoValor) + taxaEntrega;
 
@@ -439,6 +494,8 @@ const kitFestaService = {
                 subtotal,
                 cupomCodigo: cupomAplicado,
                 descontoValor,
+                origemDesconto,
+                creditoUsadoId: creditoParaUsar?.id || null,
                 total,
                 totalCaixas,
                 observacoes: observacoes || null,
@@ -448,12 +505,58 @@ const kitFestaService = {
             include: { itens: true, bairro: true },
         });
 
+        // Efeitos do desconto aplicado
+        if (origemDesconto === 'INDICACAO' && indicadorId) {
+            // vincula o indicador (só na 1ª vez) — o crédito dele nasce quando ESTE pedido for quitado
+            await prisma.kitFestaCliente.update({ where: { id: auth.id }, data: { indicadoPorId: indicadorId } }).catch(() => {});
+        }
+        if (origemDesconto === 'CREDITO' && creditoParaUsar) {
+            // consome (reserva) o crédito; se o pedido for recusado/cancelado, é liberado de volta
+            await prisma.kitFestaCredito.update({ where: { id: creditoParaUsar.id }, data: { status: 'USADO', usadoPedidoId: pedido.id, usadoEm: new Date() } }).catch(() => {});
+        }
+        if (origemDesconto === 'CUPOM' && cupomAplicado) {
+            const cupRow = await prisma.kitFestaCupom.findUnique({ where: { codigo: cupomAplicado } });
+            if (cupRow) {
+                await prisma.kitFestaCupomUso.create({ data: { cupomId: cupRow.id, codigo: cupomAplicado, clienteId: auth.id, pedidoId: pedido.id, valor: descontoValor } }).catch(() => {});
+                await prisma.kitFestaCupom.update({ where: { id: cupRow.id }, data: { usos: { increment: 1 } } }).catch(() => {});
+            }
+        }
+
         // Confirmação automática pelo nosso WhatsApp (BotConversa) para o CELULAR DO CLIENTE.
         // Não bloqueia a resposta: se o webhook falhar, o pedido já está salvo.
         webhookService.notificarPedidoKitFesta(pedido.id).catch(err =>
             console.error('[Webhook-KitFesta] Erro async:', err.message)
         );
         return pedido;
+    },
+
+    // Marca/desmarca pagamento (quitação). Ao quitar, gera o crédito do indicador
+    // (quem indicou o comprador), 1 crédito por indicado.
+    async adminMarcarPago(id, pago) {
+        const kp = await prisma.kitFestaPedido.findUnique({ where: { id }, include: { kitFestaCliente: true } });
+        if (!kp) throw new Error('Pedido não encontrado.');
+        const atualizado = await prisma.kitFestaPedido.update({
+            where: { id }, data: { pago: !!pago, pagoEm: pago ? new Date() : null },
+        });
+        if (pago) await this._gerarCreditoIndicacao(kp);
+        return atualizado;
+    },
+
+    // Gera o crédito do indicador quando o pedido do INDICADO é quitado (idempotente por indicado).
+    async _gerarCreditoIndicacao(kp) {
+        try {
+            const comprador = kp.kitFestaCliente || await prisma.kitFestaCliente.findUnique({ where: { id: kp.kitFestaClienteId } });
+            if (!comprador?.indicadoPorId) return;
+            // 1 crédito por pessoa indicada
+            const jaGerado = await prisma.kitFestaCredito.findFirst({ where: { indicadoId: comprador.id } });
+            if (jaGerado) return;
+            const cfg = await this.configPublico();
+            const valor = dec(cfg.indicacao?.credito);
+            if (valor <= 0) return;
+            await prisma.kitFestaCredito.create({
+                data: { donoId: comprador.indicadoPorId, indicadoId: comprador.id, origemPedidoId: kp.id, valor, status: 'DISPONIVEL' },
+            });
+        } catch (e) { console.error('[KitFesta] gerar crédito:', e.message); }
     },
 
     // Exclusão de pedido (apenas teste/admin) — itens caem em cascata
@@ -758,10 +861,45 @@ const kitFestaService = {
     },
 
     async adminRecusarPedido(id, motivo) {
+        // Libera o crédito reservado (se o pedido usou crédito de indicação)
+        const kp = await prisma.kitFestaPedido.findUnique({ where: { id }, select: { creditoUsadoId: true } });
+        if (kp?.creditoUsadoId) {
+            await prisma.kitFestaCredito.update({ where: { id: kp.creditoUsadoId }, data: { status: 'DISPONIVEL', usadoPedidoId: null, usadoEm: null } }).catch(() => {});
+        }
         return prisma.kitFestaPedido.update({
             where: { id },
             data: { status: 'RECUSADO', motivoRecusa: motivo || null },
         });
+    },
+
+    // Histórico de uso de cupons (todos ou de um cupom específico)
+    async adminCuponsUsos(cupomId) {
+        return prisma.kitFestaCupomUso.findMany({
+            where: cupomId ? { cupomId } : {},
+            orderBy: { createdAt: 'desc' },
+            include: { cliente: { select: { nome: true, cpf: true, telefone: true } } },
+            take: 500,
+        });
+    },
+
+    // Painel de indicações: créditos gerados + resumo
+    async adminIndicacoes() {
+        const creditos = await prisma.kitFestaCredito.findMany({
+            orderBy: { createdAt: 'desc' },
+            include: {
+                dono: { select: { nome: true, cpf: true, codigoIndicacao: true } },
+                indicado: { select: { nome: true, cpf: true } },
+            },
+            take: 500,
+        });
+        const resumo = {
+            total: creditos.length,
+            disponiveis: creditos.filter(c => c.status === 'DISPONIVEL').length,
+            usados: creditos.filter(c => c.status === 'USADO').length,
+            valorDisponivel: creditos.filter(c => c.status === 'DISPONIVEL').reduce((s, c) => s + dec(c.valor), 0),
+            valorUsado: creditos.filter(c => c.status === 'USADO').reduce((s, c) => s + dec(c.valor), 0),
+        };
+        return { resumo, creditos };
     },
 
     // Vincula um pedido sem cadastro a um Cliente do app (após equipe criar no CA e sincronizar)
@@ -843,10 +981,7 @@ const kitFestaService = {
             include: { pedido: true },
         });
 
-        // Incrementa uso do cupom
-        if (kp.cupomCodigo) {
-            await prisma.kitFestaCupom.updateMany({ where: { codigo: kp.cupomCodigo }, data: { usos: { increment: 1 } } }).catch(() => {});
-        }
+        // (uso do cupom já é registrado na criação do pedido — não incrementa aqui)
         return atualizado;
     },
 };
@@ -879,7 +1014,9 @@ const DEFAULT_CONFIG = {
         { titulo: 'Escolha data e hora', desc: 'Veja os horários liberados e reserve o seu.' },
         { titulo: 'Confirme no WhatsApp', desc: 'A gente combina o pagamento (pix ou na entrega).' },
     ],
-    indicacao: { ativo: true, credito: 20 },
+    // credito = R$ que o INDICADOR ganha por indicação (quando o indicado quita)
+    // descontoIndicado = desconto que o INDICADO ganha ao usar o código; tipo 'brl' ou 'pct'
+    indicacao: { ativo: true, credito: 20, descontoIndicado: 20, descontoIndicadoTipo: 'brl' },
     freteTexto: 'Entrega em Joinville · taxa conforme o bairro.',
 };
 

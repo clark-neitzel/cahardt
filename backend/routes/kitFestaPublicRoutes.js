@@ -36,6 +36,7 @@ router.get('/config', ctrl.config);
 router.get('/agenda', ctrl.agenda);
 router.get('/slots', ctrl.slots);
 router.post('/validar-cupom', ctrl.validarCupom);
+router.post('/validar-indicacao', clienteAuth(true), ctrl.validarIndicacao);
 
 // ── Pedido (visitante ou cliente logado) ──
 router.post('/pedido', clienteAuth(false), ctrl.criarPedido);

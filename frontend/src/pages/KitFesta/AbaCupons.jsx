@@ -49,6 +49,7 @@ export default function AbaCupons() {
   const fmtValor = (c) => c.tipo === 'pct' ? `${Number(c.valor)}%` : `R$ ${Number(c.valor).toFixed(2).replace('.', ',')}`;
 
   return (
+    <div className="space-y-4">
     <div className="grid md:grid-cols-3 gap-4">
       <div className="md:col-span-1 bg-white rounded-xl border border-gray-200 p-4 h-fit">
         <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-1.5">
@@ -159,6 +160,50 @@ export default function AbaCupons() {
           </table>
         )}
       </div>
+    </div>
+    <UsosHistorico />
+    </div>
+  );
+}
+
+/* Histórico: quem usou cada cupom */
+function UsosHistorico() {
+  const [usos, setUsos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { kitFestaService.cuponsUsos().then(setUsos).catch(() => {}).finally(() => setLoading(false)); }, []);
+  const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="px-4 py-3 border-b border-gray-100 font-semibold text-gray-800 text-sm">Quem usou os cupons</div>
+      {loading ? <div className="p-6 text-center text-gray-400"><Loader2 className="h-5 w-5 animate-spin inline" /></div>
+        : usos.length === 0 ? <div className="p-6 text-center text-gray-400 text-sm">Nenhum cupom usado ainda.</div>
+          : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-gray-500 text-xs">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 font-medium">Cupom</th>
+                    <th className="text-left px-4 py-2.5 font-medium">Cliente</th>
+                    <th className="text-right px-4 py-2.5 font-medium">Desconto</th>
+                    <th className="text-left px-4 py-2.5 font-medium">Quando</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usos.map(u => (
+                    <tr key={u.id} className="border-t border-gray-100">
+                      <td className="px-4 py-2.5 font-mono text-emerald-700">{u.codigo}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="text-gray-800">{u.cliente?.nome || '—'}</div>
+                        <div className="text-xs text-gray-400">{u.cliente?.telefone || u.cliente?.cpf || ''}</div>
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-gray-700">{money(u.valor)}</td>
+                      <td className="px-4 py-2.5 text-gray-500">{new Date(u.createdAt).toLocaleDateString('pt-BR')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
     </div>
   );
 }

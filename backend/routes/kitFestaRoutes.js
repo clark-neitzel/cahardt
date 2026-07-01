@@ -54,9 +54,13 @@ router.delete('/bairros/:id', ctrl.adminRemoverBairro);
 
 // ── Cupons ──
 router.get('/cupons', ctrl.adminCupons);
+router.get('/cupons/usos', ctrl.adminCuponsUsos);   // ?cupomId= opcional
 router.post('/cupons', ctrl.adminSalvarCupom);
 router.put('/cupons/:id', ctrl.adminSalvarCupom);
 router.delete('/cupons/:id', ctrl.adminRemoverCupom);
+
+// ── Indicações ──
+router.get('/indicacoes', ctrl.adminIndicacoes);
 
 // ── Avaliações ──
 router.get('/avaliacoes', ctrl.adminAvaliacoes);
@@ -74,6 +78,7 @@ router.get('/pedidos', ctrl.adminPedidos);
 router.post('/pedidos/:id/aprovar', ctrl.adminAprovarPedido);
 router.post('/pedidos/:id/recusar', ctrl.adminRecusarPedido);
 router.post('/pedidos/:id/vincular', ctrl.adminVincularCliente);
+router.post('/pedidos/:id/pago', ctrl.adminMarcarPago);
 router.delete('/pedidos/:id', ctrl.adminExcluirPedido);
 
 module.exports = router;

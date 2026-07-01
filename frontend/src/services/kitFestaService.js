@@ -27,6 +27,10 @@ export const kitFestaService = {
     cupons: () => api.get('/kitfesta/cupons').then(r => r.data),
     salvarCupom: (id, dados) => (id ? api.put(`/kitfesta/cupons/${id}`, dados) : api.post('/kitfesta/cupons', dados)).then(r => r.data),
     removerCupom: (id) => api.delete(`/kitfesta/cupons/${id}`).then(r => r.data),
+    cuponsUsos: (cupomId) => api.get('/kitfesta/cupons/usos', { params: { cupomId } }).then(r => r.data),
+
+    // Indicações
+    indicacoes: () => api.get('/kitfesta/indicacoes').then(r => r.data),
 
     // Avaliações
     avaliacoes: () => api.get('/kitfesta/avaliacoes').then(r => r.data),
@@ -47,6 +51,7 @@ export const kitFestaService = {
     aprovarPedido: (id, dados) => api.post(`/kitfesta/pedidos/${id}/aprovar`, dados).then(r => r.data),
     recusarPedido: (id, motivo) => api.post(`/kitfesta/pedidos/${id}/recusar`, { motivo }).then(r => r.data),
     vincularCliente: (id, clienteUuid) => api.post(`/kitfesta/pedidos/${id}/vincular`, { clienteUuid }).then(r => r.data),
+    marcarPago: (id, pago) => api.post(`/kitfesta/pedidos/${id}/pago`, { pago }).then(r => r.data),
     excluirPedido: (id) => api.delete(`/kitfesta/pedidos/${id}`).then(r => r.data),
 };
 

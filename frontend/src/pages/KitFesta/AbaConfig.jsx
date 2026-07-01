@@ -79,13 +79,26 @@ export default function AbaConfig() {
       </Secao>
 
       {/* Indicação + Frete */}
-      <Secao titulo="Indicação e entrega" icon={Gift} onSave={async () => { await salvarSecao('indicacao', { ...cfg.indicacao, credito: Number(cfg.indicacao?.credito) || 0 }); await salvarSecao('freteTexto', cfg.freteTexto); }} saving={salvando === 'indicacao' || salvando === 'freteTexto'}>
+      <Secao titulo="Indicação e entrega" icon={Gift} onSave={async () => { await salvarSecao('indicacao', { ...cfg.indicacao, credito: Number(cfg.indicacao?.credito) || 0, descontoIndicado: Number(cfg.indicacao?.descontoIndicado) || 0 }); await salvarSecao('freteTexto', cfg.freteTexto); }} saving={salvando === 'indicacao' || salvando === 'freteTexto'}>
         <label className="flex items-center gap-2 text-sm text-gray-600">
           <input type="checkbox" checked={!!cfg.indicacao?.ativo} onChange={e => up('indicacao', { ativo: e.target.checked })} />
           Programa de indicação ativo
         </label>
-        <Campo label="Crédito por indicação (R$)" value={cfg.indicacao?.credito ?? 20} inputMode="decimal"
+        <Campo label="Crédito do INDICADOR por indicação (R$)" value={cfg.indicacao?.credito ?? 20} inputMode="decimal"
           onChange={e => up('indicacao', { credito: e.target.value })} />
+        <div className="grid grid-cols-2 gap-2">
+          <Campo label="Desconto do INDICADO (1ª compra)" value={cfg.indicacao?.descontoIndicado ?? 20} inputMode="decimal"
+            onChange={e => up('indicacao', { descontoIndicado: e.target.value })} />
+          <div>
+            <label className="text-xs text-gray-500">Tipo do desconto</label>
+            <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={cfg.indicacao?.descontoIndicadoTipo || 'brl'}
+              onChange={e => up('indicacao', { descontoIndicadoTipo: e.target.value })}>
+              <option value="brl">R$ (valor)</option>
+              <option value="pct">% (porcentagem)</option>
+            </select>
+          </div>
+        </div>
+        <p className="text-xs text-gray-400">O crédito do indicador só é liberado quando o pedido do indicado é <b>quitado</b>. Cada crédito vale 1 desconto por pedido.</p>
         <div>
           <label className="text-xs text-gray-500 flex items-center gap-1"><Truck className="h-3 w-3" /> Texto da entrega no checkout</label>
           <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={cfg.freteTexto || ''}

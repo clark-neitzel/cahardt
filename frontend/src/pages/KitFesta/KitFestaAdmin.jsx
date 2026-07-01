@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { CalendarDays, ClipboardList, Box, MapPin, Ticket, Settings, PartyPopper, Link2 } from 'lucide-react';
+import { CalendarDays, ClipboardList, Box, MapPin, Ticket, Settings, PartyPopper, Link2, Gift } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AbaAgenda from './AbaAgenda';
 import AbaPedidos from './AbaPedidos';
 import AbaProdutos from './AbaProdutos';
 import AbaBairros from './AbaBairros';
 import AbaCupons from './AbaCupons';
+import AbaIndicacoes from './AbaIndicacoes';
 import AbaConfig from './AbaConfig';
 import { API_URL } from '../../services/api';
 
@@ -15,6 +16,7 @@ const TABS = [
   { id: 'produtos', label: 'Produtos', icon: Box },
   { id: 'bairros', label: 'Bairros', icon: MapPin },
   { id: 'cupons', label: 'Cupons', icon: Ticket },
+  { id: 'indicacoes', label: 'Indicações', icon: Gift },
   { id: 'config', label: 'Configurações', icon: Settings },
 ];
 
@@ -73,6 +75,7 @@ export default function KitFestaAdmin() {
         {tab === 'produtos' && <AbaProdutos />}
         {tab === 'bairros' && <AbaBairros />}
         {tab === 'cupons' && <AbaCupons />}
+        {tab === 'indicacoes' && <AbaIndicacoes />}
         {tab === 'config' && <AbaConfig />}
       </div>
     </div>

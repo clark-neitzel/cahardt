@@ -148,6 +148,17 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
   const [tipo, setTipo] = useState('NORMAL');
   const [vendedorId, setVendedorId] = useState('');
   const [processando, setProcessando] = useState(false);
+  const [pago, setPago] = useState(!!pedido.pago);
+
+  const togglePago = async () => {
+    setProcessando(true);
+    try {
+      await kitFestaService.marcarPago(pedido.id, !pago);
+      setPago(!pago);
+      toast.success(!pago ? 'Marcado como pago — crédito de indicação liberado (se houver).' : 'Pagamento desmarcado.');
+    } catch (e) { toast.error(e.response?.data?.error || 'Erro'); }
+    finally { setProcessando(false); }
+  };
 
   // Vínculo de cliente (para pedidos sem cadastro)
   const [buscaCli, setBuscaCli] = useState('');
@@ -254,7 +265,7 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
             </div>
             <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5 text-sm">
               <div className="flex justify-between text-gray-500"><span>Subtotal ({pedido.totalCaixas} caixas)</span><span>{money(pedido.subtotal)}</span></div>
-              {Number(pedido.descontoValor) > 0 && <div className="flex justify-between text-gray-500"><span>Cupom {pedido.cupomCodigo}</span><span>– {money(pedido.descontoValor)}</span></div>}
+              {Number(pedido.descontoValor) > 0 && <div className="flex justify-between text-gray-500"><span>{pedido.origemDesconto === 'CREDITO' ? 'Crédito de indicação' : pedido.origemDesconto === 'INDICACAO' ? 'Desconto de indicação' : `Cupom ${pedido.cupomCodigo || ''}`}</span><span>– {money(pedido.descontoValor)}</span></div>}
               {Number(pedido.taxaEntrega) > 0 && <div className="flex justify-between text-gray-500"><span>Taxa entrega</span><span>{money(pedido.taxaEntrega)}</span></div>}
               <div className="flex justify-between font-bold text-gray-800"><span>Total</span><span>{money(pedido.total)}</span></div>
             </div>
@@ -267,6 +278,18 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
               <Check className="h-4 w-4" /> Convertido no Pedido {pedido.pedido.numero ? `#${pedido.pedido.numero}` : ''} ({pedido.tipoConversao})
             </div>
           )}
+
+          {/* Pagamento (quitação) — libera o crédito de quem indicou este cliente */}
+          <div className={`rounded-lg p-3 flex items-center justify-between ${pago ? 'bg-emerald-50' : 'bg-gray-50'}`}>
+            <div>
+              <div className="text-sm font-medium text-gray-800">{pago ? '✅ Pedido quitado' : 'Pagamento pendente'}</div>
+              <div className="text-xs text-gray-500">Marque como pago quando o cliente quitar — libera o crédito de indicação.</div>
+            </div>
+            <button onClick={togglePago} disabled={processando}
+              className={`text-xs px-3 py-2 rounded-lg font-medium ${pago ? 'bg-white border border-gray-200 text-gray-600' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}>
+              {pago ? 'Desmarcar' : 'Marcar como pago'}
+            </button>
+          </div>
 
           {/* Vínculo de cliente (sem cadastro) */}
           {precisaVinculo && !clienteVinc && !finalizado && (

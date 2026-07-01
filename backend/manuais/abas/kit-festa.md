@@ -68,16 +68,24 @@ Define quais **produtos do app** aparecem no site. Busca e filtro (Todos / No si
 Bairros de entrega com **CEP** e **taxa**. Ativar/desativar. No checkout, ao escolher "Entrega", o cliente seleciona o bairro e vê a taxa.
 
 ### 5. Cupons
-Cupons de desconto: código, tipo (% ou R$), valor, mínimo de caixas, validade, limite de usos, só primeira compra, ativo/inativo.
+Cupons de desconto: código, tipo (% ou R$), valor, mínimo de caixas, validade, limite de usos, só primeira compra, ativo/inativo. Abaixo da lista tem o **histórico "Quem usou os cupons"** — cliente, cupom, desconto e data de cada uso.
 
-### 6. Configurações
+### 6. Indicações
+Controle do programa de indicação. Cada indicação vira **1 crédito** para o indicador **quando o pedido do indicado é quitado (pago)**; o indicador usa **1 crédito por pedido** (cupom e crédito nunca juntos no mesmo pedido).
+- **Resumo:** créditos gerados, disponíveis, valor a usar, valor já usado.
+- **Tabela:** indicador (quem ganha) · código · indicado · valor do crédito · situação (Disponível/Usado) · data.
+- O crédito só nasce quando você marca o pedido do indicado como **Pago** na aba Pedidos (abra o pedido → "Marcar como pago").
+
+### 7. Configurações
 Tudo que aparece no site, editável sem programador:
 - **Dados da loja** (nome, slogan, endereço, telefone, WhatsApp) + **upload da logo** ("Trocar logo" — use PNG com fundo transparente) + **Link do mapa (Google Maps)** usado no rodapé, no checkout de retirada e na cópia do WhatsApp.
 - **Regras** (pedido mínimo de caixas).
 - **Página inicial (hero)** (título, subtítulo, kicker).
 - **Como funciona** (4 passos).
-- **Indicação e entrega** (programa de indicação, crédito, texto do frete).
+- **Indicação e entrega:** programa ativo/inativo, **crédito do indicador** (R$ que quem indica ganha), **desconto do indicado** (valor + tipo R$/% que quem usa o código ganha na 1ª compra) e texto do frete.
 - **Avaliações** de clientes exibidas no site.
+
+> **Pagamento (quitação):** na aba **Pedidos**, ao abrir um pedido há o controle **"Marcar como pago"**. Marcar como pago é o que **libera o crédito** de quem indicou aquele cliente. No checkout, o cliente usa **um** desconto por pedido: cupom **ou** código de indicação (1ª compra) **ou** 1 crédito de indicação.
 
 ---
 

@@ -1738,8 +1738,48 @@ model KitFestaCliente {
 
   pedidos KitFestaPedido[]
 
+  creditosGanhos   KitFestaCredito[] @relation("CreditoDono")
+  creditosGerados  KitFestaCredito[] @relation("CreditoIndicado")
+  cuponsUsados     KitFestaCupomUso[]
+
   @@index([cpf])
   @@map("kitfesta_clientes")
+}
+
+// Histórico de uso de cupom (quem usou, em qual pedido, quanto).
+model KitFestaCupomUso {
+  id       String  @id @default(uuid())
+  cupomId  String  @map("cupom_id")
+  cupom    KitFestaCupom @relation(fields: [cupomId], references: [id], onDelete: Cascade)
+  codigo   String
+  clienteId String @map("cliente_id")
+  cliente  KitFestaCliente @relation(fields: [clienteId], references: [id])
+  pedidoId String? @map("pedido_id") // KitFestaPedido
+  valor    Decimal @db.Decimal(12, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([cupomId])
+  @@index([clienteId])
+  @@map("kitfesta_cupom_usos")
+}
+
+// Crédito de indicação: 1 linha por indicação que gerou crédito ao indicador.
+// Gerado quando o pedido do INDICADO é quitado; consumido (1 por pedido) pelo indicador.
+model KitFestaCredito {
+  id        String  @id @default(uuid())
+  donoId    String  @map("dono_id") // quem GANHA/usa o crédito (o indicador)
+  dono      KitFestaCliente @relation("CreditoDono", fields: [donoId], references: [id])
+  indicadoId String? @map("indicado_id") // quem foi indicado (gerou o crédito)
+  indicado  KitFestaCliente? @relation("CreditoIndicado", fields: [indicadoId], references: [id])
+  origemPedidoId String? @map("origem_pedido_id") // pedido do indicado que gerou (quitado)
+  valor     Decimal @db.Decimal(12, 2)
+  status    String  @default("DISPONIVEL") // DISPONIVEL | USADO
+  usadoPedidoId String? @map("usado_pedido_id") // pedido do indicador onde foi usado
+  usadoEm   DateTime? @map("usado_em")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([donoId, status])
+  @@map("kitfesta_creditos")
 }
 
 // Categorias de exibição no site (ex: Fritos, De forno, Doces). Editável pelo admin.
@@ -1856,6 +1896,8 @@ model KitFestaCupom {
   ativo          Boolean   @default(true)
   createdAt      DateTime  @default(now()) @map("created_at")
 
+  historico KitFestaCupomUso[]
+
   @@map("kitfesta_cupons")
 }
 
@@ -1888,8 +1930,14 @@ model KitFestaPedido {
   subtotal      Decimal @db.Decimal(12, 2)
   cupomCodigo   String? @map("cupom_codigo")
   descontoValor Decimal @default(0) @map("desconto_valor") @db.Decimal(12, 2)
+  origemDesconto String? @map("origem_desconto") // CUPOM | INDICACAO | CREDITO
+  creditoUsadoId String? @map("credito_usado_id") // KitFestaCredito consumido neste pedido
   total         Decimal @db.Decimal(12, 2)
   totalCaixas   Int     @map("total_caixas")
+
+  // Pagamento (quitação) — libera o crédito do indicador
+  pago   Boolean   @default(false)
+  pagoEm DateTime? @map("pago_em")
 
   observacoes String? @db.Text
 

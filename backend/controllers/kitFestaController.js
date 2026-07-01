@@ -63,6 +63,12 @@ const kitFestaController = {
         try { res.json(await svc.validarCupom({ codigo: req.body.codigo, totalCaixas: req.body.totalCaixas })); }
         catch (e) { erro(res, e, 'validarCupom'); }
     },
+    validarIndicacao: async (req, res) => {
+        try {
+            if (!req.kitFesta?.id) return res.status(401).json({ error: 'Faça login para usar um código de indicação.' });
+            res.json(await svc.validarIndicacao({ clienteId: req.kitFesta.id, codigo: req.body.codigo }));
+        } catch (e) { erro(res, e, 'validarIndicacao'); }
+    },
     criarPedido: async (req, res) => {
         try {
             const clienteId = req.kitFesta?.id || null; // se autenticado
@@ -143,6 +149,19 @@ const kitFestaController = {
     adminRemoverCupom: async (req, res) => {
         try { res.json(await svc.adminRemoverCupom(req.params.id)); }
         catch (e) { erro(res, e, 'adminRemoverCupom'); }
+    },
+    adminCuponsUsos: async (req, res) => {
+        try { res.json(await svc.adminCuponsUsos(req.query.cupomId || null)); }
+        catch (e) { erro(res, e, 'adminCuponsUsos'); }
+    },
+    // Indicações
+    adminIndicacoes: async (req, res) => {
+        try { res.json(await svc.adminIndicacoes()); }
+        catch (e) { erro(res, e, 'adminIndicacoes'); }
+    },
+    adminMarcarPago: async (req, res) => {
+        try { res.json(await svc.adminMarcarPago(req.params.id, req.body.pago !== false)); }
+        catch (e) { erro(res, e, 'adminMarcarPago'); }
     },
     // Avaliações
     adminAvaliacoes: async (req, res) => {
