@@ -27,6 +27,16 @@ const formatDateMsg = (d) => {
     return new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 };
 
+// Data PURA (campo @db.Date, sem hora) — formata pela parte UTC para não voltar 1 dia.
+// (ex.: Kit Festa: cliente escolhe 01/07, guardado como 2026-07-01T00:00Z; no fuso -3
+//  o toLocaleDateString mostraria 30/06. Aqui pega direto a parte da data em UTC.)
+const formatDateOnly = (d) => {
+    if (!d) return '-';
+    const s = new Date(d).toISOString().slice(0, 10); // YYYY-MM-DD
+    const [y, m, day] = s.split('-');
+    return `${day}/${m}/${y}`;
+};
+
 const enviarWebhook = async (webhookUrl, payload) => {
     const response = await fetch(webhookUrl, {
         method: 'POST',
@@ -269,7 +279,7 @@ const webhookService = {
                 `Recebemos seu pedido *Kit Festa* #${pedido.numero} ✅`,
                 '',
                 entregaLinha,
-                `📅 *${formatDateMsg(pedido.data)}* às *${pedido.horario}*`,
+                `📅 *${formatDateOnly(pedido.data)}* às *${pedido.horario}*`,
             ];
             if (pedido.modo === 'entrega' && pedido.enderecoEntrega) {
                 partes.push(`📍 ${pedido.enderecoEntrega}`);
@@ -297,7 +307,7 @@ const webhookService = {
             const payload = {
                 phone, nome, mensagem,
                 data_pedido: formatDate(pedido.createdAt),
-                data_entrega: formatDate(pedido.data),
+                data_entrega: formatDateOnly(pedido.data).replace(/\//g, '.'),
                 total: Number(pedido.total || 0).toFixed(2),
                 condicao: pedido.modo === 'retirada' ? 'Retirada' : 'Entrega'
             };
