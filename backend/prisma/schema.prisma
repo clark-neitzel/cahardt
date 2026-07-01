@@ -180,6 +180,9 @@ model Cliente {
   kitFestaCliente   KitFestaCliente?
   congeladosCliente CongeladosCliente?
 
+  // RH: funcionário ativado a partir deste cadastro de cliente (1-1)
+  funcionario Funcionario?
+
   @@index([Nome])
   @@index([NomeFantasia])
   @@index([Documento])
@@ -392,6 +395,9 @@ model Vendedor {
   curriculoHistorico CurriculoHistorico[]
   comissaoConfigs    ComissaoConfig[]
 
+  // RH: funcionários vinculados a este usuário do app (opcional)
+  funcionarios Funcionario[]
+
   @@map("vendedores")
 }
 
@@ -438,6 +444,165 @@ model AppConfig {
   value Json
 
   @@map("app_configs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RH — Ponto eletrônico e cadastro de funcionário
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Funcionário: entidade central do RH. Pode ser ativado a partir de um Cliente
+// (clienteUuid) e/ou vinculado a um usuário do app (vendedorId).
+model Funcionario {
+  id           String    @id @default(uuid())
+  nome         String
+  cpf          String?   @unique
+  telefone     String?
+  email        String?
+  endereco     String?
+  foto         String?
+  cargo        String?
+  dataAdmissao DateTime? @map("data_admissao")
+  dataDemissao DateTime? @map("data_demissao")
+  salario      Decimal   @default(0) @map("salario") @db.Decimal(12, 2)
+
+  // Regras de jornada/folha
+  tipoHoraExtra String  @default("BANCO") @map("tipo_hora_extra") // BANCO | PAGA
+  jornadaMovel  Boolean @default(true) @map("jornada_movel") // desloca mantendo a carga
+
+  // Link pessoal de ponto (token permanente)
+  pontoToken String? @unique @map("ponto_token")
+  // Senha de acesso ao link de ponto (bcrypt). Sem senha = acesso não liberado.
+  senhaHash  String? @map("senha_hash")
+
+  ativo      Boolean @default(true)
+  observacao String? @db.Text
+
+  // Origem da pessoa (cadastro de cliente) — 1-1
+  clienteUuid String?  @unique @map("cliente_uuid")
+  cliente     Cliente? @relation(fields: [clienteUuid], references: [UUID])
+
+  // Vínculo opcional com usuário do app
+  vendedorId String?   @map("vendedor_id")
+  vendedor   Vendedor? @relation(fields: [vendedorId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  jornadas   FuncionarioJornada[]
+  registros  PontoRegistro[]
+  documentos FuncionarioDocumento[]
+  exames     FuncionarioExame[]
+  atestados  FuncionarioAtestado[]
+  avaliacoes FuncionarioAvaliacao[]
+
+  @@index([ativo])
+  @@map("funcionarios")
+}
+
+// Escala semanal (uma linha por dia da semana)
+model FuncionarioJornada {
+  id            String  @id @default(uuid())
+  funcionarioId String  @map("funcionario_id")
+  diaSemana     Int     @map("dia_semana") // 0=Dom ... 6=Sáb
+  entrada1      String? // "HH:MM"
+  saida1        String?
+  entrada2      String?
+  saida2        String?
+  folga         Boolean @default(false)
+
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+
+  @@unique([funcionarioId, diaSemana])
+  @@map("funcionario_jornadas")
+}
+
+// Batida de ponto
+model PontoRegistro {
+  id              String   @id @default(uuid())
+  funcionarioId   String   @map("funcionario_id")
+  dataReferencia  String   @map("data_referencia") // YYYY-MM-DD (timezone SP)
+  tipo            String // ENTRADA | SAIDA
+  hora            DateTime @default(now())
+  latLng          String?  @map("lat_lng") // "lat,lng"
+  distanciaMetros Int?     @map("distancia_metros")
+  dentroCerca     Boolean? @map("dentro_cerca")
+  origem          String   @default("LINK") // LINK | MANUAL | CSV
+  ajustadoPor     String?  @map("ajustado_por") // id do usuário que ajustou
+  obs             String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+
+  @@index([funcionarioId])
+  @@index([dataReferencia])
+  @@map("ponto_registros")
+}
+
+// Documentos pessoais / pasta livre (PDF ou imagem)
+model FuncionarioDocumento {
+  id            String   @id @default(uuid())
+  funcionarioId String   @map("funcionario_id")
+  categoria     String // RG | CPF | CTPS | RESIDENCIA | CONTRATO | OUTRO
+  nome          String
+  arquivo       String // caminho relativo em /uploads
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+
+  @@index([funcionarioId])
+  @@map("funcionario_documentos")
+}
+
+// Exames ocupacionais (ASO)
+model FuncionarioExame {
+  id            String    @id @default(uuid())
+  funcionarioId String    @map("funcionario_id")
+  tipo          String // ADMISSIONAL | PERIODICO | DEMISSIONAL | RETORNO | MUDANCA_FUNCAO
+  data          DateTime
+  validade      DateTime?
+  resultado     String? // APTO | INAPTO
+  arquivo       String?
+  obs           String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+
+  @@index([funcionarioId])
+  @@map("funcionario_exames")
+}
+
+// Atestados médicos
+model FuncionarioAtestado {
+  id            String   @id @default(uuid())
+  funcionarioId String   @map("funcionario_id")
+  dataInicio    DateTime @map("data_inicio")
+  dias          Int      @default(1)
+  cid           String?
+  arquivo       String?
+  obs           String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+
+  @@index([funcionarioId])
+  @@map("funcionario_atestados")
+}
+
+// Avaliações de desempenho
+model FuncionarioAvaliacao {
+  id            String   @id @default(uuid())
+  funcionarioId String   @map("funcionario_id")
+  periodo       String // ex: "2026-06"
+  nota          Decimal  @default(0) @db.Decimal(4, 2)
+  criterios     Json?
+  obs           String?
+  avaliadorId   String?  @map("avaliador_id")
+  data          DateTime @default(now())
+
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+
+  @@index([funcionarioId])
+  @@map("funcionario_avaliacoes")
 }
 
 model TabelaPreco {

@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RH — Ponto & Funcionários (Mockup)</title>
+<style>
+  :root{
+    --primary:#005fcc; --primary-dark:#0047a3;
+    --bg:#f3f4f6; --surface:#fff; --line:#e5e7eb; --line2:#f3f4f6;
+    --g900:#1f2937; --g700:#374151; --g600:#4b5563; --g500:#6b7280; --g400:#9ca3af;
+    --green-bg:#dcfce7; --green-fg:#166534; --green:#22c55e;
+    --red-bg:#fee2e2; --red-fg:#b91c1c; --red:#dc2626;
+    --amber-bg:#fef3c7; --amber-fg:#b45309;
+    --gray-bg:#f3f4f6; --gray-fg:#374151;
+    --purple-bg:#f3e8ff; --purple-fg:#7e22ce;
+    --blue-bg:#dbeafe; --blue-fg:#1e40af;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,'SF Pro Text','Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--g900);line-height:1.4;-webkit-font-smoothing:antialiased}
+  a{color:var(--primary);text-decoration:none}
+  code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:.85em}
+  h2{font-size:18px;margin:0 0 2px}
+  .muted{color:var(--g500)} .sm{font-size:13px} .xs{font-size:12px} .b{font-weight:700} .sb{font-weight:600}
+  .num{font-variant-numeric:tabular-nums}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+  /* nav */
+  .nav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .nav .row{display:flex;gap:14px;align-items:center;overflow-x:auto;padding:10px 16px}
+  .nav a{font-size:12px;font-weight:600;color:var(--g600);white-space:nowrap}
+  .nav .tag{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--primary)}
+  /* sections */
+  section{padding-top:18px;scroll-margin-top:60px}
+  .lead{font-size:13px;color:var(--g500);margin:2px 0 14px}
+  /* cards */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .card-2xl{border-radius:16px}
+  .card-h{display:flex;align-items:center;gap:8px;padding:14px 20px;border-bottom:1px solid var(--line2)}
+  .card-h .ttl{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g600)}
+  .pad{padding:20px}
+  .box{border:1px solid var(--line);border-radius:8px}
+  /* grid */
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:1fr 1fr} .g3{grid-template-columns:1fr 1fr 1fr} .g4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr 1fr}.g3-1{grid-template-columns:1fr}}
+  @media(max-width:480px){.g2,.g3{grid-template-columns:1fr}}
+  /* buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:6px;font-size:14px;font-weight:600;padding:8px 16px;border:1px solid transparent;cursor:pointer}
+  .btn-pri{background:var(--primary);color:#fff} .btn-pri:hover{background:var(--primary-dark)}
+  .btn-sec{background:#fff;border-color:#d1d5db;color:var(--g700)} .btn-sec:hover{background:#f9fafb}
+  .btn-danger{background:var(--red);color:#fff}
+  .btn-sm{padding:6px 12px;font-size:12px}
+  .btn-lg{width:100%;min-height:64px;font-size:18px;font-weight:700;border-radius:12px}
+  .btn-block{display:flex;width:100%}
+  .btn[disabled]{background:#e5e7eb;color:#9ca3af;cursor:not-allowed}
+  .link{color:var(--primary);font-weight:600;cursor:pointer}
+  .link-dot{color:var(--primary);text-decoration:underline;text-decoration-style:dotted;cursor:pointer;background:none;border:0;font:inherit;padding:0}
+  /* badges */
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;font-size:12px;font-weight:600;border-radius:999px}
+  .b-green{background:var(--green-bg);color:var(--green-fg)} .b-red{background:var(--red-bg);color:var(--red-fg)}
+  .b-amber{background:var(--amber-bg);color:var(--amber-fg)} .b-gray{background:var(--gray-bg);color:var(--gray-fg)}
+  .b-purple{background:var(--purple-bg);color:var(--purple-fg)} .b-blue{background:var(--blue-bg);color:var(--blue-fg)}
+  .dot{height:8px;width:8px;border-radius:999px}
+  /* inputs */
+  label.fld{display:block} label.fld>span{font-size:14px;font-weight:500;color:var(--g700)}
+  input,select{width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:14px;margin-top:4px;font-family:inherit;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+  input[readonly]{background:#f9fafb;color:var(--g600)}
+  .inline-in{margin-top:0}
+  /* tables */
+  table{width:100%;border-collapse:collapse}
+  thead{background:#f9fafb} th{text-align:left;font-size:11px;font-weight:600;color:var(--g500);text-transform:uppercase;letter-spacing:.04em;padding:12px 16px}
+  td{padding:12px 16px;font-size:14px;border-top:1px solid var(--line)}
+  tbody tr:hover{background:#f9fafb}
+  .tc{text-align:center} .tr{text-align:right}
+  .scroll-x{overflow-x:auto}
+  /* phone */
+  .phone{max-width:360px}
+  .clock{font-size:46px;font-weight:700;letter-spacing:-1px;margin:14px 0 0}
+  .avatar{height:56px;width:56px;border-radius:999px;background:var(--blue-bg);color:var(--blue-fg);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700}
+  /* tabs */
+  .tabs{display:flex;gap:4px;padding:12px 12px 0;overflow-x:auto;border-bottom:1px solid var(--line2)}
+  .tabs span{padding:8px 12px;font-size:14px;font-weight:500;color:var(--g500);white-space:nowrap;border-bottom:2px solid transparent}
+  .tabs span.on{color:var(--primary);font-weight:600;border-bottom-color:var(--primary)}
+  /* map */
+  .map{height:128px;background:linear-gradient(135deg,#dbeafe,#bfdbfe);position:relative;display:flex;align-items:center;justify-content:center}
+  .map .pin{width:0;height:0}
+  .pin-i{font-size:30px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
+  .map .coord{position:absolute;bottom:4px;right:8px;font-size:10px;color:#64748b}
+  .fence{height:96px;width:96px;border-radius:999px;background:rgba(0,95,204,.15);border:2px solid rgba(0,95,204,.4);display:flex;align-items:center;justify-content:center}
+  .stat{background:#f9fafb;border-radius:8px;padding:12px;text-align:center}
+  .stat .v{font-size:22px;font-weight:700}
+  .divider{border-top:1px solid var(--line2)}
+  .mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mb12{margin-bottom:12px}
+  .between{display:flex;align-items:center;justify-content:space-between}
+  .listrow{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--line2)}
+  .listrow:first-child{border-top:0}
+  .prog{height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+  .prog>div{height:100%;background:var(--green)}
+  .note{background:#f9fafb;border-top:1px solid var(--line2);padding:8px 16px;font-size:12px;color:var(--g500)}
+  .rowflex{display:flex;gap:8px;flex-wrap:wrap}
+  .alert-red{background:var(--red-bg);border:1px solid #fecaca;border-radius:8px;padding:12px;text-align:center}
+  .modalbox{border:2px dashed #d1d5db;border-radius:8px;padding:16px;background:#f9fafb;margin:16px}
+</style>
+</head>
+<body>
+
+<div class="nav"><div class="row">
+  <span class="tag">RH · Mockup</span>
+  <a href="#a">A · Bater ponto</a><a href="#b">B · Funcionários</a><a href="#c">C · Novo</a>
+  <a href="#d">D · Ficha</a><a href="#e">E · Painel</a><a href="#f">F · Config</a><a href="#g">G · Importar</a>
+</div></div>
+
+<div class="wrap">
+
+<!-- A · BATER PONTO -->
+<section id="a">
+  <h2>A · Bater ponto <span class="muted sm">— link público <code>/ponto/abc123</code></span></h2>
+  <p class="lead">Abre sem login. Relógio ao vivo, botão único que alterna Entrada/Saída, GPS obrigatório (geofence). Clicar no horário mostra o mapa.</p>
+  <div class="grid g3 g3-1">
+
+    <!-- A1 fora -->
+    <div>
+      <p class="xs b" style="text-transform:uppercase;letter-spacing:.1em;color:var(--g500);margin:0 0 8px">Estado: fora do expediente</p>
+      <div class="card card-2xl phone" style="overflow:hidden">
+        <div style="background:var(--primary);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px">
+          <div style="background:rgba(255,255,255,.2);padding:8px;border-radius:8px;font-size:20px">🕐</div>
+          <div><div class="xs" style="color:#bfdbfe">Registro de Ponto</div><div class="b" style="font-size:16px">CA-Hardt</div></div>
+        </div>
+        <div class="tc" style="padding:20px 20px 0">
+          <div class="sm muted">Olá,</div><div class="b" style="font-size:18px">João da Silva</div>
+          <div class="clock num">08:01</div><div class="sm muted">terça-feira, 30 de junho</div>
+          <div style="margin-top:14px"><span class="badge b-gray"><span class="dot" style="background:var(--g400)"></span> Fora do expediente</span></div>
+        </div>
+        <div class="pad">
+          <button class="btn btn-pri btn-lg btn-block">→ &nbsp;Registrar Entrada</button>
+          <p class="tc xs muted mt8">📍 Localização será registrada na batida</p>
+        </div>
+        <div style="border-top:1px solid var(--line2);padding:14px 20px">
+          <p class="xs b" style="text-transform:uppercase;letter-spacing:.12em;color:var(--g500);margin:0 0 6px">Hoje</p>
+          <p class="tc xs muted" style="padding:6px 0">Nenhuma batida registrada ainda</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- A2 trabalhando + mapa -->
+    <div>
+      <p class="xs b" style="text-transform:uppercase;letter-spacing:.1em;color:var(--g500);margin:0 0 8px">Trabalhando · clicar no horário → mapa</p>
+      <div class="card card-2xl phone" style="overflow:hidden">
+        <div class="tc" style="padding:20px 20px 0">
+          <div class="b" style="font-size:18px">João da Silva</div>
+          <div class="clock num">12:03</div>
+          <div style="margin-top:12px"><span class="badge b-green"><span class="dot" style="background:var(--green)"></span> Trabalhando desde 08:01</span></div>
+        </div>
+        <div class="pad"><button class="btn btn-danger btn-lg btn-block">← &nbsp;Registrar Saída</button></div>
+        <div style="border-top:1px solid var(--line2);padding:14px 20px">
+          <p class="xs b" style="text-transform:uppercase;letter-spacing:.12em;color:var(--g500);margin:0 0 10px">Hoje</p>
+          <div class="between"><span class="badge b-green">Entrada</span><button class="link-dot num sb">08:01 📍</button></div>
+          <div class="box mt12" style="overflow:hidden">
+            <div class="between" style="padding:8px 12px;background:#f9fafb;border-bottom:1px solid var(--line2)">
+              <span class="xs sb" style="color:var(--g600)">Local da batida · 08:01</span><span class="xs sb" style="color:var(--green-fg)">✓ dentro · 4 m</span>
+            </div>
+            <div class="map"><span class="pin-i">📍</span><span class="coord">-26.9056, -48.6580</span></div>
+            <a class="tc xs sb" style="display:block;padding:8px;color:var(--primary)">Abrir no Google Maps</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A3 bloqueado -->
+    <div>
+      <p class="xs b" style="text-transform:uppercase;letter-spacing:.1em;color:var(--g500);margin:0 0 8px">Bloqueado (fora da cerca)</p>
+      <div class="card card-2xl phone" style="overflow:hidden">
+        <div class="tc" style="padding:20px 20px 0">
+          <div class="b" style="font-size:18px">João da Silva</div>
+          <div class="clock num">08:01</div>
+          <div style="margin-top:12px"><span class="badge b-red"><span class="dot" style="background:var(--red)"></span> Fora da área permitida</span></div>
+        </div>
+        <div class="pad">
+          <button class="btn btn-lg btn-block" disabled>Registrar Entrada</button>
+          <div class="alert-red mt12">
+            <p class="sm sb" style="color:var(--red-fg);margin:0">Você está a 320 m da empresa</p>
+            <p class="xs" style="color:var(--red-fg);margin:4px 0 0">O ponto só pode ser batido a até <b>10 m</b> do local. Aproxime-se e tente de novo.</p>
+          </div>
+        </div>
+        <div class="tc note">Variações: link inválido → "Link não encontrado, fale com o RH".</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- B · FUNCIONÁRIOS -->
+<section id="b">
+  <h2>B · Funcionários <span class="muted sm">— <code>/rh/funcionarios</code></span></h2>
+  <p class="lead">Lista com status do dia, banco de horas e alertas (exame vencendo).</p>
+  <div class="card">
+    <div class="between" style="padding:14px 20px;border-bottom:1px solid var(--line2)">
+      <div style="display:flex;align-items:center;gap:8px"><span style="background:var(--blue-bg);padding:8px;border-radius:8px">👥</span><span class="b" style="font-size:18px">Funcionários</span></div>
+      <button class="btn btn-pri btn-sm">+ Novo funcionário</button>
+    </div>
+    <div class="pad" style="display:flex;gap:8px;flex-wrap:wrap">
+      <input placeholder="Buscar por nome, CPF, cargo…" style="max-width:280px" />
+      <select style="max-width:180px"><option>Todos os status</option><option>Trabalhando</option><option>Fora</option></select>
+    </div>
+    <div class="scroll-x">
+      <table>
+        <thead><tr><th>Funcionário</th><th>Cargo</th><th>Status hoje</th><th>Banco de horas</th><th>Alertas</th></tr></thead>
+        <tbody>
+          <tr><td class="sb">João da Silva</td><td class="muted">Motorista</td><td><span class="badge b-green">Trabalhando · 08:01</span></td><td class="num sb" style="color:var(--green-fg)">+04:20</td><td><span class="badge b-amber">ASO vence 12d</span></td></tr>
+          <tr><td class="sb">Maria Souza</td><td class="muted">Vendedora</td><td><span class="badge b-gray">Fora</span></td><td class="num sb" style="color:var(--red-fg)">−01:10</td><td class="muted">—</td></tr>
+          <tr><td class="sb">Carlos Lima</td><td class="muted">Expedição</td><td><span class="badge b-green">Trabalhando · 07:32</span></td><td class="num sb muted">00:00</td><td><span class="badge b-red">Atestado hoje</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- C · NOVO -->
+<section id="c">
+  <h2>C · Novo funcionário <span class="muted sm">— ativar a partir do cadastro de Cliente</span></h2>
+  <p class="lead">Busca a pessoa no cadastro de Cliente e puxa nome/CPF/telefone/endereço; depois preenche os dados de RH.</p>
+  <div class="card" style="max-width:680px">
+    <div class="card-h"><span class="ttl">1 · Encontrar a pessoa</span></div>
+    <div class="pad">
+      <input value="joão da silva" />
+      <div class="box mt12">
+        <div class="listrow"><div><div class="sm sb">João da Silva</div><div class="xs muted">CPF 123.456.789-00 · (47) 99999-9999 · Itajaí/SC</div></div><button class="btn btn-pri btn-sm">Selecionar</button></div>
+        <div class="listrow"><div><div class="sm sb">João da Silva Júnior</div><div class="xs muted">CPF 987.654.321-00 · (47) 98888-8888</div></div><button class="btn btn-sec btn-sm">Selecionar</button></div>
+      </div>
+      <p class="xs muted mt12">Não está no cadastro? <a class="link">Cadastrar manualmente</a></p>
+    </div>
+    <div class="card-h" style="border-top:1px solid var(--line2)"><span class="ttl">2 · Dados de RH</span></div>
+    <div class="pad grid g2">
+      <label class="fld"><span>Nome</span><input value="João da Silva" /></label>
+      <label class="fld"><span>CPF</span><input value="123.456.789-00" /></label>
+      <label class="fld"><span>Cargo</span><input placeholder="Motorista" /></label>
+      <label class="fld"><span>Admissão</span><input type="date" /></label>
+      <label class="fld"><span>Salário (R$)</span><input placeholder="2.500,00" /></label>
+      <label class="fld"><span>Hora extra</span><select><option>Banco de horas (compensatório)</option><option>Hora extra paga (50%/100%)</option></select></label>
+    </div>
+    <div class="between" style="padding:12px 20px;border-top:1px solid var(--line2)">
+      <span></span><span class="rowflex"><button class="btn btn-sec">Cancelar</button><button class="btn btn-pri">Ativar como funcionário</button></span>
+    </div>
+  </div>
+</section>
+
+<!-- D · FICHA -->
+<section id="d">
+  <h2>D · Ficha do funcionário <span class="muted sm">— <code>/rh/funcionarios/:id</code></span></h2>
+  <p class="lead">Abas: Dados · Documentos · Exames · Atestados · Cartão de ponto · Desempenho.</p>
+  <div class="card">
+    <div style="padding:20px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--line2)">
+      <div class="avatar">JS</div>
+      <div style="flex:1"><div class="b" style="font-size:18px">João da Silva</div><div class="sm muted">Motorista · admitido em 03/2024 · <span class="sb" style="color:var(--green-fg)">Trabalhando desde 08:01</span></div></div>
+      <span class="badge b-green">Ativo</span>
+    </div>
+    <div class="tabs"><span class="on">Dados</span><span>Documentos</span><span>Exames</span><span>Atestados</span><span>Cartão de ponto</span><span>Desempenho</span></div>
+
+    <div class="pad" style="display:flex;flex-direction:column;gap:20px">
+      <p class="xs b" style="text-transform:uppercase;letter-spacing:.1em;color:var(--g500);margin:0">Aba "Dados" — contrato, escala e link de ponto</p>
+      <div class="grid g3">
+        <label class="fld"><span>Cargo</span><input value="Motorista" /></label>
+        <label class="fld"><span>Salário (R$)</span><input value="2.500,00" /></label>
+        <label class="fld"><span>Hora extra</span><select><option>Banco de horas</option><option>Hora extra paga</option></select></label>
+      </div>
+
+      <div class="box">
+        <div class="between" style="padding:10px 16px;background:#f9fafb;border-bottom:1px solid var(--line2)">
+          <span class="ttl" style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g600)">Escala semanal</span>
+          <label class="xs sb" style="display:flex;align-items:center;gap:6px;color:var(--g600)"><input type="checkbox" checked class="inline-in" style="width:auto;margin:0"> Janela móvel (desloca mantendo a carga)</label>
+        </div>
+        <div class="scroll-x"><table>
+          <thead><tr><th>Dia</th><th class="tc">Entrada</th><th class="tc">Saída almoço</th><th class="tc">Volta</th><th class="tc">Saída</th><th class="tc">Carga</th></tr></thead>
+          <tbody>
+            <tr><td class="sb">Seg–Sex</td><td class="tc num">07:30</td><td class="tc num">11:30</td><td class="tc num">13:00</td><td class="tc num">17:48</td><td class="tc num sb">8:48</td></tr>
+            <tr><td class="sb">Sábado</td><td class="tc num">07:30</td><td class="tc num">—</td><td class="tc num">—</td><td class="tc num">11:30</td><td class="tc num sb">4:00</td></tr>
+            <tr class="muted"><td class="sb">Domingo</td><td class="tc" colspan="4">Folga</td><td class="tc">—</td></tr>
+          </tbody>
+        </table></div>
+        <div class="note">Ex.: entrou 05:30 → saída esperada 15:48 (mesma carga 8:48). O que passar disso vira banco/hora extra.</div>
+      </div>
+
+      <div class="box pad">
+        <p class="xs b mb12" style="text-transform:uppercase;letter-spacing:.12em;color:var(--g600);margin:0 0 8px">Link de ponto do funcionário</p>
+        <div class="rowflex">
+          <input readonly value="https://app.cahardt.com/ponto/abc123def456" style="flex:1;min-width:220px" />
+          <button class="btn btn-pri btn-sm">Copiar</button><button class="btn btn-sec btn-sm">WhatsApp</button><button class="btn btn-sec btn-sm">Gerar novo</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g2 pad" style="padding-top:0">
+      <!-- documentos -->
+      <div class="box">
+        <div class="between" style="padding:10px 16px;border-bottom:1px solid var(--line2)"><span class="ttl" style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g600)">Aba "Documentos"</span><button class="link xs" style="border:0;background:none">+ Anexar</button></div>
+        <div class="listrow"><span class="sm">📄 RG.pdf <span class="xs muted">· RG</span></span><span class="rowflex xs"><a class="link">Ver</a><a class="muted">Baixar</a></span></div>
+        <div class="listrow"><span class="sm">📄 CTPS.pdf <span class="xs muted">· CTPS</span></span><span class="rowflex xs"><a class="link">Ver</a><a class="muted">Baixar</a></span></div>
+        <div class="listrow"><span class="sm">🖼️ residencia.jpg <span class="xs muted">· Residência</span></span><span class="rowflex xs"><a class="link">Ver</a><a class="muted">Baixar</a></span></div>
+        <div class="note">Categorias: RG, CPF, CTPS, Residência, Contrato, Outro (pasta livre).</div>
+      </div>
+      <!-- exames -->
+      <div class="box">
+        <div class="between" style="padding:10px 16px;border-bottom:1px solid var(--line2)"><span class="ttl" style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g600)">Aba "Exames (ASO)"</span><button class="link xs" style="border:0;background:none">+ Exame</button></div>
+        <div class="listrow"><span class="sm"><b>Admissional</b> · 04/03/2024<br><span class="xs muted">Apto</span></span><span class="badge b-green">Válido</span></div>
+        <div class="listrow"><span class="sm"><b>Periódico</b> · 04/03/2025<br><span class="xs muted">Apto · vence 04/03/2026</span></span><span class="badge b-amber">Vence 12d</span></div>
+        <div class="listrow" style="opacity:.7"><span class="sm"><b>Periódico</b> · 04/03/2024<br><span class="xs muted">Apto</span></span><span class="badge b-red">Vencido</span></div>
+      </div>
+      <!-- atestados -->
+      <div class="box">
+        <div class="between" style="padding:10px 16px;border-bottom:1px solid var(--line2)"><span class="ttl" style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g600)">Aba "Atestados"</span><button class="link xs" style="border:0;background:none">+ Atestado</button></div>
+        <div class="listrow"><span class="sm"><b>30/06/2026</b> · 1 dia<br><span class="xs muted">CID J11 · atestado.pdf</span></span><a class="link xs">Ver</a></div>
+        <div class="listrow"><span class="sm"><b>12/05/2026</b> · 3 dias<br><span class="xs muted">— · atestado-mai.pdf</span></span><a class="link xs">Ver</a></div>
+      </div>
+      <!-- desempenho -->
+      <div class="box">
+        <div class="between" style="padding:10px 16px;border-bottom:1px solid var(--line2)"><span class="ttl" style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g600)">Aba "Desempenho & Assiduidade"</span><button class="link xs" style="border:0;background:none">+ Avaliação</button></div>
+        <div class="grid g3 pad" style="gap:12px">
+          <div class="stat"><div class="v" style="color:var(--green-fg)">97%</div><div class="xs muted">Presença</div></div>
+          <div class="stat"><div class="v" style="color:var(--amber-fg)">3</div><div class="xs muted">Atrasos/mês</div></div>
+          <div class="stat"><div class="v" style="color:var(--primary)">8,5</div><div class="xs muted">Nota média</div></div>
+        </div>
+        <div class="pad" style="padding-top:0">
+          <div class="between xs muted" style="margin-bottom:4px"><span>Meta de assiduidade</span><span>97%</span></div>
+          <div class="prog"><div style="width:97%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- cartão de ponto -->
+  <div class="card mt16">
+    <div class="between" style="padding:14px 20px;border-bottom:1px solid var(--line2)">
+      <span class="ttl" style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--g600)">Aba "Cartão de ponto" — Junho/2026</span>
+      <span class="rowflex"><select style="width:auto;padding:4px 8px;font-size:12px;margin:0"><option>Junho/2026</option></select><button class="btn btn-pri btn-sm">+ Adicionar batida</button></span>
+    </div>
+    <div class="grid g4 pad">
+      <div class="stat"><div class="v num">184:12</div><div class="xs muted">Trabalhadas</div></div>
+      <div class="stat"><div class="v num" style="color:var(--green-fg)">+04:20</div><div class="xs muted">Banco de horas</div></div>
+      <div class="stat"><div class="v num" style="color:var(--amber-fg)">02:10</div><div class="xs muted">Hora extra</div></div>
+      <div class="stat"><div class="v num" style="color:var(--red-fg)">1</div><div class="xs muted">Falta/atraso</div></div>
+    </div>
+    <div class="scroll-x"><table>
+      <thead><tr><th>Dia</th><th>Batidas</th><th>Previsto</th><th>Trabalhado</th><th>Saldo</th><th></th></tr></thead>
+      <tbody>
+        <tr><td class="sb">Seg 30/06</td><td class="num"><button class="link-dot">07:30 📍</button> · <button class="link-dot">11:31 📍</button> · 13:00 · 17:50</td><td class="num">8:48</td><td class="num sb">8:50</td><td class="num sb" style="color:var(--green-fg)">+0:02</td><td class="tr"><button class="link-dot xs">editar</button></td></tr>
+        <tr style="background:#fffbeb"><td class="sb">Sáb 28/06</td><td class="num">05:30 · 15:50 <span class="xs" style="color:var(--amber-fg)">(janela móvel)</span></td><td class="num">8:48</td><td class="num sb">10:20</td><td class="num sb" style="color:var(--amber-fg)">+1:32 extra</td><td class="tr"><button class="link-dot xs">editar</button></td></tr>
+        <tr style="background:#fef2f2"><td class="sb">Sex 27/06</td><td class="xs" style="color:var(--red-fg)">Sem batida — <b>Atestado (1 dia)</b></td><td class="num">8:48</td><td class="num">—</td><td class="num sb muted">abonado</td><td class="tr"><button class="link-dot xs">editar</button></td></tr>
+      </tbody>
+    </table></div>
+    <div class="modalbox">
+      <p class="xs b" style="text-transform:uppercase;letter-spacing:.1em;color:var(--g500);margin:0 0 12px">Modal: adicionar/ajustar batida (esqueceu de bater)</p>
+      <div class="card pad" style="max-width:440px">
+        <div class="grid g2">
+          <label class="fld"><span>Data</span><input type="date" /></label>
+          <label class="fld"><span>Hora</span><input type="time" value="13:00" /></label>
+          <label class="fld"><span>Tipo</span><select><option>Entrada</option><option>Saída</option></select></label>
+          <label class="fld"><span>Motivo</span><input placeholder="Esqueceu de bater" /></label>
+        </div>
+        <div class="rowflex mt12" style="align-items:center"><span class="badge b-purple">Ajuste manual</span><span class="xs muted">registra quem ajustou</span></div>
+        <div class="rowflex mt12" style="justify-content:flex-end"><button class="btn btn-sec btn-sm">Cancelar</button><button class="btn btn-pri btn-sm">Salvar batida</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- E · PAINEL -->
+<section id="e">
+  <h2>E · Painel de Ponto <span class="muted sm">— <code>/rh/ponto</code></span></h2>
+  <p class="lead">Acompanhamento do dia: quem está trabalhando agora, batidas em tempo real, alertas.</p>
+  <div class="grid g4 mb12" style="margin-bottom:16px">
+    <div class="card pad tc"><div style="font-size:22px;font-weight:700;color:var(--green-fg)">8</div><div class="xs muted">Trabalhando agora</div></div>
+    <div class="card pad tc"><div style="font-size:22px;font-weight:700;color:var(--g700)">12</div><div class="xs muted">Total ativos</div></div>
+    <div class="card pad tc"><div style="font-size:22px;font-weight:700;color:var(--amber-fg)">2</div><div class="xs muted">Atrasados hoje</div></div>
+    <div class="card pad tc"><div style="font-size:22px;font-weight:700;color:var(--red-fg)">1</div><div class="xs muted">Atestado hoje</div></div>
+  </div>
+  <div class="card">
+    <div class="card-h"><span class="ttl">Batidas de hoje · 30/06</span></div>
+    <div class="scroll-x"><table>
+      <thead><tr><th>Funcionário</th><th>Entrada</th><th>Saída</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        <tr><td class="sb">João da Silva</td><td class="num"><button class="link-dot">08:01 📍</button></td><td class="muted">—</td><td><span class="badge b-green">Trabalhando</span></td><td class="tr"><button class="link xs" style="border:0;background:none">Ajustar</button></td></tr>
+        <tr><td class="sb">Carlos Lima</td><td class="num"><button class="link-dot">07:32 📍</button></td><td class="muted">—</td><td><span class="badge b-green">Trabalhando</span></td><td class="tr"><button class="link xs" style="border:0;background:none">Ajustar</button></td></tr>
+        <tr><td class="sb">Ana Paula</td><td class="num">08:15</td><td class="muted">—</td><td><span class="badge b-amber">Atrasou 45min</span></td><td class="tr"><button class="link xs" style="border:0;background:none">Ajustar</button></td></tr>
+        <tr style="background:#fef2f2"><td class="sb">Pedro Alves</td><td class="xs" style="color:var(--red-fg)" colspan="2">Atestado (1 dia)</td><td><span class="badge b-red">Ausente</span></td><td class="tr"><button class="link xs" style="border:0;background:none">Ajustar</button></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- F · CONFIG -->
+<section id="f">
+  <h2>F · Configuração da empresa <span class="muted sm">— GPS + raio do geofence</span></h2>
+  <p class="lead">Define o local da empresa e a distância máxima para bater o ponto.</p>
+  <div class="card" style="max-width:680px">
+    <div class="card-h">📍 <span class="ttl">Área permitida para o ponto</span></div>
+    <div class="pad" style="display:flex;flex-direction:column;gap:16px">
+      <div class="grid g3">
+        <label class="fld"><span>Latitude</span><input value="-26.9056" /></label>
+        <label class="fld"><span>Longitude</span><input value="-48.6580" /></label>
+        <label class="fld"><span>Raio (metros)</span><input value="10" /></label>
+      </div>
+      <button class="btn btn-sec" style="align-self:flex-start">📍 Usar minha localização atual</button>
+      <div class="box" style="overflow:hidden">
+        <div class="map" style="height:160px"><div class="fence"><span class="pin-i">📍</span></div><span class="coord">cerca de 10 m ao redor da empresa</span></div>
+      </div>
+      <div class="between">
+        <label class="sm" style="display:flex;align-items:center;gap:6px;color:var(--g700)"><input type="checkbox" checked style="width:auto;margin:0"> Bloquear batida fora da área</label>
+        <button class="btn btn-pri">Salvar</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- G · IMPORTAR PONTO (CSV) -->
+<section id="g">
+  <h2>G · Importar ponto <span class="muted sm">— do relógio de ponto (CSV/Excel)</span></h2>
+  <p class="lead">Sobe a planilha exportada pelo relógio, mapeia as colunas, confere a prévia e confirma. Batidas importadas entram sem GPS, marcadas como "Importado (CSV)". Duplicadas são ignoradas.</p>
+
+  <div class="card" style="max-width:860px">
+
+    <!-- passo 1: upload -->
+    <div class="card-h"><span class="ttl">1 · Enviar a planilha</span></div>
+    <div class="pad">
+      <div class="box" style="border-style:dashed;text-align:center;padding:28px;background:#f9fafb">
+        <div style="font-size:30px">📄</div>
+        <p class="sm sb" style="margin:8px 0 2px">Arraste o arquivo .csv ou .xlsx aqui</p>
+        <p class="xs muted" style="margin:0">ou <a class="link">selecione do computador</a> · exportado pelo software do relógio</p>
+        <p class="xs sb mt12" style="color:var(--green-fg)">✓ batidas_junho.csv · 1.284 linhas</p>
+      </div>
+    </div>
+
+    <!-- passo 2: mapear colunas -->
+    <div class="card-h" style="border-top:1px solid var(--line2)"><span class="ttl">2 · Mapear as colunas</span></div>
+    <div class="pad grid g4" style="gap:14px">
+      <label class="fld"><span>Identificação (CPF/matrícula)</span><select><option>Coluna "CPF"</option><option>Coluna "Matrícula"</option><option>Coluna "PIS"</option></select></label>
+      <label class="fld"><span>Data</span><select><option>Coluna "Data"</option><option>Coluna "DataHora"</option></select></label>
+      <label class="fld"><span>Hora</span><select><option>Coluna "Hora"</option><option>Coluna "DataHora"</option></select></label>
+      <label class="fld"><span>Tipo (opcional)</span><select><option>Auto (alterna E/S)</option><option>Coluna "Tipo"</option></select></label>
+    </div>
+    <div class="note">Se não houver coluna de tipo, o sistema alterna Entrada/Saída pela ordem das batidas do dia (mesma regra do link).</div>
+
+    <!-- passo 3: prévia -->
+    <div class="card-h" style="border-top:1px solid var(--line2)"><span class="ttl">3 · Conferir antes de importar</span></div>
+    <div class="grid g4 pad">
+      <div class="stat"><div class="v num">1.284</div><div class="xs muted">Batidas no arquivo</div></div>
+      <div class="stat"><div class="v num" style="color:var(--green-fg)">1.190</div><div class="xs muted">Reconhecidas</div></div>
+      <div class="stat"><div class="v num" style="color:var(--amber-fg)">62</div><div class="xs muted">Já existem (ignorar)</div></div>
+      <div class="stat"><div class="v num" style="color:var(--red-fg)">32</div><div class="xs muted">Sem funcionário</div></div>
+    </div>
+    <div class="scroll-x"><table>
+      <thead><tr><th>Identificação</th><th>Funcionário</th><th>Data</th><th>Hora</th><th>Tipo</th><th>Situação</th></tr></thead>
+      <tbody>
+        <tr><td class="num">123.456.789-00</td><td class="sb">João da Silva</td><td class="num">30/06</td><td class="num">07:30</td><td><span class="badge b-green">Entrada</span></td><td><span class="badge b-green">Importar</span></td></tr>
+        <tr><td class="num">123.456.789-00</td><td class="sb">João da Silva</td><td class="num">30/06</td><td class="num">11:31</td><td><span class="badge b-gray">Saída</span></td><td><span class="badge b-green">Importar</span></td></tr>
+        <tr style="background:#fffbeb"><td class="num">987.654.321-00</td><td class="sb">Maria Souza</td><td class="num">30/06</td><td class="num">08:00</td><td><span class="badge b-green">Entrada</span></td><td><span class="badge b-amber">Já existe</span></td></tr>
+        <tr style="background:#fef2f2"><td class="num">555.444.333-22</td><td class="muted">— não encontrado —</td><td class="num">30/06</td><td class="num">07:45</td><td class="muted">—</td><td><span class="badge b-red">Vincular</span></td></tr>
+      </tbody>
+    </table></div>
+    <div class="note">As 32 sem funcionário podem ser vinculadas manualmente (associar a matrícula a um funcionário) ou puladas.</div>
+
+    <div class="between" style="padding:14px 20px;border-top:1px solid var(--line2)">
+      <span class="xs muted">Serão importadas <b>1.190</b> batidas · 62 ignoradas · 32 pendentes</span>
+      <span class="rowflex"><button class="btn btn-sec">Cancelar</button><button class="btn btn-pri">Importar 1.190 batidas</button></span>
+    </div>
+  </div>
+</section>
+
+<p class="tc xs muted" style="padding:16px 0 40px">Mockup estático para aprovação · CA-Hardt RH</p>
+
+</div>
+</body>
+</html>
