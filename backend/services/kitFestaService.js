@@ -542,6 +542,27 @@ const kitFestaService = {
         return atualizado;
     },
 
+    // Detecta automaticamente quitação via Contas a Receber do Pedido convertido.
+    // Um pedido é considerado pago se a Conta a Receber está QUITADA ou a baixa no CA foi feita.
+    async sincronizarPagamentos() {
+        const abertos = await prisma.kitFestaPedido.findMany({
+            where: { pago: false, pedidoId: { not: null } },
+            select: { id: true, pedidoId: true },
+        });
+        let atualizados = 0;
+        for (const kp of abertos) {
+            try {
+                const pedido = await prisma.pedido.findUnique({
+                    where: { id: kp.pedidoId },
+                    select: { baixaCaRealizada: true, contaReceber: { select: { status: true } } },
+                });
+                const quitado = pedido && (pedido.baixaCaRealizada === true || pedido.contaReceber?.status === 'QUITADO');
+                if (quitado) { await this.adminMarcarPago(kp.id, true); atualizados++; }
+            } catch (e) { /* segue para o próximo */ }
+        }
+        return { atualizados };
+    },
+
     // Gera o crédito do indicador quando o pedido do INDICADO é quitado (idempotente por indicado).
     async _gerarCreditoIndicacao(kp) {
         try {
@@ -822,6 +843,8 @@ const kitFestaService = {
 
     // ── Pedidos (fila admin) ──
     async adminListarPedidos({ status, busca, data }) {
+        // Detecta pagamentos automaticamente (Contas a Receber quitada → libera crédito)
+        await this.sincronizarPagamentos().catch(() => {});
         // Sincroniza com o sistema: pedido convertido cujo pedido gerado foi EXCLUÍDO
         // no sistema vira CANCELADO aqui (status do site acompanha o do sistema).
         const convertidos = await prisma.kitFestaPedido.findMany({
@@ -884,6 +907,7 @@ const kitFestaService = {
 
     // Painel de indicações: créditos gerados + resumo
     async adminIndicacoes() {
+        await this.sincronizarPagamentos().catch(() => {}); // libera créditos de pedidos recém-quitados
         const creditos = await prisma.kitFestaCredito.findMany({
             orderBy: { createdAt: 'desc' },
             include: {
