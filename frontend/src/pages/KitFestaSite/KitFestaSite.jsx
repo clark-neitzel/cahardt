@@ -500,8 +500,6 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
   const [slot, setSlot] = useState(null);
   const [slots, setSlots] = useState([]);
   const [obs, setObs] = useState('');
-  const [bairros, setBairros] = useState([]);
-  const [bairroId, setBairroId] = useState('');
   const maskTel = (v) => {
     const d = v.replace(/\D/g, '').slice(0, 11);
     // 11 dígitos = celular (47) 99999-9999 · 10 = fixo (47) 9999-9999
@@ -512,59 +510,60 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
   const maskCep = (v) => v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d)/, '$1-$2');
   const [telefone, setTelefone] = useState(telefoneAtual ? maskTel(telefoneAtual) : '');
   const telOk = telefone.replace(/\D/g, '').length >= 10;
-  // Endereço de entrega
+  // Endereço de entrega (cobertura por raio, sem escolher bairro)
   const temEndCadastro = !!enderecoCadastro?.completo;
   const [usarOutro, setUsarOutro] = useState(false);
   const [cep, setCep] = useState('');
   const [logradouro, setLogradouro] = useState('');
   const [numero, setNumero] = useState('');
   const [complemento, setComplemento] = useState('');
+  const [cobertura, setCobertura] = useState(null); // { atende, endereco, raioKm, distanciaKm }
   const [cepMsg, setCepMsg] = useState('');
   const [cepLoading, setCepLoading] = useState(false);
   const precisaNovoEnd = modo === 'entrega' && (!temEndCadastro || usarOutro);
   const ids = Object.keys(cart).filter(id => cart[id] > 0);
   const prodById = (id) => produtos.find(p => p.id === id);
-  const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 
-  useEffect(() => { if (modo === 'entrega') publicApi.bairros().then(setBairros).catch(() => {}); }, [modo]);
   useEffect(() => {
     if (!date) { setSlots([]); return; }
     publicApi.slots(date, modo).then(setSlots).catch(() => setSlots([]));
     setSlot(null);
   }, [date, modo]);
-  // Ao usar o endereço do cadastro, tenta casar o bairro com a lista (define a taxa)
-  useEffect(() => {
-    if (modo === 'entrega' && temEndCadastro && !usarOutro && enderecoCadastro?.bairro && bairros.length) {
-      const m = bairros.find(b => norm(b.nome) === norm(enderecoCadastro.bairro));
-      setBairroId(m ? m.id : '');
-    }
-  }, [modo, usarOutro, bairros, temEndCadastro]);
 
-  const buscarCep = async () => {
-    const c = cep.replace(/\D/g, '');
+  // Verifica cobertura de um CEP (raio de entrega)
+  const verificarCep = async (cepStr) => {
+    const c = (cepStr || '').replace(/\D/g, '');
     if (c.length !== 8) { setCepMsg('CEP inválido.'); return; }
-    setCepLoading(true); setCepMsg('');
+    setCepLoading(true); setCepMsg(''); setCobertura(null);
     try {
-      const r = await fetch(`https://viacep.com.br/ws/${c}/json/`).then(x => x.json());
-      if (r.erro) { setCepMsg('CEP não encontrado.'); return; }
-      if (r.logradouro) setLogradouro(r.logradouro);
-      const m = bairros.find(b => norm(b.nome) === norm(r.bairro));
-      if (m) { setBairroId(m.id); setCepMsg(''); }
-      else { setBairroId(''); setCepMsg(`Bairro "${r.bairro || '—'}" ainda não está na lista de entrega — selecione abaixo se atendermos.`); }
-    } catch { setCepMsg('Erro ao buscar o CEP.'); }
+      const r = await publicApi.verificarEntrega(c);
+      setCobertura(r);
+      if (r.endereco?.logradouro && !logradouro) setLogradouro(r.endereco.logradouro);
+    } catch (e) { setCepMsg(e.response?.data?.error || 'Não foi possível verificar o CEP.'); }
     finally { setCepLoading(false); }
   };
 
+  // Ao usar o endereço do cadastro, verifica a cobertura do CEP do cadastro
+  useEffect(() => {
+    if (modo === 'entrega' && temEndCadastro && !usarOutro && enderecoCadastro?.cep) {
+      verificarCep(enderecoCadastro.cep);
+    }
+    // eslint-disable-next-line
+  }, [modo, usarOutro]);
+
   const dateLabel = date ? date.split('-').reverse().join('/') : null;
-  const bairro = bairros.find(b => b.id === bairroId);
-  const taxa = modo === 'entrega' ? Number(bairro?.taxa || 0) : 0;
-  const totalFinal = totals.total + taxa;
+  const taxa = 0; // entrega: taxa a combinar no WhatsApp
+  const totalFinal = totals.total;
   // Endereço final (texto) e validação
   const enderecoFinal = modo !== 'entrega' ? ''
     : precisaNovoEnd
       ? `${logradouro}, nº ${numero}${complemento ? `, ${complemento}` : ''}${cep ? ` — CEP ${cep}` : ''}`
       : (enderecoCadastro?.completo || '');
-  const enderecoOk = modo !== 'entrega' || (!!bairroId && (precisaNovoEnd ? (logradouro.trim() && numero.trim()) : !!enderecoCadastro?.completo));
+  const cepUsado = precisaNovoEnd ? cep.replace(/\D/g, '') : (enderecoCadastro?.cep || '').replace(/\D/g, '');
+  const foraDaArea = cobertura?.atende === false;
+  const enderecoOk = modo !== 'entrega' || (
+    !foraDaArea && (precisaNovoEnd ? (logradouro.trim() && numero.trim()) : !!enderecoCadastro?.completo)
+  );
   // Etapas progressivas: cada bloco só aparece quando o anterior está completo
   const modoOk = modo === 'retirada' || enderecoOk;
   const ready = date && slot && telOk && modoOk;
@@ -586,7 +585,7 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
               </button>
               <button className={modo === 'entrega' ? 'on' : ''} onClick={() => { setModo('entrega'); setDate(null); setSlot(null); }}>
                 <span className="ic"><Truck size={20} /></span>
-                <span><b>Entrega</b><span>taxa por bairro</span></span>
+                <span><b>Entrega</b><span>taxa a combinar</span></span>
               </button>
             </div>
             {modo === 'entrega' && (
@@ -613,10 +612,11 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
                     <div className="coupon" style={{ margin: 0 }}>
                       <div className="ip" style={{ flex: 1, background: '#fff' }}>
                         <input inputMode="numeric" placeholder="CEP" value={cep}
-                          onChange={e => setCep(maskCep(e.target.value))} onBlur={() => cep.replace(/\D/g, '').length === 8 && buscarCep()} />
+                          onChange={e => { setCep(maskCep(e.target.value)); setCobertura(null); }}
+                          onBlur={() => cep.replace(/\D/g, '').length === 8 && verificarCep(cep)} />
                       </div>
-                      <button className="btn btn-outline-ink btn-sm" onClick={buscarCep} disabled={cepLoading}>
-                        {cepLoading ? '...' : 'Buscar'}
+                      <button className="btn btn-outline-ink btn-sm" onClick={() => verificarCep(cep)} disabled={cepLoading}>
+                        {cepLoading ? '...' : 'Verificar'}
                       </button>
                     </div>
                     {cepMsg && <p style={{ fontSize: 11, color: '#b3261e', margin: 0 }}>{cepMsg}</p>}
@@ -630,14 +630,25 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
                   </div>
                 )}
 
-                {/* Bairro — define a taxa (auto pelo CEP, editável) */}
-                <label className="field" style={{ display: 'block', marginBottom: 4 }}>
-                  <span style={{ fontFamily: 'var(--f-display)', textTransform: 'uppercase', letterSpacing: '.06em', fontSize: '.72rem', color: '#6a5f4c' }}>Bairro (define a taxa)</span>
-                </label>
-                <select className="bairro-sel" value={bairroId} onChange={e => setBairroId(e.target.value)}>
-                  <option value="">Selecione o bairro…</option>
-                  {bairros.map(b => <option key={b.id} value={b.id}>{b.nome} — {Number(b.taxa) > 0 ? money(b.taxa) : 'grátis'}</option>)}
-                </select>
+                {/* Resultado da cobertura por raio */}
+                {cepLoading && <p className="sub" style={{ margin: 0 }}>Verificando sua região…</p>}
+                {cobertura?.atende === true && (
+                  <div className="sum-meta" style={{ background: '#e6f4ea', border: '1px solid var(--green-l)' }}>
+                    <div className="r" style={{ color: 'var(--green-dd)', fontWeight: 600 }}><Check size={15} /> Entregamos na sua região!</div>
+                    <div className="r" style={{ fontSize: 12 }}>A taxa de entrega é combinada no WhatsApp.</div>
+                  </div>
+                )}
+                {cobertura?.atende === false && (
+                  <div className="sum-meta" style={{ background: '#fdeceb', border: '1px solid #e7a6a0' }}>
+                    <div className="r" style={{ color: '#b3261e', fontWeight: 600 }}><X size={15} /> Ainda não entregamos na sua região.</div>
+                    <div className="r" style={{ fontSize: 12 }}>Você pode escolher <b>Retirar na loja</b> acima. 🙂</div>
+                  </div>
+                )}
+                {cobertura?.atende === null && (
+                  <div className="sum-meta" style={{ background: '#fff7e0', border: '1px solid var(--yellow)' }}>
+                    <div className="r" style={{ color: '#7a5a00', fontSize: 12 }}>Não conseguimos confirmar sua região automaticamente — confirmamos no WhatsApp. A taxa é combinada lá.</div>
+                  </div>
+                )}
               </div>
             )}
             {modo === 'retirada' && (
@@ -692,11 +703,11 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
             <div className="tot" style={{ marginTop: 10 }}>
               <div className="row"><span>{totals.boxes} caixas</span><span>{money(totals.subtotal)}</span></div>
               {totals.discount > 0 && <div className="row disc"><span>{coupon?.fonte === 'credito' ? 'Crédito de indicação' : coupon?.fonte === 'indicacao' ? 'Desconto de indicação' : `Cupom ${coupon?.codigo || ''}`}</span><span>– {money(totals.discount)}</span></div>}
-              {taxa > 0 && <div className="row"><span>Taxa entrega</span><span>{money(taxa)}</span></div>}
+              {modo === 'entrega' && <div className="row"><span>Taxa entrega</span><span>a combinar</span></div>}
               <div className="grand"><span>Total</span><b>{money(totalFinal)}</b></div>
             </div>
             <div className="sum-meta">
-              <div className="r"><Truck size={15} /> {modo === 'retirada' ? 'Retirada na loja' : (bairro ? `Entrega · ${bairro.nome}` : 'Entrega')}</div>
+              <div className="r"><Truck size={15} /> {modo === 'retirada' ? 'Retirada na loja' : 'Entrega (taxa a combinar)'}</div>
               <div className="r"><Calendar size={15} /> {dateLabel || 'Selecione uma data'}</div>
               <div className="r"><Clock size={15} /> {slot || 'Selecione um horário'}</div>
             </div>
@@ -718,7 +729,7 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
             )}
 
             <button className="btn btn-wa btn-block" disabled={!ready} style={{ marginTop: 12 }}
-              onClick={() => onFinish({ modo, date, dateLabel, slot, obs, bairroId, bairro, taxa, endereco: enderecoFinal, telefone })}>
+              onClick={() => onFinish({ modo, date, dateLabel, slot, obs, cep: cepUsado, taxa: 0, endereco: enderecoFinal, telefone })}>
               <MessageCircle size={19} /> {!modoOk ? (modo === 'entrega' ? 'Complete o endereço' : '') : !date ? 'Escolha o dia' : !slot ? 'Escolha o horário' : !telOk ? 'Confirme seu WhatsApp' : 'Finalizar pedido'}
             </button>
             <p style={{ fontSize: 12, color: '#8a7d63', textAlign: 'center', marginTop: 10 }}>
@@ -743,7 +754,7 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
     const visitanteFinal = visitante ? { ...visitante, telefone: info.telefone || visitante.telefone } : undefined;
     const payload = {
       itens, modo: info.modo, data: info.date, horario: info.slot,
-      bairroId: info.bairroId || null, enderecoEntrega: info.endereco || null,
+      enderecoEntrega: info.endereco || null, cep: info.cep || null,
       cupomCodigo: coupon?.fonte === 'cupom' ? coupon.codigo : null,
       indicacaoCodigo: coupon?.fonte === 'indicacao' ? coupon.codigo : null,
       usarCredito: coupon?.fonte === 'credito',
@@ -757,7 +768,7 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
         const linhas = ids.map(id => `• ${cart[id]}x ${prodById(id)?.nome}`).join('\n');
         const txt = encodeURIComponent(
           `*Pedido Hardt — Kit Festa*\n${linhas}\n\n` +
-          `${info.modo === 'retirada' ? 'Retirada na loja' : `Entrega${info.bairro ? ` · ${info.bairro.nome}` : ''}`}\n` +
+          `${info.modo === 'retirada' ? 'Retirada na loja' : 'Entrega (taxa a combinar)'}\n` +
           `Data: ${info.dateLabel} às ${info.slot}` +
           (info.endereco ? `\nEndereço: ${info.endereco}` : '') +
           (coupon ? `\nDesconto: ${coupon.label || coupon.codigo}` : '') +
@@ -783,7 +794,7 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
           {!salvando && !erro && (
             <>
               <div className="sum-meta" style={{ marginTop: 0 }}>
-                <div className="r"><Truck size={15} /> {info.modo === 'retirada' ? 'Retirada na loja' : `Entrega${info.bairro ? ` · ${info.bairro.nome}` : ''}`}</div>
+                <div className="r"><Truck size={15} /> {info.modo === 'retirada' ? 'Retirada na loja' : 'Entrega (taxa a combinar)'}</div>
                 <div className="r"><Calendar size={15} /> {info.dateLabel} · {info.slot}</div>
                 <div className="r"><ShoppingBag size={15} /> {totals.boxes} caixas · {money(totals.total + (info.taxa || 0))}</div>
               </div>

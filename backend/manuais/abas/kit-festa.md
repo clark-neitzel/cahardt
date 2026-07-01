@@ -21,7 +21,7 @@ O Kit Festa é a linha de salgados de festa (caixas de 25 unidades, mínimo de 4
 3. **Carrinho:** aplica cupom; respeita o mínimo de caixas.
 4. **Checkout (passo a passo — cada etapa aparece após preencher a anterior):**
    - **Como receber:** retirada (mostra o endereço da loja + link "ver no mapa") ou **entrega**.
-   - **Endereço (entrega):** se o cliente tem endereço no cadastro, ele aparece e o cliente escolhe "entregar neste endereço" ou "outro endereço". Se for outro, ou se não tiver cadastro (obrigatório informar), ele digita o **CEP** → o sistema busca (ViaCEP) e preenche rua + **bairro** (que é selecionado na lista, definindo a **taxa**) → informa **número** e complemento.
+   - **Endereço (entrega):** se o cliente tem endereço no cadastro, ele aparece e o cliente escolhe "entregar neste endereço" ou "outro endereço". Se for outro, ou se não tiver cadastro (obrigatório informar), ele digita o **CEP** → o sistema busca (ViaCEP) e preenche rua + bairro → informa **número** e complemento. **Não há seleção de bairro.** Ao informar o CEP, o sistema verifica **automaticamente pela distância (raio de cobertura)** se atendemos aquela região: mostra verde ("Entregamos na sua região"), vermelho ("Ainda não entregamos aí — escolha retirar na loja") ou amarelo (não deu para confirmar pelo CEP; a equipe confere depois). A **taxa de entrega não aparece no site: é "a combinar"** pelo WhatsApp conforme o endereço.
    - **Dia e horário:** calendário liberado pela cozinha + horário com vaga.
    - **Observações** (opcional).
 5. **Confirma o WhatsApp:** o cliente confirma o número (ou informa, se não tiver) — fica registrado no pedido.
@@ -35,7 +35,7 @@ No site o cliente logado também vê a seção **"Indique e ganhe"** com o códi
 
 ### 1. Pedidos
 Fila de pedidos vindos do site, **do mais recente para o mais antigo**, com **pílulas de status com contagem** (Todos / Aguardando / Sem cadastro / Convertidos / Recusados / Cancelados) e busca por **nome, razão social, nome fantasia, cidade, CPF ou CNPJ** (e telefone). A lista **atualiza sozinha a cada 45 segundos**. Pedidos novos aparecem com **aviso amarelo pulsante** e etiqueta **"Novo"** com borda destacada. Quando o pedido gerado é **excluído no sistema**, o pedido do site vira **Cancelado** automaticamente.
-- Abrir um pedido mostra itens, cliente, modo, data/horário, bairro/taxa, total e observações.
+- Abrir um pedido mostra itens, cliente, modo, data/horário, endereço de entrega, total e observações. Nos pedidos de entrega aparece o aviso **"Taxa de entrega a combinar (conforme endereço)"** — a taxa é acertada com o cliente no WhatsApp.
 - **Pedidos "Sem cadastro"** aparecem destacados em vermelho. Antes de aprovar, é preciso **vincular** o pedido a um cliente do app (cadastre no Conta Azul, sincronize, busque e vincule).
 - **Celular alterado:** quando o cliente informa/corrige o número no checkout, o pedido mostra o aviso **"celular alterado"** (laranja) com o novo número — atualize no cadastro do cliente no app/CA.
 - **Aprovar:** escolha o **tipo de pedido** (Normal, Especial ou Bonificação) e o **vendedor**. Ao aprovar, o pedido é **convertido** e passa a aparecer na aba **Pedidos** no fluxo normal.
@@ -64,8 +64,8 @@ Define quais **produtos do app** aparecem no site. Busca e filtro (Todos / No si
 - As **imagens** vêm automaticamente da foto cadastrada no produto do app.
 - **Categorias do site:** crie/edite as categorias de exibição (ex: Fritos, De forno, Doces).
 
-### 4. Bairros
-Bairros de entrega com **CEP** e **taxa**. Ativar/desativar. No checkout, ao escolher "Entrega", o cliente seleciona o bairro e vê a taxa.
+### 4. Bairros (legado)
+Cadastro antigo de bairros com CEP e taxa. **Não é mais usado no checkout** — a cobertura de entrega agora é por **raio de distância** (configurado em Configurações → Área de entrega) e a taxa é "a combinar". A aba é mantida apenas para consulta de pedidos antigos.
 
 ### 5. Cupons
 Cupons de desconto: código, tipo (% ou R$), valor, mínimo de caixas, validade, limite de usos, só primeira compra, ativo/inativo. Abaixo da lista tem o **histórico "Quem usou os cupons"** — cliente, cupom, desconto e data de cada uso.
@@ -82,7 +82,7 @@ Tudo que aparece no site, editável sem programador:
 - **Regras** (pedido mínimo de caixas).
 - **Página inicial (hero)** (título, subtítulo, kicker).
 - **Como funciona** (4 passos).
-- **Indicação e entrega:** programa ativo/inativo, **crédito do indicador** (R$ que quem indica ganha), **desconto do indicado** (valor + tipo R$/% que quem usa o código ganha na 1ª compra) e texto do frete.
+- **Indicação e entrega:** programa ativo/inativo, **crédito do indicador** (R$ que quem indica ganha), **desconto do indicado** (valor + tipo R$/% que quem usa o código ganha na 1ª compra), aviso da tela de créditos, texto do frete e **Área de entrega (raio de cobertura):** o **raio de atendimento em km** e as **coordenadas da loja** (latitude/longitude). É o que o checkout usa para dizer ao cliente, pelo CEP, se atendemos a região dele.
 - **Avaliações** de clientes exibidas no site.
 
 > **Pagamento (quitação):** é feito pelo **Financeiro**, dando **baixa no Contas a Receber** do pedido (fluxo normal, como qualquer pedido). Quando o pedido do indicado é baixado, o sistema **libera o crédito automaticamente** para quem indicou. No checkout, o cliente usa **um** desconto por pedido: cupom **ou** código de indicação (1ª compra) **ou** 1 crédito de indicação. Na tela do cliente há um aviso (editável em Configurações) informando que os créditos entram em até ~72h após a conclusão do pedido do indicado.

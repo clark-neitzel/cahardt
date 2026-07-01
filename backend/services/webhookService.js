@@ -269,7 +269,7 @@ const webhookService = {
 
             const entregaLinha = pedido.modo === 'retirada'
                 ? '🏬 *Retirada na loja*'
-                : `🚚 *Entrega*${pedido.bairro ? ` — ${pedido.bairro.nome}` : ''}`;
+                : '🚚 *Entrega* (taxa a combinar)';
 
             const totalStr = Number(pedido.total || 0).toFixed(2).replace('.', ',');
 
@@ -291,10 +291,10 @@ const webhookService = {
                 '────────────────────',
                 ''
             );
-            if (Number(pedido.taxaEntrega || 0) > 0) {
-                partes.push(`🛵 *Taxa de entrega:* R$ ${Number(pedido.taxaEntrega).toFixed(2).replace('.', ',')}`);
+            if (pedido.modo === 'entrega') {
+                partes.push('🛵 *Taxa de entrega:* a combinar pelo WhatsApp conforme seu endereço.');
             }
-            partes.push(`💰 *Total: R$ ${totalStr}*`);
+            partes.push(`💰 *Total: R$ ${totalStr}*${pedido.modo === 'entrega' ? ' _(sem a taxa de entrega)_' : ''}`);
             if (pedido.observacoes) {
                 partes.push('', `📝 *Obs:* ${pedido.observacoes}`);
             }

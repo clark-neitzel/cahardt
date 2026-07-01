@@ -357,6 +357,46 @@ const kitFestaService = {
         });
     },
 
+    // ───────── Entrega (cobertura por raio) ─────────
+    // Descobre coordenadas de um CEP (BrasilAPI v2 → Nominatim por endereço).
+    async _geocodeCep(cep, via) {
+        try {
+            const r = await fetch(`https://brasilapi.com.br/api/cep/v2/${cep}`).then(x => x.json());
+            const c = r?.location?.coordinates;
+            if (c && c.latitude && c.longitude) return { lat: +c.latitude, lng: +c.longitude };
+        } catch (_) { }
+        try {
+            const q = [via?.logradouro, via?.bairro, via?.localidade, via?.uf, 'Brasil'].filter(Boolean).join(', ');
+            const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(q)}`;
+            const r = await fetch(url, { headers: { 'User-Agent': 'HardtKitFesta/1.0' } }).then(x => x.json());
+            if (r?.[0]?.lat && r?.[0]?.lon) return { lat: +r[0].lat, lng: +r[0].lon };
+        } catch (_) { }
+        return null;
+    },
+
+    // Verifica se o CEP está dentro do raio de entrega da loja.
+    // atende: true (dentro) | false (fora) | null (não deu para localizar — segue "a combinar")
+    async verificarEntrega({ cep }) {
+        const c = soDigitos(cep);
+        if (c.length !== 8) throw new Error('CEP inválido.');
+        const via = await fetch(`https://viacep.com.br/ws/${c}/json/`).then(x => x.json()).catch(() => null);
+        if (!via || via.erro) throw new Error('CEP não encontrado.');
+
+        const cfg = await this.configPublico();
+        const raio = Number(cfg.entrega?.raioKm) || 12;
+        const loja = { lat: Number(cfg.entrega?.lojaLat) || -26.1901505, lng: Number(cfg.entrega?.lojaLng) || -48.910781 };
+        const endereco = { logradouro: via.logradouro || '', bairro: via.bairro || '', cidade: via.localidade || '', uf: via.uf || '', cep: c };
+
+        const geo = await this._geocodeCep(c, via);
+        if (!geo) return { atende: null, geocodeOk: false, raioKm: raio, endereco };
+
+        const R = 6371, toRad = (x) => x * Math.PI / 180;
+        const dLat = toRad(geo.lat - loja.lat), dLng = toRad(geo.lng - loja.lng);
+        const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(loja.lat)) * Math.cos(toRad(geo.lat)) * Math.sin(dLng / 2) ** 2;
+        const dist = 2 * R * Math.asin(Math.sqrt(s));
+        return { atende: dist <= raio, geocodeOk: true, distanciaKm: Math.round(dist * 10) / 10, raioKm: raio, endereco };
+    },
+
     // ───────── Cupom ─────────
     async validarCupom({ codigo, totalCaixas }) {
         const c = await prisma.kitFestaCupom.findUnique({ where: { codigo: String(codigo || '').toUpperCase() } });
@@ -370,7 +410,7 @@ const kitFestaService = {
     },
 
     // ───────── Criação de pedido (cliente logado ou visitante) ─────────
-    async criarPedidoSite({ clienteId, visitante, itens, modo, data, horario, bairroId, enderecoEntrega, cupomCodigo, indicacaoCodigo, usarCredito, observacoes, telefone }) {
+    async criarPedidoSite({ clienteId, visitante, itens, modo, data, horario, bairroId, enderecoEntrega, cep, cupomCodigo, indicacaoCodigo, usarCredito, observacoes, telefone }) {
         if (!Array.isArray(itens) || itens.length === 0) throw new Error('Carrinho vazio.');
 
         // Cliente autenticado ou visitante (cria registro sem cadastro)
@@ -432,12 +472,20 @@ const kitFestaService = {
         const minCaixas = (cfg.regras && cfg.regras.minCaixas) || DEFAULT_CONFIG.regras.minCaixas;
         if (totalCaixas < minCaixas) throw new Error(`Pedido mínimo de ${minCaixas} caixas.`);
 
-        // Taxa de entrega
+        // Entrega: taxa é "a combinar" (não cobra no site). Exige endereço e verifica cobertura por raio.
         let taxaEntrega = 0;
         let bairro = null;
-        if (modo === 'entrega' && bairroId) {
-            bairro = await prisma.kitFestaBairro.findUnique({ where: { id: bairroId } });
-            taxaEntrega = dec(bairro?.taxa);
+        if (modo === 'entrega') {
+            if (!enderecoEntrega || !String(enderecoEntrega).trim()) throw new Error('Informe o endereço de entrega.');
+            if (cep) {
+                try {
+                    const cob = await this.verificarEntrega({ cep });
+                    if (cob.atende === false) throw new Error('Ainda não entregamos nessa região. Escolha retirar na loja.');
+                } catch (e) {
+                    if (/não entregamos/i.test(e.message)) throw e; // fora do raio: barra
+                    // erro de CEP/geocode: segue (a combinar)
+                }
+            }
         }
 
         // Desconto: EXCLUSIVO — cupom OU código de indicação OU crédito (nunca combinados)
@@ -1044,7 +1092,9 @@ const DEFAULT_CONFIG = {
         ativo: true, credito: 20, descontoIndicado: 20, descontoIndicadoTipo: 'brl',
         avisoCreditos: 'Os créditos de indicação entram na sua conta em até 72h após a conclusão do pedido do seu indicado.',
     },
-    freteTexto: 'Entrega em Joinville · taxa conforme o bairro.',
+    freteTexto: 'A taxa de entrega é combinada no WhatsApp conforme seu endereço.',
+    // Cobertura por RAIO a partir da loja. lojaLat/lojaLng = coordenadas da Hardt.
+    entrega: { raioKm: 12, lojaLat: -26.1901505, lojaLng: -48.910781 },
 };
 
 module.exports = kitFestaService;

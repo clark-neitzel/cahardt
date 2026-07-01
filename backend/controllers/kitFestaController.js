@@ -63,6 +63,10 @@ const kitFestaController = {
         try { res.json(await svc.validarCupom({ codigo: req.body.codigo, totalCaixas: req.body.totalCaixas })); }
         catch (e) { erro(res, e, 'validarCupom'); }
     },
+    verificarEntrega: async (req, res) => {
+        try { res.json(await svc.verificarEntrega({ cep: req.body.cep })); }
+        catch (e) { erro(res, e, 'verificarEntrega'); }
+    },
     validarIndicacao: async (req, res) => {
         try {
             if (!req.kitFesta?.id) return res.status(401).json({ error: 'Faça login para usar um código de indicação.' });

@@ -79,7 +79,7 @@ export default function AbaConfig() {
       </Secao>
 
       {/* Indicação + Frete */}
-      <Secao titulo="Indicação e entrega" icon={Gift} onSave={async () => { await salvarSecao('indicacao', { ...cfg.indicacao, credito: Number(cfg.indicacao?.credito) || 0, descontoIndicado: Number(cfg.indicacao?.descontoIndicado) || 0 }); await salvarSecao('freteTexto', cfg.freteTexto); }} saving={salvando === 'indicacao' || salvando === 'freteTexto'}>
+      <Secao titulo="Indicação e entrega" icon={Gift} onSave={async () => { await salvarSecao('indicacao', { ...cfg.indicacao, credito: Number(cfg.indicacao?.credito) || 0, descontoIndicado: Number(cfg.indicacao?.descontoIndicado) || 0 }); await salvarSecao('freteTexto', cfg.freteTexto); await salvarSecao('entrega', { ...cfg.entrega, raioKm: Number(cfg.entrega?.raioKm) || 12, lojaLat: Number(cfg.entrega?.lojaLat) || -26.1901505, lojaLng: Number(cfg.entrega?.lojaLng) || -48.910781 }); }} saving={salvando === 'indicacao' || salvando === 'freteTexto' || salvando === 'entrega'}>
         <label className="flex items-center gap-2 text-sm text-gray-600">
           <input type="checkbox" checked={!!cfg.indicacao?.ativo} onChange={e => up('indicacao', { ativo: e.target.checked })} />
           Programa de indicação ativo
@@ -108,6 +108,18 @@ export default function AbaConfig() {
           <label className="text-xs text-gray-500 flex items-center gap-1"><Truck className="h-3 w-3" /> Texto da entrega no checkout</label>
           <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={cfg.freteTexto || ''}
             onChange={e => setCfg(c => ({ ...c, freteTexto: e.target.value }))} />
+        </div>
+        <div className="border-t border-gray-100 pt-3 mt-1 space-y-2">
+          <p className="text-xs font-medium text-gray-600 flex items-center gap-1"><Truck className="h-3 w-3" /> Área de entrega (raio de cobertura)</p>
+          <p className="text-xs text-gray-400">No checkout, o cliente digita o CEP e o sistema verifica pela distância se atendemos a região. A taxa é combinada depois pelo WhatsApp.</p>
+          <Campo label="Raio de atendimento (km)" value={cfg.entrega?.raioKm ?? 12} inputMode="decimal"
+            onChange={e => up('entrega', { raioKm: e.target.value })} />
+          <div className="grid grid-cols-2 gap-2">
+            <Campo label="Latitude da loja" value={cfg.entrega?.lojaLat ?? -26.1901505} inputMode="decimal"
+              onChange={e => up('entrega', { lojaLat: e.target.value })} />
+            <Campo label="Longitude da loja" value={cfg.entrega?.lojaLng ?? -48.910781} inputMode="decimal"
+              onChange={e => up('entrega', { lojaLng: e.target.value })} />
+          </div>
         </div>
       </Secao>
 

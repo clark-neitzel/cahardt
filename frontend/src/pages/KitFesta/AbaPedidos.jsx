@@ -239,6 +239,7 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
             <div className="flex items-center gap-2 text-gray-600"><Calendar className="h-4 w-4" />{String(pedido.data).slice(0, 10).split('-').reverse().join('/')} às {pedido.horario}</div>
             {pedido.bairro && <div className="flex items-center gap-2 text-gray-600"><MapPin className="h-4 w-4" />{pedido.bairro.nome} · taxa {money(pedido.taxaEntrega)}</div>}
             {pedido.enderecoEntrega && <div className="text-xs text-gray-500 pl-6">{pedido.enderecoEntrega}</div>}
+            {pedido.modo === 'entrega' && !pedido.bairro && <div className="flex items-center gap-2 text-amber-600 text-xs"><MapPin className="h-4 w-4" />Taxa de entrega a combinar (conforme endereço)</div>}
           </div>
 
           {/* Itens */}

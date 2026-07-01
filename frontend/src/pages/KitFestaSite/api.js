@@ -31,6 +31,7 @@ export const publicApi = {
   slots: (data, modo) => kf.get('/slots', { params: { data, modo } }).then(r => r.data),
   validarCupom: (codigo, totalCaixas) => kf.post('/validar-cupom', { codigo, totalCaixas }).then(r => r.data),
   validarIndicacao: (codigo) => kf.post('/validar-indicacao', { codigo }).then(r => r.data),
+  verificarEntrega: (cep) => kf.post('/verificar-entrega', { cep }).then(r => r.data),
   // Pedido
   criarPedido: (dados) => kf.post('/pedido', dados).then(r => r.data),
   // Cliente

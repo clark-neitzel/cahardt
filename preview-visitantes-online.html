@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview — Barra de Visitantes Online</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:#f3f4f6;min-height:100vh;}
+
+  /* ── Barra de visitantes ── */
+  .vbar{
+    position:fixed; top:0; left:0; right:0; z-index:9999;
+    background:linear-gradient(90deg,#0f1923 0%,#172030 100%);
+    border-bottom:1px solid rgba(255,255,255,.08);
+    display:flex; align-items:center; gap:0;
+    height:38px; padding:0 16px;
+    font-size:.75rem; font-weight:500;
+    box-shadow:0 2px 12px rgba(0,0,0,.25);
+  }
+  .vbar-pulse{
+    width:8px; height:8px; border-radius:50%; background:#22c55e;
+    flex:none; margin-right:10px;
+    box-shadow:0 0 0 0 rgba(34,197,94,.4);
+    animation:vpulse 2s ease infinite;
+  }
+  @keyframes vpulse{
+    0%{box-shadow:0 0 0 0 rgba(34,197,94,.4)}
+    70%{box-shadow:0 0 0 6px rgba(34,197,94,0)}
+    100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}
+  }
+  .vbar-label{ color:rgba(255,255,255,.45); margin-right:10px; white-space:nowrap; }
+  .vbar-total{
+    color:#fff; font-weight:700; font-size:.85rem;
+    margin-right:14px; white-space:nowrap;
+  }
+  .vbar-sep{ width:1px; height:18px; background:rgba(255,255,255,.1); margin:0 14px; flex:none; }
+  .vbar-pages{ display:flex; align-items:center; gap:8px; flex:1; }
+  .vpage{
+    display:inline-flex; align-items:center; gap:5px;
+    padding:.28em .7em; border-radius:999px;
+    font-size:.72rem; font-weight:600;
+    white-space:nowrap; transition:all .3s ease;
+  }
+  .vpage .ico{ font-size:.8rem; }
+  .vpage .cnt{
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:18px; height:18px; border-radius:999px;
+    font-size:.7rem; font-weight:700; padding:0 4px;
+  }
+
+  .vpage-inicio{ background:rgba(99,102,241,.15); color:#a5b4fc; border:1px solid rgba(99,102,241,.25); }
+  .vpage-inicio .cnt{ background:rgba(99,102,241,.3); color:#c7d2fe; }
+
+  .vpage-cong{ background:rgba(6,182,212,.14); color:#67e8f9; border:1px solid rgba(6,182,212,.22); }
+  .vpage-cong .cnt{ background:rgba(6,182,212,.28); color:#a5f3fc; }
+
+  .vpage-kf{ background:rgba(234,179,8,.13); color:#fde047; border:1px solid rgba(234,179,8,.22); }
+  .vpage-kf .cnt{ background:rgba(234,179,8,.25); color:#fef08a; }
+
+  .vpage-cart{ background:rgba(34,197,94,.12); color:#86efac; border:1px solid rgba(34,197,94,.22); }
+  .vpage-cart .cnt{ background:rgba(34,197,94,.25); color:#bbf7d0; }
+
+  .vbar-right{ display:flex; align-items:center; gap:12px; margin-left:auto; }
+  .vbar-timer{
+    color:rgba(255,255,255,.28); font-size:.68rem;
+    display:flex; align-items:center; gap:5px; white-space:nowrap;
+  }
+  .vbar-timer .ring{
+    width:14px; height:14px; border-radius:50%;
+    border:1.5px solid rgba(255,255,255,.15);
+    border-top-color:rgba(34,197,94,.7);
+    animation:vspin 30s linear infinite;
+    flex:none;
+  }
+  @keyframes vspin{ to{ transform:rotate(360deg); } }
+  .vbar-close{
+    width:24px; height:24px; border-radius:6px;
+    background:none; border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    color:rgba(255,255,255,.3); font-size:1rem;
+    transition:color .15s,background .15s;
+  }
+  .vbar-close:hover{ color:#fff; background:rgba(255,255,255,.08); }
+
+  /* ── Barra de permissão (abaixo) ── */
+  .vperm{
+    position:fixed; top:38px; left:0; right:0; z-index:9998;
+    background:#1e293b; border-bottom:1px solid rgba(255,255,255,.06);
+    display:flex; align-items:center; gap:10px;
+    height:32px; padding:0 16px;
+    font-size:.69rem; color:rgba(255,255,255,.4);
+  }
+  .vperm span{ color:rgba(255,255,255,.22); margin-right:4px; }
+  .vpill{
+    display:inline-flex; align-items:center; gap:5px;
+    padding:.18em .6em; border-radius:999px;
+    font-size:.65rem; border:1px solid rgba(255,255,255,.12);
+    color:rgba(255,255,255,.5); cursor:pointer; transition:.15s;
+  }
+  .vpill:hover{ border-color:rgba(255,255,255,.3); color:#fff; }
+  .vpill.on{ background:rgba(34,197,94,.18); border-color:rgba(34,197,94,.4); color:#86efac; }
+
+  /* ── Simulação do app (apenas visual) ── */
+  .app-mock{ padding-top:70px; display:flex; height:100vh; }
+  .sidebar{ width:52px; background:#fff; border-right:1px solid #e5e7eb; flex:none; display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px 0; }
+  .sidebar .ico{ width:34px; height:34px; border-radius:9px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; font-size:1rem; cursor:pointer; }
+  .sidebar .ico.active{ background:#0f172a; }
+  .content{ flex:1; overflow-y:auto; padding:28px 32px; }
+  .page-title{ font-size:1.4rem; font-weight:700; color:#0f172a; margin-bottom:4px; }
+  .page-sub{ color:#64748b; font-size:.88rem; margin-bottom:28px; }
+
+  .cards{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+  .card{ background:#fff; border-radius:14px; padding:20px; border:1px solid #e5e7eb; }
+  .card .cl{ font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin-bottom:8px; }
+  .card .vl{ font-size:1.7rem; font-weight:700; color:#0f172a; }
+  .card .dl{ font-size:.78rem; color:#22c55e; margin-top:4px; }
+
+  .panel{ background:#fff; border-radius:14px; padding:24px; border:1px solid #e5e7eb; }
+  .panel h3{ font-size:.85rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin-bottom:18px; }
+  .rows{ display:flex; flex-direction:column; gap:12px; }
+  .row{ display:flex; align-items:center; gap:12px; padding:10px 14px; background:#f8fafc; border-radius:10px; }
+  .row .av{ width:36px; height:36px; border-radius:999px; background:#334155; color:#fff; display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:700; flex:none; }
+  .row .inf{ flex:1; }
+  .row .inf b{ display:block; font-size:.88rem; color:#0f172a; }
+  .row .inf span{ font-size:.76rem; color:#94a3b8; }
+  .row .val{ font-size:.9rem; font-weight:600; color:#0f172a; }
+
+  /* ── Nota de implementação ── */
+  .nota{
+    position:fixed; bottom:20px; right:20px; z-index:9990;
+    background:#fff; border:1px solid #e5e7eb; border-radius:14px;
+    padding:16px 20px; max-width:300px;
+    box-shadow:0 8px 30px rgba(0,0,0,.12); font-size:.8rem;
+  }
+  .nota h4{ font-weight:700; color:#0f172a; margin-bottom:8px; font-size:.85rem; }
+  .nota ul{ padding-left:14px; color:#475569; display:flex; flex-direction:column; gap:5px; }
+  .nota li{ line-height:1.4; }
+  .nota .tag{ display:inline-block; background:#dcfce7; color:#15803d; font-size:.65rem; font-weight:700; padding:.15em .5em; border-radius:4px; margin-left:4px; text-transform:uppercase; }
+
+  /* ── Legenda "quem pode ver" ── */
+  .perm-nota{
+    font-size:.68rem; color:rgba(255,255,255,.35);
+    display:flex; align-items:center; gap:6px;
+  }
+  .perm-nota svg{ color:rgba(255,255,255,.25); }
+</style>
+</head>
+<body>
+
+<!-- ═══ BARRA DE VISITANTES ONLINE ═══ -->
+<div class="vbar" id="vbar">
+  <div class="vbar-pulse"></div>
+  <span class="vbar-label">Visitantes online</span>
+  <span class="vbar-total" id="total">7</span>
+
+  <div class="vbar-sep"></div>
+
+  <div class="vbar-pages">
+    <span class="vpage vpage-inicio">
+      <span class="ico">🏠</span>
+      Início
+      <span class="cnt" id="cnt-inicio">3</span>
+    </span>
+    <span class="vpage vpage-cong">
+      <span class="ico">❄️</span>
+      Congelados
+      <span class="cnt" id="cnt-cong">2</span>
+    </span>
+    <span class="vpage vpage-kf">
+      <span class="ico">🎉</span>
+      Kit Festa
+      <span class="cnt" id="cnt-kf">2</span>
+    </span>
+
+    <div class="vbar-sep"></div>
+
+    <span class="vpage vpage-cart">
+      <span class="ico">🛒</span>
+      Com itens no carrinho
+      <span class="cnt" id="cnt-cart">4</span>
+    </span>
+  </div>
+
+  <div class="vbar-right">
+    <div class="vbar-timer">
+      <div class="ring" id="ring"></div>
+      <span id="timer-txt">atualiza em 30s</span>
+    </div>
+    <button class="vbar-close" onclick="toggleBar()" title="Ocultar">✕</button>
+  </div>
+</div>
+
+<!-- ═══ BARRA DE PERMISSÃO ═══ -->
+<div class="vperm" id="vperm">
+  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+  <span>Visível para:</span>
+  <span class="vpill on" onclick="toggle(this)">Administrador</span>
+  <span class="vpill on" onclick="toggle(this)">Gerente</span>
+  <span class="vpill" onclick="toggle(this)">Vendedor</span>
+  <span class="vpill" onclick="toggle(this)">Escritório</span>
+  &nbsp;·&nbsp;
+  <span style="color:rgba(255,255,255,.22)">Clique para ativar/desativar · apenas desktop</span>
+</div>
+
+<!-- ═══ MOCK DO APP ADMIN ═══ -->
+<div class="app-mock">
+  <div class="sidebar">
+    <div class="ico">🏠</div>
+    <div class="ico active">📊</div>
+    <div class="ico">📦</div>
+    <div class="ico">👥</div>
+    <div class="ico">💰</div>
+  </div>
+  <div class="content">
+    <div class="page-title">Olá, Clarkson!</div>
+    <div class="page-sub">Acompanhe seu desempenho e metas de junho/2026.</div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="cl">Vendas Líquidas · Mês</div>
+        <div class="vl">R$ 268.516</div>
+        <div class="dl">↑ +2.8% vs mês passado</div>
+      </div>
+      <div class="card">
+        <div class="cl">Pedidos</div>
+        <div class="vl">675</div>
+        <div class="dl">Ticket médio R$ 397,80</div>
+      </div>
+      <div class="card">
+        <div class="cl">Meta da equipe</div>
+        <div class="vl">88.1%</div>
+        <div class="dl">3 de 5 vendedores atingiram</div>
+      </div>
+      <div class="card">
+        <div class="cl">Dias restantes</div>
+        <div class="vl">0</div>
+        <div class="dl">Último dia do mês</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Equipe — Realizado vs Meta</h3>
+      <div class="rows">
+        <div class="row"><div class="av">LS</div><div class="inf"><b>Laudenor da Silva</b><span>21/21 dias úteis</span></div><div class="val">R$ 133.043</div></div>
+        <div class="row"><div class="av">LP</div><div class="inf"><b>Leticia Piske</b><span>21/21 dias úteis</span></div><div class="val">R$ 111.512</div></div>
+        <div class="row"><div class="av">JO</div><div class="inf"><b>Jociel</b><span>21/21 dias úteis</span></div><div class="val">R$ 25.640</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NOTA DE IMPLEMENTAÇÃO ═══ -->
+<div class="nota">
+  <h4>📌 Como funciona na implementação</h4>
+  <ul>
+    <li>Cada página do site envia um <b>ping a cada 30s</b> com a sessão e página atual</li>
+    <li>O backend conta quem pingou nos últimos <b>90s</b> (2 pings perdidos = saiu)</li>
+    <li>A barra aparece só no <b>desktop</b>, somente para os perfis selecionados <span class="tag">acima</span></li>
+    <li>Nenhum dado pessoal é salvo — só contagens por página</li>
+  </ul>
+</div>
+
+<script>
+// ── Simulação de visitantes variando (no real vem da API) ──
+const scenarios = [
+  { inicio:3, cong:2, kf:2, cart:4 },
+  { inicio:1, cong:5, kf:1, cart:3 },
+  { inicio:4, cong:1, kf:3, cart:6 },
+  { inicio:0, cong:3, kf:0, cart:2 },
+  { inicio:2, cong:2, kf:4, cart:5 },
+  { inicio:3, cong:0, kf:2, cart:1 },
+];
+let idx = 0;
+let countdown = 30;
+let barVisible = true;
+let permBarVisible = true;
+
+function updateData() {
+  idx = (idx + 1) % scenarios.length;
+  const s = scenarios[idx];
+  const total = s.inicio + s.cong + s.kf;
+  document.getElementById('total').textContent = total;
+  document.getElementById('cnt-inicio').textContent = s.inicio;
+  document.getElementById('cnt-cong').textContent = s.cong;
+  document.getElementById('cnt-kf').textContent = s.kf;
+  document.getElementById('cnt-cart').textContent = s.cart;
+  countdown = 30;
+}
+
+function tick() {
+  countdown--;
+  if (countdown <= 0) updateData();
+  const s = countdown === 1 ? '' : 's';
+  document.getElementById('timer-txt').textContent = `atualiza em ${countdown}s`;
+  // reinicia animação do anel a cada ciclo
+  if (countdown === 30) {
+    const r = document.getElementById('ring');
+    r.style.animation = 'none';
+    r.offsetHeight; // reflow
+    r.style.animation = 'vspin 30s linear infinite';
+  }
+}
+setInterval(tick, 1000);
+
+function toggleBar() {
+  barVisible = !barVisible;
+  document.getElementById('vbar').style.display = barVisible ? 'flex' : 'none';
+  document.getElementById('vperm').style.display = barVisible ? 'flex' : 'none';
+  document.querySelector('.app-mock').style.paddingTop = barVisible ? '70px' : '0';
+  if (!barVisible) {
+    // Botão para mostrar de novo
+    let btn = document.getElementById('reshow');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id = 'reshow';
+      btn.style.cssText = 'position:fixed;top:8px;right:8px;z-index:9999;background:#0f1923;border:1px solid rgba(255,255,255,.2);color:#fff;padding:.4em .8em;border-radius:8px;font-size:.72rem;cursor:pointer;';
+      btn.textContent = '👥 Visitantes';
+      btn.onclick = () => { barVisible = true; document.getElementById('vbar').style.display='flex'; document.getElementById('vperm').style.display='flex'; document.querySelector('.app-mock').style.paddingTop='70px'; btn.remove(); };
+      document.body.appendChild(btn);
+    }
+  }
+}
+
+function toggle(el) {
+  el.classList.toggle('on');
+}
+</script>
+</body>
+</html>

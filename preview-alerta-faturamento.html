@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Preview — AlertaFaturamento com Bip</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: '#005fcc' }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: -apple-system, 'SF Pro Text', Roboto, sans-serif; background: #f3f4f6; }
+
+    /* Animação de entrada do modal — só opacity + transform (GPU) */
+    @keyframes fadeInScale {
+      from { opacity: 0; transform: scale(0.94); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .modal-card {
+      animation: fadeInScale 0.18s ease-out both;
+    }
+
+    /* Pulsar no ícone de alerta — só opacity */
+    @keyframes pulseIcon {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.5; }
+    }
+    .icon-pulse {
+      animation: pulseIcon 1.6s ease-in-out infinite;
+      will-change: opacity;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center gap-6 p-6">
+
+  <!-- Fundo simulado do app -->
+  <p class="text-sm text-gray-500 text-center">
+    Clique no botão abaixo para simular o popup (com bip)
+  </p>
+  <button
+    onclick="abrirPopup()"
+    class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg shadow text-sm transition-colors"
+  >
+    Simular alerta de faturamento
+  </button>
+
+  <!-- ============================
+       POPUP
+  ============================= -->
+  <div id="popup" class="hidden fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div class="modal-card bg-white rounded-2xl shadow-2xl w-[95vw] max-w-lg mx-4 overflow-hidden">
+
+      <!-- Header amber -->
+      <div class="bg-amber-500 px-5 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="bg-white/20 rounded-full p-2 icon-pulse">
+            <!-- AlertTriangle (lucide) inline SVG -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-white font-bold text-lg leading-tight">Pedidos Pendentes de Faturamento</h2>
+            <p class="text-amber-100 text-sm" id="subtitulo">3 pedidos com entrega para hoje sem faturar</p>
+          </div>
+        </div>
+        <button onclick="fechar()" class="text-white/80 hover:text-white transition-colors ml-2 flex-shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Body — lista de pedidos -->
+      <div class="px-5 py-4 max-h-[50vh] overflow-y-auto">
+        <div class="space-y-2">
+
+          <!-- Pedido 1 -->
+          <div class="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-amber-700">#1042</span>
+                <span class="text-sm font-semibold text-gray-800 truncate">Supermercado Bom Preço</span>
+              </div>
+              <div class="text-xs text-gray-500 mt-0.5">
+                Vendedor: João Silva
+              </div>
+            </div>
+          </div>
+
+          <!-- Pedido 2 -->
+          <div class="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-amber-700">#1038</span>
+                <span class="text-sm font-semibold text-gray-800 truncate">Padaria Central Ltda</span>
+              </div>
+              <div class="text-xs text-gray-500 mt-0.5">
+                Vendedor: Maria Oliveira
+                <span class="ml-2 text-purple-600 font-medium">ESPECIAL</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pedido 3 -->
+          <div class="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-amber-700">#1031</span>
+                <span class="text-sm font-semibold text-gray-800 truncate">Restaurante Sabor & Arte</span>
+              </div>
+              <div class="text-xs text-gray-500 mt-0.5">
+                Vendedor: Carlos Hardt
+                <span class="ml-2 text-amber-600 font-medium">CA: Aguardando</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="px-5 py-3 bg-gray-50 border-t flex items-center justify-between gap-3">
+        <button
+          onclick="fechar()"
+          class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium transition-colors"
+        >
+          Fechar (volta em 10 min)
+        </button>
+        <button
+          onclick="fechar()"
+          class="flex items-center gap-2 px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-lg transition-colors"
+        >
+          <!-- ExternalLink -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          Ver Pedidos
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ---------------------------------------------------
+    // Bip de atenção — 2 toques curtos (igual AlertaPedidosSite)
+    // Web Audio API, sem arquivo externo
+    // ---------------------------------------------------
+    function bip() {
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        const ctx = new Ctx();
+        const toque = (freq, t0) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.type = 'sine';
+          o.frequency.value = freq;
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.28);
+          o.start(t0);
+          o.stop(t0 + 0.3);
+        };
+        toque(880,  ctx.currentTime);        // 1º toque
+        toque(1175, ctx.currentTime + 0.2);  // 2º toque (200ms depois)
+      } catch { /* áudio bloqueado antes de interação — ignora */ }
+    }
+
+    function abrirPopup() {
+      document.getElementById('popup').classList.remove('hidden');
+      bip();
+    }
+
+    function fechar() {
+      document.getElementById('popup').classList.add('hidden');
+    }
+
+    // Fechar clicando fora do card
+    document.getElementById('popup').addEventListener('click', function(e) {
+      if (e.target === this) fechar();
+    });
+  </script>
+</body>
+</html>
