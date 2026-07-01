@@ -515,6 +515,7 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
   const [usarOutro, setUsarOutro] = useState(false);
   const [cep, setCep] = useState('');
   const [logradouro, setLogradouro] = useState('');
+  const [bairroNome, setBairroNome] = useState('');
   const [numero, setNumero] = useState('');
   const [complemento, setComplemento] = useState('');
   const [cobertura, setCobertura] = useState(null); // { atende, endereco, raioKm, distanciaKm }
@@ -538,7 +539,8 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
     try {
       const r = await publicApi.verificarEntrega(c);
       setCobertura(r);
-      if (r.endereco?.logradouro && !logradouro) setLogradouro(r.endereco.logradouro);
+      if (r.endereco?.logradouro) setLogradouro(r.endereco.logradouro);
+      if (r.endereco?.bairro) setBairroNome(r.endereco.bairro);
     } catch (e) { setCepMsg(e.response?.data?.error || 'Não foi possível verificar o CEP.'); }
     finally { setCepLoading(false); }
   };
@@ -557,7 +559,7 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
   // Endereço final (texto) e validação
   const enderecoFinal = modo !== 'entrega' ? ''
     : precisaNovoEnd
-      ? `${logradouro}, nº ${numero}${complemento ? `, ${complemento}` : ''}${cep ? ` — CEP ${cep}` : ''}`
+      ? `${logradouro}, nº ${numero}${complemento ? `, ${complemento}` : ''}${bairroNome ? ` — ${bairroNome}` : ''}${cep ? ` — CEP ${cep}` : ''}`
       : (enderecoCadastro?.completo || '');
   const cepUsado = precisaNovoEnd ? cep.replace(/\D/g, '') : (enderecoCadastro?.cep || '').replace(/\D/g, '');
   const foraDaArea = cobertura?.atende === false;
@@ -622,6 +624,9 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
                     {cepMsg && <p style={{ fontSize: 11, color: '#b3261e', margin: 0 }}>{cepMsg}</p>}
                     <div className="ip" style={{ background: '#fff' }}>
                       <input placeholder="Rua / logradouro" value={logradouro} onChange={e => setLogradouro(e.target.value)} />
+                    </div>
+                    <div className="ip" style={{ background: '#fff' }}>
+                      <input placeholder="Bairro" value={bairroNome} onChange={e => setBairroNome(e.target.value)} />
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 8 }}>
                       <div className="ip" style={{ background: '#fff' }}><input inputMode="numeric" placeholder="Número" value={numero} onChange={e => setNumero(e.target.value)} /></div>
