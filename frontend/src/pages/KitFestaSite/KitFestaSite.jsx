@@ -24,7 +24,13 @@ export default function KitFestaSite() {
   const [avaliacoes, setAvaliacoes] = useState([]);
 
   const [screen, setScreen] = useState('shop'); // shop | checkout
-  const [cart, setCart] = useState({});
+  // Carrinho persistido no navegador — não some ao atualizar/fechar a página
+  const [cart, setCart] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('@KitFesta:cart') || '{}') || {}; } catch { return {}; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('@KitFesta:cart', JSON.stringify(cart)); } catch (e) {}
+  }, [cart]);
   const [coupon, setCoupon] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
