@@ -12,7 +12,7 @@ O Kit Festa é a linha de salgados de festa (caixas de 25 unidades, mínimo de 4
 
 ## Como o cliente faz o pedido (site público)
 
-1. **Acesso por CPF.** O cliente digita o CPF:
+1. **Acesso por CPF ou CNPJ.** O cliente digita o **CPF (pessoa física) ou CNPJ (empresa)** — o sistema valida os dígitos verificadores (recusa número digitado errado). A busca no cadastro do app é feita pelo mesmo documento. Os estados abaixo valem para os dois:
    - **Tem cadastro no app e já tem senha** → faz login.
    - **Tem cadastro no app mas nunca acessou o site** → cria uma senha (primeiro acesso).
    - **Não tem cadastro** → faz o pedido como **visitante** (informa nome e WhatsApp). Esse pedido entra como **"Sem cadastro"** e a equipe entra em contato para finalizar o cadastro.

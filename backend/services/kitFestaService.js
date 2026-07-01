@@ -24,6 +24,39 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123'
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');
 const dec = (v) => (v == null ? 0 : Number(v));
 
+// Valida dígitos verificadores de CPF (11) ou CNPJ (14).
+function cpfValido(cpf) {
+    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+    let s = 0;
+    for (let i = 0; i < 9; i++) s += +cpf[i] * (10 - i);
+    let d1 = (s * 10) % 11; if (d1 === 10) d1 = 0;
+    if (d1 !== +cpf[9]) return false;
+    s = 0;
+    for (let i = 0; i < 10; i++) s += +cpf[i] * (11 - i);
+    let d2 = (s * 10) % 11; if (d2 === 10) d2 = 0;
+    return d2 === +cpf[10];
+}
+function cnpjValido(cnpj) {
+    if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+    const calc = (base) => {
+        let s = 0, pos = base.length - 7;
+        for (let i = 0; i < base.length; i++) { s += +base[i] * pos--; if (pos < 2) pos = 9; }
+        const r = s % 11;
+        return r < 2 ? 0 : 11 - r;
+    };
+    const d1 = calc(cnpj.slice(0, 12));
+    if (d1 !== +cnpj[12]) return false;
+    const d2 = calc(cnpj.slice(0, 13));
+    return d2 === +cnpj[13];
+}
+// Aceita CPF ou CNPJ; retorna os dígitos válidos ou lança erro. Rótulo p/ mensagens.
+function normalizarDocumento(raw) {
+    const d = soDigitos(raw);
+    if (d.length === 11) { if (!cpfValido(d)) throw new Error('CPF inválido — confira os números.'); return d; }
+    if (d.length === 14) { if (!cnpjValido(d)) throw new Error('CNPJ inválido — confira os números.'); return d; }
+    throw new Error('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.');
+}
+
 function gerarTokenCliente(c) {
     return jwt.sign(
         { tipo: 'kitfesta', id: c.id, cpf: c.cpf, nome: c.nome },
@@ -70,10 +103,9 @@ const kitFestaService = {
     // ───────────────────── PÚBLICO ─────────────────────────────
     // ============================================================
 
-    // Passo 1 do login: descobre o estado do CPF
+    // Passo 1 do login: descobre o estado do CPF/CNPJ
     async checkCpf(cpfRaw) {
-        const cpf = soDigitos(cpfRaw);
-        if (cpf.length !== 11) throw new Error('CPF inválido.');
+        const cpf = normalizarDocumento(cpfRaw); // aceita CPF (11) ou CNPJ (14) e valida os dígitos
 
         const auth = await prisma.kitFestaCliente.findUnique({ where: { cpf } });
         const clienteApp = await prisma.cliente.findFirst({
@@ -100,10 +132,9 @@ const kitFestaService = {
         return { situacao: 'SEM_CADASTRO', temCadastroApp: false, nome: null };
     },
 
-    // Cria a senha (primeiro acesso). Vincula ao Cliente do app se o CPF existir lá.
+    // Cria a senha (primeiro acesso). Vincula ao Cliente do app se o CPF/CNPJ existir lá.
     async criarSenha({ cpf: cpfRaw, senha, nome, telefone, email }) {
-        const cpf = soDigitos(cpfRaw);
-        if (cpf.length !== 11) throw new Error('CPF inválido.');
+        const cpf = normalizarDocumento(cpfRaw); // aceita CPF ou CNPJ e valida
         if (!senha || senha.length < 4) throw new Error('A senha precisa ter ao menos 4 caracteres.');
 
         const clienteApp = await prisma.cliente.findFirst({
@@ -441,9 +472,9 @@ const kitFestaService = {
             if (!auth) throw new Error('Cliente não encontrado.');
             semCadastro = !auth.clienteUuid;
         } else {
-            // Visitante: precisa nome + cpf + telefone
-            const cpf = soDigitos(visitante?.cpf);
-            if (!visitante?.nome || cpf.length !== 11) throw new Error('Informe nome e CPF para pedido sem cadastro.');
+            // Visitante: precisa nome + cpf/cnpj + telefone
+            if (!visitante?.nome) throw new Error('Informe nome e CPF/CNPJ para pedido sem cadastro.');
+            const cpf = normalizarDocumento(visitante?.cpf); // aceita CPF ou CNPJ e valida
             const existente = await prisma.kitFestaCliente.findUnique({ where: { cpf } });
             auth = existente || await prisma.kitFestaCliente.create({
                 data: {
