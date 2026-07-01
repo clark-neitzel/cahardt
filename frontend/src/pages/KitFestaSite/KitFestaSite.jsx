@@ -680,7 +680,7 @@ function CheckoutScreen({ cfg, cart, produtos, totals, coupon, telefoneAtual, en
                     <div className="slots" style={{ marginTop: 8 }}>
                       {slots.map(s => (
                         <button key={s.hora} className={'slot' + (slot === s.hora ? ' on' : '')} disabled={s.full} onClick={() => setSlot(s.hora)}>
-                          {s.hora}{s.full && <small>esgotado</small>}
+                          {s.hora}{s.full && <small>{s.cedo ? 'encerrado' : 'esgotado'}</small>}
                         </button>
                       ))}
                     </div>

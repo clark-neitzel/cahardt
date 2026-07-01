@@ -306,6 +306,16 @@ const kitFestaService = {
     },
 
     // ───────── Agenda pública ─────────
+    // Antecedência mínima: um horário só fica disponível se estiver a pelo menos N horas
+    // do momento atual (fuso America/Sao_Paulo, UTC-3). Ex.: 3h → 06:00 fecha para quem entra depois das 03:00.
+    _slotFuturo(dataStr, hora, antecedenciaHoras) {
+        const ante = Number(antecedenciaHoras) || 0;
+        if (ante <= 0) return true;
+        const inst = new Date(`${dataStr}T${(hora || '00:00')}:00-03:00`); // instante do slot em SP
+        if (isNaN(inst.getTime())) return true;
+        return inst.getTime() >= Date.now() + ante * 3600e3;
+    },
+
     // Status por dia (mode-aware) calculado dos slots por data + capacidade + reservas.
     // status: open | few | full | closed. Dia só fica disponível se tiver slots configurados.
     async agendaPublico({ inicio, fim, modo }) {
@@ -313,13 +323,20 @@ const kitFestaService = {
         const dataFim = fim ? new Date(fim) : new Date(Date.now() + 60 * 864e5);
         const k = (d) => d.toISOString().slice(0, 10);
 
-        const [closures, slots, reservas] = await Promise.all([
+        const [cfg, closures, slots, reservas] = await Promise.all([
+            this.configPublico(),
             prisma.kitFestaAgendaDia.findMany({ where: { data: { gte: dataInicio, lte: dataFim }, status: 'closed' }, select: { data: true } }),
-            prisma.kitFestaHorarioDia.findMany({ where: { data: { gte: dataInicio, lte: dataFim }, ...(modo ? { modo } : {}) }, select: { data: true, capacidade: true } }),
+            prisma.kitFestaHorarioDia.findMany({ where: { data: { gte: dataInicio, lte: dataFim }, ...(modo ? { modo } : {}) }, select: { data: true, hora: true, capacidade: true } }),
             prisma.kitFestaPedido.groupBy({ by: ['data'], where: { data: { gte: dataInicio, lte: dataFim }, ...(modo ? { modo } : {}), status: { notIn: ['RECUSADO', 'CANCELADO'] } }, _count: { _all: true } }),
         ]);
+        const ante = Number(cfg.agenda?.antecedenciaHoras) || 0;
         const fechado = new Set(closures.map(c => k(c.data)));
-        const cap = {}; slots.forEach(s => { cap[k(s.data)] = (cap[k(s.data)] || 0) + s.capacidade; });
+        const cap = {};
+        slots.forEach(s => {
+            const key = k(s.data);
+            if (!this._slotFuturo(key, s.hora, ante)) return; // horário já passou da antecedência mínima
+            cap[key] = (cap[key] || 0) + s.capacidade;
+        });
         const usados = {}; reservas.forEach(r => { usados[k(r.data)] = r._count._all; });
 
         const map = {};
@@ -351,9 +368,12 @@ const kitFestaService = {
         const usados = {};
         reservas.forEach(r => { usados[r.horario] = r._count._all; });
 
+        const cfg = await this.configPublico();
+        const ante = Number(cfg.agenda?.antecedenciaHoras) || 0;
         return slots.map(s => {
             const usado = usados[s.hora] || 0;
-            return { hora: s.hora, capacidade: s.capacidade, usado, full: usado >= s.capacidade };
+            const cedo = !this._slotFuturo(data, s.hora, ante); // fechado por antecedência mínima
+            return { hora: s.hora, capacidade: s.capacidade, usado, cedo, full: usado >= s.capacidade || cedo };
         });
     },
 
@@ -471,6 +491,12 @@ const kitFestaService = {
         const cfg = await this.configPublico();
         const minCaixas = (cfg.regras && cfg.regras.minCaixas) || DEFAULT_CONFIG.regras.minCaixas;
         if (totalCaixas < minCaixas) throw new Error(`Pedido mínimo de ${minCaixas} caixas.`);
+
+        // Antecedência mínima: não deixa fechar pedido para um horário perto demais do agora
+        const ante = Number(cfg.agenda?.antecedenciaHoras) || 0;
+        if (data && horario && !this._slotFuturo(String(data).slice(0, 10), horario, ante)) {
+            throw new Error(`Esse horário já não está mais disponível (precisamos de ${ante}h de antecedência). Escolha outro horário.`);
+        }
 
         // Entrega: taxa é "a combinar" (não cobra no site). Exige endereço e verifica cobertura por raio.
         let taxaEntrega = 0;
@@ -1095,6 +1121,8 @@ const DEFAULT_CONFIG = {
     freteTexto: 'A taxa de entrega é combinada no WhatsApp conforme seu endereço.',
     // Cobertura por RAIO a partir da loja. lojaLat/lojaLng = coordenadas da Hardt.
     entrega: { raioKm: 12, lojaLat: -26.1901505, lojaLng: -48.910781 },
+    // antecedenciaHoras = fecha automaticamente os horários que estão a menos de N horas do agora
+    agenda: { antecedenciaHoras: 3 },
 };
 
 module.exports = kitFestaService;

@@ -24,8 +24,61 @@ const STATUS = {
 export default function AbaAgenda() {
   return (
     <div className="space-y-4">
+      <AntecedenciaConfig />
       <LoteConfig onAplicado={() => window.dispatchEvent(new Event('kf-agenda-reload'))} />
       <CalendarioEditor />
+    </div>
+  );
+}
+
+/* ============ Antecedência mínima (fechamento automático) ============ */
+function AntecedenciaConfig() {
+  const [horas, setHoras] = useState('');
+  const [carregando, setCarregando] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    kitFestaService.getConfig()
+      .then(cfg => setHoras(String(cfg?.agenda?.antecedenciaHoras ?? 3)))
+      .catch(() => setHoras('3'))
+      .finally(() => setCarregando(false));
+  }, []);
+
+  const salvar = async () => {
+    setSalvando(true);
+    try {
+      const n = Math.max(0, Number(horas) || 0);
+      await kitFestaService.setConfig('agenda', { antecedenciaHoras: n });
+      setHoras(String(n));
+      toast.success('Antecedência salva.');
+    } catch (e) { toast.error('Não foi possível salvar.'); }
+    finally { setSalvando(false); }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
+        <Clock className="h-4 w-4 text-blue-600" />
+        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Fechamento automático</span>
+      </div>
+      <div className="p-5">
+        <p className="text-sm text-gray-600 mb-3">
+          Fecha automaticamente os horários que estão perto demais do momento atual. Ex.: com <b>3 horas</b>, quem entrar no site às 05:30 <b>não</b> consegue pedir para as 08:00 (só a partir das 08:30).
+        </p>
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">Antecedência mínima (horas)</label>
+            <input type="number" min="0" step="1" inputMode="numeric" disabled={carregando}
+              className="w-32 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+              value={horas} onChange={e => setHoras(e.target.value)} />
+          </div>
+          <button onClick={salvar} disabled={salvando || carregando}
+            className="px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-sm disabled:opacity-50 min-h-[44px]">
+            {salvando ? 'Salvando…' : 'Salvar'}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mt-2">Use <b>0</b> para desligar o fechamento automático.</p>
+      </div>
     </div>
   );
 }

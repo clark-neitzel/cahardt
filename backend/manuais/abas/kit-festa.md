@@ -45,6 +45,8 @@ Fila de pedidos vindos do site, **do mais recente para o mais antigo**, com **p�
 ### 2. Agenda
 Os horários são definidos **por data** (não é mais um template que vale pra sempre). Um dia só fica disponível no site se tiver horários configurados e não estiver fechado.
 
+**Fechamento automático (antecedência mínima)** (bloco do topo): campo em **horas** que fecha sozinho os horários perto demais do agora. Ex.: com **3 horas**, quem entrar no site às 05:30 **não** consegue pedir para as 08:00 (só a partir das 08:30) — evita pedido que a cozinha não teria tempo de atender. No site esses horários aparecem como **"encerrado"**. Use **0** para desligar. Vale para retirada e entrega.
+
 **Configurar horários em lote** (bloco de cima):
 - Escolha o **período** (De / Até — quantos dias quiser) e os **dias da semana** que entram.
 - Escolha o **tipo** (Retirada ou Entrega — são configurados separadamente, podem ter horários diferentes).
