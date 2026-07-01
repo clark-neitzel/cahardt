@@ -74,7 +74,7 @@ Cupons de desconto: código, tipo (% ou R$), valor, mínimo de caixas, validade,
 Controle do programa de indicação. Cada indicação vira **1 crédito** para o indicador **quando o pedido do indicado é quitado (pago)**; o indicador usa **1 crédito por pedido** (cupom e crédito nunca juntos no mesmo pedido).
 - **Resumo:** créditos gerados, disponíveis, valor a usar, valor já usado.
 - **Tabela:** indicador (quem ganha) · código · indicado · valor do crédito · situação (Disponível/Usado) · data.
-- O crédito só nasce quando você marca o pedido do indicado como **Pago** na aba Pedidos (abra o pedido → "Marcar como pago").
+- O crédito é liberado **automaticamente** quando o Financeiro dá **baixa no Contas a Receber** do pedido do indicado (processo normal). Não há botão de "marcar como pago" — a quitação vem do Financeiro.
 
 ### 7. Configurações
 Tudo que aparece no site, editável sem programador:
@@ -85,7 +85,7 @@ Tudo que aparece no site, editável sem programador:
 - **Indicação e entrega:** programa ativo/inativo, **crédito do indicador** (R$ que quem indica ganha), **desconto do indicado** (valor + tipo R$/% que quem usa o código ganha na 1ª compra) e texto do frete.
 - **Avaliações** de clientes exibidas no site.
 
-> **Pagamento (quitação):** na aba **Pedidos**, ao abrir um pedido há o controle **"Marcar como pago"**. Marcar como pago é o que **libera o crédito** de quem indicou aquele cliente. No checkout, o cliente usa **um** desconto por pedido: cupom **ou** código de indicação (1ª compra) **ou** 1 crédito de indicação.
+> **Pagamento (quitação):** é feito pelo **Financeiro**, dando **baixa no Contas a Receber** do pedido (fluxo normal, como qualquer pedido). Quando o pedido do indicado é baixado, o sistema **libera o crédito automaticamente** para quem indicou. No checkout, o cliente usa **um** desconto por pedido: cupom **ou** código de indicação (1ª compra) **ou** 1 crédito de indicação. Na tela do cliente há um aviso (editável em Configurações) informando que os créditos entram em até ~72h após a conclusão do pedido do indicado.
 
 ---
 

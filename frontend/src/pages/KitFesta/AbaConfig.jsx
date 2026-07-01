@@ -98,7 +98,12 @@ export default function AbaConfig() {
             </select>
           </div>
         </div>
-        <p className="text-xs text-gray-400">O crédito do indicador só é liberado quando o pedido do indicado é <b>quitado</b>. Cada crédito vale 1 desconto por pedido.</p>
+        <p className="text-xs text-gray-400">O crédito do indicador é liberado <b>automaticamente</b> quando o Financeiro baixa o pedido do indicado no Contas a Receber. Cada crédito vale 1 desconto por pedido.</p>
+        <div>
+          <label className="text-xs text-gray-500">Aviso na tela de créditos do cliente</label>
+          <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm h-16" value={cfg.indicacao?.avisoCreditos || ''}
+            onChange={e => up('indicacao', { avisoCreditos: e.target.value })} placeholder="Ex.: Os créditos entram na conta em até 72h após a conclusão do pedido do indicado." />
+        </div>
         <div>
           <label className="text-xs text-gray-500 flex items-center gap-1"><Truck className="h-3 w-3" /> Texto da entrega no checkout</label>
           <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={cfg.freteTexto || ''}

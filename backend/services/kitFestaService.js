@@ -1040,7 +1040,10 @@ const DEFAULT_CONFIG = {
     ],
     // credito = R$ que o INDICADOR ganha por indicação (quando o indicado quita)
     // descontoIndicado = desconto que o INDICADO ganha ao usar o código; tipo 'brl' ou 'pct'
-    indicacao: { ativo: true, credito: 20, descontoIndicado: 20, descontoIndicadoTipo: 'brl' },
+    indicacao: {
+        ativo: true, credito: 20, descontoIndicado: 20, descontoIndicadoTipo: 'brl',
+        avisoCreditos: 'Os créditos de indicação entram na sua conta em até 72h após a conclusão do pedido do seu indicado.',
+    },
     freteTexto: 'Entrega em Joinville · taxa conforme o bairro.',
 };
 

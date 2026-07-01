@@ -108,7 +108,7 @@ export default function KitFestaSite() {
             </Section>
           )}
           {cfg.indicacao?.ativo && (
-            <Referral code={cliente?.codigoIndicacao} credito={cfg.indicacao?.credito} indicacao={cliente?.indicacao} onEntrar={() => setLoginModal(true)} />
+            <Referral code={cliente?.codigoIndicacao} credito={cfg.indicacao?.credito} indicacao={cliente?.indicacao} aviso={cfg.indicacao?.avisoCreditos} onEntrar={() => setLoginModal(true)} />
           )}
           <Contato cfg={cfg} logo={siteLogo} />
 
@@ -804,7 +804,7 @@ function ConfirmModal({ info, cfg, totals, cart, produtos, coupon, cliente, visi
 }
 
 /* ---------- Indique e ganhe ---------- */
-function Referral({ code, credito, indicacao, onEntrar }) {
+function Referral({ code, credito, indicacao, aviso, onEntrar }) {
   const [copied, setCopied] = useState(false);
   const c = credito || 20;
   const copy = () => { try { navigator.clipboard.writeText(code); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
@@ -830,11 +830,18 @@ function Referral({ code, credito, indicacao, onEntrar }) {
               </div>
             )}
             {temSaldo && (
-              <div style={{ display: 'flex', gap: 10, flexwrap: 'wrap', marginTop: 16 }}>
-                <div className="credmini-c"><b>{indicacao.indicados}</b><span>indicados</span></div>
-                <div className="credmini-c" style={{ background: 'var(--green)', color: '#fff' }}><b style={{ color: '#fff' }}>{indicacao.creditosDisponiveis}</b><span style={{ color: '#dff0e4' }}>créditos p/ usar</span></div>
-                <div className="credmini-c"><b>R$ {Number(indicacao.valorDisponivel || 0).toFixed(0)}</b><span>disponível</span></div>
-              </div>
+              <>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 16 }}>
+                  <div className="credmini-c"><b>{indicacao.indicados}</b><span>indicados</span></div>
+                  <div className="credmini-c" style={{ background: 'var(--green)', color: '#fff' }}><b style={{ color: '#fff' }}>{indicacao.creditosDisponiveis}</b><span style={{ color: '#dff0e4' }}>créditos p/ usar</span></div>
+                  <div className="credmini-c"><b>R$ {Number(indicacao.valorDisponivel || 0).toFixed(0)}</b><span>disponível</span></div>
+                </div>
+                {aviso && (
+                  <p style={{ fontSize: 12, color: '#5a4a12', marginTop: 12, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                    <Clock size={14} style={{ flexShrink: 0, marginTop: 1 }} /> {aviso}
+                  </p>
+                )}
+              </>
             )}
           </div>
           <div className="ref-steps">
