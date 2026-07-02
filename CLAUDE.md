@@ -335,6 +335,7 @@ Existe uma IA de atendimento via WhatsApp num projeto separado ("Antigravity", f
 3. **Mudança que quebra o formato de resposta** exige criar `/v2` (novo router paralelo, mantendo `/v1` no ar) — nunca alterar `/v1` de forma incompatível.
 4. **Sempre testar com `curl` depois de qualquer mudança, antes de commitar** (exemplos no arquivo de docs) — mesma lógica do build do frontend: não subir sem testar.
 5. Ao criar ou mudar qualquer endpoint aqui, **atualizar `backend/docs/ia-consulta-api.md`** no mesmo commit.
+6. **Nunca liberar dado pessoal/comercial de um cliente (preço negociado, pedidos, crédito) só com CPF/CNPJ digitado.** CPF e principalmente CNPJ não são segredo (aparecem em nota fiscal, cartão de visita). A identificação válida é: telefone de quem manda a mensagem batendo com o telefone cadastrado (o WhatsApp já autentica o número), OU senha/código de verificação enviado ao telefone JÁ cadastrado (nunca a quem está pedindo). Ver `congeladosService.catalogoPorTelefone`/`criarSenhaPorTelefone` como padrão de referência.
 
 ---
 

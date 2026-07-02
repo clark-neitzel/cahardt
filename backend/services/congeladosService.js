@@ -18,6 +18,16 @@ const mascararTelefone = (t) => {
     if (d.length < 6) return '•••••';
     return `${d.slice(0, 2)} ${d.slice(2, 3)}••••-••${d.slice(-2)}`;
 };
+// Chave canônica de telefone (DDD + 8 dígitos), pra comparar números com formatação diferente
+// (com/sem DDI 55, com/sem o 9º dígito do celular, parênteses/traço). Ex.: "+55 (47) 99999-8888"
+// e "47999998888" e "4799998888" caem todos na mesma chave.
+function chaveTelefone(raw) {
+    let d = soDigitos(raw);
+    if (!d) return '';
+    if (d.length > 11 && d.startsWith('55')) d = d.slice(2);
+    if (d.length === 11 && d[2] === '9') d = d.slice(0, 2) + d.slice(3);
+    return d;
+}
 
 // Tokens de dia salvos no cadastro do cliente (Dia_de_entrega: "SEG,QUA") → rótulo amigável
 const DIA_LABEL = { DOM: 'Domingo', SEG: 'Segunda', TER: 'Terça', QUA: 'Quarta', QUI: 'Quinta', SEX: 'Sexta', SAB: 'Sábado' };
@@ -193,6 +203,11 @@ const congeladosService = {
         if (!docValido(documento)) throw new Error('Informe um CPF ou CNPJ válido.');
         if (!senha || senha.length < 4) throw new Error('A senha precisa ter ao menos 4 caracteres.');
 
+        const existente = await prisma.congeladosCliente.findUnique({ where: { documento } });
+        // Nunca sobrescrever silenciosamente uma senha já existente (isso seria um "sequestro de
+        // conta" para quem só sabe o CPF/CNPJ da vítima). Quem já tem senha usa esqueciSenha/resetSenha.
+        if (existente?.senhaHash) throw new Error('Esta conta já tem senha. Use "Esqueci minha senha" para trocar.');
+
         const clienteApp = await prisma.cliente.findFirst({
             where: { Documento: { contains: documento } },
             select: { UUID: true, Nome: true, NomeFantasia: true, Telefone: true, Telefone_Celular: true, Email: true },
@@ -200,8 +215,6 @@ const congeladosService = {
 
         const senhaHash = await bcrypt.hash(senha, 10);
         const nomeFinal = nome || clienteApp?.NomeFantasia || clienteApp?.Nome || 'Cliente';
-
-        const existente = await prisma.congeladosCliente.findUnique({ where: { documento } });
         let auth;
         if (existente) {
             auth = await prisma.congeladosCliente.update({
@@ -531,35 +544,61 @@ const congeladosService = {
         return { catalogo, ultimoPedido };
     },
 
-    // Catálogo + condição comercial de um cliente já cadastrado no CA, identificado só pelo
-    // CPF/CNPJ — mesma regra de preço do meuCatalogo(), mas sem exigir login/senha do site.
-    // Uso: canais próprios que já autenticam o cliente de outra forma (ex.: API de IA do
-    // WhatsApp) e não devem pedir senha do site só para consultar preço/condição.
-    async catalogoPorDocumento(docRaw) {
-        const documento = soDigitos(docRaw);
-        if (!docValido(documento)) throw new Error('Informe um CPF ou CNPJ válido.');
-
-        const cliente = await prisma.cliente.findFirst({
-            where: { Documento: { contains: documento } },
+    // Acha o Cliente cadastrado cujo telefone bate com o informado (Telefone, Telefone_Celular ou
+    // Telefone_Comercial), tolerando diferenças de formatação. Base do reconhecimento automático:
+    // o número de quem manda mensagem no WhatsApp já vem autenticado pelo próprio WhatsApp, então
+    // é uma identificação mais forte que pedir CPF/CNPJ digitado (qualquer um pode digitar um CPF
+    // alheio; ninguém consegue mandar mensagem de um WhatsApp que não é o seu).
+    async _clientePorTelefone(telefoneRaw) {
+        const chaveAlvo = chaveTelefone(telefoneRaw);
+        if (!chaveAlvo) return null;
+        const candidatos = await prisma.cliente.findMany({
+            where: {
+                Ativo: true,
+                OR: [{ Telefone: { not: null } }, { Telefone_Celular: { not: null } }, { Telefone_Comercial: { not: null } }],
+            },
             include: { categoriaCliente: { select: { semLimiteDesconto: true } } },
         });
+        return candidatos.find(c =>
+            chaveTelefone(c.Telefone) === chaveAlvo ||
+            chaveTelefone(c.Telefone_Celular) === chaveAlvo ||
+            chaveTelefone(c.Telefone_Comercial) === chaveAlvo
+        ) || null;
+    },
+
+    // Catálogo + condição comercial do cliente reconhecido pelo telefone de quem está mandando
+    // mensagem — SEM pedir CPF nem senha. Se não achar por telefone, devolve reconhecido:false;
+    // o app consumidor deve então cair no fluxo por CPF (checkDoc + login/criarSenha/esqueciSenha).
+    async catalogoPorTelefone(telefoneRaw) {
+        const cliente = await this._clientePorTelefone(telefoneRaw);
+        if (!cliente) return { reconhecido: false };
 
         const catalogo = await this.catalogoPublico();
         const ctx = await contextoPreco(cliente);
-        const ultimaMap = await precoUltimaCompraMap(cliente?.UUID, catalogo.map(p => p.produtoId));
+        const ultimaMap = await precoUltimaCompraMap(cliente.UUID, catalogo.map(p => p.produtoId));
         catalogo.forEach(p => {
             p.preco = precoVendedor({ base: p.preco, acrescimoPct: ctx.acrescimoPct, ultimoPreco: ultimaMap[p.produtoId], maxDescontoPct: ctx.maxDescontoPct });
         });
 
         return {
-            cliente: cliente
-                ? { cadastrado: true, nome: cliente.NomeFantasia || cliente.Nome, documento }
-                : { cadastrado: false, nome: null, documento },
+            reconhecido: true,
+            cliente: { nome: cliente.NomeFantasia || cliente.Nome, documento: cliente.Documento },
             condicaoPadrao: ctx.condicaoPadrao,
-            diasEntrega: diasEntregaLabels(cliente?.Dia_de_entrega),
-            diasEntregaNums: diasEntregaNums(cliente?.Dia_de_entrega),
+            diasEntrega: diasEntregaLabels(cliente.Dia_de_entrega),
+            diasEntregaNums: diasEntregaNums(cliente.Dia_de_entrega),
             catalogo,
         };
+    },
+
+    // Cria a senha do site direto pelo WhatsApp, sem precisar acessar o site — só é seguro porque
+    // o telefone de quem está pedindo já bate com o cadastro (mesma checagem do catalogoPorTelefone
+    // acima). A senha criada aqui é a MESMA conta usada no login do site (congeladosCliente por
+    // documento), então funciona depois tanto no WhatsApp quanto no site normalmente.
+    async criarSenhaPorTelefone({ telefone, senha }) {
+        const cliente = await this._clientePorTelefone(telefone);
+        if (!cliente) throw new Error('Não localizei seu cadastro por este WhatsApp. Informe seu CPF/CNPJ para continuar.');
+        if (!cliente.Documento) throw new Error('Cadastro sem CPF/CNPJ definido — fale com um atendente.');
+        return this.criarSenha({ documento: cliente.Documento, senha, nome: cliente.NomeFantasia || cliente.Nome, telefone });
     },
 
     // ───────── Config pública ─────────

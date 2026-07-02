@@ -1,7 +1,10 @@
 // Autenticação + limite de uso para a API de consulta dedicada a assistentes de IA externos
 // (ex.: bot de WhatsApp). Nunca reaproveitar o ADMIN_SECRET aqui — este canal é somente-leitura
 // e precisa poder ser revogado/trocado sem afetar o admin-exec.
+const jwt = require('jsonwebtoken');
 const { VERSAO_API, AVISOS } = require('../config/iaConsultaVersao');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123';
 
 const JANELA_MS = 60 * 1000;
 const LIMITE_POR_JANELA = 60; // requisições por chave a cada 60s
@@ -48,4 +51,22 @@ function envelopeVersao(req, res, next) {
     next();
 }
 
-module.exports = { verificarChaveIA, envelopeVersao };
+// Exige o token do PRÓPRIO cliente (emitido por login/criarSenha/resetSenha do site de Congelados),
+// além da x-ia-api-key do bot. Duas camadas: a chave prova que é o bot da Antigravity chamando;
+// este token prova qual cliente autorizou a consulta (por senha, código, ou telefone reconhecido).
+// Sem isso, bastaria saber o CPF/CNPJ de alguém pra ver o preço negociado e os pedidos dela.
+function exigirClienteCongelados(req, res, next) {
+    const h = req.headers.authorization;
+    const token = h && h.startsWith('Bearer ') ? h.split(' ')[1] : null;
+    if (!token) return res.status(401).json({ error: 'Faça login (ou reconhecimento por telefone) antes de consultar dados deste cliente.' });
+    try {
+        const dec = jwt.verify(token, JWT_SECRET);
+        if (dec.tipo !== 'congelados') throw new Error('tipo inválido');
+        req.congelados = { id: dec.id, documento: dec.documento, nome: dec.nome };
+        next();
+    } catch (_) {
+        return res.status(401).json({ error: 'Sessão do cliente inválida ou expirada.' });
+    }
+}
+
+module.exports = { verificarChaveIA, envelopeVersao, exigirClienteCongelados };

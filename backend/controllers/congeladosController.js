@@ -43,9 +43,13 @@ const congeladosController = {
         try { res.json(await svc.meuCatalogo(req.congelados.id)); }
         catch (e) { erro(res, e, 'meuCatalogo'); }
     },
-    catalogoPorDocumento: async (req, res) => {
-        try { res.json(await svc.catalogoPorDocumento(req.body.documento)); }
-        catch (e) { erro(res, e, 'catalogoPorDocumento'); }
+    catalogoPorTelefone: async (req, res) => {
+        try { res.json(await svc.catalogoPorTelefone(req.body.telefone)); }
+        catch (e) { erro(res, e, 'catalogoPorTelefone'); }
+    },
+    criarSenhaPorTelefone: async (req, res) => {
+        try { res.json(await svc.criarSenhaPorTelefone(req.body)); }
+        catch (e) { erro(res, e, 'criarSenhaPorTelefone'); }
     },
     ficha: async (req, res) => {
         try { res.json(await svc.fichaPublico(req.params.id)); }

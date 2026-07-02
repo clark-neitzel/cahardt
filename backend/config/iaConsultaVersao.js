@@ -5,8 +5,11 @@
 // Ao dar um AVISO de mudança futura, adicione um objeto em AVISOS com { desde, mensagem }.
 // Toda resposta da API inclui esse array em `meta.avisos`, para o app consumidor logar/alertar
 // e se ajustar ANTES da mudança acontecer — assim o serviço nunca quebra "do nada" para o cliente.
-// Histórico: 1.0.0 (2026-07-01) Kit Festa · 1.1.0 (2026-07-02) + Congelados (aditivo, sem remover nada de 1.0.0)
-const VERSAO_API = '1.1.0';
+// Histórico completo em backend/docs/ia-consulta-api.md.
+// 1.0.0 (2026-07-01) Kit Festa · 1.1.0 (2026-07-02) + Congelados por CPF sem senha (nunca consumido
+// externamente) · 1.2.0 (2026-07-02) corrige a 1.1.0: reconhecimento por telefone + login/senha/código
+// com token, removendo o endpoint que aceitava só CPF/CNPJ sem prova de identidade.
+const VERSAO_API = '1.2.0';
 
 const AVISOS = [
     // Exemplo (remover quando o aviso deixar de ser válido):

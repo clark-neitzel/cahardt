@@ -137,6 +137,11 @@ const kitFestaService = {
         const cpf = normalizarDocumento(cpfRaw); // aceita CPF ou CNPJ e valida
         if (!senha || senha.length < 4) throw new Error('A senha precisa ter ao menos 4 caracteres.');
 
+        const existente = await prisma.kitFestaCliente.findUnique({ where: { cpf } });
+        // Nunca sobrescrever silenciosamente uma senha já existente (isso seria um "sequestro de
+        // conta" para quem só sabe o CPF/CNPJ da vítima). Quem já tem senha usa esqueciSenha/resetSenha.
+        if (existente?.senhaHash) throw new Error('Esta conta já tem senha. Use "Esqueci minha senha" para trocar.');
+
         const clienteApp = await prisma.cliente.findFirst({
             where: { Documento: { contains: cpf } },
             select: { UUID: true, Nome: true, Telefone: true, Telefone_Celular: true, Email: true },
@@ -144,8 +149,6 @@ const kitFestaService = {
 
         const senhaHash = await bcrypt.hash(senha, 10);
         const nomeFinal = nome || clienteApp?.Nome || 'Cliente';
-
-        const existente = await prisma.kitFestaCliente.findUnique({ where: { cpf } });
         let auth;
         if (existente) {
             auth = await prisma.kitFestaCliente.update({
