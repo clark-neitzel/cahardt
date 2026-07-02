@@ -600,9 +600,9 @@ const ContasReceberTabela = () => {
             .grand-total { margin-top: 12px; padding: 6px 10px; background: #f3f4f6; border-radius: 4px; display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; }
             thead { display: table-header-group; }
             @media print {
-                @page { size: A4 portrait; margin: 10mm 10mm 12mm 10mm; }
-                body { margin: 0; padding-top: 28px; }
-                .relatorio-header { position: fixed; top: 0; left: 0; right: 0; background: white; padding: 3px 0 4px; border-bottom: 1px solid #d1d5db; }
+                @page { size: A4 portrait; margin: 24mm 10mm 12mm 10mm; }
+                body { margin: 0; }
+                .relatorio-header { position: fixed; top: -14mm; left: 0; right: 0; background: white; padding: 3px 0 4px; border-bottom: 1px solid #d1d5db; }
                 .grupo-bloco { page-break-inside: avoid; }
                 .grupo-bloco + .grupo-bloco { page-break-before: always; }
                 .pedido-bloco { page-break-inside: avoid; }
