@@ -36,12 +36,12 @@ const ConfigModal = ({ dados, onClose, onSalvar }) => {
     return (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between px-5 py-4 border-b sticky top-0 bg-white z-10">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
                     <div>
                         <p className="text-xs text-gray-500">Comissão</p>
                         <h2 className="font-bold text-gray-900">{dados.nome}</h2>
                     </div>
-                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">
                         <X size={18} />
                     </button>
                 </div>
@@ -153,13 +153,13 @@ const ConfigModal = ({ dados, onClose, onSalvar }) => {
                         </div>
                     </div>
 
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-3 pt-2">
                         <button type="button" onClick={onClose}
-                            className="flex-1 py-2.5 text-sm border rounded-xl text-gray-600 hover:bg-gray-50 transition">
+                            className="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm">
                             Cancelar
                         </button>
                         <button type="submit"
-                            className="flex-1 py-2.5 text-sm bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition">
+                            className="flex-1 px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-sm">
                             Salvar
                         </button>
                     </div>
@@ -198,7 +198,7 @@ const FieldRow = ({ label, hint, value, onChange }) => (
     <div>
         <label className="block text-xs font-medium text-gray-700 mb-0.5">{label}</label>
         {hint && <p className="text-[10px] text-gray-400 mb-1 leading-tight">{hint}</p>}
-        <div className="flex items-center border rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 bg-white">
+        <div className="flex items-center border border-gray-300 rounded overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary bg-white">
             <input
                 type="number"
                 step="0.01"
@@ -208,7 +208,7 @@ const FieldRow = ({ label, hint, value, onChange }) => (
                 onChange={onChange}
                 className="flex-1 px-3 py-2 text-sm outline-none"
             />
-            <span className="px-2 py-2 bg-gray-50 border-l text-sm text-gray-400">%</span>
+            <span className="px-2 py-2 bg-gray-50 border-l border-gray-300 text-sm text-gray-400">%</span>
         </div>
     </div>
 );
