@@ -59,6 +59,7 @@ const congeladosRoutes = require('./routes/congeladosRoutes'); // Site Congelado
 const congeladosPublicRoutes = require('./routes/congeladosPublicRoutes'); // Site Congelados: site público do cliente
 const visitorRoutes = require('./routes/visitorRoutes'); // Rastreio de visitantes online (ping público + stats admin)
 const pontoPublicRoutes = require('./routes/pontoPublicRoutes'); // RH: bater ponto por link público (sem login)
+const iaConsultaRoutes = require('./routes/iaConsultaRoutes'); // API de consulta somente-leitura p/ IA externa (ex.: bot WhatsApp)
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -84,6 +85,7 @@ app.use('/api/kitfesta-publico', kitFestaPublicRoutes); // Kit Festa: site públ
 app.use('/api/congelados-publico', congeladosPublicRoutes); // Site Congelados: site público (auth do cliente é interna)
 app.use('/api/visitors', visitorRoutes); // ping público + stats protegida (auth interna na rota)
 app.use('/api/ponto-publico', pontoPublicRoutes); // RH: bater ponto por link público (token identifica o funcionário)
+app.use('/api/ia-consulta', iaConsultaRoutes); // API de consulta somente-leitura p/ IA externa (própria chave x-ia-api-key, não usa admin-secret)
 
 
 // (Protegidas)
