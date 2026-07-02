@@ -531,6 +531,37 @@ const congeladosService = {
         return { catalogo, ultimoPedido };
     },
 
+    // Catálogo + condição comercial de um cliente já cadastrado no CA, identificado só pelo
+    // CPF/CNPJ — mesma regra de preço do meuCatalogo(), mas sem exigir login/senha do site.
+    // Uso: canais próprios que já autenticam o cliente de outra forma (ex.: API de IA do
+    // WhatsApp) e não devem pedir senha do site só para consultar preço/condição.
+    async catalogoPorDocumento(docRaw) {
+        const documento = soDigitos(docRaw);
+        if (!docValido(documento)) throw new Error('Informe um CPF ou CNPJ válido.');
+
+        const cliente = await prisma.cliente.findFirst({
+            where: { Documento: { contains: documento } },
+            include: { categoriaCliente: { select: { semLimiteDesconto: true } } },
+        });
+
+        const catalogo = await this.catalogoPublico();
+        const ctx = await contextoPreco(cliente);
+        const ultimaMap = await precoUltimaCompraMap(cliente?.UUID, catalogo.map(p => p.produtoId));
+        catalogo.forEach(p => {
+            p.preco = precoVendedor({ base: p.preco, acrescimoPct: ctx.acrescimoPct, ultimoPreco: ultimaMap[p.produtoId], maxDescontoPct: ctx.maxDescontoPct });
+        });
+
+        return {
+            cliente: cliente
+                ? { cadastrado: true, nome: cliente.NomeFantasia || cliente.Nome, documento }
+                : { cadastrado: false, nome: null, documento },
+            condicaoPadrao: ctx.condicaoPadrao,
+            diasEntrega: diasEntregaLabels(cliente?.Dia_de_entrega),
+            diasEntregaNums: diasEntregaNums(cliente?.Dia_de_entrega),
+            catalogo,
+        };
+    },
+
     // ───────── Config pública ─────────
     async configPublico() {
         const [rows, site] = await Promise.all([prisma.congeladosConfig.findMany(), tabelaSite()]);

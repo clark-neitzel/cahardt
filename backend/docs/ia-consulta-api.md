@@ -2,7 +2,7 @@
 
 API somente-leitura para um assistente de IA externo (hoje, o projeto "Antigravity", em outra pasta)
 consultar dados do Hardt em tempo real e responder clientes no WhatsApp. Não cria pedidos ainda —
-só consulta catálogo, agenda e condições de entrega do Kit Festa.
+só consulta catálogo/agenda/entrega do Kit Festa e catálogo/condição comercial dos Congelados.
 
 ## Acesso
 
@@ -16,7 +16,7 @@ só consulta catálogo, agenda e condições de entrega do Kit Festa.
 
 ```json
 {
-  "meta": { "versaoApi": "1.0.0", "avisos": [], "geradoEm": "2026-07-02T00:00:00.000Z" },
+  "meta": { "versaoApi": "1.1.0", "avisos": [], "geradoEm": "2026-07-02T00:00:00.000Z" },
   "dados": { /* conteúdo específico do endpoint */ }
 }
 ```
@@ -45,12 +45,24 @@ mencionada na mensagem. Assim a mudança nunca pega o app de surpresa.
 | GET | `/kitfesta/slots` | `?data=YYYY-MM-DD&modo=retirada\|entrega` | Horários daquele dia com capacidade/lotação |
 | POST | `/kitfesta/validar-cupom` | `{ codigo, totalCaixas }` | Validação do cupom (tipo, valor, mínimo de caixas) |
 | POST | `/kitfesta/verificar-entrega` | `{ cep }` | `{ atende: true\|false\|null, distanciaKm, raioKm, endereco }` |
+| GET | `/congelados/catalogo` | — | Catálogo com preço **genérico** (tabela "Site", visitante sem cadastro) |
+| GET | `/congelados/grupos` | — | Categorias/grupos do catálogo de congelados |
+| GET | `/congelados/config` | — | Dados da loja, mínimo padrão, se atende sábado/domingo (`entregas.sabado/domingo`) |
+| GET | `/congelados/produto/:id/ficha` | `:id` = id do produto no site | Ficha técnica/nutricional do produto |
+| POST | `/congelados/check-doc` | `{ documento }` (CPF/CNPJ) | `{ situacao, temCadastroApp, nome }` — descobre se o documento já tem cadastro/senha |
+| POST | `/congelados/cliente-catalogo` | `{ documento }` (CPF/CNPJ) | Catálogo com o **preço/condição de pagamento/dias de entrega do cliente** (mesma regra de preço que o vendedor vê), sem exigir senha — ver aviso de segurança abaixo |
+
+**Atenção — `/congelados/cliente-catalogo`:** devolve o preço negociado e os dias de entrega do
+cliente **só com o CPF/CNPJ**, sem senha. Isso é aceitável **apenas** porque só o backend do bot
+(dono da `x-ia-api-key`) chama este endpoint — nunca duplicar essa rota nas páginas públicas do
+site sem exigir senha, ou vira uma forma de qualquer pessoa consultar o preço de qualquer cliente
+sabendo o CPF dele.
 
 ## Regra de contrato — NUNCA quebrar o app consumidor sem aviso
 
 Esta API tem consumidor externo fora deste repositório. As regras abaixo são obrigatórias para
-qualquer alteração em `backend/routes/iaConsultaRoutes.js`, `backend/controllers/kitFestaController.js`
-(nas funções usadas aqui) ou nos serviços que eles chamam:
+qualquer alteração em `backend/routes/iaConsultaRoutes.js`, `backend/controllers/kitFestaController.js`,
+`backend/controllers/congeladosController.js` (nas funções usadas aqui) ou nos serviços que eles chamam:
 
 1. **Nunca remover ou renomear um campo já existente na resposta de um endpoint de `/v1`.** Só
    adicionar campos novos é seguro sem aviso prévio.
@@ -75,10 +87,17 @@ curl -H "x-ia-api-key: SUACHAVE" https://<dominio>/api/ia-consulta/v1/status
 curl -H "x-ia-api-key: SUACHAVE" https://<dominio>/api/ia-consulta/v1/kitfesta/config
 curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   -d '{"cep":"89239-000"}' https://<dominio>/api/ia-consulta/v1/kitfesta/verificar-entrega
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"documento":"12345678900"}' https://<dominio>/api/ia-consulta/v1/congelados/cliente-catalogo
 ```
+
+## Histórico de versões
+
+- **1.0.0** (2026-07-01) — Kit Festa: catálogo, categorias, config, agenda, slots, cupom, entrega.
+- **1.1.0** (2026-07-02) — + Congelados: catálogo, grupos, config, ficha, check-doc, catálogo por
+  cliente (preço/condição/dias de entrega). Aditivo — nada de `1.0.0` foi removido ou renomeado.
 
 ## Próximos passos previstos (ainda não implementados)
 
-- Endpoints equivalentes para o catálogo de Congelados/pedidos "normais" (fora do Kit Festa).
 - Criação de pedido pela IA (hoje o escopo é só consulta — confirmação humana decide o pedido).
 - Programa de fidelidade para cliente B2B comum (hoje só existe indicação/crédito/cupom no Kit Festa).

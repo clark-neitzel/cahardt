@@ -5,7 +5,8 @@
 // Ao dar um AVISO de mudança futura, adicione um objeto em AVISOS com { desde, mensagem }.
 // Toda resposta da API inclui esse array em `meta.avisos`, para o app consumidor logar/alertar
 // e se ajustar ANTES da mudança acontecer — assim o serviço nunca quebra "do nada" para o cliente.
-const VERSAO_API = '1.0.0';
+// Histórico: 1.0.0 (2026-07-01) Kit Festa · 1.1.0 (2026-07-02) + Congelados (aditivo, sem remover nada de 1.0.0)
+const VERSAO_API = '1.1.0';
 
 const AVISOS = [
     // Exemplo (remover quando o aviso deixar de ser válido):

@@ -325,7 +325,7 @@ Isso se aplica a qualquer campo que já existia em produção — mesmo que não
 
 ## API de Consulta para IA Externa (`/api/ia-consulta/v1`) — NUNCA QUEBRAR O CONTRATO
 
-Existe uma IA de atendimento via WhatsApp num projeto separado ("Antigravity", fora deste repo) que consulta dados do Hardt (hoje: catálogo/agenda/entrega do Kit Festa) através de `backend/routes/iaConsultaRoutes.js`. Documentação completa: `backend/docs/ia-consulta-api.md`.
+Existe uma IA de atendimento via WhatsApp num projeto separado ("Antigravity", fora deste repo) que consulta dados do Hardt (catálogo/agenda/entrega do Kit Festa; catálogo/condição comercial dos Congelados) através de `backend/routes/iaConsultaRoutes.js`. Documentação completa: `backend/docs/ia-consulta-api.md`.
 
 **Por que isso é crítico:** o pior cenário é o cliente mandar mensagem no WhatsApp e a IA não conseguir responder porque uma mudança nossa quebrou o formato que ela espera — igual a derrubar uma tela, mas no atendimento ao cliente.
 

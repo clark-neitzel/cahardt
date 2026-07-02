@@ -7,9 +7,9 @@
 // mantendo /v1 no ar até o app consumidor migrar.
 const express = require('express');
 const router = express.Router();
-const ctrl = require('../controllers/kitFestaController');
+const kitFestaCtrl = require('../controllers/kitFestaController');
+const congeladosCtrl = require('../controllers/congeladosController');
 const { verificarChaveIA, envelopeVersao } = require('../middlewares/iaConsultaMiddleware');
-const { VERSAO_API, AVISOS } = require('../config/iaConsultaVersao');
 
 const v1 = express.Router();
 v1.use(verificarChaveIA, envelopeVersao);
@@ -19,13 +19,24 @@ v1.use(verificarChaveIA, envelopeVersao);
 v1.get('/status', (req, res) => res.json({ ok: true }));
 
 // Kit Festa — catálogo, agenda e condições de entrega
-v1.get('/kitfesta/catalogo', ctrl.catalogo);
-v1.get('/kitfesta/categorias', ctrl.categorias);
-v1.get('/kitfesta/config', ctrl.config);
-v1.get('/kitfesta/agenda', ctrl.agenda);
-v1.get('/kitfesta/slots', ctrl.slots);
-v1.post('/kitfesta/validar-cupom', ctrl.validarCupom);
-v1.post('/kitfesta/verificar-entrega', ctrl.verificarEntrega);
+v1.get('/kitfesta/catalogo', kitFestaCtrl.catalogo);
+v1.get('/kitfesta/categorias', kitFestaCtrl.categorias);
+v1.get('/kitfesta/config', kitFestaCtrl.config);
+v1.get('/kitfesta/agenda', kitFestaCtrl.agenda);
+v1.get('/kitfesta/slots', kitFestaCtrl.slots);
+v1.post('/kitfesta/validar-cupom', kitFestaCtrl.validarCupom);
+v1.post('/kitfesta/verificar-entrega', kitFestaCtrl.verificarEntrega);
+
+// Congelados — catálogo (genérico e por cliente), grupos, ficha técnica e condição comercial
+v1.get('/congelados/catalogo', congeladosCtrl.catalogo);
+v1.get('/congelados/grupos', congeladosCtrl.grupos);
+v1.get('/congelados/config', congeladosCtrl.config);
+v1.get('/congelados/produto/:id/ficha', congeladosCtrl.ficha);
+v1.post('/congelados/check-doc', congeladosCtrl.checkDoc);
+// Catálogo já com o preço/condição/dias de entrega do cliente, identificado só pelo CPF/CNPJ
+// (sem exigir senha do site — apropriado aqui pois só o backend do bot, dono da x-ia-api-key,
+// chama este endpoint; nunca expor isto nas rotas públicas do site sem senha).
+v1.post('/congelados/cliente-catalogo', congeladosCtrl.catalogoPorDocumento);
 
 router.use('/v1', v1);
 
