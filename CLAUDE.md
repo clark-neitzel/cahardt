@@ -325,7 +325,9 @@ Isso se aplica a qualquer campo que já existia em produção — mesmo que não
 
 ## API de Consulta para IA Externa (`/api/ia-consulta/v1`) — NUNCA QUEBRAR O CONTRATO
 
-Existe uma IA de atendimento via WhatsApp num projeto separado ("Antigravity", fora deste repo) que consulta dados do Hardt (catálogo/agenda/entrega do Kit Festa; catálogo/condição comercial dos Congelados) através de `backend/routes/iaConsultaRoutes.js`. Documentação completa: `backend/docs/ia-consulta-api.md`.
+Existe uma IA de atendimento via WhatsApp num projeto separado ("Antigravity", fora deste repo) que consulta dados do Hardt (catálogo/agenda/entrega do Kit Festa; catálogo/condição comercial dos Congelados; reconhecimento de cliente/histórico/criação de lead em `/cliente/*`, geral para qualquer linha) através de `backend/routes/iaConsultaRoutes.js`. Documentação completa: `backend/docs/ia-consulta-api.md`.
+
+**O bot da Antigravity NÃO deve ter acesso direto ao banco de produção (`DATABASE_URL`/SQL cru).** Em 2026-07 descobrimos que ele rodava SQL direto contra `clientes`/`leads` porque essas funções não existiam nesta API ainda — isso ignora toda proteção daqui (telefone batendo, sem CPF sozinho, avisos de mudança) e quebrou quando o bot assumiu nomes de coluna errados. Se o bot precisar de dado novo, a resposta é **criar endpoint aqui**, nunca reintroduzir acesso direto ao banco.
 
 **Por que isso é crítico:** o pior cenário é o cliente mandar mensagem no WhatsApp e a IA não conseguir responder porque uma mudança nossa quebrou o formato que ela espera — igual a derrubar uma tela, mas no atendimento ao cliente.
 

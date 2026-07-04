@@ -1,8 +1,15 @@
 # API de Consulta para IA Externa (WhatsApp / Antigravity)
 
-API somente-leitura para um assistente de IA externo (hoje, o projeto "Antigravity", em outra pasta)
-consultar dados do Hardt em tempo real e responder clientes no WhatsApp. Não cria pedidos ainda —
-só consulta catálogo/agenda/entrega do Kit Festa e catálogo/condição comercial dos Congelados.
+API somente-leitura (+ criação de lead) para um assistente de IA externo (hoje, o projeto
+"Antigravity", em outra pasta) consultar dados do Hardt em tempo real e responder clientes no
+WhatsApp. Não cria pedidos ainda — consulta catálogo/agenda/entrega do Kit Festa,
+catálogo/condição comercial dos Congelados, e reconhecimento de cliente/histórico/lead para
+qualquer linha.
+
+**IMPORTANTE:** esta API existe para o bot NUNCA precisar de acesso direto ao banco de dados
+(`DATABASE_URL`/SQL cru). Se alguma informação que o bot precisa não está aqui, a resposta é
+**pedir um endpoint novo**, não conectar direto no Postgres — ver "Por que isso importa" abaixo
+para o incidente que motivou essa regra.
 
 ## Acesso
 
@@ -16,7 +23,7 @@ só consulta catálogo/agenda/entrega do Kit Festa e catálogo/condição comerc
 
 ```json
 {
-  "meta": { "versaoApi": "1.2.0", "avisos": [], "geradoEm": "2026-07-02T00:00:00.000Z" },
+  "meta": { "versaoApi": "1.3.0", "avisos": [], "geradoEm": "2026-07-02T00:00:00.000Z" },
   "dados": { /* conteúdo específico do endpoint */ }
 }
 ```
@@ -58,6 +65,9 @@ mencionada na mensagem. Assim a mudança nunca pega o app de surpresa.
 | POST | `/congelados/reset-senha` | `{ documento, codigo, novaSenha }` | Confirma o código e define a nova senha. Devolve `{ token, cliente }` |
 | GET | `/congelados/meu-catalogo` | header `Authorization: Bearer <token>` | Catálogo com preço/condição/dias de entrega do cliente autenticado |
 | GET | `/congelados/perfil` | header `Authorization: Bearer <token>` | Dados do cliente autenticado (nome, dias de entrega, condição padrão) |
+| POST | `/cliente/reconhecer-telefone` | `{ telefone }` | **Geral, qualquer linha.** Se bater com um cadastro: `{ reconhecido:true, cliente:{nome,documento,cidade,vendedor}, diasEntrega:[...], diasVenda:[...], condicaoPagamento:{nome,valorMinimo} }`. Senão: `{ reconhecido:false }` |
+| POST | `/cliente/historico-pedidos` | `{ telefone, limite? }` (limite padrão 10, máx 30) | Se o telefone bater: `{ reconhecido:true, cliente:{nome}, pedidos:[{numero,data,dataEntrega,statusEntrega,tipo,total}] }`. Senão: `{ reconhecido:false }` |
+| POST | `/cliente/criar-lead` | `{ nomeEstabelecimento, whatsapp, contato?, cidade?, observacoes? }` | Cria um prospect no CRM interno (mesma tabela que os vendedores veem). Retorna `{ id, numero, etapa }`. `origemLead` é sempre fixado como `"WHATSAPP_IA"` |
 
 ### Como a IA deve reconhecer o cliente de Congelados, do jeito mais simples pro mais seguro
 
@@ -83,6 +93,25 @@ CPF/CNPJ dele — **isso foi corrigido antes de qualquer app externo consumir**,
 A mesma falha existia (e foi corrigida) no próprio `criarSenha` do site público: ele sobrescrevia
 a senha de uma conta já existente sem pedir a senha antiga nem um código — ou seja, bastava saber
 o CPF/CNPJ de alguém pra tomar conta da conta dela. Agora `criarSenha` recusa se já existir senha.
+
+### Endpoints `/cliente/*` (gerais, qualquer linha) e o incidente que os motivou
+
+Em 2026-07, descobrimos que o bot de WhatsApp (antes desta seção existir) rodava **SQL direto
+contra o banco de produção** (`DATABASE_URL`/`CAHARDT_DATABASE_URL`) para reconhecer cliente por
+telefone e criar lead — porque essas duas coisas não existiam ainda nesta API. Isso quebrou quando
+o bot assumiu nomes de coluna errados (`clientes.uuid` em vez de `"UUID"`; `leads.nome`, que nunca
+existiu — o campo é `nomeEstabelecimento`), e o incidente revelou o problema maior: com a senha do
+banco, o bot podia ler/escrever qualquer tabela, de qualquer cliente, por fora de toda proteção
+daqui (telefone batendo, sem CPF sozinho, avisos de mudança — nada disso vale se o consumidor nem
+passa pela API).
+
+**Regra:** `/cliente/reconhecer-telefone` e `/cliente/historico-pedidos` seguem a MESMA regra de
+segurança do Congelados — só liberam dado com o telefone batendo no cadastro real, nunca com
+CPF/CNPJ sozinho. `/cliente/criar-lead` é mais aberto (é só um cadastro de prospect novo, dado que
+a própria pessoa está fornecendo na conversa), mas ainda exige nome e WhatsApp válidos.
+
+**Se o bot precisar de mais alguma informação de cliente/pedido/preço que não está listada aqui, a
+resposta certa é pedir um endpoint novo nesta API — nunca reintroduzir acesso direto ao banco.**
 
 ## Regra de contrato — NUNCA quebrar o app consumidor sem aviso
 
@@ -117,6 +146,11 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   -d '{"telefone":"5547999998888"}' https://<dominio>/api/ia-consulta/v1/congelados/reconhecer-telefone
 curl -H "x-ia-api-key: SUACHAVE" -H "Authorization: Bearer TOKEN_DO_CLIENTE" \
   https://<dominio>/api/ia-consulta/v1/congelados/meu-catalogo
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"telefone":"5547999998888"}' https://<dominio>/api/ia-consulta/v1/cliente/reconhecer-telefone
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"nomeEstabelecimento":"Mercado do João","whatsapp":"5547988887777","cidade":"Joinville"}' \
+  https://<dominio>/api/ia-consulta/v1/cliente/criar-lead
 ```
 
 ## Histórico de versões
@@ -131,8 +165,20 @@ curl -H "x-ia-api-key: SUACHAVE" -H "Authorization: Bearer TOKEN_DO_CLIENTE" \
   (`meu-catalogo`, `perfil`). Remove o endpoint `cliente-catalogo` que aceitava só CPF/CNPJ sem
   prova de identidade. Também corrige `criarSenha` (Congelados e Kit Festa) para não sobrescrever
   mais uma senha já existente sem verificação.
+- **1.3.0** (2026-07-04) — Nova seção `/cliente/*` (geral, qualquer linha): `reconhecer-telefone`,
+  `historico-pedidos`, `criar-lead`. Substitui o SQL direto contra o banco de produção que o bot
+  rodava para essas funções (ver "Endpoints `/cliente/*`..." acima).
 
 ## Próximos passos previstos (ainda não implementados)
 
+- Migrar o restante do bot (catálogo de Congelados, se ainda for por SQL) para chamar os
+  endpoints já existentes desta API em vez de consultar o banco direto.
+- Endpoint de "dias de entrega por cidade" — ainda não implementado; a única fonte parecida no
+  banco hoje (`MetaCidade.diasSemana`) é escopada por meta mensal de vendedor, não é uma referência
+  confiável de "cidade X → dias de entrega" para qualquer época. Precisa definir a fonte certa
+  antes de expor isso na API.
+- Depois que o bot migrar 100% para esta API (nenhuma função restante em SQL direto), rotacionar
+  a senha do banco de produção usada pelo bot — combinar com quem mantém a Antigravity antes de
+  fazer isso, para não quebrar nada no meio da migração.
 - Criação de pedido pela IA (hoje o escopo é só consulta — confirmação humana decide o pedido).
 - Programa de fidelidade para cliente B2B comum (hoje só existe indicação/crédito/cupom no Kit Festa).

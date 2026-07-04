@@ -9,6 +9,7 @@ const express = require('express');
 const router = express.Router();
 const kitFestaCtrl = require('../controllers/kitFestaController');
 const congeladosCtrl = require('../controllers/congeladosController');
+const iaClienteCtrl = require('../controllers/iaClienteController');
 const { verificarChaveIA, envelopeVersao, exigirClienteCongelados } = require('../middlewares/iaConsultaMiddleware');
 
 const v1 = express.Router();
@@ -51,6 +52,14 @@ v1.post('/congelados/reset-senha', congeladosCtrl.resetSenha);
 // Authorization: Bearer <token> retornado por login/criarSenha/criarSenhaPorTelefone/resetSenha.
 v1.get('/congelados/meu-catalogo', exigirClienteCongelados, congeladosCtrl.meuCatalogo);
 v1.get('/congelados/perfil', exigirClienteCongelados, congeladosCtrl.perfil);
+
+// Cliente — GERAL, para qualquer linha (não é específico de Kit Festa/Congelados). Existe pra
+// substituir o SQL direto que o bot rodava antes (ver backend/docs/ia-consulta-api.md). Mesma
+// regra de segurança: nunca aceitar CPF/CNPJ sozinho pra liberar dado de cliente — só telefone
+// batendo com o cadastro real.
+v1.post('/cliente/reconhecer-telefone', iaClienteCtrl.reconhecerTelefone);
+v1.post('/cliente/historico-pedidos', iaClienteCtrl.historicoPedidos);
+v1.post('/cliente/criar-lead', iaClienteCtrl.criarLead);
 
 router.use('/v1', v1);
 
