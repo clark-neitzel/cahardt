@@ -56,7 +56,7 @@ const PainelEmbarque = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-3 md:px-0 py-4 md:py-6">
+        <div className="w-full px-3 md:px-0 py-4 md:py-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 md:p-5 rounded-t-xl shadow-sm border border-gray-200 border-b-0 gap-3">
                 <div className="flex items-center gap-3">
                     <div className="bg-sky-100 p-2 rounded-lg">

@@ -152,7 +152,7 @@ const ListaProdutos = () => {
     const navState = { search, page, statusFilter, selectedCategories, selectedCatsComerciais };
 
     return (
-        <div className="container mx-auto px-4 py-6">
+        <div className="w-full px-4 py-6">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
                 <h1 className="text-2xl font-bold text-gray-800 text-center sm:text-left">Gerenciar Produtos</h1>
                 <Link

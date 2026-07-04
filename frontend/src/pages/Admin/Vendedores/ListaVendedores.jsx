@@ -10,6 +10,13 @@ const FORMAS_OPTIONS = [
     { value: 'TELEFONE', label: 'Telefone', icon: Phone, color: 'blue' },
 ];
 
+// classes estáticas por cor — Tailwind não compila classes montadas em runtime
+const FORMA_CLS = {
+    purple: 'bg-purple-100 text-purple-700 border-purple-300',
+    green: 'bg-green-100 text-green-700 border-green-300',
+    blue: 'bg-blue-100 text-blue-700 border-blue-300',
+};
+
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const ListaVendedores = () => {
@@ -104,7 +111,7 @@ const ListaVendedores = () => {
     });
 
     return (
-        <div className="max-w-7xl mx-auto px-3 md:px-6 lg:px-8 py-4 md:py-8">
+        <div className="w-full px-3 md:px-6 lg:px-8 py-4 md:py-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 md:mb-6 gap-2">
                 <div>
                     <h1 className="text-xl md:text-2xl font-bold text-gray-900">Usuários</h1>
@@ -168,7 +175,7 @@ const ListaVendedores = () => {
                                             {FORMAS_OPTIONS.map(f => {
                                                 const Icon = f.icon;
                                                 const ativo = (vendedor.formasAtendimentoVisiveis || []).includes(f.value);
-                                                return (<button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border transition-colors cursor-pointer ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200'}`}><Icon className="h-3 w-3" />{f.label}</button>);
+                                                return (<button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border transition-colors cursor-pointer ${ativo ? (FORMA_CLS[f.color] || FORMA_CLS.blue) : 'bg-gray-50 text-gray-400 border-gray-200'}`}><Icon className="h-3 w-3" />{f.label}</button>);
                                             })}
                                         </div>
                                     </td>
@@ -220,7 +227,7 @@ const ListaVendedores = () => {
                                             {FORMAS_OPTIONS.map(f => {
                                                 const Icon = f.icon;
                                                 const ativo = (vendedor.formasAtendimentoVisiveis || []).includes(f.value);
-                                                return (<button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border transition-colors cursor-pointer ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200'}`}><Icon className="h-3 w-3" />{f.label}</button>);
+                                                return (<button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border transition-colors cursor-pointer ${ativo ? (FORMA_CLS[f.color] || FORMA_CLS.blue) : 'bg-gray-50 text-gray-400 border-gray-200'}`}><Icon className="h-3 w-3" />{f.label}</button>);
                                             })}
                                         </div>
                                     </td>
@@ -312,7 +319,7 @@ const ListaVendedores = () => {
                                             const Icon = f.icon;
                                             const ativo = (vendedor.formasAtendimentoVisiveis || []).includes(f.value);
                                             return (
-                                                <button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-2 py-1.5 text-[11px] font-semibold rounded border transition-colors ${ativo ? `bg-${f.color}-100 text-${f.color}-700 border-${f.color}-300` : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
+                                                <button key={f.value} type="button" onClick={() => handleToggleForma(vendedor, f.value)} className={`flex items-center gap-1 px-2 py-1.5 text-[11px] font-semibold rounded border transition-colors ${ativo ? (FORMA_CLS[f.color] || FORMA_CLS.blue) : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
                                                     <Icon className="h-3 w-3" />{f.label}
                                                 </button>
                                             );

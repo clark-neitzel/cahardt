@@ -429,7 +429,7 @@ export default function ReceitaForm() {
     if (loading) return <div className="text-center py-12 text-gray-400">Carregando...</div>;
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="w-full px-4 py-6">
             <button onClick={() => navigate('/pcp/receitas')} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
                 <ArrowLeft className="h-4 w-4" /> Voltar
             </button>

@@ -2323,7 +2323,7 @@ const RotaLeads = () => {
             </div>
 
             {/* Conteúdo */}
-            <div className="px-3 pt-3 pb-28 max-w-6xl mx-auto">
+            <div className="px-3 pt-3 pb-28 w-full">
                 {(loading && (aba === 'atendimento' || aba === 'atendidos')) ? (
                     <div className="flex items-center justify-center h-40">
                         <Loader className="h-6 w-6 animate-spin text-blue-600" />

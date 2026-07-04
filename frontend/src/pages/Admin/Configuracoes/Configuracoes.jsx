@@ -7,6 +7,12 @@ import { useAuth } from '../../../contexts/AuthContext';
 import api from '../../../services/api';
 import caixaService from '../../../services/caixaService';
 
+
+// classes estáticas por cor — Tailwind não compila classes montadas em runtime
+const COR_BTN = {
+    orange: 'bg-orange-600 hover:bg-orange-700',
+    purple: 'bg-purple-600 hover:bg-purple-700',
+};
 const ORIGENS_PADRAO = [
     { value: 'VISITA_VENDEDOR', label: 'Visita do vendedor' },
     { value: 'INDICACAO', label: 'Indicação' },
@@ -185,10 +191,10 @@ const AcoesConfigSection = ({ titulo, subtitulo, icon, cor, acoes, novaAcao, set
                     onChange={e => setNovaAcao(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') onAdicionar(); }}
                     placeholder="Nome da nova ação..."
-                    className={`flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-${cor}-400 focus:border-transparent outline-none`}
+                    className={`flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none`}
                 />
                 <button onClick={onAdicionar} disabled={!novaAcao?.trim()}
-                    className={`flex items-center gap-1.5 px-4 py-2 bg-${cor}-600 text-white rounded-lg text-sm font-semibold hover:bg-${cor}-700 disabled:opacity-50 transition-colors`}>
+                    className={`flex items-center gap-1.5 px-4 py-2 ${COR_BTN[cor] || COR_BTN.orange} text-white rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors`}>
                     <Plus className="h-4 w-4" /> Adicionar
                 </button>
             </div>
@@ -491,7 +497,7 @@ const Configuracoes = () => {
     if (loading) return <div className="p-8 text-center text-gray-500">Carregando configurações...</div>;
 
     return (
-        <div className="container mx-auto px-4 py-8 space-y-8">
+        <div className="w-full px-4 py-8 space-y-8">
             <h1 className="text-2xl font-bold text-gray-800">Configurações do Sistema</h1>
 
             {/* ── Catálogo de Vendas ── */}

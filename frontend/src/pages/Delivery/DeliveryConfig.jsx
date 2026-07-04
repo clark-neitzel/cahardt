@@ -9,7 +9,7 @@ export default function DeliveryConfig() {
     const [tab, setTab] = useState('categorias');
 
     return (
-        <div className="p-6 max-w-5xl mx-auto">
+        <div className="p-6 w-full">
             <h1 className="text-2xl font-bold mb-4">Configuração de Delivery</h1>
             <div className="flex gap-2 border-b mb-6">
                 <TabBtn active={tab === 'categorias'} onClick={() => setTab('categorias')}>Categorias</TabBtn>

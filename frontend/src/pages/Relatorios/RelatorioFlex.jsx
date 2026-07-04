@@ -44,7 +44,7 @@ export default function RelatorioFlex() {
     const totalLiquido = totalNegativo + totalPositivo;
 
     return (
-        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-4xl">
+        <div className="container w-full px-3 sm:px-4 py-4 sm:py-6">
             {/* Header */}
             <div className="flex items-center gap-3 mb-5">
                 <Percent className="h-7 w-7 text-violet-600 flex-shrink-0" />

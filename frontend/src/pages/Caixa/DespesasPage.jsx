@@ -112,7 +112,7 @@ const DespesasPage = () => {
     const getCatConfig = (cat) => CATEGORIA_CONFIG[cat] || CATEGORIA_CONFIG.OUTRO;
 
     return (
-        <div className="container mx-auto px-4 py-6">
+        <div className="w-full px-4 py-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div className="flex items-center gap-3">
                     {fromCaixa && (

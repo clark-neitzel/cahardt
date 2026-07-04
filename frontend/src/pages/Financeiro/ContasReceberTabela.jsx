@@ -701,7 +701,7 @@ const ContasReceberTabela = () => {
     );
 
     return (
-        <div className="p-3 md:p-6 max-w-[1600px] mx-auto max-w-full overflow-x-hidden">
+        <div className="p-3 md:p-6 w-full">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
                     <div className="bg-amber-100 p-1.5 md:p-2 rounded-lg">

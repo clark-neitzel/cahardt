@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Printer, Minus, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
-import EtiquetaLabel, { codExibir } from './EtiquetaLabel';
+import EtiquetaLabel, { codExibir, imprimirEtiquetas } from './EtiquetaLabel';
 
 function hojeIso() { return new Date().toISOString().split('T')[0]; }
 
@@ -48,36 +48,11 @@ export default function EtiquetaImprimir() {
         const conteudo = printRef.current;
         if (!conteudo) return;
 
-        const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    @page { size: 80mm 100mm; margin: 2mm; }
-    * { box-sizing: border-box; margin: 0; padding: 0;
-        print-color-adjust: exact !important;
-        -webkit-print-color-adjust: exact !important; }
-    body { background: #fff; }
-    .pg { page-break-after: always; }
-    .pg:last-child { page-break-after: avoid; }
-  </style>
-</head>
-<body>
-${Array.from({ length: copies }, () => `<div class="pg">${conteudo.innerHTML}</div>`).join('')}
-</body>
-</html>`;
-
-        const iframe = document.createElement('iframe');
-        iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;';
-        document.body.appendChild(iframe);
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
-        doc.open(); doc.write(html); doc.close();
-        iframe.contentWindow.onafterprint = () => document.body.removeChild(iframe);
-        setTimeout(() => iframe.contentWindow.print(), 300);
+        imprimirEtiquetas(conteudo.innerHTML, parseInt(copies) || 1);
     };
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className="w-full px-4 py-6">
             <div className="flex items-center gap-3 mb-6">
                 <button onClick={() => navigate('/pcp/etiquetas')} className="p-2 rounded-lg hover:bg-gray-100">
                     <ChevronLeft className="h-5 w-5 text-gray-600" />

@@ -202,7 +202,7 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                                                     value={qtd || ''}
                                                     onChange={e => handleQtdChange(item.produtoId, e.target.value, max)}
                                                     placeholder="0"
-                                                    className="w-20 text-center border rounded-lg py-1.5 text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400"
+                                                    className="w-20 text-center border rounded-lg py-1.5 text-sm focus:ring-2 focus:ring-primary focus:border-primary"
                                                 />
                                                 {qtd > 0 && (
                                                     <span className="text-xs text-red-600 font-medium whitespace-nowrap">
@@ -238,7 +238,7 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                                 value={motivo}
                                 onChange={e => setMotivo(e.target.value)}
                                 placeholder="Descreva o motivo da devolução..."
-                                className="w-full mt-1 border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 resize-none"
+                                className="w-full mt-1 border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-primary resize-none"
                                 rows={3}
                             />
                         </div>

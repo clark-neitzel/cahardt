@@ -417,7 +417,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 py-8">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="bg-sky-100 p-1.5 rounded-lg">

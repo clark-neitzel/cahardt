@@ -4,6 +4,47 @@ import JsBarcode from 'jsbarcode';
 // SKU do catálogo tem prioridade; cai para o código interno se não vinculado
 export const codExibir = (et) => et.produto?.codigo || et.codigoProduto;
 
+// Impressão dentro do PWA — mesmo padrão de ReceitaDetalhe.imprimirConteudo (funciona no iPad/iOS,
+// onde imprimir via iframe sai em branco/só URL). Monta as etiquetas na própria página e usa
+// @media print para esconder o app; depois limpa tudo. print() deve rodar dentro do clique.
+export function imprimirEtiquetas(labelHtml, copies = 1) {
+    const ID_AREA = 'area-impressao';
+    const ID_ESTILO = 'estilo-impressao';
+    document.getElementById(ID_AREA)?.remove();
+    document.getElementById(ID_ESTILO)?.remove();
+
+    const style = document.createElement('style');
+    style.id = ID_ESTILO;
+    // @page no nível raiz (iOS não lida bem com @page dentro de @media)
+    style.textContent = `
+        @page { size: 80mm 100mm; margin: 2mm; }
+        #${ID_AREA} { display: none; }
+        @media print {
+            html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; }
+            /* remove o app do LAYOUT (não só esconde) — senão sobra altura "fantasma" = páginas em branco */
+            body > *:not(#${ID_AREA}) { display: none !important; }
+            #root { display: none !important; }
+            #${ID_AREA} { display: block !important; }
+            #${ID_AREA}, #${ID_AREA} * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            #${ID_AREA} .pg { page-break-after: always; }
+            #${ID_AREA} .pg:last-child { page-break-after: avoid; }
+        }
+    `;
+    document.head.appendChild(style);
+
+    const area = document.createElement('div');
+    area.id = ID_AREA;
+    area.innerHTML = Array.from({ length: copies }, () => `<div class="pg">${labelHtml}</div>`).join('');
+    document.body.appendChild(area);
+
+    const limpar = () => { area.remove(); style.remove(); window.removeEventListener('afterprint', limpar); };
+    window.addEventListener('afterprint', limpar);
+    setTimeout(limpar, 60000); // fallback se afterprint não disparar
+
+    void area.offsetHeight; // força o layout antes de imprimir
+    try { window.print(); } catch { limpar(); }
+}
+
 // Lista oficial de alérgenos (RDC 26/2015 / IN 75/2020) para os checks do formulário
 export const ALERGENOS_LISTA = [
     'Trigo', 'Centeio', 'Cevada', 'Aveia',

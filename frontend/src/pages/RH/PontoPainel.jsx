@@ -18,7 +18,7 @@ export default function PontoPainel() {
   useEffect(() => { carregar(); }, [carregar]);
 
   return (
-    <div className="max-w-5xl mx-auto p-3 md:p-6">
+    <div className="w-full p-3 md:p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className="bg-sky-100 p-1.5 md:p-2 rounded-lg"><Clock className="h-4 w-4 md:h-5 md:w-5 text-sky-600" /></div>

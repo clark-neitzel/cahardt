@@ -92,7 +92,7 @@ const GerenciarComissoes = () => {
     const apuracaoVendedor = detalhe ? apuracao.find(a => a.vendedorId === detalhe) : null;
 
     return (
-        <div className="p-3 md:p-6 max-w-6xl mx-auto max-w-full overflow-x-hidden">
+        <div className="p-3 md:p-6 w-full">
             {/* Topbar de página */}
             <div className="flex items-center justify-between gap-3 p-3 md:p-6 bg-white border-b border-gray-200 rounded-t-xl">
                 <div className="flex items-center gap-2">

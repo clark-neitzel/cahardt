@@ -401,7 +401,7 @@ const DashboardVendedor = () => {
     const usarLayoutAmploAdmin = podeVerDashboardAdmin && !vendedorSelecionado;
 
     return (
-        <div className={`mx-auto py-6 px-4 lg:px-6 ${usarLayoutAmploAdmin ? 'max-w-[1650px]' : 'max-w-4xl'}`}>
+        <div className={"w-full py-6 px-4 lg:px-6"}>
             {/* Cabeçalho */}
             <div className="mb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

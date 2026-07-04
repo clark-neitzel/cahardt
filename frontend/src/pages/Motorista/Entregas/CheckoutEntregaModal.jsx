@@ -794,7 +794,7 @@ const MotivoInput = ({ motivo, setMotivo, gravandoVoz, setGravandoVoz, recogniti
                 <span className="text-xs font-bold text-orange-700 uppercase tracking-wide">Motivo da Devolução *</span>
             </div>
             <textarea
-                className="w-full text-sm text-gray-800 bg-orange-50 border border-orange-100 rounded-lg p-3 min-h-[90px] resize-none focus:outline-none focus:border-orange-400"
+                className="w-full text-sm text-gray-800 bg-orange-50 border border-orange-100 rounded-lg p-3 min-h-[90px] resize-none focus:outline-none focus:border-primary"
                 placeholder="Ex: Cliente não estava, disse que não pediu, produto errado, sem dinheiro..."
                 value={motivo}
                 onChange={(e) => setMotivo(e.target.value)}

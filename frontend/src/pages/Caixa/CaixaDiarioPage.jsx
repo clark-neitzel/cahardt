@@ -261,7 +261,7 @@ const CaixaDiarioPage = () => {
 
     if (!vendedorId && !isAdmin) {
         return (
-            <div className="container mx-auto px-4 py-6 text-center text-gray-500">
+            <div className="w-full px-4 py-6 text-center text-gray-500">
                 Nenhum vendedor vinculado a este usuário.
             </div>
         );
@@ -272,7 +272,7 @@ const CaixaDiarioPage = () => {
     const isAberto = caixa?.status === 'ABERTO';
 
     return (
-        <div className="container mx-auto px-4 py-6">
+        <div className="w-full px-4 py-6">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div className="flex items-center space-x-3">

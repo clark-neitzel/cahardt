@@ -90,7 +90,7 @@ const CategoriasCliente = () => {
     if (loading) return <div className="p-8 text-center text-gray-500">Carregando categorias...</div>;
 
     return (
-        <div className="container mx-auto px-4 py-8">
+        <div className="w-full px-4 py-8">
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Categorias de Cliente (Comercial)</h1>

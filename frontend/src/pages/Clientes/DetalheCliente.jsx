@@ -306,7 +306,7 @@ const DetalheCliente = () => {
     if (!cliente) return <div className="p-8 text-center text-gray-600">Cliente não encontrado.</div>;
 
     return (
-        <div className="container mx-auto px-3 sm:px-4 py-4 max-w-screen-2xl">
+        <div className="w-full px-3 sm:px-4 py-4 max-w-screen-2xl">
             <button
                 onClick={() => navigate('/clientes')}
                 className="mb-4 flex items-center text-gray-600 hover:text-gray-900"

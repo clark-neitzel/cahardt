@@ -680,7 +680,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                             <label className="block text-[11px] font-bold text-orange-800 mb-1">Limite p/ Entrega Amanhã</label>
                                             <input
                                                 type="time"
-                                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm border p-2 bg-white text-gray-900"
+                                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary text-sm border p-2 bg-white text-gray-900"
                                                 value={permissoes.horarioLimiteAmanha || '18:00'}
                                                 onChange={e => setPermissoes(prev => ({ ...prev, horarioLimiteAmanha: e.target.value }))}
                                             />
@@ -690,7 +690,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                             <label className="block text-[11px] font-bold text-orange-800 mb-1">Limite p/ Entrega Hoje</label>
                                             <input
                                                 type="time"
-                                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm border p-2 bg-white text-gray-900"
+                                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary text-sm border p-2 bg-white text-gray-900"
                                                 value={permissoes.horarioLimiteHoje || '12:00'}
                                                 onChange={e => setPermissoes(prev => ({ ...prev, horarioLimiteHoje: e.target.value }))}
                                             />

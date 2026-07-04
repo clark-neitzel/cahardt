@@ -268,7 +268,7 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                                 value={form.nomeEstabelecimento}
                                 onChange={e => setForm(f => ({ ...f, nomeEstabelecimento: e.target.value }))}
                                 placeholder="Ex: Padaria do João"
-                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500"
+                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary"
                             />
                         </div>
 
@@ -278,7 +278,7 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                                 <select
                                     value={form.idVendedor}
                                     onChange={e => setForm(f => ({ ...f, idVendedor: e.target.value }))}
-                                    className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500"
+                                    className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary"
                                 >
                                     <option value="">Selecione um vendedor (Opcional)</option>
                                     {vendedores.map(v => (
@@ -295,13 +295,13 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                             <label className="block text-[13px] font-semibold text-gray-700 mb-1">Responsável</label>
                             <input type="text" value={form.contato} onChange={e => setForm(f => ({ ...f, contato: e.target.value }))}
                                 placeholder="Maria Silva"
-                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500" />
+                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary" />
                         </div>
                         <div>
                             <label className="block text-[13px] font-semibold text-gray-700 mb-1">WhatsApp</label>
                             <input type="tel" value={form.whatsapp} onChange={e => setForm(f => ({ ...f, whatsapp: e.target.value }))}
                                 placeholder="(49) 99999-9999"
-                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500" />
+                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary" />
                         </div>
                     </div>
 
@@ -310,13 +310,13 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                         <label className="block text-[13px] font-semibold text-gray-700 mb-1">Cidade *</label>
                         <input type="text" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))}
                             placeholder="Ex: Chapecó"
-                            className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500" />
+                            className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-[13px] font-semibold text-gray-700 mb-1">Origem *</label>
                             <select value={form.origemLead} onChange={e => setForm(f => ({ ...f, origemLead: e.target.value }))}
-                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500">
+                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary">
                                 <option value="">Selecione...</option>
                                 {origens.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                             </select>
@@ -324,7 +324,7 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                         <div>
                             <label className="block text-[13px] font-semibold text-gray-700 mb-1">Categoria *</label>
                             <select value={form.categoriaClienteId} onChange={e => setForm(f => ({ ...f, categoriaClienteId: e.target.value }))}
-                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500">
+                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary">
                                 <option value="">Selecione...</option>
                                 {categoriasCliente.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                             </select>
@@ -352,7 +352,7 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                         <label className="block text-[13px] font-semibold text-gray-700 mb-1">Horário de Atendimento</label>
                         <input type="text" value={form.horarioAtendimento} onChange={e => setForm(f => ({ ...f, horarioAtendimento: e.target.value }))}
                             placeholder="Ex: 09:00 - 11:00"
-                            className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500" />
+                            className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary" />
                     </div>
 
                     {/* Canais */}
@@ -431,7 +431,7 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                         <div className="flex gap-2">
                             <input type="text" value={form.pontoGps} onChange={e => setForm(f => ({ ...f, pontoGps: e.target.value }))}
                                 placeholder="lat,lng"
-                                className="flex-1 border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-orange-500 focus:border-orange-500" />
+                                className="flex-1 border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary" />
                             <button onClick={capturarGps} disabled={capturandoGps}
                                 className="bg-blue-600 text-white px-3 py-3 rounded-lg flex items-center gap-1.5 font-semibold text-[13px] disabled:opacity-60">
                                 {capturandoGps ? <Loader className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
@@ -463,7 +463,7 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                             rows={3} placeholder={isListening ? 'Fale agora...' : 'Informações relevantes sobre o estabelecimento...'}
                             className={`block w-full border rounded-lg p-3 text-[14px] resize-none transition-colors ${isListening
                                 ? 'border-red-400 bg-red-50/30 ring-1 ring-red-400'
-                                : 'border-gray-300 bg-white focus:ring-orange-500 focus:border-orange-500'
+                                : 'border-gray-300 bg-white focus:ring-primary focus:border-primary'
                                 }`} />
                     </div>
 

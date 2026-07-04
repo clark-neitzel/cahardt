@@ -575,7 +575,7 @@ export default function RelatorioVendas() {
             {/* Espaçador no desktop para empurrar conteúdo abaixo do header fixo */}
             <div className="hidden md:block" style={{ height: HEADER_H }} />
 
-            <div className="container mx-auto px-3 sm:px-4 max-w-6xl">
+            <div className="container w-full px-3 sm:px-4">
 
                 {/* Painel de filtros */}
                 {showFiltros && (

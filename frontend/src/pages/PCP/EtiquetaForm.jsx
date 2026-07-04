@@ -124,7 +124,7 @@ export default function EtiquetaForm() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className="w-full px-4 py-6">
             {/* Cabeçalho */}
             <div className="flex items-center gap-3 mb-6">
                 <button onClick={() => navigate('/pcp/etiquetas/dados')} className="p-2 rounded-lg hover:bg-gray-100">

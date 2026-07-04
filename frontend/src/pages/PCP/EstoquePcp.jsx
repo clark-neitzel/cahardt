@@ -67,7 +67,7 @@ export default function EstoquePcp() {
     };
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="w-full px-4 py-6">
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800">Estoque PCP</h1>
                 <p className="text-sm text-gray-500 mt-1">Posicao de estoque de materias-primas, subprodutos e embalagens</p>
@@ -82,7 +82,7 @@ export default function EstoquePcp() {
                         placeholder="Buscar..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary"
                     />
                 </div>
                 <select
@@ -207,7 +207,7 @@ export default function EstoquePcp() {
                                     step="0.001"
                                     value={ajusteForm.quantidade}
                                     onChange={e => setAjusteForm(prev => ({ ...prev, quantidade: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary"
                                     placeholder="0.000"
                                     autoFocus
                                 />
@@ -218,7 +218,7 @@ export default function EstoquePcp() {
                                     type="text"
                                     value={ajusteForm.observacao}
                                     onChange={e => setAjusteForm(prev => ({ ...prev, observacao: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary"
                                     placeholder="Motivo do ajuste..."
                                 />
                             </div>

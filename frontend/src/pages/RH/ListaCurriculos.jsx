@@ -112,7 +112,7 @@ export default function ListaCurriculos() {
   const totalGeral = contagens.porStatus.reduce((a, s) => a + (s._count?.status || 0), 0);
 
   return (
-    <div className="p-4 lg:p-6 space-y-4 max-w-6xl mx-auto">
+    <div className="p-4 lg:p-6 space-y-4 w-full">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -151,7 +151,7 @@ export default function ListaCurriculos() {
               onChange={e => setBuscaInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && aplicarBusca()}
               placeholder="Buscar por nome, CPF ou WhatsApp..."
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <button onClick={aplicarBusca}
@@ -162,7 +162,7 @@ export default function ListaCurriculos() {
         <div className="flex gap-3 flex-wrap items-center">
           <div ref={statusRef} className="relative">
             <button onClick={() => setStatusAberto(v => !v)}
-              className="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-1.5 text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-400">
+              className="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-1.5 text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary">
               <span>
                 {filtros.status.length === 0 ? 'Todos os status'
                   : filtros.status.length === 1 ? filtros.status[0]
@@ -196,7 +196,7 @@ export default function ListaCurriculos() {
           </div>
           <select value={filtros.areaInteresse}
             onChange={e => setFiltros(f => ({ ...f, areaInteresse: e.target.value }))}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
             <option value="">Todas as áreas</option>
             {AREAS.filter(Boolean).map(a => <option key={a}>{a}</option>)}
           </select>

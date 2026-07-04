@@ -335,7 +335,7 @@ const ContasReceberPage = () => {
     const hasActiveFilters = filtroStatus || filtroBusca || filtroOrigem || filtroVencDe || filtroVencAte;
 
     return (
-        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-4xl">
+        <div className="container w-full px-3 sm:px-4 py-4 sm:py-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">

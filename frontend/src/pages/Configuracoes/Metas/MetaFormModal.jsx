@@ -335,7 +335,7 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
 
     return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full flex flex-col" style={{ maxWidth: '1100px', height: '88vh' }}>
+            <div className="bg-white rounded-xl shadow-2xl w-full flex flex-col" style={{ maxWidth: '1100px', maxHeight: '88vh', height: 'auto', minHeight: '60vh' }}>
 
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50 rounded-t-xl shrink-0">

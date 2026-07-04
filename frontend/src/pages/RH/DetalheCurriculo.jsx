@@ -140,7 +140,7 @@ export default function DetalheCurriculo() {
 
 
   return (
-    <div className="p-4 lg:p-6 max-w-4xl mx-auto space-y-4">
+    <div className="p-4 lg:p-6 w-full space-y-4">
       {/* Lightbox foto */}
       {fotoAmpliada && curriculo.foto && (
         <div onClick={() => setFotoAmpliada(false)}
@@ -283,7 +283,7 @@ export default function DetalheCurriculo() {
               {curriculo.status}
             </div>
             <select value={status} onChange={e => salvarStatus(e.target.value)} disabled={salvando}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
               {STATUS_OPCOES.map(s => <option key={s}>{s}</option>)}
             </select>
           </div>
@@ -301,7 +301,7 @@ export default function DetalheCurriculo() {
               <div className="space-y-2">
                 <textarea value={observacao} onChange={e => setObservacao(e.target.value)}
                   rows={4} placeholder="Anotações internas sobre este candidato..."
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none" />
                 <div className="flex gap-2">
                   <button onClick={() => { setObservacaoEditando(false); setObservacao(curriculo.observacao || ''); }}
                     className="flex-1 border border-gray-300 text-gray-600 py-1.5 rounded-lg text-xs">Cancelar</button>
@@ -444,7 +444,7 @@ function EditarDadosModal({ curriculo, onClose, onSaved }) {
     setSalvando(false);
   }
 
-  const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400';
+  const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary';
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">

@@ -118,7 +118,7 @@ const DetalheProduto = () => {
         <div className="min-h-screen bg-gray-50 pb-20">
             {/* Header Sticky */}
             <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm px-4 py-3 mb-5">
-                <div className="flex items-center gap-3 max-w-5xl mx-auto">
+                <div className="flex items-center gap-3 w-full">
                     <button onClick={handleBack} className="p-2 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0" title="Voltar">
                         <ArrowLeft className="h-5 w-5" />
                     </button>
@@ -136,7 +136,7 @@ const DetalheProduto = () => {
                 </div>
             </div>
 
-            <div className="max-w-5xl mx-auto px-3 md:px-6">
+            <div className="w-full px-3 md:px-6">
                 {/* Feedback de erro */}
                 {error && (
                     <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">

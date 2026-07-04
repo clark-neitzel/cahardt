@@ -145,7 +145,7 @@ export default function HistoricoEstoque() {
     const saidas = items.filter(i => i.tipo === 'SAIDA');
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="w-full px-4 py-6">
             {/* Header */}
             <div className="flex items-center gap-3 mb-5">
                 <button onClick={() => navigate('/estoque')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">

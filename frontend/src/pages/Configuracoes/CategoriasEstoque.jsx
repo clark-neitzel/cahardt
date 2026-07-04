@@ -59,7 +59,7 @@ export default function CategoriasEstoque() {
     if (loading) return <div className="p-8 text-center text-gray-500">Carregando categorias...</div>;
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <div className="w-full px-4 py-8 max-w-2xl">
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800">Categorias do Conta Azul</h1>
                 <p className="text-gray-500 text-sm mt-1">

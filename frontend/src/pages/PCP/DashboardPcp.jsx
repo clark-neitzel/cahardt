@@ -4,6 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import pcpSugestaoService from '../../services/pcpSugestaoService';
 
+const KPI_CORES = {
+    blue: { bg: 'bg-blue-50', icone: 'text-blue-500' },
+    yellow: { bg: 'bg-yellow-50', icone: 'text-yellow-500' },
+    green: { bg: 'bg-green-50', icone: 'text-green-500' },
+};
+
 const KpiCard = ({ icon: Icon, label, value, color = 'blue', subtitle, onClick }) => (
     <div
         onClick={onClick}
@@ -11,8 +17,8 @@ const KpiCard = ({ icon: Icon, label, value, color = 'blue', subtitle, onClick }
     >
         <div className="flex items-center justify-between mb-3">
             <span className="text-sm text-gray-500">{label}</span>
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center bg-${color}-50`}>
-                <Icon className={`h-5 w-5 text-${color}-500`} />
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${(KPI_CORES[color] || KPI_CORES.blue).bg}`}>
+                <Icon className={`h-5 w-5 ${(KPI_CORES[color] || KPI_CORES.blue).icone}`} />
             </div>
         </div>
         <p className="text-2xl font-bold text-gray-800">{value}</p>
@@ -45,7 +51,7 @@ export default function DashboardPcp() {
     if (!kpis) return null;
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="w-full px-4 py-6">
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                     <BarChart3 className="h-6 w-6 text-blue-500" />

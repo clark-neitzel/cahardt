@@ -69,7 +69,7 @@ export default function OrdensProducao() {
     };
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="w-full px-4 py-6">
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Ordens de Producao</h1>
