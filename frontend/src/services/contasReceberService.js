@@ -21,6 +21,14 @@ const contasReceberService = {
         const response = await api.delete(`/contas-receber/${parcelaId}/baixa`);
         return response.data;
     },
+    listarPagamentos: async (parcelaId) => {
+        const response = await api.get(`/contas-receber/${parcelaId}/pagamentos`);
+        return response.data;
+    },
+    estornarPagamento: async (parcelaId, pagamentoId) => {
+        const response = await api.delete(`/contas-receber/${parcelaId}/pagamentos/${pagamentoId}`);
+        return response.data;
+    },
     cancelar: async (id) => {
         const response = await api.patch(`/contas-receber/${id}/cancelar`);
         return response.data;

@@ -78,6 +78,7 @@ const DEFAULT_PERMISSIONS = {
     // Financeiro
     Pode_Acessar_Contas_Receber: false,
     Pode_Baixar_Contas_Receber: false,
+    Pode_Dar_Desconto_Baixa: false,
     Pode_Vender_Inadimplente: false,
     // Devoluções
     Pode_Fazer_Devolucao: false,
@@ -754,7 +755,11 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         {permissoes.Pode_Acessar_Contas_Receber && (
                             <div className="border-t mt-3 pt-3">
                                 <Toggle checked={!!permissoes.Pode_Baixar_Contas_Receber} onChange={() => toggleBool('Pode_Baixar_Contas_Receber')}
-                                    label="Dar Baixa em Parcelas" sublabel="Registrar pagamentos e estornar baixas" />
+                                    label="Dar Baixa em Parcelas" sublabel="Registrar pagamentos (inclusive parciais) e estornar baixas" />
+                                {permissoes.Pode_Baixar_Contas_Receber && (
+                                    <Toggle checked={!!permissoes.Pode_Dar_Desconto_Baixa} onChange={() => toggleBool('Pode_Dar_Desconto_Baixa')}
+                                        label="Dar Desconto na Baixa" sublabel="Reduz o valor a receber (até 100%) sem confirmação de pagamento — use com critério" danger />
+                                )}
                             </div>
                         )}
 

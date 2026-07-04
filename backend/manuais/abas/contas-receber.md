@@ -8,7 +8,7 @@ permissao: Pode_Acessar_Contas_Receber
 
 ## O que é
 
-Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedido faturado no Conta Azul gera uma conta com parcelas. Esta tela mostra o estado de cada parcela (pendente, pago, vencido), permite dar baixa manual, sincronizar situação com o CA e gerar relatórios de inadimplência.
+Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedido faturado no Conta Azul gera uma conta com parcelas. Esta tela mostra o estado de cada parcela (pendente, parcial, pago, vencido), permite dar baixa manual — total, parcial ou com desconto (inclusive 100%) —, sincronizar situação com o CA e gerar relatórios de inadimplência.
 
 ---
 
@@ -17,8 +17,9 @@ Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedi
 - Ver todas as parcelas de contas a receber em formato de tabela
 - Filtrar por: busca (cliente/pedido), status da conta, status da parcela, origem, vendedor, categoria de cliente, condição de pagamento, forma de pagamento de entrega, forma de pagamento da baixa e período de vencimento/pagamento
 - Ordenar por qualquer coluna (clique no cabeçalho)
-- Selecionar parcelas em lote e dar baixa coletiva
-- Dar baixa em uma parcela individual (informando forma e data de pagamento)
+- Selecionar parcelas em lote e dar baixa coletiva (sempre pelo valor cheio de cada parcela)
+- Dar baixa em uma parcela individual — pode ser o valor total, um valor parcial (o restante fica pendente como PARCIAL) e/ou um desconto (em R$ ou %, incluindo 100% do saldo, sem precisar receber nada)
+- Ver o histórico de cada pagamento recebido numa parcela (data, valor, desconto, quem registrou) e estornar um pagamento específico sem mexer nos outros
 - Sincronizar situação de uma conta específica ou de todas as contas com o Conta Azul
 - Acompanhar progresso de sincronização em tempo real (log de sync)
 - Abrir popup do cliente para ver histórico e inadimplência
@@ -32,9 +33,10 @@ Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedi
 
 | Status | Cor | Significado |
 |--------|-----|-------------|
-| PENDENTE | Cinza | Aguardando vencimento |
+| PENDENTE | Cinza | Aguardando vencimento, nenhum valor recebido ainda |
+| PARCIAL | Amarelo | Recebeu parte do valor (ou desconto parcial) — ainda tem saldo restante |
 | VENCIDO | Vermelho | Prazo expirado sem pagamento |
-| PAGO | Verde | Pago e baixado |
+| PAGO | Verde | Quitada — recebido + desconto cobrem o valor total |
 | CANCELADO | Cinza claro | Parcela cancelada |
 
 ---
@@ -60,17 +62,20 @@ Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedi
    - **Período de vencimento / período de pagamento**
 3. Os filtros são salvos no localStorage por usuário
 
-### Dar baixa em uma parcela
-1. Localize a parcela na tabela
+### Dar baixa em uma parcela (total, parcial ou com desconto)
+1. Localize a parcela na tabela (ou abra "Ver detalhes" e clique em **Dar baixa**)
 2. Clique no botão de baixa (ícone de cheque) na linha
-3. O modal abre — informe a forma de pagamento e a data de pagamento
-4. Salve — a parcela muda para PAGO
+3. O modal abre já com o **valor recebido** preenchido com o saldo restante — reduza esse valor para registrar um pagamento parcial
+4. Opcionalmente marque **Aplicar desconto no saldo restante** (só aparece habilitado para quem tem a permissão `Pode_Dar_Desconto_Baixa`): escolha R$ ou % e informe o motivo (obrigatório). Um desconto de 100% do saldo quita a parcela sem receber nada
+5. Informe forma de pagamento, data e observação (opcionais além do valor)
+6. O modal mostra ao vivo se a parcela vai ficar **PARCIAL** (com o saldo que ainda falta) ou **PAGO** (quitada)
+7. Confirme — cada baixa fica registrada no histórico de pagamentos da parcela (visível em "Ver detalhes"), permitindo estornar só aquele pagamento depois, sem afetar os demais
 
 ### Dar baixa em lote
-1. Marque os checkboxes das parcelas desejadas
+1. Marque os checkboxes das parcelas desejadas (só aparecem parcelas ainda sem nenhum pagamento — Pendente/Vencido)
 2. Clique em **Baixa em Lote** (botão no topo da tabela)
 3. Informe a forma de pagamento e data para todas
-4. Confirme — todas as parcelas selecionadas são baixadas de uma vez
+4. Confirme — todas as parcelas selecionadas são baixadas de uma vez pelo valor cheio (baixa em lote não aceita valor parcial nem desconto — para isso, use a baixa individual)
 
 ### Sincronizar com o Conta Azul
 - Clique no ícone de atualização (reload) em uma conta específica para atualizar só aquela
@@ -94,7 +99,8 @@ Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedi
 | Ação | Permissão necessária |
 |------|----------------------|
 | Ver a tela | `Pode_Acessar_Contas_Receber` |
-| Dar baixa (individual ou em lote) | `Pode_Baixar_Contas_Receber` ou `admin` |
+| Dar baixa (individual ou em lote), estornar (tudo ou um pagamento específico) | `Pode_Baixar_Contas_Receber` ou `admin` |
+| Aplicar desconto numa baixa (parcial ou 100%) | `Pode_Dar_Desconto_Baixa` ou `admin` (além de ter `Pode_Baixar_Contas_Receber`) |
 | Sincronizar com o CA | `Pode_Acessar_Contas_Receber` (acesso à tela permite sync) |
 | Ver contas de todos os vendedores | Qualquer usuário com acesso à tela (a tela não filtra por vendedor automaticamente) |
 

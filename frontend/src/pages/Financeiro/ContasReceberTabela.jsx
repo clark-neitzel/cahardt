@@ -9,7 +9,8 @@ import ClientePopup from '../Rota/ClientePopup';
 import {
     DollarSign, Search, Filter, X, RefreshCw, CheckCircle, Undo2,
     Download, ArrowUpDown, CheckSquare, Square, Link as LinkIcon,
-    ChevronDown, ChevronUp, MoreVertical, Eye, Package, Truck, Wallet
+    ChevronDown, ChevronUp, MoreVertical, Eye, Package, Truck, Wallet,
+    Receipt, ShieldAlert
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -29,6 +30,7 @@ const STATUS_CONTA = {
 };
 const STATUS_PARC = {
     PENDENTE: 'bg-gray-100 text-gray-700',
+    PARCIAL: 'bg-yellow-100 text-yellow-800',
     PAGO: 'bg-green-100 text-green-700',
     VENCIDO: 'bg-red-100 text-red-700',
     CANCELADO: 'bg-gray-100 text-gray-400'
@@ -44,6 +46,7 @@ const loadFilters = () => {
 const ContasReceberTabela = () => {
     const { user } = useAuth();
     const podeBaixar = user?.permissoes?.admin || user?.permissoes?.Pode_Baixar_Contas_Receber;
+    const podeDarDesconto = user?.permissoes?.admin || user?.permissoes?.Pode_Dar_Desconto_Baixa;
 
     const saved = loadFilters();
 
@@ -88,6 +91,7 @@ const ContasReceberTabela = () => {
     // UI
     const [filtrosAbertos, setFiltrosAbertos] = useState(false);
     const [detalheLinha, setDetalheLinha] = useState(null);
+    const [baixaModalLinha, setBaixaModalLinha] = useState(null);
 
     // Modais
     const [baixaLoteOpen, setBaixaLoteOpen] = useState(false);
@@ -195,8 +199,8 @@ const ContasReceberTabela = () => {
                 const filtrandoPagas = !!filtros.pagDe || !!filtros.pagAte || filtros.formaPagamento.length > 0;
                 if (!filtrandoPagas) {
                     filtered = filtered.filter(l => {
-                        // Sempre mostra o que ainda falta receber.
-                        if (l.statusParcela === 'PENDENTE' || l.statusParcela === 'VENCIDO') return true;
+                        // Sempre mostra o que ainda falta receber (inclui parcelas com baixa parcial).
+                        if (l.statusParcela === 'PENDENTE' || l.statusParcela === 'VENCIDO' || l.statusParcela === 'PARCIAL') return true;
                         // Parcela paga/cancelada só aparece se a CONTA dela tem um status que o
                         // usuário pediu explicitamente (ex.: QUITADO mostra suas pagas; CANCELADO
                         // mostra suas canceladas). Isso impede que escolher QUITADO/CANCELADO
@@ -277,8 +281,11 @@ const ContasReceberTabela = () => {
         return pedidos.filter(p => visiveis.has(p.pedidoId));
     }, [relatorioData, linhasOrdenadas]);
 
-    // Seleção
+    // Seleção — baixa em lote só aceita parcela ainda sem nenhum pagamento (valor cheio)
     const elegivel = (l) => l.statusParcela === 'PENDENTE' || l.statusParcela === 'VENCIDO';
+    // Baixa individual (com valor parcial/desconto) também aceita parcela já parcialmente paga
+    const elegivelBaixa = (l) => elegivel(l) || l.statusParcela === 'PARCIAL';
+    const saldoRestante = (l) => Number(l.valor) - Number(l.valorPago || 0) - Number(l.valorDescontoTotal || 0);
     const selElegiveis = linhasOrdenadas.filter(elegivel);
     const todasSelecionadas = selElegiveis.length > 0 && selElegiveis.every(l => sel.has(l.parcelaId));
     const toggleOne = (id) => setSel(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -291,20 +298,10 @@ const ContasReceberTabela = () => {
         linhasOrdenadas.filter(l => sel.has(l.parcelaId)).reduce((s, l) => s + Number(l.valor || 0), 0)
     , [linhasOrdenadas, sel]);
 
-    // Baixa individual rápida
-    const handleBaixar = async (l) => {
+    // Baixa individual — abre modal com valor recebido/desconto (aceita parcial e 100% desconto)
+    const handleBaixar = (l) => {
         if (!podeBaixar) return;
-        const forma = window.prompt(`Forma de pagamento para parcela ${l.numeroParcela} (R$ ${fmt(l.valor)}):`, 'Dinheiro');
-        if (forma === null) return;
-        try {
-            await contasReceberService.darBaixa(l.parcelaId, {
-                valorPago: l.valor,
-                formaPagamento: forma || null,
-                dataPagamento: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
-            });
-            toast.success('Baixa realizada!');
-            fetchData();
-        } catch (e) { toast.error(e.response?.data?.error || 'Erro ao baixar'); }
+        setBaixaModalLinha(l);
     };
 
     const handleEstornar = async (l) => {
@@ -805,7 +802,7 @@ const ContasReceberTabela = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Status Parcela</label>
                         <MultiSelect
                             label="Todas"
-                            options={['PENDENTE', 'PAGO', 'VENCIDO', 'CANCELADO']}
+                            options={['PENDENTE', 'PARCIAL', 'PAGO', 'VENCIDO', 'CANCELADO']}
                             value={filtros.statusParcela}
                             onChange={(v) => setFiltros(f => ({ ...f, statusParcela: v }))}
                         />
@@ -964,6 +961,11 @@ const ContasReceberTabela = () => {
                                                 Pago: {fmtData(l.dataPagamento)} {l.formaPagamento ? `(${l.formaPagamento})` : ''}
                                             </span>
                                         )}
+                                        {l.statusParcela === 'PARCIAL' && (
+                                            <span className="text-[11px] text-amber-700 tabular-nums font-medium">
+                                                Saldo: R$ {fmt(saldoRestante(l))}
+                                            </span>
+                                        )}
                                     </div>
                                 </button>
                                 <button
@@ -1031,13 +1033,13 @@ const ContasReceberTabela = () => {
                                         <td className="px-2 pt-2 pb-0.5 whitespace-nowrap tabular-nums">{fmtData(l.dataVencimento)}</td>
                                         <td className="px-2 pt-2 pb-0.5">
                                             <div className="flex items-center justify-end gap-1">
-                                                {podeBaixar && eleg && (
-                                                    <button onClick={() => handleBaixar(l)} title="Baixar" className="p-1 rounded hover:bg-green-100 text-green-700">
+                                                {podeBaixar && elegivelBaixa(l) && (
+                                                    <button onClick={() => handleBaixar(l)} title="Dar baixa" className="p-1 rounded hover:bg-green-100 text-green-700">
                                                         <CheckCircle className="w-4 h-4" />
                                                     </button>
                                                 )}
-                                                {podeBaixar && l.statusParcela === 'PAGO' && (
-                                                    <button onClick={() => handleEstornar(l)} title="Estornar" className="p-1 rounded hover:bg-yellow-100 text-yellow-700">
+                                                {podeBaixar && (l.statusParcela === 'PAGO' || l.statusParcela === 'PARCIAL') && (
+                                                    <button onClick={() => handleEstornar(l)} title="Estornar tudo" className="p-1 rounded hover:bg-yellow-100 text-yellow-700">
                                                         <Undo2 className="w-4 h-4" />
                                                     </button>
                                                 )}
@@ -1078,6 +1080,9 @@ const ContasReceberTabela = () => {
                                                 {l.dataPagamento && <span className="tabular-nums"><span className="text-gray-400">Pgto:</span> {fmtData(l.dataPagamento)}</span>}
                                                 {l.formaPagamento && <span><span className="text-gray-400">Forma:</span> {l.formaPagamento}</span>}
                                                 {l.baixadoPorNome && <span><span className="text-gray-400">Baixado por:</span> {l.baixadoPorNome}</span>}
+                                                {l.statusParcela === 'PARCIAL' && (
+                                                    <span className="font-medium text-amber-700"><span className="text-gray-400 font-normal">Saldo restante:</span> R$ {fmt(saldoRestante(l))}</span>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -1188,114 +1193,35 @@ const ContasReceberTabela = () => {
             )}
 
             {/* Modal detalhes parcela */}
-            {detalheLinha && (() => {
-                const l = detalheLinha;
-                const eleg = elegivel(l);
-                const close = () => setDetalheLinha(null);
-                const Field = ({ label, value, valueClass = '' }) => (
-                    <div>
-                        <div className="text-[11px] text-gray-500 uppercase tracking-wide">{label}</div>
-                        <div className={`text-sm ${valueClass}`}>{value || '-'}</div>
-                    </div>
-                );
-                return (
-                    <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={close}>
-                        <div className="bg-white rounded-t-lg md:rounded-lg max-w-lg w-full max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
-                                <h3 className="font-bold text-base">
-                                    Parcela {l.numeroParcela}/{l.parcelasTotal}
-                                    <span className="ml-2 text-sm font-normal text-gray-500">
-                                        {l.pedidoNumero ? `#${l.pedidoNumero}` : (l.pedidoEspecial ? 'Especial' : '')}
-                                    </span>
-                                </h3>
-                                <button onClick={close} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
-                            </div>
-                            <div className="p-4 space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <div className="text-[11px] text-gray-500 uppercase">Valor</div>
-                                        <div className="text-2xl font-bold text-gray-900">R$ {fmt(l.valor)}</div>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-1">
-                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_PARC[l.statusParcela] || ''}`}>{l.statusParcela}</span>
-                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_CONTA[l.statusConta] || ''}`}>Conta: {l.statusConta}</span>
-                                    </div>
-                                </div>
+            {detalheLinha && (
+                <DetalheParcelaModal
+                    linha={detalheLinha}
+                    onClose={() => setDetalheLinha(null)}
+                    podeBaixar={podeBaixar}
+                    onBaixar={(l) => { setDetalheLinha(null); handleBaixar(l); }}
+                    onEstornarTudo={(l) => { handleEstornar(l); setDetalheLinha(null); }}
+                    onSyncCA={(contaId, idCA) => { handleSyncCA(contaId, idCA); setDetalheLinha(null); }}
+                    syncing={syncing}
+                    onAbrirPedido={(id) => { abrirPedido(id); setDetalheLinha(null); }}
+                    onEstornoPagamento={fetchData}
+                    elegivelBaixa={elegivelBaixa}
+                    saldoRestante={saldoRestante}
+                    fmt={fmt}
+                    fmtData={fmtData}
+                />
+            )}
 
-                                <div className="grid grid-cols-2 gap-3 pt-2 border-t">
-                                    <Field label="Cliente" value={l.clienteNome} />
-                                    <Field label="Vendedor" value={l.vendedorNome} />
-                                    <Field label="Condição" value={l.condicaoPagamento} />
-                                    <Field label="Origem" value={l.origem === 'FATURADO_CA' ? 'Faturado CA' : 'Especial'} />
-                                    <Field label="Vencimento" value={fmtData(l.dataVencimento)} valueClass={l.statusParcela === 'VENCIDO' ? 'text-red-600 font-medium' : ''} />
-                                    <Field label="Pagamento" value={fmtData(l.dataPagamento)} valueClass={l.dataPagamento ? 'text-green-700 font-medium' : ''} />
-                                    <Field label="Valor pago" value={l.valorPago ? `R$ ${fmt(l.valorPago)}` : '-'} />
-                                    <Field label="Forma" value={l.formaPagamento} />
-                                    <Field label="Baixado por" value={l.baixadoPorNome} />
-                                    <Field label="ID CA" value={l.idVendaContaAzul ? '✓ Sincronizado' : 'Não enviado'} />
-                                </div>
-
-                                {/* Pagamentos registrados na entrega */}
-                                {(l.pagamentosEntrega || []).length > 0 && (
-                                    <div className="border-t pt-3">
-                                        <div className="text-[11px] text-gray-500 uppercase tracking-wide mb-2">
-                                            Entrega — {l.statusEntrega || 'PENDENTE'}
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            {l.pagamentosEntrega.map((pg, i) => (
-                                                <div key={i} className="flex items-center justify-between bg-gray-50 rounded px-2 py-1.5 text-sm">
-                                                    <span className="font-medium text-gray-800">{pg.formaPagamentoNome}</span>
-                                                    <div className="flex items-center gap-2">
-                                                        {pg.escritorioResponsavel && (
-                                                            <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">Escritório resp.</span>
-                                                        )}
-                                                        {pg.vendedorResponsavelId && !pg.escritorioResponsavel && (
-                                                            <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Vendedor resp.</span>
-                                                        )}
-                                                        <span className="font-bold tabular-nums text-gray-900">R$ {fmt(pg.valor)}</span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="sticky bottom-0 bg-white border-t px-4 py-3 flex flex-wrap gap-2 justify-end">
-                                {l.pedidoId && (
-                                    <button onClick={() => { abrirPedido(l.pedidoId); close(); }} className="px-3 py-2 rounded border text-sm inline-flex items-center gap-1 hover:bg-gray-50">
-                                        <LinkIcon className="w-4 h-4" /> Ver pedido
-                                    </button>
-                                )}
-                                {podeBaixar && l.idVendaContaAzul && l.statusConta !== 'CANCELADO' && (
-                                    <button
-                                        onClick={() => { handleSyncCA(l.contaId, l.idVendaContaAzul); close(); }}
-                                        disabled={syncing === l.contaId}
-                                        className="px-3 py-2 rounded bg-blue-50 text-blue-700 text-sm inline-flex items-center gap-1 hover:bg-blue-100 disabled:opacity-50"
-                                    >
-                                        <RefreshCw className={`w-4 h-4 ${syncing === l.contaId ? 'animate-spin' : ''}`} /> Sync CA
-                                    </button>
-                                )}
-                                {podeBaixar && l.statusParcela === 'PAGO' && (
-                                    <button
-                                        onClick={() => { handleEstornar(l); close(); }}
-                                        className="px-3 py-2 rounded bg-yellow-50 text-yellow-700 text-sm inline-flex items-center gap-1 hover:bg-yellow-100"
-                                    >
-                                        <Undo2 className="w-4 h-4" /> Estornar
-                                    </button>
-                                )}
-                                {podeBaixar && eleg && (
-                                    <button
-                                        onClick={() => { handleBaixar(l); close(); }}
-                                        className="px-3 py-2 rounded bg-green-600 text-white text-sm inline-flex items-center gap-1 hover:bg-green-700"
-                                    >
-                                        <CheckCircle className="w-4 h-4" /> Baixar
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                );
-            })()}
+            {/* Modal de baixa (valor recebido + desconto) */}
+            {baixaModalLinha && (
+                <BaixaModal
+                    linha={baixaModalLinha}
+                    podeDarDesconto={podeDarDesconto}
+                    onClose={() => setBaixaModalLinha(null)}
+                    onSuccess={() => { setBaixaModalLinha(null); fetchData(); }}
+                    saldoRestante={saldoRestante}
+                    fmt={fmt}
+                />
+            )}
 
             {/* Modal pedido completo */}
             {pedidoPopup && (() => {
@@ -1769,6 +1695,371 @@ const ContasReceberTabela = () => {
                     </div>
                 </div>
             )}
+        </div>
+    );
+};
+
+// ── Modal de detalhes da parcela (histórico de pagamentos + ações) ──
+const DetalheParcelaModal = ({
+    linha, onClose, podeBaixar, onBaixar, onEstornarTudo, onSyncCA, syncing,
+    onAbrirPedido, onEstornoPagamento, elegivelBaixa, saldoRestante, fmt, fmtData
+}) => {
+    const l = linha;
+    const [pagamentos, setPagamentos] = useState([]);
+    const [loadingPag, setLoadingPag] = useState(true);
+    const [estornandoId, setEstornandoId] = useState(null);
+
+    useEffect(() => {
+        let ativo = true;
+        setLoadingPag(true);
+        contasReceberService.listarPagamentos(l.parcelaId)
+            .then(data => { if (ativo) setPagamentos(Array.isArray(data) ? data : []); })
+            .catch(() => {})
+            .finally(() => { if (ativo) setLoadingPag(false); });
+        return () => { ativo = false; };
+    }, [l.parcelaId]);
+
+    const estornarPagamento = async (pagamentoId) => {
+        if (!window.confirm('Estornar este pagamento específico?')) return;
+        setEstornandoId(pagamentoId);
+        try {
+            await contasReceberService.estornarPagamento(l.parcelaId, pagamentoId);
+            toast.success('Pagamento estornado');
+            setPagamentos(prev => prev.map(p => p.id === pagamentoId ? { ...p, estornado: true } : p));
+            onEstornoPagamento();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao estornar pagamento');
+        } finally {
+            setEstornandoId(null);
+        }
+    };
+
+    const Field = ({ label, value, valueClass = '' }) => (
+        <div>
+            <div className="text-[11px] text-gray-500 uppercase tracking-wide">{label}</div>
+            <div className={`text-sm ${valueClass}`}>{value || '-'}</div>
+        </div>
+    );
+
+    const saldo = saldoRestante(l);
+    const temHistorico = l.statusParcela === 'PARCIAL' || l.statusParcela === 'PAGO';
+
+    return (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-lg w-full max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between z-10 rounded-t-2xl">
+                    <h3 className="font-bold text-gray-900">
+                        Parcela {l.numeroParcela}/{l.parcelasTotal}
+                        <span className="ml-2 text-sm font-normal text-gray-500">
+                            {l.pedidoNumero ? `#${l.pedidoNumero}` : (l.pedidoEspecial ? 'Especial' : '')}
+                        </span>
+                    </h3>
+                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="text-xs text-gray-500 mb-1">Valor total</div>
+                            <div className="text-2xl font-bold text-gray-900">R$ {fmt(l.valor)}</div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${STATUS_PARC[l.statusParcela] || ''}`}>{l.statusParcela}</span>
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${STATUS_CONTA[l.statusConta] || ''}`}>Conta: {l.statusConta}</span>
+                        </div>
+                    </div>
+
+                    {l.statusParcela === 'PARCIAL' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                                <p className="text-xs text-gray-500 mb-1">Recebido + desconto</p>
+                                <p className="font-bold text-base text-green-700">R$ {fmt(Number(l.valorPago || 0) + Number(l.valorDescontoTotal || 0))}</p>
+                            </div>
+                            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                                <p className="text-xs text-gray-500 mb-1">Saldo restante</p>
+                                <p className="font-bold text-base text-amber-700">R$ {fmt(saldo)}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
+                        <Field label="Cliente" value={l.clienteNome} />
+                        <Field label="Vendedor" value={l.vendedorNome} />
+                        <Field label="Condição" value={l.condicaoPagamento} />
+                        <Field label="Origem" value={l.origem === 'FATURADO_CA' ? 'Faturado CA' : 'Especial'} />
+                        <Field label="Vencimento" value={fmtData(l.dataVencimento)} valueClass={l.statusParcela === 'VENCIDO' ? 'text-red-600 font-medium' : ''} />
+                        <Field label="Pagamento" value={fmtData(l.dataPagamento)} valueClass={l.dataPagamento ? 'text-green-700 font-medium' : ''} />
+                        <Field label="ID CA" value={l.idVendaContaAzul ? '✓ Sincronizado' : 'Não enviado'} />
+                    </div>
+
+                    {temHistorico && (
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                                <Receipt className="h-4 w-4 text-blue-600" />
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Histórico de pagamentos</span>
+                            </div>
+                            <div className="p-4">
+                                {loadingPag ? (
+                                    <p className="text-xs text-gray-400 text-center py-2">Carregando...</p>
+                                ) : pagamentos.length === 0 ? (
+                                    <p className="text-xs text-gray-400 text-center py-2">Nenhum pagamento registrado.</p>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {pagamentos.map(pg => (
+                                            <div key={pg.id} className={`flex items-center justify-between text-sm border-b border-gray-100 last:border-0 pb-2 last:pb-0 ${pg.estornado ? 'opacity-50' : ''}`}>
+                                                <div>
+                                                    <div className="tabular-nums text-gray-700">{fmtData(pg.dataPagamento)} · {pg.formaPagamento || '-'}</div>
+                                                    <div className="text-xs text-gray-400">{pg.registradoPor?.nome}</div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className={pg.estornado ? 'line-through' : 'font-medium text-green-700'}>R$ {fmt(pg.valorRecebido)}</div>
+                                                    {Number(pg.valorDesconto) > 0 && (
+                                                        <div className="text-xs text-purple-700">desconto R$ {fmt(pg.valorDesconto)}</div>
+                                                    )}
+                                                </div>
+                                                <div className="ml-3">
+                                                    {pg.estornado ? (
+                                                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-500">Estornado</span>
+                                                    ) : podeBaixar ? (
+                                                        <button
+                                                            onClick={() => estornarPagamento(pg.id)}
+                                                            disabled={estornandoId === pg.id}
+                                                            className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded-md font-medium inline-flex items-center gap-1 disabled:opacity-50"
+                                                        >
+                                                            <Undo2 className="w-3.5 h-3.5" /> Estornar
+                                                        </button>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {(l.pagamentosEntrega || []).length > 0 && (
+                        <div className="border-t border-gray-100 pt-3">
+                            <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">
+                                Entrega — {l.statusEntrega || 'PENDENTE'}
+                            </div>
+                            <div className="space-y-1.5">
+                                {l.pagamentosEntrega.map((pg, i) => (
+                                    <div key={i} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
+                                        <span className="font-medium text-gray-800">{pg.formaPagamentoNome}</span>
+                                        <div className="flex items-center gap-2">
+                                            {pg.escritorioResponsavel && (
+                                                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Escritório resp.</span>
+                                            )}
+                                            {pg.vendedorResponsavelId && !pg.escritorioResponsavel && (
+                                                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Vendedor resp.</span>
+                                            )}
+                                            <span className="font-bold tabular-nums text-gray-900">R$ {fmt(pg.valor)}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <div className="sticky bottom-0 bg-white border-t border-gray-100 px-5 py-4 flex flex-wrap gap-2 justify-end">
+                    {l.pedidoId && (
+                        <button onClick={() => onAbrirPedido(l.pedidoId)} className="px-3 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-sm inline-flex items-center gap-1.5 font-medium">
+                            <LinkIcon className="w-4 h-4" /> Ver pedido
+                        </button>
+                    )}
+                    {podeBaixar && l.idVendaContaAzul && l.statusConta !== 'CANCELADO' && (
+                        <button
+                            onClick={() => onSyncCA(l.contaId, l.idVendaContaAzul)}
+                            disabled={syncing === l.contaId}
+                            className="px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md text-sm inline-flex items-center gap-1.5 font-semibold disabled:opacity-50"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${syncing === l.contaId ? 'animate-spin' : ''}`} /> Sync CA
+                        </button>
+                    )}
+                    {podeBaixar && (l.statusParcela === 'PAGO' || l.statusParcela === 'PARCIAL') && (
+                        <button
+                            onClick={() => onEstornarTudo(l)}
+                            className="px-3 py-2 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 rounded-md text-sm inline-flex items-center gap-1.5 font-semibold"
+                        >
+                            <Undo2 className="w-4 h-4" /> Estornar tudo
+                        </button>
+                    )}
+                    {podeBaixar && elegivelBaixa(l) && (
+                        <button
+                            onClick={() => onBaixar(l)}
+                            className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-sm text-sm inline-flex items-center gap-1.5 font-semibold"
+                        >
+                            <CheckCircle className="w-4 h-4" /> Dar baixa
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ── Modal de baixa: valor recebido (parcial ou total) + desconto (até 100%) ──
+const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante, fmt }) => {
+    const l = linha;
+    const saldo = saldoRestante(l);
+    const [valorRecebido, setValorRecebido] = useState(saldo.toFixed(2).replace('.', ','));
+    const [aplicarDesconto, setAplicarDesconto] = useState(false);
+    const [tipoDesconto, setTipoDesconto] = useState('R$'); // 'R$' | '%'
+    const [valorDescontoInput, setValorDescontoInput] = useState('');
+    const [motivoDesconto, setMotivoDesconto] = useState('');
+    const [formaPagamento, setFormaPagamento] = useState('Dinheiro');
+    const [dataPagamento, setDataPagamento] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }));
+    const [observacao, setObservacao] = useState('');
+    const [salvando, setSalvando] = useState(false);
+
+    const parseNum = (v) => parseFloat(String(v).replace(',', '.')) || 0;
+    const recebido = Math.max(0, parseNum(valorRecebido));
+    const descontoReais = !aplicarDesconto ? 0 : (tipoDesconto === '%'
+        ? saldo * Math.max(0, parseNum(valorDescontoInput)) / 100
+        : Math.max(0, parseNum(valorDescontoInput)));
+    const totalLancado = recebido + descontoReais;
+    const saldoDepois = Math.max(0, saldo - totalLancado);
+    const novoStatusPreview = totalLancado <= 0 ? null : (saldoDepois <= 0.01 ? 'PAGO' : 'PARCIAL');
+    const motivoObrigatorioFaltando = aplicarDesconto && descontoReais > 0 && !motivoDesconto.trim();
+    const podeConfirmar = totalLancado > 0 && totalLancado <= saldo + 0.01 && !motivoObrigatorioFaltando;
+
+    const confirmar = async () => {
+        if (totalLancado <= 0) { toast.error('Informe um valor recebido ou desconto.'); return; }
+        if (totalLancado > saldo + 0.01) { toast.error('Valor informado é maior que o saldo restante.'); return; }
+        if (motivoObrigatorioFaltando) { toast.error('Informe o motivo do desconto.'); return; }
+        setSalvando(true);
+        try {
+            await contasReceberService.darBaixa(l.parcelaId, {
+                valorRecebido: recebido,
+                valorDesconto: aplicarDesconto ? descontoReais : 0,
+                motivoDesconto: aplicarDesconto && descontoReais > 0 ? motivoDesconto.trim() : undefined,
+                formaPagamento,
+                dataPagamento,
+                observacao: observacao || undefined
+            });
+            toast.success(novoStatusPreview === 'PAGO' ? 'Parcela quitada!' : 'Baixa parcial registrada!');
+            onSuccess();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao dar baixa');
+        } finally {
+            setSalvando(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-md w-full max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                        <p className="text-xs text-gray-500">Dar baixa — Parcela {l.numeroParcela}/{l.parcelasTotal}</p>
+                        <h2 className="font-bold text-gray-900">{l.clienteNome}{l.pedidoNumero ? ` · Pedido #${l.pedidoNumero}` : ''}</h2>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                </div>
+
+                <div className="p-5 space-y-4">
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                            <p className="text-xs text-gray-500 mb-1">Valor total</p>
+                            <p className="font-bold text-base text-gray-900">R$ {fmt(l.valor)}</p>
+                        </div>
+                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                            <p className="text-xs text-gray-500 mb-1">Já pago</p>
+                            <p className="font-bold text-base text-green-700">R$ {fmt(Number(l.valorPago || 0) + Number(l.valorDescontoTotal || 0))}</p>
+                        </div>
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                            <p className="text-xs text-gray-500 mb-1">Saldo restante</p>
+                            <p className="font-bold text-base text-amber-700">R$ {fmt(saldo)}</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Valor recebido agora</label>
+                        <div className="flex items-center border border-gray-300 rounded overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary bg-white">
+                            <span className="px-3 py-2 bg-gray-50 border-r border-gray-300 text-sm text-gray-500">R$</span>
+                            <input value={valorRecebido} onChange={e => setValorRecebido(e.target.value)} className="flex-1 px-3 py-2 text-sm outline-none" />
+                        </div>
+                        <p className="text-[11px] text-gray-400 mt-1">Reduza o valor para registrar um pagamento parcial.</p>
+                    </div>
+
+                    <div className="rounded-xl border border-dashed border-gray-300 p-3 space-y-3 bg-gray-50">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <input type="checkbox" checked={aplicarDesconto} onChange={e => setAplicarDesconto(e.target.checked)} className="rounded" disabled={!podeDarDesconto} />
+                            Aplicar desconto no saldo restante
+                            {!podeDarDesconto && <span className="text-xs text-gray-400 font-normal">(sem permissão)</span>}
+                        </label>
+                        {aplicarDesconto && podeDarDesconto && (
+                            <>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
+                                        <select value={tipoDesconto} onChange={e => setTipoDesconto(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+                                            <option value="R$">R$ (valor fixo)</option>
+                                            <option value="%">% do saldo</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Valor do desconto</label>
+                                        <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-white">
+                                            <span className="px-3 py-2 bg-gray-50 border-r border-gray-300 text-sm text-gray-500">{tipoDesconto === '%' ? '%' : 'R$'}</span>
+                                            <input value={valorDescontoInput} onChange={e => setValorDescontoInput(e.target.value)} className="flex-1 px-3 py-2 text-sm outline-none" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Motivo do desconto</label>
+                                    <input value={motivoDesconto} onChange={e => setMotivoDesconto(e.target.value)} placeholder="Ex.: negociação com cliente, produto avariado..." className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                </div>
+                                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 inline-flex items-start gap-1.5">
+                                    <ShieldAlert className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                                    Isso reduz o valor a receber sem confirmação de pagamento — use com critério.
+                                </p>
+                            </>
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
+                            <select value={formaPagamento} onChange={e => setFormaPagamento(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+                                {FORMAS.map(f => <option key={f}>{f}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Data do pagamento</label>
+                            <input type="date" value={dataPagamento} onChange={e => setDataPagamento(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Observação (opcional)</label>
+                        <textarea rows={2} value={observacao} onChange={e => setObservacao(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                    </div>
+
+                    {totalLancado > 0 && (
+                        <div className={`rounded-xl border p-3 flex items-center justify-between ${novoStatusPreview === 'PAGO' ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}>
+                            <span className={`text-sm font-medium ${novoStatusPreview === 'PAGO' ? 'text-green-800' : 'text-amber-800'}`}>
+                                Após esta baixa, a parcela fica:
+                            </span>
+                            <div className="text-right">
+                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${novoStatusPreview === 'PAGO' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                    {novoStatusPreview === 'PAGO' ? 'QUITADA (PAGO)' : 'PARCIAL'}
+                                </span>
+                                {novoStatusPreview === 'PARCIAL' && (
+                                    <div className="text-xs text-amber-700 mt-1">Saldo restante: R$ {fmt(saldoDepois)}</div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="px-5 py-4 border-t border-gray-100 flex gap-3">
+                    <button onClick={onClose} className="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm">Cancelar</button>
+                    <button onClick={confirmar} disabled={!podeConfirmar || salvando} className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-sm font-semibold text-sm disabled:opacity-50">
+                        {salvando ? 'Salvando...' : (novoStatusPreview === 'PARCIAL' ? 'Confirmar baixa parcial' : 'Confirmar baixa')}
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };

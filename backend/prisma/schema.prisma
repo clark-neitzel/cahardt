@@ -382,6 +382,8 @@ model Vendedor {
   metasMensais     MetaMensalVendedor[]
   roteirizacao     Roteirizacao?
   baixasRealizadas Parcela[]             @relation("BaixasRealizadas")
+  pagamentosParcelaRegistrados PagamentoParcela[] @relation("PagamentosParcelaRegistrados")
+  pagamentosParcelaEstornados  PagamentoParcela[] @relation("PagamentosParcelaEstornados")
 
   movimentacoesEstoque MovimentacaoEstoque[]
 
@@ -1387,13 +1389,16 @@ model Parcela {
   dataVencimento DateTime     @map("data_vencimento")
 
   // Baixa
-  dataPagamento  DateTime? @map("data_pagamento")
-  valorPago      Decimal?  @map("valor_pago") @db.Decimal(12, 2)
-  formaPagamento String?   @map("forma_pagamento")
-  baixadoPorId   String?   @map("baixado_por_id")
-  baixadoPor     Vendedor? @relation("BaixasRealizadas", fields: [baixadoPorId], references: [id])
-  status         String    @default("PENDENTE") // PENDENTE | PAGO | VENCIDO | CANCELADO
-  observacao     String?   @db.Text
+  dataPagamento      DateTime? @map("data_pagamento")
+  valorPago          Decimal?  @map("valor_pago") @db.Decimal(12, 2)
+  valorDescontoTotal Decimal   @default(0) @map("valor_desconto_total") @db.Decimal(12, 2)
+  formaPagamento     String?   @map("forma_pagamento")
+  baixadoPorId       String?   @map("baixado_por_id")
+  baixadoPor         Vendedor? @relation("BaixasRealizadas", fields: [baixadoPorId], references: [id])
+  status             String    @default("PENDENTE") // PENDENTE | PARCIAL | PAGO | VENCIDO | CANCELADO
+  observacao         String?   @db.Text
+
+  pagamentos PagamentoParcela[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1402,6 +1407,33 @@ model Parcela {
   @@index([dataVencimento])
   @@index([status])
   @@map("parcelas")
+}
+
+// Histórico (ledger) de cada pagamento/desconto recebido numa parcela —
+// permite baixa parcial (várias linhas até quitar) e estorno individual de cada linha.
+model PagamentoParcela {
+  id              String   @id @default(uuid())
+  parcelaId       String   @map("parcela_id")
+  parcela         Parcela  @relation(fields: [parcelaId], references: [id], onDelete: Cascade)
+  valorRecebido   Decimal  @default(0) @map("valor_recebido") @db.Decimal(12, 2)
+  valorDesconto   Decimal  @default(0) @map("valor_desconto") @db.Decimal(12, 2)
+  motivoDesconto  String?  @map("motivo_desconto")
+  formaPagamento  String?  @map("forma_pagamento")
+  dataPagamento   DateTime @map("data_pagamento")
+  observacao      String?  @db.Text
+
+  registradoPorId String   @map("registrado_por_id")
+  registradoPor   Vendedor @relation("PagamentosParcelaRegistrados", fields: [registradoPorId], references: [id])
+
+  estornado      Boolean   @default(false)
+  estornadoEm    DateTime? @map("estornado_em")
+  estornadoPorId String?   @map("estornado_por_id")
+  estornadoPor   Vendedor? @relation("PagamentosParcelaEstornados", fields: [estornadoPorId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([parcelaId])
+  @@map("pagamentos_parcela")
 }
 
 // =============================================

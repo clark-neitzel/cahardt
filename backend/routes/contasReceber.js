@@ -33,6 +33,25 @@ const checkBaixa = async (req, res, next) => {
     next();
 };
 
+// Recalcula o status de uma Parcela a partir do total já recebido/descontado (não estornado)
+const calcularStatusParcela = (valor, valorPago, valorDescontoTotal) => {
+    const recebidoTotal = Number(valorPago || 0) + Number(valorDescontoTotal || 0);
+    if (recebidoTotal <= 0) return 'PENDENTE';
+    if (recebidoTotal >= Number(valor) - 0.01) return 'PAGO';
+    return 'PARCIAL';
+};
+
+// Recalcula o status de uma ContaReceber a partir do status de todas as suas parcelas
+const calcularStatusConta = (todasParcelas) => {
+    const total = todasParcelas.length;
+    const pagas = todasParcelas.filter(p => p.status === 'PAGO').length;
+    const parciais = todasParcelas.filter(p => p.status === 'PARCIAL').length;
+    const canceladas = todasParcelas.filter(p => p.status === 'CANCELADO').length;
+    if (pagas + canceladas >= total) return 'QUITADO';
+    if (pagas > 0 || parciais > 0) return 'PARCIAL';
+    return 'ABERTO';
+};
+
 // ── GET / — Listar contas a receber com filtros ──
 router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     try {
@@ -170,15 +189,22 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                     totalEmAberto += Number(p.valor);
                     if (venc < hoje) totalVencidas += Number(p.valor);
                     else if (venc <= em7dias) totalAVencer7d += Number(p.valor);
-                }
-                if (p.status === 'PAGO' && p.dataPagamento) {
-                    const pgto = new Date(p.dataPagamento);
-                    if (pgto >= inicioMes && pgto <= fimMes) {
-                        totalQuitadasMes += Number(p.valorPago || p.valor);
-                    }
+                } else if (p.status === 'PARCIAL') {
+                    const saldo = Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0);
+                    totalEmAberto += saldo;
+                    if (venc < hoje) totalVencidas += saldo;
+                    else if (venc <= em7dias) totalAVencer7d += saldo;
                 }
             });
         });
+
+        // Quitadas no mês: soma dos pagamentos/descontos (do ledger) lançados no mês corrente,
+        // independente do status atual da parcela (cobre baixas parciais e totais).
+        const pagamentosDoMes = await prisma.pagamentoParcela.findMany({
+            where: { estornado: false, dataPagamento: { gte: inicioMes, lte: fimMes } },
+            select: { valorRecebido: true, valorDesconto: true }
+        });
+        totalQuitadasMes = pagamentosDoMes.reduce((s, p) => s + Number(p.valorRecebido) + Number(p.valorDesconto), 0);
 
         // Formatar resposta
         const contasFormatadas = contas.map(c => {
@@ -230,6 +256,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                     dataVencimento: p.dataVencimento,
                     dataPagamento: p.dataPagamento,
                     valorPago: p.valorPago ? Number(p.valorPago) : null,
+                    valorDescontoTotal: Number(p.valorDescontoTotal || 0),
                     formaPagamento: p.formaPagamento,
                     status: p.status,
                     observacao: p.observacao,
@@ -406,7 +433,7 @@ router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
 
         // Executar tudo em transação
         await prisma.$transaction(async (tx) => {
-            // 1. Atualizar todas as parcelas
+            // 1. Atualizar todas as parcelas (sempre pelo valor cheio — baixa em lote não aceita parcial/desconto)
             for (const parcela of elegiveis) {
                 await tx.parcela.update({
                     where: { id: parcela.id },
@@ -419,6 +446,16 @@ router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
                         observacao: observacao || null
                     }
                 });
+                await tx.pagamentoParcela.create({
+                    data: {
+                        parcelaId: parcela.id,
+                        valorRecebido: parcela.valor,
+                        formaPagamento: formaPagamento || null,
+                        dataPagamento: dataPgto,
+                        observacao: observacao || null,
+                        registradoPorId: req.user.id
+                    }
+                });
             }
 
             // 2. Recalcular status de cada conta afetada
@@ -427,19 +464,9 @@ router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
                 const todasParcelas = await tx.parcela.findMany({
                     where: { contaReceberId: contaId }
                 });
-
-                const pagas = todasParcelas.filter(p => p.status === 'PAGO').length;
-                const total = todasParcelas.length;
-                const canceladas = todasParcelas.filter(p => p.status === 'CANCELADO').length;
-
-                let novoStatus;
-                if (pagas + canceladas >= total) novoStatus = 'QUITADO';
-                else if (pagas > 0) novoStatus = 'PARCIAL';
-                else novoStatus = 'ABERTO';
-
                 await tx.contaReceber.update({
                     where: { id: contaId },
-                    data: { status: novoStatus }
+                    data: { status: calcularStatusConta(todasParcelas) }
                 });
             }
 
@@ -470,11 +497,31 @@ router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
     }
 });
 
-// ── POST /:parcelaId/baixa — Dar baixa em parcela ──
+// ── GET /:parcelaId/pagamentos — Histórico de pagamentos (ledger) de uma parcela ──
+router.get('/:parcelaId/pagamentos', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const { parcelaId } = req.params;
+        const pagamentos = await prisma.pagamentoParcela.findMany({
+            where: { parcelaId },
+            include: {
+                registradoPor: { select: { id: true, nome: true } },
+                estornadoPor: { select: { id: true, nome: true } }
+            },
+            orderBy: { dataPagamento: 'asc' }
+        });
+        res.json(pagamentos);
+    } catch (error) {
+        console.error('Erro ao buscar histórico de pagamentos:', error);
+        res.status(500).json({ error: 'Erro ao buscar histórico de pagamentos.' });
+    }
+});
+
+// ── POST /:parcelaId/baixa — Dar baixa em parcela (total, parcial, com ou sem desconto) ──
 router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => {
     try {
         const { parcelaId } = req.params;
-        const { valorPago, formaPagamento, dataPagamento, observacao } = req.body;
+        const { valorRecebido, valorDesconto, motivoDesconto, formaPagamento, dataPagamento, observacao } = req.body;
+        const perms = req._perms;
 
         const parcela = await prisma.parcela.findUnique({
             where: { id: parcelaId },
@@ -482,63 +529,146 @@ router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => 
         });
 
         if (!parcela) return res.status(404).json({ error: 'Parcela não encontrada.' });
-        if (parcela.status === 'PAGO') return res.status(400).json({ error: 'Parcela já está paga.' });
+        if (parcela.status === 'PAGO') return res.status(400).json({ error: 'Parcela já está paga. Estorne antes de lançar um novo pagamento.' });
         if (parcela.status === 'CANCELADO') return res.status(400).json({ error: 'Parcela cancelada.' });
 
-        // Atualizar parcela
-        await prisma.parcela.update({
-            where: { id: parcelaId },
-            data: {
-                status: 'PAGO',
-                valorPago: valorPago || parcela.valor,
-                formaPagamento: formaPagamento || null,
-                dataPagamento: dataPagamento ? new Date(dataPagamento) : new Date(),
-                baixadoPorId: req.user.id,
-                observacao: observacao || null
-            }
+        const recebido = Math.max(0, Number(valorRecebido) || 0);
+        const desconto = Math.max(0, Number(valorDesconto) || 0);
+
+        if (recebido <= 0 && desconto <= 0) {
+            return res.status(400).json({ error: 'Informe um valor recebido ou um desconto.' });
+        }
+        if (desconto > 0 && !perms.admin && !perms.Pode_Dar_Desconto_Baixa) {
+            return res.status(403).json({ error: 'Sem permissão para dar desconto na baixa.' });
+        }
+        if (desconto > 0 && !motivoDesconto?.trim()) {
+            return res.status(400).json({ error: 'Informe o motivo do desconto.' });
+        }
+
+        const saldoRestante = Number(parcela.valor) - Number(parcela.valorPago || 0) - Number(parcela.valorDescontoTotal || 0);
+        if (recebido + desconto > saldoRestante + 0.01) {
+            return res.status(400).json({ error: `Valor informado (R$ ${(recebido + desconto).toFixed(2)}) é maior que o saldo restante (R$ ${saldoRestante.toFixed(2)}).` });
+        }
+
+        const dataPgto = dataPagamento ? new Date(dataPagamento) : new Date();
+        const novoValorPago = Number(parcela.valorPago || 0) + recebido;
+        const novoValorDescontoTotal = Number(parcela.valorDescontoTotal || 0) + desconto;
+        const novoStatusParcela = calcularStatusParcela(parcela.valor, novoValorPago, novoValorDescontoTotal);
+
+        let novoStatusConta;
+        await prisma.$transaction(async (tx) => {
+            await tx.pagamentoParcela.create({
+                data: {
+                    parcelaId,
+                    valorRecebido: recebido,
+                    valorDesconto: desconto,
+                    motivoDesconto: desconto > 0 ? motivoDesconto.trim() : null,
+                    formaPagamento: formaPagamento || null,
+                    dataPagamento: dataPgto,
+                    observacao: observacao || null,
+                    registradoPorId: req.user.id
+                }
+            });
+
+            await tx.parcela.update({
+                where: { id: parcelaId },
+                data: {
+                    status: novoStatusParcela,
+                    valorPago: novoValorPago,
+                    valorDescontoTotal: novoValorDescontoTotal,
+                    formaPagamento: formaPagamento || parcela.formaPagamento,
+                    dataPagamento: novoStatusParcela === 'PAGO' ? dataPgto : parcela.dataPagamento,
+                    baixadoPorId: req.user.id,
+                    observacao: observacao || parcela.observacao
+                }
+            });
+
+            const todasParcelas = await tx.parcela.findMany({ where: { contaReceberId: parcela.contaReceberId } });
+            const parcelasAtualizadas = todasParcelas.map(p => p.id === parcelaId ? { ...p, status: novoStatusParcela } : p);
+            novoStatusConta = calcularStatusConta(parcelasAtualizadas);
+
+            await tx.contaReceber.update({
+                where: { id: parcela.contaReceberId },
+                data: { status: novoStatusConta }
+            });
+
+            const conta = parcela.contaReceber;
+            const partes = [];
+            if (recebido > 0) partes.push(`recebido R$ ${recebido.toFixed(2)}${formaPagamento ? ` (${formaPagamento})` : ''}`);
+            if (desconto > 0) partes.push(`desconto R$ ${desconto.toFixed(2)} (${motivoDesconto.trim()})`);
+            await tx.atendimento.create({
+                data: {
+                    tipo: 'FINANCEIRO',
+                    observacao: `Baixa parcela ${parcela.numeroParcela} - ${partes.join(' + ')} - status: ${novoStatusParcela}${observacao ? ` | ${observacao}` : ''}`,
+                    clienteId: conta.clienteId,
+                    idVendedor: req.user.id,
+                    pedidoId: conta.pedidoId || null
+                }
+            });
         });
 
-        // Recalcular status da conta
-        const todasParcelas = await prisma.parcela.findMany({
-            where: { contaReceberId: parcela.contaReceberId }
+        res.json({
+            message: novoStatusParcela === 'PAGO' ? 'Parcela quitada com sucesso!' : 'Baixa parcial registrada com sucesso!',
+            novoStatusParcela,
+            novoStatusConta,
+            saldoRestante: Math.max(0, Number(parcela.valor) - novoValorPago - novoValorDescontoTotal)
         });
-
-        const pagas = todasParcelas.filter(p => p.status === 'PAGO').length;
-        const total = todasParcelas.length;
-        const canceladas = todasParcelas.filter(p => p.status === 'CANCELADO').length;
-
-        let novoStatus;
-        if (pagas + canceladas >= total) novoStatus = 'QUITADO';
-        else if (pagas > 0) novoStatus = 'PARCIAL';
-        else novoStatus = 'ABERTO';
-
-        await prisma.contaReceber.update({
-            where: { id: parcela.contaReceberId },
-            data: { status: novoStatus }
-        });
-
-        // Registrar no histórico do cliente (Atendimento)
-        const conta = parcela.contaReceber;
-        const valorPagoFinal = valorPago || Number(parcela.valor);
-        const formaPg = formaPagamento || 'N/I';
-        await prisma.atendimento.create({
-            data: {
-                tipo: 'FINANCEIRO',
-                observacao: `Baixa parcela ${parcela.numeroParcela}/${total} - R$ ${Number(valorPagoFinal).toFixed(2)} (${formaPg})${observacao ? ` | ${observacao}` : ''}`,
-                clienteId: conta.clienteId,
-                idVendedor: req.user.id,
-                pedidoId: conta.pedidoId || null
-            }
-        });
-
-        res.json({ message: 'Baixa realizada com sucesso!', novoStatus });
     } catch (error) {
         console.error('Erro ao dar baixa:', error);
         res.status(500).json({ error: 'Erro ao dar baixa na parcela.' });
     }
 });
 
-// ── DELETE /:parcelaId/baixa — Estornar baixa ──
+// ── DELETE /:parcelaId/pagamentos/:pagamentoId — Estornar um pagamento específico do histórico ──
+router.delete('/:parcelaId/pagamentos/:pagamentoId', verificarAuth, checkBaixa, async (req, res) => {
+    try {
+        const { parcelaId, pagamentoId } = req.params;
+
+        const pagamento = await prisma.pagamentoParcela.findUnique({ where: { id: pagamentoId } });
+        if (!pagamento || pagamento.parcelaId !== parcelaId) return res.status(404).json({ error: 'Pagamento não encontrado.' });
+        if (pagamento.estornado) return res.status(400).json({ error: 'Este pagamento já foi estornado.' });
+
+        const parcela = await prisma.parcela.findUnique({ where: { id: parcelaId }, include: { contaReceber: true } });
+        if (!parcela) return res.status(404).json({ error: 'Parcela não encontrada.' });
+
+        let novoStatusConta;
+        let novoValorPago, novoValorDescontoTotal, novoStatusParcela;
+        await prisma.$transaction(async (tx) => {
+            await tx.pagamentoParcela.update({
+                where: { id: pagamentoId },
+                data: { estornado: true, estornadoEm: new Date(), estornadoPorId: req.user.id }
+            });
+
+            const restantes = await tx.pagamentoParcela.findMany({ where: { parcelaId, estornado: false } });
+            novoValorPago = restantes.reduce((s, p) => s + Number(p.valorRecebido), 0);
+            novoValorDescontoTotal = restantes.reduce((s, p) => s + Number(p.valorDesconto), 0);
+            novoStatusParcela = calcularStatusParcela(parcela.valor, novoValorPago, novoValorDescontoTotal);
+
+            await tx.parcela.update({
+                where: { id: parcelaId },
+                data: {
+                    status: novoStatusParcela,
+                    valorPago: novoValorPago,
+                    valorDescontoTotal: novoValorDescontoTotal,
+                    dataPagamento: novoStatusParcela === 'PAGO' ? parcela.dataPagamento : null
+                }
+            });
+
+            const todasParcelas = await tx.parcela.findMany({ where: { contaReceberId: parcela.contaReceberId } });
+            const parcelasAtualizadas = todasParcelas.map(p => p.id === parcelaId ? { ...p, status: novoStatusParcela } : p);
+            novoStatusConta = calcularStatusConta(parcelasAtualizadas);
+
+            await tx.contaReceber.update({ where: { id: parcela.contaReceberId }, data: { status: novoStatusConta } });
+        });
+
+        res.json({ message: 'Pagamento estornado com sucesso!', novoStatusParcela, novoStatusConta });
+    } catch (error) {
+        console.error('Erro ao estornar pagamento:', error);
+        res.status(500).json({ error: 'Erro ao estornar pagamento.' });
+    }
+});
+
+// ── DELETE /:parcelaId/baixa — Estornar TODOS os pagamentos da parcela (desfaz baixa total ou parcial) ──
 router.delete('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => {
     try {
         const { parcelaId } = req.params;
@@ -549,34 +679,38 @@ router.delete('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) =
         });
 
         if (!parcela) return res.status(404).json({ error: 'Parcela não encontrada.' });
-        if (parcela.status !== 'PAGO') return res.status(400).json({ error: 'Parcela não está paga.' });
+        if (parcela.status !== 'PAGO' && parcela.status !== 'PARCIAL') {
+            return res.status(400).json({ error: 'Parcela não tem baixa para estornar.' });
+        }
 
-        await prisma.parcela.update({
-            where: { id: parcelaId },
-            data: {
-                status: 'PENDENTE',
-                valorPago: null,
-                formaPagamento: null,
-                dataPagamento: null,
-                baixadoPorId: null,
-                observacao: null
-            }
+        let novoStatusConta;
+        await prisma.$transaction(async (tx) => {
+            await tx.pagamentoParcela.updateMany({
+                where: { parcelaId, estornado: false },
+                data: { estornado: true, estornadoEm: new Date(), estornadoPorId: req.user.id }
+            });
+
+            await tx.parcela.update({
+                where: { id: parcelaId },
+                data: {
+                    status: 'PENDENTE',
+                    valorPago: null,
+                    valorDescontoTotal: 0,
+                    formaPagamento: null,
+                    dataPagamento: null,
+                    baixadoPorId: null,
+                    observacao: null
+                }
+            });
+
+            const todasParcelas = await tx.parcela.findMany({ where: { contaReceberId: parcela.contaReceberId } });
+            const parcelasAtualizadas = todasParcelas.map(p => p.id === parcelaId ? { ...p, status: 'PENDENTE' } : p);
+            novoStatusConta = calcularStatusConta(parcelasAtualizadas);
+
+            await tx.contaReceber.update({ where: { id: parcela.contaReceberId }, data: { status: novoStatusConta } });
         });
 
-        // Recalcular status da conta
-        const todasParcelas = await prisma.parcela.findMany({
-            where: { contaReceberId: parcela.contaReceberId }
-        });
-
-        const pagas = todasParcelas.filter(p => p.status === 'PAGO').length;
-        const novoStatus = pagas > 0 ? 'PARCIAL' : 'ABERTO';
-
-        await prisma.contaReceber.update({
-            where: { id: parcela.contaReceberId },
-            data: { status: novoStatus }
-        });
-
-        res.json({ message: 'Baixa estornada com sucesso!', novoStatus });
+        res.json({ message: 'Baixa estornada com sucesso!', novoStatus: novoStatusConta });
     } catch (error) {
         console.error('Erro ao estornar baixa:', error);
         res.status(500).json({ error: 'Erro ao estornar baixa.' });
