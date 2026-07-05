@@ -54,6 +54,8 @@ const ABAS = [
     { slug: 'despesas',           nome: 'Despesas',                     rota: '/despesas',                           perm: 'Pode_Acessar_Caixa' },
     { slug: 'auditoria-entregas', nome: 'Auditoria de Entregas',        rota: '/admin/auditoria-entregas',           perm: 'Pode_Ver_Todas_Entregas' },
     { slug: 'contas-receber',     nome: 'Contas a Receber',             rota: '/financeiro/contas-receber/tabela',   perm: 'Pode_Acessar_Contas_Receber' },
+    { slug: 'contas-a-pagar',     nome: 'Contas a Pagar',               rota: '/contas-pagar',                       perm: 'Pode_Acessar_Contas_Pagar' },
+    { slug: 'fornecedores',       nome: 'Fornecedores',                 rota: '/fornecedores',                       perm: 'Pode_Acessar_Fornecedores' },
     // ── Admin ────────────────────────────────────
     { slug: 'produtos',           nome: 'Produtos',                     rota: '/admin/produtos',                     perm: 'produtos' },
     { slug: 'vendedores',         nome: 'Vendedores',                   rota: '/admin/vendedores',                   perm: 'vendedores' },

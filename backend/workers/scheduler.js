@@ -79,6 +79,36 @@ function startSchedulers() {
     // Depois a cada 1 hora
     setInterval(_runSyncBaixas, 3600000); // 60 min
 
+    // === 4.2. CONTAS A PAGAR / FORNECEDORES ↔ CA ===
+    // Workers 100% isolados: cada método já engole os próprios erros e, sem token
+    // do CA configurado, pula silenciosamente. Nunca derrubam o servidor.
+    console.log('⏰ Iniciando Workers de Contas a Pagar/Fornecedores (↔ CA)...');
+    const contasPagarCaSync = require('../services/contasPagarCaSyncService');
+
+    // Envio de fornecedores (a cada 60s) — primeira execução 90s após o start
+    setTimeout(() => {
+        setInterval(() => {
+            contasPagarCaSync.processarFilaFornecedores()
+                .catch(err => console.error('⚠️ Worker Fornecedores→CA Error:', err.message));
+        }, 60000);
+    }, 90000);
+
+    // Envio de despesas + consulta de protocolos (a cada 60s) — primeira execução 2min após o start
+    setTimeout(() => {
+        setInterval(() => {
+            contasPagarCaSync.processarFilaDespesas()
+                .catch(err => console.error('⚠️ Worker Despesas→CA Error:', err.message));
+        }, 60000);
+    }, 120000);
+
+    // Conferência de baixas no CA (a cada 30min) — primeira execução 10min após o start
+    const _runBaixasPagar = () => {
+        contasPagarCaSync.conferirBaixasCA()
+            .catch(err => console.error('⚠️ Worker Baixas Contas a Pagar Error:', err.message));
+    };
+    setTimeout(_runBaixasPagar, 600000);
+    setInterval(_runBaixasPagar, 1800000); // 30 minutos
+
     // === 5. CRON JOB INTELLIGENCE COMERCIAL ===
     // Recalcula todos os clientes 1 vez por dia, na madrugada (aprox 03:00)
     console.log('⏰ Agendando Motor Analítico (Inteligência Comercial)...');

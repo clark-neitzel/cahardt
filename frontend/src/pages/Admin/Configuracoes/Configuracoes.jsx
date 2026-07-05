@@ -3,6 +3,7 @@ import configService from '../../../services/configService';
 import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2, ScrollText, MapPin, Zap, Target, ChevronDown, ChevronUp, Eye, EyeOff, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 import RotasAtivasPreview from './RotasAtivasPreview';
+import NotasCertificadoConfig from './NotasCertificadoConfig';
 import { useAuth } from '../../../contexts/AuthContext';
 import api from '../../../services/api';
 import caixaService from '../../../services/caixaService';
@@ -832,6 +833,9 @@ const Configuracoes = () => {
                     </div>
                 </div>
             )}
+
+            {/* ── Notas & Certificado Digital ── */}
+            {(user?.permissoes?.admin || user?.permissoes?.configuracoes?.edit) && <NotasCertificadoConfig />}
 
             {/* ── Log de Auditoria ── */}
             {isAdmin && (

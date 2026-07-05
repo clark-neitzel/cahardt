@@ -34,6 +34,8 @@ import DespesasPage from './pages/Caixa/DespesasPage';
 import CaixaDiarioPage from './pages/Caixa/CaixaDiarioPage';
 import RelatorioCaixaPrint from './pages/Caixa/RelatorioCaixaPrint';
 import ContasReceberTabela from './pages/Financeiro/ContasReceberTabela';
+import ContasPagarPage from './pages/Financeiro/ContasPagarPage';
+import FornecedoresPage from './pages/Financeiro/FornecedoresPage';
 import RelatorioPedidos from './pages/Relatorios/RelatorioPedidos';
 import RelatorioVendas from './pages/Relatorios/RelatorioVendas';
 import RelatorioFlex from './pages/Relatorios/RelatorioFlex';
@@ -246,6 +248,8 @@ const Layout = ({ children }) => {
           {hasPermission('Pode_Acessar_Caixa') && <SidebarItem to="/despesas" icon={Receipt} label="Despesas" />}
           {hasPermission('Pode_Ver_Todas_Entregas') && <SidebarItem to="/admin/auditoria-entregas" icon={Search} label="Auditoria" />}
           {hasPermission('Pode_Acessar_Contas_Receber') && <SidebarItem to="/financeiro/contas-receber/tabela" icon={DollarSign} label="Contas a Receber" />}
+          {hasPermission('Pode_Acessar_Contas_Pagar') && <SidebarItem to="/contas-pagar" icon={Wallet} label="Contas a Pagar" />}
+          {hasPermission('Pode_Acessar_Fornecedores') && <SidebarItem to="/fornecedores" icon={Building2} label="Fornecedores" />}
 
           {/* Admin */}
           {showAdmin && <SidebarSection label="Admin" />}
@@ -414,6 +418,8 @@ const Layout = ({ children }) => {
                 {hasPermission('Pode_Acessar_Caixa') && <NavLink to="/despesas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Despesas</NavLink>}
                 {hasPermission('Pode_Ver_Todas_Entregas') && <NavLink to="/admin/auditoria-entregas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Auditoria</NavLink>}
                 {hasPermission('Pode_Acessar_Contas_Receber') && <NavLink to="/financeiro/contas-receber/tabela" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Contas a Receber</NavLink>}
+                {hasPermission('Pode_Acessar_Contas_Pagar') && <NavLink to="/contas-pagar" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Contas a Pagar</NavLink>}
+                {hasPermission('Pode_Acessar_Fornecedores') && <NavLink to="/fornecedores" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Fornecedores</NavLink>}
               </MobileMenuSection>
             )}
 
@@ -513,7 +519,7 @@ const Layout = ({ children }) => {
         {/* COPILOTO (CLIPPY) — assistente de negócio com IA, só desktop */}
         <Clippy />
 
-        <main className="flex-1 w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 pb-10 overflow-x-clip">
+        <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 pb-10 overflow-x-clip">
           {children}
         </main>
       </div>
@@ -590,6 +596,8 @@ function App() {
               {/* Financeiro */}
               <Route path="/financeiro/contas-receber" element={<Navigate to="/financeiro/contas-receber/tabela" replace />} />
               <Route path="/financeiro/contas-receber/tabela" element={<PrivateRoute tab="Pode_Acessar_Contas_Receber"><ContasReceberTabela /></PrivateRoute>} />
+              <Route path="/contas-pagar" element={<PrivateRoute tab="Pode_Acessar_Contas_Pagar"><ContasPagarPage /></PrivateRoute>} />
+              <Route path="/fornecedores" element={<PrivateRoute tab="Pode_Acessar_Fornecedores"><FornecedoresPage /></PrivateRoute>} />
 
               {/* Caixa Diário e Despesas */}
               <Route path="/despesas" element={<PrivateRoute tab="Pode_Acessar_Caixa"><DespesasPage /></PrivateRoute>} />

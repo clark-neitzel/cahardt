@@ -1,0 +1,66 @@
+---
+aba: Fornecedores
+rota: /fornecedores
+permissao: Pode_Acessar_Fornecedores
+---
+
+# Fornecedores
+
+## O que é
+
+Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Os fornecedores ficam sincronizados com o Conta Azul nos dois sentidos: quem é criado no app é enviado automaticamente ao CA, e quem já existe no CA pode ser importado de uma vez com um botão.
+
+---
+
+## O que dá pra fazer aqui
+
+- Ver e buscar fornecedores (por nome, nome fantasia ou CNPJ/CPF)
+- Cadastrar fornecedor: CNPJ/CPF, razão social, nome fantasia, inscrição estadual, e-mail, telefone, cidade/UF e observações
+- Editar um fornecedor (se o envio ao CA tinha dado erro, salvar a edição recoloca ele na fila de envio)
+- **Importar do Conta Azul**: busca todos os cadastros com perfil "Fornecedor" no CA e cria/atualiza aqui (casa por vínculo com o CA ou, se não houver, pelo CNPJ/CPF). Mostra quantos foram importados e quantos atualizados
+- Ativar/inativar fornecedor
+
+---
+
+## Sincronização com o Conta Azul
+
+- Fornecedor criado no app entra na fila e um robô o cria no Conta Azul em até 1 minuto (perfil "Fornecedor").
+- Fornecedores importados do CA já nascem sincronizados.
+- Uma conta a pagar só é enviada ao CA depois que o fornecedor dela estiver sincronizado.
+
+### Status de envio ao CA
+
+| Status | Significado |
+|--------|-------------|
+| ENVIAR | Na fila, será criado no CA em até 1 min |
+| ENVIANDO | Envio em andamento |
+| SINCRONIZADO | Existe no CA e está vinculado |
+| ERRO | Falhou — veja a mensagem; editar e salvar tenta de novo |
+| NAO_ENVIAR | Não deve ir para o CA |
+
+---
+
+## Permissões necessárias
+
+| Permissão | Efeito |
+|-----------|--------|
+| `Pode_Acessar_Fornecedores` | Ver a lista de fornecedores |
+| `Pode_Editar_Fornecedores` | Criar, editar e importar do CA |
+| `admin` | Tudo acima |
+
+---
+
+## Depende de / Interfere em
+
+- **Contas a Pagar** — o fornecedor é obrigatório para enviar uma despesa ao Conta Azul
+- **Conta Azul** — cadastro espelhado via API (`/v1/pessoas`, perfil Fornecedor)
+
+---
+
+## Arquivos no código
+
+| Caminho | Papel |
+|---------|-------|
+| `backend/routes/fornecedores.js` | Rotas da API (listar, criar, editar, importar do CA) |
+| `backend/services/contasPagarCaSyncService.js` | Robô de envio ao CA e importação |
+| `frontend/src/pages/Financeiro/Fornecedores*` | Telas do módulo |

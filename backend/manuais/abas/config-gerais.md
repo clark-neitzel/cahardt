@@ -26,6 +26,7 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 - Ver quais rotas/dias estão configurados (RotasAtivasPreview)
 - Configurar parâmetros do caixa diário
 - Configurar a mensagem padrão de WhatsApp para notificações
+- Instalar o **certificado digital A1** (.pfx/.p12) da empresa para o módulo de notas fiscais (seção Notas Fiscais / Certificado Digital)
 
 ---
 
@@ -48,6 +49,13 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 3. Para transferir para outro usuário: marque "Transfere atendimento" e configure responsável fixo ou a escolha do vendedor
 4. Salve
 
+### Instalar o certificado digital (Notas Fiscais)
+1. Na seção **Notas Fiscais / Certificado Digital**, escolha o arquivo do certificado A1 (`.pfx` ou `.p12`)
+2. Digite a senha do certificado e confirme
+3. O sistema valida a senha na hora (senha errada = erro imediato), lê titular, CNPJ, emissor e validade, e mostra os dias restantes até vencer
+4. O arquivo e a senha ficam guardados **criptografados** no servidor; instalar um novo certificado substitui (desativa) o anterior
+5. Esse certificado será usado pela captura automática de notas na SEFAZ (função futura — Fase 2 do módulo de Contas a Pagar)
+
 ---
 
 ## Permissões necessárias
@@ -55,6 +63,7 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 | Permissão | Efeito |
 |-----------|--------|
 | `admin` | Acesso total às configurações gerais |
+| `configuracoes.edit` | Também pode instalar/consultar o certificado digital |
 
 ---
 
@@ -74,3 +83,5 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 | `frontend/src/pages/Admin/Configuracoes/RotasAtivasPreview.jsx` | Preview das rotas configuradas |
 | `frontend/src/services/configService.js` | Chamadas de API de configurações |
 | `backend/src/routes/configuracoes.js` | Rotas do backend |
+| `backend/routes/configNotas.js` | Certificado digital (instalar/consultar) |
+| `backend/services/certificadoService.js` | Validação do .pfx e criptografia AES-256-GCM |

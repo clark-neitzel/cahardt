@@ -60,6 +60,9 @@ const congeladosPublicRoutes = require('./routes/congeladosPublicRoutes'); // Si
 const visitorRoutes = require('./routes/visitorRoutes'); // Rastreio de visitantes online (ping público + stats admin)
 const pontoPublicRoutes = require('./routes/pontoPublicRoutes'); // RH: bater ponto por link público (sem login)
 const iaConsultaRoutes = require('./routes/iaConsultaRoutes'); // API de consulta somente-leitura p/ IA externa (ex.: bot WhatsApp)
+const contasPagarRoutes = require('./routes/contasPagar'); // Financeiro: Contas a Pagar (Fase 1)
+const fornecedoresRoutes = require('./routes/fornecedores'); // Financeiro: Fornecedores
+const configNotasRoutes = require('./routes/configNotas'); // Configurações: Certificado Digital (notas)
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -75,6 +78,8 @@ app.use((req, res, next) => {
 });
 
 // Arquivos estáticos (Uploads)
+// Certificado digital NUNCA é servido publicamente (mesmo criptografado)
+app.use('/uploads/certificado', (req, res) => res.status(403).json({ error: 'Acesso negado.' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Rotas
@@ -117,6 +122,9 @@ app.use('/api/categorias-cliente', authMiddleware, categoriasClienteRoutes); // 
 app.use('/api/insights', authMiddleware, insightRoutes); // Inteligência Comercial - Motor
 app.use('/api/amostras', authMiddleware, amostraRoutes); // Amostras (mini-pedidos)
 app.use('/api/contas-receber', contasReceberRoutes); // Contas a Receber (auth inside)
+app.use('/api/contas-pagar', contasPagarRoutes); // Contas a Pagar (auth inside)
+app.use('/api/fornecedores', fornecedoresRoutes); // Fornecedores (auth inside)
+app.use('/api/config-notas', configNotasRoutes); // Certificado Digital p/ notas (auth inside)
 app.use('/api/estoque', authMiddleware, estoqueRoutes); // Módulo de Estoque
 app.use('/api/categorias-estoque', authMiddleware, categoriaEstoqueRoutes); // Categorias de Estoque
 
