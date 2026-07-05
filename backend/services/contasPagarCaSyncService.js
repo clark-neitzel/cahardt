@@ -340,6 +340,30 @@ async function processarFilaFornecedores() {
                 await prisma.fornecedor.update({ where: { id: f.id }, data: { statusEnvioCA: 'ENVIANDO' } });
 
                 const soDigitos = String(f.cnpjCpf || '').replace(/\D/g, '');
+
+                // ── Antes de criar, procura no CA pelo CNPJ/CPF (evita cadastro DUPLICADO de fornecedor).
+                // Se já existir lá, adota o cadastro existente. Se a busca falhar, NÃO cria às cegas.
+                if (soDigitos) {
+                    let existenteCaId = null;
+                    try {
+                        existenteCaId = await contaAzulService.buscarFornecedorPorDocumento(soDigitos);
+                    } catch (buscaErr) {
+                        console.warn(`[ContasPagar CA] ⚠️ Busca de fornecedor por documento falhou ("${f.razaoSocial}") — não cria neste ciclo (evita duplicar):`, erroCAtexto(buscaErr));
+                        await prisma.fornecedor.update({ where: { id: f.id }, data: { statusEnvioCA: 'ENVIAR' } });
+                        await sleep(1200);
+                        continue;
+                    }
+                    if (existenteCaId) {
+                        await prisma.fornecedor.update({
+                            where: { id: f.id },
+                            data: { contaAzulId: existenteCaId, statusEnvioCA: 'SINCRONIZADO', erroEnvioCA: null }
+                        });
+                        console.log(`[ContasPagar CA] 🔗 Fornecedor "${f.razaoSocial}" já existia no CA (${existenteCaId}) — adotado, sem duplicar.`);
+                        await sleep(1200);
+                        continue;
+                    }
+                }
+
                 const ehPF = soDigitos.length === 11;
                 const payload = {
                     nome: f.razaoSocial,

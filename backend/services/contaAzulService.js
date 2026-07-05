@@ -1861,6 +1861,21 @@ const contaAzulService = {
     },
 
     /**
+     * Procurar um fornecedor JÁ existente no Conta Azul pelo CNPJ/CPF, para adotar o cadastro
+     * em vez de criar um novo (evita fornecedor duplicado no CA). Retorna o UUID da pessoa ou null.
+     * Match confirmado comparando só os dígitos do documento (a CA pode devolver formatado).
+     */
+    buscarFornecedorPorDocumento: async (cnpjCpf) => {
+        const dig = String(cnpjCpf || '').replace(/\D/g, '');
+        if (!dig) return null;
+        const url = `https://api-v2.contaazul.com/v1/pessoas?tipo_perfil=Fornecedor&documentos=${dig}&tamanho_pagina=50`;
+        const response = await contaAzulService._axiosGet(url, 'PESSOA_BUSCA_DOC');
+        const lista = response.data?.items || response.data?.itens || [];
+        const match = lista.find((p) => String(p?.documento || '').replace(/\D/g, '') === dig);
+        return match?.id || null;
+    },
+
+    /**
      * Listar TODAS as contas financeiras ativas do Conta Azul (bancos/caixas),
      * para o usuário escolher de onde saiu o pagamento ao dar baixa numa despesa.
      * mostrar_caixinha=true inclui a caixinha (dinheiro em espécie).

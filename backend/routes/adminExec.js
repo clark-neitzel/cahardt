@@ -116,6 +116,15 @@ router.get('/diag-conciliacao', async (req, res) => {
         } catch (e) {
             info.conciliacaoReal = { erro: e.message };
         }
+
+        // Testa a busca de fornecedor por documento (dedup de cadastro no CA).
+        try {
+            const cnpj = conta.fornecedor?.cnpjCpf;
+            const achado = cnpj ? await contaAzulService.buscarFornecedorPorDocumento(cnpj) : null;
+            info.fornecedorNoCA = { cnpj: cnpj || null, appUsaContaAzulId: conta.fornecedor?.contaAzulId || null, buscaPorDocumentoRetornou: achado };
+        } catch (e) {
+            info.fornecedorNoCA = { erro: e.message };
+        }
         res.json(info);
     } catch (error) {
         res.status(500).json({ error: error.message, stack: (error.stack || '').split('\n').slice(0, 5) });
