@@ -10,6 +10,9 @@ const router = express.Router();
 const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const financeiroGerencialService = require('../services/financeiroGerencialService');
+const importacaoCaService = require('../services/importacaoCaService');
+
+const CLASSIFICACOES = ['OPERACIONAL', 'FINANCEIRO', 'FORA_DRE', 'A_CLASSIFICAR'];
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -67,6 +70,72 @@ router.get('/dre', verificarAuth, checkAcesso, async (req, res) => {
     } catch (error) {
         console.error('Erro na DRE:', error);
         res.status(500).json({ error: 'Erro ao montar a DRE.' });
+    }
+});
+
+// ── GET /categorias-despesa — categorias com o "balde" (classificação) e o total gasto ──
+// Garante uma linha para toda categoria já vista nas contas (com o palpite padrão),
+// para o usuário nunca ficar com categoria "solta" fora da classificação.
+router.get('/categorias-despesa', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        // Categorias vistas nas contas (rateios + categoria da conta)
+        const [rateios, contas] = await Promise.all([
+            prisma.contaPagarRateio.groupBy({
+                by: ['categoria'],
+                _sum: { valor: true },
+                where: { contaPagar: { status: { not: 'CANCELADO' } } }
+            }),
+            prisma.contaPagar.groupBy({
+                by: ['categoria'],
+                _sum: { valorTotal: true },
+                where: { status: { not: 'CANCELADO' }, rateios: { none: {} } }
+            })
+        ]);
+
+        const totalPorNome = new Map();
+        const somar = (nome, v) => {
+            const n = (nome || 'Sem categoria').trim() || 'Sem categoria';
+            totalPorNome.set(n, Math.round(((totalPorNome.get(n) || 0) + Number(v || 0)) * 100) / 100);
+        };
+        rateios.forEach((r) => somar(r.categoria, r._sum.valor));
+        contas.forEach((c) => somar(c.categoria, c._sum.valorTotal));
+
+        // Cria as que ainda não existem na tabela de classificação
+        await importacaoCaService.garantirCategorias([...totalPorNome.keys()]);
+
+        const linhas = await prisma.categoriaDespesa.findMany({ orderBy: { nome: 'asc' } });
+        res.json(linhas.map((l) => ({
+            id: l.id,
+            nome: l.nome,
+            classificacao: l.classificacao,
+            total: totalPorNome.get(l.nome) || 0
+        })));
+    } catch (error) {
+        console.error('Erro ao listar categorias de despesa:', error);
+        res.status(500).json({ error: 'Erro ao listar as categorias de despesa.' });
+    }
+});
+
+// ── PUT /categorias-despesa — salvar a classificação (baldes) ──
+// body: { categorias: [{ nome, classificacao }] }
+router.put('/categorias-despesa', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const lista = Array.isArray(req.body?.categorias) ? req.body.categorias : [];
+        if (lista.length === 0) return res.status(400).json({ error: 'Nada para salvar.' });
+        for (const item of lista) {
+            const nome = String(item?.nome || '').trim();
+            const classificacao = String(item?.classificacao || '').toUpperCase();
+            if (!nome || !CLASSIFICACOES.includes(classificacao)) continue;
+            await prisma.categoriaDespesa.upsert({
+                where: { nome },
+                update: { classificacao },
+                create: { nome, classificacao }
+            });
+        }
+        res.json({ message: 'Classificação salva!' });
+    } catch (error) {
+        console.error('Erro ao salvar classificação de categorias:', error);
+        res.status(500).json({ error: 'Erro ao salvar a classificação.' });
     }
 });
 

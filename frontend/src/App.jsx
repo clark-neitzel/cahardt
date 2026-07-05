@@ -39,6 +39,7 @@ import FornecedoresPage from './pages/Financeiro/FornecedoresPage';
 import NotasRecebidasPage from './pages/Financeiro/NotasRecebidasPage';
 import FluxoCaixaPage from './pages/Financeiro/FluxoCaixaPage';
 import DrePage from './pages/Financeiro/DrePage';
+import CategoriasDespesaPage from './pages/Financeiro/CategoriasDespesaPage';
 import RelatorioPedidos from './pages/Relatorios/RelatorioPedidos';
 import RelatorioVendas from './pages/Relatorios/RelatorioVendas';
 import RelatorioFlex from './pages/Relatorios/RelatorioFlex';
@@ -256,6 +257,7 @@ const Layout = ({ children }) => {
           {hasPermission('Pode_Acessar_Fornecedores') && <SidebarItem to="/fornecedores" icon={Building2} label="Fornecedores" />}
           {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/fluxo-caixa" icon={TrendingUp} label="Fluxo de Caixa" />}
           {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/dre" icon={BarChart3} label="DRE" />}
+          {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/categorias-despesa" icon={Tag} label="Categorias de Despesa" />}
 
           {/* Admin */}
           {showAdmin && <SidebarSection label="Admin" />}
@@ -429,6 +431,7 @@ const Layout = ({ children }) => {
                 {hasPermission('Pode_Acessar_Fornecedores') && <NavLink to="/fornecedores" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Fornecedores</NavLink>}
                 {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/fluxo-caixa" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Fluxo de Caixa</NavLink>}
                 {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/dre" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>DRE</NavLink>}
+                {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/categorias-despesa" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Categorias de Despesa</NavLink>}
               </MobileMenuSection>
             )}
 
@@ -610,6 +613,7 @@ function App() {
               <Route path="/fornecedores" element={<PrivateRoute tab="Pode_Acessar_Fornecedores"><FornecedoresPage /></PrivateRoute>} />
               <Route path="/financeiro/fluxo-caixa" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><FluxoCaixaPage /></PrivateRoute>} />
               <Route path="/financeiro/dre" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><DrePage /></PrivateRoute>} />
+              <Route path="/financeiro/categorias-despesa" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><CategoriasDespesaPage /></PrivateRoute>} />
 
               {/* Caixa Diário e Despesas */}
               <Route path="/despesas" element={<PrivateRoute tab="Pode_Acessar_Caixa"><DespesasPage /></PrivateRoute>} />

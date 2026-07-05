@@ -2400,6 +2400,9 @@ model ContaPagar {
   numeroNota    String?     @map("numero_nota")
   chaveNfe      String?     @map("chave_nfe")
   origem        String      @default("MANUAL") // MANUAL | NFE | NFSE | IMPORTADO_CA
+  // Importação do relatório "Contas a pagar" do Conta Azul (CSV). Chave natural
+  // (vencimento|cnpj/nome|descrição) para não duplicar ao reimportar o mesmo mês.
+  hashImportacao String?    @unique @map("hash_importacao")
   valorTotal    Decimal     @map("valor_total") @db.Decimal(12, 2)
   status        String      @default("ABERTO") // ABERTO | PARCIAL | QUITADO | CANCELADO
   competencia   DateTime?
@@ -2486,7 +2489,7 @@ model PagamentoParcelaPagar {
   formaPagamento String?      @map("forma_pagamento")
   dataPagamento  DateTime     @map("data_pagamento")
   observacao     String?      @db.Text
-  origem         String       @default("MANUAL") // MANUAL | CA
+  origem         String       @default("MANUAL") // MANUAL | CA | IMPORTADO_CA (baixa vinda do CSV do Conta Azul)
   idBaixaCA      String?      @unique @map("id_baixa_ca")
 
   // Baixa nascida "já paguei" na conferência da nota → precisa ser EMPURRADA ao CA.
@@ -2507,6 +2510,21 @@ model PagamentoParcelaPagar {
 
   @@index([parcelaPagarId])
   @@map("pagamentos_parcela_pagar")
+}
+
+// Classificação da categoria de despesa para a DRE. As categorias vêm do Conta Azul
+// (nome), mas o CA não diz se é despesa de operação ou não. Aqui o usuário coloca cada
+// categoria num "balde": OPERACIONAL (entra na DRE), FINANCEIRO (juros/tarifas, entra na
+// DRE em linha à parte), FORA_DRE (retirada de lucros, empréstimos, imobilizado — não é
+// resultado) ou A_CLASSIFICAR (recém-vista; ainda conta na DRE, mas fica sinalizada).
+model CategoriaDespesa {
+  id            String   @id @default(uuid())
+  nome          String   @unique // nome da categoria como vem do CA/CSV
+  classificacao String   @default("A_CLASSIFICAR") // OPERACIONAL | FINANCEIRO | FORA_DRE | A_CLASSIFICAR
+  criadoEm      DateTime @default(now()) @map("criado_em")
+  atualizadoEm  DateTime @updatedAt @map("atualizado_em")
+
+  @@map("categorias_despesa")
 }
 
 // Certificado digital A1 (.pfx) — arquivo salvo CRIPTOGRAFADO (AES-256-GCM) em

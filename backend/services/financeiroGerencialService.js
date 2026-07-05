@@ -23,6 +23,7 @@
  */
 
 const prisma = require('../config/database');
+const { normalizar } = require('./importacaoCaService');
 
 const TZ = 'America/Sao_Paulo';
 
@@ -239,8 +240,10 @@ async function fluxoCaixa(de, ate, granularidade = 'dia') {
  * @param {Array} receitas               [{ mes, origem:'FATURADO'|'ESPECIAL', total }]
  * @param {Array} devolucoes             [{ mes, total }]
  * @param {Array} despesas               [{ mes, categoria, valor }]
+ * @param {(nome:string)=>string} classif classificação da categoria (default: 'A_CLASSIFICAR')
+ *   OPERACIONAL/FINANCEIRO/A_CLASSIFICAR entram no resultado; FORA_DRE fica à parte.
  */
-function montarDre(meses, receitas, devolucoes, despesas) {
+function montarDre(meses, receitas, devolucoes, despesas, classif = () => 'A_CLASSIFICAR') {
     const idx = new Map(meses.map((m, i) => [m, i]));
     const zeros = () => meses.map(() => 0);
 
@@ -258,18 +261,25 @@ function montarDre(meses, receitas, devolucoes, despesas) {
         if (i !== undefined) devol[i] += num(d.total);
     }
 
-    // Despesas por categoria (ordenadas pelo total do período, maior primeiro)
+    // Despesas por categoria. FORA_DRE (retirada de lucros, empréstimos, imobilizado) NÃO
+    // entra no resultado — vai para uma linha à parte, só para transparência.
     const porCategoria = new Map();
+    const foraDre = zeros();
+    let temAClassificar = false;
     for (const d of despesas) {
         const i = idx.get(d.mes);
         if (i === undefined) continue;
         const nome = (d.categoria || 'Sem categoria').trim() || 'Sem categoria';
-        if (!porCategoria.has(nome)) porCategoria.set(nome, zeros());
-        porCategoria.get(nome)[i] += num(d.valor);
+        const cls = classif(nome);
+        if (cls === 'FORA_DRE') { foraDre[i] += num(d.valor); continue; }
+        if (cls === 'A_CLASSIFICAR') temAClassificar = true;
+        if (!porCategoria.has(nome)) porCategoria.set(nome, { valores: zeros(), classificacao: cls });
+        porCategoria.get(nome).valores[i] += num(d.valor);
     }
     const categorias = [...porCategoria.entries()]
-        .map(([nome, valores]) => ({
+        .map(([nome, { valores, classificacao }]) => ({
             nome,
+            classificacao,
             valores: valores.map(round2),
             total: round2(valores.reduce((a, b) => a + b, 0))
         }))
@@ -293,6 +303,10 @@ function montarDre(meses, receitas, devolucoes, despesas) {
             categorias,
             total: { valores: totalDespesas, total: totalLinha(totalDespesas) }
         },
+        // Saídas que NÃO são resultado (retirada de lucros, empréstimos, compra de bens).
+        // Ficam fora do lucro/prejuízo — mostradas só para o caixa fechar.
+        foraDre: { valores: foraDre.map(round2), total: totalLinha(foraDre) },
+        temAClassificar,
         resultado: { valores: resultado, total: totalLinha(resultado) },
         margem: {
             valores: margem,
@@ -382,11 +396,17 @@ async function dre(deMes, ateMes) {
         }
     }
 
+    // Classificação das categorias (balde da DRE). Chave normalizada p/ tolerar acento/caixa.
+    const cats = await prisma.categoriaDespesa.findMany({ select: { nome: true, classificacao: true } });
+    const mapaClassif = new Map(cats.map((c) => [normalizar(c.nome), c.classificacao]));
+    const classif = (nome) => mapaClassif.get(normalizar(nome)) || 'A_CLASSIFICAR';
+
     return montarDre(
         meses,
         receitasRaw.map((r) => ({ mes: r.mes, origem: r.origem, total: num(r.total) })),
         devolucoesRaw.map((d) => ({ mes: d.mes, total: num(d.total) })),
-        despesas
+        despesas,
+        classif
     );
 }
 

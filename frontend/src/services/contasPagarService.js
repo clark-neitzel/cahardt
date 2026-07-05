@@ -9,6 +9,16 @@ const contasPagarService = {
         const response = await api.get('/contas-pagar/categorias');
         return response.data;
     },
+    // Importar o CSV "Contas a pagar" do Conta Azul. dryRun=true → só a prévia (não grava).
+    importarCa: async (arquivo, dryRun = false) => {
+        const form = new FormData();
+        form.append('arquivo', arquivo);
+        const response = await api.post('/contas-pagar/importar-ca', form, {
+            params: { dryRun: dryRun ? 1 : 0 },
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data; // { message, resumo }
+    },
     // Bancos/caixas do CA + formas de pagamento (para o "já paguei" da conferência de nota)
     opcoesBaixa: async () => {
         const response = await api.get('/contas-pagar/opcoes-baixa');

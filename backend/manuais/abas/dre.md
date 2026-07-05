@@ -19,9 +19,20 @@ A **demonstração de resultado** mês a mês: faturamento − custos e despesas
 | (−) Devoluções | Devoluções **ativas** pela data da devolução |
 | = Receita líquida | Soma das linhas acima |
 | Categorias de despesa | **Contas a Pagar** por competência (data da nota; sem ela, o 1º vencimento), separadas pelas **categorias do Conta Azul** — o rateio da nota divide sozinho quando a nota tem mais de uma categoria. Ordenadas da maior para a menor |
-| = Total de despesas | Soma das categorias |
+| = Total de despesas | Soma das categorias **que entram na DRE** (Operação + Financeiro; ver classificação abaixo) |
 | = Resultado | Receita líquida − despesas (verde = lucro, vermelho = prejuízo) |
 | Margem | Resultado ÷ receita líquida |
+| Fora da DRE (não é resultado) | Linha **informativa** (cinza, itálico) com o que saiu do caixa mas **não é despesa de resultado**: retirada de lucros, empréstimos, compra de bens. Não entra no resultado |
+
+## Classificação das categorias (baldes)
+
+Cada categoria de despesa tem um **balde**, definido na tela **[Categorias de Despesa](categorias-despesa.md)**:
+
+- **Operação** e **Financeiro** → entram no resultado.
+- **Fora da DRE** (retirada de lucros, empréstimos, compra de veículos/móveis/computadores) → **não** entra no resultado; aparece só na linha informativa "Fora da DRE".
+- Categoria ainda **sem balde** conta como Operação, mas a DRE mostra um **aviso** com link para classificar.
+
+Isso evita que a DRE mostre "prejuízo" falso por causa de retiradas de lucro ou parcelas de empréstimo contadas como despesa.
 
 ## O que dá pra fazer aqui
 

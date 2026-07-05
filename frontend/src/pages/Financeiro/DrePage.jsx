@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import financeiroGerencialService from '../../services/financeiroGerencialService';
-import { BarChart3, Loader2, RefreshCw } from 'lucide-react';
+import { BarChart3, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // ── Helpers ──
@@ -192,6 +193,13 @@ const DrePage = () => {
                                         ))}
                                         <td className="px-4 py-2.5 text-right font-medium bg-gray-50 whitespace-nowrap">{fmtPct(dados.margem.total)}</td>
                                     </tr>
+                                    {Number(dados.foraDre?.total || 0) !== 0 && (
+                                        <tr className="text-gray-400 italic border-t border-gray-100">
+                                            <td className="px-5 py-2 sticky left-0 bg-white whitespace-nowrap" title="Retirada de lucros, empréstimos e compra de bens — não é resultado, só sai do caixa.">Fora da DRE (não é resultado)</td>
+                                            {dados.foraDre.valores.map((v, i) => <td key={i} className="px-4 py-2 text-right whitespace-nowrap">{v ? fmt0(v) : '—'}</td>)}
+                                            <td className="px-4 py-2 text-right bg-gray-50 whitespace-nowrap">{fmt0(dados.foraDre.total)}</td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -250,7 +258,23 @@ const DrePage = () => {
                                     {dados.margem.valores[iMobile] != null ? ` (${fmtPct(dados.margem.valores[iMobile])})` : ''}
                                 </span>
                             </div>
+                            {Number(dados.foraDre?.valores?.[iMobile] || 0) !== 0 && (
+                                <div className="flex justify-between px-4 py-2.5 text-xs text-gray-400 italic">
+                                    <span>Fora da DRE (não é resultado)</span>
+                                    <span>{fmt0(dados.foraDre.valores[iMobile])}</span>
+                                </div>
+                            )}
                         </div>
+                    </div>
+                )}
+
+                {dados?.temAClassificar && (
+                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                        <span>
+                            Há categorias sem "balde" definido — estão contando como despesa de operação por enquanto.
+                            Ajuste em <Link to="/financeiro/categorias-despesa" className="underline font-semibold">Categorias de Despesa</Link> para o resultado ficar certinho.
+                        </span>
                     </div>
                 )}
 

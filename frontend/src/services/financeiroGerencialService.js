@@ -11,6 +11,17 @@ const financeiroGerencialService = {
     dre: async (de, ate) => {
         const response = await api.get('/financeiro-gerencial/dre', { params: { de, ate } });
         return response.data;
+    },
+    // Categorias de despesa com o "balde" (classificação) e o total gasto
+    // [{ id, nome, classificacao, total }]
+    categoriasDespesa: async () => {
+        const response = await api.get('/financeiro-gerencial/categorias-despesa');
+        return response.data;
+    },
+    // Salvar classificação: [{ nome, classificacao }]
+    salvarCategoriasDespesa: async (categorias) => {
+        const response = await api.put('/financeiro-gerencial/categorias-despesa', { categorias });
+        return response.data;
     }
 };
 

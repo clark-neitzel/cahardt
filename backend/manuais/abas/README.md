@@ -47,6 +47,7 @@
 | Notas Recebidas | `/notas-recebidas` | Caixa de entrada das NF-e capturadas automaticamente na SEFAZ, com geração de conta a pagar a partir da nota | [notas-recebidas.md](notas-recebidas.md) |
 | Fluxo de Caixa | `/financeiro/fluxo-caixa` | Previsto × realizado de entradas e saídas por dia/mês, com saldo acumulado (gerencial) | [fluxo-caixa.md](fluxo-caixa.md) |
 | DRE — Resultado | `/financeiro/dre` | Demonstração de resultado mês a mês: receita − despesas por categoria = lucro e margem (gerencial) | [dre.md](dre.md) |
+| Categorias de Despesa | `/financeiro/categorias-despesa` | Classifica cada categoria em "baldes" (Operação, Financeiro, Fora da DRE) para a DRE mostrar o lucro certo | [categorias-despesa.md](categorias-despesa.md) |
 
 ---
 
