@@ -107,6 +107,15 @@ router.get('/diag-conciliacao', async (req, res) => {
         }
         info.busca = { numeroApp: numero, de, ate, itens_totais: totalItens, itensVarridos, paginas: pagina };
         info.candidatos = candidatos;
+
+        // Chama a função REAL de conciliação para confirmar o que ela adotaria hoje (só leitura).
+        try {
+            const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
+            const adotaria = await contasPagarCaSyncService._encontrarEventoPorNumeroNota(conta);
+            info.conciliacaoReal = { adotariaEventoId: adotaria || null };
+        } catch (e) {
+            info.conciliacaoReal = { erro: e.message };
+        }
         res.json(info);
     } catch (error) {
         res.status(500).json({ error: error.message, stack: (error.stack || '').split('\n').slice(0, 5) });

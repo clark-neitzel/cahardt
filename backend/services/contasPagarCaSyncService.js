@@ -1069,5 +1069,6 @@ module.exports = {
     calcularStatusContaPagar,
     // Idempotência / reconciliação (usados pela rota admin-exec)
     _encontrarEventoPorReferencia,
+    _encontrarEventoPorNumeroNota,
     _mapearParcelasCA
 };
