@@ -2402,7 +2402,10 @@ model ContaPagar {
   origem        String      @default("MANUAL") // MANUAL | NFE | NFSE | IMPORTADO_CA
   // Importação do relatório "Contas a pagar" do Conta Azul (CSV). Chave natural
   // (vencimento|cnpj/nome|descrição) para não duplicar ao reimportar o mesmo mês.
-  hashImportacao String?    @unique @map("hash_importacao")
+  // Índice NÃO único de propósito: `prisma db push` (deploy) recusa criar UNIQUE em
+  // tabela com dados sem --accept-data-loss. A dedup é feita no código (consulta o
+  // hash antes de criar) — ver importacaoCaService.importar.
+  hashImportacao String?    @map("hash_importacao")
   valorTotal    Decimal     @map("valor_total") @db.Decimal(12, 2)
   status        String      @default("ABERTO") // ABERTO | PARCIAL | QUITADO | CANCELADO
   competencia   DateTime?
@@ -2432,6 +2435,7 @@ model ContaPagar {
   @@index([fornecedorId])
   @@index([status])
   @@index([statusEnvioCA])
+  @@index([hashImportacao])
   @@map("contas_pagar")
 }
 
