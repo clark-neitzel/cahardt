@@ -37,6 +37,8 @@ import ContasReceberTabela from './pages/Financeiro/ContasReceberTabela';
 import ContasPagarPage from './pages/Financeiro/ContasPagarPage';
 import FornecedoresPage from './pages/Financeiro/FornecedoresPage';
 import NotasRecebidasPage from './pages/Financeiro/NotasRecebidasPage';
+import FluxoCaixaPage from './pages/Financeiro/FluxoCaixaPage';
+import DrePage from './pages/Financeiro/DrePage';
 import RelatorioPedidos from './pages/Relatorios/RelatorioPedidos';
 import RelatorioVendas from './pages/Relatorios/RelatorioVendas';
 import RelatorioFlex from './pages/Relatorios/RelatorioFlex';
@@ -192,7 +194,7 @@ const Layout = ({ children }) => {
   const closeMobile = () => setIsMobileMenuOpen(false);
 
   const showLogistica = hasPermission('Pode_Acessar_Embarque') || hasPermission('Pode_Ver_Todas_Entregas');
-  const showFinanceiro = hasPermission('Pode_Acessar_Caixa') || hasPermission('Pode_Ver_Todas_Entregas') || hasPermission('Pode_Acessar_Contas_Receber') || hasPermission('Pode_Acessar_Notas_Recebidas');
+  const showFinanceiro = hasPermission('Pode_Acessar_Caixa') || hasPermission('Pode_Ver_Todas_Entregas') || hasPermission('Pode_Acessar_Contas_Receber') || hasPermission('Pode_Acessar_Notas_Recebidas') || hasPermission('Pode_Acessar_Financeiro_Gerencial');
   const showAdmin = hasPermission('produtos') || hasPermission('vendedores') || hasPermission('sync') || user?.permissoes?.admin;
   const showEstoque = user?.permissoes?.admin || (Array.isArray(user?.permissoes?.estoque) && user.permissoes.estoque.length > 0);
   const pcpPerms = user?.permissoes?.pcp || {};
@@ -252,6 +254,8 @@ const Layout = ({ children }) => {
           {hasPermission('Pode_Acessar_Contas_Pagar') && <SidebarItem to="/contas-pagar" icon={Wallet} label="Contas a Pagar" />}
           {hasPermission('Pode_Acessar_Notas_Recebidas') && <SidebarItem to="/notas-recebidas" icon={Inbox} label="Notas Recebidas" />}
           {hasPermission('Pode_Acessar_Fornecedores') && <SidebarItem to="/fornecedores" icon={Building2} label="Fornecedores" />}
+          {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/fluxo-caixa" icon={TrendingUp} label="Fluxo de Caixa" />}
+          {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/dre" icon={BarChart3} label="DRE" />}
 
           {/* Admin */}
           {showAdmin && <SidebarSection label="Admin" />}
@@ -423,6 +427,8 @@ const Layout = ({ children }) => {
                 {hasPermission('Pode_Acessar_Contas_Pagar') && <NavLink to="/contas-pagar" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Contas a Pagar</NavLink>}
                 {hasPermission('Pode_Acessar_Notas_Recebidas') && <NavLink to="/notas-recebidas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Notas Recebidas</NavLink>}
                 {hasPermission('Pode_Acessar_Fornecedores') && <NavLink to="/fornecedores" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Fornecedores</NavLink>}
+                {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/fluxo-caixa" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Fluxo de Caixa</NavLink>}
+                {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/dre" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>DRE</NavLink>}
               </MobileMenuSection>
             )}
 
@@ -602,6 +608,8 @@ function App() {
               <Route path="/contas-pagar" element={<PrivateRoute tab="Pode_Acessar_Contas_Pagar"><ContasPagarPage /></PrivateRoute>} />
               <Route path="/notas-recebidas" element={<PrivateRoute tab="Pode_Acessar_Notas_Recebidas"><NotasRecebidasPage /></PrivateRoute>} />
               <Route path="/fornecedores" element={<PrivateRoute tab="Pode_Acessar_Fornecedores"><FornecedoresPage /></PrivateRoute>} />
+              <Route path="/financeiro/fluxo-caixa" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><FluxoCaixaPage /></PrivateRoute>} />
+              <Route path="/financeiro/dre" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><DrePage /></PrivateRoute>} />
 
               {/* Caixa Diário e Despesas */}
               <Route path="/despesas" element={<PrivateRoute tab="Pode_Acessar_Caixa"><DespesasPage /></PrivateRoute>} />

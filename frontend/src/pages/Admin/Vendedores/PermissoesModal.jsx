@@ -6,7 +6,7 @@ import {
     Box, UserCog, Car, RefreshCw, FileText,
     Settings, DollarSign, Warehouse, TrendingUp,
     Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3, BarChart2,
-    Clock, CalendarOff, ClipboardCheck, Tag, PartyPopper
+    Clock, CalendarOff, ClipboardCheck, Tag, PartyPopper, Inbox, Building2
 } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import configService from '../../../services/configService';
@@ -80,6 +80,11 @@ const DEFAULT_PERMISSIONS = {
     Pode_Baixar_Contas_Receber: false,
     Pode_Dar_Desconto_Baixa: false,
     Pode_Vender_Inadimplente: false,
+    Pode_Acessar_Contas_Pagar: false,
+    Pode_Baixar_Contas_Pagar: false,
+    Pode_Acessar_Notas_Recebidas: false,
+    Pode_Acessar_Fornecedores: false,
+    Pode_Acessar_Financeiro_Gerencial: false,
     // Devoluções
     Pode_Fazer_Devolucao: false,
     Pode_Reverter_Devolucao: false,
@@ -320,7 +325,9 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
         permissoes.Pode_Acessar_Embarque, permissoes.Pode_Ver_Todas_Entregas, permissoes.Pode_Executar_Entregas
     ].filter(Boolean).length;
     const countFinanceiro = [
-        permissoes.Pode_Acessar_Caixa, permissoes.Pode_Acessar_Contas_Receber
+        permissoes.Pode_Acessar_Caixa, permissoes.Pode_Acessar_Contas_Receber,
+        permissoes.Pode_Acessar_Contas_Pagar, permissoes.Pode_Acessar_Notas_Recebidas,
+        permissoes.Pode_Acessar_Fornecedores, permissoes.Pode_Acessar_Financeiro_Gerencial
     ].filter(Boolean).length;
     const countAdmin = [
         permissoes.produtos?.view, permissoes.vendedores?.view, permissoes.sync?.view, permissoes.Pode_Acessar_Veiculos
@@ -733,6 +740,10 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         <MenuToggle icon={Receipt} label="Despesas" checked={!!permissoes.Pode_Acessar_Caixa} onChange={() => toggleBool('Pode_Acessar_Caixa')} />
                         <MenuToggle icon={Search} label="Auditoria Entregas" checked={!!permissoes.Pode_Ver_Todas_Entregas} onChange={() => toggleBool('Pode_Ver_Todas_Entregas')} />
                         <MenuToggle icon={DollarSign} label="Contas a Receber" checked={!!permissoes.Pode_Acessar_Contas_Receber} onChange={() => toggleBool('Pode_Acessar_Contas_Receber')} />
+                        <MenuToggle icon={Wallet} label="Contas a Pagar" checked={!!permissoes.Pode_Acessar_Contas_Pagar} onChange={() => toggleBool('Pode_Acessar_Contas_Pagar')} />
+                        <MenuToggle icon={Inbox} label="Notas Recebidas" checked={!!permissoes.Pode_Acessar_Notas_Recebidas} onChange={() => toggleBool('Pode_Acessar_Notas_Recebidas')} />
+                        <MenuToggle icon={Building2} label="Fornecedores" checked={!!permissoes.Pode_Acessar_Fornecedores} onChange={() => toggleBool('Pode_Acessar_Fornecedores')} />
+                        <MenuToggle icon={BarChart3} label="Fluxo de Caixa e DRE (gerencial)" checked={!!permissoes.Pode_Acessar_Financeiro_Gerencial} onChange={() => toggleBool('Pode_Acessar_Financeiro_Gerencial')} />
 
                         {permissoes.Pode_Acessar_Caixa && (
                             <div className="border-t mt-3 pt-3">
@@ -760,6 +771,13 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                     <Toggle checked={!!permissoes.Pode_Dar_Desconto_Baixa} onChange={() => toggleBool('Pode_Dar_Desconto_Baixa')}
                                         label="Dar Desconto na Baixa" sublabel="Reduz o valor a receber (até 100%) sem confirmação de pagamento — use com critério" danger />
                                 )}
+                            </div>
+                        )}
+
+                        {(permissoes.Pode_Acessar_Contas_Pagar || permissoes.Pode_Acessar_Notas_Recebidas) && (
+                            <div className="border-t mt-3 pt-3">
+                                <Toggle checked={!!permissoes.Pode_Baixar_Contas_Pagar} onChange={() => toggleBool('Pode_Baixar_Contas_Pagar')}
+                                    label="Operar Contas a Pagar" sublabel="Criar/editar despesas, dar baixa e conferir notas recebidas (gerar conta, ignorar)" />
                             </div>
                         )}
 

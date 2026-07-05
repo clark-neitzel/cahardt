@@ -1520,6 +1520,33 @@ router.post('/contas-pagar-reconciliar', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/gerencial-diag
+// SOMENTE LEITURA. Roda o Fluxo de Caixa e a DRE (Fase 5) e devolve um resumo
+// compacto — validar os números reais em produção logo após o deploy.
+router.get('/gerencial-diag', async (req, res) => {
+    try {
+        const svc = require('../services/financeiroGerencialService');
+        const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const mes = hoje.slice(0, 7);
+        const [fluxo, dreDados] = await Promise.all([
+            svc.fluxoCaixa(`${mes}-01`, hoje, 'dia'),
+            svc.dre(`${mes.slice(0, 4)}-01`, mes)
+        ]);
+        res.json({
+            fluxo: { kpis: fluxo.kpis, totais: fluxo.totais, dias: fluxo.linhas.length },
+            dre: {
+                meses: dreDados.meses,
+                receitaLiquida: dreDados.receita.liquida.valores,
+                totalDespesas: dreDados.despesas.total.valores,
+                resultado: dreDados.resultado.valores,
+                topCategorias: dreDados.despesas.categorias.slice(0, 8).map((c) => `${c.nome}: ${c.total}`)
+            }
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/nfse-status
 // SOMENTE LEITURA. Status da captura de NFS-e (linha 'nfse' da dfe_controle) +
 // contagem de notas NFSE — acompanhar o primeiro ciclo real em produção.

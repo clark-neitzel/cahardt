@@ -45,6 +45,8 @@
 | Contas a Pagar | `/contas-pagar` | Despesas com parcelas, envio ao Conta Azul e baixa automática quando pagas lá (DDA/conciliação) | [contas-a-pagar.md](contas-a-pagar.md) |
 | Fornecedores | `/fornecedores` | Cadastro de fornecedores sincronizado com o Conta Azul (envio automático + importação) | [fornecedores.md](fornecedores.md) |
 | Notas Recebidas | `/notas-recebidas` | Caixa de entrada das NF-e capturadas automaticamente na SEFAZ, com geração de conta a pagar a partir da nota | [notas-recebidas.md](notas-recebidas.md) |
+| Fluxo de Caixa | `/financeiro/fluxo-caixa` | Previsto × realizado de entradas e saídas por dia/mês, com saldo acumulado (gerencial) | [fluxo-caixa.md](fluxo-caixa.md) |
+| DRE — Resultado | `/financeiro/dre` | Demonstração de resultado mês a mês: receita − despesas por categoria = lucro e margem (gerencial) | [dre.md](dre.md) |
 
 ---
 
