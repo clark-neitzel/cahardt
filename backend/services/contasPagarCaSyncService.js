@@ -504,15 +504,15 @@ async function _encontrarEventoPorReferencia(codigoReferencia, conta) {
 /**
  * CONCILIAÇÃO — localizar no CA uma despesa que o USUÁRIO já lançou MANUALMENTE,
  * casando pelo NÚMERO DA NOTA. A busca do CA não filtra por número da nota, então
- * procuramos o número dentro da descrição/observação da despesa (fornecedor como
- * pré-filtro, valor como reforço). Só adota um evento que NÃO tenha codigo_referencia
- * (i.e. que não fomos nós que criamos) e cujo número da nota apareça no texto.
- * Retorna evento_financeiro_id (uuid) ou null. Não lança em erro de item isolado.
+ * procuramos o número dentro da descrição da despesa + o valor como reforço.
+ * NÃO filtramos por fornecedor: o mesmo fornecedor pode ter cadastros diferentes no CA
+ * (ex.: "Produpan ... Ltda EPP" vs "Produpan - ... Ltda") e isso descartaria a manual.
+ * Só adota um evento que NÃO seja o nosso (codigo_referencia != id da nossa conta) e
+ * cujo número da nota apareça no texto. Retorna evento_financeiro_id (uuid) ou null.
  */
 async function _encontrarEventoPorNumeroNota(conta) {
     const numero = String(conta?.numeroNota || '').trim();
     if (!numero) return null;
-    const fornecedorCaId = conta?.fornecedor?.contaAzulId || null;
     const valorConta = round2(Number(conta?.valorTotal || 0));
 
     // Janela de vencimento ampla (a busca exige o filtro), em torno das datas conhecidas.
@@ -536,7 +536,13 @@ async function _encontrarEventoPorNumeroNota(conta) {
     const statusQS = ['RECEBIDO', 'EM_ABERTO', 'ATRASADO', 'RECEBIDO_PARCIAL', 'RENEGOCIADO', 'PERDIDO']
         .map((s) => `&status=${s}`).join('');
 
-    const candidatos = new Set();
+    // Candidatos FORTES = número da nota já aparece na descrição da lista (ex.: a nota de
+    // compra manual "Compra de produto 813 (NFe 858860-1)"). FRACOS = só o valor bate
+    // (confirma o número no detalhe). Testamos os fortes primeiro — assim a manual tem
+    // preferência sobre sobras genéricas ("Parcela (1/1)") de tentativas anteriores.
+    const fortes = [];
+    const fracos = [];
+    const vistos = new Set();
     let pagina = 1;
     while (pagina <= 10) {
         const url = `${BASE}/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar`
@@ -545,12 +551,13 @@ async function _encontrarEventoPorNumeroNota(conta) {
         const resp = await contaAzulService._axiosGet(url, 'CONTA_PAGAR_CONCILIA');
         const itens = resp.data?.itens || resp.data?.items || [];
         for (const it of itens) {
-            if (!it?.id) continue;
-            if (fornecedorCaId && it.fornecedor?.id && it.fornecedor.id !== fornecedorCaId) continue;
+            if (!it?.id || vistos.has(it.id)) continue;
+            // SEM filtro de fornecedor (cadastros duplicados no CA descartariam a manual).
             const totalIt = round2(Number(it.total ?? it.nao_pago ?? 0));
             const descBateNum = regexNum.test(String(it.descricao || ''));
             const valorBate = Math.abs(totalIt - valorConta) < 0.01;
-            if (descBateNum || valorBate) candidatos.add(it.id);
+            if (descBateNum) { fortes.push(it.id); vistos.add(it.id); }
+            else if (valorBate) { fracos.push(it.id); vistos.add(it.id); }
         }
         const totais = Number(resp.data?.itens_totais || 0);
         if (itens.length < 100) break;
@@ -558,7 +565,8 @@ async function _encontrarEventoPorNumeroNota(conta) {
         pagina++;
         await sleep(300);
     }
-    if (candidatos.size === 0) return null;
+    const candidatos = [...fortes, ...fracos];
+    if (candidatos.length === 0) return null;
 
     for (const parcelaId of candidatos) {
         try {
