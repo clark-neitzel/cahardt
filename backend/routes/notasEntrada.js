@@ -194,8 +194,8 @@ router.get('/itens-pcp', verificarAuth, checkAcesso, async (req, res) => {
         const itens = await prisma.itemPcp.findMany({
             where,
             select: { id: true, codigo: true, nome: true, tipo: true, unidade: true },
-            orderBy: { nome: 'asc' },
-            take: 100
+            orderBy: { nome: 'asc' }
+            // sem limite: a tela carrega todos os insumos e filtra a busca no cliente
         });
         res.json(itens);
     } catch (error) {
@@ -633,6 +633,58 @@ router.post('/:id/reativar', verificarAuth, checkEscrita, async (req, res) => {
     } catch (error) {
         console.error('Erro ao reativar nota:', error);
         res.status(500).json({ error: 'Erro ao reativar a nota.' });
+    }
+});
+
+// ── POST /:id/cancelar-conferencia — desfaz a entrada gerada e reabre a nota ──
+// Usado quando a conferência saiu errada (produto/categoria/parcela errados).
+// Cancela a Conta a Pagar gerada e devolve a nota para NOVA (dá para conferir de novo).
+router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req, res) => {
+    try {
+        const nota = await prisma.notaEntrada.findUnique({
+            where: { id: req.params.id },
+            include: {
+                contaPagar: {
+                    include: { parcelas: { include: { pagamentos: { where: { estornado: false } } } } }
+                }
+            }
+        });
+        if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
+        if (nota.status !== 'CONFERIDA' || !nota.contaPagarId) {
+            return res.status(400).json({ error: 'Só uma entrada já gerada pode ser cancelada.' });
+        }
+        const conta = nota.contaPagar;
+        const temPagamento = (conta?.parcelas || []).some((p) => (p.pagamentos || []).length > 0);
+        if (temPagamento) {
+            return res.status(400).json({ error: 'A conta a pagar já tem baixa/pagamento registrado. Estorne a baixa em Contas a Pagar antes de cancelar a entrada.' });
+        }
+        // A despesa pode já ter chegado na Conta Azul. Inclui ERRO: o CA pode ter criado
+        // o evento (HTTP 200 + protocolo) mesmo quando o app registrou erro no envio.
+        const chegouCA = !!conta?.idEventoCA
+            || ['AGUARDANDO_PROTOCOLO', 'ENVIANDO', 'ENVIADO', 'ERRO'].includes(conta?.statusEnvioCA);
+
+        await prisma.$transaction(async (tx) => {
+            if (conta) {
+                await tx.parcelaPagar.updateMany({ where: { contaPagarId: conta.id }, data: { status: 'CANCELADO' } });
+                await tx.contaPagar.update({
+                    where: { id: conta.id },
+                    data: { status: 'CANCELADO', statusEnvioCA: 'NAO_ENVIAR' }
+                });
+            }
+            await tx.notaEntrada.update({
+                where: { id: nota.id },
+                data: { status: nota.xmlPath ? 'NOVA' : 'AGUARDANDO_XML', contaPagarId: null }
+            });
+        });
+
+        res.json({
+            ok: true,
+            message: 'Entrada cancelada. A nota voltou para conferência.',
+            avisoCA: chegouCA
+        });
+    } catch (error) {
+        console.error('Erro ao cancelar conferência da nota:', error);
+        res.status(500).json({ error: 'Erro ao cancelar a entrada.' });
     }
 });
 

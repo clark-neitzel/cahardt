@@ -509,40 +509,41 @@ const BotaoImprimirDanfe = ({ id }) => {
 };
 
 // Select de categoria de custo (lista do CA + texto livre como fallback se a API falhar)
-// Busca de produto por digitação (substitui o <select> nativo, inviável com centenas de insumos).
-// Filtra por nome/tipo/unidade/código; navegação por teclado; "criar produto novo" sempre acessível.
-const ComboProduto = ({ value, itens, onSelect, onCriarNovo, invalido }) => {
+// Combobox de busca REUTILIZÁVEL — substitui os <select> nativos grandes do projeto.
+// Digite para filtrar (por label + sub); navegação por teclado; rolagem SEM limite de itens.
+// options: [{ value, label, sub? }]. extraAction?: { label, onClick } (rodapé, ex.: "criar novo").
+const ComboBusca = ({
+    value, options, onChange, placeholder = 'Buscar…', buscaPlaceholder = 'Digite para buscar…',
+    vazioTexto = 'Nada encontrado.', extraAction, invalido = false, allowClear = true, className = ''
+}) => {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [hi, setHi] = useState(0);
     const boxRef = useRef(null);
     const inputRef = useRef(null);
 
-    const selecionado = itens.find(p => String(p.id) === String(value));
+    const selecionado = options.find(o => String(o.value) === String(value));
 
     const filtrados = useMemo(() => {
         const q = query.trim().toLowerCase();
-        if (!q) return itens.slice(0, 50);
+        if (!q) return options;
         const termos = q.split(/\s+/);
-        return itens.filter(p => {
-            const alvo = `${p.nome || ''} ${p.tipo || ''} ${tipoItemLabel(p.tipo)} ${p.unidade || ''} ${p.codigo || ''}`.toLowerCase();
+        return options.filter(o => {
+            const alvo = `${o.label || ''} ${o.sub || ''}`.toLowerCase();
             return termos.every(t => alvo.includes(t));
-        }).slice(0, 50);
-    }, [itens, query]);
+        });
+    }, [options, query]);
 
     useEffect(() => { setHi(0); }, [query, open]);
-
     useEffect(() => {
         if (!open) return;
         const onDoc = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
         document.addEventListener('mousedown', onDoc);
         return () => document.removeEventListener('mousedown', onDoc);
     }, [open]);
-
     useEffect(() => { if (open && inputRef.current) inputRef.current.focus(); }, [open]);
 
-    const escolher = (p) => { onSelect(p.id); setOpen(false); setQuery(''); };
-
+    const escolher = (o) => { onChange(o.value); setOpen(false); setQuery(''); };
     const onKey = (e) => {
         if (e.key === 'ArrowDown') { e.preventDefault(); setHi(h => Math.min(h + 1, filtrados.length - 1)); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(h => Math.max(h - 1, 0)); }
@@ -551,15 +552,13 @@ const ComboProduto = ({ value, itens, onSelect, onCriarNovo, invalido }) => {
     };
 
     return (
-        <div className="relative mt-1" ref={boxRef}>
+        <div className={`relative ${className}`} ref={boxRef}>
             <button
                 type="button"
                 onClick={() => setOpen(o => !o)}
                 className={`w-full min-h-[44px] md:min-h-0 flex items-center justify-between gap-2 border rounded px-3 py-2 text-sm bg-white text-left focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none ${invalido ? 'border-amber-300' : 'border-gray-300'}`}
             >
-                <span className={`truncate ${selecionado ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {selecionado ? `${selecionado.nome}${selecionado.unidade ? ` (${selecionado.unidade})` : ''}` : 'Buscar produto…'}
-                </span>
+                <span className={`truncate ${selecionado ? 'text-gray-900' : 'text-gray-400'}`}>{selecionado ? selecionado.label : placeholder}</span>
                 <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
             </button>
             {open && (
@@ -572,46 +571,68 @@ const ComboProduto = ({ value, itens, onSelect, onCriarNovo, invalido }) => {
                                 value={query}
                                 onChange={e => setQuery(e.target.value)}
                                 onKeyDown={onKey}
-                                placeholder="Digite: óleo, trigo, caixa…"
+                                placeholder={buscaPlaceholder}
                                 className="w-full border border-gray-300 rounded pl-8 pr-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                             />
                         </div>
                     </div>
                     <div className="max-h-64 overflow-y-auto py-1">
-                        {selecionado && (
-                            <button type="button" onClick={() => { onSelect(''); setOpen(false); setQuery(''); }}
-                                className="w-full text-left px-3 py-2 text-xs text-gray-500 hover:bg-gray-50">
-                                Limpar seleção
-                            </button>
+                        {allowClear && selecionado && (
+                            <button type="button" onClick={() => { onChange(''); setOpen(false); setQuery(''); }}
+                                className="w-full text-left px-3 py-2 text-xs text-gray-500 hover:bg-gray-50">Limpar seleção</button>
                         )}
-                        {filtrados.length === 0 && (
-                            <div className="px-3 py-3 text-sm text-gray-400">Nenhum produto encontrado.</div>
-                        )}
-                        {filtrados.map((p, i) => (
+                        {filtrados.length === 0 && <div className="px-3 py-3 text-sm text-gray-400">{vazioTexto}</div>}
+                        {filtrados.map((o, i) => (
                             <button
-                                key={p.id}
+                                key={String(o.value)}
                                 type="button"
                                 onMouseEnter={() => setHi(i)}
-                                onClick={() => escolher(p)}
-                                className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 ${i === hi ? 'bg-blue-50' : 'hover:bg-gray-50'} ${String(p.id) === String(value) ? 'font-semibold text-primary' : 'text-gray-800'}`}
+                                onClick={() => escolher(o)}
+                                className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 ${i === hi ? 'bg-blue-50' : 'hover:bg-gray-50'} ${String(o.value) === String(value) ? 'font-semibold text-primary' : 'text-gray-800'}`}
                             >
-                                <span className="truncate">{p.nome}{p.unidade ? ` (${p.unidade})` : ''}</span>
-                                <span className="text-xs text-gray-400 shrink-0">{tipoItemLabel(p.tipo)}</span>
+                                <span className="truncate">{o.label}</span>
+                                {o.sub && <span className="text-xs text-gray-400 shrink-0">{o.sub}</span>}
                             </button>
                         ))}
                     </div>
-                    <div className="p-2 border-t border-gray-100">
-                        <button type="button" onClick={() => { onCriarNovo(); setOpen(false); setQuery(''); }}
-                            className="w-full text-left px-2 py-2 text-sm text-primary font-medium hover:bg-blue-50 rounded">
-                            + Criar produto novo…
-                        </button>
+                    <div className="px-3 py-1.5 border-t border-gray-100 text-[11px] text-gray-400">
+                        {filtrados.length} {filtrados.length === 1 ? 'item' : 'itens'}
                     </div>
+                    {extraAction && (
+                        <div className="p-2 border-t border-gray-100">
+                            <button type="button" onClick={() => { extraAction.onClick(); setOpen(false); setQuery(''); }}
+                                className="w-full text-left px-2 py-2 text-sm text-primary font-medium hover:bg-blue-50 rounded">{extraAction.label}</button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
     );
 };
 
+// Busca de produto — usa o combobox genérico (mostra TODOS os itens, com rolagem).
+const ComboProduto = ({ value, itens, onSelect, onCriarNovo, invalido }) => {
+    const options = useMemo(() => itens.map(p => ({
+        value: p.id,
+        label: `${p.nome}${p.unidade ? ` (${p.unidade})` : ''}`,
+        sub: `${tipoItemLabel(p.tipo)}${p.codigo ? ` · ${p.codigo}` : ''}`
+    })), [itens]);
+    return (
+        <ComboBusca
+            className="mt-1"
+            value={value}
+            options={options}
+            onChange={(v) => onSelect(v)}
+            placeholder="Buscar produto…"
+            buscaPlaceholder="Digite: óleo, trigo, caixa…"
+            vazioTexto="Nenhum produto encontrado."
+            invalido={invalido}
+            extraAction={{ label: '+ Criar produto novo…', onClick: onCriarNovo }}
+        />
+    );
+};
+
+// Busca de categoria — mesmo combobox (texto livre só quando a lista do CA falha).
 const SelectCategoria = ({ value, onChange, categorias, categoriasErro, placeholder = 'Selecionar…', className = '' }) => {
     if (categoriasErro) {
         return (
@@ -623,17 +644,18 @@ const SelectCategoria = ({ value, onChange, categorias, categoriasErro, placehol
             />
         );
     }
-    const foraDaLista = value && !categorias.some(c => c.nome === value);
+    const options = categorias.map(c => ({ value: c.nome, label: c.nome }));
+    if (value && !categorias.some(c => c.nome === value)) options.unshift({ value, label: value });
     return (
-        <select
+        <ComboBusca
+            className={className}
             value={value}
-            onChange={e => onChange(e.target.value)}
-            className={`w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none ${className}`}
-        >
-            <option value="">{placeholder}</option>
-            {categorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
-            {foraDaLista && <option value={value}>{value}</option>}
-        </select>
+            options={options}
+            onChange={onChange}
+            placeholder={placeholder}
+            buscaPlaceholder="Digite a categoria…"
+            vazioTexto="Nenhuma categoria encontrada."
+        />
     );
 };
 
@@ -1102,6 +1124,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
 // ═══════════════════════════════════════════════════════════
 const DetalheNota = ({ nota, podeOperar, onChanged }) => {
     const [reativando, setReativando] = useState(false);
+    const [cancelando, setCancelando] = useState(false);
     const itensNota = Array.isArray(nota.itens) ? nota.itens : [];
     const duplicatas = Array.isArray(nota.duplicatas) ? nota.duplicatas : [];
 
@@ -1115,6 +1138,23 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
             toast.error(e.response?.data?.error || 'Erro ao reativar a nota');
         } finally {
             setReativando(false);
+        }
+    };
+
+    const cancelarEntrada = async () => {
+        if (!window.confirm('Cancelar a entrada desta nota? A despesa gerada em Contas a Pagar será cancelada e a nota volta para conferência, para você refazer com o produto/categoria/parcelas corretos.')) return;
+        setCancelando(true);
+        try {
+            const r = await notasEntradaService.cancelarConferencia(nota.id);
+            toast.success('Entrada cancelada. A nota voltou para conferência.');
+            if (r?.avisoCA) {
+                toast('Atenção: esta despesa já pode ter chegado à Conta Azul. Se aparecer lá, exclua-a manualmente no CA.', { icon: '⚠️', duration: 8000 });
+            }
+            onChanged();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao cancelar a entrada');
+        } finally {
+            setCancelando(false);
         }
     };
 
@@ -1201,6 +1241,15 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
                         className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm disabled:opacity-50"
                     >
                         {reativando ? 'Reativando…' : 'Reativar nota'}
+                    </button>
+                )}
+                {nota.status === 'CONFERIDA' && podeOperar && (
+                    <button
+                        onClick={cancelarEntrada}
+                        disabled={cancelando}
+                        className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-red-300 text-red-700 hover:bg-red-50 rounded-md font-medium text-sm disabled:opacity-50"
+                    >
+                        {cancelando ? 'Cancelando…' : 'Cancelar entrada e refazer'}
                     </button>
                 )}
             </div>

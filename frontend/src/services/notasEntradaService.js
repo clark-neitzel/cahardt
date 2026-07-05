@@ -28,6 +28,11 @@ const notasEntradaService = {
         const response = await api.post(`/notas-entrada/${id}/reativar`);
         return response.data;
     },
+    // Cancela a entrada gerada (Conta a Pagar) e reabre a nota para nova conferência
+    cancelarConferencia: async (id) => {
+        const response = await api.post(`/notas-entrada/${id}/cancelar-conferencia`);
+        return response.data;
+    },
     consultarAgora: async () => {
         const response = await api.post('/notas-entrada/consultar-agora');
         return response.data;

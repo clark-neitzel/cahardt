@@ -429,6 +429,8 @@ async function _enviarDespesasPendentes() {
 
             const payload = {
                 descricao: conta.descricao,
+                // Referência única (id da nossa conta) — rastreio e base para evitar duplicidade no reenvio
+                codigo_referencia: conta.id,
                 // observacao é OBRIGATÓRIA na spec — nunca mandar vazia
                 observacao: conta.observacoes || `Lançado pelo app Hardt — ${conta.descricao}`,
                 data_competencia: dataCompetencia,
@@ -481,8 +483,9 @@ async function _enviarDespesasPendentes() {
                 'post', `${BASE}/v1/financeiro/eventos-financeiros/contas-a-pagar`, payload, 'CONTA_PAGAR_ENVIO'
             );
 
-            // Criação é ASSÍNCRONA: HTTP 202 + protocolId. Defensivo caso venha evento direto.
-            const protocolId = response.data?.protocolId || response.data?.protocol_id || null;
+            // Criação é ASSÍNCRONA: CA responde 200/202 com { protocolo, status:PENDING }.
+            // (O campo real é `protocolo` — não `protocolId`.) Defensivo caso venha evento direto.
+            const protocolId = response.data?.protocolo || response.data?.protocolId || response.data?.protocol_id || null;
             const eventoDireto = !protocolId && response.data?.evento_financeiro_id ? response.data.evento_financeiro_id : null;
 
             if (protocolId) {
