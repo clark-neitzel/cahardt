@@ -21,6 +21,7 @@ Gestão das despesas da empresa (contas a pagar): lançamento manual de contas c
 - Filtrar por busca (descrição, nota, fornecedor), status da conta, categoria e mês
 - Criar uma conta a pagar: fornecedor, descrição, categoria de despesa (vem do Conta Azul), número da nota, competência, observações e parcelas (valor + vencimento de cada uma)
 - Contas também **chegam sozinhas via NF-e** (origem NFE): a aba **Notas Recebidas** captura as notas dos fornecedores na SEFAZ e gera a conta a pagar já com número da nota, chave da NF-e, fornecedor e parcelas das duplicatas (ver manual [notas-recebidas.md](notas-recebidas.md))
+- **Categoria "Vários" / rateio:** uma conta pode ter **mais de uma categoria** de despesa quando vem de uma NF-e com itens de categorias diferentes. Nesse caso a categoria aparece como **"Vários"** e a conta guarda o **rateio** (quanto do valor foi para cada categoria) — é esse rateio que é enviado ao Conta Azul
 - Escolher se a conta **vai para o Conta Azul** (opção "enviar ao CA") ou fica só no app
 - Editar uma conta (campos e parcelas ainda não pagas — bloqueado se quitada/cancelada; parcelas não podem mais ser alteradas depois que a conta já foi enviada ao CA)
 - Dar **baixa manual** numa parcela: valor pago, juros, multa, desconto e forma de pagamento (baixa parcial deixa a parcela como PARCIAL)

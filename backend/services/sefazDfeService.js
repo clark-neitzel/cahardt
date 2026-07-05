@@ -97,7 +97,9 @@ function parseProcNFe(xmlString) {
             unidade: String(prod.uCom ?? 'UN').trim() || 'UN',
             quantidade: numOuNull(prod.qCom) ?? 0,
             valorUnitario: numOuNull(prod.vUnCom) ?? 0,
-            valorTotal: numOuNull(prod.vProd) ?? 0
+            valorTotal: numOuNull(prod.vProd) ?? 0,
+            cfop: prod.CFOP ? String(prod.CFOP).trim() : null,
+            infAdProd: det?.infAdProd ? String(det.infAdProd).trim() || null : null
         };
     });
 
@@ -109,18 +111,44 @@ function parseProcNFe(xmlString) {
         }))
         .filter((d) => d.vencimento && d.valor != null);
 
+    const ender = emit.enderEmit || {};
+    const enderDest = dest.enderDest || {};
+    const infCpl = inf.infAdic?.infCpl != null ? String(inf.infAdic.infCpl).trim() || null : null;
+
     return {
         chave,
         numero: ide.nNF ? String(ide.nNF) : null,
         serie: ide.serie != null ? String(ide.serie) : null,
         emissao: dataOuNull(ide.dhEmi || ide.dEmi),
+        naturezaOperacao: ide.natOp ? String(ide.natOp).trim() : null,
         valorTotal: numOuNull(total.vNF),
+        valorProdutos: numOuNull(total.vProd),
+        valorFrete: numOuNull(total.vFrete),
+        valorDesconto: numOuNull(total.vDesc),
+        infComplementar: infCpl,
         emitente: {
             cnpj: soDigitos(emit.CNPJ || emit.CPF),
             nome: String(emit.xNome ?? '').trim() || 'Emitente desconhecido',
+            fantasia: emit.xFant ? String(emit.xFant).trim() : null,
             ie: emit.IE ? String(emit.IE) : null,
-            uf: emit.enderEmit?.UF || null,
-            municipio: emit.enderEmit?.xMun || null
+            uf: ender.UF || null,
+            municipio: ender.xMun || null,
+            logradouro: ender.xLgr ? String(ender.xLgr).trim() : null,
+            numero: ender.nro != null ? String(ender.nro).trim() : null,
+            bairro: ender.xBairro ? String(ender.xBairro).trim() : null,
+            cep: ender.CEP ? soDigitos(ender.CEP) : null,
+            telefone: ender.fone ? String(ender.fone).trim() : null
+        },
+        destinatario: {
+            cnpj: soDigitos(dest.CNPJ || dest.CPF) || null,
+            nome: dest.xNome ? String(dest.xNome).trim() : null,
+            ie: dest.IE ? String(dest.IE) : null,
+            uf: enderDest.UF || null,
+            municipio: enderDest.xMun || null,
+            logradouro: enderDest.xLgr ? String(enderDest.xLgr).trim() : null,
+            numero: enderDest.nro != null ? String(enderDest.nro).trim() : null,
+            bairro: enderDest.xBairro ? String(enderDest.xBairro).trim() : null,
+            cep: enderDest.CEP ? soDigitos(enderDest.CEP) : null
         },
         destinatarioCnpj: soDigitos(dest.CNPJ || dest.CPF) || null,
         itens,
@@ -319,6 +347,7 @@ async function registrarProcNFe(xmlString, nsu, cnpjNosso) {
         fornecedorId: fornecedor?.id || null,
         emissao: nota.emissao,
         valorTotal: nota.valorTotal,
+        infComplementar: nota.infComplementar || null,
         status: 'NOVA',
         xmlPath,
         // nota onde NÃO somos o destinatário (ex.: transporte): não manifestar ciência
@@ -339,7 +368,8 @@ async function registrarProcNFe(xmlString, nsu, cnpjNosso) {
         await tx.notaEntradaDuplicata.deleteMany({ where: { notaEntradaId: notaId } });
         if (nota.itens.length > 0) {
             await tx.notaEntradaItem.createMany({
-                data: nota.itens.map((i) => ({ notaEntradaId: notaId, ...i }))
+                // cfop existe no parse (para a DANFE) mas não é coluna do NotaEntradaItem → não persistir
+                data: nota.itens.map(({ cfop, ...i }) => ({ notaEntradaId: notaId, ...i }))
             });
         }
         if (nota.duplicatas.length > 0) {

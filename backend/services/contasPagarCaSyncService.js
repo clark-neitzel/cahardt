@@ -22,6 +22,7 @@ const BASE = 'https://api-v2.contaazul.com';
 // ─────────────────────────────────────────────────────────────
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const round2 = (v) => Math.round(Number(v) * 100) / 100;
 
 /** Corpo completo do erro da CA (⚠️ erros das APIs de Financeiro/Baixas podem vir sem corpo). */
 const erroCAtexto = (error) => {
@@ -380,7 +381,7 @@ async function processarFilaDespesas() {
 async function _enviarDespesasPendentes() {
     const pendentes = await prisma.contaPagar.findMany({
         where: { statusEnvioCA: 'ENVIAR', status: { not: 'CANCELADO' } },
-        include: { fornecedor: true, parcelas: { orderBy: { numeroParcela: 'asc' } } },
+        include: { fornecedor: true, parcelas: { orderBy: { numeroParcela: 'asc' } }, rateios: true },
         take: 5,
         orderBy: { criadoEm: 'asc' }
     });
@@ -445,19 +446,33 @@ async function _enviarDespesasPendentes() {
                 }
             };
 
-            // Categoria (rateio) — spec não marca como obrigatório, mas sem ele fica sem categoria
+            // Categoria (rateio) — spec não marca como obrigatório, mas sem ele fica sem categoria.
+            // Nota gerada da conferência já grava as linhas de rateio (uma ou várias categorias).
             let categoriaCaId = conta.categoriaCaId;
-            if (!categoriaCaId && conta.categoria) {
-                try {
-                    const cats = await listarCategoriasDespesa();
-                    const alvo = String(conta.categoria).trim().toLowerCase();
-                    categoriaCaId = cats.find((c) => c.nome.trim().toLowerCase() === alvo)?.id || null;
-                } catch (_) { /* envia sem rateio */ }
-            }
-            if (categoriaCaId) {
-                payload.rateio = [{ id_categoria: categoriaCaId, valor: valorTotal }];
+            const rateiosComCa = (conta.rateios || []).filter((r) => r.categoriaCaId);
+
+            if (rateiosComCa.length > 0) {
+                let itensRateio = rateiosComCa.map((r) => ({ id_categoria: r.categoriaCaId, valor: round2(Number(r.valor)) }));
+                // A soma do rateio deve bater com o valor do evento — ajusta o último por arredondamento
+                const somaRateio = round2(itensRateio.reduce((s, r) => s + r.valor, 0));
+                const diff = round2(valorTotal - somaRateio);
+                if (diff !== 0 && itensRateio.length > 0) {
+                    itensRateio[itensRateio.length - 1].valor = round2(itensRateio[itensRateio.length - 1].valor + diff);
+                }
+                payload.rateio = itensRateio;
             } else {
-                console.warn(`[ContasPagar CA] ⚠️ Conta "${conta.descricao}" sem categoria CA — enviando SEM rateio (comportamento não confirmado na spec).`);
+                if (!categoriaCaId && conta.categoria) {
+                    try {
+                        const cats = await listarCategoriasDespesa();
+                        const alvo = String(conta.categoria).trim().toLowerCase();
+                        categoriaCaId = cats.find((c) => c.nome.trim().toLowerCase() === alvo)?.id || null;
+                    } catch (_) { /* envia sem rateio */ }
+                }
+                if (categoriaCaId) {
+                    payload.rateio = [{ id_categoria: categoriaCaId, valor: valorTotal }];
+                } else {
+                    console.warn(`[ContasPagar CA] ⚠️ Conta "${conta.descricao}" sem categoria CA — enviando SEM rateio (comportamento não confirmado na spec).`);
+                }
             }
 
             const response = await contaAzulService._axiosRequest(

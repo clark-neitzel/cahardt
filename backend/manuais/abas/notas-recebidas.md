@@ -42,13 +42,17 @@ Caixa de entrada das **notas fiscais (NF-e) que os fornecedores emitem contra o 
 - Ver todas as notas capturadas com fornecedor, número, emissão, valor e status
 - Ver o **status da captura**: ligada/desligada, última consulta, resultado e quantas notas novas aguardam conferência
 - **Consultar agora**: dispara uma busca imediata na SEFAZ sem esperar a próxima hora
-- Abrir o **detalhe da nota**: itens (código do fornecedor, EAN, descrição, quantidade, valores) e duplicatas (vencimentos)
+- Abrir o **detalhe da nota**: itens (código do fornecedor, EAN, descrição, quantidade, valores), **informações adicionais de cada item** (infAdProd — lote, validade etc.), duplicatas (vencimentos) e as **observações da nota** (informações complementares / infCpl do XML)
 - **Baixar o XML** completo da nota
+- **Imprimir a DANFE** (visão em folha da nota: emitente, chave de acesso, destinatário, itens com NCM/CFOP, totais, duplicatas e observações) — impressa na própria página, funciona no iPad/PWA
 - **Ignorar** uma nota (e **reativar** depois, se mudar de ideia)
 - **Gerar a conta a pagar** a partir da nota:
   - As **parcelas vêm sugeridas pelas duplicatas** da nota (pode ajustar; a soma precisa bater com o total da nota)
-  - Escolher a **categoria de despesa** (do Conta Azul) e se a conta **vai para o Conta Azul**
+  - **Categoria de despesa por item** (do Conta Azul): pode escolher uma **categoria padrão** para a nota inteira e, se quiser, uma **categoria diferente item a item**. Itens sem categoria própria usam a padrão.
+  - Quando a nota tem **mais de uma categoria**, o sistema faz o **rateio automático** — divide o total da nota entre as categorias, **proporcional ao valor dos itens** de cada uma (o último grupo absorve os centavos para a soma bater exatamente com o total da nota). A conta a pagar fica com categoria "Vários" e guarda o rateio.
+  - Para **enviar ao Conta Azul**, toda categoria usada precisa ter o **código da categoria do Conta Azul** — se faltar em alguma, o sistema avisa quais itens/categorias corrigir antes de enviar. Sem enviar ao CA, a categoria pode ficar só no app.
   - **Vincular cada item da nota a um item do PCP** (matéria-prima/embalagem) com fator de conversão — o sistema **lembra o vínculo** nas próximas notas do mesmo fornecedor (de-para automático)
+  - O sistema também **lembra a categoria escolhida por produto do fornecedor**, mesmo que o item não seja vinculado a um item do PCP — na próxima nota do mesmo fornecedor a categoria já vem sugerida
   - Se o insumo ainda não existe no PCP, dá para **criar o item PCP na hora** (nome, tipo e unidade)
   - A nota vira **CONFERIDA** e fica ligada à conta criada
 - Observação: nesta fase o vínculo de itens ainda **não movimenta o estoque** (entrada automática de estoque é uma fase futura)
@@ -88,6 +92,7 @@ Caixa de entrada das **notas fiscais (NF-e) que os fornecedores emitem contra o 
 | Caminho | Papel |
 |---------|-------|
 | `backend/services/sefazDfeService.js` | Robô de captura na SEFAZ (Distribuição DF-e + manifestação 210210) |
-| `backend/routes/notasEntrada.js` | Rotas da API (listar, detalhar, XML, gerar conta, ignorar, consultar agora) |
+| `backend/routes/notasEntrada.js` | Rotas da API (listar, detalhar, XML, DANFE, gerar conta com categoria por item + rateio, ignorar, consultar agora) |
+| `backend/services/danfeHtmlService.js` | Monta o HTML da DANFE simplificada (função pura) a partir do XML da nota |
 | `backend/routes/configNotas.js` | Certificado digital + liga/desliga da captura |
 | `frontend/src/pages/Financeiro/NotasRecebidas*` | Telas do módulo |

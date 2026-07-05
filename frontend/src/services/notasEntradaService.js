@@ -36,6 +36,11 @@ const notasEntradaService = {
     baixarXml: async (id) => {
         const response = await api.get(`/notas-entrada/${id}/xml`, { responseType: 'blob' });
         return response.data;
+    },
+    // DANFE para impressão (HTML como texto, com o token de auth)
+    danfe: async (id) => {
+        const response = await api.get(`/notas-entrada/${id}/danfe`, { responseType: 'text' });
+        return response.data;
     }
 };
 

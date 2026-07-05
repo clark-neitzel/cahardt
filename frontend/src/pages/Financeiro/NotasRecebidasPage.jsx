@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import notasEntradaService from '../../services/notasEntradaService';
 import contasPagarService from '../../services/contasPagarService';
-import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown } from 'lucide-react';
+import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // ── Helpers ──
@@ -99,6 +99,61 @@ const baixarXmlNota = async (nota) => {
         toast.error(e.response?.data?.error || 'Não foi possível baixar o XML.');
     }
 };
+
+// ── Impressão na PRÓPRIA página (@media print) — NUNCA window.open nem iframe (PWA/iPad) ──
+function imprimirConteudo(estilos, corpoHtml) {
+    const ID_AREA = 'area-impressao';
+    const ID_ESTILO = 'estilo-impressao';
+    document.getElementById(ID_AREA)?.remove();
+    document.getElementById(ID_ESTILO)?.remove();
+
+    // @page precisa ficar no nível raiz (iOS não lida bem com @page dentro de @media)
+    const estilosSemPage = (estilos || '').replace(/@page\s*{[^}]*}/g, '');
+
+    const style = document.createElement('style');
+    style.id = ID_ESTILO;
+    style.textContent = `
+        @page { size: A4 portrait; margin: 10mm; }
+        #${ID_AREA} { display: none; }
+        @media print {
+            html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; }
+            body > *:not(#${ID_AREA}) { display: none !important; }
+            #root { display: none !important; }
+            #${ID_AREA} { display: block !important; }
+            #${ID_AREA} * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            ${estilosSemPage}
+        }
+    `;
+    document.head.appendChild(style);
+
+    const area = document.createElement('div');
+    area.id = ID_AREA;
+    area.innerHTML = corpoHtml;
+    document.body.appendChild(area);
+
+    const limpar = () => {
+        area.remove();
+        style.remove();
+        window.removeEventListener('afterprint', limpar);
+    };
+    window.addEventListener('afterprint', limpar);
+    setTimeout(limpar, 60000); // fallback se afterprint não disparar
+
+    void area.offsetHeight; // força o layout antes de imprimir
+    try { window.print(); } catch { limpar(); }
+}
+
+// Extrai estilos + corpo de um HTML completo e imprime na própria página (sem aba/iframe).
+function imprimirHtml(htmlCompleto) {
+    try {
+        const doc = new DOMParser().parseFromString(htmlCompleto, 'text/html');
+        const estilos = [...doc.querySelectorAll('style')].map(s => s.textContent).join('\n');
+        doc.querySelectorAll('script').forEach(s => s.remove()); // scripts não rodam via innerHTML
+        imprimirConteudo(estilos, doc.body.innerHTML);
+    } catch {
+        imprimirConteudo('', htmlCompleto);
+    }
+}
 
 // ═══════════════════════════════════════════════════════════
 // PÁGINA
@@ -412,6 +467,109 @@ const NotaExpandida = ({ nota, podeOperar, itensPcp, categorias, categoriasErro,
     );
 };
 
+// ── Bloco "Observações da nota" (infCpl) — só quando houver ──
+const ObservacoesNota = ({ observacoes }) => {
+    const txt = String(observacoes || '').trim();
+    if (!txt) return null;
+    return (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-1.5">Observações da nota</div>
+            <div className="text-sm text-gray-600 whitespace-pre-wrap break-words">{txt}</div>
+        </div>
+    );
+};
+
+// ── Botão "Imprimir DANFE" (busca o HTML autenticado e imprime na própria página) ──
+const BotaoImprimirDanfe = ({ id }) => {
+    const [carregando, setCarregando] = useState(false);
+    const imprimir = async () => {
+        setCarregando(true);
+        try {
+            const html = await notasEntradaService.danfe(id);
+            imprimirHtml(String(html || ''));
+        } catch (e) {
+            if (e.response?.status === 404) {
+                toast.error('XML da nota ainda não disponível.');
+            } else {
+                toast.error(e.response?.data?.error || 'Não foi possível gerar a DANFE para impressão.');
+            }
+        } finally {
+            setCarregando(false);
+        }
+    };
+    return (
+        <button
+            onClick={imprimir}
+            disabled={carregando}
+            className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+        >
+            {carregando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />} Imprimir DANFE
+        </button>
+    );
+};
+
+// Select de categoria de custo (lista do CA + texto livre como fallback se a API falhar)
+const SelectCategoria = ({ value, onChange, categorias, categoriasErro, placeholder = 'Selecionar…', className = '' }) => {
+    if (categoriasErro) {
+        return (
+            <input
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                placeholder="Ex.: Matéria-prima"
+                className={`w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none ${className}`}
+            />
+        );
+    }
+    const foraDaLista = value && !categorias.some(c => c.nome === value);
+    return (
+        <select
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            className={`w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none ${className}`}
+        >
+            <option value="">{placeholder}</option>
+            {categorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+            {foraDaLista && <option value={value}>{value}</option>}
+        </select>
+    );
+};
+
+// Rateio proporcional ao valor da nota, agrupado por categoria efetiva — espelha o backend.
+// itensCat: [{ vProd:Number, categoria:String|'' }]  → Map<categoria, valor>
+const calcularRateio = (itensCat, valorNota, categoriaPadrao) => {
+    const total = Number(valorNota || 0);
+    // categoria efetiva de cada item
+    const efetivos = itensCat.map(it => ({
+        vProd: Number(it.vProd || 0),
+        categoria: (it.categoria && it.categoria.trim()) || (categoriaPadrao || '').trim() || ''
+    }));
+    const semCategoria = efetivos.some(e => !e.categoria);
+    // agrupar por categoria (preserva ordem de aparição)
+    const ordem = [];
+    const grupos = new Map();
+    let somaTodos = 0;
+    for (const e of efetivos) {
+        somaTodos += e.vProd;
+        const key = e.categoria || '__SEM__';
+        if (!grupos.has(key)) { grupos.set(key, 0); ordem.push(key); }
+        grupos.set(key, grupos.get(key) + e.vProd);
+    }
+    const rateio = [];
+    let acumulado = 0;
+    ordem.forEach((key, i) => {
+        const somaGrupo = grupos.get(key);
+        let valor;
+        if (i === ordem.length - 1) {
+            valor = Math.round((total - acumulado) * 100) / 100; // último absorve o resto
+        } else {
+            valor = somaTodos > 0 ? Math.round((total * somaGrupo / somaTodos) * 100) / 100 : 0;
+            acumulado += valor;
+        }
+        rateio.push({ categoria: key === '__SEM__' ? '' : key, valor });
+    });
+    return { rateio, semCategoria, temItens: efetivos.length > 0 };
+};
+
 // ═══════════════════════════════════════════════════════════
 // CONFERÊNCIA (nota NOVA, com permissão)
 // ═══════════════════════════════════════════════════════════
@@ -423,6 +581,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         itemId: it.id,
         itemPcpId: it.vinculo?.itemPcpId || '',
         fator: it.vinculo?.fatorConversao != null ? String(it.vinculo.fatorConversao).replace('.', ',') : '',
+        categoria: it.vinculo?.categoria || '', // categoria de custo por item (lembrada quando houver)
         novo: null // { nome, tipo, unidade } quando "+ Criar produto novo…"
     })));
 
@@ -435,7 +594,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         return [{ dataVencimento: hojeYMD(), valor: fmt(nota.valorTotal), doXml: false }];
     });
 
-    const [categoria, setCategoria] = useState('');
+    const [categoriaPadrao, setCategoriaPadrao] = useState('');
     const [observacoes, setObservacoes] = useState('');
     const [enviarCA, setEnviarCA] = useState(true);
     const [gerando, setGerando] = useState(false);
@@ -452,6 +611,22 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     const somaParcelas = parcelas.reduce((s, p) => s + parseNum(p.valor), 0);
     const totalNota = Number(nota.valorTotal || 0);
     const somaDiverge = Math.abs(somaParcelas - totalNota) > 0.01;
+
+    // categoriaCaId a partir do nome da categoria (null se for texto livre fora da lista do CA)
+    const caIdDaCategoria = useCallback(
+        (nome) => (nome ? (categorias.find(c => c.nome === nome)?.id ?? null) : null),
+        [categorias]
+    );
+
+    // Rateio ao vivo, agrupado por categoria efetiva (item.categoria || padrão)
+    const { rateio, semCategoria } = useMemo(
+        () => calcularRateio(
+            itensNota.map((it, i) => ({ vProd: Number(it.valorTotal || 0), categoria: vinculos[i]?.categoria || '' })),
+            totalNota,
+            categoriaPadrao
+        ),
+        [itensNota, vinculos, totalNota, categoriaPadrao]
+    );
 
     const infoItem = (idx) => {
         const it = itensNota[idx];
@@ -488,12 +663,23 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 return;
             }
         }
+        // Se vai enviar ao CA, todo grupo do rateio precisa ter categoria da lista do CA (com id)
+        if (enviarCA) {
+            if (semCategoria) {
+                toast.error('Defina a categoria de custo dos itens (ou a categoria padrão) antes de enviar para a Conta Azul.');
+                return;
+            }
+            const semCa = rateio.find(g => caIdDaCategoria(g.categoria) == null);
+            if (semCa) {
+                toast.error(`A categoria "${semCa.categoria || 'sem categoria'}" não existe na Conta Azul. Escolha uma categoria da lista ou desmarque "Enviar para a Conta Azul".`);
+                return;
+            }
+        }
         setGerando(true);
         try {
-            const categoriaCaId = categorias.find(c => c.nome === categoria)?.id || null;
             await notasEntradaService.gerarConta(nota.id, {
-                categoria: categoria || undefined,
-                categoriaCaId,
+                categoriaPadrao: categoriaPadrao || undefined,
+                categoriaPadraoCaId: caIdDaCategoria(categoriaPadrao),
                 enviarCA,
                 observacoes: observacoes.trim() || undefined,
                 parcelas: parcelas.map(p => ({ valor: parseNum(p.valor), dataVencimento: p.dataVencimento })),
@@ -501,6 +687,8 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                     itemId: v.itemId,
                     itemPcpId: v.novo ? null : (v.itemPcpId || null),
                     fatorConversao: parseFator(v.fator) > 0 ? parseFator(v.fator) : null,
+                    categoria: v.categoria || null,
+                    categoriaCaId: caIdDaCategoria(v.categoria),
                     criarItemPcp: v.novo
                         ? { nome: v.novo.nome.trim(), tipo: v.novo.tipo, unidade: v.novo.unidade.trim() }
                         : null
@@ -537,6 +725,9 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
 
     return (
         <div className="p-4 md:p-5 space-y-4">
+            {/* Observações da nota (infCpl) */}
+            <ObservacoesNota observacoes={nota.observacoes} />
+
             {/* Itens da nota → nossos produtos */}
             <div>
                 <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Itens da nota → nossos produtos</div>
@@ -556,6 +747,9 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                             {it.codigoFornecedor ? `cód. do fornecedor ${it.codigoFornecedor} · ` : ''}
                                             {fmtQtd(it.quantidade)} {it.unidade || 'un'} × R$ {fmt(it.valorUnitario)} = R$ {fmt(it.valorTotal)}
                                         </div>
+                                        {String(it.infAdProd || '').trim() && (
+                                            <div className="text-xs text-gray-400 mt-0.5 whitespace-pre-wrap break-words">{String(it.infAdProd).trim()}</div>
+                                        )}
                                     </div>
                                     {lembrado ? (
                                         <span className="shrink-0 self-start px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 whitespace-nowrap">vínculo lembrado ✓</span>
@@ -655,6 +849,24 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Categoria de custo por item */}
+                                <div className="mt-3">
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-xs font-medium text-gray-500">Categoria de custo</label>
+                                        {String(it.vinculo?.categoria || '').trim() && (
+                                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">lembrado ✓</span>
+                                        )}
+                                    </div>
+                                    <SelectCategoria
+                                        value={v.categoria}
+                                        onChange={val => setVinculo(idx, { categoria: val })}
+                                        categorias={categorias}
+                                        categoriasErro={categoriasErro}
+                                        placeholder="Usar categoria padrão…"
+                                        className="mt-1 md:max-w-md"
+                                    />
+                                </div>
                             </div>
                         );
                     })}
@@ -723,24 +935,14 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
             {/* Classificação */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label className="text-sm font-medium text-gray-700">Categoria da despesa</label>
-                    {categoriasErro ? (
-                        <input
-                            value={categoria}
-                            onChange={e => setCategoria(e.target.value)}
-                            placeholder="Ex.: Matéria-prima"
-                            className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                        />
-                    ) : (
-                        <select
-                            value={categoria}
-                            onChange={e => setCategoria(e.target.value)}
-                            className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                        >
-                            <option value="">Selecionar…</option>
-                            {categorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
-                        </select>
-                    )}
+                    <label className="text-sm font-medium text-gray-700">Categoria padrão</label>
+                    <p className="text-xs text-gray-500 mb-1">Usada nos itens sem categoria própria.</p>
+                    <SelectCategoria
+                        value={categoriaPadrao}
+                        onChange={setCategoriaPadrao}
+                        categorias={categorias}
+                        categoriasErro={categoriasErro}
+                    />
                 </div>
                 <div>
                     <label className="text-sm font-medium text-gray-700">Observações</label>
@@ -751,6 +953,23 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                         className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                     />
                 </div>
+            </div>
+
+            {/* Resumo do rateio ao vivo */}
+            <div className="text-sm rounded-lg px-3 py-2 border bg-gray-50 border-gray-200 text-gray-600">
+                {semCategoria && rateio.some(g => !g.categoria) && !categoriaPadrao ? (
+                    <span className="text-amber-700">Defina ao menos a categoria padrão (ou a categoria de cada item) para ratear a despesa.</span>
+                ) : (
+                    <span>
+                        <span className="font-semibold text-gray-700">Rateio:</span>{' '}
+                        {rateio.map((g, i) => (
+                            <span key={i}>
+                                {i > 0 ? ' · ' : ''}
+                                {g.categoria || 'sem categoria'} R$ {fmt(g.valor)}
+                            </span>
+                        ))}
+                    </span>
+                )}
             </div>
 
             <label className="flex items-start gap-2 text-sm text-gray-700 bg-blue-50 border border-blue-200 rounded-lg p-3 cursor-pointer">
@@ -768,6 +987,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                     {gerando && <Loader2 className="h-4 w-4 animate-spin" />}
                     {gerando ? 'Gerando…' : `Gerar Conta a Pagar (${parcelas.length} parcela${parcelas.length !== 1 ? 's' : ''})`}
                 </button>
+                <BotaoImprimirDanfe id={nota.id} />
                 <button
                     onClick={() => baixarXmlNota(nota)}
                     className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm inline-flex items-center justify-center gap-1.5"
@@ -821,6 +1041,9 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
                 </div>
             )}
 
+            {/* Observações da nota (infCpl) */}
+            <ObservacoesNota observacoes={nota.observacoes} />
+
             {/* Itens */}
             <div>
                 <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Itens da nota</div>
@@ -835,6 +1058,9 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
                                 {it.codigoFornecedor ? `cód. do fornecedor ${it.codigoFornecedor} · ` : ''}
                                 {fmtQtd(it.quantidade)} {it.unidade || 'un'} × R$ {fmt(it.valorUnitario)} = R$ {fmt(it.valorTotal)}
                             </div>
+                            {String(it.infAdProd || '').trim() && (
+                                <div className="text-xs text-gray-400 mt-0.5 whitespace-pre-wrap break-words">{String(it.infAdProd).trim()}</div>
+                            )}
                             {it.vinculo?.itemPcpNome && (
                                 <div className="text-xs text-gray-600 mt-1">
                                     → vinculado a <span className="font-semibold">{it.vinculo.itemPcpNome}</span>
@@ -842,6 +1068,9 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
                                         ? ` (1 ${it.unidade || 'un'} = ${fmtQtd(it.vinculo.fatorConversao)} ${it.vinculo.itemPcpUnidade || 'un'})`
                                         : ''}
                                 </div>
+                            )}
+                            {String(it.vinculo?.categoria || '').trim() && (
+                                <div className="text-xs text-gray-500 mt-1">categoria: <span className="font-medium text-gray-700">{it.vinculo.categoria}</span></div>
                             )}
                         </div>
                     ))}
@@ -867,6 +1096,7 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
 
             {/* Ações */}
             <div className="flex flex-col md:flex-row gap-3 pt-1">
+                <BotaoImprimirDanfe id={nota.id} />
                 <button
                     onClick={() => baixarXmlNota(nota)}
                     className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm inline-flex items-center justify-center gap-1.5"

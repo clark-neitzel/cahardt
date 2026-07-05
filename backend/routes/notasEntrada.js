@@ -17,6 +17,27 @@ const path = require('path');
 const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const sefazDfeService = require('../services/sefazDfeService');
+const { montarDanfeHtml } = require('../services/danfeHtmlService');
+
+// Caminho absoluto do XML salvo da nota (uploads/notas-xml/{chave}.xml).
+const xmlAbsPath = (nota) => {
+    if (nota.xmlPath) {
+        return path.isAbsolute(nota.xmlPath) ? nota.xmlPath : path.join(__dirname, '..', nota.xmlPath);
+    }
+    return path.join(__dirname, '..', 'uploads', 'notas-xml', `${nota.chave}.xml`);
+};
+
+// Parse ao vivo do XML salvo (para notas já capturadas antes dos novos campos). null se não houver arquivo.
+const parseXmlSalvo = (nota) => {
+    try {
+        const abs = xmlAbsPath(nota);
+        if (!fs.existsSync(abs)) return null;
+        return sefazDfeService.parseProcNFe(fs.readFileSync(abs, 'utf8'));
+    } catch (e) {
+        console.warn('[NotasEntrada] Falha ao parsear XML salvo:', e.message);
+        return null;
+    }
+};
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -49,6 +70,52 @@ const checkEscrita = async (req, res, next) => {
 const num = (v) => (v == null ? null : Number(v));
 const round2 = (v) => Math.round(Number(v) * 100) / 100;
 const round4 = (v) => Math.round(Number(v) * 10000) / 10000;
+
+/**
+ * Rateio proporcional ao valor da nota (vNF), agrupando itens por categoria efetiva.
+ * PURA e testável. Chave do grupo = categoriaCaId || nome da categoria.
+ * O ÚLTIMO grupo absorve a diferença de arredondamento para a soma bater EXATO com vNF.
+ * Sem itens (soma vProd == 0) → rateio único com a categoria padrão e valor = vNF.
+ *
+ * @param {number} vNF                valor total da nota
+ * @param {Array}  itens              [{ vProd, categoria, categoriaCaId }]
+ * @param {object} padrao            { categoria, categoriaCaId } fallback
+ * @returns {Array} [{ categoria, categoriaCaId, valor }]
+ */
+const calcularRateio = (vNF, itens, padrao = {}) => {
+    const total = round2(vNF);
+    const somaVProd = round2((itens || []).reduce((s, i) => s + (Number(i.vProd) || 0), 0));
+
+    if (!itens || itens.length === 0 || somaVProd <= 0) {
+        return [{ categoria: padrao.categoria || null, categoriaCaId: padrao.categoriaCaId || null, valor: total }];
+    }
+
+    // Agrupa preservando a ordem de 1ª aparição
+    const grupos = [];
+    const idx = new Map();
+    for (const it of itens) {
+        const categoria = it.categoria || padrao.categoria || null;
+        const categoriaCaId = it.categoriaCaId || padrao.categoriaCaId || null;
+        const chave = categoriaCaId || categoria || '__sem__';
+        if (!idx.has(chave)) {
+            idx.set(chave, grupos.length);
+            grupos.push({ categoria, categoriaCaId, somaVProd: 0 });
+        }
+        grupos[idx.get(chave)].somaVProd += (Number(it.vProd) || 0);
+    }
+
+    let acumulado = 0;
+    return grupos.map((g, i) => {
+        let valor;
+        if (i === grupos.length - 1) {
+            valor = round2(total - acumulado); // último absorve a diferença
+        } else {
+            valor = round2(total * (g.somaVProd / somaVProd));
+            acumulado = round2(acumulado + valor);
+        }
+        return { categoria: g.categoria, categoriaCaId: g.categoriaCaId, valor };
+    });
+};
 
 const parseVencimento = (v) => {
     const s = String(v);
@@ -177,8 +244,16 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
         const porCodigo = new Map(vinculos.map((v) => [v.codigoFornecedor, v]));
         const porEan = new Map(vinculos.filter((v) => v.ean).map((v) => [v.ean, v]));
 
+        // Parse ao vivo do XML salvo — só quando faltar algum dado no banco (notas antigas).
+        const precisaXml = nota.infComplementar == null || nota.itens.some((i) => i.infAdProd == null);
+        const parsed = precisaXml ? parseXmlSalvo(nota) : null;
+        const parsedItens = new Map((parsed?.itens || []).map((i) => [String(i.codigoFornecedor), i]));
+
         const itens = nota.itens.map((item) => {
             const v = porCodigo.get(item.codigoFornecedor) || (item.ean ? porEan.get(item.ean) : null) || null;
+            // Memória existe se houver vínculo de produto OU categoria memorizada
+            const temMemoria = v && (v.itemPcpId != null || v.categoria != null || v.categoriaCaId != null);
+            const px = parsedItens.get(String(item.codigoFornecedor));
             return {
                 id: item.id,
                 numeroItem: item.numeroItem,
@@ -190,12 +265,17 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
                 quantidade: num(item.quantidade),
                 valorUnitario: num(item.valorUnitario),
                 valorTotal: num(item.valorTotal),
-                vinculo: v
+                categoria: item.categoria || null,
+                categoriaCaId: item.categoriaCaId || null,
+                infAdProd: item.infAdProd || px?.infAdProd || null,
+                vinculo: temMemoria
                     ? {
-                        itemPcpId: v.itemPcpId,
+                        itemPcpId: v.itemPcpId || null,
                         itemPcpNome: v.itemPcp?.nome || null,
                         itemPcpUnidade: v.itemPcp?.unidade || null,
                         fatorConversao: num(v.fatorConversao),
+                        categoria: v.categoria || null,
+                        categoriaCaId: v.categoriaCaId || null,
                         lembrado: true
                     }
                     : null
@@ -218,6 +298,7 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
             valorTotal: num(nota.valorTotal),
             status: nota.status,
             manifestada: nota.manifestada,
+            observacoes: nota.infComplementar || parsed?.infComplementar || null,
             temXml: !!nota.xmlPath,
             contaPagarId: nota.contaPagarId,
             criadoEm: nota.criadoEm,
@@ -255,6 +336,33 @@ router.get('/:id/xml', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── GET /:id/danfe — DANFE simplificada (HTML) montada a partir do XML salvo ──
+router.get('/:id/danfe', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const nota = await prisma.notaEntrada.findUnique({ where: { id: req.params.id } });
+        if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
+
+        const abs = xmlAbsPath(nota);
+        if (!fs.existsSync(abs)) {
+            return res.status(404).json({ error: 'O XML completo desta nota ainda não foi baixado da SEFAZ — não é possível gerar a DANFE.' });
+        }
+
+        let parsed;
+        try {
+            parsed = sefazDfeService.parseProcNFe(fs.readFileSync(abs, 'utf8'));
+        } catch (e) {
+            return res.status(422).json({ error: `Não foi possível ler o XML da nota: ${e.message}` });
+        }
+
+        const html = montarDanfeHtml(parsed);
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+    } catch (error) {
+        console.error('Erro ao gerar DANFE da nota:', error);
+        res.status(500).json({ error: 'Erro ao gerar a DANFE da nota.' });
+    }
+});
+
 // ── Gera o próximo código sequencial de item PCP por tipo (ex.: MP-001) ──
 const proximoCodigoItemPcp = async (tx, tipo) => {
     const prefixo = `${tipo}-`;
@@ -274,7 +382,7 @@ const proximoCodigoItemPcp = async (tx, tipo) => {
 // ── POST /:id/gerar-conta — cria a Conta a Pagar a partir da nota ──
 router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) => {
     try {
-        const { categoria, categoriaCaId, enviarCA, observacoes, parcelas, itens } = req.body;
+        const { categoriaPadrao, categoriaPadraoCaId, enviarCA, observacoes, parcelas, itens } = req.body;
 
         const nota = await prisma.notaEntrada.findUnique({
             where: { id: req.params.id },
@@ -336,10 +444,44 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
             }
         }
 
+        const catPadrao = categoriaPadrao?.trim() || null;
+        const catPadraoCaId = categoriaPadraoCaId || null;
+        const porItemId = new Map(itensBody.map((it) => [it.itemId, it]));
+
+        // ── Categoria efetiva de cada item (própria ou padrão) para o rateio ──
+        const itensParaRateio = nota.itens.map((itemNota) => {
+            const body = porItemId.get(itemNota.id);
+            return {
+                categoria: body?.categoria?.trim() || catPadrao,
+                categoriaCaId: body?.categoriaCaId || catPadraoCaId,
+                vProd: Number(itemNota.valorTotal) || 0
+            };
+        });
+
+        // vNF = total da nota (fallback para soma das parcelas quando a nota não tem valor)
+        const vNF = nota.valorTotal != null ? Number(nota.valorTotal) : somaParcelas;
+        const rateio = calcularRateio(vNF, itensParaRateio, { categoria: catPadrao, categoriaCaId: catPadraoCaId });
+
+        // ── Ao enviar ao CA, todo grupo precisa de categoriaCaId ──
+        if (enviarCA) {
+            const gruposSemCa = rateio.filter((g) => !g.categoriaCaId);
+            if (gruposSemCa.length > 0) {
+                const nomes = gruposSemCa.map((g) => g.categoria || '(sem categoria)').join(', ');
+                return res.status(400).json({
+                    error: `Para enviar à Conta Azul, defina a categoria (da lista da Conta Azul) dos itens: ${nomes}`
+                });
+            }
+        }
+
+        // ── Categoria/ID resultantes da conta (único grupo → aquele; senão "Vários") ──
+        const categoriaConta = rateio.length === 1 ? (rateio[0].categoria || null) : 'Vários';
+        const categoriaContaCaId = rateio.length === 1 ? (rateio[0].categoriaCaId || null) : null;
+
         let contaCriada;
         await prisma.$transaction(async (tx) => {
-            // 1) Cria itens PCP pedidos e resolve o de-para
+            // 1) Cria itens PCP pedidos, resolve o de-para e memoriza produto+categoria
             for (const it of itensBody) {
+                const itemNota = itensNota.get(it.itemId);
                 let itemPcpId = it.itemPcpId || null;
                 if (!itemPcpId && it.criarItemPcp) {
                     const codigo = await proximoCodigoItemPcp(tx, it.criarItemPcp.tipo);
@@ -354,10 +496,30 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                     });
                     itemPcpId = novo.id;
                 }
-                if (!itemPcpId || !nota.fornecedorCnpj) continue;
 
-                const itemNota = itensNota.get(it.itemId);
+                const catItem = it.categoria?.trim() || catPadrao;
+                const catItemCaId = it.categoriaCaId || catPadraoCaId;
+
+                // Persiste categoria efetiva no item da nota
+                await tx.notaEntradaItem.update({
+                    where: { id: itemNota.id },
+                    data: { categoria: catItem, categoriaCaId: catItemCaId }
+                });
+
+                // Memória por fornecedor+cProd: grava se houver produto OU categoria
+                const temCategoria = !!(catItem || catItemCaId);
+                if (!nota.fornecedorCnpj || (!itemPcpId && !temCategoria)) continue;
+
                 const fator = Number(it.fatorConversao) > 0 ? round4(it.fatorConversao) : 1;
+                // update parcial: preserva campos existentes (não apaga memória de produto ao salvar só categoria)
+                const updateData = {
+                    ean: itemNota.ean,
+                    descricaoFornecedor: itemNota.descricao,
+                    unidadeFornecedor: itemNota.unidade
+                };
+                if (itemPcpId) { updateData.itemPcpId = itemPcpId; updateData.fatorConversao = fator; }
+                if (temCategoria) { updateData.categoria = catItem; updateData.categoriaCaId = catItemCaId; }
+
                 await tx.fornecedorProdutoVinculo.upsert({
                     where: {
                         fornecedorCnpj_codigoFornecedor: {
@@ -365,32 +527,28 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                             codigoFornecedor: itemNota.codigoFornecedor
                         }
                     },
-                    update: {
-                        itemPcpId,
-                        fatorConversao: fator,
-                        ean: itemNota.ean,
-                        descricaoFornecedor: itemNota.descricao,
-                        unidadeFornecedor: itemNota.unidade
-                    },
+                    update: updateData,
                     create: {
                         fornecedorCnpj: nota.fornecedorCnpj,
                         codigoFornecedor: itemNota.codigoFornecedor,
                         ean: itemNota.ean,
                         descricaoFornecedor: itemNota.descricao,
                         unidadeFornecedor: itemNota.unidade,
-                        itemPcpId,
-                        fatorConversao: fator
+                        itemPcpId: itemPcpId || null,
+                        fatorConversao: itemPcpId ? fator : 1,
+                        categoria: temCategoria ? catItem : null,
+                        categoriaCaId: temCategoria ? catItemCaId : null
                     }
                 });
             }
 
-            // 2) Cria a conta a pagar + parcelas
+            // 2) Cria a conta a pagar + parcelas + rateio
             contaCriada = await tx.contaPagar.create({
                 data: {
                     fornecedorId: fornecedor?.id || null,
                     descricao: `NF-e ${nota.numero || 's/nº'} — ${fornecedor?.razaoSocial || nota.fornecedorNome}`,
-                    categoria: categoria?.trim() || null,
-                    categoriaCaId: categoriaCaId || null,
+                    categoria: categoriaConta,
+                    categoriaCaId: categoriaContaCaId,
                     numeroNota: nota.numero,
                     chaveNfe: nota.chave,
                     origem: 'NFE',
@@ -405,6 +563,13 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                             numeroParcela: i + 1,
                             valor: round2(p.valor),
                             dataVencimento: parseVencimento(p.dataVencimento)
+                        }))
+                    },
+                    rateios: {
+                        create: rateio.map((g) => ({
+                            categoria: g.categoria || null,
+                            categoriaCaId: g.categoriaCaId || null,
+                            valor: round2(g.valor)
                         }))
                     }
                 }
@@ -470,5 +635,8 @@ router.post('/:id/reativar', verificarAuth, checkEscrita, async (req, res) => {
         res.status(500).json({ error: 'Erro ao reativar a nota.' });
     }
 });
+
+// Exposto para testes offline (função pura, sem efeitos)
+router._calcularRateio = calcularRateio;
 
 module.exports = router;
