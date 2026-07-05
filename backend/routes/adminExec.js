@@ -1520,6 +1520,68 @@ router.post('/contas-pagar-reconciliar', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/compras-estoque-check
+// SOMENTE LEITURA. Para CADA nota CONFERIDA: quantos itens tinha, quantos estavam
+// vinculados a produto/insumo (de-para memorizado) e quantas entradas de estoque
+// (compras_itens ativas) foram registradas — mostra quem alimentou o estoque e quem não.
+router.get('/compras-estoque-check', async (req, res) => {
+    try {
+        const notas = await prisma.notaEntrada.findMany({
+            where: { status: 'CONFERIDA' },
+            orderBy: { atualizadoEm: 'desc' },
+            select: {
+                id: true, tipo: true, numero: true, fornecedorNome: true, fornecedorCnpj: true,
+                emissao: true, valorTotal: true, atualizadoEm: true,
+                itens: { select: { codigoFornecedor: true, descricao: true } }
+            }
+        });
+
+        // Compras ativas por nota
+        const compras = await prisma.compraItem.groupBy({
+            by: ['notaEntradaId'],
+            where: { estornado: false },
+            _count: { id: true }
+        });
+        const comprasPorNota = new Map(compras.map((c) => [c.notaEntradaId, c._count.id]));
+
+        // Vínculos memorizados (produto OU insumo) por fornecedor+código
+        const cnpjs = [...new Set(notas.map((n) => n.fornecedorCnpj).filter(Boolean))];
+        const vinculos = await prisma.fornecedorProdutoVinculo.findMany({
+            where: {
+                fornecedorCnpj: { in: cnpjs },
+                OR: [{ produtoId: { not: null } }, { itemPcpId: { not: null } }]
+            },
+            select: { fornecedorCnpj: true, codigoFornecedor: true }
+        });
+        const temVinculo = new Set(vinculos.map((v) => `${v.fornecedorCnpj}|${v.codigoFornecedor}`));
+
+        const linhas = notas.map((n) => {
+            const itens = n.itens.length;
+            const itensVinculados = n.tipo === 'NFSE' ? 0 : n.itens
+                .filter((i) => temVinculo.has(`${n.fornecedorCnpj}|${i.codigoFornecedor}`)).length;
+            const entradas = comprasPorNota.get(n.id) || 0;
+            let situacao;
+            if (n.tipo === 'NFSE') situacao = 'SERVICO_SEM_ESTOQUE';       // serviço nunca movimenta
+            else if (entradas > 0 && entradas >= itensVinculados) situacao = 'ALIMENTOU_ESTOQUE';
+            else if (entradas > 0) situacao = 'PARCIAL';
+            else if (itensVinculados > 0) situacao = 'SEM_ENTRADA_COM_VINCULO'; // conferida antes da Fase 6?
+            else situacao = 'SEM_ENTRADA_SEM_VINCULO';
+            return {
+                numero: n.numero, tipo: n.tipo, fornecedor: n.fornecedorNome,
+                emissao: n.emissao, valorTotal: n.valorTotal, conferidaEm: n.atualizadoEm,
+                itens, itensVinculados, entradasEstoque: entradas, situacao
+            };
+        });
+
+        const resumo = {};
+        for (const l of linhas) resumo[l.situacao] = (resumo[l.situacao] || 0) + 1;
+
+        res.json({ totalConferidas: linhas.length, resumo, notas: linhas });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/gerencial-diag
 // SOMENTE LEITURA. Roda o Fluxo de Caixa e a DRE (Fase 5) e devolve um resumo
 // compacto — validar os números reais em produção logo após o deploy.
