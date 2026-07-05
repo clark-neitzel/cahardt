@@ -163,6 +163,7 @@ const NotasRecebidasPage = () => {
     const podeOperar = hasPermission('Pode_Baixar_Contas_Pagar');
 
     const [statusCaptura, setStatusCaptura] = useState(null);
+    const [statusNfse, setStatusNfse] = useState(null);
     const [notas, setNotas] = useState([]);
     const [loading, setLoading] = useState(false);
     const [chip, setChip] = useState('NOVAS');
@@ -182,6 +183,7 @@ const NotasRecebidasPage = () => {
         try {
             const data = await notasEntradaService.listar();
             setStatusCaptura(data?.statusCaptura || null);
+            setStatusNfse(data?.statusCapturaNfse || null);
             setNotas(Array.isArray(data?.notas) ? data.notas : []);
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao carregar notas recebidas');
@@ -290,6 +292,18 @@ const NotasRecebidasPage = () => {
                         Última consulta à SEFAZ:{' '}
                         <span className="font-medium text-gray-700">
                             {statusCaptura?.ultimaConsulta ? fmtDataHora(statusCaptura.ultimaConsulta) : 'ainda não realizada'}
+                        </span>
+                    </div>
+                    <div className="text-gray-500">
+                        NFS-e (serviços):{' '}
+                        <span className="font-medium text-gray-700">
+                            {statusNfse == null
+                                ? '—'
+                                : !statusNfse.ativa
+                                    ? 'captura desligada'
+                                    : statusNfse.ultimaConsulta
+                                        ? `consultada ${fmtDataHora(statusNfse.ultimaConsulta)}`
+                                        : 'ainda não consultada'}
                         </span>
                     </div>
                     <div className="text-gray-500">
@@ -479,8 +493,8 @@ const ObservacoesNota = ({ observacoes }) => {
     );
 };
 
-// ── Botão "Imprimir DANFE" (busca o HTML autenticado e imprime na própria página) ──
-const BotaoImprimirDanfe = ({ id }) => {
+// ── Botão "Imprimir DANFE / DANFSE" (busca o HTML autenticado e imprime na própria página) ──
+const BotaoImprimirDanfe = ({ id, rotulo = 'Imprimir DANFE' }) => {
     const [carregando, setCarregando] = useState(false);
     const imprimir = async () => {
         setCarregando(true);
@@ -491,7 +505,7 @@ const BotaoImprimirDanfe = ({ id }) => {
             if (e.response?.status === 404) {
                 toast.error('XML da nota ainda não disponível.');
             } else {
-                toast.error(e.response?.data?.error || 'Não foi possível gerar a DANFE para impressão.');
+                toast.error(e.response?.data?.error || 'Não foi possível gerar a impressão da nota.');
             }
         } finally {
             setCarregando(false);
@@ -503,7 +517,7 @@ const BotaoImprimirDanfe = ({ id }) => {
             disabled={carregando}
             className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
         >
-            {carregando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />} Imprimir DANFE
+            {carregando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />} {rotulo}
         </button>
     );
 };
@@ -701,6 +715,9 @@ const calcularRateio = (itensCat, valorNota, categoriaPadrao) => {
 // ═══════════════════════════════════════════════════════════
 const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged }) => {
     const itensNota = useMemo(() => Array.isArray(nota.itens) ? nota.itens : [], [nota]);
+    // NFS-e (serviço tomado): não tem vínculo com produto nem entrada no estoque —
+    // a conferência vira só "categoria + parcelas + enviar ao CA".
+    const ehServico = String(nota.tipo || '').toUpperCase().includes('NFS');
 
     // Vínculo por item: pré-preenchido quando o backend lembrou
     // vinculoValue = "PROD:<id>" | "PCP:<id>" | '' (string unificada usada pelo combo)
@@ -893,9 +910,11 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
             {/* Observações da nota (infCpl) */}
             <ObservacoesNota observacoes={nota.observacoes} />
 
-            {/* Itens da nota → nossos produtos */}
+            {/* Itens da nota → nossos produtos (NFS-e: só o serviço + categoria) */}
             <div>
-                <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Itens da nota → nossos produtos</div>
+                <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">
+                    {ehServico ? 'Serviço da nota' : 'Itens da nota → nossos produtos'}
+                </div>
                 <div className="space-y-3">
                     {itensNota.length === 0 && (
                         <div className="text-sm text-gray-400 border border-gray-200 rounded-lg p-3">Nenhum item encontrado no XML desta nota.</div>
@@ -903,6 +922,32 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                     {itensNota.map((it, idx) => {
                         const { v, vinculado, unidadeNossa, fator, entrada, custo } = infoItem(idx);
                         const lembrado = !!it.vinculo?.lembrado;
+                        if (ehServico) {
+                            return (
+                                <div key={it.id} className="rounded-lg p-3 md:p-4 border border-gray-200">
+                                    <div className="text-sm font-medium text-gray-900 whitespace-pre-wrap break-words">
+                                        {it.descricao || `Serviço ${it.numeroItem || idx + 1}`}
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-0.5">Valor: R$ {fmt(it.valorTotal)}</div>
+                                    <div className="mt-3">
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-xs font-medium text-gray-500">Categoria de custo</label>
+                                            {String(it.vinculo?.categoria || '').trim() && (
+                                                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">lembrado ✓</span>
+                                            )}
+                                        </div>
+                                        <SelectCategoria
+                                            value={v.categoria}
+                                            onChange={val => setVinculo(idx, { categoria: val })}
+                                            categorias={categorias}
+                                            categoriasErro={categoriasErro}
+                                            placeholder="Usar categoria padrão…"
+                                            className="mt-1 md:max-w-md"
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        }
                         return (
                             <div key={it.id} className={`rounded-lg p-3 md:p-4 border ${vinculado ? 'border-gray-200' : 'border-amber-300 bg-amber-50/40'}`}>
                                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1">
@@ -1025,7 +1070,9 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                     })}
                 </div>
                 <div className="mt-2 text-xs text-gray-500">
-                    O vínculo e a conversão ficam <span className="font-semibold text-gray-700">salvos por fornecedor + código do produto na nota</span> (e código de barras, quando houver). Na próxima nota deste fornecedor, tudo já entra preenchido. O vínculo é opcional — dá para gerar a despesa sem vincular todos os itens.
+                    {ehServico
+                        ? <>A categoria fica <span className="font-semibold text-gray-700">memorizada por prestador</span> — na próxima nota de serviço deste fornecedor ela já vem preenchida.</>
+                        : <>O vínculo e a conversão ficam <span className="font-semibold text-gray-700">salvos por fornecedor + código do produto na nota</span> (e código de barras, quando houver). Na próxima nota deste fornecedor, tudo já entra preenchido. O vínculo é opcional — dá para gerar a despesa sem vincular todos os itens.</>}
                 </div>
             </div>
 
@@ -1218,7 +1265,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                     {gerando && <Loader2 className="h-4 w-4 animate-spin" />}
                     {gerando ? 'Gerando…' : `${pago ? 'Gerar Conta PAGA' : 'Gerar Conta a Pagar'} (${parcelas.length} parcela${parcelas.length !== 1 ? 's' : ''})`}
                 </button>
-                <BotaoImprimirDanfe id={nota.id} />
+                <BotaoImprimirDanfe id={nota.id} rotulo={ehServico ? 'Imprimir DANFSE' : 'Imprimir DANFE'} />
                 <button
                     onClick={() => baixarXmlNota(nota)}
                     className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm inline-flex items-center justify-center gap-1.5"
@@ -1245,6 +1292,7 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
     const [cancelando, setCancelando] = useState(false);
     const itensNota = Array.isArray(nota.itens) ? nota.itens : [];
     const duplicatas = Array.isArray(nota.duplicatas) ? nota.duplicatas : [];
+    const ehServico = String(nota.tipo || '').toUpperCase().includes('NFS');
 
     const reativar = async () => {
         setReativando(true);
@@ -1295,17 +1343,21 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
 
             {/* Itens */}
             <div>
-                <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Itens da nota</div>
+                <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">{ehServico ? 'Serviço da nota' : 'Itens da nota'}</div>
                 <div className="space-y-2">
                     {itensNota.length === 0 && (
                         <div className="text-sm text-gray-400 border border-gray-200 rounded-lg p-3">Nenhum item encontrado no XML desta nota.</div>
                     )}
                     {itensNota.map((it, idx) => (
                         <div key={it.id || idx} className="border border-gray-200 rounded-lg p-3">
-                            <div className="text-sm font-medium text-gray-900">{it.descricao || `Item ${it.numeroItem || idx + 1}`}</div>
+                            <div className="text-sm font-medium text-gray-900 whitespace-pre-wrap break-words">{it.descricao || `Item ${it.numeroItem || idx + 1}`}</div>
                             <div className="text-xs text-gray-500">
-                                {it.codigoFornecedor ? `cód. do fornecedor ${it.codigoFornecedor} · ` : ''}
-                                {fmtQtd(it.quantidade)} {it.unidade || 'un'} × R$ {fmt(it.valorUnitario)} = R$ {fmt(it.valorTotal)}
+                                {ehServico
+                                    ? <>Valor: R$ {fmt(it.valorTotal)}</>
+                                    : <>
+                                        {it.codigoFornecedor ? `cód. do fornecedor ${it.codigoFornecedor} · ` : ''}
+                                        {fmtQtd(it.quantidade)} {it.unidade || 'un'} × R$ {fmt(it.valorUnitario)} = R$ {fmt(it.valorTotal)}
+                                    </>}
                             </div>
                             {String(it.infAdProd || '').trim() && (
                                 <div className="text-xs text-gray-400 mt-0.5 whitespace-pre-wrap break-words">{String(it.infAdProd).trim()}</div>
@@ -1345,7 +1397,7 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
 
             {/* Ações */}
             <div className="flex flex-col md:flex-row gap-3 pt-1">
-                <BotaoImprimirDanfe id={nota.id} />
+                <BotaoImprimirDanfe id={nota.id} rotulo={ehServico ? 'Imprimir DANFSE' : 'Imprimir DANFE'} />
                 <button
                     onClick={() => baixarXmlNota(nota)}
                     className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm inline-flex items-center justify-center gap-1.5"

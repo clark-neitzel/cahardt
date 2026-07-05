@@ -107,40 +107,62 @@ router.post('/certificado', verificarAuth, checkConfig, (req, res) => {
     });
 });
 
-// ── GET /captura — status da captura automática de NF-e (SEFAZ) ──
+// ── GET /captura — status das capturas automáticas: NF-e (SEFAZ) e NFS-e (ADN) ──
 router.get('/captura', verificarAuth, checkConfig, async (req, res) => {
     try {
         const sefazDfeService = require('../services/sefazDfeService');
-        const status = await sefazDfeService.statusCaptura();
+        const nfseAdnService = require('../services/nfseAdnService');
+        const [status, statusNfse] = await Promise.all([
+            sefazDfeService.statusCaptura(),
+            nfseAdnService.statusCaptura()
+        ]);
         res.json({
             nfeAtiva: status.ativa,
             ultimaConsulta: status.ultimaConsulta,
             ultimoResultado: status.ultimoResultado,
             totalCapturadas: status.totalCapturadas,
-            bloqueadoAte: status.bloqueadoAte
+            bloqueadoAte: status.bloqueadoAte,
+            nfse: {
+                ativa: statusNfse.ativa,
+                ultimaConsulta: statusNfse.ultimaConsulta,
+                ultimoResultado: statusNfse.ultimoResultado,
+                totalCapturadas: statusNfse.totalCapturadas,
+                bloqueadoAte: statusNfse.bloqueadoAte
+            }
         });
     } catch (error) {
-        console.error('Erro ao consultar status da captura de NF-e:', error);
+        console.error('Erro ao consultar status da captura de notas:', error);
         res.status(500).json({ error: 'Erro ao consultar status da captura.' });
     }
 });
 
-// ── PUT /captura — liga/desliga a captura automática de NF-e ──
+// ── PUT /captura — liga/desliga as capturas automáticas (NF-e e/ou NFS-e) ──
 router.put('/captura', verificarAuth, checkConfig, async (req, res) => {
     try {
-        const { nfeAtiva } = req.body;
-        if (typeof nfeAtiva !== 'boolean') {
-            return res.status(400).json({ error: 'Informe nfeAtiva como true ou false.' });
+        const { nfeAtiva, nfseAtiva } = req.body;
+        if (typeof nfeAtiva !== 'boolean' && typeof nfseAtiva !== 'boolean') {
+            return res.status(400).json({ error: 'Informe nfeAtiva e/ou nfseAtiva como true ou false.' });
         }
-        await prisma.appConfig.upsert({
-            where: { key: 'captura_nfe_ativa' },
-            update: { value: nfeAtiva ? 'true' : 'false' },
-            create: { key: 'captura_nfe_ativa', value: nfeAtiva ? 'true' : 'false' }
-        });
-        res.json({ ok: true, nfeAtiva });
+        const ops = [];
+        if (typeof nfeAtiva === 'boolean') {
+            ops.push(prisma.appConfig.upsert({
+                where: { key: 'captura_nfe_ativa' },
+                update: { value: nfeAtiva ? 'true' : 'false' },
+                create: { key: 'captura_nfe_ativa', value: nfeAtiva ? 'true' : 'false' }
+            }));
+        }
+        if (typeof nfseAtiva === 'boolean') {
+            ops.push(prisma.appConfig.upsert({
+                where: { key: 'captura_nfse_ativa' },
+                update: { value: nfseAtiva ? 'true' : 'false' },
+                create: { key: 'captura_nfse_ativa', value: nfseAtiva ? 'true' : 'false' }
+            }));
+        }
+        await prisma.$transaction(ops);
+        res.json({ ok: true, nfeAtiva, nfseAtiva });
     } catch (error) {
-        console.error('Erro ao alterar captura de NF-e:', error);
-        res.status(500).json({ error: 'Erro ao alterar a captura de NF-e.' });
+        console.error('Erro ao alterar captura de notas:', error);
+        res.status(500).json({ error: 'Erro ao alterar a captura de notas.' });
     }
 });
 

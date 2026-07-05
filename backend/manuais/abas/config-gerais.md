@@ -54,14 +54,15 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 2. Digite a senha do certificado e confirme
 3. O sistema valida a senha na hora (senha errada = erro imediato), lê titular, CNPJ, emissor e validade, e mostra os dias restantes até vencer
 4. O arquivo e a senha ficam guardados **criptografados** no servidor; instalar um novo certificado substitui (desativa) o anterior
-5. Esse certificado é usado pela **captura automática de NF-e na SEFAZ** (aba Notas Recebidas)
+5. Esse certificado é usado pela **captura automática de notas** (NF-e na SEFAZ e NFS-e no ambiente nacional — aba Notas Recebidas)
 
-### Captura automática de NF-e (SEFAZ)
-1. Na mesma seção de Notas Fiscais há o interruptor **Captura automática de NF-e** (ligada por padrão)
-2. Com o certificado instalado e a captura ligada, o sistema consulta a SEFAZ **a cada 1 hora** e traz as notas emitidas contra o CNPJ da empresa para a aba **Notas Recebidas**
-3. A tela mostra a última consulta, o resultado e o total de notas já capturadas
-4. Se a SEFAZ bloquear por excesso de consultas (erro 656), o sistema pausa sozinho por 1h15 e informa até quando
-5. Desligar a captura não apaga nada — só para de consultar a SEFAZ
+### Captura automática de notas (NF-e e NFS-e)
+1. Na mesma seção de Notas Fiscais há **dois interruptores** (ambos ligados por padrão): **NF-e (mercadorias) — SEFAZ** e **NFS-e (serviços tomados) — Ambiente Nacional**
+2. Com o certificado instalado e a captura ligada, o sistema consulta **a cada 1 hora** e traz as notas emitidas contra o CNPJ da empresa para a aba **Notas Recebidas** (as duas capturas usam o mesmo certificado A1)
+3. A tela mostra, para cada captura, a última consulta, o resultado e o total de notas já capturadas
+4. Se a SEFAZ bloquear por excesso de consultas (erro 656) ou o ambiente nacional pedir pausa (HTTP 429), o sistema pausa sozinho por 1h15 e informa até quando
+5. Desligar uma captura não apaga nada — só para de consultar
+6. **NFS-e**: só chegam notas de municípios já integrados ao sistema nacional da NFS-e (nfse.gov.br)
 
 ---
 
@@ -70,7 +71,7 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 | Permissão | Efeito |
 |-----------|--------|
 | `admin` | Acesso total às configurações gerais |
-| `configuracoes.edit` | Também pode instalar/consultar o certificado digital e ligar/desligar a captura de NF-e |
+| `configuracoes.edit` | Também pode instalar/consultar o certificado digital e ligar/desligar as capturas de NF-e e NFS-e |
 
 ---
 
@@ -79,7 +80,7 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 - **Catálogo** — as categorias de vendas configuradas aqui filtram o catálogo
 - **Rota / Atendimentos** — os tipos de atendimento e ações disponíveis vêm daqui
 - **Leads** — as origens de lead usadas no cadastro vêm daqui
-- **Notas Recebidas** — o certificado digital e o interruptor de captura controlam a busca automática de NF-e na SEFAZ
+- **Notas Recebidas** — o certificado digital e os interruptores de captura controlam a busca automática de NF-e (SEFAZ) e NFS-e (ambiente nacional)
 
 ---
 
@@ -91,5 +92,5 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 | `frontend/src/pages/Admin/Configuracoes/RotasAtivasPreview.jsx` | Preview das rotas configuradas |
 | `frontend/src/services/configService.js` | Chamadas de API de configurações |
 | `backend/src/routes/configuracoes.js` | Rotas do backend |
-| `backend/routes/configNotas.js` | Certificado digital (instalar/consultar) + liga/desliga da captura de NF-e |
+| `backend/routes/configNotas.js` | Certificado digital (instalar/consultar) + liga/desliga das capturas de NF-e e NFS-e |
 | `backend/services/certificadoService.js` | Validação do .pfx e criptografia AES-256-GCM |

@@ -124,6 +124,20 @@ function startSchedulers() {
     setTimeout(_runDfe, 240000);
     setInterval(_runDfe, 3600000); // 60 minutos
 
+    // === 4.4. CAPTURA DE NFS-e (Ambiente de Dados Nacional — serviços tomados) ===
+    // A cada 1 hora consulta as NFS-e onde somos tomador no ambiente nacional
+    // (mesmo certificado A1). Isolado igual à NF-e: sem certificado ou com a
+    // captura desligada (AppConfig captura_nfse_ativa), o ciclo pula em silêncio.
+    console.log('⏰ Iniciando Captura de NFS-e (ADN nacional)...');
+    const nfseAdnService = require('../services/nfseAdnService');
+    const _runNfse = () => {
+        nfseAdnService.executarCiclo()
+            .catch(err => console.error('⚠️ Worker NFS-e ADN Error:', err.message));
+    };
+    // 7min após o start (defasado da NF-e para não competir)
+    setTimeout(_runNfse, 420000);
+    setInterval(_runNfse, 3600000); // 60 minutos
+
     // === 5. CRON JOB INTELLIGENCE COMERCIAL ===
     // Recalcula todos os clientes 1 vez por dia, na madrugada (aprox 03:00)
     console.log('⏰ Agendando Motor Analítico (Inteligência Comercial)...');

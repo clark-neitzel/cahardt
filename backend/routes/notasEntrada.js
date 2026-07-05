@@ -17,6 +17,7 @@ const path = require('path');
 const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const sefazDfeService = require('../services/sefazDfeService');
+const nfseAdnService = require('../services/nfseAdnService');
 const { montarDanfeHtml } = require('../services/danfeHtmlService');
 const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
 
@@ -29,8 +30,10 @@ const xmlAbsPath = (nota) => {
 };
 
 // Parse ao vivo do XML salvo (para notas já capturadas antes dos novos campos). null se não houver arquivo.
+// Só para NF-e — a NFS-e já nasce com tudo preenchido na captura.
 const parseXmlSalvo = (nota) => {
     try {
+        if (nota.tipo !== 'NFE') return null;
         const abs = xmlAbsPath(nota);
         if (!fs.existsSync(abs)) return null;
         return sefazDfeService.parseProcNFe(fs.readFileSync(abs, 'utf8'));
@@ -153,7 +156,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             ];
         }
 
-        const [notas, novas, aguardandoXml, captura] = await Promise.all([
+        const [notas, novas, aguardandoXml, captura, capturaNfse] = await Promise.all([
             prisma.notaEntrada.findMany({
                 where,
                 orderBy: [{ emissao: { sort: 'desc', nulls: 'last' } }, { criadoEm: 'desc' }],
@@ -161,7 +164,8 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             }),
             prisma.notaEntrada.count({ where: { status: 'NOVA' } }),
             prisma.notaEntrada.count({ where: { status: 'AGUARDANDO_XML' } }),
-            sefazDfeService.statusCaptura()
+            sefazDfeService.statusCaptura(),
+            nfseAdnService.statusCaptura()
         ]);
 
         res.json({
@@ -172,6 +176,12 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                 bloqueadoAte: captura.bloqueadoAte,
                 novas,
                 aguardandoXml
+            },
+            statusCapturaNfse: {
+                ativa: capturaNfse.ativa,
+                ultimaConsulta: capturaNfse.ultimaConsulta,
+                ultimoResultado: capturaNfse.ultimoResultado,
+                bloqueadoAte: capturaNfse.bloqueadoAte
             },
             notas: notas.map(formatarNotaLista)
         });
@@ -221,15 +231,26 @@ router.get('/itens-pcp', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
-// ── POST /consultar-agora — dispara um ciclo de captura em background ──
+// ── POST /consultar-agora — dispara os ciclos de captura (NF-e e NFS-e) em background ──
 // (antes de /:id para a rota não ser engolida pelo parâmetro)
 router.post('/consultar-agora', verificarAuth, checkEscrita, async (req, res) => {
     try {
-        const pre = await sefazDfeService.podeConsultar();
-        if (!pre.ok) return res.json({ ok: false, iniciado: false, motivo: pre.motivo });
+        const [preNfe, preNfse] = await Promise.all([
+            sefazDfeService.podeConsultar(),
+            nfseAdnService.podeConsultar()
+        ]);
+        if (!preNfe.ok && !preNfse.ok) {
+            return res.json({ ok: false, iniciado: false, motivo: preNfe.motivo || preNfse.motivo });
+        }
 
-        sefazDfeService.executarCiclo()
-            .catch((e) => console.error('[NotasEntrada] Erro no ciclo manual:', e.message));
+        if (preNfe.ok) {
+            sefazDfeService.executarCiclo()
+                .catch((e) => console.error('[NotasEntrada] Erro no ciclo manual NF-e:', e.message));
+        }
+        if (preNfse.ok) {
+            nfseAdnService.executarCiclo()
+                .catch((e) => console.error('[NotasEntrada] Erro no ciclo manual NFS-e:', e.message));
+        }
 
         res.json({ ok: true, iniciado: true });
     } catch (error) {
@@ -367,7 +388,7 @@ router.get('/:id/xml', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
-// ── GET /:id/danfe — DANFE simplificada (HTML) montada a partir do XML salvo ──
+// ── GET /:id/danfe — DANFE (NF-e) ou espelho da NFS-e em HTML, do XML salvo ──
 router.get('/:id/danfe', verificarAuth, checkAcesso, async (req, res) => {
     try {
         const nota = await prisma.notaEntrada.findUnique({ where: { id: req.params.id } });
@@ -375,13 +396,15 @@ router.get('/:id/danfe', verificarAuth, checkAcesso, async (req, res) => {
 
         const abs = xmlAbsPath(nota);
         if (!fs.existsSync(abs)) {
-            return res.status(404).json({ error: 'O XML completo desta nota ainda não foi baixado da SEFAZ — não é possível gerar a DANFE.' });
+            return res.status(404).json({ error: 'O XML completo desta nota ainda não foi baixado — não é possível gerar a impressão.' });
         }
 
         let html;
         try {
             const xmlString = fs.readFileSync(abs, 'utf8');
-            html = montarDanfeHtml(xmlString); // recebe a STRING crua do XML e parseia tudo internamente
+            html = nota.tipo === 'NFSE'
+                ? nfseAdnService.montarEspelhoNfseHtml(xmlString)
+                : montarDanfeHtml(xmlString); // recebe a STRING crua do XML e parseia tudo internamente
         } catch (e) {
             return res.status(422).json({ error: `Não foi possível ler o XML da nota: ${e.message}` });
         }
@@ -458,7 +481,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                     data: {
                         cnpjCpf: nota.fornecedorCnpj,
                         razaoSocial: nota.fornecedorNome || `Fornecedor ${nota.fornecedorCnpj}`,
-                        origem: 'NFE',
+                        origem: nota.tipo === 'NFSE' ? 'NFSE' : 'NFE',
                         statusEnvioCA: 'NAO_ENVIAR'
                     }
                 });
@@ -617,12 +640,12 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
             contaCriada = await tx.contaPagar.create({
                 data: {
                     fornecedorId: fornecedor?.id || null,
-                    descricao: `NF-e ${nota.numero || 's/nº'} — ${fornecedor?.razaoSocial || nota.fornecedorNome}`,
+                    descricao: `${nota.tipo === 'NFSE' ? 'NFS-e' : 'NF-e'} ${nota.numero || 's/nº'} — ${fornecedor?.razaoSocial || nota.fornecedorNome}`,
                     categoria: categoriaConta,
                     categoriaCaId: categoriaContaCaId,
                     numeroNota: nota.numero,
                     chaveNfe: nota.chave,
-                    origem: 'NFE',
+                    origem: nota.tipo === 'NFSE' ? 'NFSE' : 'NFE',
                     competencia: nota.emissao,
                     observacoes: observacoes?.trim() || null,
                     valorTotal: somaParcelas,

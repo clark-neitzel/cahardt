@@ -73,6 +73,21 @@ const NotasCertificadoConfig = () => {
         }
     };
 
+    const toggleNfse = async () => {
+        if (alterandoCaptura) return;
+        const ligar = !captura?.nfse?.ativa;
+        setAlterandoCaptura(true);
+        try {
+            await configNotasService.setCaptura({ nfseAtiva: ligar });
+            toast.success(ligar ? 'Captura de NFS-e ligada!' : 'Captura de NFS-e pausada.');
+            await carregarCaptura();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao alterar a captura de NFS-e');
+        } finally {
+            setAlterandoCaptura(false);
+        }
+    };
+
     const instalar = async () => {
         setErroInstalacao('');
         if (!arquivo) { toast.error('Escolha o arquivo .pfx ou .p12 do certificado.'); return; }
@@ -223,11 +238,40 @@ const NotasCertificadoConfig = () => {
                         </button>
                     </div>
                     <div className="flex items-center justify-between gap-3 min-h-[44px] border-t border-gray-100 pt-4">
-                        <div>
+                        <div className="min-w-0">
                             <div className="text-sm font-medium text-gray-900">NFS-e (serviços tomados) — Ambiente Nacional</div>
-                            <div className="text-xs text-gray-500">Consulta automática das notas de serviço tomadas pela empresa</div>
+                            <div className="text-xs text-gray-500">
+                                {capturaErro
+                                    ? 'Não foi possível consultar o status da captura agora.'
+                                    : captura == null
+                                        ? 'Carregando…'
+                                        : [
+                                            captura.nfse?.ultimaConsulta ? `última consulta: ${fmtDataHora(captura.nfse.ultimaConsulta)}` : 'nenhuma consulta realizada ainda',
+                                            captura.nfse?.ultimoResultado || null,
+                                            captura.nfse?.totalCapturadas != null ? `${captura.nfse.totalCapturadas} nota(s) capturada(s)` : null
+                                        ].filter(Boolean).join(' · ')}
+                            </div>
+                            {captura?.nfse?.bloqueadoAte && new Date(captura.nfse.bloqueadoAte).getTime() > Date.now() && (
+                                <div className="text-xs text-amber-700 mt-0.5">
+                                    Ambiente nacional pediu pausa — retoma às {new Date(captura.nfse.bloqueadoAte).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                            )}
+                            <div className="text-xs text-gray-400 mt-0.5">
+                                Só chegam notas de municípios já integrados ao sistema nacional da NFS-e (nfse.gov.br).
+                            </div>
                         </div>
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 shrink-0 whitespace-nowrap">disponível em breve</span>
+                        <button
+                            onClick={toggleNfse}
+                            disabled={alterandoCaptura || capturaErro || captura == null}
+                            role="switch"
+                            aria-checked={!!captura?.nfse?.ativa}
+                            aria-label="Ligar ou desligar a captura automática de NFS-e"
+                            className="shrink-0 p-2.5 -m-2.5 disabled:opacity-50"
+                        >
+                            <span className={`block w-11 h-6 rounded-full relative transition-colors ${captura?.nfse?.ativa ? 'bg-green-500' : 'bg-gray-300'}`}>
+                                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${captura?.nfse?.ativa ? 'left-[22px]' : 'left-0.5'}`}></span>
+                            </span>
+                        </button>
                     </div>
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
                         A SEFAZ só disponibiliza notas dos últimos 90 dias — com a captura ligada, nada se perde. Se a captura falhar, o restante do sistema <span className="font-semibold">não é afetado</span>: o robô roda separado e tenta de novo sozinho.
