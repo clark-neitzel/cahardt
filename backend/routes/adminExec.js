@@ -1372,4 +1372,53 @@ router.post('/contas-pagar-reenviar', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/contas-pagar-reconciliar
+// Conserta contas que ficaram em ERRO mas cujo erro menciona "protocolo" (indício de que o CA
+// aceitou/criou o evento apesar do erro). Para cada uma, tenta localizar o evento no CA pelo
+// codigo_referencia (id da conta). Se achar → adota (idEventoCA + mapeia parcelas + ENVIADO),
+// SEM duplicar. Se não achar com segurança, deixa como está e reporta.
+// Recupera casos como a despesa da "BERNADETE" (existe no CA, ERRO no app).
+router.post('/contas-pagar-reconciliar', async (req, res) => {
+    try {
+        const caSync = require('../services/contasPagarCaSyncService');
+        const caConfig = await prisma.contaAzulConfig.findFirst().catch(() => null);
+        if (!caConfig) return res.status(400).json({ ok: false, error: 'Conta Azul não conectada (sem token).' });
+
+        const candidatas = await prisma.contaPagar.findMany({
+            where: {
+                statusEnvioCA: 'ERRO',
+                erroEnvioCA: { contains: 'protocolo', mode: 'insensitive' }
+            },
+            include: { fornecedor: true, parcelas: true },
+            orderBy: { criadoEm: 'asc' },
+            take: 100
+        });
+
+        let reconciliadas = 0;
+        const detalhes = [];
+        for (const conta of candidatas) {
+            try {
+                const eventoId = await caSync._encontrarEventoPorReferencia(conta.id, conta);
+                if (eventoId) {
+                    await prisma.contaPagar.update({
+                        where: { id: conta.id },
+                        data: { idEventoCA: eventoId, erroEnvioCA: null }
+                    });
+                    await caSync._mapearParcelasCA(conta.id, eventoId); // fecha em ENVIADO ao casar as parcelas
+                    reconciliadas++;
+                    detalhes.push({ id: conta.id, descricao: conta.descricao, resultado: 'RECONCILIADA', eventoId });
+                } else {
+                    detalhes.push({ id: conta.id, descricao: conta.descricao, resultado: 'NAO_ENCONTRADA' });
+                }
+            } catch (err) {
+                detalhes.push({ id: conta.id, descricao: conta.descricao, resultado: 'ERRO_BUSCA', erro: err.message });
+            }
+        }
+
+        res.json({ ok: true, verificadas: candidatas.length, reconciliadas, detalhes });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;

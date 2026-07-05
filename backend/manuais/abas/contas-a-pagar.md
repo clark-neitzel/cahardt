@@ -37,6 +37,7 @@ Gestão das despesas da empresa (contas a pagar): lançamento manual de contas c
 2. O fornecedor precisa existir no Conta Azul: se ele foi criado no app, o robô cria o fornecedor no CA primeiro e a despesa espera na fila até isso concluir.
 3. O Conta Azul processa a despesa de forma **assíncrona** (protocolo): o app acompanha até receber o número do lançamento e vincular cada parcela.
 4. A cada 30 minutos o app **confere as baixas no Conta Azul**: parcela paga lá (ex.: DDA, conciliação bancária) vira parcela paga aqui automaticamente, com a marca "baixado via CA".
+5. **Reenviar não duplica:** antes de lançar, o robô verifica no Conta Azul se aquela mesma conta já foi criada (por uma referência única gravada no lançamento). Se já existir, ele **adota o lançamento que já está lá** em vez de criar outro — então reenviar uma conta que deu erro não corre o risco de gerar despesa duplicada no CA.
 
 ### Status de envio ao CA
 

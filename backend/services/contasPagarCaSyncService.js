@@ -378,6 +378,95 @@ async function processarFilaDespesas() {
     }
 }
 
+/**
+ * IDEMPOTÊNCIA — localizar no CA um evento de despesa já criado com um dado `codigo_referencia`
+ * (que gravamos como o id da nossa ContaPagar). Usado ANTES de POSTar para não duplicar no reenvio.
+ *
+ * ⚠️ Confirmado na spec (backend/docs/ca-api-v2-referencia.md):
+ *   - O endpoint de BUSCA (.../contas-a-pagar/buscar) NÃO aceita filtro por `codigo_referencia`
+ *     e NÃO retorna esse campo nos itens (só id da PARCELA, descrição, vencimento, total,
+ *     nao_pago, pago, fornecedor{id,nome}, categorias, competência).
+ *   - Quem expõe o `codigo_referencia` é o DETALHE da parcela
+ *     (GET /v1/financeiro/eventos-financeiros/parcelas/{id}) dentro de `evento.codigo_referencia`,
+ *     que também traz `evento.id` (o evento_financeiro_id que precisamos adotar).
+ *
+ * Estratégia (conservadora — só adota com ALTA confiança):
+ *   1. Buscar parcelas por janela de vencimento (obrigatória na busca) em torno dos vencimentos
+ *      da nossa conta, restringindo pelo fornecedor (contato) via `fornecedor.id`.
+ *   2. Para cada parcela candidata, ler o detalhe e comparar `evento.codigo_referencia` === codigoReferencia.
+ *      Match EXATO por codigo_referencia → retorna `evento.id`.
+ *   3. Se em NENHUMA candidata o codigo_referencia bater, retorna null (melhor não adotar do que
+ *      adotar o evento errado — não usamos heurística de valor/descrição como "match", só como
+ *      pré-filtro de candidatos).
+ *
+ * Retorna o evento_financeiro_id (uuid) quando acha; senão null.
+ * Lança em falha de rede/parse — o chamador decide (aqui: pular a conta neste ciclo, não duplicar).
+ */
+async function _encontrarEventoPorReferencia(codigoReferencia, conta) {
+    if (!codigoReferencia) return null;
+    const fornecedorCaId = conta?.fornecedor?.contaAzulId || null;
+
+    // Janela de vencimento cobrindo todas as parcelas (+/- 3 dias de folga), com teto de 1 ano.
+    const parcelas = (conta?.parcelas || []).filter((p) => p.status !== 'CANCELADO');
+    const vencs = parcelas.map((p) => new Date(p.dataVencimento).getTime()).filter((t) => !isNaN(t));
+    let minV, maxV;
+    if (vencs.length > 0) {
+        minV = new Date(Math.min(...vencs));
+        maxV = new Date(Math.max(...vencs));
+    } else {
+        const base = new Date(conta?.competencia || Date.now());
+        minV = base; maxV = base;
+    }
+    const FOLGA = 3 * 24 * 60 * 60 * 1000;
+    const de = fmtDataCA(new Date(minV.getTime() - FOLGA));
+    const ate = fmtDataCA(new Date(maxV.getTime() + FOLGA));
+
+    // 1) Buscar candidatos (parcelas) na janela + fornecedor
+    const candidatosIds = new Set();
+    let pagina = 1;
+    while (pagina <= 10) { // teto de páginas
+        const url = `${BASE}/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar`
+            + `?pagina=${pagina}&tamanho_pagina=100`
+            + `&data_vencimento_de=${de}&data_vencimento_ate=${ate}`;
+        const resp = await contaAzulService._axiosGet(url, 'CONTA_PAGAR_BUSCA_REF');
+        const itens = resp.data?.itens || resp.data?.items || [];
+        for (const it of itens) {
+            if (!it?.id) continue;
+            // Se a busca trouxe fornecedor, filtra por ele quando conhecemos o UUID do fornecedor
+            if (fornecedorCaId && it.fornecedor?.id && it.fornecedor.id !== fornecedorCaId) continue;
+            candidatosIds.add(it.id);
+        }
+        const totais = Number(resp.data?.itens_totais || 0);
+        if (itens.length < 100) break;
+        if (totais && pagina * 100 >= totais) break;
+        pagina++;
+        await sleep(300);
+    }
+    if (candidatosIds.size === 0) return null;
+
+    // 2) Para cada parcela candidata, ler o detalhe e casar por codigo_referencia EXATO
+    const alvo = String(codigoReferencia);
+    for (const parcelaId of candidatosIds) {
+        try {
+            const det = await contaAzulService._axiosGet(
+                `${BASE}/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}`, 'CONTA_PAGAR_PARCELA_DET'
+            );
+            const evento = det.data?.evento || {};
+            const refCA = evento.codigo_referencia != null ? String(evento.codigo_referencia) : null;
+            if (refCA && refCA === alvo && evento.id) {
+                return String(evento.id); // match de alta confiança — mesmo codigo_referencia
+            }
+        } catch (error) {
+            // Um detalhe que falha não deve derrubar a busca: registra e segue para o próximo candidato.
+            console.warn(`[ContasPagar CA] Falha ao ler detalhe da parcela candidata ${parcelaId}:`, erroCAtexto(error));
+        }
+        await sleep(250);
+    }
+
+    // Nenhum candidato bateu o codigo_referencia → não adotamos às cegas.
+    return null;
+}
+
 async function _enviarDespesasPendentes() {
     const pendentes = await prisma.contaPagar.findMany({
         where: { statusEnvioCA: 'ENVIAR', status: { not: 'CANCELADO' } },
@@ -421,6 +510,33 @@ async function _enviarDespesasPendentes() {
             }
 
             await prisma.contaPagar.update({ where: { id: conta.id }, data: { statusEnvioCA: 'ENVIANDO' } });
+
+            // ── IDEMPOTÊNCIA: antes de POSTar, verifica se já existe no CA um evento com este
+            // codigo_referencia (id da nossa conta). Se existir → ADOTA sem criar outro (evita duplicar).
+            try {
+                const eventoExistente = await _encontrarEventoPorReferencia(conta.id, conta);
+                if (eventoExistente) {
+                    await prisma.contaPagar.update({
+                        where: { id: conta.id },
+                        data: { idEventoCA: eventoExistente, statusEnvioCA: 'AGUARDANDO_PROTOCOLO', erroEnvioCA: null }
+                    });
+                    // Mapeia as parcelas do evento já existente (fecha em ENVIADO se casar tudo).
+                    await _mapearParcelasCA(conta.id, eventoExistente);
+                    console.log('[ContasPagar CA] ♻️ Evento já existia no CA (codigo_referencia) — adotado, sem duplicar.');
+                    await sleep(1200);
+                    continue; // próxima conta — NÃO faz o POST
+                }
+            } catch (buscaErr) {
+                // A busca de idempotência FALHOU (rede/parse). Não sabemos se o evento existe:
+                // por segurança NÃO duplicamos às cegas. Reverte para ENVIAR e tenta de novo no
+                // próximo ciclo. Preferimos "tentar depois" a "criar despesa duplicada".
+                console.warn(`[ContasPagar CA] ⚠️ Busca de idempotência falhou para "${conta.descricao}" — pulando neste ciclo (mantém ENVIAR, sem POST para não duplicar):`, erroCAtexto(buscaErr));
+                try {
+                    await prisma.contaPagar.update({ where: { id: conta.id }, data: { statusEnvioCA: 'ENVIAR' } });
+                } catch (_) { /* isolado */ }
+                await sleep(1200);
+                continue;
+            }
 
             const contaFinanceiraId = await resolverContaFinanceiraPadrao();
             const valorTotal = Math.round(parcelasAbertas.reduce((s, p) => s + Number(p.valor), 0) * 100) / 100;
@@ -546,6 +662,27 @@ async function _consultarProtocolosPendentes() {
                 const status = String(resp.data?.status || '').toUpperCase();
 
                 if (status === 'ERROR') {
+                    // Se o erro indicar que o evento já existe/duplicado (o CA pode ter criado o
+                    // evento e ainda assim devolver erro), NÃO reenviamos: tentamos adotar o evento
+                    // já existente pelo codigo_referencia antes de marcar ERRO.
+                    const respTxt = JSON.stringify(resp.data || {}).toLowerCase();
+                    if (/duplicad|já existe|ja existe|already exist|codigo_referencia|código de referência/.test(respTxt)) {
+                        try {
+                            const contaCompleta = await prisma.contaPagar.findUnique({
+                                where: { id: conta.id },
+                                include: { fornecedor: true, parcelas: true }
+                            });
+                            const adotado = await _encontrarEventoPorReferencia(conta.id, contaCompleta || conta);
+                            if (adotado) {
+                                await prisma.contaPagar.update({ where: { id: conta.id }, data: { idEventoCA: adotado, erroEnvioCA: null } });
+                                await _mapearParcelasCA(conta.id, adotado);
+                                console.log('[ContasPagar CA] ♻️ Protocolo com erro de duplicidade — evento existente adotado pelo codigo_referencia, sem reenviar.');
+                                continue;
+                            }
+                        } catch (adotaErr) {
+                            console.warn(`[ContasPagar CA] Erro de duplicidade no protocolo mas falha ao adotar evento existente (${conta.id}):`, erroCAtexto(adotaErr));
+                        }
+                    }
                     await prisma.contaPagar.update({
                         where: { id: conta.id },
                         data: { statusEnvioCA: 'ERRO', erroEnvioCA: `Protocolo com erro no CA: ${JSON.stringify(resp.data).substring(0, 2000)}` }
@@ -711,5 +848,8 @@ module.exports = {
     resolverContaFinanceiraPadrao,
     recalcularParcelaEConta,
     calcularStatusParcelaPagar,
-    calcularStatusContaPagar
+    calcularStatusContaPagar,
+    // Idempotência / reconciliação (usados pela rota admin-exec)
+    _encontrarEventoPorReferencia,
+    _mapearParcelasCA
 };
