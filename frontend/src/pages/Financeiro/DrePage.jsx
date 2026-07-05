@@ -62,7 +62,7 @@ const DrePage = () => {
     // célula numérica da matriz
     const Cel = ({ v, className = '', prefixoSinal = false }) => (
         <td className={`px-4 py-2.5 text-right whitespace-nowrap ${className}`}>
-            {v === 0 ? <span className="text-gray-300">—</span> : `${prefixoSinal && v > 0 ? '+' : ''}${fmt0(v)}`}
+            {v === 0 ? <span className="text-gray-400">—</span> : `${prefixoSinal && v > 0 ? '+' : ''}${fmt0(v)}`}
         </td>
     );
 
@@ -120,7 +120,7 @@ const DrePage = () => {
                 </div>
 
                 {loading && (
-                    <div className="text-center text-gray-400 text-sm py-2 flex items-center justify-center gap-2">
+                    <div className="text-center text-gray-500 text-sm py-2 flex items-center justify-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
                     </div>
                 )}
@@ -194,7 +194,7 @@ const DrePage = () => {
                                         <td className="px-4 py-2.5 text-right font-medium bg-gray-50 whitespace-nowrap">{fmtPct(dados.margem.total)}</td>
                                     </tr>
                                     {Number(dados.foraDre?.total || 0) !== 0 && (
-                                        <tr className="text-gray-400 italic border-t border-gray-100">
+                                        <tr className="text-gray-500 italic border-t border-gray-100">
                                             <td className="px-5 py-2 sticky left-0 bg-white whitespace-nowrap" title="Retirada de lucros, empréstimos e compra de bens — não é resultado, só sai do caixa.">Fora da DRE (não é resultado)</td>
                                             {dados.foraDre.valores.map((v, i) => <td key={i} className="px-4 py-2 text-right whitespace-nowrap">{v ? fmt0(v) : '—'}</td>)}
                                             <td className="px-4 py-2 text-right bg-gray-50 whitespace-nowrap">{fmt0(dados.foraDre.total)}</td>
@@ -259,7 +259,7 @@ const DrePage = () => {
                                 </span>
                             </div>
                             {Number(dados.foraDre?.valores?.[iMobile] || 0) !== 0 && (
-                                <div className="flex justify-between px-4 py-2.5 text-xs text-gray-400 italic">
+                                <div className="flex justify-between px-4 py-2.5 text-xs text-gray-500 italic">
                                     <span>Fora da DRE (não é resultado)</span>
                                     <span>{fmt0(dados.foraDre.valores[iMobile])}</span>
                                 </div>

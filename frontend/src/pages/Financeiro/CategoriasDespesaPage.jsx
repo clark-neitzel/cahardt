@@ -137,7 +137,7 @@ const CategoriasDespesaPage = () => {
                                     <span className="font-medium text-gray-900 text-sm truncate">{l.nome}</span>
                                 </div>
                                 <div className="text-xs text-gray-500 md:w-40 md:text-right shrink-0">
-                                    R$ {fmt(l.total)} <span className="text-gray-400">acumulado</span>
+                                    R$ {fmt(l.total)} <span className="text-gray-500">acumulado</span>
                                 </div>
                                 <div className="md:shrink-0">
                                     <SeletorBalde valor={l.classificacao} onChange={(v) => mudar(l.nome, v)} />

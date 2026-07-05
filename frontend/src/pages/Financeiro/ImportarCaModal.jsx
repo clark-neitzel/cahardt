@@ -10,7 +10,7 @@ const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigit
 const Kpi = ({ label, valor, cor = 'text-gray-900' }) => (
     <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 text-center">
         <div className={`text-lg md:text-xl font-bold ${cor}`}>{valor}</div>
-        <div className="text-[11px] md:text-xs text-gray-500 mt-0.5 leading-tight">{label}</div>
+        <div className="text-xs text-gray-500 mt-0.5 leading-tight">{label}</div>
     </div>
 );
 
@@ -101,7 +101,7 @@ const ImportarCaModal = ({ onClose, onSuccess }) => {
                         >
                             <UploadCloud className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                             <div className="text-sm font-medium text-gray-700">Clique ou arraste o CSV aqui</div>
-                            <div className="text-xs text-gray-400 mt-1">Arquivo exportado do Conta Azul</div>
+                            <div className="text-xs text-gray-500 mt-1">Arquivo exportado do Conta Azul</div>
                             <input ref={inputRef} type="file" accept=".csv,text/csv" className="hidden"
                                 onChange={(e) => escolher(e.target.files?.[0])} />
                         </div>

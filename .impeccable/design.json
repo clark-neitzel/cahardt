@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-05T00:00:00.000Z",
+  "title": "Design System: CA-Hardt",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Azul Conta Azul", "canonical": "#005fcc", "tonalRamp": ["#0a2540", "#0b3a73", "#0d4ba3", "#005fcc", "#2a7de1", "#5fa0ea", "#a9cbf5", "#e3eefc"] },
+      "ink": { "role": "neutral", "displayName": "Tinta", "canonical": "#1f2937", "tonalRamp": ["#111827", "#1f2937", "#374151", "#4b5563", "#6b7280", "#9ca3af", "#d1d5db", "#f3f4f6"] },
+      "bg": { "role": "neutral", "displayName": "Fundo Cinza-Claro", "canonical": "#f3f4f6", "tonalRamp": ["#9ca3af", "#d1d5db", "#e5e7eb", "#f3f4f6", "#f9fafb", "#ffffff", "#ffffff", "#ffffff"] }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Título de Página", "purpose": "Topo de cada tela; peso 700." },
+      "section": { "displayName": "Cabeçalho de Seção", "purpose": "Rótulo maiúsculo no topo de cada cartão." },
+      "body": { "displayName": "Corpo", "purpose": "Texto de leitura padrão, peso ≥ 400, cor escura." },
+      "label": { "displayName": "Rótulo de Campo", "purpose": "Labels de formulário, peso 500." }
+    },
+    "shadows": [
+      { "name": "descanso", "value": "0 1px 2px 0 rgba(0,0,0,0.05)", "purpose": "Padrão de cartões e barras (shadow-sm)." },
+      { "name": "flutuante", "value": "0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)", "purpose": "Modais, dropdowns e barras fixas (shadow-xl)." }
+    ],
+    "motion": [
+      { "name": "transicao-padrao", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Transições de estado, 150–250ms. Só opacity/transform." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botão Primário",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ação principal de cada tela.",
+      "html": "<button class=\"ds-btn-primary\">Salvar</button>",
+      "css": ".ds-btn-primary { background: #005fcc; color: #fff; font-weight: 600; font-size: 14px; padding: 8px 16px; border: none; border-radius: 6px; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); cursor: pointer; transition: background 0.15s ease; } .ds-btn-primary:hover { background: #1d4ed8; } .ds-btn-primary:focus-visible { outline: 2px solid #005fcc; outline-offset: 2px; }"
+    },
+    {
+      "name": "Botão Secundário",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Ação alternativa/cancelar.",
+      "html": "<button class=\"ds-btn-secondary\">Cancelar</button>",
+      "css": ".ds-btn-secondary { background: #fff; color: #374151; font-weight: 500; font-size: 14px; padding: 8px 16px; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; transition: background 0.15s ease; } .ds-btn-secondary:hover { background: #f9fafb; }"
+    },
+    {
+      "name": "Cartão com Cabeçalho",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Bloco padrão de conteúdo de qualquer seção.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-head\"><span class=\"ds-card-title\">TÍTULO DA SEÇÃO</span></div><div class=\"ds-card-body\">Conteúdo do cartão.</div></div>",
+      "css": ".ds-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); overflow: hidden; } .ds-card-head { padding: 14px 20px; border-bottom: 1px solid #f3f4f6; } .ds-card-title { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #4b5563; } .ds-card-body { padding: 20px; font-size: 14px; color: #1f2937; }"
+    },
+    {
+      "name": "Campo de Texto",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Entrada de formulário.",
+      "html": "<input class=\"ds-input\" placeholder=\"Digite aqui\" />",
+      "css": ".ds-input { width: 100%; background: #fff; color: #1f2937; font-size: 14px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; } .ds-input::placeholder { color: #6b7280; } .ds-input:focus { border-color: #005fcc; box-shadow: 0 0 0 1px #005fcc; }"
+    },
+    {
+      "name": "Badge de Status",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Pílula de estado; a cor mapeia o significado.",
+      "html": "<span class=\"ds-badge ds-badge-pago\">Pago</span> <span class=\"ds-badge ds-badge-vencido\">Vencido</span> <span class=\"ds-badge ds-badge-aberto\">Aberto</span>",
+      "css": ".ds-badge { display: inline-block; padding: 4px 8px; font-size: 12px; font-weight: 600; border-radius: 9999px; } .ds-badge-pago { background: #dcfce7; color: #166534; } .ds-badge-vencido { background: #fee2e2; color: #b91c1c; } .ds-badge-aberto { background: #dbeafe; color: #1e40af; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "A Ferramenta que Some no Trabalho",
+    "overview": "Sistema operacional de empresa, usado o dia inteiro por vendedor no celular, motorista na entrega e escritório no iPad. O bom design desaparece na tarefa: cada tela é autoexplicativa para quem não é técnico, com azul de marca disciplinado e status de cor consistente sobre neutros calmos.",
+    "keyCharacteristics": [
+      "Leigo em primeiro lugar: autoexplicativo, sem jargão.",
+      "Legibilidade acima de elegância: texto firme e escuro.",
+      "Uma tela, um foco.",
+      "Mobile é o caso principal: alto contraste, alvos grandes, tabela vira card.",
+      "Consistência antes de surpresa."
+    ],
+    "rules": [
+      { "name": "A Regra da Voz Única", "body": "O azul de marca (#005fcc) é a única cor de ação — botões, seleção, ícones de destaque; nunca decoração.", "section": "colors" },
+      { "name": "A Regra da Leitura Firme", "body": "Texto de leitura nunca usa font-light/thin nem cinza mais claro que gray-600. Peso ≥ 400 e cor escura obrigatórios.", "section": "typography" },
+      { "name": "A Regra do Piso de 12px", "body": "Texto que se lê não desce abaixo de 12px; tamanhos menores só para metadados densos não-críticos.", "section": "typography" },
+      { "name": "A Regra do Plano por Padrão", "body": "Superfícies descansam com shadow-sm; sombra forte só quando flutua sobre o conteúdo. Nunca animar box-shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar os tokens definidos: cartões rounded-xl border border-gray-200 shadow-sm, botões e badges canônicos.",
+      "Do manter texto de leitura em peso ≥ 400 e cor escura.",
+      "Do destacar uma ação principal por tela.",
+      "Do projetar mobile-first com alvos de toque ≥ 44px.",
+      "Do transformar tabela em card no mobile."
+    ],
+    "donts": [
+      "Don't parecer planilha/Excel: números apertados sem hierarquia.",
+      "Don't parecer sistema antigo/travado.",
+      "Don't poluir a tela com informação e botões demais.",
+      "Don't parecer infantil: cores berrantes, emojis, animação exagerada.",
+      "Don't usar font-light/thin ou cinza claro em texto de leitura.",
+      "Don't descer abaixo de 12px em texto legível."
+    ]
+  }
+}
