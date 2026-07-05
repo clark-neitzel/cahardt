@@ -157,6 +157,56 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
     }
 });
 
+// ── POST /:id/excluir — exclui um fornecedor. Se tiver despesas/notas ligadas, exige
+// um fornecedor de DESTINO (mesmo CNPJ) e MESCLA (repontar) tudo nele antes de excluir. ──
+router.post('/:id/excluir', verificarAuth, checkEscrita, async (req, res) => {
+    try {
+        const { mesclarComId } = req.body || {};
+        const fornecedor = await prisma.fornecedor.findUnique({
+            where: { id: req.params.id },
+            include: { _count: { select: { contasPagar: true, notasEntrada: true } } }
+        });
+        if (!fornecedor) return res.status(404).json({ error: 'Fornecedor não encontrado.' });
+
+        const nContas = fornecedor._count?.contasPagar || 0;
+        const nNotas = fornecedor._count?.notasEntrada || 0;
+        const refs = nContas + nNotas;
+
+        // Sem nada ligado → exclui direto.
+        if (refs === 0) {
+            await prisma.fornecedor.delete({ where: { id: fornecedor.id } });
+            return res.json({ message: 'Fornecedor excluído.' });
+        }
+
+        // Tem vínculos → precisa mesclar num destino.
+        if (!mesclarComId) {
+            return res.status(409).json({
+                error: `Este fornecedor tem ${nContas} despesa(s) e ${nNotas} nota(s) ligadas. Escolha o fornecedor que fica para mesclar.`,
+                precisaMesclar: true, contas: nContas, notas: nNotas
+            });
+        }
+        if (mesclarComId === fornecedor.id) {
+            return res.status(400).json({ error: 'Não é possível mesclar um fornecedor com ele mesmo.' });
+        }
+        const destino = await prisma.fornecedor.findUnique({ where: { id: mesclarComId } });
+        if (!destino) return res.status(404).json({ error: 'Fornecedor de destino não encontrado.' });
+        if (fornecedor.cnpjCpf && destino.cnpjCpf && fornecedor.cnpjCpf !== destino.cnpjCpf) {
+            return res.status(400).json({ error: 'Só dá para mesclar fornecedores com o mesmo CNPJ/CPF.' });
+        }
+
+        await prisma.$transaction([
+            prisma.contaPagar.updateMany({ where: { fornecedorId: fornecedor.id }, data: { fornecedorId: destino.id } }),
+            prisma.notaEntrada.updateMany({ where: { fornecedorId: fornecedor.id }, data: { fornecedorId: destino.id } }),
+            prisma.fornecedor.delete({ where: { id: fornecedor.id } })
+        ]);
+
+        res.json({ message: `Mesclado em "${destino.razaoSocial}" e excluído (${refs} vínculo(s) movido(s)).` });
+    } catch (error) {
+        console.error('Erro ao excluir/mesclar fornecedor:', error);
+        res.status(500).json({ error: 'Erro ao excluir o fornecedor.' });
+    }
+});
+
 // ── POST /importar-ca — importa fornecedores do Conta Azul (paginado, upsert) ──
 router.post('/importar-ca', verificarAuth, checkEscrita, async (req, res) => {
     try {

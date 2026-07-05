@@ -16,6 +16,11 @@ const fornecedorService = {
     importarCA: async () => {
         const response = await api.post('/fornecedores/importar-ca');
         return response.data;
+    },
+    // Exclui um fornecedor. Se tiver despesas/notas ligadas, passe mesclarComId (destino, mesmo CNPJ).
+    excluir: async (id, mesclarComId) => {
+        const response = await api.post(`/fornecedores/${id}/excluir`, mesclarComId ? { mesclarComId } : {});
+        return response.data;
     }
 };
 

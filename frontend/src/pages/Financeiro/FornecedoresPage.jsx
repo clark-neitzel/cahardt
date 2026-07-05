@@ -233,8 +233,44 @@ const FornecedorModal = ({ fornecedor, onClose, onSuccess }) => {
         observacoes: fornecedor?.observacoes || ''
     });
     const [salvando, setSalvando] = useState(false);
+    const [excluindo, setExcluindo] = useState(false);
 
     const set = (campo, valor) => setForm(prev => ({ ...prev, [campo]: valor }));
+
+    const excluir = async () => {
+        if (!window.confirm(`Excluir o fornecedor "${fornecedor.razaoSocial}"?\n\nSe ele tiver despesas/notas ligadas, elas são movidas para o fornecedor de mesmo CNPJ que ficar.`)) return;
+        setExcluindo(true);
+        try {
+            await fornecedorService.excluir(fornecedor.id);
+            toast.success('Fornecedor excluído.');
+            onSuccess();
+        } catch (e) {
+            const d = e.response?.data;
+            if (e.response?.status === 409 && d?.precisaMesclar) {
+                try {
+                    const lista = await fornecedorService.listar(fornecedor.cnpjCpf || fornecedor.razaoSocial);
+                    const irmaos = (Array.isArray(lista) ? lista : []).filter(
+                        x => x.id !== fornecedor.id && x.cnpjCpf && fornecedor.cnpjCpf && x.cnpjCpf === fornecedor.cnpjCpf
+                    );
+                    if (irmaos.length === 0) {
+                        toast.error('Tem despesas/notas ligadas e não há outro fornecedor de mesmo CNPJ para receber. Não dá para excluir.');
+                        return;
+                    }
+                    const destino = irmaos[0];
+                    if (!window.confirm(`Este fornecedor tem ${d.contas} despesa(s) e ${d.notas} nota(s).\n\nMover tudo para "${destino.razaoSocial}" e excluir este?`)) return;
+                    const r = await fornecedorService.excluir(fornecedor.id, destino.id);
+                    toast.success(r?.message || 'Fornecedor mesclado e excluído.');
+                    onSuccess();
+                } catch (e2) {
+                    toast.error(e2.response?.data?.error || 'Erro ao mesclar/excluir.');
+                }
+            } else {
+                toast.error(d?.error || 'Erro ao excluir fornecedor.');
+            }
+        } finally {
+            setExcluindo(false);
+        }
+    };
 
     const salvar = async () => {
         if (!form.razaoSocial.trim()) { toast.error('Informe a razão social.'); return; }
@@ -315,11 +351,18 @@ const FornecedorModal = ({ fornecedor, onClose, onSuccess }) => {
                     </div>
                 </div>
 
-                <div className="px-5 py-4 border-t border-gray-100 flex gap-3">
-                    <button onClick={onClose} className="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm">Cancelar</button>
-                    <button onClick={salvar} disabled={salvando} className="flex-1 px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-sm disabled:opacity-50">
-                        {salvando ? 'Salvando…' : (editando ? 'Salvar alterações' : 'Criar fornecedor')}
-                    </button>
+                <div className="px-5 py-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row gap-3">
+                    {editando && (
+                        <button onClick={excluir} disabled={excluindo || salvando} className="px-4 py-2 bg-white border border-red-300 text-red-600 hover:bg-red-50 rounded-md font-medium text-sm disabled:opacity-50">
+                            {excluindo ? 'Excluindo…' : 'Excluir'}
+                        </button>
+                    )}
+                    <div className="flex gap-3 sm:ml-auto">
+                        <button onClick={onClose} className="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm">Cancelar</button>
+                        <button onClick={salvar} disabled={salvando} className="flex-1 px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-sm disabled:opacity-50">
+                            {salvando ? 'Salvando…' : (editando ? 'Salvar alterações' : 'Criar fornecedor')}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -64,6 +64,7 @@ const contasPagarRoutes = require('./routes/contasPagar'); // Financeiro: Contas
 const fornecedoresRoutes = require('./routes/fornecedores'); // Financeiro: Fornecedores
 const configNotasRoutes = require('./routes/configNotas'); // Configurações: Certificado Digital (notas)
 const notasEntradaRoutes = require('./routes/notasEntrada'); // Financeiro: Notas Recebidas — captura NF-e SEFAZ (Fase 2)
+const financeiroGerencialRoutes = require('./routes/financeiroGerencial'); // Financeiro: Fluxo de Caixa e DRE (Fase 5)
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -129,6 +130,7 @@ app.use('/api/contas-pagar', contasPagarRoutes); // Contas a Pagar (auth inside)
 app.use('/api/fornecedores', fornecedoresRoutes); // Fornecedores (auth inside)
 app.use('/api/config-notas', configNotasRoutes); // Certificado Digital p/ notas (auth inside)
 app.use('/api/notas-entrada', notasEntradaRoutes); // Notas Recebidas — NF-e capturadas na SEFAZ (auth inside)
+app.use('/api/financeiro-gerencial', financeiroGerencialRoutes); // Fluxo de Caixa e DRE (auth inside)
 app.use('/api/estoque', authMiddleware, estoqueRoutes); // Módulo de Estoque
 app.use('/api/categorias-estoque', authMiddleware, categoriaEstoqueRoutes); // Categorias de Estoque
 

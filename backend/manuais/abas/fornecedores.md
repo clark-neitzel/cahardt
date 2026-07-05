@@ -19,6 +19,7 @@ Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Os fo
 - Editar um fornecedor (se o envio ao CA tinha dado erro, salvar a edição recoloca ele na fila de envio)
 - **Importar do Conta Azul**: busca todos os cadastros com perfil "Fornecedor" no CA e cria/atualiza aqui (casa por vínculo com o CA ou, se não houver, pelo CNPJ/CPF). Mostra quantos foram importados e quantos atualizados
 - Ativar/inativar fornecedor
+- **Excluir um fornecedor** (botão "Excluir" dentro do "Abrir"/editar): se ele **não tiver** despesas nem notas ligadas, é excluído direto. Se **tiver**, o app oferece **mesclar** — move as despesas e notas para outro fornecedor **de mesmo CNPJ** (útil para juntar cadastros duplicados) e então exclui o duplicado. A exclusão é só no app; o cadastro no Conta Azul não é apagado.
 
 ---
 
