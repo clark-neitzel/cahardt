@@ -67,6 +67,11 @@ model Produto {
   congeladosProduto CongeladosProduto?
 
   vinculosFornecedor FornecedorProdutoVinculo[] // Fase 2: de-para produto do fornecedor (NF-e) → Produto do catálogo
+  compras            CompraItem[] // Fase 6: histórico de compras (entradas por nota)
+
+  // Fase 6: produto pode nascer NO APP — é criado primeiro no Conta Azul (POST /v1/produtos)
+  // e só então salvo aqui com o contaAzulId retornado. origem: CA (sync) | APP.
+  origem String @default("CA")
 
   @@map("produtos")
 }
@@ -1474,6 +1479,7 @@ model ItemPcp {
   movimentacoesPcp      MovimentacaoPcp[]
   sugestoes             SugestaoProducao[]
   fornecedorVinculos    FornecedorProdutoVinculo[] // Fase 2: de-para produto do fornecedor (NF-e) → item PCP
+  compras               CompraItem[] // Fase 6: histórico de compras (entradas por nota)
 
   @@index([tipo])
   @@index([produtoId])
@@ -2548,6 +2554,7 @@ model NotaEntrada {
 
   itens      NotaEntradaItem[]
   duplicatas NotaEntradaDuplicata[]
+  compras    CompraItem[] // Fase 6: entradas de estoque/custo geradas na conferência
 
   @@index([status])
   @@index([fornecedorCnpj])
@@ -2608,6 +2615,51 @@ model FornecedorProdutoVinculo {
   @@index([itemPcpId])
   @@index([produtoId])
   @@map("fornecedor_produto_vinculos")
+}
+
+// =============================================
+// FINANCEIRO — Fase 6: Compras alimentando estoque e custo
+// =============================================
+
+// Uma linha por item de nota VINCULADO a um produto/insumo na conferência.
+// É o histórico de compras do produto (fornecedor, nota, quantidade, custo) e a
+// base da entrada de estoque. Estornada (sem apagar) quando a entrada é cancelada.
+model CompraItem {
+  id            String      @id @default(uuid())
+  notaEntradaId String      @map("nota_entrada_id")
+  notaEntrada   NotaEntrada @relation(fields: [notaEntradaId], references: [id])
+  contaPagarId  String?     @map("conta_pagar_id")
+
+  // Alvo do vínculo: Produto do catálogo OU insumo PCP (exatamente um)
+  produtoId String?  @map("produto_id")
+  produto   Produto? @relation(fields: [produtoId], references: [id])
+  itemPcpId String?  @map("item_pcp_id")
+  itemPcp   ItemPcp? @relation(fields: [itemPcpId], references: [id])
+
+  fornecedorId   String?  @map("fornecedor_id")
+  fornecedorNome String   @map("fornecedor_nome")
+  fornecedorCnpj String?  @map("fornecedor_cnpj")
+  numeroNota     String?  @map("numero_nota")
+  dataCompra     DateTime @map("data_compra") // emissão da nota
+
+  descricaoFornecedor  String  @map("descricao_fornecedor") // xProd na nota
+  quantidadeFornecedor Decimal @map("quantidade_fornecedor") @db.Decimal(12, 4) // na unidade da nota
+  unidadeFornecedor    String  @map("unidade_fornecedor")
+  fatorConversao       Decimal @default(1) @map("fator_conversao") @db.Decimal(12, 4)
+  quantidade           Decimal @db.Decimal(12, 3) // convertida para a NOSSA unidade
+  unidade              String // nossa unidade
+  valorTotal           Decimal @map("valor_total") @db.Decimal(12, 2)
+  custoUnitario        Decimal @map("custo_unitario") @db.Decimal(12, 6) // valorTotal / quantidade convertida
+
+  estornado   Boolean   @default(false) // entrada cancelada (cancelar-conferência)
+  estornadoEm DateTime? @map("estornado_em")
+
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  @@index([produtoId])
+  @@index([itemPcpId])
+  @@index([notaEntradaId])
+  @@map("compras_itens")
 }
 
 // Singleton de controle da distribuição DF-e (último NSU consumido, bloqueio 656, etc.)

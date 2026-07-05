@@ -21,6 +21,18 @@ const produtoService = {
         return response.data;
     },
 
+    // Fase 6: criar produto novo (nasce no Conta Azul primeiro)
+    criar: async (data) => {
+        const response = await api.post('/produtos', data);
+        return response.data;
+    },
+
+    // Fase 6: histórico de compras do produto (entradas por nota fiscal)
+    compras: async (id) => {
+        const response = await api.get(`/produtos/${id}/compras`);
+        return response.data;
+    },
+
     uploadImagens: async (id, formData) => {
         const response = await api.post(`/produtos/${id}/imagens`, formData, {
             headers: {

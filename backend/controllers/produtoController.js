@@ -167,6 +167,67 @@ const produtoController = {
         }
     },
 
+    // Fase 6 — criar produto novo: nasce PRIMEIRO no Conta Azul (POST /v1/produtos)
+    // e só então é salvo aqui com o contaAzulId retornado (origem APP).
+    // Se o CA estiver fora, nada é criado — o usuário tenta de novo.
+    criar: async (req, res) => {
+        try {
+            const { nome, codigo, ean, unidade, categoria, valorVenda, descricao } = req.body || {};
+            if (!nome?.trim()) return res.status(400).json({ error: 'Informe o nome do produto.' });
+            const unidadeFinal = String(unidade || 'UN').trim().substring(0, 10).toUpperCase() || 'UN';
+            const valor = parseFloat(String(valorVenda ?? '0').replace(',', '.'));
+            if (!Number.isFinite(valor) || valor < 0) return res.status(400).json({ error: 'Valor de venda inválido.' });
+
+            // Duplicidade local por nome (evita criar 2x no CA sem querer)
+            const jaExiste = await prisma.produto.findFirst({
+                where: { nome: { equals: nome.trim(), mode: 'insensitive' } },
+                select: { id: true, nome: true }
+            });
+            if (jaExiste) {
+                return res.status(400).json({ error: `Já existe um produto chamado "${jaExiste.nome}".` });
+            }
+
+            // 1) Cria no Conta Azul (fonte da verdade do catálogo)
+            const contaAzulService = require('../services/contaAzulService');
+            let criadoCA;
+            try {
+                criadoCA = await contaAzulService.criarProdutoCA({
+                    nome,
+                    codigoSku: codigo,
+                    codigoEan: ean,
+                    valorVenda: valor,
+                    categoriaNome: categoria,
+                    descricao
+                });
+            } catch (e) {
+                console.error('[Produtos] Falha ao criar produto no CA:', e.message);
+                return res.status(502).json({ error: `Não consegui criar o produto na Conta Azul: ${e.message}` });
+            }
+
+            // 2) Salva local com o vínculo (origem APP)
+            const produto = await prisma.produto.create({
+                data: {
+                    contaAzulId: criadoCA.id,
+                    codigo: codigo?.trim() || '',
+                    nome: nome.trim(),
+                    valorVenda: valor,
+                    unidade: unidadeFinal,
+                    ean: ean?.trim() || '',
+                    categoria: categoria?.trim() || '',
+                    descricao: descricao?.trim() || '',
+                    status: 'ATIVO',
+                    ativo: true,
+                    origem: 'APP'
+                }
+            });
+
+            res.status(201).json({ ...produto, message: 'Produto criado no app e na Conta Azul!' });
+        } catch (error) {
+            console.error('Erro ao criar produto:', error);
+            res.status(500).json({ error: 'Erro ao criar o produto.' });
+        }
+    },
+
     // Atualizar produto (somente campos locais — dados do CA são imutáveis)
     atualizar: async (req, res) => {
         try {

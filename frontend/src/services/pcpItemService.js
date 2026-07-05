@@ -3,6 +3,7 @@ import api from './api';
 const pcpItemService = {
     listar: (params) => api.get('/pcp/itens', { params }).then(r => r.data),
     buscarPorId: (id) => api.get(`/pcp/itens/${id}`).then(r => r.data),
+    compras: (id) => api.get(`/pcp/itens/${id}/compras`).then(r => r.data), // Fase 6: histórico de compras
     criar: (dados) => api.post('/pcp/itens', dados).then(r => r.data),
     importar: (dados) => api.post('/pcp/itens/importar', dados).then(r => r.data),
     importarLote: (itens) => api.post('/pcp/itens/importar-lote', { itens }).then(r => r.data),

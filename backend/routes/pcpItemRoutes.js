@@ -40,6 +40,20 @@ router.get('/proximo-codigo', async (req, res) => {
     }
 });
 
+// GET /api/pcp/itens/:id/compras — histórico de compras do insumo (Fase 6)
+router.get('/:id/compras', async (req, res) => {
+    try {
+        const permissoes = await getPermsFromDB(req.user.id);
+        if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
+        const compraEstoqueService = require('../services/compraEstoqueService');
+        const compras = await compraEstoqueService.historicoCompras({ itemPcpId: req.params.id });
+        return res.json(compras);
+    } catch (err) {
+        console.error('[PCP Itens] Erro histórico de compras:', err.message);
+        return res.status(500).json({ error: 'Erro ao buscar o histórico de compras.' });
+    }
+});
+
 // GET /api/pcp/itens/:id — detalhe
 router.get('/:id', async (req, res) => {
     try {

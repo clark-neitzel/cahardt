@@ -14,9 +14,24 @@ const exigeAdmin = (req, res, next) => {
 router.get('/categorias-ca', produtoController.categoriasCA);
 router.get('/', produtoController.listar);
 router.get('/:id/ficha', produtoController.ficha);
+
+// Fase 6: histórico de compras do produto (entradas por nota fiscal)
+router.get('/:id/compras', async (req, res) => {
+    try {
+        const compraEstoqueService = require('../services/compraEstoqueService');
+        const compras = await compraEstoqueService.historicoCompras({ produtoId: req.params.id });
+        res.json(compras);
+    } catch (err) {
+        console.error('[Produtos] Erro histórico de compras:', err.message);
+        res.status(500).json({ error: 'Erro ao buscar o histórico de compras.' });
+    }
+});
+
 router.get('/:id', produtoController.detalhar);
 
 // Escrita (somente admin/produtos)
+// Fase 6: criar produto novo — nasce no Conta Azul primeiro, depois local
+router.post('/', exigeAdmin, produtoController.criar);
 router.put('/:id', exigeAdmin, produtoController.atualizar);
 router.patch('/:id/status', exigeAdmin, produtoController.alterarStatus);
 

@@ -20,6 +20,8 @@ Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativ
 - Ver imagem do produto
 - Ativar ou desativar um produto
 - Navegar para a tela de Sincronização para importar produtos do Conta Azul
+- **(Fase 6) Criar produto novo** pelo botão "Novo produto": ele é criado **na Conta Azul e no app ao mesmo tempo** (nome, código SKU, EAN, unidade, valor de venda e categoria) — se o CA estiver fora do ar, nada é criado e o app avisa
+- **(Fase 6) Aba "Compras"** no detalhe do produto: histórico de compras vindo das Notas Recebidas (data, fornecedor, nota, quantidade na nota × entrada convertida, custo unitário e total). O **custo manual** do produto é atualizado por média ponderada a cada compra conferida
 
 ---
 

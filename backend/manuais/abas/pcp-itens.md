@@ -20,6 +20,7 @@ Matérias-primas (MP), Produtos Acabados (PA) e Embalagens (EMB) **não são cri
 - Criar novo subproduto
 - Editar um subproduto existente
 - Ativar ou desativar um subproduto
+- **(Fase 6) Histórico de compras** no formulário do item: compras vindas das Notas Recebidas (fornecedor, nota, quantidade convertida, custo). O **custo unitário** do insumo é atualizado por média ponderada a cada compra conferida — é ele que alimenta o custo das receitas
 
 ## Como fazer (passo a passo real)
 

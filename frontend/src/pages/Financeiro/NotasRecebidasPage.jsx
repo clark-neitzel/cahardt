@@ -857,7 +857,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         }
         setGerando(true);
         try {
-            await notasEntradaService.gerarConta(nota.id, {
+            const resp = await notasEntradaService.gerarConta(nota.id, {
                 categoriaPadrao: categoriaPadrao || undefined,
                 categoriaPadraoCaId: caIdDaCategoria(categoriaPadrao),
                 enviarCA,
@@ -878,13 +878,18 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                         : null
                 }))
             });
+            const qtdEntradas = Number(resp?.estoque?.entradas || 0);
             toast.success(
                 <span>
-                    {pago ? 'Conta a Pagar gerada como PAGA!' : 'Conta a Pagar gerada!'}{' '}
+                    {pago ? 'Conta a Pagar gerada como PAGA!' : 'Conta a Pagar gerada!'}
+                    {qtdEntradas > 0 ? ` ${qtdEntradas} item(ns) entraram no estoque com custo atualizado.` : ''}{' '}
                     <a href="/contas-pagar" className="font-semibold underline">Abrir Contas a Pagar</a>
                 </span>,
                 { duration: 8000 }
             );
+            for (const aviso of resp?.estoque?.avisos || []) {
+                toast(aviso, { icon: '⚠️', duration: 9000 });
+            }
             onChanged();
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao gerar a Conta a Pagar');
@@ -1074,7 +1079,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 <div className="mt-2 text-xs text-gray-500">
                     {ehServico
                         ? <>A categoria fica <span className="font-semibold text-gray-700">memorizada por prestador</span> — na próxima nota de serviço deste fornecedor ela já vem preenchida.</>
-                        : <>O vínculo e a conversão ficam <span className="font-semibold text-gray-700">salvos por fornecedor + código do produto na nota</span> (e código de barras, quando houver). Na próxima nota deste fornecedor, tudo já entra preenchido. O vínculo é opcional — dá para gerar a despesa sem vincular todos os itens.</>}
+                        : <>Item vinculado <span className="font-semibold text-gray-700">entra no estoque e atualiza o custo</span> do produto ao gerar a conta. O vínculo e a conversão ficam <span className="font-semibold text-gray-700">salvos por fornecedor + código do produto na nota</span> (e código de barras, quando houver) — na próxima nota deste fornecedor, tudo já entra preenchido. O vínculo é opcional: sem ele, só gera a despesa.</>}
                 </div>
             </div>
 
@@ -1317,9 +1322,13 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
         setCancelando(true);
         try {
             const r = await notasEntradaService.cancelarConferencia(nota.id);
-            toast.success('Entrada cancelada. A nota voltou para conferência.');
+            const estornadas = Number(r?.estoque?.estornadas || 0);
+            toast.success(`Entrada cancelada. A nota voltou para conferência.${estornadas > 0 ? ` ${estornadas} item(ns) saíram do estoque (estorno).` : ''}`);
             if (r?.avisoCA) {
                 toast('Atenção: esta despesa já pode ter chegado à Conta Azul. Se aparecer lá, exclua-a manualmente no CA.', { icon: '⚠️', duration: 8000 });
+            }
+            for (const aviso of r?.estoque?.avisos || []) {
+                toast(aviso, { icon: '⚠️', duration: 9000 });
             }
             onChanged();
         } catch (e) {

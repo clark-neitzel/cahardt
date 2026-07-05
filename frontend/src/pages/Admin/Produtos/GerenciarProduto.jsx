@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 import {
     ArrowLeft, Loader, AlertCircle, Camera, Tag, Plus, X,
     CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Trash2, Search, Save, Sparkles,
-    Star, ArrowUp, ArrowDown, Upload
+    Star, ArrowUp, ArrowDown, Upload, ShoppingCart
 } from 'lucide-react';
 
 // Componente autocomplete de produto por nome
@@ -99,6 +99,84 @@ const InfoField = ({ label, value }) => (
 // -------------------------------------------------------
 // Sub-componente: Seção de Promoções
 // -------------------------------------------------------
+// ── Histórico de compras (Fase 6): entradas por nota fiscal com fornecedor e custo ──
+const SecaoCompras = ({ produtoId }) => {
+    const [compras, setCompras] = useState([]);
+    const [carregando, setCarregando] = useState(true);
+    const fmtD = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—';
+    const fmtN = (v, c = 2) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: c, maximumFractionDigits: Math.max(c, 4) });
+    const fmtQ = (v) => Number(v || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+
+    useEffect(() => {
+        let ativo = true;
+        produtoService.compras(produtoId)
+            .then(d => { if (ativo) setCompras(Array.isArray(d) ? d : []); })
+            .catch(() => toast.error('Erro ao carregar o histórico de compras'))
+            .finally(() => { if (ativo) setCarregando(false); });
+        return () => { ativo = false; };
+    }, [produtoId]);
+
+    if (carregando) return <div className="flex items-center gap-2 text-sm py-4" style={{ color: '#8A90A2' }}><Loader className="h-4 w-4 animate-spin" /> Carregando…</div>;
+    if (compras.length === 0) {
+        return (
+            <div className="text-sm rounded-xl border p-4" style={{ color: '#8A90A2', borderColor: '#E7E9F2', background: '#FAFBFF' }}>
+                Nenhuma compra registrada ainda. As compras aparecem aqui automaticamente quando uma
+                <span className="font-semibold"> nota recebida é conferida</span> com o item vinculado a este produto.
+            </div>
+        );
+    }
+    return (
+        <div className="space-y-2">
+            {/* Desktop: tabela */}
+            <div className="hidden md:block overflow-x-auto rounded-xl border" style={{ borderColor: '#E7E9F2' }}>
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Fornecedor</th>
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Nota</th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Qtd na nota</th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Entrada</th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Custo unit.</th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-100">
+                        {compras.map(c => (
+                            <tr key={c.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-2.5 whitespace-nowrap text-gray-900">{fmtD(c.dataCompra)}</td>
+                                <td className="px-4 py-2.5 text-gray-700 max-w-[220px] truncate" title={c.fornecedorNome}>{c.fornecedorNome}</td>
+                                <td className="px-4 py-2.5 text-gray-500">{c.numeroNota || '—'}</td>
+                                <td className="px-4 py-2.5 text-right text-gray-500 whitespace-nowrap">{fmtQ(c.quantidadeFornecedor)} {c.unidadeFornecedor}</td>
+                                <td className="px-4 py-2.5 text-right font-medium text-gray-900 whitespace-nowrap">{fmtQ(c.quantidade)} {c.unidade}</td>
+                                <td className="px-4 py-2.5 text-right text-gray-700 whitespace-nowrap">R$ {fmtN(c.custoUnitario, 2)}</td>
+                                <td className="px-4 py-2.5 text-right font-semibold text-gray-900 whitespace-nowrap">R$ {fmtN(c.valorTotal)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            {/* Mobile: cards */}
+            <div className="md:hidden space-y-2">
+                {compras.map(c => (
+                    <div key={c.id} className="rounded-xl border p-3" style={{ borderColor: '#E7E9F2', background: '#fff' }}>
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-sm truncate" style={{ color: '#16192B' }}>{c.fornecedorNome}</span>
+                            <span className="text-xs shrink-0" style={{ color: '#8A90A2' }}>{fmtD(c.dataCompra)}</span>
+                        </div>
+                        <div className="text-xs mt-1" style={{ color: '#5A6072' }}>
+                            {c.numeroNota ? `Nota ${c.numeroNota} · ` : ''}{fmtQ(c.quantidade)} {c.unidade} · custo R$ {fmtN(c.custoUnitario, 2)} · total R$ {fmtN(c.valorTotal)}
+                        </div>
+                    </div>
+                ))}
+            </div>
+            <div className="text-xs" style={{ color: '#9AA0B4' }}>
+                O custo do produto é atualizado por <span className="font-semibold">média ponderada com o estoque</span> a cada compra conferida. Entradas canceladas não aparecem aqui.
+            </div>
+        </div>
+    );
+};
+
 const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
     const [tab, setTab] = useState('atual'); // 'atual' | 'nova' | 'historico'
     const [promocoes, setPromocoes] = useState([]);
@@ -761,6 +839,9 @@ const GerenciarProduto = () => {
                   <button onClick={() => setAbaAtiva('promocoes')} className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl text-sm font-semibold" style={abaAtiva === 'promocoes' ? { background: '#EFF4FF', color: '#2563EB' } : { background: '#EEF0F7', color: '#7A8094' }}>
                     <Tag className="h-3.5 w-3.5" /> Promoções
                   </button>
+                  <button onClick={() => setAbaAtiva('compras')} className="flex-1 flex items-center justify-center gap-1.5 h-10 rounded-xl text-sm font-semibold" style={abaAtiva === 'compras' ? { background: '#EFF4FF', color: '#2563EB' } : { background: '#EEF0F7', color: '#7A8094' }}>
+                    <ShoppingCart className="h-3.5 w-3.5" /> Compras
+                  </button>
                 </div>
               </div>
 
@@ -796,6 +877,11 @@ const GerenciarProduto = () => {
                             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
                             style={abaAtiva === 'promocoes' ? { background: '#fff', color: '#2563EB', fontWeight: 700, boxShadow: '0 1px 2px rgba(16,20,40,.10)' } : { color: '#7A8094' }}>
                             <Tag className="h-3.5 w-3.5" /> Promoções
+                        </button>
+                        <button onClick={() => setAbaAtiva('compras')}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+                            style={abaAtiva === 'compras' ? { background: '#fff', color: '#2563EB', fontWeight: 700, boxShadow: '0 1px 2px rgba(16,20,40,.10)' } : { color: '#7A8094' }}>
+                            <ShoppingCart className="h-3.5 w-3.5" /> Compras
                         </button>
                     </div>
                 </div>
@@ -992,6 +1078,15 @@ const GerenciarProduto = () => {
                     <Tag className="h-4 w-4" style={{ color: '#15A05A' }}/><h3 className="font-bold text-sm" style={{ color: '#166534' }}>Promoções — {formData.nome}</h3>
                   </div>
                   <div className="p-4"><SecaoPromocoes produtoId={id} valorVendaBase={formData.valorVenda}/></div>
+                </div>
+              )}
+
+              {abaAtiva === 'compras' && (
+                <div className="mx-3.5 mt-3.5 bg-white rounded-2xl border overflow-hidden" style={{ borderColor: '#E7E9F2' }}>
+                  <div className="p-4 border-b flex items-center gap-2" style={{ background: '#FFF7ED', borderColor: '#FED7AA' }}>
+                    <ShoppingCart className="h-4 w-4" style={{ color: '#C2610C' }}/><h3 className="font-bold text-sm" style={{ color: '#9A3412' }}>Histórico de compras — {formData.nome}</h3>
+                  </div>
+                  <div className="p-4"><SecaoCompras produtoId={id}/></div>
                 </div>
               )}
 
@@ -1303,6 +1398,19 @@ const GerenciarProduto = () => {
                         </div>
                         <div className="p-6">
                             <SecaoPromocoes produtoId={id} valorVendaBase={formData.valorVenda} />
+                        </div>
+                    </div>
+                )}
+
+                {/* ABA COMPRAS (Fase 6) */}
+                {abaAtiva === 'compras' && (
+                    <div className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: '#E7E9F2' }}>
+                        <div className="p-4 border-b flex items-center gap-2" style={{ background: '#FFF7ED', borderColor: '#FED7AA' }}>
+                            <ShoppingCart className="h-4 w-4" style={{ color: '#C2610C' }} />
+                            <h3 className="font-bold text-sm" style={{ color: '#9A3412' }}>Histórico de compras — {formData.nome}</h3>
+                        </div>
+                        <div className="p-6">
+                            <SecaoCompras produtoId={id} />
                         </div>
                     </div>
                 )}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, ShoppingCart } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpItemService from '../../services/pcpItemService';
 
@@ -10,6 +10,7 @@ export default function ItemPcpForm() {
     const { id } = useParams();
     const navigate = useNavigate();
     const isEdicao = !!id;
+    const [compras, setCompras] = useState([]); // Fase 6: histórico de compras (só edição)
     const [loading, setLoading] = useState(false);
     const [salvando, setSalvando] = useState(false);
     const [isImportado, setIsImportado] = useState(false);
@@ -47,6 +48,13 @@ export default function ItemPcpForm() {
                 .then(({ codigo }) => setForm(prev => ({ ...prev, codigo })))
                 .catch(() => {});
         }
+    }, [id, isEdicao]);
+
+    useEffect(() => {
+        if (!isEdicao) return;
+        pcpItemService.compras(id)
+            .then(d => setCompras(Array.isArray(d) ? d : []))
+            .catch(() => {});
     }, [id, isEdicao]);
 
     const handleChange = (field, value) => {
@@ -197,6 +205,31 @@ export default function ItemPcpForm() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
+
+                {isEdicao && compras.length > 0 && (
+                    <div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <ShoppingCart className="h-4 w-4 text-amber-600" />
+                            <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Histórico de compras</span>
+                        </div>
+                        <div className="space-y-2">
+                            {compras.map(c => (
+                                <div key={c.id} className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm flex flex-col md:flex-row md:items-center md:justify-between gap-1">
+                                    <div className="min-w-0">
+                                        <span className="font-medium text-gray-900">{c.fornecedorNome}</span>
+                                        <span className="text-gray-500"> · {c.dataCompra ? new Date(c.dataCompra).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : ''}{c.numeroNota ? ` · Nota ${c.numeroNota}` : ''}</span>
+                                    </div>
+                                    <div className="text-gray-700 shrink-0">
+                                        {Number(c.quantidade).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {c.unidade} · custo R$ {Number(c.custoUnitario).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} · total R$ {Number(c.valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-1.5 text-xs text-gray-500">
+                            O custo unitário é atualizado por média ponderada com o estoque a cada compra conferida nas Notas Recebidas.
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex justify-end gap-3 pt-4">
                     <button type="button" onClick={() => navigate('/pcp/itens')} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">

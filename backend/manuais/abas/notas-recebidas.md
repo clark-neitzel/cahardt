@@ -78,7 +78,8 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
   - A nota vira **CONFERIDA** e fica ligada à conta criada
   - **O XML é salvo automaticamente no Google Drive da Contabilidade** (ver seção abaixo)
 - **Cancelar entrada e refazer** (nota CONFERIDA): cancela a conta a pagar gerada e devolve a nota para conferência (se a despesa já chegou ao Conta Azul, o app avisa para excluí-la lá manualmente; com baixa registrada, é preciso estornar antes)
-- Observação: nesta fase o vínculo de itens ainda **não movimenta o estoque** (entrada automática de estoque é uma fase futura)
+- **(Fase 6) Item vinculado movimenta o estoque e o custo**: ao gerar a conta, cada item com vínculo dá **ENTRADA automática no estoque** (do Produto do catálogo ou do insumo PCP, já na quantidade convertida) e o **custo é atualizado por média ponderada** com o estoque anterior (Produto → custo manual; insumo → custo unitário usado nas receitas). A compra também entra no **histórico de compras** do produto (fornecedor, nota, quantidade, custo). Item sem vínculo continua gerando só a despesa.
+- **Cancelar entrada e refazer** também **estorna o estoque** (saída na mesma quantidade); o custo não é revertido — ajuste manualmente se preciso
 
 ---
 

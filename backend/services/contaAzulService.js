@@ -1890,6 +1890,60 @@ const contaAzulService = {
     },
 
     /**
+     * Fase 6 — criar um produto NOVO no Conta Azul (POST /v1/produtos).
+     * Só `nome` é obrigatório na API. Categoria: tentamos casar o nome com as
+     * categorias do CA (GET /v1/produtos/categorias); se não achar, cria sem
+     * categoria (dá para ajustar no CA depois). Retorna { id } do produto criado.
+     */
+    criarProdutoCA: async ({ nome, codigoSku, codigoEan, valorVenda, categoriaNome, descricao }) => {
+        const start = Date.now();
+        const payload = { nome: String(nome).trim(), status: 'ATIVO', formato: 'SIMPLES' };
+        if (codigoSku?.trim()) payload.codigo_sku = codigoSku.trim();
+        if (codigoEan?.trim()) payload.codigo_ean = codigoEan.trim();
+        if (descricao?.trim()) payload.descricao = descricao.trim();
+        if (valorVenda != null && Number(valorVenda) >= 0) {
+            payload.estoque = { valor_venda: Number(valorVenda) };
+        }
+
+        // Categoria: id numérico do CA casado pelo nome (busca tolerante; falha = sem categoria)
+        if (categoriaNome?.trim()) {
+            try {
+                const busca = encodeURIComponent(categoriaNome.trim());
+                const resp = await contaAzulService._axiosGet(
+                    `https://api-v2.contaazul.com/v1/produtos/categorias?pagina=1&tamanho_pagina=100&descricao=${busca}`,
+                    'PRODUTO_CATEGORIAS'
+                );
+                const cats = resp.data?.itens || resp.data?.items || (Array.isArray(resp.data) ? resp.data : []);
+                const alvo = String(categoriaNome).trim().toLowerCase();
+                const cat = cats.find((c) => String(c?.descricao || c?.nome || '').trim().toLowerCase() === alvo) || cats[0];
+                if (cat?.id != null) payload.categoria = { id: cat.id };
+            } catch (e) {
+                console.warn('[ContaAzul] Categoria de produto não localizada no CA:', e.message);
+            }
+        }
+
+        const url = 'https://api-v2.contaazul.com/v1/produtos';
+        const token = await contaAzulService.getAccessToken();
+        try {
+            const response = await axios.post(url, payload, {
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+            });
+            const id = response.data?.id || response.data?.uuid;
+            await contaAzulService._logStep('PRODUTO_CRIAR', 'SUCESSO', `Produto "${payload.nome}" criado no CA`, {
+                url, method: 'POST', status: response.status, body: { id }, duration: Date.now() - start
+            });
+            if (!id) throw new Error('Conta Azul não retornou o id do produto criado.');
+            return { id, raw: response.data };
+        } catch (error) {
+            const errorMsg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+            await contaAzulService._logStep('PRODUTO_CRIAR', 'ERRO', `Falha ao criar produto "${payload.nome}"`, {
+                url, method: 'POST', status: error.response?.status, body: error.response?.data || error.message, duration: Date.now() - start
+            });
+            throw new Error(`Erro na API Conta Azul: ${String(errorMsg).substring(0, 500)}`);
+        }
+    },
+
+    /**
      * Buscar parcelas de contas a receber por cliente e range de vencimento.
      */
     buscarParcelasContaAReceber: async (clienteCAId, dataVencDe, dataVencAte, status = ['EM_ABERTO', 'ATRASADO']) => {

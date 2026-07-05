@@ -564,6 +564,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
         const categoriaContaCaId = rateio.length === 1 ? (rateio[0].categoriaCaId || null) : null;
 
         let contaCriada;
+        const entradasEstoque = []; // Fase 6: itens vinculados → entrada de estoque/custo após a transação
         await prisma.$transaction(async (tx) => {
             // 1) Cria itens PCP pedidos, resolve o de-para e memoriza produto+categoria
             for (const it of itensBody) {
@@ -585,6 +586,14 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                     itemPcpId = novo.id;
                 }
                 const temProduto = !!(produtoId || itemPcpId);
+                if (temProduto && nota.tipo !== 'NFSE') {
+                    entradasEstoque.push({
+                        itemNota,
+                        produtoId: produtoId || null,
+                        itemPcpId: itemPcpId || null,
+                        fator: Number(it.fatorConversao) > 0 ? round4(it.fatorConversao) : 1
+                    });
+                }
 
                 const catItem = it.categoria?.trim() || catPadrao;
                 const catItemCaId = it.categoriaCaId || catPadraoCaId;
@@ -718,6 +727,21 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
         googleDriveService.salvarXmlNota(nota, xmlAbsPath(nota))
             .catch((err) => console.error('[NotasEntrada] Drive (gerar-conta):', err?.message || err));
 
+        // 6) Fase 6 — itens vinculados dão ENTRADA no estoque, atualizam o custo e
+        // alimentam o histórico de compras. Best-effort: falha aqui NÃO desfaz a conta.
+        let estoque = { registradas: 0, avisos: [] };
+        if (entradasEstoque.length > 0) {
+            try {
+                const compraEstoqueService = require('../services/compraEstoqueService');
+                estoque = await compraEstoqueService.registrarEntradasCompra(
+                    nota, contaCriada.id, entradasEstoque, req.user.id
+                );
+            } catch (e) {
+                console.error('[NotasEntrada] Falha geral na entrada de estoque:', e.message);
+                estoque.avisos.push('Falha na entrada de estoque — ajuste manualmente se necessário.');
+            }
+        }
+
         res.status(201).json({
             message: pagto
                 ? 'Conta a pagar criada como PAGA — será marcada como quitada no Conta Azul!'
@@ -725,7 +749,8 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                     ? 'Conta a pagar criada e colocada na fila de envio ao Conta Azul!'
                     : 'Conta a pagar criada!'),
             contaPagarId: contaCriada.id,
-            notaStatus: 'CONFERIDA'
+            notaStatus: 'CONFERIDA',
+            estoque: { entradas: estoque.registradas, avisos: estoque.avisos }
         });
     } catch (error) {
         console.error('Erro ao gerar conta a pagar da nota:', error);
@@ -812,10 +837,22 @@ router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req
             });
         });
 
+        // Fase 6 — estorna as entradas de estoque desta nota (saída na mesma quantidade;
+        // o histórico fica marcado como estornado). Best-effort: falha não trava o cancelamento.
+        let estorno = { estornadas: 0, avisos: [] };
+        try {
+            const compraEstoqueService = require('../services/compraEstoqueService');
+            estorno = await compraEstoqueService.estornarEntradasNota(nota.id, req.user.id);
+        } catch (e) {
+            console.error('[NotasEntrada] Falha ao estornar entradas de estoque:', e.message);
+            estorno.avisos.push('Falha ao estornar o estoque — confira e ajuste manualmente.');
+        }
+
         res.json({
             ok: true,
             message: 'Entrada cancelada. A nota voltou para conferência.',
-            avisoCA: chegouCA
+            avisoCA: chegouCA,
+            estoque: { estornadas: estorno.estornadas, avisos: estorno.avisos }
         });
     } catch (error) {
         console.error('Erro ao cancelar conferência da nota:', error);

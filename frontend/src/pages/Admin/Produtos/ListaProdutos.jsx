@@ -5,7 +5,8 @@ import produtoService from '../../../services/produtoService';
 import configService from '../../../services/configService';
 import categoriaProdutoService from '../../../services/categoriaProdutoService';
 import { API_URL } from '../../../services/api';
-import { Search, ArrowLeft } from 'lucide-react';
+import { Search, ArrowLeft, Plus, X, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import MultiSelect from '../../../components/MultiSelect';
 
 const STORAGE_KEY = '@CAHardt:ProdutosFiltros';
@@ -48,6 +49,27 @@ const ListaProdutos = () => {
     const [selectedCategories, setSelectedCategories] = useState(initialCategories);
     const [availableCategories, setAvailableCategories] = useState([]);
     const [selectedCatsComerciais, setSelectedCatsComerciais] = useState(initialCatsComerciais);
+
+    // Fase 6: criar produto novo (nasce no Conta Azul primeiro)
+    const [modalNovo, setModalNovo] = useState(false);
+    const [novoProduto, setNovoProduto] = useState({ nome: '', codigo: '', ean: '', unidade: 'UN', categoria: '', valorVenda: '' });
+    const [criando, setCriando] = useState(false);
+
+    const criarProduto = async () => {
+        if (!novoProduto.nome.trim()) { toast.error('Informe o nome do produto.'); return; }
+        setCriando(true);
+        try {
+            const criado = await produtoService.criar(novoProduto);
+            toast.success('Produto criado no app e na Conta Azul!');
+            setModalNovo(false);
+            setNovoProduto({ nome: '', codigo: '', ean: '', unidade: 'UN', categoria: '', valorVenda: '' });
+            navigate(`/admin/produtos/${criado.id}`);
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao criar o produto');
+        } finally {
+            setCriando(false);
+        }
+    };
     const [availableCatsComerciais, setAvailableCatsComerciais] = useState([]);
 
     // Load filter options
@@ -155,13 +177,85 @@ const ListaProdutos = () => {
         <div className="w-full px-4 py-6">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
                 <h1 className="text-2xl font-bold text-gray-800 text-center sm:text-left">Gerenciar Produtos</h1>
-                <Link
-                    to="/admin/sync"
-                    className="text-primary hover:text-blue-700 text-sm font-medium flex items-center justify-center sm:justify-start"
-                >
-                    ir para Sincronização <ArrowLeft className="h-4 w-4 ml-1 rotate-180" />
-                </Link>
+                <div className="flex items-center justify-center sm:justify-end gap-4">
+                    <Link
+                        to="/admin/sync"
+                        className="text-primary hover:text-blue-700 text-sm font-medium flex items-center"
+                    >
+                        ir para Sincronização <ArrowLeft className="h-4 w-4 ml-1 rotate-180" />
+                    </Link>
+                    <button
+                        onClick={() => setModalNovo(true)}
+                        className="px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-sm inline-flex items-center gap-1.5"
+                    >
+                        <Plus className="h-4 w-4" /> Novo produto
+                    </button>
+                </div>
             </div>
+
+            {/* Modal: novo produto (criado também na Conta Azul) */}
+            {modalNovo && (
+                <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 p-0 md:p-4" onClick={() => !criando && setModalNovo(false)}>
+                    <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-lg p-5 space-y-4" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-gray-900">Novo produto</h2>
+                            <button onClick={() => !criando && setModalNovo(false)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"><X className="h-5 w-5" /></button>
+                        </div>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900">
+                            O produto é criado <span className="font-semibold">na Conta Azul e no app ao mesmo tempo</span> — já sai pronto para vender e para receber compras.
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="md:col-span-2">
+                                <label className="text-sm font-medium text-gray-700">Nome *</label>
+                                <input value={novoProduto.nome} onChange={e => setNovoProduto({ ...novoProduto, nome: e.target.value })}
+                                    placeholder="Ex.: Espetinho de frango 60g"
+                                    className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">Código (SKU)</label>
+                                <input value={novoProduto.codigo} onChange={e => setNovoProduto({ ...novoProduto, codigo: e.target.value })}
+                                    className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">Código de barras (EAN)</label>
+                                <input value={novoProduto.ean} onChange={e => setNovoProduto({ ...novoProduto, ean: e.target.value })}
+                                    className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">Unidade</label>
+                                <input value={novoProduto.unidade} onChange={e => setNovoProduto({ ...novoProduto, unidade: e.target.value })}
+                                    placeholder="UN, KG, PCT…"
+                                    className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">Valor de venda (R$)</label>
+                                <input value={novoProduto.valorVenda} onChange={e => setNovoProduto({ ...novoProduto, valorVenda: e.target.value })}
+                                    inputMode="decimal" placeholder="0,00"
+                                    className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="text-sm font-medium text-gray-700">Categoria (do Conta Azul)</label>
+                                <select value={novoProduto.categoria} onChange={e => setNovoProduto({ ...novoProduto, categoria: e.target.value })}
+                                    className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+                                    <option value="">Sem categoria</option>
+                                    {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div className="flex flex-col md:flex-row gap-3 pt-1">
+                            <button onClick={criarProduto} disabled={criando}
+                                className="w-full md:w-auto px-4 py-3 md:py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2">
+                                {criando && <Loader2 className="h-4 w-4 animate-spin" />}
+                                {criando ? 'Criando na Conta Azul…' : 'Criar produto'}
+                            </button>
+                            <button onClick={() => setModalNovo(false)} disabled={criando}
+                                className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm disabled:opacity-50">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 {/* Filtros */}
