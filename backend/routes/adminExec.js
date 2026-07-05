@@ -1357,4 +1357,19 @@ router.get('/contas-pagar-status', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/contas-pagar-reenviar
+// Re-enfileira para o CA todas as Contas a Pagar que ficaram em ERRO
+// (equivale ao botão "reenviar" da tela, em lote). Diagnóstico/manutenção.
+router.post('/contas-pagar-reenviar', async (req, res) => {
+    try {
+        const r = await prisma.contaPagar.updateMany({
+            where: { statusEnvioCA: 'ERRO' },
+            data: { statusEnvioCA: 'ENVIAR', erroEnvioCA: null }
+        });
+        res.json({ ok: true, reenfileiradas: r.count });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;

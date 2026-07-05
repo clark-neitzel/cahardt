@@ -441,7 +441,9 @@ async function _enviarDespesasPendentes() {
                         data_vencimento: fmtDataCA(p.dataVencimento),
                         nota: notaParcela, // obrigatória na spec
                         conta_financeira: contaFinanceiraId,
-                        detalhe_valor: { valor_bruto: Number(p.valor) }
+                        // CA exige valor_liquido além do valor_bruto (HTTP 400 "O valor líquido deve ser informado").
+                        // Na criação não há juros/multa/desconto → líquido = bruto.
+                        detalhe_valor: { valor_bruto: Number(p.valor), valor_liquido: Number(p.valor) }
                     }))
                 }
             };
