@@ -70,34 +70,42 @@ router.get('/diag-conciliacao', async (req, res) => {
         const statusQS = ['RECEBIDO', 'EM_ABERTO', 'ATRASADO', 'RECEBIDO_PARCIAL', 'RENEGOCIADO', 'PERDIDO'].map(s => `&status=${s}`).join('');
         const url = `${BASE}/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar?pagina=1&tamanho_pagina=100&data_vencimento_de=${de}&data_vencimento_ate=${ate}${statusQS}`;
 
-        let itens = [];
+        const valorConta = round2(Number(conta.valorTotal || 0));
+        const alvoForn = String(conta.fornecedor?.razaoSocial || 'produpan').toLowerCase().split(' ')[0];
+        const candidatos = [];
+        let pagina = 1, totalItens = null, itensVarridos = 0;
         try {
-            const resp = await contaAzulService._axiosGet(url, 'DIAG_CONCILIA');
-            itens = resp.data?.itens || resp.data?.items || [];
-            info.busca = { numeroApp: numero, de, ate, totalRetornado: itens.length };
+            while (pagina <= 10) {
+                const purl = `${BASE}/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar?pagina=${pagina}&tamanho_pagina=100&data_vencimento_de=${de}&data_vencimento_ate=${ate}${statusQS}`;
+                const resp = await contaAzulService._axiosGet(purl, 'DIAG_CONCILIA');
+                const itens = resp.data?.itens || resp.data?.items || [];
+                totalItens = Number(resp.data?.itens_totais || totalItens || 0);
+                itensVarridos += itens.length;
+                for (const it of itens) {
+                    const totalIt = round2(Number(it.total ?? it.nao_pago ?? 0));
+                    const desc = String(it.descricao || '');
+                    const forn = String(it.fornecedor?.nome || '');
+                    const valorBate = Math.abs(totalIt - valorConta) < 0.01;
+                    const numNaDesc = numero && desc.includes(numero);
+                    const pareceForn = forn.toLowerCase().includes(alvoForn) || desc.toLowerCase().includes('produpan') || desc.includes('858860');
+                    if (valorBate || numNaDesc || pareceForn) {
+                        let det = {};
+                        try {
+                            const d = await contaAzulService._axiosGet(`${BASE}/v1/financeiro/eventos-financeiros/parcelas/${it.id}`, 'DIAG_DET');
+                            const ev = d.data?.evento || {};
+                            det = { evento_id: ev.id, codigo_referencia: ev.codigo_referencia, origem: ev.origem, evento_descricao: ev.descricao };
+                        } catch (e) { det = { erroDetalhe: e.message }; }
+                        candidatos.push({ parcelaId: it.id, total: totalIt, descricao: desc, fornecedor: forn, valorBate, numeroAppNaDesc: numNaDesc, ...det });
+                    }
+                }
+                if (itens.length < 100) break;
+                if (totalItens && pagina * 100 >= totalItens) break;
+                pagina++;
+            }
         } catch (e) {
             info.buscaErro = e.response?.status ? `HTTP ${e.response.status}: ${JSON.stringify(e.response.data).slice(0, 300)}` : e.message;
-            return res.json(info);
         }
-
-        const valorConta = round2(Number(conta.valorTotal || 0));
-        const candidatos = [];
-        for (const it of itens) {
-            const totalIt = round2(Number(it.total ?? it.nao_pago ?? 0));
-            const desc = String(it.descricao || '');
-            const valorBate = Math.abs(totalIt - valorConta) < 0.01;
-            const numNaDesc = numero && desc.includes(numero);
-            const pareceProdupan = desc.toLowerCase().includes('produpan') || desc.includes('858860');
-            if (valorBate || numNaDesc || pareceProdupan) {
-                let det = {};
-                try {
-                    const d = await contaAzulService._axiosGet(`${BASE}/v1/financeiro/eventos-financeiros/parcelas/${it.id}`, 'DIAG_DET');
-                    const ev = d.data?.evento || {};
-                    det = { det_descricao: d.data?.descricao, det_nota: d.data?.nota, evento_descricao: ev.descricao, evento_id: ev.id, codigo_referencia: ev.codigo_referencia, origem: ev.origem };
-                } catch (e) { det = { erroDetalhe: e.message }; }
-                candidatos.push({ parcelaId: it.id, total: totalIt, descricao: desc, fornecedor: it.fornecedor?.nome, valorBate, numeroAppNaDesc: numNaDesc, ...det });
-            }
-        }
+        info.busca = { numeroApp: numero, de, ate, itens_totais: totalItens, itensVarridos, paginas: pagina };
         info.candidatos = candidatos;
         res.json(info);
     } catch (error) {
