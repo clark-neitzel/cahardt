@@ -1459,4 +1459,44 @@ router.post('/nfse-ciclo', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/gdrive-config
+// Grava (upsert) a config do Google Drive em app_configs (chave gdrive_config).
+// Body: { ativo, clientId, clientSecret, refreshToken, envioContabilidadeId }
+// Nunca devolve os segredos — só confirma o que ficou salvo (mascarado).
+router.post('/gdrive-config', async (req, res) => {
+    try {
+        const { ativo, clientId, clientSecret, refreshToken, envioContabilidadeId } = req.body || {};
+        if (!clientId || !clientSecret || !refreshToken) {
+            return res.status(400).json({ ok: false, error: 'clientId, clientSecret e refreshToken são obrigatórios.' });
+        }
+        const value = {
+            ativo: ativo !== false,
+            clientId, clientSecret, refreshToken,
+            ...(envioContabilidadeId ? { envioContabilidadeId } : {}),
+        };
+        await prisma.appConfig.upsert({
+            where: { key: 'gdrive_config' },
+            update: { value },
+            create: { key: 'gdrive_config', value },
+        });
+        try { require('../services/googleDriveService').limparCacheConfig(); } catch (_) {}
+        const mask = (s) => (s ? `${String(s).slice(0, 6)}…${String(s).slice(-4)}` : null);
+        res.json({ ok: true, salvo: { ativo: value.ativo, clientId: mask(clientId), refreshToken: mask(refreshToken), envioContabilidadeId: value.envioContabilidadeId || '(padrão)' } });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// GET /api/admin-exec/gdrive-status
+// Testa o acesso ao Drive com as credenciais atuais (não expõe segredos).
+router.get('/gdrive-status', async (req, res) => {
+    try {
+        const googleDriveService = require('../services/googleDriveService');
+        const r = await googleDriveService.testarAcesso();
+        res.json(r);
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;
