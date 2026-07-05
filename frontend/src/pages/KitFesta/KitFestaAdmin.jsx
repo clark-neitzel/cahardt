@@ -30,7 +30,7 @@ export default function KitFestaAdmin() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-3 md:px-6 py-4">
+    <div className="w-full px-3 md:px-6 py-4">
       {/* Cabeçalho */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
