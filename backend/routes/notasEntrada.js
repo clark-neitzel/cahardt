@@ -347,14 +347,14 @@ router.get('/:id/danfe', verificarAuth, checkAcesso, async (req, res) => {
             return res.status(404).json({ error: 'O XML completo desta nota ainda não foi baixado da SEFAZ — não é possível gerar a DANFE.' });
         }
 
-        let parsed;
+        let html;
         try {
-            parsed = sefazDfeService.parseProcNFe(fs.readFileSync(abs, 'utf8'));
+            const xmlString = fs.readFileSync(abs, 'utf8');
+            html = montarDanfeHtml(xmlString); // recebe a STRING crua do XML e parseia tudo internamente
         } catch (e) {
             return res.status(422).json({ error: `Não foi possível ler o XML da nota: ${e.message}` });
         }
 
-        const html = montarDanfeHtml(parsed);
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.send(html);
     } catch (error) {

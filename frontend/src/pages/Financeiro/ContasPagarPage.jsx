@@ -64,8 +64,15 @@ const BadgeCA = ({ conta, parcela }) => {
             </span>
         );
     }
-    if (s === 'ENVIANDO' || s === 'PENDENTE') {
-        return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 whitespace-nowrap">Enviando…</span>;
+    if (s === 'ENVIAR' || s === 'ENVIANDO' || s === 'PENDENTE' || s === 'AGUARDANDO_PROTOCOLO') {
+        return (
+            <span
+                className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 whitespace-nowrap cursor-help"
+                title="Na fila para a Conta Azul. Se houver fornecedor novo, ele é criado lá primeiro; pode levar alguns minutos."
+            >
+                Enviando…
+            </span>
+        );
     }
     return <span className="text-gray-400 text-xs">—</span>;
 };

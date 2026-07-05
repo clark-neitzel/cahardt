@@ -1319,4 +1319,42 @@ router.post('/dfe-consultar', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/contas-pagar-status
+// Diagnóstico do envio de Contas a Pagar → Conta Azul: contagens por status de
+// envio, fornecedores pendentes/erro e as contas mais recentes com o motivo do erro.
+router.get('/contas-pagar-status', async (req, res) => {
+    try {
+        const [porStatusConta, porStatusForn, contas, fornPend] = await Promise.all([
+            prisma.contaPagar.groupBy({ by: ['statusEnvioCA'], _count: { _all: true } }),
+            prisma.fornecedor.groupBy({ by: ['statusEnvioCA'], _count: { _all: true } }),
+            prisma.contaPagar.findMany({
+                orderBy: { criadoEm: 'desc' },
+                take: 10,
+                select: {
+                    id: true, descricao: true, valorTotal: true, origem: true,
+                    statusEnvioCA: true, erroEnvioCA: true, idEventoCA: true, protocoloCA: true,
+                    criadoEm: true,
+                    fornecedor: { select: { razaoSocial: true, contaAzulId: true, statusEnvioCA: true, erroEnvioCA: true } }
+                }
+            }),
+            prisma.fornecedor.findMany({
+                where: { statusEnvioCA: { in: ['ENVIAR', 'ENVIANDO', 'ERRO'] } },
+                take: 10,
+                select: { id: true, razaoSocial: true, cnpjCpf: true, statusEnvioCA: true, erroEnvioCA: true, contaAzulId: true }
+            })
+        ]);
+        const caConfig = await prisma.contaAzulConfig.findFirst({ select: { id: true, updatedAt: true } }).catch(() => null);
+        res.json({
+            ok: true,
+            caConectada: !!caConfig,
+            contasPorStatusEnvio: Object.fromEntries(porStatusConta.map((s) => [s.statusEnvioCA, s._count._all])),
+            fornecedoresPorStatusEnvio: Object.fromEntries(porStatusForn.map((s) => [s.statusEnvioCA, s._count._all])),
+            fornecedoresPendentes: fornPend,
+            contasRecentes: contas
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;
