@@ -66,6 +66,8 @@ model Produto {
   kitFestaProduto   KitFestaProduto?
   congeladosProduto CongeladosProduto?
 
+  vinculosFornecedor FornecedorProdutoVinculo[] // Fase 2: de-para produto do fornecedor (NF-e) → Produto do catálogo
+
   @@map("produtos")
 }
 
@@ -2584,6 +2586,8 @@ model FornecedorProdutoVinculo {
   unidadeFornecedor   String?  @map("unidade_fornecedor")
   itemPcpId           String?  @map("item_pcp_id") // opcional: pode memorizar só a categoria (sem vincular produto)
   itemPcp             ItemPcp? @relation(fields: [itemPcpId], references: [id])
+  produtoId           String?  @map("produto_id") // opcional: vínculo com Produto do catálogo (alternativa a itemPcpId)
+  produto             Produto? @relation(fields: [produtoId], references: [id])
   fatorConversao      Decimal  @default(1) @map("fator_conversao") @db.Decimal(12, 4) // 1 un do fornecedor = X unidades do item PCP
   categoria           String? // categoria de despesa (CA) memorizada para este produto do fornecedor
   categoriaCaId       String?  @map("categoria_ca_id") // UUID da categoria no CA
@@ -2591,6 +2595,7 @@ model FornecedorProdutoVinculo {
 
   @@unique([fornecedorCnpj, codigoFornecedor])
   @@index([itemPcpId])
+  @@index([produtoId])
   @@map("fornecedor_produto_vinculos")
 }
 

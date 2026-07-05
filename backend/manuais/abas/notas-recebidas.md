@@ -51,9 +51,9 @@ Caixa de entrada das **notas fiscais (NF-e) que os fornecedores emitem contra o 
   - **Categoria de despesa por item** (do Conta Azul): pode escolher uma **categoria padrão** para a nota inteira e, se quiser, uma **categoria diferente item a item**. Itens sem categoria própria usam a padrão.
   - Quando a nota tem **mais de uma categoria**, o sistema faz o **rateio automático** — divide o total da nota entre as categorias, **proporcional ao valor dos itens** de cada uma (o último grupo absorve os centavos para a soma bater exatamente com o total da nota). A conta a pagar fica com categoria "Vários" e guarda o rateio.
   - Para **enviar ao Conta Azul**, toda categoria usada precisa ter o **código da categoria do Conta Azul** — se faltar em alguma, o sistema avisa quais itens/categorias corrigir antes de enviar. Sem enviar ao CA, a categoria pode ficar só no app.
-  - **Vincular cada item da nota a um item do PCP** (matéria-prima/embalagem) com fator de conversão — o sistema **lembra o vínculo** nas próximas notas do mesmo fornecedor (de-para automático)
-  - O sistema também **lembra a categoria escolhida por produto do fornecedor**, mesmo que o item não seja vinculado a um item do PCP — na próxima nota do mesmo fornecedor a categoria já vem sugerida
-  - Se o insumo ainda não existe no PCP, dá para **criar o item PCP na hora** (nome, tipo e unidade)
+  - **Vincular cada item da nota ao "nosso produto"** com fator de conversão — a busca de "Nosso produto" é **unificada**: encontra tanto os **produtos do catálogo** (sincronizados do Conta Azul, ex.: "Espetinho de frango bacon") quanto os **itens do PCP** (matéria-prima/embalagem). Cada opção mostra a origem ("Produto" ou "Matéria-prima/Embalagem/...") e a unidade. O sistema **lembra o vínculo** nas próximas notas do mesmo fornecedor (de-para automático), apontando para o produto OU para o insumo escolhido.
+  - O sistema também **lembra a categoria escolhida por produto do fornecedor**, mesmo que o item não seja vinculado a nenhum produto — na próxima nota do mesmo fornecedor a categoria já vem sugerida
+  - Se o insumo ainda não existe, dá para **criar um item PCP na hora** (nome, tipo e unidade) pelo botão "Criar produto novo…" — ele vira um vínculo com o PCP
   - A nota vira **CONFERIDA** e fica ligada à conta criada
 - Observação: nesta fase o vínculo de itens ainda **não movimenta o estoque** (entrada automática de estoque é uma fase futura)
 
@@ -83,7 +83,7 @@ Caixa de entrada das **notas fiscais (NF-e) que os fornecedores emitem contra o 
 - **Configurações → Certificado Digital** — sem certificado A1 válido não há captura
 - **Contas a Pagar** — a conta gerada aparece lá com origem NF-e (e pode ir ao Conta Azul)
 - **Fornecedores** — fornecedores novos são criados automaticamente pelo CNPJ da nota
-- **PCP → Itens** — o de-para liga itens da nota aos insumos do PCP (base para entrada de estoque no futuro)
+- **Produtos** e **PCP → Itens** — o de-para liga itens da nota tanto aos produtos do catálogo quanto aos insumos do PCP (base para entrada de estoque no futuro)
 
 ---
 

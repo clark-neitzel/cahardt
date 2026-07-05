@@ -180,27 +180,66 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
-// ── GET /itens-pcp — busca de itens PCP ativos (para o de-para) ──
+const tipoItemLabel = (t) => ({ MP: 'Matéria-prima', EMB: 'Embalagem', SUB: 'Subproduto', PA: 'Produto acabado' }[t] || t || '');
+
+// ── GET /itens-pcp — busca UNIFICADA (Produto do catálogo + Item PCP) para o de-para ──
+// Retorna { tipo:'PRODUTO'|'PCP', id, value:'PROD:<id>'|'PCP:<id>', nome, unidade, sub }.
+// Sem limite: a tela carrega tudo e filtra a busca no cliente. `?busca=` filtra também no banco.
 router.get('/itens-pcp', verificarAuth, checkAcesso, async (req, res) => {
     try {
-        const { busca } = req.query;
-        const where = { ativo: true };
-        if (busca?.trim()) {
-            where.OR = [
-                { nome: { contains: busca.trim(), mode: 'insensitive' } },
-                { codigo: { contains: busca.trim(), mode: 'insensitive' } }
+        const busca = req.query.busca?.trim();
+        const b = busca || '';
+
+        const wherePcp = { ativo: true };
+        const whereProd = { ativo: true };
+        if (busca) {
+            wherePcp.OR = [
+                { nome: { contains: b, mode: 'insensitive' } },
+                { codigo: { contains: b, mode: 'insensitive' } }
+            ];
+            whereProd.OR = [
+                { nome: { contains: b, mode: 'insensitive' } },
+                { codigo: { contains: b, mode: 'insensitive' } },
+                { ean: { contains: b, mode: 'insensitive' } }
             ];
         }
-        const itens = await prisma.itemPcp.findMany({
-            where,
-            select: { id: true, codigo: true, nome: true, tipo: true, unidade: true },
-            orderBy: { nome: 'asc' }
-            // sem limite: a tela carrega todos os insumos e filtra a busca no cliente
-        });
-        res.json(itens);
+
+        const [produtos, itensPcp] = await Promise.all([
+            prisma.produto.findMany({
+                where: whereProd,
+                select: { id: true, codigo: true, nome: true, unidade: true, categoria: true },
+                orderBy: { nome: 'asc' }
+            }),
+            prisma.itemPcp.findMany({
+                where: wherePcp,
+                select: { id: true, codigo: true, nome: true, tipo: true, unidade: true },
+                orderBy: { nome: 'asc' }
+            })
+        ]);
+
+        const opcoes = [
+            ...produtos.map((p) => ({
+                tipo: 'PRODUTO',
+                id: p.id,
+                value: `PROD:${p.id}`,
+                nome: p.nome,
+                unidade: p.unidade,
+                sub: `Produto${p.codigo ? ` · ${p.codigo}` : ''}${p.categoria ? ` · ${p.categoria}` : ''}`
+            })),
+            ...itensPcp.map((i) => ({
+                tipo: 'PCP',
+                id: i.id,
+                value: `PCP:${i.id}`,
+                nome: i.nome,
+                unidade: i.unidade,
+                sub: `${tipoItemLabel(i.tipo)}${i.codigo ? ` · ${i.codigo}` : ''}`
+            }))
+        ].sort((a, b2) => a.nome.localeCompare(b2.nome, 'pt-BR', { sensitivity: 'base' }));
+
+        res.json(opcoes);
     } catch (error) {
-        console.error('Erro ao buscar itens PCP:', error);
-        res.status(500).json({ error: 'Erro ao buscar itens PCP.' });
+        console.error('Erro ao buscar produtos/itens PCP:', error);
+        res.status(500).json({ error: 'Erro ao buscar produtos/itens.' });
     }
 });
 
@@ -238,7 +277,10 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
         const vinculos = nota.fornecedorCnpj
             ? await prisma.fornecedorProdutoVinculo.findMany({
                 where: { fornecedorCnpj: nota.fornecedorCnpj },
-                include: { itemPcp: { select: { id: true, nome: true, unidade: true } } }
+                include: {
+                    itemPcp: { select: { id: true, nome: true, unidade: true } },
+                    produto: { select: { id: true, nome: true, unidade: true } }
+                }
             })
             : [];
         const porCodigo = new Map(vinculos.map((v) => [v.codigoFornecedor, v]));
@@ -251,9 +293,16 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
 
         const itens = nota.itens.map((item) => {
             const v = porCodigo.get(item.codigoFornecedor) || (item.ean ? porEan.get(item.ean) : null) || null;
-            // Memória existe se houver vínculo de produto OU categoria memorizada
-            const temMemoria = v && (v.itemPcpId != null || v.categoria != null || v.categoriaCaId != null);
+            // Memória existe se houver vínculo de produto (Produto ou ItemPcp) OU categoria memorizada
+            const temMemoria = v && (v.produtoId != null || v.itemPcpId != null || v.categoria != null || v.categoriaCaId != null);
             const px = parsedItens.get(String(item.codigoFornecedor));
+
+            // Resolve o alvo do vínculo (Produto tem prioridade se ambos setados, mas gravamos só um)
+            const alvo = v && v.produtoId
+                ? { value: `PROD:${v.produtoId}`, nome: v.produto?.nome || null, unidade: v.produto?.unidade || null }
+                : (v && v.itemPcpId
+                    ? { value: `PCP:${v.itemPcpId}`, nome: v.itemPcp?.nome || null, unidade: v.itemPcp?.unidade || null }
+                    : { value: null, nome: null, unidade: null });
             return {
                 id: item.id,
                 numeroItem: item.numeroItem,
@@ -270,9 +319,13 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
                 infAdProd: item.infAdProd || px?.infAdProd || null,
                 vinculo: temMemoria
                     ? {
+                        value: alvo.value,          // "PROD:<id>" | "PCP:<id>" | null
+                        nome: alvo.nome,            // nome do produto/insumo vinculado
+                        unidade: alvo.unidade,      // unidade "nossa" (para conversão/custo)
+                        // legado — mantido para telas antigas de detalhe:
                         itemPcpId: v.itemPcpId || null,
-                        itemPcpNome: v.itemPcp?.nome || null,
-                        itemPcpUnidade: v.itemPcp?.unidade || null,
+                        itemPcpNome: alvo.nome,
+                        itemPcpUnidade: alvo.unidade,
                         fatorConversao: num(v.fatorConversao),
                         categoria: v.categoria || null,
                         categoriaCaId: v.categoriaCaId || null,
@@ -379,6 +432,14 @@ const proximoCodigoItemPcp = async (tx, tipo) => {
     return `${prefixo}${String(maior + 1).padStart(3, '0')}`;
 };
 
+// Decodifica o vínculo unificado "PROD:<id>" / "PCP:<id>" → { produtoId, itemPcpId } (o não usado = null)
+const decodeVinculo = (value) => {
+    const s = String(value || '');
+    if (s.startsWith('PROD:')) return { produtoId: s.slice(5) || null, itemPcpId: null };
+    if (s.startsWith('PCP:')) return { produtoId: null, itemPcpId: s.slice(4) || null };
+    return { produtoId: null, itemPcpId: null };
+};
+
 // ── POST /:id/gerar-conta — cria a Conta a Pagar a partir da nota ──
 router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) => {
     try {
@@ -482,8 +543,10 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
             // 1) Cria itens PCP pedidos, resolve o de-para e memoriza produto+categoria
             for (const it of itensBody) {
                 const itemNota = itensNota.get(it.itemId);
-                let itemPcpId = it.itemPcpId || null;
-                if (!itemPcpId && it.criarItemPcp) {
+
+                // Decodifica o vínculo unificado (PROD:/PCP:) ou cria um ItemPcp novo.
+                let { produtoId, itemPcpId } = decodeVinculo(it.vinculo);
+                if (!produtoId && !itemPcpId && it.criarItemPcp) {
                     const codigo = await proximoCodigoItemPcp(tx, it.criarItemPcp.tipo);
                     const novo = await tx.itemPcp.create({
                         data: {
@@ -496,6 +559,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                     });
                     itemPcpId = novo.id;
                 }
+                const temProduto = !!(produtoId || itemPcpId);
 
                 const catItem = it.categoria?.trim() || catPadrao;
                 const catItemCaId = it.categoriaCaId || catPadraoCaId;
@@ -508,7 +572,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
 
                 // Memória por fornecedor+cProd: grava se houver produto OU categoria
                 const temCategoria = !!(catItem || catItemCaId);
-                if (!nota.fornecedorCnpj || (!itemPcpId && !temCategoria)) continue;
+                if (!nota.fornecedorCnpj || (!temProduto && !temCategoria)) continue;
 
                 const fator = Number(it.fatorConversao) > 0 ? round4(it.fatorConversao) : 1;
                 // update parcial: preserva campos existentes (não apaga memória de produto ao salvar só categoria)
@@ -517,7 +581,12 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                     descricaoFornecedor: itemNota.descricao,
                     unidadeFornecedor: itemNota.unidade
                 };
-                if (itemPcpId) { updateData.itemPcpId = itemPcpId; updateData.fatorConversao = fator; }
+                // Ao (re)vincular, define explicitamente o campo não usado como null — nunca deixa os dois setados.
+                if (temProduto) {
+                    updateData.produtoId = produtoId || null;
+                    updateData.itemPcpId = itemPcpId || null;
+                    updateData.fatorConversao = fator;
+                }
                 if (temCategoria) { updateData.categoria = catItem; updateData.categoriaCaId = catItemCaId; }
 
                 await tx.fornecedorProdutoVinculo.upsert({
@@ -534,8 +603,9 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                         ean: itemNota.ean,
                         descricaoFornecedor: itemNota.descricao,
                         unidadeFornecedor: itemNota.unidade,
+                        produtoId: produtoId || null,
                         itemPcpId: itemPcpId || null,
-                        fatorConversao: itemPcpId ? fator : 1,
+                        fatorConversao: temProduto ? fator : 1,
                         categoria: temCategoria ? catItem : null,
                         categoriaCaId: temCategoria ? catItemCaId : null
                     }

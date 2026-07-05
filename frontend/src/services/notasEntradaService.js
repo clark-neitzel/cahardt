@@ -11,7 +11,8 @@ const notasEntradaService = {
         const response = await api.get(`/notas-entrada/${id}`);
         return response.data;
     },
-    // Busca de itens do PCP para vincular: [{ id, codigo, nome, tipo, unidade }]
+    // Busca UNIFICADA de produtos + insumos para vincular:
+    // [{ tipo:'PRODUTO'|'PCP', id, value:'PROD:<id>'|'PCP:<id>', nome, unidade, sub }]
     itensPcp: async (busca = '') => {
         const response = await api.get('/notas-entrada/itens-pcp', { params: busca ? { busca } : {} });
         return response.data;

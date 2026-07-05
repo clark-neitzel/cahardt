@@ -492,28 +492,33 @@ function montarNfe(nota) {
     }).join('');
 
     const blocoProdutos = `
+  <div class="grupo-prod">
   <div class="grupo-titulo">DADOS DO PRODUTO / SERVIÇO</div>
-  <table class="tbl-prod">
-    <thead>
-      <tr>
-        <th class="c">CÓDIGO</th>
-        <th>DESCRIÇÃO DO PRODUTO / SERVIÇO</th>
-        <th class="c">NCM/SH</th>
-        <th class="c">CST</th>
-        <th class="c">CFOP</th>
-        <th class="c">UN</th>
-        <th class="r">QUANT.</th>
-        <th class="r">VLR. UNIT.</th>
-        <th class="r">VLR. TOTAL</th>
-        <th class="r">B.CÁLC ICMS</th>
-        <th class="r">VLR. ICMS</th>
-        <th class="r">VLR. IPI</th>
-        <th class="r">ALÍQ ICMS</th>
-        <th class="r">ALÍQ IPI</th>
-      </tr>
-    </thead>
-    <tbody>${linhasItens || '<tr><td colspan="14" class="c">Nota sem itens de produto.</td></tr>'}</tbody>
-  </table>`;
+  <div class="prod-wrap">
+    <table class="tbl-prod">
+      <thead>
+        <tr>
+          <th class="c">CÓDIGO</th>
+          <th>DESCRIÇÃO DO PRODUTO / SERVIÇO</th>
+          <th class="c">NCM/SH</th>
+          <th class="c">CST</th>
+          <th class="c">CFOP</th>
+          <th class="c">UN</th>
+          <th class="r">QUANT.</th>
+          <th class="r">VLR. UNIT.</th>
+          <th class="r">VLR. TOTAL</th>
+          <th class="r">B.CÁLC ICMS</th>
+          <th class="r">VLR. ICMS</th>
+          <th class="r">VLR. IPI</th>
+          <th class="r">ALÍQ ICMS</th>
+          <th class="r">ALÍQ IPI</th>
+        </tr>
+      </thead>
+      <tbody>${linhasItens || '<tr><td colspan="14" class="c">Nota sem itens de produto.</td></tr>'}</tbody>
+    </table>
+    <div class="prod-fill"></div>
+  </div>
+  </div>`;
 
     // ── ISSQN ──
     let blocoIssqn = '';
@@ -542,18 +547,23 @@ function montarNfe(nota) {
     <div class="campo" style="flex:1;"><span class="lbl">RESERVADO AO FISCO</span><span class="val-multi">${esc(S(infAdic.infAdFisco)).replace(/\n/g, '<br>') || '&nbsp;'}</span></div>
   </div>`;
 
+    // O corpo (após o canhoto) é uma coluna flex que ocupa a altura útil da
+    // folha A4. A seção de produtos cresce (flex:1) empurrando ISSQN/DADOS
+    // ADICIONAIS para a base da página, como na DANFE oficial modelo 55.
     return `
 <div class="danfe">
   ${blocoCanhoto(emit, ide, nNF, serie)}
-  ${blocoCabecalho({ emit, enderEmit, ide, chave, nNF, serie })}
-  ${blocoNatProt}
-  ${blocoDest}
-  ${blocoFatura}
-  ${blocoImposto}
-  ${blocoTransp}
-  ${blocoProdutos}
-  ${blocoIssqn}
-  ${blocoAdic}
+  <div class="danfe-corpo">
+    ${blocoCabecalho({ emit, enderEmit, ide, chave, nNF, serie })}
+    ${blocoNatProt}
+    ${blocoDest}
+    ${blocoFatura}
+    ${blocoImposto}
+    ${blocoTransp}
+    ${blocoProdutos}
+    ${blocoIssqn}
+    ${blocoAdic}
+  </div>
 </div>`;
 }
 
@@ -643,8 +653,13 @@ function montarNfce(nota) {
 
 const ESTILO = `
 <style>
-  .danfe { font-family: Arial, Helvetica, sans-serif; font-size: 8px; color: #000; width: 100%; max-width: 200mm; margin: 0 auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Página inteira: A4 retrato com @page margin 12mm → área útil ~186x250mm.
+     A DANFE 55 é uma coluna flex que preenche essa altura; a seção de produtos
+     cresce (flex:1) empurrando os últimos blocos para o rodapé da folha. */
+  .danfe { font-family: Arial, Helvetica, sans-serif; font-size: 8px; color: #000; width: 100%; max-width: 186mm; margin: 0 auto; display: flex; flex-direction: column; min-height: 250mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .danfe * { box-sizing: border-box; }
+  /* corpo abaixo do canhoto ocupa todo o espaço vertical restante */
+  .danfe .danfe-corpo { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
   .danfe .lbl { display: block; font-size: 6px; text-transform: uppercase; color: #333; line-height: 1.1; }
   .danfe .val { display: block; font-size: 9px; line-height: 1.2; min-height: 11px; }
   .danfe .val-multi { display: block; font-size: 8px; line-height: 1.3; white-space: pre-wrap; min-height: 40px; }
@@ -692,8 +707,15 @@ const ESTILO = `
   .danfe .dup-num { font-weight: bold; }
   .danfe .dup-val { text-align: right; }
 
+  /* Grupo de produtos: cresce para preencher a altura da folha.
+     A tabela fica no topo; .prod-fill é a área vazia com bordas laterais
+     que desce até o rodapé, como na DANFE oficial. */
+  .danfe .grupo-prod { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 90mm; }
+  .danfe .prod-wrap { flex: 1 1 auto; display: flex; flex-direction: column; border: 1px solid #000; border-top: none; }
+  .danfe .prod-fill { flex: 1 1 auto; min-height: 10mm; border-top: none; }
+
   /* Tabela de produtos */
-  .danfe .tbl-prod { width: 100%; border-collapse: collapse; margin-top: 1px; }
+  .danfe .tbl-prod { width: 100%; border-collapse: collapse; }
   .danfe .tbl-prod th, .danfe .tbl-prod td { border: 1px solid #000; padding: 1px 3px; font-size: 7px; vertical-align: top; }
   .danfe .tbl-prod th { background: #eee; text-align: center; font-size: 6.5px; }
   .danfe .tbl-prod td.c { text-align: center; }
@@ -703,8 +725,8 @@ const ESTILO = `
   /* Adicionais */
   .danfe .adic { min-height: 45px; }
 
-  /* NFC-e */
-  .danfe.nfce { max-width: 80mm; font-size: 9px; }
+  /* NFC-e — cupom naturalmente curto: NÃO estica até o rodapé (só a NF-e 55 preenche a folha) */
+  .danfe.nfce { max-width: 80mm; font-size: 9px; display: block; min-height: 0; }
   .danfe .nfce-head { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 4px; }
   .danfe .nfce-emit { font-size: 12px; font-weight: bold; }
   .danfe .nfce-emit-cnpj, .danfe .nfce-emit-end { font-size: 8px; }

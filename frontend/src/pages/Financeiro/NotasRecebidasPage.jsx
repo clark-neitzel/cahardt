@@ -204,7 +204,7 @@ const NotasRecebidasPage = () => {
             setItensPcp(Array.isArray(itens) ? itens : []);
             setItensPcpCarregados(true);
         } catch {
-            toast.error('Erro ao carregar a lista de produtos do PCP');
+            toast.error('Erro ao carregar a lista de produtos');
         }
     }, []);
 
@@ -610,12 +610,13 @@ const ComboBusca = ({
     );
 };
 
-// Busca de produto — usa o combobox genérico (mostra TODOS os itens, com rolagem).
+// Busca de produto — combobox genérico com opções UNIFICADAS (Produto do catálogo + Item PCP).
+// `itens`: [{ value:'PROD:<id>'|'PCP:<id>', nome, unidade, sub }]. O valor selecionado é a string `value`.
 const ComboProduto = ({ value, itens, onSelect, onCriarNovo, invalido }) => {
     const options = useMemo(() => itens.map(p => ({
-        value: p.id,
+        value: p.value,
         label: `${p.nome}${p.unidade ? ` (${p.unidade})` : ''}`,
-        sub: `${tipoItemLabel(p.tipo)}${p.codigo ? ` · ${p.codigo}` : ''}`
+        sub: p.sub || (p.tipo ? tipoItemLabel(p.tipo) : '')
     })), [itens]);
     return (
         <ComboBusca
@@ -624,7 +625,7 @@ const ComboProduto = ({ value, itens, onSelect, onCriarNovo, invalido }) => {
             options={options}
             onChange={(v) => onSelect(v)}
             placeholder="Buscar produto…"
-            buscaPlaceholder="Digite: óleo, trigo, caixa…"
+            buscaPlaceholder="Digite: espetinho, óleo, caixa…"
             vazioTexto="Nenhum produto encontrado."
             invalido={invalido}
             extraAction={{ label: '+ Criar produto novo…', onClick: onCriarNovo }}
@@ -702,9 +703,10 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     const itensNota = useMemo(() => Array.isArray(nota.itens) ? nota.itens : [], [nota]);
 
     // Vínculo por item: pré-preenchido quando o backend lembrou
+    // vinculoValue = "PROD:<id>" | "PCP:<id>" | '' (string unificada usada pelo combo)
     const [vinculos, setVinculos] = useState(() => itensNota.map(it => ({
         itemId: it.id,
-        itemPcpId: it.vinculo?.itemPcpId || '',
+        vinculoValue: it.vinculo?.value || '',
         fator: it.vinculo?.fatorConversao != null ? String(it.vinculo.fatorConversao).replace('.', ',') : '',
         categoria: it.vinculo?.categoria || '', // categoria de custo por item (lembrada quando houver)
         novo: null // { nome, tipo, unidade } quando "+ Criar produto novo…"
@@ -756,13 +758,13 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     const infoItem = (idx) => {
         const it = itensNota[idx];
         const v = vinculos[idx];
-        const pcp = v.novo ? null : itensPcp.find(p => String(p.id) === String(v.itemPcpId));
-        const unidadeNossa = v.novo ? (v.novo.unidade || '?') : (pcp?.unidade || '?');
-        const vinculado = !!v.novo || !!v.itemPcpId;
+        const opcao = v.novo ? null : itensPcp.find(p => String(p.value) === String(v.vinculoValue));
+        const unidadeNossa = v.novo ? (v.novo.unidade || '?') : (opcao?.unidade || '?');
+        const vinculado = !!v.novo || !!v.vinculoValue;
         const fator = parseFator(v.fator);
         const entrada = fator > 0 ? Number(it.quantidade || 0) * fator : 0;
         const custo = entrada > 0 ? Number(it.valorTotal || 0) / entrada : 0;
-        return { it, v, pcp, unidadeNossa, vinculado, fator, entrada, custo };
+        return { it, v, opcao, unidadeNossa, vinculado, fator, entrada, custo };
     };
 
     const gerar = async () => {
@@ -810,7 +812,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 parcelas: parcelas.map(p => ({ valor: parseNum(p.valor), dataVencimento: p.dataVencimento })),
                 itens: vinculos.map(v => ({
                     itemId: v.itemId,
-                    itemPcpId: v.novo ? null : (v.itemPcpId || null),
+                    vinculo: v.novo ? null : (v.vinculoValue || null),
                     fatorConversao: parseFator(v.fator) > 0 ? parseFator(v.fator) : null,
                     categoria: v.categoria || null,
                     categoriaCaId: caIdDaCategoria(v.categoria),
@@ -911,7 +913,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                                     />
                                                 </div>
                                                 <button
-                                                    onClick={() => setVinculo(idx, { novo: null, itemPcpId: '' })}
+                                                    onClick={() => setVinculo(idx, { novo: null, vinculoValue: '' })}
                                                     className="text-xs text-gray-500 hover:text-gray-700 underline"
                                                 >
                                                     Cancelar produto novo
@@ -919,11 +921,11 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                             </div>
                                         ) : (
                                             <ComboProduto
-                                                value={v.itemPcpId || ''}
+                                                value={v.vinculoValue || ''}
                                                 itens={itensPcp}
                                                 invalido={!vinculado}
-                                                onSelect={id => setVinculo(idx, { itemPcpId: id })}
-                                                onCriarNovo={() => setVinculo(idx, { novo: { nome: it.descricao || '', tipo: 'MP', unidade: '' }, itemPcpId: '' })}
+                                                onSelect={val => setVinculo(idx, { vinculoValue: val })}
+                                                onCriarNovo={() => setVinculo(idx, { novo: { nome: it.descricao || '', tipo: 'MP', unidade: '' }, vinculoValue: '' })}
                                             />
                                         )}
                                     </div>
@@ -1192,11 +1194,11 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
                             {String(it.infAdProd || '').trim() && (
                                 <div className="text-xs text-gray-400 mt-0.5 whitespace-pre-wrap break-words">{String(it.infAdProd).trim()}</div>
                             )}
-                            {it.vinculo?.itemPcpNome && (
+                            {it.vinculo?.nome && (
                                 <div className="text-xs text-gray-600 mt-1">
-                                    → vinculado a <span className="font-semibold">{it.vinculo.itemPcpNome}</span>
+                                    → vinculado a <span className="font-semibold">{it.vinculo.nome}</span>
                                     {it.vinculo.fatorConversao != null
-                                        ? ` (1 ${it.unidade || 'un'} = ${fmtQtd(it.vinculo.fatorConversao)} ${it.vinculo.itemPcpUnidade || 'un'})`
+                                        ? ` (1 ${it.unidade || 'un'} = ${fmtQtd(it.vinculo.fatorConversao)} ${it.vinculo.unidade || 'un'})`
                                         : ''}
                                 </div>
                             )}
