@@ -1421,6 +1421,28 @@ router.post('/contas-pagar-reconciliar', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/nfse-status
+// SOMENTE LEITURA. Status da captura de NFS-e (linha 'nfse' da dfe_controle) +
+// contagem de notas NFSE — acompanhar o primeiro ciclo real em produção.
+router.get('/nfse-status', async (req, res) => {
+    try {
+        const nfseAdnService = require('../services/nfseAdnService');
+        const status = await nfseAdnService.statusCaptura();
+        const [notasNfse, ultimas] = await Promise.all([
+            prisma.notaEntrada.count({ where: { tipo: 'NFSE' } }),
+            prisma.notaEntrada.findMany({
+                where: { tipo: 'NFSE' },
+                orderBy: { criadoEm: 'desc' },
+                take: 5,
+                select: { numero: true, fornecedorNome: true, valorTotal: true, emissao: true, status: true }
+            })
+        ]);
+        res.json({ status, notasNfse, ultimas });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // POST /api/admin-exec/nfse-ciclo
 // Dispara UM ciclo de captura de NFS-e no ADN (síncrono) e devolve o resultado +
 // status do controle. Diagnóstico da Fase 4 — validar o formato real da resposta
