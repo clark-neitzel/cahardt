@@ -158,7 +158,7 @@ async function fluxoCaixa(de, ate, granularidade = 'dia') {
         }),
         prisma.pagamentoParcelaPagar.findMany({
             where: { dataPagamento: { gte, lte }, estornado: false },
-            select: { dataPagamento: true, valorPago: true }
+            select: { dataPagamento: true, valorPago: true, juros: true, multa: true }
         }),
         // KPIs de aberto (independem do período): tudo que ainda não foi quitado
         prisma.parcela.aggregate({
@@ -198,7 +198,8 @@ async function fluxoCaixa(de, ate, granularidade = 'dia') {
         parcelasReceber.map((p) => ({ data: p.dataVencimento, valor: p.valor })),
         pagamentosReceber.map((p) => ({ data: p.dataPagamento, valor: p.valorRecebido })),
         parcelasPagar.map((p) => ({ data: p.dataVencimento, valor: p.valor })),
-        pagamentosPagar.map((p) => ({ data: p.dataPagamento, valor: p.valorPago }))
+        // saída de caixa = principal + juros + multa (o que realmente saiu do banco)
+        pagamentosPagar.map((p) => ({ data: p.dataPagamento, valor: num(p.valorPago) + num(p.juros) + num(p.multa) }))
     );
 
     const totalPeriodo = linhas.reduce((t, l) => ({
