@@ -76,8 +76,33 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
   - Se o insumo ainda não existe, dá para **criar um item PCP na hora** (nome, tipo e unidade) pelo botão "Criar produto novo…"
   - **NFS-e tem conferência simplificada**: serviço não vira estoque, então não há vínculo de produto nem conversão — é só conferir a categoria, as parcelas e enviar ao Conta Azul.
   - A nota vira **CONFERIDA** e fica ligada à conta criada
+  - **O XML é salvo automaticamente no Google Drive da Contabilidade** (ver seção abaixo)
 - **Cancelar entrada e refazer** (nota CONFERIDA): cancela a conta a pagar gerada e devolve a nota para conferência (se a despesa já chegou ao Conta Azul, o app avisa para excluí-la lá manualmente; com baixa registrada, é preciso estornar antes)
 - Observação: nesta fase o vínculo de itens ainda **não movimenta o estoque** (entrada automática de estoque é uma fase futura)
+
+---
+
+## Salvamento automático do XML na Contabilidade (Google Drive)
+
+Ao **dar entrada** numa nota (gerar a conta a pagar) ou ao **ignorá-la**, o sistema **salva o XML sozinho no Google Drive**, na pasta da contabilidade organizada por mês — sem precisar baixar e arrastar nada. Vale para **NF-e e NFS-e**.
+
+**Como organiza (pela data de EMISSÃO da nota):**
+
+```
+Envio Contabilidade
+  └── "Julho 2026"            ← pasta do mês (criada sozinha se ainda não existir)
+        └── "XML de Julho"     ← subpasta de XML (reaproveita a existente ou cria)
+              ├── {chave} - Nota {número} - {Fornecedor}.xml   ← nota dada entrada
+              └── Ignoradas/    ← XML das notas ignoradas
+```
+
+- **Nome do arquivo:** chave de acesso + número da nota + nome do fornecedor.
+- **Nota ignorada** → o XML vai para a subpasta **"Ignoradas"** dentro da pasta de XML do mês.
+- **Não duplica:** se o mesmo XML já estiver lá, o sistema não sobe de novo.
+- **Nunca trava a operação:** se o Drive estiver fora do ar ou a nota não tiver XML, a entrada acontece normalmente e o problema fica só no log (`[GoogleDrive] ...`).
+- Os arquivos ficam **na conta Google do dono** (autorização OAuth feita uma vez), no Drive dele.
+
+**Configuração:** as credenciais do Google ficam em `app_configs` (chave `gdrive_config`: `ativo`, `clientId`, `clientSecret`, `refreshToken`, `envioContabilidadeId`). Para desligar temporariamente, basta `ativo: false`.
 
 ---
 
@@ -115,7 +140,8 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 |---------|-------|
 | `backend/services/sefazDfeService.js` | Robô de captura de NF-e na SEFAZ (Distribuição DF-e + manifestação 210210) |
 | `backend/services/nfseAdnService.js` | Robô de captura de NFS-e no Ambiente de Dados Nacional (ADN) + espelho DANFSE |
-| `backend/routes/notasEntrada.js` | Rotas da API (listar, detalhar, XML, DANFE/DANFSE, gerar conta com categoria por item + rateio, ignorar, consultar agora) |
+| `backend/routes/notasEntrada.js` | Rotas da API (listar, detalhar, XML, DANFE/DANFSE, gerar conta com categoria por item + rateio, ignorar, consultar agora) — dispara o salvamento do XML no Drive ao dar entrada/ignorar |
+| `backend/services/googleDriveService.js` | Salva o XML da nota no Google Drive da Contabilidade (pasta do mês por emissão; subpasta "Ignoradas"); credenciais OAuth em `app_configs.gdrive_config` |
 | `backend/services/danfeHtmlService.js` | Monta o HTML da DANFE simplificada (função pura) a partir do XML da NF-e |
 | `backend/routes/configNotas.js` | Certificado digital + liga/desliga das capturas (NF-e e NFS-e) |
 | `frontend/src/pages/Financeiro/NotasRecebidas*` | Telas do módulo |

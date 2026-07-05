@@ -20,6 +20,7 @@ const sefazDfeService = require('../services/sefazDfeService');
 const nfseAdnService = require('../services/nfseAdnService');
 const { montarDanfeHtml } = require('../services/danfeHtmlService');
 const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
+const googleDriveService = require('../services/googleDriveService');
 
 // Caminho absoluto do XML salvo da nota (uploads/notas-xml/{chave}.xml).
 const xmlAbsPath = (nota) => {
@@ -713,6 +714,10 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
             });
         });
 
+        // 5) Salva o XML na pasta do mês na Contabilidade (Drive) — best-effort, não bloqueia a entrada.
+        googleDriveService.salvarXmlNota(nota, xmlAbsPath(nota))
+            .catch((err) => console.error('[NotasEntrada] Drive (gerar-conta):', err?.message || err));
+
         res.status(201).json({
             message: pagto
                 ? 'Conta a pagar criada como PAGA — será marcada como quitada no Conta Azul!'
@@ -737,6 +742,11 @@ router.post('/:id/ignorar', verificarAuth, checkEscrita, async (req, res) => {
             return res.status(400).json({ error: `Nota com status ${nota.status} não pode ser ignorada.` });
         }
         await prisma.notaEntrada.update({ where: { id: nota.id }, data: { status: 'IGNORADA' } });
+        // XML da ignorada vai para a subpasta "Ignoradas" do mês (Drive) — best-effort.
+        if (nota.xmlPath) {
+            googleDriveService.salvarXmlNota(nota, xmlAbsPath(nota), { ignorada: true })
+                .catch((err) => console.error('[NotasEntrada] Drive (ignorar):', err?.message || err));
+        }
         res.json({ message: 'Nota ignorada.', status: 'IGNORADA' });
     } catch (error) {
         console.error('Erro ao ignorar nota:', error);
