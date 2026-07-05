@@ -25,6 +25,7 @@ Gestão das despesas da empresa (contas a pagar): lançamento manual de contas c
 - Escolher se a conta **vai para o Conta Azul** (opção "enviar ao CA") ou fica só no app
 - Editar uma conta (campos e parcelas ainda não pagas — bloqueado se quitada/cancelada; parcelas não podem mais ser alteradas depois que a conta já foi enviada ao CA)
 - Dar **baixa manual** numa parcela: valor pago, juros, multa, desconto e forma de pagamento (baixa parcial deixa a parcela como PARCIAL)
+- **Quitar várias de uma vez (baixa em lote)**: marque as caixinhas das parcelas em aberto (há um "selecionar todas" no cabeçalho da tabela) e clique em **"Quitar selecionadas"**. Informe **uma vez só** a data, a forma de pagamento e o banco/caixa — todas as marcadas são quitadas pelo **saldo restante** com essa condição. As despesas que já foram enviadas ao Conta Azul recebem a **baixa lá também** (no banco escolhido); as que são só locais ficam quitadas apenas no app. Útil quando um único PIX/dinheiro pagou várias notas (ex.: nota de serviço + nota de peça) — depois é só juntar essas baixas na conciliação bancária do CA.
 - **Estornar** um pagamento manual específico (baixas vindas do Conta Azul não podem ser estornadas no app — exclua a baixa no próprio CA)
 - Cancelar uma conta (só se não tiver pagamento registrado; estorne antes se precisar)
 - Reenviar ao Conta Azul uma conta cujo envio deu erro (botão de reenvio, só aparece com status de envio ERRO)

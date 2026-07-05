@@ -519,6 +519,76 @@ router.post('/:id/parcelas/:parcelaId/baixar', verificarAuth, checkEscrita, asyn
     }
 });
 
+// ── POST /baixar-lote — quita VÁRIAS parcelas de uma vez (mesma data/forma/banco) ──
+// Cada parcela recebe uma baixa pelo SALDO restante. Para contas que vão ao Conta Azul,
+// a baixa é marcada para ser empurrada (worker), no banco escolhido. As locais ficam só aqui.
+router.post('/baixar-lote', verificarAuth, checkEscrita, async (req, res) => {
+    try {
+        const { parcelaIds, dataPagamento, metodoPagamento, contaFinanceiraCaId, observacao } = req.body;
+        if (!Array.isArray(parcelaIds) || parcelaIds.length === 0) {
+            return res.status(400).json({ error: 'Selecione ao menos uma parcela para quitar.' });
+        }
+        const metodo = String(metodoPagamento || '').toUpperCase();
+        if (!contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodo)) {
+            return res.status(400).json({ error: 'Escolha uma forma de pagamento válida.' });
+        }
+        if (!contaFinanceiraCaId) {
+            return res.status(400).json({ error: 'Escolha o banco/caixa de onde saiu o pagamento.' });
+        }
+        const dataPgto = dataPagamento ? parseVencimento(dataPagamento) : new Date();
+
+        let baixadas = 0;
+        const ignoradas = [];
+        for (const parcelaId of parcelaIds) {
+            const parcela = await prisma.parcelaPagar.findUnique({
+                where: { id: parcelaId },
+                include: { contaPagar: true, pagamentos: { where: { estornado: false } } }
+            });
+            if (!parcela) { ignoradas.push({ parcelaId, motivo: 'não encontrada' }); continue; }
+            if (parcela.status === 'PAGO') { ignoradas.push({ parcelaId, motivo: 'já paga' }); continue; }
+            if (parcela.status === 'CANCELADO' || parcela.contaPagar.status === 'CANCELADO') {
+                ignoradas.push({ parcelaId, motivo: 'cancelada' }); continue;
+            }
+            const saldo = saldoParcela(parcela);
+            if (saldo <= 0.01) { ignoradas.push({ parcelaId, motivo: 'sem saldo' }); continue; }
+
+            // Vai ao CA? (conta enviada/na fila) → empurra a baixa; senão fica só local.
+            const naCA = parcela.contaPagar.statusEnvioCA && parcela.contaPagar.statusEnvioCA !== 'NAO_ENVIAR';
+            try {
+                await prisma.$transaction(async (tx) => {
+                    await tx.pagamentoParcelaPagar.create({
+                        data: {
+                            parcelaPagarId: parcelaId,
+                            valorPago: round2(saldo),
+                            dataPagamento: dataPgto,
+                            formaPagamento: metodo,
+                            contaFinanceiraCaId: naCA ? String(contaFinanceiraCaId) : null,
+                            statusEnvioCA: naCA ? 'ENVIAR' : 'NAO_ENVIAR',
+                            observacao: observacao?.trim() || 'Baixa em lote',
+                            origem: 'MANUAL',
+                            registradoPorId: req.user.id
+                        }
+                    });
+                    await contasPagarCaSyncService.recalcularParcelaEConta(tx, parcelaId);
+                });
+                baixadas++;
+            } catch (err) {
+                console.error(`[baixar-lote] Falha na parcela ${parcelaId}:`, err.message);
+                ignoradas.push({ parcelaId, motivo: 'erro ao gravar' });
+            }
+        }
+
+        res.json({
+            message: `${baixadas} parcela(s) quitada(s)${ignoradas.length ? `, ${ignoradas.length} ignorada(s)` : ''}.`,
+            baixadas,
+            ignoradas
+        });
+    } catch (error) {
+        console.error('Erro na baixa em lote:', error);
+        res.status(500).json({ error: 'Erro ao quitar as parcelas em lote.' });
+    }
+});
+
 // ── POST /:id/parcelas/:parcelaId/estorno — estorna um pagamento do ledger ──
 router.post('/:id/parcelas/:parcelaId/estorno', verificarAuth, checkEscrita, async (req, res) => {
     try {

@@ -34,6 +34,11 @@ const contasPagarService = {
         const response = await api.post(`/contas-pagar/${id}/parcelas/${parcelaId}/baixar`, dados);
         return response.data;
     },
+    // Quitar várias parcelas de uma vez (mesma data/forma/banco)
+    baixarLote: async (dados) => {
+        const response = await api.post('/contas-pagar/baixar-lote', dados);
+        return response.data; // { message, baixadas, ignoradas }
+    },
     estornarPagamento: async (id, parcelaId, pagamentoId) => {
         const response = await api.post(`/contas-pagar/${id}/parcelas/${parcelaId}/estorno`, { pagamentoId });
         return response.data;

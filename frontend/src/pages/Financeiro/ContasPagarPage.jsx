@@ -184,6 +184,25 @@ const ContasPagarPage = () => {
         podeBaixar && conta.status !== 'CANCELADO' &&
         parcela.status !== 'PAGO' && parcela.status !== 'CANCELADO';
 
+    // Seleção múltipla para quitar várias parcelas de uma vez (mesma data/forma/banco)
+    const [selecionadas, setSelecionadas] = useState(() => new Set());
+    const [baixaLoteModal, setBaixaLoteModal] = useState(false);
+    const idsSelecionaveis = useMemo(
+        () => linhas.filter(({ conta, parcela }) => podeBaixarParcela(conta, parcela)).map(({ parcela }) => parcela.id),
+        [linhas] // eslint-disable-line react-hooks/exhaustive-deps
+    );
+    const toggleSel = (id) => setSelecionadas(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    const limparSel = () => setSelecionadas(new Set());
+    const todasMarcadas = idsSelecionaveis.length > 0 && idsSelecionaveis.every(id => selecionadas.has(id));
+    const toggleTodas = () => setSelecionadas(todasMarcadas ? new Set() : new Set(idsSelecionaveis));
+    const valorSelecionado = useMemo(() => {
+        let s = 0;
+        linhas.forEach(({ parcela }) => {
+            if (selecionadas.has(parcela.id)) s += Math.max(0, Number(parcela.valor || 0) - Number(parcela.valorPago || 0));
+        });
+        return s;
+    }, [linhas, selecionadas]);
+
     const recarregarFornecedores = () =>
         fornecedorService.listar().then(f => setFornecedores(Array.isArray(f) ? f : [])).catch(() => {});
 
@@ -271,6 +290,21 @@ const ContasPagarPage = () => {
                     </div>
                 )}
 
+                {/* Barra de ações em lote */}
+                {podeBaixar && selecionadas.size > 0 && (
+                    <div className="sticky top-2 z-20 bg-primary text-white rounded-lg px-4 py-2.5 flex items-center justify-between gap-3 shadow-md">
+                        <span className="text-sm font-medium">
+                            {selecionadas.size} selecionada(s) · R$ {fmt(valorSelecionado)}
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button onClick={limparSel} className="text-xs px-3 py-1.5 rounded bg-white/15 hover:bg-white/25">Limpar</button>
+                            <button onClick={() => setBaixaLoteModal(true)} className="text-xs font-semibold px-3 py-1.5 rounded bg-white text-primary hover:bg-gray-100">
+                                Quitar selecionadas
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Mobile: cards */}
                 <div className="md:hidden space-y-3">
                     {linhas.length === 0 && !loading && (
@@ -279,9 +313,20 @@ const ContasPagarPage = () => {
                         </div>
                     )}
                     {linhas.map(({ conta, parcela, totalParcelas }) => (
-                        <div key={parcela.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4" onClick={() => setDetalheConta(conta)}>
+                        <div key={parcela.id} className={`bg-white rounded-xl border shadow-sm p-4 ${selecionadas.has(parcela.id) ? 'border-primary ring-1 ring-primary' : 'border-gray-200'}`} onClick={() => setDetalheConta(conta)}>
                             <div className="flex items-center justify-between mb-1 gap-2">
-                                <span className="font-semibold text-gray-900 truncate">{nomeFornecedor(conta.fornecedor)}</span>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    {podeBaixarParcela(conta, parcela) && (
+                                        <input
+                                            type="checkbox"
+                                            checked={selecionadas.has(parcela.id)}
+                                            onClick={e => e.stopPropagation()}
+                                            onChange={() => toggleSel(parcela.id)}
+                                            className="rounded shrink-0 h-4 w-4"
+                                        />
+                                    )}
+                                    <span className="font-semibold text-gray-900 truncate">{nomeFornecedor(conta.fornecedor)}</span>
+                                </div>
                                 <BadgeStatusParcela parcela={parcela} />
                             </div>
                             <div className="text-sm text-gray-500 truncate">
@@ -326,6 +371,11 @@ const ContasPagarPage = () => {
             <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
+                                    <th className="pl-5 pr-1 py-3 w-8">
+                                        {podeBaixar && idsSelecionaveis.length > 0 && (
+                                            <input type="checkbox" checked={todasMarcadas} onChange={toggleTodas} className="rounded h-4 w-4" title="Selecionar todas" />
+                                        )}
+                                    </th>
                                     <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Fornecedor</th>
                                     <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Descrição</th>
                                     <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Nota</th>
@@ -339,10 +389,20 @@ const ContasPagarPage = () => {
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200 text-sm">
                                 {linhas.length === 0 && !loading && (
-                                    <tr><td colSpan={9} className="px-5 py-8 text-center text-gray-400">Nenhuma parcela encontrada.</td></tr>
+                                    <tr><td colSpan={10} className="px-5 py-8 text-center text-gray-400">Nenhuma parcela encontrada.</td></tr>
                                 )}
                                 {linhas.map(({ conta, parcela, totalParcelas }) => (
-                                    <tr key={parcela.id} className={`hover:bg-gray-50 ${parcela.status === 'PAGO' ? 'bg-green-50/40' : ''}`}>
+                                    <tr key={parcela.id} className={`hover:bg-gray-50 ${selecionadas.has(parcela.id) ? 'bg-blue-50/60' : parcela.status === 'PAGO' ? 'bg-green-50/40' : ''}`}>
+                                        <td className="pl-5 pr-1 py-3 w-8">
+                                            {podeBaixarParcela(conta, parcela) && (
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selecionadas.has(parcela.id)}
+                                                    onChange={() => toggleSel(parcela.id)}
+                                                    className="rounded h-4 w-4"
+                                                />
+                                            )}
+                                        </td>
                                         <td className="px-5 py-3 text-gray-900 font-medium">{nomeFornecedor(conta.fornecedor)}</td>
                                         <td className="px-5 py-3 text-gray-600">
                                             {conta.descricao || '—'}
@@ -407,6 +467,16 @@ const ContasPagarPage = () => {
                     parcela={baixaModal.parcela}
                     onClose={() => setBaixaModal(null)}
                     onSuccess={() => { setBaixaModal(null); setDetalheConta(null); fetchData(); }}
+                />
+            )}
+
+            {/* Modal Quitar em lote */}
+            {baixaLoteModal && (
+                <BaixaLoteModal
+                    parcelaIds={[...selecionadas]}
+                    valorTotal={valorSelecionado}
+                    onClose={() => setBaixaLoteModal(false)}
+                    onSuccess={() => { setBaixaLoteModal(false); limparSel(); fetchData(); }}
                 />
             )}
 
@@ -802,6 +872,99 @@ const BaixaParcelaModal = ({ conta, parcela, onClose, onSuccess }) => {
                     <button onClick={onClose} className="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm">Cancelar</button>
                     <button onClick={confirmar} disabled={salvando} className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-sm font-semibold text-sm disabled:opacity-50">
                         {salvando ? 'Salvando…' : 'Confirmar baixa'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ═══════════════════════════════════════════════════════════
+// MODAL QUITAR EM LOTE (várias parcelas — mesma data/forma/banco)
+// ═══════════════════════════════════════════════════════════
+const BaixaLoteModal = ({ parcelaIds, valorTotal, onClose, onSuccess }) => {
+    const [dataPagamento, setDataPagamento] = useState(hojeYMD());
+    const [metodoPagamento, setMetodoPagamento] = useState('');
+    const [contaFinanceiraCaId, setContaFinanceiraCaId] = useState('');
+    const [opcoes, setOpcoes] = useState({ contasFinanceiras: [], metodosPagamento: [] });
+    const [carregando, setCarregando] = useState(true);
+    const [salvando, setSalvando] = useState(false);
+
+    useEffect(() => {
+        contasPagarService.opcoesBaixa()
+            .then(op => {
+                const cf = Array.isArray(op?.contasFinanceiras) ? op.contasFinanceiras : [];
+                const mp = Array.isArray(op?.metodosPagamento) ? op.metodosPagamento : [];
+                setOpcoes({ contasFinanceiras: cf, metodosPagamento: mp });
+                const padrao = cf.find(c => c.padrao) || cf[0];
+                if (padrao) setContaFinanceiraCaId(padrao.id);
+            })
+            .catch(() => toast.error('Não consegui carregar os bancos do Conta Azul.'))
+            .finally(() => setCarregando(false));
+    }, []);
+
+    const confirmar = async () => {
+        if (!metodoPagamento) { toast.error('Escolha a forma de pagamento.'); return; }
+        if (!contaFinanceiraCaId) { toast.error('Escolha o banco/caixa.'); return; }
+        setSalvando(true);
+        try {
+            const r = await contasPagarService.baixarLote({ parcelaIds, dataPagamento, metodoPagamento, contaFinanceiraCaId });
+            toast.success(r?.message || 'Parcelas quitadas!');
+            onSuccess();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao quitar as parcelas');
+        } finally {
+            setSalvando(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-md w-full max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                        <p className="text-xs text-gray-500">Quitar em lote</p>
+                        <h2 className="font-bold text-gray-900">{parcelaIds.length} parcela(s) · R$ {fmt(valorTotal)}</h2>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                </div>
+
+                <div className="p-5 space-y-4">
+                    {carregando ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-500 py-4"><Loader2 className="h-4 w-4 animate-spin" /> Carregando bancos…</div>
+                    ) : (
+                        <>
+                            <p className="text-sm text-gray-600">
+                                Cada parcela é quitada pelo <span className="font-medium">saldo restante</span>, na mesma data, forma e banco. As despesas já enviadas ao Conta Azul recebem a baixa lá também.
+                            </p>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Data do pagamento</label>
+                                <input type="date" value={dataPagamento} onChange={e => setDataPagamento(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
+                                    <select value={metodoPagamento} onChange={e => setMetodoPagamento(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white">
+                                        <option value="">Selecionar…</option>
+                                        {opcoes.metodosPagamento.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Banco / caixa</label>
+                                    <select value={contaFinanceiraCaId} onChange={e => setContaFinanceiraCaId(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white">
+                                        <option value="">Selecionar…</option>
+                                        {opcoes.contasFinanceiras.map(c => <option key={c.id} value={c.id}>{c.nome}{c.padrao ? ' (padrão)' : ''}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                <div className="px-5 py-4 border-t border-gray-100 flex gap-3">
+                    <button onClick={onClose} className="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm">Cancelar</button>
+                    <button onClick={confirmar} disabled={salvando || carregando} className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-sm font-semibold text-sm disabled:opacity-50">
+                        {salvando ? 'Quitando…' : 'Confirmar quitação'}
                     </button>
                 </div>
             </div>

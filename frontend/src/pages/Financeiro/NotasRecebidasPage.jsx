@@ -746,19 +746,20 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     const [gerando, setGerando] = useState(false);
     const [ignorando, setIgnorando] = useState(false);
 
-    // "Já paguei" (compra à vista): marca a despesa como QUITADA no Conta Azul.
-    const [modoPagamento, setModoPagamento] = useState('DDA'); // 'DDA' | 'PAGO'
+    // Condição de pagamento (forma + banco) — obrigatória ao enviar ao CA.
+    // "Já paguei" (compra à vista) marca a despesa como QUITADA no Conta Azul.
+    const [modoPagamento, setModoPagamento] = useState('DDA'); // 'DDA' (ainda vou pagar) | 'PAGO' (já paguei)
     const [dataPagamento, setDataPagamento] = useState(() => toYMD(nota.emissao) || hojeYMD());
-    const [metodoPagamento, setMetodoPagamento] = useState('PIX_PAGAMENTO_INSTANTANEO');
+    const [metodoPagamento, setMetodoPagamento] = useState(''); // vazio = força escolha consciente
     const [contaFinanceiraCaId, setContaFinanceiraCaId] = useState('');
     const [opcoesBaixa, setOpcoesBaixa] = useState({ contasFinanceiras: [], metodosPagamento: [] });
     const [loadingOpcoes, setLoadingOpcoes] = useState(false);
     const [opcoesCarregadas, setOpcoesCarregadas] = useState(false);
     const pago = enviarCA && modoPagamento === 'PAGO';
 
-    // Carrega bancos + formas do CA só quando o usuário escolhe "Já paguei" (lazy).
+    // Carrega bancos + formas do CA quando a despesa vai ao CA (forma+banco são obrigatórios).
     useEffect(() => {
-        if (!pago || opcoesCarregadas || loadingOpcoes) return;
+        if (!enviarCA || opcoesCarregadas || loadingOpcoes) return;
         setLoadingOpcoes(true);
         contasPagarService.opcoesBaixa()
             .then(op => {
@@ -766,12 +767,12 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 const mp = Array.isArray(op?.metodosPagamento) ? op.metodosPagamento : [];
                 setOpcoesBaixa({ contasFinanceiras: cf, metodosPagamento: mp });
                 const padrao = cf.find(c => c.padrao) || cf[0];
-                setContaFinanceiraCaId(prev => prev || padrao?.id || '');
+                setContaFinanceiraCaId(prev => prev || padrao?.id || ''); // banco padrão pré-selecionado
                 setOpcoesCarregadas(true);
             })
             .catch(() => toast.error('Não consegui carregar os bancos do Conta Azul.'))
             .finally(() => setLoadingOpcoes(false));
-    }, [pago, opcoesCarregadas, loadingOpcoes]);
+    }, [enviarCA, opcoesCarregadas, loadingOpcoes]);
 
     const setVinculo = (idx, patch) =>
         setVinculos(prev => prev.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
@@ -848,11 +849,11 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 return;
             }
         }
-        // "Já paguei": precisa de data, forma e banco
-        if (pago) {
-            if (!dataPagamento) { toast.error('Informe a data do pagamento.'); return; }
+        // Enviando ao CA: forma + banco são obrigatórios (condição da despesa)
+        if (enviarCA) {
             if (!metodoPagamento) { toast.error('Escolha a forma de pagamento.'); return; }
-            if (!contaFinanceiraCaId) { toast.error('Escolha o banco/caixa de onde saiu o pagamento.'); return; }
+            if (!contaFinanceiraCaId) { toast.error('Escolha o banco/caixa da despesa.'); return; }
+            if (pago && !dataPagamento) { toast.error('Informe a data do pagamento.'); return; }
         }
         setGerando(true);
         try {
@@ -861,9 +862,10 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 categoriaPadraoCaId: caIdDaCategoria(categoriaPadrao),
                 enviarCA,
                 observacoes: observacoes.trim() || undefined,
-                pagamento: pago
-                    ? { dataPagamento, metodoPagamento, contaFinanceiraCaId }
-                    : undefined,
+                metodoPagamento: enviarCA ? metodoPagamento : undefined,
+                contaFinanceiraCaId: enviarCA ? contaFinanceiraCaId : undefined,
+                pago: pago || undefined,
+                dataPagamento: pago ? dataPagamento : undefined,
                 parcelas: parcelas.map(p => ({ valor: parseNum(p.valor), dataVencimento: p.dataVencimento })),
                 itens: vinculos.map(v => ({
                     itemId: v.itemId,
@@ -1180,78 +1182,81 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 </label>
 
                 {enviarCA && (
-                    <>
-                        {/* DDA vs Já paguei */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setModoPagamento('DDA')}
-                                className={`text-left rounded-lg border p-3 min-h-[44px] transition-colors ${modoPagamento === 'DDA' ? 'border-primary bg-white ring-1 ring-primary' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
-                            >
-                                <div className="text-sm font-semibold text-gray-900">Ainda vou pagar</div>
-                                <div className="text-xs text-gray-500">Entra em aberto para pagar via DDA/boleto.</div>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setModoPagamento('PAGO')}
-                                className={`text-left rounded-lg border p-3 min-h-[44px] transition-colors ${modoPagamento === 'PAGO' ? 'border-primary bg-white ring-1 ring-primary' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
-                            >
-                                <div className="text-sm font-semibold text-gray-900">Já paguei</div>
-                                <div className="text-xs text-gray-500">Entra quitada (PIX/dinheiro), só para conciliar.</div>
-                            </button>
-                        </div>
-
-                        {/* Campos do "já paguei" */}
-                        {pago && (
-                            <div className="bg-white border border-gray-200 rounded-lg p-3">
-                                {loadingOpcoes ? (
-                                    <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
-                                        <Loader2 className="h-4 w-4 animate-spin" /> Carregando bancos da Conta Azul…
+                    <div className="bg-white border border-gray-200 rounded-lg p-3 space-y-3">
+                        {loadingOpcoes ? (
+                            <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                                <Loader2 className="h-4 w-4 animate-spin" /> Carregando bancos da Conta Azul…
+                            </div>
+                        ) : (
+                            <>
+                                {/* Condição (forma + banco) — obrigatória */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700">Forma de pagamento</label>
+                                        <select
+                                            value={metodoPagamento}
+                                            onChange={e => setMetodoPagamento(e.target.value)}
+                                            className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white"
+                                        >
+                                            <option value="">Selecionar…</option>
+                                            {opcoesBaixa.metodosPagamento.map(m => (
+                                                <option key={m.value} value={m.value}>{m.label}</option>
+                                            ))}
+                                        </select>
                                     </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                        <div>
-                                            <label className="text-sm font-medium text-gray-700">Data do pagamento</label>
-                                            <input
-                                                type="date"
-                                                value={dataPagamento}
-                                                onChange={e => setDataPagamento(e.target.value)}
-                                                className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-medium text-gray-700">Forma de pagamento</label>
-                                            <select
-                                                value={metodoPagamento}
-                                                onChange={e => setMetodoPagamento(e.target.value)}
-                                                className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white"
-                                            >
-                                                {opcoesBaixa.metodosPagamento.map(m => (
-                                                    <option key={m.value} value={m.value}>{m.label}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-medium text-gray-700">Banco / caixa (de onde saiu)</label>
-                                            <select
-                                                value={contaFinanceiraCaId}
-                                                onChange={e => setContaFinanceiraCaId(e.target.value)}
-                                                className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white"
-                                            >
-                                                <option value="">Selecionar…</option>
-                                                {opcoesBaixa.contasFinanceiras.map(c => (
-                                                    <option key={c.id} value={c.id}>{c.nome}{c.padrao ? ' (padrão)' : ''}</option>
-                                                ))}
-                                            </select>
-                                            {opcoesCarregadas && opcoesBaixa.contasFinanceiras.length === 0 && (
-                                                <p className="text-xs text-amber-700 mt-1">Nenhum banco encontrado na Conta Azul.</p>
-                                            )}
-                                        </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700">Banco / caixa</label>
+                                        <select
+                                            value={contaFinanceiraCaId}
+                                            onChange={e => setContaFinanceiraCaId(e.target.value)}
+                                            className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white"
+                                        >
+                                            <option value="">Selecionar…</option>
+                                            {opcoesBaixa.contasFinanceiras.map(c => (
+                                                <option key={c.id} value={c.id}>{c.nome}{c.padrao ? ' (padrão)' : ''}</option>
+                                            ))}
+                                        </select>
+                                        {opcoesCarregadas && opcoesBaixa.contasFinanceiras.length === 0 && (
+                                            <p className="text-xs text-amber-700 mt-1">Nenhum banco encontrado na Conta Azul.</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Situação: ainda vou pagar vs já paguei */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setModoPagamento('DDA')}
+                                        className={`text-left rounded-lg border p-3 min-h-[44px] transition-colors ${modoPagamento === 'DDA' ? 'border-primary bg-blue-50 ring-1 ring-primary' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
+                                    >
+                                        <div className="text-sm font-semibold text-gray-900">Ainda vou pagar</div>
+                                        <div className="text-xs text-gray-500">Entra em aberto (paga depois via DDA/boleto).</div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setModoPagamento('PAGO')}
+                                        className={`text-left rounded-lg border p-3 min-h-[44px] transition-colors ${modoPagamento === 'PAGO' ? 'border-primary bg-blue-50 ring-1 ring-primary' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
+                                    >
+                                        <div className="text-sm font-semibold text-gray-900">Já paguei</div>
+                                        <div className="text-xs text-gray-500">Entra quitada, só para conciliar com o extrato.</div>
+                                    </button>
+                                </div>
+
+                                {/* Data do pagamento (só no "já paguei") */}
+                                {pago && (
+                                    <div className="md:w-1/2">
+                                        <label className="text-sm font-medium text-gray-700">Data do pagamento</label>
+                                        <input
+                                            type="date"
+                                            value={dataPagamento}
+                                            onChange={e => setDataPagamento(e.target.value)}
+                                            className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                        />
                                     </div>
                                 )}
-                            </div>
+                            </>
                         )}
-                    </>
+                    </div>
                 )}
             </div>
 

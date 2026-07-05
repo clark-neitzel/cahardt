@@ -672,7 +672,9 @@ async function _enviarDespesasPendentes() {
                 }
             }
 
-            const contaFinanceiraId = await resolverContaFinanceiraPadrao();
+            // Banco e forma escolhidos na entrada da nota (condição de pagamento) → payload da despesa.
+            const contaFinanceiraId = conta.contaFinanceiraCaId || await resolverContaFinanceiraPadrao();
+            const metodoPagamentoCA = conta.metodoPagamentoCA || null;
             const valorTotal = Math.round(parcelasAbertas.reduce((s, p) => s + Number(p.valor), 0) * 100) / 100;
             const dataCompetencia = fmtDataCA(conta.competencia || parcelasAbertas[0].dataVencimento || new Date());
             const notaParcela = conta.numeroNota ? `NF ${conta.numeroNota}` : conta.descricao;
@@ -693,6 +695,7 @@ async function _enviarDespesasPendentes() {
                         data_vencimento: fmtDataCA(p.dataVencimento),
                         nota: notaParcela, // obrigatória na spec
                         conta_financeira: contaFinanceiraId,
+                        ...(metodoPagamentoCA ? { metodo_pagamento: metodoPagamentoCA } : {}),
                         // CA exige valor_liquido além do valor_bruto (HTTP 400 "O valor líquido deve ser informado").
                         // Na criação não há juros/multa/desconto → líquido = bruto.
                         detalhe_valor: { valor_bruto: Number(p.valor), valor_liquido: Number(p.valor) }

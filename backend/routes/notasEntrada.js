@@ -444,7 +444,8 @@ const decodeVinculo = (value) => {
 // ── POST /:id/gerar-conta — cria a Conta a Pagar a partir da nota ──
 router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) => {
     try {
-        const { categoriaPadrao, categoriaPadraoCaId, enviarCA, observacoes, parcelas, itens, pagamento } = req.body;
+        const { categoriaPadrao, categoriaPadraoCaId, enviarCA, observacoes, parcelas, itens,
+                metodoPagamento, contaFinanceiraCaId, pago, dataPagamento } = req.body;
 
         const nota = await prisma.notaEntrada.findUnique({
             where: { id: req.params.id },
@@ -491,27 +492,26 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
             return res.status(400).json({ error: 'Para enviar ao Conta Azul é obrigatório a nota ter fornecedor identificado.' });
         }
 
-        // ── "Já paguei" (compra à vista): marca a despesa como QUITADA no Conta Azul ──
-        let pagto = null;
-        if (pagamento) {
-            if (!enviarCA) {
-                return res.status(400).json({ error: 'Para marcar como "já paguei" é preciso enviar a despesa para a Conta Azul.' });
-            }
-            const metodo = String(pagamento.metodoPagamento || '').toUpperCase();
+        // ── Condição de pagamento (forma + banco) — OBRIGATÓRIA ao enviar ao Conta Azul.
+        // Vai no payload da despesa (metodo_pagamento + conta_financeira de cada parcela).
+        // Se "pago" = true ("já paguei"), também registra a baixa e marca para quitar no CA.
+        let condicaoCA = null; // { metodoPagamento, contaFinanceiraCaId }
+        let pagto = null;      // preenchido só quando "já paguei"
+        if (enviarCA) {
+            const metodo = String(metodoPagamento || '').toUpperCase();
             if (!contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodo)) {
-                return res.status(400).json({ error: 'Escolha uma forma de pagamento válida.' });
+                return res.status(400).json({ error: 'Escolha a forma de pagamento.' });
             }
-            if (!pagamento.contaFinanceiraCaId) {
-                return res.status(400).json({ error: 'Escolha o banco/caixa de onde saiu o pagamento.' });
+            if (!contaFinanceiraCaId) {
+                return res.status(400).json({ error: 'Escolha o banco/caixa da despesa.' });
             }
-            if (!pagamento.dataPagamento || isNaN(new Date(pagamento.dataPagamento).getTime())) {
-                return res.status(400).json({ error: 'Informe uma data de pagamento válida.' });
+            condicaoCA = { metodoPagamento: metodo, contaFinanceiraCaId: String(contaFinanceiraCaId) };
+            if (pago) {
+                if (!dataPagamento || isNaN(new Date(dataPagamento).getTime())) {
+                    return res.status(400).json({ error: 'Informe uma data de pagamento válida.' });
+                }
+                pagto = { ...condicaoCA, dataPagamento: parseVencimento(dataPagamento) };
             }
-            pagto = {
-                metodoPagamento: metodo,
-                contaFinanceiraCaId: String(pagamento.contaFinanceiraCaId),
-                dataPagamento: parseVencimento(pagamento.dataPagamento)
-            };
         }
 
         // ── Validação dos itens do de-para ──
@@ -651,6 +651,8 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                     valorTotal: somaParcelas,
                     status: 'ABERTO',
                     statusEnvioCA: enviarCA ? 'ENVIAR' : 'NAO_ENVIAR',
+                    metodoPagamentoCA: condicaoCA?.metodoPagamento || null,
+                    contaFinanceiraCaId: condicaoCA?.contaFinanceiraCaId || null,
                     criadoPorId: req.user.id,
                     parcelas: {
                         create: parcelas.map((p, i) => ({

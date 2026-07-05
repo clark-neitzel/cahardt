@@ -2400,6 +2400,11 @@ model ContaPagar {
   statusEnvioCA String  @default("NAO_ENVIAR") @map("status_envio_ca") // NAO_ENVIAR | ENVIAR | ENVIANDO | AGUARDANDO_PROTOCOLO | ENVIADO | ERRO
   erroEnvioCA   String? @map("erro_envio_ca") @db.Text
 
+  // Condição de pagamento escolhida na entrada da nota (vai no payload da despesa ao CA:
+  // metodo_pagamento + conta_financeira de cada parcela). Nulo = usa a conta padrão do CA.
+  metodoPagamentoCA   String? @map("metodo_pagamento_ca")   // enum de metodo_pagamento do CA
+  contaFinanceiraCaId String? @map("conta_financeira_ca_id") // UUID do banco/caixa no CA
+
   criadoPorId String?   @map("criado_por_id")
   criadoPor   Vendedor? @relation("ContasPagarCriadas", fields: [criadoPorId], references: [id])
 
