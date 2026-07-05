@@ -1421,4 +1421,20 @@ router.post('/contas-pagar-reconciliar', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/nfse-ciclo
+// Dispara UM ciclo de captura de NFS-e no ADN (síncrono) e devolve o resultado +
+// status do controle. Diagnóstico da Fase 4 — validar o formato real da resposta
+// do ambiente nacional sem depender do worker de 60min.
+router.post('/nfse-ciclo', async (req, res) => {
+    try {
+        const nfseAdnService = require('../services/nfseAdnService');
+        const resultado = await nfseAdnService.executarCiclo();
+        const status = await nfseAdnService.statusCaptura();
+        const notasNfse = await prisma.notaEntrada.count({ where: { tipo: 'NFSE' } });
+        res.json({ resultado, status, notasNfse });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;
