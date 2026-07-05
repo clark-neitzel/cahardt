@@ -4,6 +4,9 @@ import { ShieldCheck, Upload, Lock, RefreshCw, Link2, Loader2 } from 'lucide-rea
 import toast from 'react-hot-toast';
 
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—';
+const fmtDataHora = (d) => d
+    ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : null;
 
 const BadgeDiasRestantes = ({ dias }) => {
     if (dias == null) return null;
@@ -14,7 +17,7 @@ const BadgeDiasRestantes = ({ dias }) => {
 };
 
 // ── Seção "Notas & Certificado" das Configurações ──
-// Certificado digital A1 (consulta de notas na SEFAZ/NFS-e) + captura automática (Fase 2) + conexão CA.
+// Certificado digital A1 (consulta de notas na SEFAZ/NFS-e) + captura automática de NF-e + conexão CA.
 const NotasCertificadoConfig = () => {
     const [cert, setCert] = useState(null);       // { instalado, titular, cnpj, emissor, validade, diasRestantes }
     const [carregando, setCarregando] = useState(true);
@@ -24,6 +27,11 @@ const NotasCertificadoConfig = () => {
     const [senha, setSenha] = useState('');
     const [instalando, setInstalando] = useState(false);
     const [erroInstalacao, setErroInstalacao] = useState('');
+
+    // Captura automática: { nfeAtiva, ultimaConsulta, ultimoResultado, totalCapturadas, bloqueadoAte }
+    const [captura, setCaptura] = useState(null);
+    const [capturaErro, setCapturaErro] = useState(false);
+    const [alterandoCaptura, setAlterandoCaptura] = useState(false);
 
     const carregar = async () => {
         setCarregando(true);
@@ -38,7 +46,32 @@ const NotasCertificadoConfig = () => {
         }
     };
 
-    useEffect(() => { carregar(); }, []);
+    const carregarCaptura = async () => {
+        try {
+            const data = await configNotasService.getCaptura();
+            setCaptura(data || {});
+            setCapturaErro(false);
+        } catch {
+            setCapturaErro(true);
+        }
+    };
+
+    useEffect(() => { carregar(); carregarCaptura(); }, []);
+
+    const toggleNfe = async () => {
+        if (alterandoCaptura) return;
+        const ligar = !captura?.nfeAtiva;
+        setAlterandoCaptura(true);
+        try {
+            await configNotasService.setCaptura({ nfeAtiva: ligar });
+            toast.success(ligar ? 'Captura de NF-e ligada!' : 'Captura de NF-e pausada.');
+            await carregarCaptura();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao alterar a captura de NF-e');
+        } finally {
+            setAlterandoCaptura(false);
+        }
+    };
 
     const instalar = async () => {
         setErroInstalacao('');
@@ -157,18 +190,44 @@ const NotasCertificadoConfig = () => {
                 </div>
                 <div className="p-5 space-y-4">
                     <div className="flex items-center justify-between gap-3 min-h-[44px]">
-                        <div>
+                        <div className="min-w-0">
                             <div className="text-sm font-medium text-gray-900">NF-e (mercadorias) — SEFAZ</div>
-                            <div className="text-xs text-gray-500">Consulta automática das notas emitidas contra o CNPJ da empresa</div>
+                            <div className="text-xs text-gray-500">
+                                {capturaErro
+                                    ? 'Não foi possível consultar o status da captura agora.'
+                                    : captura == null
+                                        ? 'Carregando…'
+                                        : [
+                                            captura.ultimaConsulta ? `última consulta: ${fmtDataHora(captura.ultimaConsulta)}` : 'nenhuma consulta realizada ainda',
+                                            captura.ultimoResultado || null,
+                                            captura.totalCapturadas != null ? `${captura.totalCapturadas} nota(s) capturada(s)` : null
+                                        ].filter(Boolean).join(' · ')}
+                            </div>
+                            {captura?.bloqueadoAte && new Date(captura.bloqueadoAte).getTime() > Date.now() && (
+                                <div className="text-xs text-amber-700 mt-0.5">
+                                    SEFAZ pediu pausa — retoma às {new Date(captura.bloqueadoAte).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                            )}
                         </div>
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 shrink-0 whitespace-nowrap">disponível em breve — Fase 2</span>
+                        <button
+                            onClick={toggleNfe}
+                            disabled={alterandoCaptura || capturaErro || captura == null}
+                            role="switch"
+                            aria-checked={!!captura?.nfeAtiva}
+                            aria-label="Ligar ou desligar a captura automática de NF-e"
+                            className="shrink-0 p-2.5 -m-2.5 disabled:opacity-50"
+                        >
+                            <span className={`block w-11 h-6 rounded-full relative transition-colors ${captura?.nfeAtiva ? 'bg-green-500' : 'bg-gray-300'}`}>
+                                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${captura?.nfeAtiva ? 'left-[22px]' : 'left-0.5'}`}></span>
+                            </span>
+                        </button>
                     </div>
                     <div className="flex items-center justify-between gap-3 min-h-[44px] border-t border-gray-100 pt-4">
                         <div>
                             <div className="text-sm font-medium text-gray-900">NFS-e (serviços tomados) — Ambiente Nacional</div>
                             <div className="text-xs text-gray-500">Consulta automática das notas de serviço tomadas pela empresa</div>
                         </div>
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 shrink-0 whitespace-nowrap">disponível em breve — Fase 2</span>
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 shrink-0 whitespace-nowrap">disponível em breve</span>
                     </div>
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
                         A SEFAZ só disponibiliza notas dos últimos 90 dias — com a captura ligada, nada se perde. Se a captura falhar, o restante do sistema <span className="font-semibold">não é afetado</span>: o robô roda separado e tenta de novo sozinho.

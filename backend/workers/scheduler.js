@@ -109,6 +109,21 @@ function startSchedulers() {
     setTimeout(_runBaixasPagar, 600000);
     setInterval(_runBaixasPagar, 1800000); // 30 minutos
 
+    // === 4.3. CAPTURA DE NF-e (SEFAZ Distribuição DF-e) ===
+    // A cada 1 hora consulta as NF-e emitidas contra o nosso CNPJ e alimenta a
+    // caixa de Notas Recebidas. 100% isolado: sem certificado instalado ou com a
+    // captura desligada (AppConfig captura_nfe_ativa), o ciclo pula silenciosamente;
+    // cStat 656 (consumo indevido) grava bloqueio de 1h15 e o worker respeita.
+    console.log('⏰ Iniciando Captura de NF-e (SEFAZ DF-e)...');
+    const sefazDfeService = require('../services/sefazDfeService');
+    const _runDfe = () => {
+        sefazDfeService.executarCiclo()
+            .catch(err => console.error('⚠️ Worker SEFAZ DF-e Error:', err.message));
+    };
+    // Primeira execução 4min após o start (servidor estável, sem competir com os outros syncs)
+    setTimeout(_runDfe, 240000);
+    setInterval(_runDfe, 3600000); // 60 minutos
+
     // === 5. CRON JOB INTELLIGENCE COMERCIAL ===
     // Recalcula todos os clientes 1 vez por dia, na madrugada (aprox 03:00)
     console.log('⏰ Agendando Motor Analítico (Inteligência Comercial)...');

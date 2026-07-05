@@ -1271,4 +1271,52 @@ router.post('/sync-itempcp-nomes', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/dfe-status
+// Diagnóstico da captura de NF-e (SEFAZ DF-e): controle de NSU, contagens por
+// status e as 5 notas mais recentes.
+router.get('/dfe-status', async (req, res) => {
+    try {
+        const sefazDfeService = require('../services/sefazDfeService');
+        const [controle, ativa, porStatus, recentes] = await Promise.all([
+            prisma.dfeControle.findUnique({ where: { id: 'dfe' } }),
+            sefazDfeService.capturaAtiva(),
+            prisma.notaEntrada.groupBy({ by: ['status'], _count: { _all: true } }),
+            prisma.notaEntrada.findMany({
+                orderBy: { criadoEm: 'desc' },
+                take: 5,
+                select: {
+                    id: true, chave: true, numero: true, fornecedorNome: true,
+                    emissao: true, valorTotal: true, status: true, manifestada: true, criadoEm: true
+                }
+            })
+        ]);
+        res.json({
+            ok: true,
+            capturaAtiva: ativa,
+            controle,
+            contagens: Object.fromEntries(porStatus.map((s) => [s.status, s._count._all])),
+            notasRecentes: recentes
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/admin-exec/dfe-consultar
+// Força um ciclo de captura de NF-e agora. Resposta síncrona resumida
+// (timeout de 60s — se estourar, o ciclo continua em background).
+router.post('/dfe-consultar', async (req, res) => {
+    try {
+        const sefazDfeService = require('../services/sefazDfeService');
+        const timeout = new Promise((resolve) => setTimeout(
+            () => resolve({ ok: true, timeout: true, motivo: 'Ciclo ainda em execução após 60s — segue em background (veja /dfe-status).' }),
+            60000
+        ));
+        const resultado = await Promise.race([sefazDfeService.executarCiclo(), timeout]);
+        res.json(resultado);
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;

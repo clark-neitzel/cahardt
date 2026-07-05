@@ -63,6 +63,7 @@ const iaConsultaRoutes = require('./routes/iaConsultaRoutes'); // API de consult
 const contasPagarRoutes = require('./routes/contasPagar'); // Financeiro: Contas a Pagar (Fase 1)
 const fornecedoresRoutes = require('./routes/fornecedores'); // Financeiro: Fornecedores
 const configNotasRoutes = require('./routes/configNotas'); // Configurações: Certificado Digital (notas)
+const notasEntradaRoutes = require('./routes/notasEntrada'); // Financeiro: Notas Recebidas — captura NF-e SEFAZ (Fase 2)
 const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de Autenticação
 
 const app = express();
@@ -80,6 +81,8 @@ app.use((req, res, next) => {
 // Arquivos estáticos (Uploads)
 // Certificado digital NUNCA é servido publicamente (mesmo criptografado)
 app.use('/uploads/certificado', (req, res) => res.status(403).json({ error: 'Acesso negado.' }));
+// XMLs de NF-e capturadas: só via rota autenticada /api/notas-entrada/:id/xml
+app.use('/uploads/notas-xml', (req, res) => res.status(403).json({ error: 'Acesso negado.' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Rotas
@@ -125,6 +128,7 @@ app.use('/api/contas-receber', contasReceberRoutes); // Contas a Receber (auth i
 app.use('/api/contas-pagar', contasPagarRoutes); // Contas a Pagar (auth inside)
 app.use('/api/fornecedores', fornecedoresRoutes); // Fornecedores (auth inside)
 app.use('/api/config-notas', configNotasRoutes); // Certificado Digital p/ notas (auth inside)
+app.use('/api/notas-entrada', notasEntradaRoutes); // Notas Recebidas — NF-e capturadas na SEFAZ (auth inside)
 app.use('/api/estoque', authMiddleware, estoqueRoutes); // Módulo de Estoque
 app.use('/api/categorias-estoque', authMiddleware, categoriaEstoqueRoutes); // Categorias de Estoque
 

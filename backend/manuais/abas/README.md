@@ -44,6 +44,7 @@
 | Contas a Receber | `/financeiro/contas-receber` | Gestão de parcelas, baixas manuais e sincronização com o Conta Azul | [contas-receber.md](contas-receber.md) |
 | Contas a Pagar | `/contas-pagar` | Despesas com parcelas, envio ao Conta Azul e baixa automática quando pagas lá (DDA/conciliação) | [contas-a-pagar.md](contas-a-pagar.md) |
 | Fornecedores | `/fornecedores` | Cadastro de fornecedores sincronizado com o Conta Azul (envio automático + importação) | [fornecedores.md](fornecedores.md) |
+| Notas Recebidas | `/notas-recebidas` | Caixa de entrada das NF-e capturadas automaticamente na SEFAZ, com geração de conta a pagar a partir da nota | [notas-recebidas.md](notas-recebidas.md) |
 
 ---
 

@@ -13,6 +13,15 @@ const configNotasService = {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
         return response.data;
+    },
+    // Captura automática de notas: { nfeAtiva, ultimaConsulta, ultimoResultado, totalCapturadas, bloqueadoAte }
+    getCaptura: async () => {
+        const response = await api.get('/config-notas/captura');
+        return response.data;
+    },
+    setCaptura: async (dados) => {
+        const response = await api.put('/config-notas/captura', dados);
+        return response.data;
     }
 };
 

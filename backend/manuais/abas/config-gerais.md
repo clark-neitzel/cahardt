@@ -54,7 +54,14 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 2. Digite a senha do certificado e confirme
 3. O sistema valida a senha na hora (senha errada = erro imediato), lê titular, CNPJ, emissor e validade, e mostra os dias restantes até vencer
 4. O arquivo e a senha ficam guardados **criptografados** no servidor; instalar um novo certificado substitui (desativa) o anterior
-5. Esse certificado será usado pela captura automática de notas na SEFAZ (função futura — Fase 2 do módulo de Contas a Pagar)
+5. Esse certificado é usado pela **captura automática de NF-e na SEFAZ** (aba Notas Recebidas)
+
+### Captura automática de NF-e (SEFAZ)
+1. Na mesma seção de Notas Fiscais há o interruptor **Captura automática de NF-e** (ligada por padrão)
+2. Com o certificado instalado e a captura ligada, o sistema consulta a SEFAZ **a cada 1 hora** e traz as notas emitidas contra o CNPJ da empresa para a aba **Notas Recebidas**
+3. A tela mostra a última consulta, o resultado e o total de notas já capturadas
+4. Se a SEFAZ bloquear por excesso de consultas (erro 656), o sistema pausa sozinho por 1h15 e informa até quando
+5. Desligar a captura não apaga nada — só para de consultar a SEFAZ
 
 ---
 
@@ -63,7 +70,7 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 | Permissão | Efeito |
 |-----------|--------|
 | `admin` | Acesso total às configurações gerais |
-| `configuracoes.edit` | Também pode instalar/consultar o certificado digital |
+| `configuracoes.edit` | Também pode instalar/consultar o certificado digital e ligar/desligar a captura de NF-e |
 
 ---
 
@@ -72,6 +79,7 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 - **Catálogo** — as categorias de vendas configuradas aqui filtram o catálogo
 - **Rota / Atendimentos** — os tipos de atendimento e ações disponíveis vêm daqui
 - **Leads** — as origens de lead usadas no cadastro vêm daqui
+- **Notas Recebidas** — o certificado digital e o interruptor de captura controlam a busca automática de NF-e na SEFAZ
 
 ---
 
@@ -83,5 +91,5 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 | `frontend/src/pages/Admin/Configuracoes/RotasAtivasPreview.jsx` | Preview das rotas configuradas |
 | `frontend/src/services/configService.js` | Chamadas de API de configurações |
 | `backend/src/routes/configuracoes.js` | Rotas do backend |
-| `backend/routes/configNotas.js` | Certificado digital (instalar/consultar) |
+| `backend/routes/configNotas.js` | Certificado digital (instalar/consultar) + liga/desliga da captura de NF-e |
 | `backend/services/certificadoService.js` | Validação do .pfx e criptografia AES-256-GCM |

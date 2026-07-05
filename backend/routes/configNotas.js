@@ -1,6 +1,5 @@
 /**
- * Configurações → Notas Fiscais / Certificado Digital (Fase 1: só armazenamento).
- * A captura de notas na SEFAZ é Fase 2.
+ * Configurações → Notas Fiscais / Certificado Digital + Captura SEFAZ (Fase 2).
  *
  * Permissão: admin ou configuracoes.edit
  */
@@ -106,6 +105,43 @@ router.post('/certificado', verificarAuth, checkConfig, (req, res) => {
             res.status(500).json({ error: 'Erro ao instalar certificado.' });
         }
     });
+});
+
+// ── GET /captura — status da captura automática de NF-e (SEFAZ) ──
+router.get('/captura', verificarAuth, checkConfig, async (req, res) => {
+    try {
+        const sefazDfeService = require('../services/sefazDfeService');
+        const status = await sefazDfeService.statusCaptura();
+        res.json({
+            nfeAtiva: status.ativa,
+            ultimaConsulta: status.ultimaConsulta,
+            ultimoResultado: status.ultimoResultado,
+            totalCapturadas: status.totalCapturadas,
+            bloqueadoAte: status.bloqueadoAte
+        });
+    } catch (error) {
+        console.error('Erro ao consultar status da captura de NF-e:', error);
+        res.status(500).json({ error: 'Erro ao consultar status da captura.' });
+    }
+});
+
+// ── PUT /captura — liga/desliga a captura automática de NF-e ──
+router.put('/captura', verificarAuth, checkConfig, async (req, res) => {
+    try {
+        const { nfeAtiva } = req.body;
+        if (typeof nfeAtiva !== 'boolean') {
+            return res.status(400).json({ error: 'Informe nfeAtiva como true ou false.' });
+        }
+        await prisma.appConfig.upsert({
+            where: { key: 'captura_nfe_ativa' },
+            update: { value: nfeAtiva ? 'true' : 'false' },
+            create: { key: 'captura_nfe_ativa', value: nfeAtiva ? 'true' : 'false' }
+        });
+        res.json({ ok: true, nfeAtiva });
+    } catch (error) {
+        console.error('Erro ao alterar captura de NF-e:', error);
+        res.status(500).json({ error: 'Erro ao alterar a captura de NF-e.' });
+    }
 });
 
 module.exports = router;

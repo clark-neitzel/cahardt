@@ -36,6 +36,7 @@ import RelatorioCaixaPrint from './pages/Caixa/RelatorioCaixaPrint';
 import ContasReceberTabela from './pages/Financeiro/ContasReceberTabela';
 import ContasPagarPage from './pages/Financeiro/ContasPagarPage';
 import FornecedoresPage from './pages/Financeiro/FornecedoresPage';
+import NotasRecebidasPage from './pages/Financeiro/NotasRecebidasPage';
 import RelatorioPedidos from './pages/Relatorios/RelatorioPedidos';
 import RelatorioVendas from './pages/Relatorios/RelatorioVendas';
 import RelatorioFlex from './pages/Relatorios/RelatorioFlex';
@@ -85,7 +86,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, PartyPopper, Snowflake, Clock, Fingerprint
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, PartyPopper, Snowflake, Clock, Fingerprint, Inbox
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -191,7 +192,7 @@ const Layout = ({ children }) => {
   const closeMobile = () => setIsMobileMenuOpen(false);
 
   const showLogistica = hasPermission('Pode_Acessar_Embarque') || hasPermission('Pode_Ver_Todas_Entregas');
-  const showFinanceiro = hasPermission('Pode_Acessar_Caixa') || hasPermission('Pode_Ver_Todas_Entregas') || hasPermission('Pode_Acessar_Contas_Receber');
+  const showFinanceiro = hasPermission('Pode_Acessar_Caixa') || hasPermission('Pode_Ver_Todas_Entregas') || hasPermission('Pode_Acessar_Contas_Receber') || hasPermission('Pode_Acessar_Notas_Recebidas');
   const showAdmin = hasPermission('produtos') || hasPermission('vendedores') || hasPermission('sync') || user?.permissoes?.admin;
   const showEstoque = user?.permissoes?.admin || (Array.isArray(user?.permissoes?.estoque) && user.permissoes.estoque.length > 0);
   const pcpPerms = user?.permissoes?.pcp || {};
@@ -249,6 +250,7 @@ const Layout = ({ children }) => {
           {hasPermission('Pode_Ver_Todas_Entregas') && <SidebarItem to="/admin/auditoria-entregas" icon={Search} label="Auditoria" />}
           {hasPermission('Pode_Acessar_Contas_Receber') && <SidebarItem to="/financeiro/contas-receber/tabela" icon={DollarSign} label="Contas a Receber" />}
           {hasPermission('Pode_Acessar_Contas_Pagar') && <SidebarItem to="/contas-pagar" icon={Wallet} label="Contas a Pagar" />}
+          {hasPermission('Pode_Acessar_Notas_Recebidas') && <SidebarItem to="/notas-recebidas" icon={Inbox} label="Notas Recebidas" />}
           {hasPermission('Pode_Acessar_Fornecedores') && <SidebarItem to="/fornecedores" icon={Building2} label="Fornecedores" />}
 
           {/* Admin */}
@@ -419,6 +421,7 @@ const Layout = ({ children }) => {
                 {hasPermission('Pode_Ver_Todas_Entregas') && <NavLink to="/admin/auditoria-entregas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Auditoria</NavLink>}
                 {hasPermission('Pode_Acessar_Contas_Receber') && <NavLink to="/financeiro/contas-receber/tabela" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Contas a Receber</NavLink>}
                 {hasPermission('Pode_Acessar_Contas_Pagar') && <NavLink to="/contas-pagar" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Contas a Pagar</NavLink>}
+                {hasPermission('Pode_Acessar_Notas_Recebidas') && <NavLink to="/notas-recebidas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Notas Recebidas</NavLink>}
                 {hasPermission('Pode_Acessar_Fornecedores') && <NavLink to="/fornecedores" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Fornecedores</NavLink>}
               </MobileMenuSection>
             )}
@@ -597,6 +600,7 @@ function App() {
               <Route path="/financeiro/contas-receber" element={<Navigate to="/financeiro/contas-receber/tabela" replace />} />
               <Route path="/financeiro/contas-receber/tabela" element={<PrivateRoute tab="Pode_Acessar_Contas_Receber"><ContasReceberTabela /></PrivateRoute>} />
               <Route path="/contas-pagar" element={<PrivateRoute tab="Pode_Acessar_Contas_Pagar"><ContasPagarPage /></PrivateRoute>} />
+              <Route path="/notas-recebidas" element={<PrivateRoute tab="Pode_Acessar_Notas_Recebidas"><NotasRecebidasPage /></PrivateRoute>} />
               <Route path="/fornecedores" element={<PrivateRoute tab="Pode_Acessar_Fornecedores"><FornecedoresPage /></PrivateRoute>} />
 
               {/* Caixa Diário e Despesas */}

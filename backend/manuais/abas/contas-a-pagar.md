@@ -20,6 +20,7 @@ Gestão das despesas da empresa (contas a pagar): lançamento manual de contas c
   - **Em aberto no mês** e **Pago no mês**
 - Filtrar por busca (descrição, nota, fornecedor), status da conta, categoria e mês
 - Criar uma conta a pagar: fornecedor, descrição, categoria de despesa (vem do Conta Azul), número da nota, competência, observações e parcelas (valor + vencimento de cada uma)
+- Contas também **chegam sozinhas via NF-e** (origem NFE): a aba **Notas Recebidas** captura as notas dos fornecedores na SEFAZ e gera a conta a pagar já com número da nota, chave da NF-e, fornecedor e parcelas das duplicatas (ver manual [notas-recebidas.md](notas-recebidas.md))
 - Escolher se a conta **vai para o Conta Azul** (opção "enviar ao CA") ou fica só no app
 - Editar uma conta (campos e parcelas ainda não pagas — bloqueado se quitada/cancelada; parcelas não podem mais ser alteradas depois que a conta já foi enviada ao CA)
 - Dar **baixa manual** numa parcela: valor pago, juros, multa, desconto e forma de pagamento (baixa parcial deixa a parcela como PARCIAL)
@@ -76,7 +77,7 @@ A conta fica ABERTO / PARCIAL / QUITADO / CANCELADO conforme o conjunto das parc
 
 - **Fornecedores** — toda conta enviada ao CA precisa de um fornecedor cadastrado (e sincronizado com o CA)
 - **Conta Azul** — categorias de despesa e conta financeira padrão vêm do CA; sem o CA conectado, as contas só funcionam localmente
-- **Configurações → Certificado Digital** — o certificado instalado será usado na Fase 2 (captura automática de notas na SEFAZ, que criará contas a pagar sozinha)
+- **Notas Recebidas** — a captura automática de NF-e na SEFAZ (com o certificado digital instalado nas Configurações) gera contas a pagar com origem NFE a partir das notas dos fornecedores
 
 ---
 
