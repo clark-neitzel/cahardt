@@ -11,6 +11,7 @@ const prisma = require('../config/database');
 const clienteInsightService = require('../services/clienteInsightService');
 const orientacaoService = require('../services/orientacaoService');
 const estoqueService = require('../services/estoqueService');
+const contaAzulService = require('../services/contaAzulService');
 
 // Middleware: valida ADMIN_SECRET
 router.use((req, res, next) => {
@@ -30,6 +31,78 @@ router.get('/ping', (req, res) => {
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
         node: process.version,
     });
+});
+
+// GET /api/admin-exec/diag-conciliacao?nota=858860  (ou ?busca=produpan)
+// SOMENTE LEITURA: refaz a busca de conciliação ao vivo no CA e mostra por que casou/ não casou.
+router.get('/diag-conciliacao', async (req, res) => {
+    try {
+        const { nota, busca } = req.query;
+        const BASE = 'https://api-v2.contaazul.com';
+        const fmtDataCA = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const round2 = (v) => Math.round(Number(v) * 100) / 100;
+
+        const where = nota
+            ? { numeroNota: { contains: String(nota) } }
+            : { OR: [
+                { descricao: { contains: String(busca || ''), mode: 'insensitive' } },
+                { fornecedor: { razaoSocial: { contains: String(busca || ''), mode: 'insensitive' } } }
+              ] };
+        const contas = await prisma.contaPagar.findMany({ where, orderBy: { criadoEm: 'desc' }, take: 3, include: { fornecedor: true, parcelas: true } });
+        if (contas.length === 0) return res.json({ erro: 'Nenhuma conta encontrada no app', where });
+
+        const info = {
+            contasApp: contas.map(c => ({
+                id: c.id, numeroNota: c.numeroNota, valorTotal: Number(c.valorTotal),
+                statusEnvioCA: c.statusEnvioCA, idEventoCA: c.idEventoCA, erroEnvioCA: c.erroEnvioCA,
+                fornecedorCaId: c.fornecedor?.contaAzulId,
+                vencs: c.parcelas.map(p => fmtDataCA(p.dataVencimento))
+            }))
+        };
+
+        const conta = contas[0];
+        const numero = String(conta.numeroNota || '').trim();
+        const datas = conta.parcelas.map(p => new Date(p.dataVencimento).getTime()).filter(t => !isNaN(t));
+        const bc = new Date(conta.competencia || Date.now()).getTime(); if (!isNaN(bc)) datas.push(bc);
+        const JAN = 45 * 24 * 60 * 60 * 1000;
+        const de = fmtDataCA(new Date(Math.min(...datas) - JAN));
+        const ate = fmtDataCA(new Date(Math.max(...datas) + JAN));
+        const statusQS = ['RECEBIDO', 'EM_ABERTO', 'ATRASADO', 'RECEBIDO_PARCIAL', 'RENEGOCIADO', 'PERDIDO'].map(s => `&status=${s}`).join('');
+        const url = `${BASE}/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar?pagina=1&tamanho_pagina=100&data_vencimento_de=${de}&data_vencimento_ate=${ate}${statusQS}`;
+
+        let itens = [];
+        try {
+            const resp = await contaAzulService._axiosGet(url, 'DIAG_CONCILIA');
+            itens = resp.data?.itens || resp.data?.items || [];
+            info.busca = { numeroApp: numero, de, ate, totalRetornado: itens.length };
+        } catch (e) {
+            info.buscaErro = e.response?.status ? `HTTP ${e.response.status}: ${JSON.stringify(e.response.data).slice(0, 300)}` : e.message;
+            return res.json(info);
+        }
+
+        const valorConta = round2(Number(conta.valorTotal || 0));
+        const candidatos = [];
+        for (const it of itens) {
+            const totalIt = round2(Number(it.total ?? it.nao_pago ?? 0));
+            const desc = String(it.descricao || '');
+            const valorBate = Math.abs(totalIt - valorConta) < 0.01;
+            const numNaDesc = numero && desc.includes(numero);
+            const pareceProdupan = desc.toLowerCase().includes('produpan') || desc.includes('858860');
+            if (valorBate || numNaDesc || pareceProdupan) {
+                let det = {};
+                try {
+                    const d = await contaAzulService._axiosGet(`${BASE}/v1/financeiro/eventos-financeiros/parcelas/${it.id}`, 'DIAG_DET');
+                    const ev = d.data?.evento || {};
+                    det = { det_descricao: d.data?.descricao, det_nota: d.data?.nota, evento_descricao: ev.descricao, evento_id: ev.id, codigo_referencia: ev.codigo_referencia, origem: ev.origem };
+                } catch (e) { det = { erroDetalhe: e.message }; }
+                candidatos.push({ parcelaId: it.id, total: totalIt, descricao: desc, fornecedor: it.fornecedor?.nome, valorBate, numeroAppNaDesc: numNaDesc, ...det });
+            }
+        }
+        info.candidatos = candidatos;
+        res.json(info);
+    } catch (error) {
+        res.status(500).json({ error: error.message, stack: (error.stack || '').split('\n').slice(0, 5) });
+    }
 });
 
 // POST /api/admin-exec/kitfesta-reenviar-whatsapp/:numero
