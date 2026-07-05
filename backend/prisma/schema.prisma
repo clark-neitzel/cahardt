@@ -2473,6 +2473,12 @@ model PagamentoParcelaPagar {
   origem         String       @default("MANUAL") // MANUAL | CA
   idBaixaCA      String?      @unique @map("id_baixa_ca")
 
+  // Baixa nascida "já paguei" na conferência da nota → precisa ser EMPURRADA ao CA.
+  // Pagamento MANUAL comum fica NAO_ENVIAR (comportamento legado: sync é só CA→local).
+  contaFinanceiraCaId String? @map("conta_financeira_ca_id") // UUID do banco/caixa no CA (de onde saiu o pgto)
+  statusEnvioCA       String  @default("NAO_ENVIAR") @map("status_envio_ca") // NAO_ENVIAR | ENVIAR | ENVIADO
+  erroEnvioCA         String? @db.Text @map("erro_envio_ca")
+
   registradoPorId String?   @map("registrado_por_id")
   registradoPor   Vendedor? @relation("PagamentosParcelaPagarRegistrados", fields: [registradoPorId], references: [id])
 

@@ -169,6 +169,39 @@ async function listarCategoriasDespesaSeguro() {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Formas de pagamento aceitas pela API de BAIXAS do CA (enum de 14 valores —
+// menor que o das parcelas). É o que podemos mandar ao quitar uma despesa.
+// ─────────────────────────────────────────────────────────────
+const METODOS_PAGAMENTO_BAIXA = [
+    { value: 'PIX_PAGAMENTO_INSTANTANEO', label: 'Pix' },
+    { value: 'DINHEIRO', label: 'Dinheiro' },
+    { value: 'TRANSFERENCIA_BANCARIA', label: 'Transferência bancária' },
+    { value: 'BOLETO_BANCARIO', label: 'Boleto bancário' },
+    { value: 'CARTAO_CREDITO', label: 'Cartão de crédito' },
+    { value: 'CARTAO_DEBITO', label: 'Cartão de débito' },
+    { value: 'CARTAO_CREDITO_VIA_LINK', label: 'Cartão de crédito via link' },
+    { value: 'DEPOSITO_BANCARIO', label: 'Depósito bancário' },
+    { value: 'CHEQUE', label: 'Cheque' },
+    { value: 'CARTEIRA_DIGITAL', label: 'Carteira digital' },
+    { value: 'CASHBACK', label: 'Cashback' },
+    { value: 'CREDITO_LOJA', label: 'Crédito loja' },
+    { value: 'CREDITO_VIRTUAL', label: 'Crédito virtual' },
+    { value: 'OUTRO', label: 'Outro' },
+];
+const METODOS_BAIXA_VALIDOS = new Set(METODOS_PAGAMENTO_BAIXA.map((m) => m.value));
+
+/** Lista de bancos/caixas do CA para a tela (nunca lança; CA fora → []). */
+async function listarContasFinanceirasSeguro() {
+    try {
+        if (!(await temTokenCA())) return [];
+        return await contaAzulService.listarContasFinanceiras();
+    } catch (error) {
+        console.warn('[ContasPagar CA] Falha ao listar contas financeiras:', erroCAtexto(error));
+        return [];
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
 // Conta financeira padrão das despesas
 // Mesma tabela local usada pelos pedidos (contas_financeiras = UUIDs do CA).
 // Ordem: AppConfig 'contas_pagar_conta_financeira_id' → conta_padrao=true no CA
@@ -371,6 +404,7 @@ async function processarFilaDespesas() {
 
         await _enviarDespesasPendentes();
         await _consultarProtocolosPendentes();
+        await _empurrarBaixasPendentes(); // baixas "já paguei" → CA (depois que a parcela mapeou)
     } catch (error) {
         console.error('[ContasPagar CA] Erro no worker de despesas (isolado):', error.message);
     } finally {
@@ -467,6 +501,85 @@ async function _encontrarEventoPorReferencia(codigoReferencia, conta) {
     return null;
 }
 
+/**
+ * CONCILIAÇÃO — localizar no CA uma despesa que o USUÁRIO já lançou MANUALMENTE,
+ * casando pelo NÚMERO DA NOTA. A busca do CA não filtra por número da nota, então
+ * procuramos o número dentro da descrição/observação da despesa (fornecedor como
+ * pré-filtro, valor como reforço). Só adota um evento que NÃO tenha codigo_referencia
+ * (i.e. que não fomos nós que criamos) e cujo número da nota apareça no texto.
+ * Retorna evento_financeiro_id (uuid) ou null. Não lança em erro de item isolado.
+ */
+async function _encontrarEventoPorNumeroNota(conta) {
+    const numero = String(conta?.numeroNota || '').trim();
+    if (!numero) return null;
+    const fornecedorCaId = conta?.fornecedor?.contaAzulId || null;
+    const valorConta = round2(Number(conta?.valorTotal || 0));
+
+    // Janela de vencimento ampla (a busca exige o filtro), em torno das datas conhecidas.
+    const datas = (conta?.parcelas || [])
+        .filter((p) => p.status !== 'CANCELADO')
+        .map((p) => new Date(p.dataVencimento).getTime())
+        .filter((t) => !isNaN(t));
+    const baseComp = new Date(conta?.competencia || Date.now()).getTime();
+    if (!isNaN(baseComp)) datas.push(baseComp);
+    if (datas.length === 0) return null;
+    const JANELA = 45 * 24 * 60 * 60 * 1000;
+    const de = fmtDataCA(new Date(Math.min(...datas) - JANELA));
+    const ate = fmtDataCA(new Date(Math.max(...datas) + JANELA));
+
+    // Número da nota com "fronteira" (não casa 44 dentro de 4400)
+    const numEsc = numero.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regexNum = new RegExp(`(^|\\D)${numEsc}(\\D|$)`);
+
+    // IMPORTANTE: incluir status PAGOS na busca — a nota lançada manualmente pode já
+    // estar quitada no CA (sem isso, a busca poderia não retorná-la e duplicaríamos).
+    const statusQS = ['RECEBIDO', 'EM_ABERTO', 'ATRASADO', 'RECEBIDO_PARCIAL', 'RENEGOCIADO', 'PERDIDO']
+        .map((s) => `&status=${s}`).join('');
+
+    const candidatos = new Set();
+    let pagina = 1;
+    while (pagina <= 10) {
+        const url = `${BASE}/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar`
+            + `?pagina=${pagina}&tamanho_pagina=100`
+            + `&data_vencimento_de=${de}&data_vencimento_ate=${ate}${statusQS}`;
+        const resp = await contaAzulService._axiosGet(url, 'CONTA_PAGAR_CONCILIA');
+        const itens = resp.data?.itens || resp.data?.items || [];
+        for (const it of itens) {
+            if (!it?.id) continue;
+            if (fornecedorCaId && it.fornecedor?.id && it.fornecedor.id !== fornecedorCaId) continue;
+            const totalIt = round2(Number(it.total ?? it.nao_pago ?? 0));
+            const descBateNum = regexNum.test(String(it.descricao || ''));
+            const valorBate = Math.abs(totalIt - valorConta) < 0.01;
+            if (descBateNum || valorBate) candidatos.add(it.id);
+        }
+        const totais = Number(resp.data?.itens_totais || 0);
+        if (itens.length < 100) break;
+        if (totais && pagina * 100 >= totais) break;
+        pagina++;
+        await sleep(300);
+    }
+    if (candidatos.size === 0) return null;
+
+    for (const parcelaId of candidatos) {
+        try {
+            const det = await contaAzulService.buscarParcelaDetalhe(parcelaId);
+            const evento = det?.evento || {};
+            // Só ignora se for a NOSSA própria despesa (codigo_referencia === id da nossa conta).
+            // Uma nota de compra lançada na mão pode ter outro codigo_referencia — essa a gente adota.
+            if (evento.codigo_referencia && String(evento.codigo_referencia) === String(conta?.id)) continue;
+            const textos = [det?.descricao, det?.nota, evento?.descricao]
+                .map((s) => String(s || '')).join(' | ');
+            if (regexNum.test(textos) && evento.id) {
+                return String(evento.id); // nº da nota bateu num lançamento manual
+            }
+        } catch (error) {
+            console.warn(`[ContasPagar CA] Falha ao ler detalhe (conciliação) da parcela ${parcelaId}:`, erroCAtexto(error));
+        }
+        await sleep(250);
+    }
+    return null;
+}
+
 async function _enviarDespesasPendentes() {
     const pendentes = await prisma.contaPagar.findMany({
         where: { statusEnvioCA: 'ENVIAR', status: { not: 'CANCELADO' } },
@@ -536,6 +649,27 @@ async function _enviarDespesasPendentes() {
                 } catch (_) { /* isolado */ }
                 await sleep(1200);
                 continue;
+            }
+
+            // ── CONCILIAÇÃO: a nota pode já ter sido lançada MANUALMENTE no CA.
+            // Casa pelo número da nota (+ fornecedor/valor) e ADOTA em vez de duplicar.
+            // Falha aqui NUNCA bloqueia — cai no POST normal. (Só p/ contas de NF-e.)
+            if (conta.numeroNota) {
+                try {
+                    const eventoManual = await _encontrarEventoPorNumeroNota(conta);
+                    if (eventoManual) {
+                        await prisma.contaPagar.update({
+                            where: { id: conta.id },
+                            data: { idEventoCA: eventoManual, statusEnvioCA: 'AGUARDANDO_PROTOCOLO', erroEnvioCA: null }
+                        });
+                        await _mapearParcelasCA(conta.id, eventoManual);
+                        console.log(`[ContasPagar CA] 🔗 Nota ${conta.numeroNota} já lançada no CA — despesa conciliada (sem duplicar).`);
+                        await sleep(1200);
+                        continue;
+                    }
+                } catch (conciliaErr) {
+                    console.warn(`[ContasPagar CA] Conciliação por nº da nota falhou p/ "${conta.descricao}" — segue criando normal:`, erroCAtexto(conciliaErr));
+                }
             }
 
             const contaFinanceiraId = await resolverContaFinanceiraPadrao();
@@ -753,6 +887,76 @@ async function _mapearParcelasCA(contaPagarId, eventoId) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Empurrar baixas "já paguei" (nascidas na conferência da nota) para o CA.
+// Só processa pagamentos com statusEnvioCA='ENVIAR' cuja parcela já tem idParcelaCA
+// (a despesa já foi criada/mapeada no CA). Guarda idBaixaCA para o worker 3 (conferência)
+// não recriar a baixa localmente depois (dedup por idBaixaCA).
+// ─────────────────────────────────────────────────────────────
+async function _empurrarBaixasPendentes() {
+    const pagamentos = await prisma.pagamentoParcelaPagar.findMany({
+        where: {
+            statusEnvioCA: 'ENVIAR',
+            estornado: false,
+            idBaixaCA: null,
+            parcelaPagar: { idParcelaCA: { not: null } }
+        },
+        include: { parcelaPagar: true },
+        take: 20,
+        orderBy: { criadoEm: 'asc' }
+    });
+    if (pagamentos.length === 0) return;
+
+    for (const pg of pagamentos) {
+        const parcelaCA = pg.parcelaPagar.idParcelaCA;
+        try {
+            // Já quitada no CA (despesa adotada de lançamento manual já pago, ou baixa via DDA)?
+            // Então NÃO empurra outra baixa — só marca ENVIADO para não duplicar pagamento.
+            let naoPago = NaN;
+            try {
+                const det = await contaAzulService.buscarParcelaDetalhe(parcelaCA);
+                const status = String(det?.status || '').toUpperCase();
+                naoPago = Number(det?.nao_pago ?? NaN);
+                if (status === 'QUITADO' || status === 'RECEBIDO' || (Number.isFinite(naoPago) && naoPago <= 0.01)) {
+                    await prisma.pagamentoParcelaPagar.update({
+                        where: { id: pg.id },
+                        data: { statusEnvioCA: 'ENVIADO', erroEnvioCA: null }
+                    });
+                    console.log(`[ContasPagar CA] ↷ Parcela ${parcelaCA} já quitada no CA — baixa "já paguei" não reenviada.`);
+                    continue;
+                }
+            } catch (_) { /* sem detalhe → tenta baixar assim mesmo */ }
+
+            const contaFinanceira = pg.contaFinanceiraCaId || await resolverContaFinanceiraPadrao();
+            const valorBaixa = (Number.isFinite(naoPago) && naoPago > 0)
+                ? Math.min(Number(pg.valorPago), round2(naoPago))
+                : Number(pg.valorPago);
+            const metodo = METODOS_BAIXA_VALIDOS.has(pg.formaPagamento) ? pg.formaPagamento : undefined;
+
+            const baixa = await contaAzulService.criarBaixa(parcelaCA, {
+                data_pagamento: fmtDataCA(pg.dataPagamento),
+                composicao_valor: { valor_bruto: round2(valorBaixa) },
+                conta_financeira: contaFinanceira,
+                ...(metodo ? { metodo_pagamento: metodo } : {}),
+                observacao: pg.observacao || 'Baixa registrada no app Hardt (já paguei).'
+            });
+
+            await prisma.pagamentoParcelaPagar.update({
+                where: { id: pg.id },
+                data: { statusEnvioCA: 'ENVIADO', idBaixaCA: baixa?.id || null, erroEnvioCA: null }
+            });
+            await prisma.parcelaPagar.update({ where: { id: pg.parcelaPagarId }, data: { baixadoViaCA: true } }).catch(() => {});
+            console.log(`[ContasPagar CA] 💸 Baixa "já paguei" empurrada ao CA (parcela ${parcelaCA}, R$ ${round2(valorBaixa)}).`);
+        } catch (error) {
+            const msg = erroCAtexto(error);
+            console.error(`[ContasPagar CA] ❌ Falha ao empurrar baixa da parcela ${parcelaCA}:`, msg);
+            // Mantém ENVIAR (tenta no próximo ciclo); grava o último erro para diagnóstico.
+            await prisma.pagamentoParcelaPagar.update({ where: { id: pg.id }, data: { erroEnvioCA: msg } }).catch(() => {});
+        }
+        await sleep(600);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
 // WORKER 3 — Conferência de baixas no CA (30min)
 // ─────────────────────────────────────────────────────────────
 
@@ -845,6 +1049,9 @@ module.exports = {
     conferirBaixasCA,
     importarFornecedoresCA,
     listarCategoriasDespesaSeguro,
+    listarContasFinanceirasSeguro,
+    METODOS_PAGAMENTO_BAIXA,
+    METODOS_BAIXA_VALIDOS,
     resolverContaFinanceiraPadrao,
     recalcularParcelaEConta,
     calcularStatusParcelaPagar,

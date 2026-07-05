@@ -102,6 +102,17 @@ router.get('/categorias', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── GET /opcoes-baixa — bancos/caixas do CA + formas de pagamento (para "já paguei") ──
+router.get('/opcoes-baixa', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const contasFinanceiras = await contasPagarCaSyncService.listarContasFinanceirasSeguro();
+        res.json({ contasFinanceiras, metodosPagamento: contasPagarCaSyncService.METODOS_PAGAMENTO_BAIXA });
+    } catch (error) {
+        console.error('Erro ao listar opções de baixa:', error);
+        res.json({ contasFinanceiras: [], metodosPagamento: contasPagarCaSyncService.METODOS_PAGAMENTO_BAIXA });
+    }
+});
+
 // ── GET / — listar contas com KPIs ──
 router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     try {

@@ -588,10 +588,10 @@ const ComboBusca = ({
                                 type="button"
                                 onMouseEnter={() => setHi(i)}
                                 onClick={() => escolher(o)}
-                                className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 ${i === hi ? 'bg-blue-50' : 'hover:bg-gray-50'} ${String(o.value) === String(value) ? 'font-semibold text-primary' : 'text-gray-800'}`}
+                                className={`w-full text-left px-3 py-2 text-sm flex flex-col gap-0.5 ${i === hi ? 'bg-blue-50' : 'hover:bg-gray-50'} ${String(o.value) === String(value) ? 'font-semibold text-primary' : 'text-gray-800'}`}
                             >
-                                <span className="truncate">{o.label}</span>
-                                {o.sub && <span className="text-xs text-gray-400 shrink-0">{o.sub}</span>}
+                                <span className="break-words">{o.label}</span>
+                                {o.sub && <span className="text-xs text-gray-400">{o.sub}</span>}
                             </button>
                         ))}
                     </div>
@@ -718,7 +718,9 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         if (dups.length > 0) {
             return dups.map(d => ({ dataVencimento: toYMD(d.vencimento), valor: fmt(d.valor), doXml: true }));
         }
-        return [{ dataVencimento: hojeYMD(), valor: fmt(nota.valorTotal), doXml: false }];
+        // Sem boleto no XML (compra à vista): usa a data de EMISSÃO da NF (não "hoje"),
+        // para a despesa aparecer no Conta Azul com a data da nota.
+        return [{ dataVencimento: toYMD(nota.emissao) || hojeYMD(), valor: fmt(nota.valorTotal), doXml: false }];
     });
 
     const [categoriaPadrao, setCategoriaPadrao] = useState('');
@@ -726,6 +728,33 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     const [enviarCA, setEnviarCA] = useState(true);
     const [gerando, setGerando] = useState(false);
     const [ignorando, setIgnorando] = useState(false);
+
+    // "Já paguei" (compra à vista): marca a despesa como QUITADA no Conta Azul.
+    const [modoPagamento, setModoPagamento] = useState('DDA'); // 'DDA' | 'PAGO'
+    const [dataPagamento, setDataPagamento] = useState(() => toYMD(nota.emissao) || hojeYMD());
+    const [metodoPagamento, setMetodoPagamento] = useState('PIX_PAGAMENTO_INSTANTANEO');
+    const [contaFinanceiraCaId, setContaFinanceiraCaId] = useState('');
+    const [opcoesBaixa, setOpcoesBaixa] = useState({ contasFinanceiras: [], metodosPagamento: [] });
+    const [loadingOpcoes, setLoadingOpcoes] = useState(false);
+    const [opcoesCarregadas, setOpcoesCarregadas] = useState(false);
+    const pago = enviarCA && modoPagamento === 'PAGO';
+
+    // Carrega bancos + formas do CA só quando o usuário escolhe "Já paguei" (lazy).
+    useEffect(() => {
+        if (!pago || opcoesCarregadas || loadingOpcoes) return;
+        setLoadingOpcoes(true);
+        contasPagarService.opcoesBaixa()
+            .then(op => {
+                const cf = Array.isArray(op?.contasFinanceiras) ? op.contasFinanceiras : [];
+                const mp = Array.isArray(op?.metodosPagamento) ? op.metodosPagamento : [];
+                setOpcoesBaixa({ contasFinanceiras: cf, metodosPagamento: mp });
+                const padrao = cf.find(c => c.padrao) || cf[0];
+                setContaFinanceiraCaId(prev => prev || padrao?.id || '');
+                setOpcoesCarregadas(true);
+            })
+            .catch(() => toast.error('Não consegui carregar os bancos do Conta Azul.'))
+            .finally(() => setLoadingOpcoes(false));
+    }, [pago, opcoesCarregadas, loadingOpcoes]);
 
     const setVinculo = (idx, patch) =>
         setVinculos(prev => prev.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
@@ -802,6 +831,12 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 return;
             }
         }
+        // "Já paguei": precisa de data, forma e banco
+        if (pago) {
+            if (!dataPagamento) { toast.error('Informe a data do pagamento.'); return; }
+            if (!metodoPagamento) { toast.error('Escolha a forma de pagamento.'); return; }
+            if (!contaFinanceiraCaId) { toast.error('Escolha o banco/caixa de onde saiu o pagamento.'); return; }
+        }
         setGerando(true);
         try {
             await notasEntradaService.gerarConta(nota.id, {
@@ -809,6 +844,9 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 categoriaPadraoCaId: caIdDaCategoria(categoriaPadrao),
                 enviarCA,
                 observacoes: observacoes.trim() || undefined,
+                pagamento: pago
+                    ? { dataPagamento, metodoPagamento, contaFinanceiraCaId }
+                    : undefined,
                 parcelas: parcelas.map(p => ({ valor: parseNum(p.valor), dataVencimento: p.dataVencimento })),
                 itens: vinculos.map(v => ({
                     itemId: v.itemId,
@@ -823,7 +861,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
             });
             toast.success(
                 <span>
-                    Conta a Pagar gerada!{' '}
+                    {pago ? 'Conta a Pagar gerada como PAGA!' : 'Conta a Pagar gerada!'}{' '}
                     <a href="/contas-pagar" className="font-semibold underline">Abrir Contas a Pagar</a>
                 </span>,
                 { duration: 8000 }
@@ -1087,10 +1125,88 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 )}
             </div>
 
-            <label className="flex items-start gap-2 text-sm text-gray-700 bg-blue-50 border border-blue-200 rounded-lg p-3 cursor-pointer">
-                <input type="checkbox" checked={enviarCA} onChange={e => setEnviarCA(e.target.checked)} className="rounded mt-0.5" />
-                <span><span className="font-semibold">Enviar para a Conta Azul</span> (para pagar via DDA)</span>
-            </label>
+            {/* Envio ao Conta Azul + situação do pagamento */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-3">
+                <label className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input type="checkbox" checked={enviarCA} onChange={e => setEnviarCA(e.target.checked)} className="rounded mt-0.5" />
+                    <span><span className="font-semibold">Enviar para a Conta Azul</span></span>
+                </label>
+
+                {enviarCA && (
+                    <>
+                        {/* DDA vs Já paguei */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setModoPagamento('DDA')}
+                                className={`text-left rounded-lg border p-3 min-h-[44px] transition-colors ${modoPagamento === 'DDA' ? 'border-primary bg-white ring-1 ring-primary' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
+                            >
+                                <div className="text-sm font-semibold text-gray-900">Ainda vou pagar</div>
+                                <div className="text-xs text-gray-500">Entra em aberto para pagar via DDA/boleto.</div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setModoPagamento('PAGO')}
+                                className={`text-left rounded-lg border p-3 min-h-[44px] transition-colors ${modoPagamento === 'PAGO' ? 'border-primary bg-white ring-1 ring-primary' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
+                            >
+                                <div className="text-sm font-semibold text-gray-900">Já paguei</div>
+                                <div className="text-xs text-gray-500">Entra quitada (PIX/dinheiro), só para conciliar.</div>
+                            </button>
+                        </div>
+
+                        {/* Campos do "já paguei" */}
+                        {pago && (
+                            <div className="bg-white border border-gray-200 rounded-lg p-3">
+                                {loadingOpcoes ? (
+                                    <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                                        <Loader2 className="h-4 w-4 animate-spin" /> Carregando bancos da Conta Azul…
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-700">Data do pagamento</label>
+                                            <input
+                                                type="date"
+                                                value={dataPagamento}
+                                                onChange={e => setDataPagamento(e.target.value)}
+                                                className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-700">Forma de pagamento</label>
+                                            <select
+                                                value={metodoPagamento}
+                                                onChange={e => setMetodoPagamento(e.target.value)}
+                                                className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white"
+                                            >
+                                                {opcoesBaixa.metodosPagamento.map(m => (
+                                                    <option key={m.value} value={m.value}>{m.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-700">Banco / caixa (de onde saiu)</label>
+                                            <select
+                                                value={contaFinanceiraCaId}
+                                                onChange={e => setContaFinanceiraCaId(e.target.value)}
+                                                className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white"
+                                            >
+                                                <option value="">Selecionar…</option>
+                                                {opcoesBaixa.contasFinanceiras.map(c => (
+                                                    <option key={c.id} value={c.id}>{c.nome}{c.padrao ? ' (padrão)' : ''}</option>
+                                                ))}
+                                            </select>
+                                            {opcoesCarregadas && opcoesBaixa.contasFinanceiras.length === 0 && (
+                                                <p className="text-xs text-amber-700 mt-1">Nenhum banco encontrado na Conta Azul.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
 
             {/* Ações */}
             <div className="flex flex-col md:flex-row gap-3 pt-1">
@@ -1100,7 +1216,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                     className="w-full md:w-auto px-4 py-3 md:py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
                 >
                     {gerando && <Loader2 className="h-4 w-4 animate-spin" />}
-                    {gerando ? 'Gerando…' : `Gerar Conta a Pagar (${parcelas.length} parcela${parcelas.length !== 1 ? 's' : ''})`}
+                    {gerando ? 'Gerando…' : `${pago ? 'Gerar Conta PAGA' : 'Gerar Conta a Pagar'} (${parcelas.length} parcela${parcelas.length !== 1 ? 's' : ''})`}
                 </button>
                 <BotaoImprimirDanfe id={nota.id} />
                 <button

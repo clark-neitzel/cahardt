@@ -18,6 +18,7 @@ const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const sefazDfeService = require('../services/sefazDfeService');
 const { montarDanfeHtml } = require('../services/danfeHtmlService');
+const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
 
 // Caminho absoluto do XML salvo da nota (uploads/notas-xml/{chave}.xml).
 const xmlAbsPath = (nota) => {
@@ -180,23 +181,17 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
-const tipoItemLabel = (t) => ({ MP: 'Matéria-prima', EMB: 'Embalagem', SUB: 'Subproduto', PA: 'Produto acabado' }[t] || t || '');
-
-// ── GET /itens-pcp — busca UNIFICADA (Produto do catálogo + Item PCP) para o de-para ──
-// Retorna { tipo:'PRODUTO'|'PCP', id, value:'PROD:<id>'|'PCP:<id>', nome, unidade, sub }.
+// ── GET /itens-pcp — busca no catálogo de Produtos para o de-para ──
+// Retorna { tipo:'PRODUTO', id, value:'PROD:<id>', nome, unidade, sub }.
+// Só o catálogo de produtos (tabela `produto`) — insumos PCP NÃO entram aqui.
 // Sem limite: a tela carrega tudo e filtra a busca no cliente. `?busca=` filtra também no banco.
 router.get('/itens-pcp', verificarAuth, checkAcesso, async (req, res) => {
     try {
         const busca = req.query.busca?.trim();
         const b = busca || '';
 
-        const wherePcp = { ativo: true };
         const whereProd = { ativo: true };
         if (busca) {
-            wherePcp.OR = [
-                { nome: { contains: b, mode: 'insensitive' } },
-                { codigo: { contains: b, mode: 'insensitive' } }
-            ];
             whereProd.OR = [
                 { nome: { contains: b, mode: 'insensitive' } },
                 { codigo: { contains: b, mode: 'insensitive' } },
@@ -204,42 +199,25 @@ router.get('/itens-pcp', verificarAuth, checkAcesso, async (req, res) => {
             ];
         }
 
-        const [produtos, itensPcp] = await Promise.all([
-            prisma.produto.findMany({
-                where: whereProd,
-                select: { id: true, codigo: true, nome: true, unidade: true, categoria: true },
-                orderBy: { nome: 'asc' }
-            }),
-            prisma.itemPcp.findMany({
-                where: wherePcp,
-                select: { id: true, codigo: true, nome: true, tipo: true, unidade: true },
-                orderBy: { nome: 'asc' }
-            })
-        ]);
+        const produtos = await prisma.produto.findMany({
+            where: whereProd,
+            select: { id: true, codigo: true, nome: true, unidade: true, categoria: true },
+            orderBy: { nome: 'asc' }
+        });
 
-        const opcoes = [
-            ...produtos.map((p) => ({
-                tipo: 'PRODUTO',
-                id: p.id,
-                value: `PROD:${p.id}`,
-                nome: p.nome,
-                unidade: p.unidade,
-                sub: `Produto${p.codigo ? ` · ${p.codigo}` : ''}${p.categoria ? ` · ${p.categoria}` : ''}`
-            })),
-            ...itensPcp.map((i) => ({
-                tipo: 'PCP',
-                id: i.id,
-                value: `PCP:${i.id}`,
-                nome: i.nome,
-                unidade: i.unidade,
-                sub: `${tipoItemLabel(i.tipo)}${i.codigo ? ` · ${i.codigo}` : ''}`
-            }))
-        ].sort((a, b2) => a.nome.localeCompare(b2.nome, 'pt-BR', { sensitivity: 'base' }));
+        const opcoes = produtos.map((p) => ({
+            tipo: 'PRODUTO',
+            id: p.id,
+            value: `PROD:${p.id}`,
+            nome: p.nome,
+            unidade: p.unidade,
+            sub: `Produto${p.codigo ? ` · ${p.codigo}` : ''}${p.categoria ? ` · ${p.categoria}` : ''}`
+        }));
 
         res.json(opcoes);
     } catch (error) {
-        console.error('Erro ao buscar produtos/itens PCP:', error);
-        res.status(500).json({ error: 'Erro ao buscar produtos/itens.' });
+        console.error('Erro ao buscar produtos:', error);
+        res.status(500).json({ error: 'Erro ao buscar produtos.' });
     }
 });
 
@@ -443,7 +421,7 @@ const decodeVinculo = (value) => {
 // ── POST /:id/gerar-conta — cria a Conta a Pagar a partir da nota ──
 router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) => {
     try {
-        const { categoriaPadrao, categoriaPadraoCaId, enviarCA, observacoes, parcelas, itens } = req.body;
+        const { categoriaPadrao, categoriaPadraoCaId, enviarCA, observacoes, parcelas, itens, pagamento } = req.body;
 
         const nota = await prisma.notaEntrada.findUnique({
             where: { id: req.params.id },
@@ -488,6 +466,29 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
         }
         if (enviarCA && !fornecedor) {
             return res.status(400).json({ error: 'Para enviar ao Conta Azul é obrigatório a nota ter fornecedor identificado.' });
+        }
+
+        // ── "Já paguei" (compra à vista): marca a despesa como QUITADA no Conta Azul ──
+        let pagto = null;
+        if (pagamento) {
+            if (!enviarCA) {
+                return res.status(400).json({ error: 'Para marcar como "já paguei" é preciso enviar a despesa para a Conta Azul.' });
+            }
+            const metodo = String(pagamento.metodoPagamento || '').toUpperCase();
+            if (!contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodo)) {
+                return res.status(400).json({ error: 'Escolha uma forma de pagamento válida.' });
+            }
+            if (!pagamento.contaFinanceiraCaId) {
+                return res.status(400).json({ error: 'Escolha o banco/caixa de onde saiu o pagamento.' });
+            }
+            if (!pagamento.dataPagamento || isNaN(new Date(pagamento.dataPagamento).getTime())) {
+                return res.status(400).json({ error: 'Informe uma data de pagamento válida.' });
+            }
+            pagto = {
+                metodoPagamento: metodo,
+                contaFinanceiraCaId: String(pagamento.contaFinanceiraCaId),
+                dataPagamento: parseVencimento(pagamento.dataPagamento)
+            };
         }
 
         // ── Validação dos itens do de-para ──
@@ -653,6 +654,33 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                 });
             }
 
+            // 3.5) "Já paguei": registra o pagamento (baixa) local em cada parcela e marca para
+            // empurrar a baixa ao CA (o worker faz isso depois de mapear a parcela no CA).
+            if (pagto) {
+                const parcelasCriadas = await tx.parcelaPagar.findMany({
+                    where: { contaPagarId: contaCriada.id },
+                    orderBy: { numeroParcela: 'asc' }
+                });
+                const labelMetodo = contasPagarCaSyncService.METODOS_PAGAMENTO_BAIXA
+                    .find((m) => m.value === pagto.metodoPagamento)?.label || pagto.metodoPagamento;
+                for (const p of parcelasCriadas) {
+                    await tx.pagamentoParcelaPagar.create({
+                        data: {
+                            parcelaPagarId: p.id,
+                            valorPago: round2(p.valor),
+                            dataPagamento: pagto.dataPagamento,
+                            formaPagamento: pagto.metodoPagamento,       // enum do CA (empurrado como metodo_pagamento)
+                            contaFinanceiraCaId: pagto.contaFinanceiraCaId,
+                            statusEnvioCA: 'ENVIAR',                      // worker empurra a baixa ao CA
+                            origem: 'MANUAL',
+                            observacao: `Pago na entrada da nota (${labelMetodo}).`,
+                            registradoPorId: req.user.id
+                        }
+                    });
+                    await contasPagarCaSyncService.recalcularParcelaEConta(tx, p.id);
+                }
+            }
+
             // 4) Nota conferida e vinculada à conta
             await tx.notaEntrada.update({
                 where: { id: nota.id },
@@ -661,9 +689,11 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
         });
 
         res.status(201).json({
-            message: enviarCA
-                ? 'Conta a pagar criada e colocada na fila de envio ao Conta Azul!'
-                : 'Conta a pagar criada!',
+            message: pagto
+                ? 'Conta a pagar criada como PAGA — será marcada como quitada no Conta Azul!'
+                : (enviarCA
+                    ? 'Conta a pagar criada e colocada na fila de envio ao Conta Azul!'
+                    : 'Conta a pagar criada!'),
             contaPagarId: contaCriada.id,
             notaStatus: 'CONFERIDA'
         });

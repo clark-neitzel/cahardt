@@ -9,6 +9,11 @@ const contasPagarService = {
         const response = await api.get('/contas-pagar/categorias');
         return response.data;
     },
+    // Bancos/caixas do CA + formas de pagamento (para o "já paguei" da conferência de nota)
+    opcoesBaixa: async () => {
+        const response = await api.get('/contas-pagar/opcoes-baixa');
+        return response.data; // { contasFinanceiras:[{id,nome,banco,tipo,padrao}], metodosPagamento:[{value,label}] }
+    },
     criar: async (dados) => {
         const response = await api.post('/contas-pagar', dados);
         return response.data;

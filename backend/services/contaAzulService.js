@@ -1861,6 +1861,20 @@ const contaAzulService = {
     },
 
     /**
+     * Listar TODAS as contas financeiras ativas do Conta Azul (bancos/caixas),
+     * para o usuário escolher de onde saiu o pagamento ao dar baixa numa despesa.
+     * mostrar_caixinha=true inclui a caixinha (dinheiro em espécie).
+     */
+    listarContasFinanceiras: async () => {
+        const url = 'https://api-v2.contaazul.com/v1/conta-financeira?pagina=1&tamanho_pagina=200&apenas_ativo=true&mostrar_caixinha=true';
+        const response = await contaAzulService._axiosGet(url, 'CONTA_FINANCEIRA');
+        const contas = response.data?.itens || response.data?.items || [];
+        return contas
+            .filter((c) => c?.id)
+            .map((c) => ({ id: c.id, nome: c.nome || 'Conta', banco: c.banco || null, tipo: c.tipo || null, padrao: c.conta_padrao === true }));
+    },
+
+    /**
      * Buscar parcelas de contas a receber por cliente e range de vencimento.
      */
     buscarParcelasContaAReceber: async (clienteCAId, dataVencDe, dataVencAte, status = ['EM_ABERTO', 'ATRASADO']) => {

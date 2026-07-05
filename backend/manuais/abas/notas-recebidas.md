@@ -47,7 +47,11 @@ Caixa de entrada das **notas fiscais (NF-e) que os fornecedores emitem contra o 
 - **Imprimir a DANFE** (visão em folha da nota: emitente, chave de acesso, destinatário, itens com NCM/CFOP, totais, duplicatas e observações) — impressa na própria página, funciona no iPad/PWA
 - **Ignorar** uma nota (e **reativar** depois, se mudar de ideia)
 - **Gerar a conta a pagar** a partir da nota:
-  - As **parcelas vêm sugeridas pelas duplicatas** da nota (pode ajustar; a soma precisa bater com o total da nota)
+  - As **parcelas vêm sugeridas pelas duplicatas** da nota (pode ajustar; a soma precisa bater com o total da nota). Quando a nota **não tem boleto/duplicata no XML** (compra à vista), a parcela já vem com a **data de emissão da nota** (não a data de hoje), para a despesa aparecer no Conta Azul com a data certa.
+  - **"Ainda vou pagar" ou "Já paguei"** (ao enviar ao Conta Azul):
+    - **Ainda vou pagar** — a despesa entra **em aberto** no Conta Azul, para pagar depois via DDA/boleto (comportamento padrão).
+    - **Já paguei** — para compras à vista (PIX, dinheiro, transferência etc.). A despesa entra **já quitada** no Conta Azul, só para **conciliar com o extrato**. Você informa **a data do pagamento** (vem preenchida com a emissão da nota), a **forma de pagamento** e o **banco/caixa de onde saiu** (a lista de bancos vem do próprio Conta Azul). O app cria a despesa e, em seguida, **dá a baixa automaticamente** no Conta Azul.
+  - **Conciliação (não duplica)**: se você **já tinha lançado essa mesma nota manualmente** no Conta Azul, ao gerar a conta o sistema **procura pelo número da nota** (dentro do fornecedor/valor) e, se encontrar, **vincula à despesa que já existe** lá em vez de criar outra.
   - **Categoria de despesa por item** (do Conta Azul): pode escolher uma **categoria padrão** para a nota inteira e, se quiser, uma **categoria diferente item a item**. Itens sem categoria própria usam a padrão.
   - Quando a nota tem **mais de uma categoria**, o sistema faz o **rateio automático** — divide o total da nota entre as categorias, **proporcional ao valor dos itens** de cada uma (o último grupo absorve os centavos para a soma bater exatamente com o total da nota). A conta a pagar fica com categoria "Vários" e guarda o rateio.
   - Para **enviar ao Conta Azul**, toda categoria usada precisa ter o **código da categoria do Conta Azul** — se faltar em alguma, o sistema avisa quais itens/categorias corrigir antes de enviar. Sem enviar ao CA, a categoria pode ficar só no app.
