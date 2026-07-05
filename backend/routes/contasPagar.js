@@ -228,6 +228,70 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── GET /:id/detalhe — dados completos da despesa: nota fiscal + itens/produtos ──
+// Usado ao abrir o modal de detalhes. Traz o que a nota tinha (produtos comprados,
+// observações da nota) para quem clica na despesa entender exatamente do que se trata.
+router.get('/:id/detalhe', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const conta = await prisma.contaPagar.findUnique({
+            where: { id: req.params.id },
+            include: {
+                notaEntrada: {
+                    include: {
+                        itens: { orderBy: { numeroItem: 'asc' } },
+                        compras: {
+                            where: { estornado: false },
+                            include: { produto: { select: { nome: true } }, itemPcp: { select: { nome: true } } }
+                        }
+                    }
+                }
+            }
+        });
+        if (!conta) return res.status(404).json({ error: 'Conta não encontrada.' });
+
+        const nota = conta.notaEntrada;
+        // Mapa descrição do item na nota → produto do nosso sistema (o que aquele item alimentou)
+        const vinculoPorDescricao = {};
+        for (const c of (nota?.compras || [])) {
+            const nome = c.produto?.nome || c.itemPcp?.nome || null;
+            if (nome && c.descricaoFornecedor) vinculoPorDescricao[c.descricaoFornecedor] = nome;
+        }
+
+        res.json({
+            id: conta.id,
+            origem: conta.origem,
+            numeroNota: conta.numeroNota,
+            chaveNfe: conta.chaveNfe,
+            nota: nota ? {
+                tipo: nota.tipo,
+                numero: nota.numero,
+                serie: nota.serie,
+                emissao: nota.emissao,
+                valorTotal: num(nota.valorTotal),
+                observacoes: nota.infComplementar || null,
+                temXml: !!nota.xmlPath
+            } : null,
+            itens: (nota?.itens || []).map((i) => ({
+                numeroItem: i.numeroItem,
+                codigo: i.codigoFornecedor,
+                ean: i.ean,
+                descricao: i.descricao,
+                ncm: i.ncm,
+                unidade: i.unidade,
+                quantidade: num(i.quantidade),
+                valorUnitario: num(i.valorUnitario),
+                valorTotal: num(i.valorTotal),
+                categoria: i.categoria,
+                infAdProd: i.infAdProd,
+                produtoVinculado: vinculoPorDescricao[i.descricao] || null
+            }))
+        });
+    } catch (error) {
+        console.error('Erro ao carregar detalhe da conta a pagar:', error);
+        res.status(500).json({ error: 'Erro ao carregar detalhe da despesa.' });
+    }
+});
+
 // ── Validação compartilhada de parcelas do body ──
 const validarParcelasBody = (parcelas) => {
     if (!Array.isArray(parcelas) || parcelas.length === 0) {

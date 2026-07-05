@@ -42,6 +42,11 @@ const contasPagarService = {
     estornarPagamento: async (id, parcelaId, pagamentoId) => {
         const response = await api.post(`/contas-pagar/${id}/parcelas/${parcelaId}/estorno`, { pagamentoId });
         return response.data;
+    },
+    // Detalhe completo da despesa: nota fiscal + itens/produtos comprados (para o modal de detalhes)
+    detalhe: async (id) => {
+        const response = await api.get(`/contas-pagar/${id}/detalhe`);
+        return response.data; // { origem, numeroNota, chaveNfe, nota, itens:[...] }
     }
 };
 

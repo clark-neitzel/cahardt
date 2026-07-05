@@ -3,9 +3,25 @@ import { useAuth } from '../../contexts/AuthContext';
 import contasPagarService from '../../services/contasPagarService';
 import fornecedorService from '../../services/fornecedorService';
 import {
-    Wallet, X, Trash2, FileText, RefreshCw, MoreVertical, Loader2, Undo2
+    Wallet, X, Trash2, FileText, RefreshCw, MoreVertical, Loader2, Undo2, Filter, Package
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+// Filtros salvos por navegador/usuário — ao sair e voltar, continuam aplicados
+const LS_FILTROS = 'contasPagar_filtros';
+const mesAtual = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
+const loadFiltros = () => {
+    const def = { busca: '', status: '', categoria: '', mes: mesAtual() };
+    try {
+        const s = JSON.parse(localStorage.getItem(LS_FILTROS) || '{}');
+        return {
+            busca: s.busca || '',
+            status: s.status || '',
+            categoria: s.categoria || '',
+            mes: s.mes !== undefined ? s.mes : def.mes // '' = "todos os meses" (filtro proposital)
+        };
+    } catch { return def; }
+};
 
 // ── Helpers ──
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -118,8 +134,27 @@ const ContasPagarPage = () => {
     const [categoriasErro, setCategoriasErro] = useState(false);
     const [fornecedores, setFornecedores] = useState([]);
 
-    const [filtros, setFiltros] = useState({ busca: '', status: '', categoria: '', mes: hojeYMD().slice(0, 7) });
-    const [buscaInput, setBuscaInput] = useState('');
+    const filtrosIniciais = useMemo(loadFiltros, []);
+    const [filtros, setFiltros] = useState(filtrosIniciais);
+    const [buscaInput, setBuscaInput] = useState(filtrosIniciais.busca);
+
+    // Persiste os filtros para reaplicar quando o usuário voltar à tela
+    useEffect(() => { localStorage.setItem(LS_FILTROS, JSON.stringify(filtros)); }, [filtros]);
+
+    // Quantos filtros estão ativos (para sinalizar na tela)
+    const filtrosAtivos = useMemo(() => {
+        let n = 0;
+        if (filtros.busca) n++;
+        if (filtros.status) n++;
+        if (filtros.categoria) n++;
+        if (filtros.mes !== mesAtual()) n++; // mês diferente do corrente (inclui "todos os meses")
+        return n;
+    }, [filtros]);
+
+    const limparFiltros = () => {
+        setFiltros({ busca: '', status: '', categoria: '', mes: mesAtual() });
+        setBuscaInput('');
+    };
 
     // Modais
     const [despesaModal, setDespesaModal] = useState(null); // { conta: null } = nova | { conta } = editar
@@ -252,36 +287,51 @@ const ContasPagarPage = () => {
                 </div>
 
                 {/* Filtros */}
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3 flex flex-col md:flex-row gap-2">
-                    <input
-                        value={buscaInput}
-                        onChange={e => setBuscaInput(e.target.value)}
-                        placeholder="Buscar fornecedor ou descrição…"
-            className="w-full md:w-64 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                    />
-                    <select
-                        value={filtros.status}
-                        onChange={e => setFiltros(f => ({ ...f, status: e.target.value }))}
-            className="w-full md:w-44 border border-gray-300 rounded px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none"
-                    >
-                        {STATUS_OPCOES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                    <select
-                        value={filtros.categoria}
-                        onChange={e => setFiltros(f => ({ ...f, categoria: e.target.value }))}
-            className="w-full md:w-44 border border-gray-300 rounded px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none"
-                    >
-                        <option value="">Categoria: Todas</option>
-                        {categorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
-                    </select>
-                    <select
-                        value={filtros.mes}
-                        onChange={e => setFiltros(f => ({ ...f, mes: e.target.value }))}
-            className="w-full md:w-44 border border-gray-300 rounded px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none"
-                    >
-                        <option value="">Todos os meses</option>
-                        {meses.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                    </select>
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3 space-y-2">
+                    <div className="flex flex-col md:flex-row gap-2">
+                        <input
+                            value={buscaInput}
+                            onChange={e => setBuscaInput(e.target.value)}
+                            placeholder="Buscar fornecedor ou descrição…"
+                            className={`w-full md:w-64 border rounded px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none ${filtros.busca ? '!border-primary bg-blue-50/60' : 'border-gray-300 focus:border-primary'}`}
+                        />
+                        <select
+                            value={filtros.status}
+                            onChange={e => setFiltros(f => ({ ...f, status: e.target.value }))}
+                            className={`w-full md:w-44 border rounded px-3 py-2 text-sm text-gray-700 focus:outline-none ${filtros.status ? '!border-primary bg-blue-50/60 font-medium' : 'border-gray-300 focus:border-primary'}`}
+                        >
+                            {STATUS_OPCOES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                        <select
+                            value={filtros.categoria}
+                            onChange={e => setFiltros(f => ({ ...f, categoria: e.target.value }))}
+                            className={`w-full md:w-44 border rounded px-3 py-2 text-sm text-gray-700 focus:outline-none ${filtros.categoria ? '!border-primary bg-blue-50/60 font-medium' : 'border-gray-300 focus:border-primary'}`}
+                        >
+                            <option value="">Categoria: Todas</option>
+                            {categorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+                        </select>
+                        <select
+                            value={filtros.mes}
+                            onChange={e => setFiltros(f => ({ ...f, mes: e.target.value }))}
+                            className={`w-full md:w-44 border rounded px-3 py-2 text-sm text-gray-700 focus:outline-none ${filtros.mes !== mesAtual() ? '!border-primary bg-blue-50/60 font-medium' : 'border-gray-300 focus:border-primary'}`}
+                        >
+                            <option value="">Todos os meses</option>
+                            {meses.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                        </select>
+                    </div>
+                    {filtrosAtivos > 0 && (
+                        <div className="flex items-center gap-2 pt-0.5">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                <Filter className="h-3 w-3" /> {filtrosAtivos} filtro{filtrosAtivos > 1 ? 's' : ''} ativo{filtrosAtivos > 1 ? 's' : ''}
+                            </span>
+                            <button
+                                onClick={limparFiltros}
+                                className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100 min-h-[32px]"
+                            >
+                                Limpar filtros
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {loading && (
@@ -392,8 +442,13 @@ const ContasPagarPage = () => {
                                     <tr><td colSpan={10} className="px-5 py-8 text-center text-gray-400">Nenhuma parcela encontrada.</td></tr>
                                 )}
                                 {linhas.map(({ conta, parcela, totalParcelas }) => (
-                                    <tr key={parcela.id} className={`hover:bg-gray-50 ${selecionadas.has(parcela.id) ? 'bg-blue-50/60' : parcela.status === 'PAGO' ? 'bg-green-50/40' : ''}`}>
-                                        <td className="pl-5 pr-1 py-3 w-8">
+                                    <tr
+                                        key={parcela.id}
+                                        onClick={() => setDetalheConta(conta)}
+                                        title="Ver detalhes desta despesa"
+                                        className={`hover:bg-gray-50 cursor-pointer ${selecionadas.has(parcela.id) ? 'bg-blue-50/60' : parcela.status === 'PAGO' ? 'bg-green-50/40' : ''}`}
+                                    >
+                                        <td className="pl-5 pr-1 py-3 w-8" onClick={e => e.stopPropagation()}>
                                             {podeBaixarParcela(conta, parcela) && (
                                                 <input
                                                     type="checkbox"
@@ -416,7 +471,7 @@ const ContasPagarPage = () => {
                                         <td className="px-5 py-3 text-right font-semibold text-gray-900">R$ {fmt(parcela.valor)}</td>
                                         <td className="px-5 py-3"><BadgeStatusParcela parcela={parcela} /></td>
                                         <td className="px-5 py-3"><BadgeCA conta={conta} parcela={parcela} /></td>
-                                        <td className="px-5 py-3 text-right whitespace-nowrap">
+                                        <td className="px-5 py-3 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
                                             {podeBaixarParcela(conta, parcela) && (
                                                 <button
                                                     onClick={() => abrirBaixa(conta, parcela)}
@@ -978,8 +1033,23 @@ const BaixaLoteModal = ({ parcelaIds, valorTotal, onClose, onSuccess }) => {
 const DetalheContaModal = ({ conta, podeBaixar, onClose, onEditar, onBaixar, onChanged }) => {
     const [executando, setExecutando] = useState(null); // 'cancelar' | 'reenviar' | pagamentoId
 
+    // Detalhe completo (nota fiscal + itens/produtos) — carregado sob demanda ao abrir
+    const [detalhe, setDetalhe] = useState(null);
+    const [carregandoDet, setCarregandoDet] = useState(true);
+    useEffect(() => {
+        let vivo = true;
+        setCarregandoDet(true);
+        contasPagarService.detalhe(conta.id)
+            .then(d => { if (vivo) setDetalhe(d); })
+            .catch(() => { if (vivo) setDetalhe(null); })
+            .finally(() => { if (vivo) setCarregandoDet(false); });
+        return () => { vivo = false; };
+    }, [conta.id]);
+
     const totalParcelas = (conta.parcelas || []).length;
     const statusEnvio = String(conta.statusEnvioCA || '').toUpperCase();
+    const nota = detalhe?.nota;
+    const itens = detalhe?.itens || [];
 
     const cancelarConta = async () => {
         if (!window.confirm('Cancelar esta despesa? As parcelas em aberto serão canceladas.')) return;
@@ -1059,7 +1129,69 @@ const DetalheContaModal = ({ conta, podeBaixar, onClose, onEditar, onBaixar, onC
                         </div>
                     )}
                     {conta.observacoes && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600">{conta.observacoes}</div>
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600">
+                            <span className="font-semibold text-gray-500">Observação: </span>{conta.observacoes}
+                        </div>
+                    )}
+
+                    {/* O que é esta despesa — nota fiscal + itens/produtos comprados */}
+                    {carregandoDet ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-400 py-1">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Carregando itens da nota…
+                        </div>
+                    ) : (nota || itens.length > 0) ? (
+                        <div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <Package className="h-4 w-4 text-blue-600" />
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Itens da nota</span>
+                            </div>
+
+                            {nota && (
+                                <div className="text-xs text-gray-500 mb-2">
+                                    {nota.tipo || 'NF-e'}{nota.numero ? ` ${nota.numero}` : ''}{nota.serie ? ` · série ${nota.serie}` : ''}
+                                    {nota.emissao ? ` · emitida ${fmtData(nota.emissao)}` : ''}
+                                    {nota.valorTotal != null ? ` · total R$ ${fmt(nota.valorTotal)}` : ''}
+                                </div>
+                            )}
+
+                            {itens.length > 0 ? (
+                                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 overflow-hidden">
+                                    {itens.map((it, idx) => (
+                                        <div key={idx} className="p-3">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <div className="text-sm font-medium text-gray-900">{it.descricao}</div>
+                                                    <div className="text-xs text-gray-500 mt-0.5">
+                                                        {fmt(it.quantidade)} {it.unidade} × R$ {fmt(it.valorUnitario)}
+                                                        {it.codigo ? ` · cód. ${it.codigo}` : ''}
+                                                        {it.categoria ? ` · ${it.categoria}` : ''}
+                                                    </div>
+                                                    {it.produtoVinculado && (
+                                                        <div className="text-xs text-green-700 mt-0.5">→ entrou como “{it.produtoVinculado}” no estoque</div>
+                                                    )}
+                                                    {it.infAdProd && (
+                                                        <div className="text-xs text-gray-400 mt-0.5 whitespace-pre-wrap">{it.infAdProd}</div>
+                                                    )}
+                                                </div>
+                                                <div className="text-sm font-semibold text-gray-900 whitespace-nowrap">R$ {fmt(it.valorTotal)}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-gray-400">Esta nota não tem itens detalhados guardados.</p>
+                            )}
+
+                            {nota?.observacoes && (
+                                <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 whitespace-pre-wrap">
+                                    <span className="font-semibold">Observações da nota: </span>{nota.observacoes}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <p className="text-xs text-gray-400">
+                            Despesa lançada manualmente — sem nota fiscal vinculada com itens.
+                        </p>
                     )}
 
                     {/* Parcelas + pagamentos */}

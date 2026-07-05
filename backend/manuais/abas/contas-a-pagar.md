@@ -18,7 +18,8 @@ Gestão das despesas da empresa (contas a pagar): lançamento manual de contas c
   - **Vencidas** (todas as parcelas em aberto já vencidas, independente do mês)
   - **Próximos 7 dias** (o que vence na semana)
   - **Em aberto no mês** e **Pago no mês**
-- Filtrar por busca (descrição, nota, fornecedor), status da conta, categoria e mês
+- Filtrar por busca (descrição, nota, fornecedor), status da conta, categoria e mês. **Os filtros ficam salvos**: ao sair da tela e voltar, continuam aplicados (guardados no próprio navegador/dispositivo). Quando há filtro ativo, aparece uma etiqueta **"N filtros ativos"** e os campos filtrados ficam destacados em azul; o botão **"Limpar filtros"** volta tudo ao padrão (mês corrente, sem busca/status/categoria)
+- **Clicar em qualquer despesa abre os detalhes completos**: descrição, categoria, observação, status de envio ao Conta Azul, todas as parcelas com o histórico de pagamentos e — quando a conta veio de uma NF-e — os **itens/produtos da nota** (o que foi comprado: descrição, quantidade, unidade, valor unitário e total de cada item), qual produto do estoque cada item alimentou, e as observações da própria nota fiscal. Serve para tirar dúvida do tipo "essa despesa é de quê?" sem sair da tela
 - Criar uma conta a pagar: fornecedor, descrição, categoria de despesa (vem do Conta Azul), número da nota, competência, observações e parcelas (valor + vencimento de cada uma)
 - Contas também **chegam sozinhas via NF-e** (origem NFE): a aba **Notas Recebidas** captura as notas dos fornecedores na SEFAZ e gera a conta a pagar já com número da nota, chave da NF-e, fornecedor e parcelas das duplicatas (ver manual [notas-recebidas.md](notas-recebidas.md))
 - **Categoria "Vários" / rateio:** uma conta pode ter **mais de uma categoria** de despesa quando vem de uma NF-e com itens de categorias diferentes. Nesse caso a categoria aparece como **"Vários"** e a conta guarda o **rateio** (quanto do valor foi para cada categoria) — é esse rateio que é enviado ao Conta Azul
@@ -88,6 +89,6 @@ A conta fica ABERTO / PARCIAL / QUITADO / CANCELADO conforme o conjunto das parc
 
 | Caminho | Papel |
 |---------|-------|
-| `backend/routes/contasPagar.js` | Rotas da API (listar, criar, editar, baixar, estornar, cancelar, reenviar) |
+| `backend/routes/contasPagar.js` | Rotas da API (listar, criar, editar, baixar, estornar, cancelar, reenviar, **detalhe com itens da nota**) |
 | `backend/services/contasPagarCaSyncService.js` | Robôs de envio ao CA e conferência de baixas |
 | `frontend/src/pages/Financeiro/ContasPagar*` | Telas do módulo |
