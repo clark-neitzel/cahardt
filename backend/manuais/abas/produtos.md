@@ -22,6 +22,8 @@ Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativ
 - Navegar para a tela de Sincronização para importar produtos do Conta Azul
 - **(Fase 6) Criar produto novo** pelo botão "Novo produto": ele é criado **na Conta Azul e no app ao mesmo tempo** (nome, código SKU, EAN, unidade, valor de venda e categoria) — se o CA estiver fora do ar, nada é criado e o app avisa
 - **(Fase 6) Aba "Compras"** no detalhe do produto: histórico de compras vindo das Notas Recebidas (data, fornecedor, nota, quantidade na nota × entrada convertida, custo unitário e total). O **custo manual** do produto é atualizado por média ponderada a cada compra conferida
+- **(Fase 6) Controle de estoque por produto**: no detalhe do produto (campo "Controle de estoque") escolha entre **Seguir a categoria** (padrão — vale a configuração de Categorias de Estoque), **Controlar SEMPRE** ou **NÃO controlar**. Produto que não controla estoque **continua recebendo custo e histórico de preços a cada compra** — só não movimenta quantidade (ex.: combustível, gás)
+- **O estoque não é mais importado do Conta Azul**: produto novo que chega pelo sync entra com estoque zerado; o saldo é formado pelas compras conferidas, ajustes manuais e saídas de faturamento — tudo dentro do app
 
 ---
 
@@ -49,7 +51,7 @@ Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativ
 1. Abra o detalhe do produto
 2. No bloco "Valores e Classificação", o campo **Unidade** está editável (ex.: UN, KG, CX)
 3. Digite a unidade desejada e clique em **Salvar** na seção roxa abaixo
-4. Importante: a unidade é gerenciada **somente no app** — ela **não** é importada nem sobrescrita pela sincronização com o Conta Azul. Os outros valores (preço, custo, estoque) continuam vindo do CA normalmente.
+4. Importante: a unidade é gerenciada **somente no app** — ela **não** é importada nem sobrescrita pela sincronização com o Conta Azul. Preço de venda e custo médio continuam vindo do CA; **o ESTOQUE não é mais importado do CA** — o controle de quantidade é 100% do app (entradas pelas compras das Notas Recebidas e ajustes manuais, saídas pelo faturamento).
 
 ### Adicionar/trocar imagem
 - Na tela de detalhe, há a seção de imagens

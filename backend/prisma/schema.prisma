@@ -73,6 +73,11 @@ model Produto {
   // e só então salvo aqui com o contaAzulId retornado. origem: CA (sync) | APP.
   origem String @default("CA")
 
+  // Fase 6: controle de estoque POR PRODUTO. null = segue a categoria de estoque
+  // (comportamento antigo); true/false força. Produto que NÃO controla estoque
+  // continua recebendo custo e histórico de compras — só não movimenta quantidade.
+  controlaEstoque Boolean? @map("controla_estoque")
+
   @@map("produtos")
 }
 

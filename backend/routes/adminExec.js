@@ -1582,6 +1582,109 @@ router.get('/compras-estoque-check', async (req, res) => {
     }
 });
 
+// ── Fase 6: entrada RETROATIVA de compras (notas conferidas antes da fase) ──
+// Monta, por nota CONFERIDA sem compras ativas, as entradas a partir do vínculo
+// memorizado (fornecedor+cProd → produto/insumo + fator). Idempotente.
+async function _montarEntradasRetroativas() {
+    const notas = await prisma.notaEntrada.findMany({
+        where: { status: 'CONFERIDA', tipo: { not: 'NFSE' } },
+        select: {
+            id: true, tipo: true, numero: true, fornecedorNome: true, fornecedorCnpj: true,
+            fornecedorId: true, emissao: true, contaPagarId: true,
+            itens: true,
+            compras: { where: { estornado: false }, select: { id: true } }
+        }
+    });
+    const pendentes = notas.filter((n) => n.compras.length === 0 && n.fornecedorCnpj);
+
+    const resultado = [];
+    for (const nota of pendentes) {
+        const vinculos = await prisma.fornecedorProdutoVinculo.findMany({
+            where: {
+                fornecedorCnpj: nota.fornecedorCnpj,
+                OR: [{ produtoId: { not: null } }, { itemPcpId: { not: null } }]
+            },
+            select: { codigoFornecedor: true, produtoId: true, itemPcpId: true, fatorConversao: true }
+        });
+        const porCodigo = new Map(vinculos.map((v) => [v.codigoFornecedor, v]));
+        const entradas = [];
+        for (const itemNota of nota.itens) {
+            const v = porCodigo.get(itemNota.codigoFornecedor);
+            if (!v) continue;
+            entradas.push({
+                itemNota,
+                produtoId: v.produtoId || null,
+                itemPcpId: v.produtoId ? null : v.itemPcpId,
+                fator: Number(v.fatorConversao) > 0 ? Number(v.fatorConversao) : 1
+            });
+        }
+        if (entradas.length > 0) resultado.push({ nota, entradas });
+    }
+    return resultado;
+}
+
+// GET /api/admin-exec/compras-retroativas-simulacao — SOMENTE LEITURA: o que seria lançado
+router.get('/compras-retroativas-simulacao', async (req, res) => {
+    try {
+        const estoqueService = require('../services/estoqueService');
+        const planos = await _montarEntradasRetroativas();
+        const linhas = [];
+        for (const { nota, entradas } of planos) {
+            for (const e of entradas) {
+                let alvo = null;
+                let controla = null;
+                if (e.produtoId) {
+                    const p = await prisma.produto.findUnique({
+                        where: { id: e.produtoId },
+                        select: { nome: true, unidade: true, categoria: true, controlaEstoque: true }
+                    });
+                    alvo = p ? `PRODUTO: ${p.nome}` : 'PRODUTO (não encontrado)';
+                    controla = p ? await estoqueService.produtoControlaEstoque(p) : false;
+                } else if (e.itemPcpId) {
+                    const i = await prisma.itemPcp.findUnique({ where: { id: e.itemPcpId }, select: { nome: true } });
+                    alvo = i ? `INSUMO: ${i.nome}` : 'INSUMO (não encontrado)';
+                    controla = true;
+                }
+                const qtd = Number(e.itemNota.quantidade) * e.fator;
+                linhas.push({
+                    nota: nota.numero,
+                    fornecedor: nota.fornecedorNome,
+                    item: e.itemNota.descricao,
+                    alvo,
+                    quantidadeConvertida: Math.round(qtd * 1000) / 1000,
+                    valor: Number(e.itemNota.valorTotal),
+                    custoUnitario: qtd > 0 ? Math.round((Number(e.itemNota.valorTotal) / qtd) * 10000) / 10000 : null,
+                    movimentaEstoque: controla,
+                    efeito: controla ? 'entrada de estoque + custo + histórico' : 'só custo + histórico (não controla estoque)'
+                });
+            }
+        }
+        res.json({ notasPendentes: planos.length, itens: linhas.length, linhas });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/admin-exec/compras-retroativas — EXECUTA as entradas retroativas (idempotente)
+router.post('/compras-retroativas', async (req, res) => {
+    try {
+        const compraEstoqueService = require('../services/compraEstoqueService');
+        const planos = await _montarEntradasRetroativas();
+        let totalRegistradas = 0;
+        const avisos = [];
+        const porNota = [];
+        for (const { nota, entradas } of planos) {
+            const r = await compraEstoqueService.registrarEntradasCompra(nota, nota.contaPagarId, entradas, null);
+            totalRegistradas += r.registradas;
+            avisos.push(...r.avisos.map((a) => `Nota ${nota.numero}: ${a}`));
+            porNota.push({ nota: nota.numero, fornecedor: nota.fornecedorNome, registradas: r.registradas });
+        }
+        res.json({ ok: true, notasProcessadas: planos.length, totalRegistradas, porNota, avisos });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/gerencial-diag
 // SOMENTE LEITURA. Roda o Fluxo de Caixa e a DRE (Fase 5) e devolve um resumo
 // compacto — validar os números reais em produção logo após o deploy.

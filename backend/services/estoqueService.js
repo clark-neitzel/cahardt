@@ -13,6 +13,16 @@ async function categoriaControlaEstoque(categoriaNome, db) {
     return cat?.controlaEstoque === true;
 }
 
+// Fase 6: controle POR PRODUTO — produto.controlaEstoque true/false força;
+// null (padrão) segue a regra da categoria (comportamento antigo).
+// `produto` precisa ter { controlaEstoque, categoria }.
+async function produtoControlaEstoque(produto, db) {
+    if (!produto) return false;
+    if (produto.controlaEstoque === true) return true;
+    if (produto.controlaEstoque === false) return false;
+    return categoriaControlaEstoque(produto.categoria, db);
+}
+
 // Recalcula estoqueReservado e estoqueDisponivel para um produto com base nos pedidos ativos.
 // Só atua se a categoria do produto tiver controlaEstoque=true.
 // Pode receber uma transaction Prisma (tx) para rodar dentro de uma transação.
@@ -21,11 +31,11 @@ async function recalcularEstoqueProduto(produtoId, tx) {
 
     const produto = await db.produto.findUnique({
         where: { id: produtoId },
-        select: { id: true, estoqueTotal: true, categoria: true }
+        select: { id: true, estoqueTotal: true, categoria: true, controlaEstoque: true }
     });
     if (!produto) return null;
 
-    const controla = await categoriaControlaEstoque(produto.categoria, db);
+    const controla = await produtoControlaEstoque(produto, db);
     if (!controla) return null;
 
     // Soma itens de pedidos ativos (todos os pedidos que ainda não saíram do estoque)
@@ -52,6 +62,7 @@ async function recalcularEstoqueProduto(produtoId, tx) {
 const estoqueService = {
 
     recalcularEstoqueProduto,
+    produtoControlaEstoque,
 
     // Ajuste manual de estoque: afeta somente estoqueTotal, depois recalcula disponivel/reservado.
     // tipo: 'ENTRADA' | 'SAIDA'
@@ -117,7 +128,7 @@ const estoqueService = {
             include: {
                 itens: {
                     include: {
-                        produto: { select: { id: true, nome: true, estoqueTotal: true, categoria: true } }
+                        produto: { select: { id: true, nome: true, estoqueTotal: true, categoria: true, controlaEstoque: true } }
                     }
                 }
             }
@@ -132,7 +143,7 @@ const estoqueService = {
             for (const item of pedido.itens) {
                 if (!item.produto) continue;
 
-                const controla = await categoriaControlaEstoque(item.produto.categoria, tx);
+                const controla = await produtoControlaEstoque(item.produto, tx);
                 if (!controla) continue;
 
                 const qtd = parseFloat(item.quantidade || 0);
@@ -184,7 +195,7 @@ const estoqueService = {
         const pedido = await prisma.pedido.findUnique({
             where: { id: pedidoId },
             include: {
-                itens: { include: { produto: { select: { id: true, nome: true, estoqueTotal: true, categoria: true } } } }
+                itens: { include: { produto: { select: { id: true, nome: true, estoqueTotal: true, categoria: true, controlaEstoque: true } } } }
             }
         });
         if (!pedido) return [];
@@ -195,7 +206,7 @@ const estoqueService = {
         await prisma.$transaction(async (tx) => {
             for (const item of pedido.itens) {
                 if (!item.produto) continue;
-                const controla = await categoriaControlaEstoque(item.produto.categoria, tx);
+                const controla = await produtoControlaEstoque(item.produto, tx);
                 if (!controla) continue;
 
                 const qtd = parseFloat(item.quantidade || 0);
@@ -244,11 +255,11 @@ const estoqueService = {
             for (const item of itens) {
                 const produto = await tx.produto.findUnique({
                     where: { id: item.produtoId },
-                    select: { id: true, nome: true, estoqueTotal: true, categoria: true }
+                    select: { id: true, nome: true, estoqueTotal: true, categoria: true, controlaEstoque: true }
                 });
                 if (!produto) continue;
 
-                const controla = await categoriaControlaEstoque(produto.categoria, tx);
+                const controla = await produtoControlaEstoque(produto, tx);
                 if (!controla) continue;
 
                 const qtd = parseFloat(item.quantidade || 0);
@@ -298,11 +309,11 @@ const estoqueService = {
             for (const item of itens) {
                 const produto = await tx.produto.findUnique({
                     where: { id: item.produtoId },
-                    select: { id: true, nome: true, estoqueTotal: true, categoria: true }
+                    select: { id: true, nome: true, estoqueTotal: true, categoria: true, controlaEstoque: true }
                 });
                 if (!produto) continue;
 
-                const controla = await categoriaControlaEstoque(produto.categoria, tx);
+                const controla = await produtoControlaEstoque(produto, tx);
                 if (!controla) continue;
 
                 const qtd = parseFloat(item.quantidade || 0);

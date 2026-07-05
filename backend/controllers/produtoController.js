@@ -239,11 +239,15 @@ const produtoController = {
             const CAMPOS_PERMITIDOS = [
                 'ativo', 'descricao', 'estoqueMinimo', 'unidade', 'custoManual',
                 'categoriaProdutoId', 'produtoSubstitutoId',
-                'permiteRecomendacao', 'prioridadeRecomendacao'
+                'permiteRecomendacao', 'prioridadeRecomendacao', 'controlaEstoque'
             ];
             const data = {};
             for (const campo of CAMPOS_PERMITIDOS) {
                 if (body[campo] !== undefined) data[campo] = body[campo];
+            }
+            // Controle de estoque por produto: true/false força; null volta a seguir a categoria
+            if (data.controlaEstoque !== undefined && data.controlaEstoque !== null) {
+                data.controlaEstoque = data.controlaEstoque === true || data.controlaEstoque === 'true';
             }
             // Unidade nunca pode ficar vazia (campo obrigatório no schema)
             if (data.unidade !== undefined) {

@@ -644,7 +644,8 @@ const GerenciarProduto = () => {
         categoriaProdutoId: '',
         produtoSubstitutoId: '',
         permiteRecomendacao: true,
-        prioridadeRecomendacao: 1
+        prioridadeRecomendacao: 1,
+        controlaEstoque: '' // '' = segue a categoria | 'true' | 'false'
     });
 
     useEffect(() => {
@@ -678,7 +679,8 @@ const GerenciarProduto = () => {
                     categoriaProdutoId: data.categoriaProdutoId || '',
                     produtoSubstitutoId: data.produtoSubstitutoId || '',
                     permiteRecomendacao: data.permiteRecomendacao !== false,
-                    prioridadeRecomendacao: data.prioridadeRecomendacao || 1
+                    prioridadeRecomendacao: data.prioridadeRecomendacao || 1,
+                    controlaEstoque: data.controlaEstoque === true ? 'true' : data.controlaEstoque === false ? 'false' : ''
                 });
             } catch (error) {
                 console.error('Erro ao carregar produto:', error);
@@ -724,7 +726,8 @@ const GerenciarProduto = () => {
                 categoriaProdutoId: formData.categoriaProdutoId || null,
                 produtoSubstitutoId: formData.produtoSubstitutoId || null,
                 permiteRecomendacao: formData.permiteRecomendacao,
-                prioridadeRecomendacao: parseInt(formData.prioridadeRecomendacao) || 1
+                prioridadeRecomendacao: parseInt(formData.prioridadeRecomendacao) || 1,
+                controlaEstoque: formData.controlaEstoque === '' ? null : formData.controlaEstoque === 'true'
             });
             toast.success('Configurações comerciais salvas!');
             handleBack();
@@ -1013,6 +1016,12 @@ const GerenciarProduto = () => {
                           input: <div className="flex items-center gap-2.5 rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#D8C9FB',background:'#fff'}}>
                             <span className="text-sm font-medium" style={{color:'#3A3F52'}}>R$</span>
                             <input type="number" step="0.01" min="0" value={formData.custoManual} onChange={e=>setFormData({...formData,custoManual:e.target.value})} placeholder="0,00" className="flex-1 bg-transparent outline-none font-medium font-mono" style={{fontSize:15,color:'#16192B'}}/>
+                            <select value={formData.controlaEstoque} onChange={e=>setFormData({...formData,controlaEstoque:e.target.value})}
+                                className="w-full mt-2 rounded-xl border px-3 text-sm bg-white" style={{height:44,borderColor:'#E4E7F2',color:'#16192B'}}>
+                                <option value="">Estoque: seguir a categoria (padrão)</option>
+                                <option value="true">Estoque: controlar SEMPRE</option>
+                                <option value="false">Estoque: NÃO controlar (só custo/preços)</option>
+                            </select>
                           </div> },
                         { key: 'unidade', label: 'Unidade', tag: 'EDITÁVEL', helper: 'Unidade de venda no app.',
                           input: <div className="flex items-center rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#D8C9FB',background:'#fff'}}>
@@ -1290,6 +1299,23 @@ const GerenciarProduto = () => {
                                                     style={{ fontSize: 15, color: '#16192B' }} />
                                             </div>
                                             <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>{parseFloat(formData.custoMedio) > 0 ? 'CA já tem custo — este fica de reserva.' : 'Usado no cálculo de receitas.'}</div>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center mb-2">
+                                                <span className="text-sm font-bold" style={{ color: '#3A3F52' }}>Controle de estoque</span>
+                                                <span className="ml-2 font-bold rounded-full" style={{ fontSize: 10.5, color: '#7C3AED', background: '#F1EAFF', padding: '2px 7px' }}>EDITÁVEL</span>
+                                            </div>
+                                            <div className="flex items-center rounded-xl border" style={{ height: 50, padding: '0 12px', borderColor: '#D8C9FB', background: '#fff' }}>
+                                                <select value={formData.controlaEstoque}
+                                                    onChange={(e) => setFormData({ ...formData, controlaEstoque: e.target.value })}
+                                                    className="flex-1 bg-transparent outline-none font-medium"
+                                                    style={{ fontSize: 14, color: '#16192B' }}>
+                                                    <option value="">Seguir a categoria (padrão)</option>
+                                                    <option value="true">Controlar SEMPRE</option>
+                                                    <option value="false">NÃO controlar (só custo/preços)</option>
+                                                </select>
+                                            </div>
+                                            <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>Sem controle, a compra ainda atualiza o custo e o histórico de preços — só não movimenta quantidade.</div>
                                         </div>
                                         <div>
                                             <div className="flex items-center mb-2">

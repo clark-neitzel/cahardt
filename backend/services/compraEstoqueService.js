@@ -88,10 +88,13 @@ async function registrarEntradasCompra(nota, contaPagarId, entradas, criadoPorId
             if (produtoId) {
                 const p = await prisma.produto.findUnique({
                     where: { id: produtoId },
-                    select: { unidade: true, estoqueTotal: true, custoManual: true, custoMedio: true }
+                    select: { nome: true, unidade: true, estoqueTotal: true, custoManual: true, custoMedio: true, categoria: true, controlaEstoque: true }
                 });
                 if (!p) { avisos.push(`Produto do item "${itemNota.descricao}" não encontrado.`); continue; }
                 unidadeNossa = p.unidade || unidadeNossa;
+                // Produto que NÃO controla estoque: registra a compra e atualiza o custo,
+                // mas não movimenta quantidade.
+                const controla = await estoqueService.produtoControlaEstoque(p);
 
                 await prisma.compraItem.create({
                     data: {
@@ -114,23 +117,31 @@ async function registrarEntradasCompra(nota, contaPagarId, entradas, criadoPorId
                     }
                 });
 
-                // Entrada de estoque (transação própria do estoqueService)
-                await estoqueService.ajustar({
-                    produtoId,
-                    vendedorId: criadoPorId || null,
-                    tipo: 'ENTRADA',
-                    quantidade,
-                    motivo: 'COMPRA',
-                    observacao: `Compra ${nota.tipo === 'NFSE' ? 'NFS-e' : 'NF-e'} ${nota.numero || 's/nº'} — ${nota.fornecedorNome}`
-                });
+                // Entrada de estoque (transação própria do estoqueService) — só se controla
+                if (controla) {
+                    await estoqueService.ajustar({
+                        produtoId,
+                        vendedorId: criadoPorId || null,
+                        tipo: 'ENTRADA',
+                        quantidade,
+                        motivo: 'COMPRA',
+                        observacao: `Compra ${nota.tipo === 'NFSE' ? 'NFS-e' : 'NF-e'} ${nota.numero || 's/nº'} — ${nota.fornecedorNome}`
+                    });
+                }
 
-                // Custo: média ponderada gravada no custoManual (o sync do CA não mexe nele)
+                // Custo: SEMPRE atualizado. Com controle de estoque, média ponderada com o
+                // saldo anterior; sem controle, o custo passa a ser o da última compra.
                 const custoAtual = num(p.custoManual) > 0 ? num(p.custoManual) : num(p.custoMedio);
-                const novoCusto = custoMedioPonderado(num(p.estoqueTotal), custoAtual, quantidade, custoUnitario);
+                const novoCusto = controla
+                    ? custoMedioPonderado(num(p.estoqueTotal), custoAtual, quantidade, custoUnitario)
+                    : custoUnitario;
                 await prisma.produto.update({
                     where: { id: produtoId },
                     data: { custoManual: round(novoCusto, 2) }
                 });
+                if (!controla) {
+                    avisos.push(`"${p.nome}": custo atualizado (R$ ${round(novoCusto, 2).toFixed(2)}), sem movimentar estoque — produto não controla estoque.`);
+                }
             } else {
                 const i = await prisma.itemPcp.findUnique({
                     where: { id: itemPcpId },
@@ -201,14 +212,22 @@ async function estornarEntradasNota(notaEntradaId, criadoPorId) {
     for (const c of compras) {
         try {
             if (c.produtoId) {
-                await estoqueService.ajustar({
-                    produtoId: c.produtoId,
-                    vendedorId: criadoPorId || null,
-                    tipo: 'SAIDA',
-                    quantidade: num(c.quantidade),
-                    motivo: 'ESTORNO_COMPRA',
-                    observacao: `Estorno da compra ${c.numeroNota || ''} — entrada cancelada`.trim()
+                // Produto sem controle de estoque nunca teve a quantidade lançada — só marca o estorno.
+                const p = await prisma.produto.findUnique({
+                    where: { id: c.produtoId },
+                    select: { categoria: true, controlaEstoque: true }
                 });
+                const controla = await estoqueService.produtoControlaEstoque(p);
+                if (controla) {
+                    await estoqueService.ajustar({
+                        produtoId: c.produtoId,
+                        vendedorId: criadoPorId || null,
+                        tipo: 'SAIDA',
+                        quantidade: num(c.quantidade),
+                        motivo: 'ESTORNO_COMPRA',
+                        observacao: `Estorno da compra ${c.numeroNota || ''} — entrada cancelada`.trim()
+                    });
+                }
             } else if (c.itemPcpId) {
                 await pcpEstoqueService.ajustar({
                     itemPcpId: c.itemPcpId,

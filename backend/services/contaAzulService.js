@@ -397,11 +397,12 @@ const contaAzulService = {
                     valorVenda: estoqueObj.valor_venda || p.value || p.valor_venda || p.price || p.sale_price || p.preco || 0,
                     unidade: unidadeValor.substring(0, 10), // Limit length just in case
 
-                    // Estoques
-                    estoqueDisponivel: estoqueObj.quantidade_disponivel || p.available_stock || p.saldo || 0,
-                    estoqueReservado: estoqueObj.quantidade_reservada || p.reserved_stock || 0,
-                    estoqueTotal: estoqueObj.quantidade_total || p.total_stock || p.saldo || 0,
-                    // CORRIGIDO: Estoque mínimo vem de minimumStock
+                    // Estoques — Fase 6: o controle de estoque é SÓ NO APP.
+                    // Produto novo vindo do sync nasce ZERADO (entradas vêm das compras/ajustes);
+                    // no update os campos de estoque nem entram (nunca sobrescreve o local).
+                    estoqueDisponivel: 0,
+                    estoqueReservado: 0,
+                    estoqueTotal: 0,
                     estoqueMinimo: estoqueObj.minimumStock || estoqueObj.estoque_minimo || p.min_stock || 0,
 
                     // Detalhes
@@ -1785,14 +1786,11 @@ const contaAzulService = {
             unidadeObj.descricao || unidadeObj.codigo ||
             (typeof p.unidade_medida === 'string' ? p.unidade_medida : 'UN');
 
-        const estoqueDisponivel = parseFloat(estoqueObj.quantidade_disponivel ?? estoqueObj.estoque_disponivel ?? 0);
-
+        // Fase 6: estoque NÃO é mais importado do CA — o controle é só no app.
+        // Este sync individual atualiza apenas preço/status; o saldo local fica intacto.
         await prisma.produto.updateMany({
             where: { contaAzulId: p.id },
             data: {
-                estoqueDisponivel,
-                estoqueReservado: parseFloat(estoqueObj.quantidade_reservada ?? 0),
-                estoqueTotal: parseFloat(estoqueObj.quantidade_total ?? estoqueDisponivel),
                 valorVenda: parseFloat(estoqueObj.valor_venda ?? p.value ?? p.valor_venda ?? 0) || undefined,
                 // unidade NÃO é sincronizada do CA — é editável no app e não deve ser sobrescrita
                 status: p.status,
@@ -1802,7 +1800,11 @@ const contaAzulService = {
             }
         });
 
-        return { estoqueDisponivel, contaAzulId: p.id };
+        const local = await prisma.produto.findFirst({
+            where: { contaAzulId: p.id },
+            select: { estoqueDisponivel: true }
+        });
+        return { estoqueDisponivel: parseFloat(local?.estoqueDisponivel ?? 0), contaAzulId: p.id };
     },
 
     // === BAIXAS (Acquittance) ===
