@@ -91,7 +91,7 @@ const BadgeCA = ({ conta, parcela }) => {
             </span>
         );
     }
-    return <span className="text-gray-400 text-xs">—</span>;
+    return <span className="text-gray-500 text-xs">—</span>;
 };
 
 const BadgeStatusParcela = ({ parcela }) => {
@@ -208,8 +208,17 @@ const ContasPagarPage = () => {
         let rows = flat;
         if (filtros.status) {
             rows = rows.filter(({ parcela }) => {
-                const st = parcelaVencida(parcela) ? 'VENCIDO' : (parcela.status === 'PENDENTE' ? 'ABERTO' : parcela.status);
-                return st === filtros.status;
+                const s = parcela.status;
+                const emAberto = s === 'ABERTO' || s === 'PENDENTE' || s === 'PARCIAL';
+                switch (filtros.status) {
+                    // "Aberto" = toda parcela não paga (vencida ou não) — bate com o KPI "Em aberto"
+                    case 'ABERTO': return emAberto;
+                    case 'VENCIDO': return parcelaVencida(parcela);
+                    case 'PARCIAL': return s === 'PARCIAL';
+                    case 'PAGO': return s === 'PAGO';
+                    case 'CANCELADO': return s === 'CANCELADO';
+                    default: return true;
+                }
             });
         }
         return rows.sort((a, b) => String(a.parcela.dataVencimento || '').localeCompare(String(b.parcela.dataVencimento || '')));
@@ -347,7 +356,7 @@ const ContasPagarPage = () => {
                 </div>
 
                 {loading && (
-                    <div className="text-center text-gray-400 text-sm py-2 flex items-center justify-center gap-2">
+                    <div className="text-center text-gray-500 text-sm py-2 flex items-center justify-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
                     </div>
                 )}
@@ -370,7 +379,7 @@ const ContasPagarPage = () => {
                 {/* Mobile: cards */}
                 <div className="md:hidden space-y-3">
                     {linhas.length === 0 && !loading && (
-                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-sm text-gray-400">
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-sm text-gray-500">
                             Nenhuma parcela encontrada.
                         </div>
                     )}
@@ -398,7 +407,7 @@ const ContasPagarPage = () => {
                             </div>
                             <div className="flex items-center justify-between mt-2">
                                 <div>
-                                    <div className={`text-xs ${parcelaVencida(parcela) ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+                                    <div className={`text-xs ${parcelaVencida(parcela) ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
                                         {parcela.status === 'PAGO'
                                             ? `Pago ${fmtData(parcela.dataPagamento)}`
                                             : `${parcelaVencida(parcela) ? 'Venceu' : 'Vence'} ${fmtData(parcela.dataVencimento)}`}
@@ -451,7 +460,7 @@ const ContasPagarPage = () => {
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200 text-sm">
                                 {linhas.length === 0 && !loading && (
-                                    <tr><td colSpan={10} className="px-5 py-8 text-center text-gray-400">Nenhuma parcela encontrada.</td></tr>
+                                    <tr><td colSpan={10} className="px-5 py-8 text-center text-gray-500">Nenhuma parcela encontrada.</td></tr>
                                 )}
                                 {linhas.map(({ conta, parcela, totalParcelas }) => (
                                     <tr
@@ -473,9 +482,9 @@ const ContasPagarPage = () => {
                                         <td className="px-5 py-3 text-gray-900 font-medium">{nomeFornecedor(conta.fornecedor)}</td>
                                         <td className="px-5 py-3 text-gray-600">
                                             {conta.descricao || '—'}
-                                            {conta.categoria ? <span className="text-gray-400"> · {conta.categoria}</span> : null}
+                                            {conta.categoria ? <span className="text-gray-500"> · {conta.categoria}</span> : null}
                                         </td>
-                                        <td className="px-5 py-3 text-gray-600">{conta.numeroNota || <span className="text-gray-400">—</span>}</td>
+                                        <td className="px-5 py-3 text-gray-600">{conta.numeroNota || <span className="text-gray-500">—</span>}</td>
                                         <td className="px-5 py-3 text-gray-600">{parcela.numeroParcela}/{totalParcelas}</td>
                                         <td className={`px-5 py-3 ${parcelaVencida(parcela) ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
                                             {fmtData(parcela.dataVencimento)}
@@ -688,7 +697,7 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                             ))}
                         </select>
                         {fornecedoresFiltrados.length === 0 && (
-                            <p className="text-xs text-gray-400 mt-1">Nenhum fornecedor encontrado — cadastre na tela Fornecedores.</p>
+                            <p className="text-xs text-gray-500 mt-1">Nenhum fornecedor encontrado — cadastre na tela Fornecedores.</p>
                         )}
                     </div>
 
@@ -1133,7 +1142,7 @@ const DetalheContaModal = ({ conta, podeBaixar, onClose, onEditar, onBaixar, onC
                 <div className="p-5 space-y-4">
                     <div className="text-sm text-gray-600">
                         {conta.descricao || 'Sem descrição'}
-                        {conta.categoria ? <span className="text-gray-400"> · {conta.categoria}</span> : null}
+                        {conta.categoria ? <span className="text-gray-500"> · {conta.categoria}</span> : null}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-sm">
                         <span className="text-gray-500">Total:</span>
@@ -1156,7 +1165,7 @@ const DetalheContaModal = ({ conta, podeBaixar, onClose, onEditar, onBaixar, onC
 
                     {/* O que é esta despesa — nota fiscal + itens/produtos comprados */}
                     {carregandoDet ? (
-                        <div className="flex items-center gap-2 text-sm text-gray-400 py-1">
+                        <div className="flex items-center gap-2 text-sm text-gray-500 py-1">
                             <Loader2 className="h-4 w-4 animate-spin" /> Carregando itens da nota…
                         </div>
                     ) : (nota || itens.length > 0) ? (
@@ -1190,7 +1199,7 @@ const DetalheContaModal = ({ conta, podeBaixar, onClose, onEditar, onBaixar, onC
                                                         <div className="text-xs text-green-700 mt-0.5">→ entrou como “{it.produtoVinculado}” no estoque</div>
                                                     )}
                                                     {it.infAdProd && (
-                                                        <div className="text-xs text-gray-400 mt-0.5 whitespace-pre-wrap">{it.infAdProd}</div>
+                                                        <div className="text-xs text-gray-500 mt-0.5 whitespace-pre-wrap">{it.infAdProd}</div>
                                                     )}
                                                 </div>
                                                 <div className="text-sm font-semibold text-gray-900 whitespace-nowrap">R$ {fmt(it.valorTotal)}</div>
@@ -1199,7 +1208,7 @@ const DetalheContaModal = ({ conta, podeBaixar, onClose, onEditar, onBaixar, onC
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-xs text-gray-400">Esta nota não tem itens detalhados guardados.</p>
+                                <p className="text-xs text-gray-500">Esta nota não tem itens detalhados guardados.</p>
                             )}
 
                             {nota?.observacoes && (
@@ -1209,7 +1218,7 @@ const DetalheContaModal = ({ conta, podeBaixar, onClose, onEditar, onBaixar, onC
                             )}
                         </div>
                     ) : (
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-500">
                             Despesa lançada manualmente — sem nota fiscal vinculada com itens.
                         </p>
                     )}

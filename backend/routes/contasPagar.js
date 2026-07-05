@@ -178,7 +178,10 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         const where = {
             parcelas: { some: { dataVencimento: { gte: inicioMes, lte: fimMes } } }
         };
-        if (status) where.status = status;
+        // Obs.: o filtro de status é aplicado no frontend por PARCELA (Aberto/Vencido/
+        // Parcial/Pago), que não corresponde 1:1 ao status da CONTA (ABERTO/QUITADO).
+        // Filtrar aqui por conta.status esconderia parcelas (ex.: "Vencido"/"Pago" não
+        // são status de conta). Então não pré-filtramos por status no backend.
         if (categoria) where.categoria = { equals: categoria, mode: 'insensitive' };
         if (busca) {
             where.OR = [
