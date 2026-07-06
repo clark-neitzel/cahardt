@@ -13,6 +13,9 @@ const orientacaoService = require('../services/orientacaoService');
 const estoqueService = require('../services/estoqueService');
 const contaAzulService = require('../services/contaAzulService');
 
+// Estado do backfill assíncrono da conta financeira em Contas a Receber (varre em segundo plano)
+const _backfillReceber = { rodando: false, progresso: null };
+
 // Middleware: valida ADMIN_SECRET
 router.use((req, res, next) => {
     const secret = req.headers['x-admin-secret'];
@@ -1592,6 +1595,7 @@ router.get('/financeiro-contas-diag', async (req, res) => {
             contasFinanceirasCadastradas: contasFin,
             pagar: { totalBaixas: pagTotal, semConta: pagSemConta, comConta: pagTotal - pagSemConta },
             receber: { totalPagas: recPagas, semConta: recSemConta, comConta: recPagas - recSemConta },
+            backfillReceber: _backfillReceber,
             bancos
         });
     } catch (e) {
@@ -1630,7 +1634,51 @@ router.post('/backfill-conta-receber', async (req, res) => {
         const caConfig = await prisma.contaAzulConfig.findFirst().catch(() => null);
         if (!caConfig) return res.status(400).json({ ok: false, error: 'Conta Azul não conectada (sem token).' });
 
-        const limite = Math.min(200, Math.max(1, parseInt(req.query.limite, 10) || 40));
+        // Modo assíncrono (?async=1): dispara o processamento no servidor e responde na hora,
+        // varrendo TODAS as contas em segundo plano (evita timeout do proxy em lotes grandes).
+        // Acompanhe pela rota financeiro-contas-diag (receber.semConta cai até zerar).
+        if (req.query.async === '1' || req.query.async === 'true') {
+            if (_backfillReceber.rodando) {
+                return res.json({ ok: true, jaRodando: true, progresso: _backfillReceber.progresso });
+            }
+            _backfillReceber.rodando = true;
+            _backfillReceber.progresso = { processadas: 0, erros: 0, iniciadoEm: new Date().toISOString() };
+            (async () => {
+                try {
+                    // eslint-disable-next-line no-constant-condition
+                    while (true) {
+                        const parcelas = await prisma.parcela.findMany({
+                            where: { status: 'PAGO', contaFinanceiraCaId: null, contaReceber: { pedido: { idVendaContaAzul: { not: null }, especial: false } } },
+                            select: { contaReceberId: true },
+                            take: 400
+                        });
+                        const ids = [...new Set(parcelas.map((p) => p.contaReceberId))];
+                        if (ids.length === 0) break;
+                        let algumPreenchido = false;
+                        for (const contaId of ids) {
+                            try {
+                                await receberSync.sincronizarConta(contaId, { semLog: true });
+                                const cheias = await prisma.parcela.count({ where: { contaReceberId: contaId, status: 'PAGO', contaFinanceiraCaId: { not: null } } });
+                                if (cheias > 0) algumPreenchido = true;
+                                _backfillReceber.progresso.processadas++;
+                            } catch (err) {
+                                _backfillReceber.progresso.erros++;
+                            }
+                        }
+                        // Se uma varredura inteira não preencheu nada, o restante não tem banco no CA — para.
+                        if (!algumPreenchido) break;
+                    }
+                    console.log('[admin-exec] Backfill receber (async) concluído:', _backfillReceber.progresso);
+                } catch (e) {
+                    console.error('[admin-exec] Backfill receber (async) erro:', e.message);
+                } finally {
+                    _backfillReceber.rodando = false;
+                }
+            })();
+            return res.json({ ok: true, iniciado: true, aviso: 'Rodando em segundo plano; acompanhe em financeiro-contas-diag.' });
+        }
+
+        const limite = Math.min(50, Math.max(1, parseInt(req.query.limite, 10) || 40));
         // Contas com alguma parcela PAGA sem banco, cujo pedido já tem espelho no CA
         const parcelas = await prisma.parcela.findMany({
             where: { status: 'PAGO', contaFinanceiraCaId: null, contaReceber: { pedido: { idVendaContaAzul: { not: null }, especial: false } } },
