@@ -2,9 +2,54 @@ const { PrismaClient } = require('@prisma/client');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 const webhookService = require('../services/webhookService');
 
 const prisma = new PrismaClient();
+
+// ─── Verificação de acesso do candidato ao próprio currículo ────────────────
+// O candidato prova que é dono do CPF recebendo um código no WhatsApp CADASTRADO.
+// Sem isso, qualquer um veria/editaria dados pessoais só digitando o CPF (LGPD).
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123';
+const ACESSO_TTL_MIN = 30;          // validade do código
+const ACESSO_MAX_TENTATIVAS = 5;    // erros de código antes de exigir novo
+const ACESSO_REENVIO_SEG = 60;      // intervalo mínimo entre envios (anti-spam)
+const _ultimoEnvioAcesso = new Map(); // cpf -> timestamp do último envio (em memória)
+
+// Máscara do telefone para exibir sem vazar o número inteiro: (47) •••••-••89
+function mascararTelefone(tel) {
+  const n = (tel || '').replace(/\D/g, '');
+  if (n.length < 4) return '••••';
+  const ddd = n.length >= 10 ? n.slice(0, 2) : '••';
+  return `(${ddd}) •••••-••${n.slice(-2)}`;
+}
+
+// Token curto que autoriza editar o currículo daquele CPF (salvar/foto)
+function emitirTokenEdicao(cpf) {
+  return jwt.sign({ tipo: 'curriculo_edit', cpf }, JWT_SECRET, { expiresIn: '40m' });
+}
+function tokenEdicaoValido(req, cpf) {
+  const h = req.headers.authorization || '';
+  const t = h.startsWith('Bearer ') ? h.slice(7) : null;
+  if (!t) return false;
+  try {
+    const d = jwt.verify(t, JWT_SECRET);
+    return d.tipo === 'curriculo_edit' && d.cpf === cpf;
+  } catch { return false; }
+}
+
+// Campos do currículo devolvidos ao candidato (nunca inclui os campos de acesso)
+function curriculoPublico(c) {
+  return {
+    id: c.id, nome: c.nome, email: c.email, whatsapp: c.whatsapp, cpf: c.cpf,
+    dataNascimento: c.dataNascimento, estadoCivil: c.estadoCivil, temFilhos: c.temFilhos,
+    naturalidade: c.naturalidade, endereco: c.endereco, foto: c.foto,
+    areaInteresse: c.areaInteresse, horarioInicio: c.horarioInicio, horasExtras: c.horasExtras,
+    disponibilidade: c.disponibilidade, empregosRegistrados: c.empregosRegistrados,
+    empregosSemRegistro: c.empregosSemRegistro, outrasExperiencias: c.outrasExperiencias,
+  };
+}
 
 // ─── Multer config para fotos de currículo ─────────────────────────────────
 const uploadDir = path.join(__dirname, '..', 'uploads', 'curriculos');
@@ -58,25 +103,72 @@ function validarCPF(cpf) {
   return r === parseInt(nums[10]);
 }
 
-// ─── PUBLIC: Buscar currículo por CPF ───────────────────────────────────────
-async function buscarPorCpf(req, res) {
-  const cpf = (req.query.cpf || '').replace(/\D/g, '');
-  if (!cpf) return res.status(400).json({ erro: 'CPF obrigatório' });
+// ─── PUBLIC: Solicitar acesso — envia código ao WhatsApp cadastrado ─────────
+// NÃO devolve nenhum dado pessoal. Se o CPF não existe, o front segue como novo cadastro.
+async function solicitarAcesso(req, res) {
+  const cpf = (req.body.cpf || '').replace(/\D/g, '');
+  if (!validarCPF(cpf)) return res.status(400).json({ erro: 'CPF inválido' });
 
   const curriculo = await prisma.curriculo.findUnique({
     where: { cpf },
-    select: {
-      id: true, nome: true, email: true, whatsapp: true, cpf: true,
-      dataNascimento: true, estadoCivil: true, temFilhos: true,
-      naturalidade: true, endereco: true, foto: true,
-      areaInteresse: true, horarioInicio: true, horasExtras: true,
-      disponibilidade: true, empregosRegistrados: true,
-      empregosSemRegistro: true, outrasExperiencias: true,
+    select: { id: true, nome: true, whatsapp: true },
+  });
+  if (!curriculo) return res.json({ existe: false });
+
+  const telefoneMascarado = mascararTelefone(curriculo.whatsapp);
+  const agora = Date.now();
+  const ultimo = _ultimoEnvioAcesso.get(cpf) || 0;
+
+  // Anti-spam: se já enviou há menos de 60s, não reenvia (o código anterior segue válido)
+  if (agora - ultimo < ACESSO_REENVIO_SEG * 1000) {
+    return res.json({ existe: true, enviado: true, telefoneMascarado });
+  }
+
+  const codigo = crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 caracteres
+  await prisma.curriculo.update({
+    where: { cpf },
+    data: {
+      acessoCodigo: codigo,
+      acessoCodigoExp: new Date(agora + ACESSO_TTL_MIN * 60 * 1000),
+      acessoTentativas: 0,
     },
   });
+  _ultimoEnvioAcesso.set(cpf, agora);
 
-  if (!curriculo) return res.json({ existe: false });
-  return res.json({ existe: true, curriculo });
+  const primeiroNome = (curriculo.nome || '').split(' ')[0] || 'Candidato';
+  const msg = `Olá, *${primeiroNome}*! 🔐\n\nSeu código para acessar e editar seu currículo na *Hardt* é:\n\n*${codigo}*\n\nVálido por ${ACESSO_TTL_MIN} minutos. Se não foi você, ignore esta mensagem.`;
+  const r = await webhookService.enviarMensagemCustom(curriculo.whatsapp, primeiroNome, msg);
+  if (!r.ok) console.error('[curriculo] falha ao enviar código de acesso:', r.motivo);
+
+  return res.json({ existe: true, enviado: !!r.ok, telefoneMascarado });
+}
+
+// ─── PUBLIC: Validar código — devolve o currículo + token de edição ─────────
+async function validarAcesso(req, res) {
+  const cpf = (req.body.cpf || '').replace(/\D/g, '');
+  const codigo = String(req.body.codigo || '').trim().toUpperCase();
+  if (!validarCPF(cpf) || !codigo) return res.status(400).json({ erro: 'Informe o código recebido.' });
+
+  const c = await prisma.curriculo.findUnique({ where: { cpf } });
+  if (!c) return res.status(404).json({ erro: 'Currículo não encontrado.' });
+
+  if (!c.acessoCodigo || !c.acessoCodigoExp || c.acessoCodigoExp < new Date()) {
+    return res.status(400).json({ erro: 'Código expirado. Solicite um novo.', expirado: true });
+  }
+  if ((c.acessoTentativas || 0) >= ACESSO_MAX_TENTATIVAS) {
+    return res.status(429).json({ erro: 'Muitas tentativas. Solicite um novo código.', bloqueado: true });
+  }
+  if (c.acessoCodigo !== codigo) {
+    await prisma.curriculo.update({ where: { cpf }, data: { acessoTentativas: { increment: 1 } } });
+    return res.status(401).json({ erro: 'Código incorreto.' });
+  }
+
+  // Sucesso: consome o código e emite o token de edição
+  await prisma.curriculo.update({
+    where: { cpf },
+    data: { acessoCodigo: null, acessoCodigoExp: null, acessoTentativas: 0 },
+  });
+  return res.json({ curriculo: curriculoPublico(c), token: emitirTokenEdicao(cpf) });
 }
 
 // ─── PUBLIC: Criar ou atualizar currículo ───────────────────────────────────
@@ -133,6 +225,11 @@ async function salvar(req, res) {
     const existente = await prisma.curriculo.findUnique({ where: { cpf: cpfLimpo } });
 
     if (existente) {
+      // Só edita um currículo já existente quem validou o código do WhatsApp.
+      // Impede sobrescrever/adulterar dados (inclusive trocar o WhatsApp) só com o CPF.
+      if (!tokenEdicaoValido(req, cpfLimpo)) {
+        return res.status(401).json({ erro: 'Para editar um currículo existente, valide o código enviado ao seu WhatsApp.' });
+      }
       const agora = new Date();
       const atualizado = await prisma.curriculo.update({
         where: { cpf: cpfLimpo },
@@ -143,11 +240,12 @@ async function salvar(req, res) {
           atualizadoEm: agora,
         },
       });
-      return res.json({ curriculo: atualizado, editado: true });
+      return res.json({ curriculo: curriculoPublico(atualizado), editado: true, token: emitirTokenEdicao(cpfLimpo) });
     }
 
     const novo = await prisma.curriculo.create({ data: { ...dados, status: 'Novo' } });
-    return res.status(201).json({ curriculo: novo, editado: false });
+    // Token para o candidato recém-criado poder anexar a foto em seguida.
+    return res.status(201).json({ curriculo: curriculoPublico(novo), editado: false, token: emitirTokenEdicao(cpfLimpo) });
   } catch (err) {
     console.error('[salvar curriculo]', err);
     return res.status(500).json({ erro: err.message || 'Erro interno ao salvar currículo' });
@@ -160,6 +258,11 @@ async function uploadFoto(req, res) {
 
   const cpfLimpo = (req.body.cpf || '').replace(/\D/g, '');
   if (!cpfLimpo) return res.status(400).json({ erro: 'CPF obrigatório' });
+
+  // Exige o token de edição (obtido ao criar o currículo ou validar o código).
+  if (!tokenEdicaoValido(req, cpfLimpo)) {
+    return res.status(401).json({ erro: 'Sessão de edição necessária para enviar a foto.' });
+  }
 
   const curriculo = await prisma.curriculo.findUnique({ where: { cpf: cpfLimpo } });
   if (!curriculo) return res.status(404).json({ erro: 'Currículo não encontrado' });
@@ -434,7 +537,8 @@ async function contagens(req, res) {
 
 module.exports = {
   upload,
-  buscarPorCpf,
+  solicitarAcesso,
+  validarAcesso,
   salvar,
   uploadFoto,
   listar,

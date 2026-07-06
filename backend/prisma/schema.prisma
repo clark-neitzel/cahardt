@@ -1788,6 +1788,12 @@ model Curriculo {
   observacao    String?   @db.Text
   dataAlteracao DateTime? @map("data_alteracao")
 
+  // Verificação de acesso do candidato ao próprio currículo
+  // (código enviado ao WhatsApp cadastrado — evita que terceiros vejam/editem dados só com o CPF)
+  acessoCodigo     String?   @map("acesso_codigo")
+  acessoCodigoExp  DateTime? @map("acesso_codigo_exp")
+  acessoTentativas Int       @default(0) @map("acesso_tentativas")
+
   // Relações
   acessos   CurriculoAcesso[]
   historico CurriculoHistorico[]

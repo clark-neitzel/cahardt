@@ -5,22 +5,33 @@ import api, { API_URL } from './api';
 const apiPublica = axios.create({ baseURL: `${API_URL}/api` });
 
 // ─── Públicas ───────────────────────────────────────────────────────────────
-export async function buscarCurriculoPorCpf(cpf) {
-  const { data } = await apiPublica.get(`/curriculos/buscar?cpf=${cpf.replace(/\D/g, '')}`);
+// Passo 1: pede acesso. Se o CPF já existe, o backend envia um código ao WhatsApp
+// cadastrado e devolve { existe:true, enviado, telefoneMascarado } — sem dado pessoal.
+// Se não existe, devolve { existe:false } (cadastro novo).
+export async function solicitarAcessoCurriculo(cpf) {
+  const { data } = await apiPublica.post('/curriculos/solicitar-acesso', { cpf: cpf.replace(/\D/g, '') });
   return data;
 }
 
-export async function salvarCurriculo(dados) {
-  const { data } = await apiPublica.post('/curriculos', dados);
+// Passo 2: valida o código e recebe { curriculo, token } para editar.
+export async function validarAcessoCurriculo(cpf, codigo) {
+  const { data } = await apiPublica.post('/curriculos/validar-acesso', { cpf: cpf.replace(/\D/g, ''), codigo });
   return data;
 }
 
-export async function uploadFotoCurriculo(cpf, arquivo) {
+const authHeader = (token) => (token ? { Authorization: `Bearer ${token}` } : {});
+
+export async function salvarCurriculo(dados, token) {
+  const { data } = await apiPublica.post('/curriculos', dados, { headers: { ...authHeader(token) } });
+  return data; // { curriculo, editado, token }
+}
+
+export async function uploadFotoCurriculo(cpf, arquivo, token) {
   const form = new FormData();
   form.append('cpf', cpf.replace(/\D/g, ''));
   form.append('foto', arquivo);
   const { data } = await apiPublica.post('/curriculos/foto', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { 'Content-Type': 'multipart/form-data', ...authHeader(token) },
   });
   return data;
 }

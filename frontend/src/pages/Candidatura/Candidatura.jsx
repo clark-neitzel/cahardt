@@ -1,7 +1,10 @@
 import { useState, useRef } from 'react';
-import { Camera, Upload, CheckCircle, User, ChevronRight, ChevronLeft, X } from 'lucide-react';
-import { buscarCurriculoPorCpf, salvarCurriculo, uploadFotoCurriculo } from '../../services/curriculoService';
+import { Camera, Upload, CheckCircle, User, ChevronRight, ChevronLeft, X, ShieldCheck, MessageCircle } from 'lucide-react';
+import { solicitarAcessoCurriculo, validarAcessoCurriculo, salvarCurriculo, uploadFotoCurriculo } from '../../services/curriculoService';
 import SelectBusca from '../../components/SelectBusca';
+
+// WhatsApp público da empresa (para quem perdeu o número cadastrado)
+const WHATSAPP_EMPRESA = '5547988548476';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function formatarCPF(v) {
@@ -73,6 +76,14 @@ export default function Candidatura() {
   const [cpfCarregando, setCpfCarregando] = useState(false);
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState(INICIAL);
+
+  // Verificação por código no WhatsApp (acesso a currículo existente)
+  const [token, setToken] = useState(null);
+  const [telefoneMasc, setTelefoneMasc] = useState('');
+  const [envioFalhou, setEnvioFalhou] = useState(false);
+  const [codigoInput, setCodigoInput] = useState('');
+  const [codigoErro, setCodigoErro] = useState('');
+  const [codigoCarregando, setCodigoCarregando] = useState(false);
   const [erros, setErros] = useState({});
   const [salvando, setSalvando] = useState(false);
   const [temExperiencia, setTemExperiencia] = useState(null);
@@ -90,40 +101,87 @@ export default function Candidatura() {
   const [cepCarregando, setCepCarregando] = useState(false);
   const [cepErro, setCepErro] = useState('');
 
+  // Preenche o formulário com os dados retornados após validar o código
+  function preencherForm(c) {
+    setForm({
+      nome: c.nome || '', email: c.email || '', whatsapp: formatarWhatsApp(c.whatsapp || ''),
+      cpf: formatarCPF(c.cpf || ''), dataNascimento: c.dataNascimento?.split('T')[0] || '',
+      estadoCivil: c.estadoCivil || '', temFilhos: c.temFilhos || '',
+      naturalidade: c.naturalidade || '',
+      cep: '', rua: c.endereco || '', numero: '', bairro: '', cidade: '', uf: '',
+      areaInteresse: c.areaInteresse || '', horarioInicio: c.horarioInicio || '',
+      horasExtras: c.horasExtras || '', disponibilidade: c.disponibilidade || '',
+      empregosRegistrados: c.empregosRegistrados || '',
+      empregosSemRegistro: c.empregosSemRegistro || '',
+      outrasExperiencias: c.outrasExperiencias || '',
+    });
+    if (c.foto) setFotoPreview(`${import.meta.env.VITE_API_URL || ''}/uploads/${c.foto}`);
+    if (c.empregosRegistrados || c.empregosSemRegistro || c.outrasExperiencias) setTemExperiencia(true);
+  }
+
   // ─── CPF ──────────────────────────────────────────────────────────────────
+  // Novo: nunca carrega dados aqui. Se o CPF já existe, pede um código no WhatsApp.
   async function verificarCpf() {
     const cpfLimpo = cpfInput.replace(/\D/g, '');
     if (!validarCPF(cpfLimpo)) { setCpfErro('CPF inválido — verifique os números'); return; }
     setCpfErro('');
     setCpfCarregando(true);
     try {
-      const res = await buscarCurriculoPorCpf(cpfLimpo);
+      const res = await solicitarAcessoCurriculo(cpfLimpo);
       if (res.existe) {
-        const c = res.curriculo;
-        setForm({
-          nome: c.nome || '', email: c.email || '', whatsapp: formatarWhatsApp(c.whatsapp || ''),
-          cpf: formatarCPF(c.cpf || ''), dataNascimento: c.dataNascimento?.split('T')[0] || '',
-          estadoCivil: c.estadoCivil || '', temFilhos: c.temFilhos || '',
-          naturalidade: c.naturalidade || '',
-          cep: '', rua: c.endereco || '', numero: '', bairro: '', cidade: '', uf: '',
-          areaInteresse: c.areaInteresse || '', horarioInicio: c.horarioInicio || '',
-          horasExtras: c.horasExtras || '', disponibilidade: c.disponibilidade || '',
-          empregosRegistrados: c.empregosRegistrados || '',
-          empregosSemRegistro: c.empregosSemRegistro || '',
-          outrasExperiencias: c.outrasExperiencias || '',
-        });
-        if (c.foto) setFotoPreview(`${import.meta.env.VITE_API_URL || ''}/uploads/${c.foto}`);
-        if (c.empregosRegistrados || c.empregosSemRegistro || c.outrasExperiencias) setTemExperiencia(true);
-        setEditando(true);
+        // Currículo já existe → exige o código enviado ao WhatsApp cadastrado
+        setTelefoneMasc(res.telefoneMascarado || '');
+        setEnvioFalhou(!res.enviado);
+        setCodigoInput('');
+        setCodigoErro('');
+        setEtapa('codigo');
       } else {
+        // CPF novo → cadastro do zero
         setForm({ ...INICIAL, cpf: formatarCPF(cpfLimpo) });
         setEditando(false);
+        setToken(null);
+        setEtapa('formulario');
       }
-      setEtapa('formulario');
     } catch {
       setCpfErro('Erro ao verificar CPF. Tente novamente.');
     } finally {
       setCpfCarregando(false);
+    }
+  }
+
+  // ─── Reenviar código ──────────────────────────────────────────────────────
+  async function reenviarCodigo() {
+    const cpfLimpo = cpfInput.replace(/\D/g, '');
+    setCodigoErro('');
+    setCodigoCarregando(true);
+    try {
+      const res = await solicitarAcessoCurriculo(cpfLimpo);
+      setEnvioFalhou(!res.enviado);
+      if (res.enviado) setCodigoErro('');
+    } catch {
+      setCodigoErro('Não foi possível reenviar. Tente de novo em instantes.');
+    } finally {
+      setCodigoCarregando(false);
+    }
+  }
+
+  // ─── Validar código → carrega o currículo para edição ─────────────────────
+  async function validarCodigo() {
+    const cpfLimpo = cpfInput.replace(/\D/g, '');
+    const cod = codigoInput.trim();
+    if (cod.length < 4) { setCodigoErro('Digite o código recebido no WhatsApp.'); return; }
+    setCodigoErro('');
+    setCodigoCarregando(true);
+    try {
+      const res = await validarAcessoCurriculo(cpfLimpo, cod);
+      preencherForm(res.curriculo);
+      setToken(res.token);
+      setEditando(true);
+      setEtapa('formulario');
+    } catch (err) {
+      setCodigoErro(err.response?.data?.erro || 'Código incorreto. Confira e tente novamente.');
+    } finally {
+      setCodigoCarregando(false);
     }
   }
 
@@ -188,9 +246,11 @@ export default function Candidatura() {
         empregosSemRegistro: temExperiencia ? form.empregosSemRegistro : '',
         outrasExperiencias: temExperiencia ? form.outrasExperiencias : '',
       };
-      const res = await salvarCurriculo(payload);
+      const res = await salvarCurriculo(payload, token);
+      const tk = res?.token || token; // token para autorizar o upload da foto
+      if (tk) setToken(tk);
       if (foto) {
-        try { await uploadFotoCurriculo(payload.cpf, foto); } catch { /* foto falhou, não bloqueia */ }
+        try { await uploadFotoCurriculo(payload.cpf, foto, tk); } catch { /* foto falhou, não bloqueia */ }
       }
       setEtapa('sucesso');
     } catch (err) {
@@ -273,10 +333,74 @@ export default function Candidatura() {
             {cpfCarregando ? 'Verificando...' : <><span>Continuar</span> <ChevronRight size={18} /></>}
           </button>
         </div>
-        <p className="text-center text-xs text-gray-400 mt-6">Se já enviou seu currículo, seus dados serão carregados para edição.</p>
+        <p className="text-center text-xs text-gray-400 mt-6">Se já enviou seu currículo, enviaremos um código ao seu WhatsApp para você acessar com segurança.</p>
       </div>
     </div>
   );
+
+  // ─── TELA: CÓDIGO (verificação por WhatsApp) ──────────────────────────────
+  if (etapa === 'codigo') {
+    const msgEmpresa = encodeURIComponent('Olá! Já enviei meu currículo mas não tenho mais acesso ao número cadastrado. Podem atualizar meu contato para eu acessar de novo?');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <ShieldCheck className="text-green-600" size={36} />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800">Verificação de segurança</h1>
+            <p className="text-gray-500 text-sm mt-2">
+              Já existe um currículo com este CPF. Para proteger seus dados, enviamos um código pelo WhatsApp
+              {telefoneMasc ? <> para <span className="font-semibold text-gray-700">{telefoneMasc}</span></> : ' cadastrado'}.
+            </p>
+          </div>
+
+          {envioFalhou && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm mb-4">
+              ⚠ Não conseguimos enviar o código agora. Tente reenviar ou fale com a empresa (abaixo).
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Código recebido</label>
+              <input type="text" inputMode="text" maxLength={8} value={codigoInput}
+                onChange={e => setCodigoInput(e.target.value.toUpperCase().replace(/\s/g, ''))}
+                onKeyDown={e => e.key === 'Enter' && validarCodigo()}
+                placeholder="Ex: A1B2C3"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-lg text-center tracking-[0.3em] font-semibold focus:outline-none focus:ring-2 focus:ring-green-500" />
+              {codigoErro && <p className="text-red-500 text-sm mt-1 text-center">⚠ {codigoErro}</p>}
+            </div>
+
+            <button onClick={validarCodigo} disabled={codigoCarregando}
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2">
+              {codigoCarregando ? 'Verificando...' : <><span>Acessar meu currículo</span> <ChevronRight size={18} /></>}
+            </button>
+
+            <div className="flex items-center justify-between text-sm">
+              <button onClick={() => setEtapa('cpf')} className="text-gray-500 hover:text-gray-700 flex items-center gap-1">
+                <ChevronLeft size={16} /> Voltar
+              </button>
+              <button onClick={reenviarCodigo} disabled={codigoCarregando} className="text-green-700 hover:text-green-800 font-medium disabled:text-green-300">
+                Reenviar código
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-5 border-t border-gray-100 text-center">
+            <p className="text-sm text-gray-600 mb-2">Não tem mais acesso a esse número?</p>
+            <a href={`https://wa.me/${WHATSAPP_EMPRESA}?text=${msgEmpresa}`} target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-2 text-green-700 hover:text-green-800 font-semibold text-sm">
+              <MessageCircle size={16} /> Falar com a empresa no WhatsApp
+            </a>
+            <p className="text-xs text-gray-400 mt-2">
+              No horário comercial (seg a sex, 08:00–11:30 e 13:30–17:30) atualizamos seu contato para você acessar novamente.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ─── TELA: FORMULÁRIO ─────────────────────────────────────────────────────
   if (etapa === 'formulario') return (

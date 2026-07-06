@@ -79,9 +79,22 @@ Módulo de gestão de candidatos para vagas na empresa. Quando alguém envia um 
 
 ---
 
+## Página pública de candidatura (`/candidatura`)
+
+Página aberta (sem login) onde o candidato envia ou atualiza o próprio currículo.
+
+- **Candidato novo:** digita o CPF → preenche o formulário → envia. Simples, sem código.
+- **Candidato que já enviou antes (CPF já existe):** por segurança (LGPD), o sistema **não mostra mais os dados só com o CPF**. Ele envia um **código de verificação pelo WhatsApp cadastrado**; o candidato digita o código para acessar e editar. Sem o código, ninguém vê nem altera os dados.
+  - O código vale 30 minutos, com limite de tentativas.
+  - **Perdeu o número cadastrado?** A tela oferece "Falar com a empresa no WhatsApp". No horário comercial, o RH atualiza o telefone do candidato (na tela de detalhe) e ele consegue receber o código no número novo.
+- Isso corrige uma falha em que qualquer pessoa puxava o currículo completo (nome, endereço, contato) só digitando um CPF.
+
+---
+
 ## Depende de / Interfere em
 
 - Módulo isolado — não interfere diretamente em outras abas do sistema
+- O envio do código de verificação usa o **webhook do BotConversa** (mesmo canal das mensagens de WhatsApp)
 
 ---
 
