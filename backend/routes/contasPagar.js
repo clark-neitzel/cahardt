@@ -653,7 +653,13 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
                         return res.status(409).json({ error: `A parcela ${alt.atual.numeroParcela} já está paga no Conta Azul — não dá para alterar o vencimento/valor por aqui.` });
                     }
                     const payloadCA = { versao: detalhe.versao };
-                    if (alt.vencMudou) payloadCA.vencimento = ymd(alt.novoVenc);
+                    if (alt.vencMudou) {
+                        // A parcela no CA tem DUAS datas: data_vencimento e data_pagamento_previsto
+                        // (esta última é a que a tela do CA mostra na linha de pagamento / no dia de pagar).
+                        // Precisam mudar JUNTAS, senão a data "não muda" na hora do pagamento.
+                        payloadCA.vencimento = ymd(alt.novoVenc);
+                        payloadCA.data_pagamento_esperado = ymd(alt.novoVenc);
+                    }
                     if (alt.valorMudou) payloadCA.composicao_valor = { valor_bruto: alt.novoValor, valor_liquido: alt.novoValor };
                     preparadas.push({ alt, payloadCA });
                 }
