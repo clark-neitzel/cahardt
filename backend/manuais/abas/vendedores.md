@@ -75,6 +75,9 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 | Permissão | Efeito |
 |-----------|--------|
 | `admin` | Acesso total à aba |
+| `vendedores` (edit) | Pode editar dados não-sensíveis do usuário (e-mail, telefone, % Flex, formas de atendimento) |
+
+> **Segurança:** alterar **permissões, login, senha ou status (ativo/inativo)** de um usuário é restrito a `admin` — o backend bloqueia (HTTP 403) quem não for admin, mesmo que consiga abrir a tela. Isso impede que alguém sem ser admin conceda privilégios a si mesmo ou troque a senha de outra pessoa.
 
 ---
 
