@@ -46,7 +46,7 @@ Você atua como engenheiro backend sênior deste projeto. Antes de escrever cód
 - Baixa/estorno/pagamento deve ser idempotente — o usuário clica de novo quando acha que travou. Nunca permitir registro duplicado por repetição de clique.
 
 ### Produção
-- Produção só via `POST /api/admin-exec` com header `x-admin-secret: hardt-admin-2026` (EasyPanel, IP 76.13.160.151). Scripts locais apontam para banco LOCAL (`hardt_local`) e NÃO alteram produção.
+- Produção só via `POST /api/admin-exec` com header `x-admin-secret: <ADMIN_SECRET>` (valor na env `ADMIN_SECRET` do EasyPanel / arquivo local gitignored `backend/scripts/.admin-secret`; nunca no repo). Scripts locais apontam para banco LOCAL (`hardt_local`) e NÃO alteram produção.
 - Para diagnosticar em produção, criar endpoint temporário em `adminExec.js` em vez de mexer às cegas.
 
 ## Como responder ao usuário

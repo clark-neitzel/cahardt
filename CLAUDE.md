@@ -26,7 +26,7 @@ O app roda em produção 24h. Um import faltando (`ReferenceError: Can't find va
 ## Stack
 - **Frontend:** React + Vite + Tailwind CSS (PWA)
 - **Backend:** Node.js + Express + Prisma (PostgreSQL)
-- **Deploy:** EasyPanel (IP 76.13.160.151), acesso via `/api/admin-exec` com header `x-admin-secret: hardt-admin-2026`
+- **Deploy:** EasyPanel (IP 76.13.160.151), acesso via `/api/admin-exec` com header `x-admin-secret: <ADMIN_SECRET>`. **O valor NÃO fica no repositório** — vem da variável de ambiente `ADMIN_SECRET` (EasyPanel); localmente, do arquivo gitignored `backend/scripts/.admin-secret`.
 
 ---
 

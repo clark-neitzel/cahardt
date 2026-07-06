@@ -7,11 +7,18 @@
 set -euo pipefail
 
 PROD_URL="https://cahardt-hardt-backend.xrqvlq.easypanel.host"
-ADMIN_SECRET="hardt-admin-2026"
 # Pula logs volumosos por padrão; remova da lista se quiser incluí-los
 SKIP="sync_logs,ia_analise_logs"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Segredo NÃO fica mais no código. Ordem: variável de ambiente > arquivo local .admin-secret
+# (arquivo é gitignored — ver .gitignore). Assim o valor real nunca vai para o Git.
+ADMIN_SECRET="${ADMIN_SECRET:-$(cat "$SCRIPT_DIR/.admin-secret" 2>/dev/null | tr -d '[:space:]')}"
+if [ -z "$ADMIN_SECRET" ]; then
+    echo "ERRO: ADMIN_SECRET não configurado. Crie o arquivo $SCRIPT_DIR/.admin-secret com o segredo, ou exporte a variável ADMIN_SECRET." >&2
+    exit 1
+fi
 BACKEND_DIR="$(dirname "$SCRIPT_DIR")"
 BACKUP_DIR="$BACKEND_DIR/backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)

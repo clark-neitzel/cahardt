@@ -15,6 +15,10 @@ node_modules/
 *.log
 npm-debug.log*
 
+# Segredos locais (NUNCA versionar)
+.admin-secret
+backend/scripts/.admin-secret
+
 # Protótipo Kit Festa (referência local, não versionar)
 /Pedidos Kit Festa/
 # Protótipo Congelados (referência local, não versionar)

@@ -6,6 +6,7 @@
  * Header obrigatório: x-admin-secret: <ADMIN_SECRET>
  */
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const prisma = require('../config/database');
 const clienteInsightService = require('../services/clienteInsightService');
@@ -16,10 +17,26 @@ const contaAzulService = require('../services/contaAzulService');
 // Estado do backfill assíncrono da conta financeira em Contas a Receber (varre em segundo plano)
 const _backfillReceber = { rodando: false, progresso: null };
 
+// Comparação em tempo constante (evita ataque de timing). Usa hash SHA-256 para
+// os buffers terem sempre o mesmo tamanho, sem vazar o comprimento do segredo.
+function segredoConfere(recebido, esperado) {
+    if (typeof recebido !== 'string' || typeof esperado !== 'string') return false;
+    const a = crypto.createHash('sha256').update(recebido).digest();
+    const b = crypto.createHash('sha256').update(esperado).digest();
+    return crypto.timingSafeEqual(a, b);
+}
+
 // Middleware: valida ADMIN_SECRET
 router.use((req, res, next) => {
+    const esperado = process.env.ADMIN_SECRET;
+    // Fail-closed: sem segredo configurado no ambiente, ninguém entra (evita
+    // comparar contra undefined e deixar a rota aberta por engano).
+    if (!esperado) {
+        console.error('[admin-exec] ADMIN_SECRET não configurado no ambiente — acesso bloqueado.');
+        return res.status(503).json({ error: 'Servidor sem ADMIN_SECRET configurado.' });
+    }
     const secret = req.headers['x-admin-secret'];
-    if (!secret || secret !== process.env.ADMIN_SECRET) {
+    if (!secret || !segredoConfere(String(secret), esperado)) {
         return res.status(401).json({ error: 'Não autorizado.' });
     }
     next();
