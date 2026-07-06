@@ -520,7 +520,7 @@ router.get('/:parcelaId/pagamentos', verificarAuth, checkAcesso, async (req, res
 router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => {
     try {
         const { parcelaId } = req.params;
-        const { valorRecebido, valorDesconto, motivoDesconto, formaPagamento, dataPagamento, observacao } = req.body;
+        const { valorRecebido, valorDesconto, motivoDesconto, formaPagamento, dataPagamento, observacao, contaFinanceiraCaId } = req.body;
         const perms = req._perms;
 
         const parcela = await prisma.parcela.findUnique({
@@ -564,6 +564,7 @@ router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => 
                     valorDesconto: desconto,
                     motivoDesconto: desconto > 0 ? motivoDesconto.trim() : null,
                     formaPagamento: formaPagamento || null,
+                    contaFinanceiraCaId: contaFinanceiraCaId || null,
                     dataPagamento: dataPgto,
                     observacao: observacao || null,
                     registradoPorId: req.user.id
@@ -577,6 +578,7 @@ router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => 
                     valorPago: novoValorPago,
                     valorDescontoTotal: novoValorDescontoTotal,
                     formaPagamento: formaPagamento || parcela.formaPagamento,
+                    contaFinanceiraCaId: contaFinanceiraCaId || parcela.contaFinanceiraCaId,
                     dataPagamento: novoStatusParcela === 'PAGO' ? dataPgto : parcela.dataPagamento,
                     baixadoPorId: req.user.id,
                     observacao: observacao || parcela.observacao

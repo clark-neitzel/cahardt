@@ -22,6 +22,16 @@ const financeiroGerencialService = {
     salvarCategoriasDespesa: async (categorias) => {
         const response = await api.put('/financeiro-gerencial/categorias-despesa', { categorias });
         return response.data;
+    },
+    // Totais por conta financeira (banco/caixa) no período: { contas:[{id,nome,entradas,saidas,resultado,saldoCA}], totais }
+    porConta: async (de, ate, saldoCA = false) => {
+        const response = await api.get('/financeiro-gerencial/por-conta', { params: { de, ate, saldoCA: saldoCA ? 1 : 0 } });
+        return response.data;
+    },
+    // Extrato (lançamentos) de UMA conta no período. contaId null → sem banco informado
+    extratoPorConta: async (contaId, de, ate) => {
+        const response = await api.get('/financeiro-gerencial/por-conta/extrato', { params: { contaId: contaId || 'sem', de, ate } });
+        return response.data;
     }
 };
 

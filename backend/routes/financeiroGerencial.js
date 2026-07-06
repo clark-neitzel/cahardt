@@ -73,6 +73,47 @@ router.get('/dre', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── GET /por-conta?de=YYYY-MM-DD&ate=YYYY-MM-DD&saldoCA=1 ──
+// Totais por conta financeira (banco/caixa) no período: entradas, saídas, resultado
+// e, opcionalmente, o saldo em tempo real no Conta Azul.
+router.get('/por-conta', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const { de, ate } = req.query;
+        if (!YMD.test(String(de)) || !YMD.test(String(ate))) {
+            return res.status(400).json({ error: 'Informe de e ate no formato YYYY-MM-DD.' });
+        }
+        if (String(ate) < String(de)) {
+            return res.status(400).json({ error: 'A data final precisa ser maior ou igual à inicial.' });
+        }
+        const comSaldoCA = req.query.saldoCA === '1' || req.query.saldoCA === 'true';
+        const dados = await financeiroGerencialService.saldosPorConta(String(de), String(ate), comSaldoCA);
+        res.json(dados);
+    } catch (error) {
+        console.error('Erro no financeiro por conta:', error);
+        res.status(500).json({ error: 'Erro ao montar o resumo por conta.' });
+    }
+});
+
+// ── GET /por-conta/extrato?contaId=UUID|sem&de=YYYY-MM-DD&ate=YYYY-MM-DD ──
+// Lançamentos (entradas e saídas) de UMA conta no período. contaId=sem → sem banco informado.
+router.get('/por-conta/extrato', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const { de, ate } = req.query;
+        if (!YMD.test(String(de)) || !YMD.test(String(ate))) {
+            return res.status(400).json({ error: 'Informe de e ate no formato YYYY-MM-DD.' });
+        }
+        if (String(ate) < String(de)) {
+            return res.status(400).json({ error: 'A data final precisa ser maior ou igual à inicial.' });
+        }
+        const contaId = (!req.query.contaId || req.query.contaId === 'sem') ? null : String(req.query.contaId);
+        const dados = await financeiroGerencialService.extratoPorConta(contaId, String(de), String(ate));
+        res.json(dados);
+    } catch (error) {
+        console.error('Erro no extrato por conta:', error);
+        res.status(500).json({ error: 'Erro ao montar o extrato da conta.' });
+    }
+});
+
 // ── GET /categorias-despesa — categorias com o "balde" (classificação) e o total gasto ──
 // Garante uma linha para toda categoria já vista nas contas (com o palpite padrão),
 // para o usuário nunca ficar com categoria "solta" fora da classificação.

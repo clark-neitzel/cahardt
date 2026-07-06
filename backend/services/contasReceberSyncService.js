@@ -196,15 +196,19 @@ async function sincronizarConta(contaId, opts = {}) {
                 }
             });
 
-            await tx.atendimento.create({
-                data: {
-                    tipo: 'FINANCEIRO',
-                    observacao: `Sync CA [${origem}] - parcela ${local.numeroParcela} - R$ ${valorPagoArredondado.toFixed(2)} (${forma || 'N/I'}) em ${dataPgto.toISOString().split('T')[0]}`,
-                    clienteId: conta.clienteId,
-                    idVendedor: baixadoPorId,
-                    pedidoId: conta.pedidoId || null
-                }
-            });
+            // Log no histórico do cliente. Pulado no backfill em massa (opts.semLog) para não
+            // gerar milhares de atendimentos repetidos ao só preencher o banco retroativo.
+            if (!opts.semLog) {
+                await tx.atendimento.create({
+                    data: {
+                        tipo: 'FINANCEIRO',
+                        observacao: `Sync CA [${origem}] - parcela ${local.numeroParcela} - R$ ${valorPagoArredondado.toFixed(2)} (${forma || 'N/I'}) em ${dataPgto.toISOString().split('T')[0]}`,
+                        clienteId: conta.clienteId,
+                        idVendedor: baixadoPorId,
+                        pedidoId: conta.pedidoId || null
+                    }
+                });
+            }
 
             aplicadas++;
             detalhes.push({ numeroParcela: local.numeroParcela, valor: valorPagoArredondado, forma, data: dataPgto });

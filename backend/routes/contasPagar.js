@@ -811,7 +811,7 @@ router.post('/:id/reenviar-ca', verificarAuth, checkEscrita, async (req, res) =>
 router.post('/:id/parcelas/:parcelaId/baixar', verificarAuth, checkEscrita, async (req, res) => {
     try {
         const { id, parcelaId } = req.params;
-        const { dataPagamento, valorPago, juros, multa, desconto, formaPagamento, observacao } = req.body;
+        const { dataPagamento, valorPago, juros, multa, desconto, formaPagamento, observacao, contaFinanceiraCaId } = req.body;
 
         const parcela = await prisma.parcelaPagar.findUnique({
             where: { id: parcelaId },
@@ -837,6 +837,9 @@ router.post('/:id/parcelas/:parcelaId/baixar', verificarAuth, checkEscrita, asyn
 
         const dataPgto = dataPagamento ? parseVencimento(dataPagamento) : new Date();
 
+        // A conta vai ao CA? (foi enviada/está na fila) → empurra a baixa no banco escolhido; senão fica só local.
+        const naCA = parcela.contaPagar.statusEnvioCA && parcela.contaPagar.statusEnvioCA !== 'NAO_ENVIAR';
+
         let resultado;
         await prisma.$transaction(async (tx) => {
             await tx.pagamentoParcelaPagar.create({
@@ -848,13 +851,16 @@ router.post('/:id/parcelas/:parcelaId/baixar', verificarAuth, checkEscrita, asyn
                     desconto: round2(vDesconto),
                     formaPagamento: formaPagamento || null,
                     dataPagamento: dataPgto,
+                    // Banco/caixa de onde saiu o pagamento. Se a conta vai ao CA, marca p/ empurrar a baixa.
+                    contaFinanceiraCaId: contaFinanceiraCaId ? String(contaFinanceiraCaId) : null,
+                    statusEnvioCA: (naCA && contaFinanceiraCaId) ? 'ENVIAR' : 'NAO_ENVIAR',
                     observacao: observacao?.trim() || null,
                     origem: 'MANUAL',
                     registradoPorId: req.user.id
                 }
             });
             resultado = await contasPagarCaSyncService.recalcularParcelaEConta(tx, parcelaId);
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         res.json({
             message: resultado?.statusParcela === 'PAGO' ? 'Parcela quitada com sucesso!' : 'Baixa parcial registrada com sucesso!',

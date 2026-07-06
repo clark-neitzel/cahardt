@@ -411,9 +411,152 @@ async function dre(deMes, ateMes) {
     );
 }
 
+// ─────────────────────────────────────────────────────────────
+// Financeiro POR CONTA (banco/caixa) — regime de caixa
+// Entradas = recebimentos (parcelas a receber PAGAS) por conta financeira.
+// Saídas   = pagamentos (ledger de contas a pagar, não estornados) por conta.
+// ─────────────────────────────────────────────────────────────
+
+const contaAzulService = require('./contaAzulService');
+
+/** Rótulo amigável de uma conta financeira (banco/caixa) a partir da tabela local. */
+async function mapaContasFinanceiras() {
+    const contas = await prisma.contaFinanceira.findMany({ select: { id: true, nomeBanco: true, tipoUso: true, ativo: true } });
+    const mapa = new Map();
+    contas.forEach((c) => mapa.set(c.id, { nome: c.nomeBanco || 'Conta', tipo: c.tipoUso || null, ativo: c.ativo }));
+    return mapa;
+}
+
+/**
+ * Totais por conta no período (regime de caixa): entradas, saídas e resultado.
+ * @param comSaldoCA se true, tenta buscar o saldo em tempo real de cada conta no CA (best-effort).
+ */
+async function saldosPorConta(de, ate, comSaldoCA = false) {
+    const ini = inicioDiaSP(de), fim = fimDiaSP(ate);
+
+    const [entradas, saidas, mapa] = await Promise.all([
+        // Recebimentos: parcelas a receber PAGAS no período (por data de pagamento)
+        prisma.parcela.groupBy({
+            by: ['contaFinanceiraCaId'],
+            where: { status: 'PAGO', dataPagamento: { gte: ini, lte: fim } },
+            _sum: { valorPago: true },
+            _count: { _all: true }
+        }),
+        // Pagamentos: ledger de contas a pagar (não estornado) no período
+        prisma.pagamentoParcelaPagar.groupBy({
+            by: ['contaFinanceiraCaId'],
+            where: { estornado: false, dataPagamento: { gte: ini, lte: fim } },
+            _sum: { valorPago: true, juros: true, multa: true },
+            _count: { _all: true }
+        }),
+        mapaContasFinanceiras()
+    ]);
+
+    const linhas = new Map(); // id|null → { entradas, saidas, qtdEnt, qtdSai }
+    const get = (id) => {
+        const k = id || '__SEM__';
+        if (!linhas.has(k)) linhas.set(k, { id: id || null, entradas: 0, saidas: 0, qtdEnt: 0, qtdSai: 0 });
+        return linhas.get(k);
+    };
+    entradas.forEach((e) => { const l = get(e.contaFinanceiraCaId); l.entradas = round2(num(e._sum.valorPago)); l.qtdEnt = e._count._all; });
+    saidas.forEach((s) => { const l = get(s.contaFinanceiraCaId); l.saidas = round2(num(s._sum.valorPago) + num(s._sum.juros) + num(s._sum.multa)); l.qtdSai = s._count._all; });
+
+    let contas = [...linhas.values()].map((l) => {
+        const info = l.id ? mapa.get(l.id) : null;
+        return {
+            id: l.id,
+            nome: l.id ? (info?.nome || 'Conta do CA') : 'Não informado',
+            tipo: info?.tipo || null,
+            entradas: l.entradas,
+            saidas: l.saidas,
+            resultado: round2(l.entradas - l.saidas),
+            qtdEntradas: l.qtdEnt,
+            qtdSaidas: l.qtdSai,
+            saldoCA: null
+        };
+    });
+
+    // Saldo em tempo real do CA (best-effort; não derruba o relatório se falhar)
+    if (comSaldoCA) {
+        await Promise.all(contas.filter((c) => c.id).map(async (c) => {
+            try { c.saldoCA = await contaAzulService.buscarSaldoContaFinanceira(c.id); }
+            catch (_) { c.saldoCA = null; }
+        }));
+    }
+
+    contas.sort((a, b) => (b.entradas + b.saidas) - (a.entradas + a.saidas));
+    const totais = contas.reduce((t, c) => ({
+        entradas: round2(t.entradas + c.entradas),
+        saidas: round2(t.saidas + c.saidas),
+        resultado: round2(t.resultado + c.resultado)
+    }), { entradas: 0, saidas: 0, resultado: 0 });
+
+    return { de, ate, contas, totais };
+}
+
+/**
+ * Extrato (lançamentos) de UMA conta no período: entradas (recebimentos) e
+ * saídas (pagamentos), com quem/origem, ordenado por data desc.
+ * contaId = null → lançamentos SEM conta informada.
+ */
+async function extratoPorConta(contaId, de, ate) {
+    const ini = inicioDiaSP(de), fim = fimDiaSP(ate);
+    const filtroConta = contaId ? contaId : null;
+
+    const [ents, sais, mapa] = await Promise.all([
+        prisma.parcela.findMany({
+            where: { status: 'PAGO', contaFinanceiraCaId: filtroConta, dataPagamento: { gte: ini, lte: fim } },
+            select: {
+                id: true, numeroParcela: true, valorPago: true, dataPagamento: true, formaPagamento: true,
+                contaReceber: { select: { cliente: { select: { nome: true } }, pedido: { select: { numero: true } } } }
+            }
+        }),
+        prisma.pagamentoParcelaPagar.findMany({
+            where: { estornado: false, contaFinanceiraCaId: filtroConta, dataPagamento: { gte: ini, lte: fim } },
+            select: {
+                id: true, valorPago: true, juros: true, multa: true, dataPagamento: true, formaPagamento: true, origem: true,
+                parcelaPagar: { select: { numeroParcela: true, contaPagar: { select: { descricao: true, fornecedor: { select: { razaoSocial: true } } } } } }
+            }
+        }),
+        mapaContasFinanceiras()
+    ]);
+
+    const lancamentos = [
+        ...ents.map((e) => ({
+            tipo: 'ENTRADA',
+            data: e.dataPagamento,
+            valor: round2(num(e.valorPago)),
+            quem: e.contaReceber?.cliente?.nome || 'Cliente',
+            descricao: `Recebimento${e.contaReceber?.pedido?.numero ? ` · pedido ${e.contaReceber.pedido.numero}` : ''}${e.numeroParcela ? ` · parcela ${e.numeroParcela}` : ''}`,
+            formaPagamento: e.formaPagamento || null
+        })),
+        ...sais.map((s) => ({
+            tipo: 'SAIDA',
+            data: s.dataPagamento,
+            valor: round2(num(s.valorPago) + num(s.juros) + num(s.multa)),
+            quem: s.parcelaPagar?.contaPagar?.fornecedor?.razaoSocial || 'Fornecedor',
+            descricao: s.parcelaPagar?.contaPagar?.descricao || 'Pagamento',
+            formaPagamento: s.formaPagamento || null
+        }))
+    ].sort((a, b) => new Date(b.data) - new Date(a.data));
+
+    const totalEntradas = round2(lancamentos.filter((l) => l.tipo === 'ENTRADA').reduce((s, l) => s + l.valor, 0));
+    const totalSaidas = round2(lancamentos.filter((l) => l.tipo === 'SAIDA').reduce((s, l) => s + l.valor, 0));
+    const info = contaId ? mapa.get(contaId) : null;
+
+    return {
+        conta: { id: contaId || null, nome: contaId ? (info?.nome || 'Conta do CA') : 'Não informado' },
+        de, ate,
+        totalEntradas, totalSaidas, resultado: round2(totalEntradas - totalSaidas),
+        lancamentos
+    };
+}
+
 module.exports = {
     fluxoCaixa,
     dre,
+    saldosPorConta,
+    extratoPorConta,
     // puras (testáveis offline)
     gerarBuckets,
     agregarFluxo,

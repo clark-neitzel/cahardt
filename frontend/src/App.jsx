@@ -38,6 +38,7 @@ import ContasPagarPage from './pages/Financeiro/ContasPagarPage';
 import FornecedoresPage from './pages/Financeiro/FornecedoresPage';
 import NotasRecebidasPage from './pages/Financeiro/NotasRecebidasPage';
 import FluxoCaixaPage from './pages/Financeiro/FluxoCaixaPage';
+import ContasBancosPage from './pages/Financeiro/ContasBancosPage';
 import DrePage from './pages/Financeiro/DrePage';
 import CategoriasDespesaPage from './pages/Financeiro/CategoriasDespesaPage';
 import RelatorioPedidos from './pages/Relatorios/RelatorioPedidos';
@@ -89,7 +90,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, PartyPopper, Snowflake, Clock, Fingerprint, Inbox
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, PartyPopper, Snowflake, Clock, Fingerprint, Inbox, Landmark
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -256,6 +257,7 @@ const Layout = ({ children }) => {
           {hasPermission('Pode_Acessar_Notas_Recebidas') && <SidebarItem to="/notas-recebidas" icon={Inbox} label="Notas Recebidas" />}
           {hasPermission('Pode_Acessar_Fornecedores') && <SidebarItem to="/fornecedores" icon={Building2} label="Fornecedores" />}
           {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/fluxo-caixa" icon={TrendingUp} label="Fluxo de Caixa" />}
+          {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/por-conta" icon={Landmark} label="Saldos por Conta" />}
           {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/dre" icon={BarChart3} label="DRE" />}
           {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/categorias-despesa" icon={Tag} label="Categorias de Despesa" />}
 
@@ -430,6 +432,7 @@ const Layout = ({ children }) => {
                 {hasPermission('Pode_Acessar_Notas_Recebidas') && <NavLink to="/notas-recebidas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Notas Recebidas</NavLink>}
                 {hasPermission('Pode_Acessar_Fornecedores') && <NavLink to="/fornecedores" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Fornecedores</NavLink>}
                 {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/fluxo-caixa" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Fluxo de Caixa</NavLink>}
+                {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/por-conta" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Saldos por Conta</NavLink>}
                 {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/dre" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>DRE</NavLink>}
                 {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/categorias-despesa" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Categorias de Despesa</NavLink>}
               </MobileMenuSection>
@@ -612,6 +615,7 @@ function App() {
               <Route path="/notas-recebidas" element={<PrivateRoute tab="Pode_Acessar_Notas_Recebidas"><NotasRecebidasPage /></PrivateRoute>} />
               <Route path="/fornecedores" element={<PrivateRoute tab="Pode_Acessar_Fornecedores"><FornecedoresPage /></PrivateRoute>} />
               <Route path="/financeiro/fluxo-caixa" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><FluxoCaixaPage /></PrivateRoute>} />
+              <Route path="/financeiro/por-conta" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><ContasBancosPage /></PrivateRoute>} />
               <Route path="/financeiro/dre" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><DrePage /></PrivateRoute>} />
               <Route path="/financeiro/categorias-despesa" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><CategoriasDespesaPage /></PrivateRoute>} />
 

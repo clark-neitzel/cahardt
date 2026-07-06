@@ -1643,7 +1643,7 @@ router.post('/backfill-conta-receber', async (req, res) => {
         const detalhes = [];
         for (const contaId of contaIds) {
             try {
-                await receberSync.sincronizarConta(contaId);
+                await receberSync.sincronizarConta(contaId, { semLog: true });
                 reSincronizadas++;
                 const restam = await prisma.parcela.count({ where: { contaReceberId: contaId, status: 'PAGO', contaFinanceiraCaId: null } });
                 const cheias = await prisma.parcela.count({ where: { contaReceberId: contaId, status: 'PAGO', contaFinanceiraCaId: { not: null } } });

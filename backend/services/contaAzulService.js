@@ -1892,6 +1892,22 @@ const contaAzulService = {
     },
 
     /**
+     * Saldo em tempo real de uma conta financeira (banco/caixa) no Conta Azul.
+     * GET /v1/conta-financeira/{id}/saldo-atual. Retorna number ou null.
+     */
+    buscarSaldoContaFinanceira: async (idContaFinanceira) => {
+        if (!idContaFinanceira) return null;
+        const url = `https://api-v2.contaazul.com/v1/conta-financeira/${idContaFinanceira}/saldo-atual`;
+        const response = await contaAzulService._axiosGet(url, 'CONTA_FINANCEIRA_SALDO');
+        const d = response.data;
+        if (d == null) return null;
+        if (typeof d === 'number') return d;
+        // Tenta os nomes de campo mais prováveis do payload
+        const cand = d.saldo ?? d.saldo_atual ?? d.valor ?? d.saldoAtual ?? d.total;
+        return cand != null ? Number(cand) : null;
+    },
+
+    /**
      * Fase 6 — criar um produto NOVO no Conta Azul (POST /v1/produtos).
      * Só `nome` é obrigatório na API. Categoria: tentamos casar o nome com as
      * categorias do CA (GET /v1/produtos/categorias); se não achar, cria sem
