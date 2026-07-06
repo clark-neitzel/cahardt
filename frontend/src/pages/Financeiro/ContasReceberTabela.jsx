@@ -1913,15 +1913,44 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
     const [salvando, setSalvando] = useState(false);
 
     const parseNum = (v) => parseFloat(String(v).replace(',', '.')) || 0;
+    const fmtInput = (n) => n.toFixed(2).replace('.', ',');
+    // Desconto em reais, sempre limitado ao saldo (nunca passa do que falta receber)
+    const calcDescontoReais = (tipo, input) => {
+        const bruto = tipo === '%'
+            ? saldo * Math.max(0, parseNum(input)) / 100
+            : Math.max(0, parseNum(input));
+        return Math.min(bruto, saldo);
+    };
     const recebido = Math.max(0, parseNum(valorRecebido));
-    const descontoReais = !aplicarDesconto ? 0 : (tipoDesconto === '%'
-        ? saldo * Math.max(0, parseNum(valorDescontoInput)) / 100
-        : Math.max(0, parseNum(valorDescontoInput)));
+    const descontoReais = aplicarDesconto ? calcDescontoReais(tipoDesconto, valorDescontoInput) : 0;
     const totalLancado = recebido + descontoReais;
     const saldoDepois = Math.max(0, saldo - totalLancado);
     const novoStatusPreview = totalLancado <= 0 ? null : (saldoDepois <= 0.01 ? 'PAGO' : 'PARCIAL');
     const motivoObrigatorioFaltando = aplicarDesconto && descontoReais > 0 && !motivoDesconto.trim();
     const podeConfirmar = totalLancado > 0 && totalLancado <= saldo + 0.01 && !motivoObrigatorioFaltando;
+
+    // Motivo pelo qual o botão está travado (ajuda o usuário a entender)
+    const bloqueio = totalLancado <= 0
+        ? 'Informe um valor recebido ou um desconto.'
+        : totalLancado > saldo + 0.01
+            ? 'A soma de recebido + desconto passa do saldo restante.'
+            : motivoObrigatorioFaltando
+                ? 'Preencha o motivo do desconto para continuar.'
+                : '';
+
+    // Ao mexer no desconto, o "valor recebido" cai sozinho para (saldo − desconto),
+    // evitando que os dois campos somem além do saldo.
+    const ajustarRecebidoPeloDesconto = (tipo, input, ativo) => {
+        if (!ativo) return;
+        setValorRecebido(fmtInput(Math.max(0, saldo - calcDescontoReais(tipo, input))));
+    };
+    const handleDescontoInput = (v) => { setValorDescontoInput(v); ajustarRecebidoPeloDesconto(tipoDesconto, v, aplicarDesconto); };
+    const handleTipoDesconto = (t) => { setTipoDesconto(t); ajustarRecebidoPeloDesconto(t, valorDescontoInput, aplicarDesconto); };
+    const handleToggleDesconto = (checked) => {
+        setAplicarDesconto(checked);
+        if (checked) ajustarRecebidoPeloDesconto(tipoDesconto, valorDescontoInput, true);
+        else setValorRecebido(fmtInput(saldo));
+    };
 
     const confirmar = async () => {
         if (totalLancado <= 0) { toast.error('Informe um valor recebido ou desconto.'); return; }
@@ -1979,12 +2008,16 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
                             <span className="px-3 py-2 bg-gray-50 border-r border-gray-300 text-sm text-gray-500">R$</span>
                             <input value={valorRecebido} onChange={e => setValorRecebido(e.target.value)} className="flex-1 px-3 py-2 text-sm outline-none" />
                         </div>
-                        <p className="text-[11px] text-gray-400 mt-1">Reduza o valor para registrar um pagamento parcial.</p>
+                        <p className="text-[11px] text-gray-400 mt-1">
+                            {aplicarDesconto
+                                ? 'Ajustado automaticamente conforme o desconto. Reduza mais para deixar um saldo pendente.'
+                                : 'Reduza o valor para registrar um pagamento parcial.'}
+                        </p>
                     </div>
 
                     <div className="rounded-xl border border-dashed border-gray-300 p-3 space-y-3 bg-gray-50">
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <input type="checkbox" checked={aplicarDesconto} onChange={e => setAplicarDesconto(e.target.checked)} className="rounded" disabled={!podeDarDesconto} />
+                            <input type="checkbox" checked={aplicarDesconto} onChange={e => handleToggleDesconto(e.target.checked)} className="rounded" disabled={!podeDarDesconto} />
                             Aplicar desconto no saldo restante
                             {!podeDarDesconto && <span className="text-xs text-gray-400 font-normal">(sem permissão)</span>}
                         </label>
@@ -1993,7 +2026,7 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
-                                        <select value={tipoDesconto} onChange={e => setTipoDesconto(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+                                        <select value={tipoDesconto} onChange={e => handleTipoDesconto(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
                                             <option value="R$">R$ (valor fixo)</option>
                                             <option value="%">% do saldo</option>
                                         </select>
@@ -2002,7 +2035,7 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
                                         <label className="block text-xs font-medium text-gray-700 mb-1">Valor do desconto</label>
                                         <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-white">
                                             <span className="px-3 py-2 bg-gray-50 border-r border-gray-300 text-sm text-gray-500">{tipoDesconto === '%' ? '%' : 'R$'}</span>
-                                            <input value={valorDescontoInput} onChange={e => setValorDescontoInput(e.target.value)} className="flex-1 px-3 py-2 text-sm outline-none" />
+                                            <input value={valorDescontoInput} onChange={e => handleDescontoInput(e.target.value)} className="flex-1 px-3 py-2 text-sm outline-none" />
                                         </div>
                                     </div>
                                 </div>
@@ -2053,12 +2086,15 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
                     )}
                 </div>
 
-                <div className="px-5 py-4 border-t border-gray-100 flex gap-3">
+                <div className="px-5 pt-4 pb-2 border-t border-gray-100 flex gap-3">
                     <button onClick={onClose} className="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm">Cancelar</button>
                     <button onClick={confirmar} disabled={!podeConfirmar || salvando} className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-sm font-semibold text-sm disabled:opacity-50">
                         {salvando ? 'Salvando...' : (novoStatusPreview === 'PARCIAL' ? 'Confirmar baixa parcial' : 'Confirmar baixa')}
                     </button>
                 </div>
+                {bloqueio && !salvando && (
+                    <p className="px-5 pb-4 text-xs text-red-600 text-center">{bloqueio}</p>
+                )}
             </div>
         </div>
     );
