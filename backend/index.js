@@ -3,7 +3,13 @@ process.env.TZ = 'America/Sao_Paulo';
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const axios = require('axios');
 require('dotenv').config();
+
+// Rede: teto de 60s em TODA chamada HTTP via axios (Conta Azul, etc.). Sem isso,
+// se a API externa travar/ficar lenta, o worker ou a requisição do usuário ficam
+// pendurados para sempre. 60s é folgado — nenhuma chamada legítima passa disso.
+axios.defaults.timeout = 60000;
 
 const produtoRoutes = require('./routes/produtoRoutes');
 const syncRoutes = require('./routes/syncRoutes');

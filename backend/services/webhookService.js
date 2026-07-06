@@ -38,16 +38,24 @@ const formatDateOnly = (d) => {
 };
 
 const enviarWebhook = async (webhookUrl, payload) => {
-    const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+    // Teto de 20s: se o BotConversa não responder, aborta em vez de pendurar o worker.
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 20000);
+    try {
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: ctrl.signal
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        return true;
+    } finally {
+        clearTimeout(t);
     }
-    return true;
 };
 
 const webhookService = {
