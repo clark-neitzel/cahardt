@@ -56,6 +56,22 @@ router.get('/ping', (req, res) => {
     });
 });
 
+// GET /api/admin-exec/diag-ca-cred — mostra o FORMATO das credenciais do CA carregadas
+// (tamanho + início/fim), sem revelar o segredo. Para achar espaço/corte/whitespace.
+router.get('/diag-ca-cred', (req, res) => {
+    const shape = (s) => ({
+        len: (s || '').length,
+        inicio: (s || '').slice(0, 4),
+        fim: (s || '').slice(-4),
+        temEspacoNaBorda: s !== (s || '').trim(),
+    });
+    res.json({
+        clientId: shape(process.env.CONTA_AZUL_CLIENT_ID),
+        clientSecret: shape(process.env.CONTA_AZUL_CLIENT_SECRET),
+        redirectUri: process.env.CONTA_AZUL_REDIRECT_URI || '(padrão do código)',
+    });
+});
+
 // GET /api/admin-exec/testar-alerta-certificado — roda o alerta de validade do A1 na hora.
 // Se faltar > 30 dias, só retorna { dias, alertado:false } (não envia WhatsApp) — seguro p/ testar.
 router.get('/testar-alerta-certificado', async (req, res) => {
