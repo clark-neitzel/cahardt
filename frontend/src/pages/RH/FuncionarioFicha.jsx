@@ -359,7 +359,7 @@ function AbaCartao({ f }) {
   const [mes, setMes] = useState(mesAtual());
   const [cartao, setCartao] = useState(null);
   const [carregando, setCarregando] = useState(true);
-  const [modal, setModal] = useState(false);
+  const [modal, setModal] = useState(null); // null = fechado | 'novo' | objeto da batida (editar)
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -373,7 +373,7 @@ function AbaCartao({ f }) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-sm" />
-        <button onClick={() => setModal(true)} className="px-3 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-semibold inline-flex items-center gap-1"><Plus className="h-4 w-4" /> Adicionar batida</button>
+        <button onClick={() => setModal('novo')} className="px-3 py-1.5 bg-primary hover:bg-primaryDark text-white rounded-md text-xs font-semibold inline-flex items-center gap-1"><Plus className="h-4 w-4" /> Adicionar batida</button>
       </div>
 
       {carregando ? <div className="py-10 text-center"><Loader2 className="h-6 w-6 text-blue-600 animate-spin mx-auto" /></div> : cartao && (
@@ -400,12 +400,16 @@ function AbaCartao({ f }) {
                     <td className="px-3 py-2.5 font-medium">{new Date(`${l.data}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}</td>
                     <td className="px-3 py-2.5">
                       {l.abonado && !l.batidas.length ? <span className="text-xs text-red-600">Abonado (atestado)</span> :
-                        l.batidas.map((b, i) => (
-                          <span key={b.id}>
-                            {i > 0 && ' · '}
-                            {b.latLng ? <a href={`https://www.google.com/maps?q=${b.latLng}`} target="_blank" rel="noreferrer" className="text-primary underline decoration-dotted tabular-nums">{b.hora} 📍</a> : <span className="tabular-nums">{b.hora}</span>}
-                          </span>
-                        ))}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {l.batidas.map((b) => (
+                            <span key={b.id} className="inline-flex items-center gap-1 bg-gray-100 hover:bg-gray-200 rounded-full pl-2 pr-1.5 py-0.5">
+                              <span className={`h-1.5 w-1.5 rounded-full ${b.tipo === 'SAIDA' ? 'bg-orange-500' : 'bg-green-500'}`} title={b.tipo === 'SAIDA' ? 'Saída' : 'Entrada'} />
+                              <button onClick={() => setModal({ ...b, data: l.data })} className="tabular-nums text-gray-800 hover:text-primary font-medium" title="Editar / excluir batida">{b.hora}</button>
+                              {b.latLng && <a href={`https://www.google.com/maps?q=${b.latLng}`} target="_blank" rel="noreferrer" className="leading-none" title="Ver no mapa">📍</a>}
+                            </span>
+                          ))}
+                          {!l.batidas.length && !l.abonado && <span className="text-gray-400">—</span>}
+                        </div>}
                     </td>
                     <td className="px-3 py-2.5 tabular-nums">{l.previsto}</td>
                     <td className="px-3 py-2.5 tabular-nums font-semibold">{l.trabalhado}</td>
@@ -418,7 +422,7 @@ function AbaCartao({ f }) {
         </>
       )}
 
-      {modal && <ModalBatida funcionarioId={f.id} onClose={() => setModal(false)} onSaved={() => { setModal(false); carregar(); }} />}
+      {modal && <ModalBatida funcionarioId={f.id} batida={modal === 'novo' ? null : modal} onClose={() => setModal(null)} onSaved={() => { setModal(null); carregar(); }} />}
     </div>
   );
 }
@@ -427,29 +431,51 @@ function Kpi({ v, l, cor = 'text-gray-900' }) {
   return <div className="bg-gray-50 rounded-lg p-3 text-center"><p className={`text-xl font-bold tabular-nums ${cor}`}>{v}</p><p className="text-xs text-gray-500">{l}</p></div>;
 }
 
-function ModalBatida({ funcionarioId, onClose, onSaved }) {
-  const [form, setForm] = useState({ data: mesAtual() + '-01', hora: '13:00', tipo: 'ENTRADA', obs: '' });
+function ModalBatida({ funcionarioId, batida, onClose, onSaved }) {
+  const editando = !!batida;
+  const [form, setForm] = useState(
+    editando
+      ? { data: batida.data, hora: batida.hora, tipo: batida.tipo === 'SAIDA' ? 'SAIDA' : 'ENTRADA', obs: batida.obs || '' }
+      : { data: mesAtual() + '-01', hora: '13:00', tipo: 'ENTRADA', obs: '' }
+  );
   const [salvando, setSalvando] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const set = (c) => (e) => setForm(s => ({ ...s, [c]: e.target.value }));
   const salvar = async () => {
     setSalvando(true);
-    try { await funcionarioService.addBatida({ funcionarioId, ...form }); toast.success('Batida adicionada!'); onSaved(); }
-    catch { toast.error('Erro ao adicionar.'); }
+    try {
+      if (editando) { await funcionarioService.updateBatida(batida.id, { hora: form.hora, tipo: form.tipo, obs: form.obs }); toast.success('Batida atualizada!'); }
+      else { await funcionarioService.addBatida({ funcionarioId, ...form }); toast.success('Batida adicionada!'); }
+      onSaved();
+    } catch { toast.error('Erro ao salvar.'); }
     finally { setSalvando(false); }
+  };
+  const excluir = async () => {
+    if (!window.confirm('Excluir esta batida? Esta ação não pode ser desfeita.')) return;
+    setExcluindo(true);
+    try { await funcionarioService.delBatida(batida.id); toast.success('Batida excluída!'); onSaved(); }
+    catch { toast.error('Erro ao excluir.'); }
+    finally { setExcluindo(false); }
   };
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={onClose}>
       <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-        <p className="font-bold text-gray-900 mb-3">Adicionar / ajustar batida</p>
+        <p className="font-bold text-gray-900 mb-3">{editando ? 'Editar batida' : 'Adicionar / ajustar batida'}</p>
         <div className="grid grid-cols-2 gap-3">
-          <label className="block"><span className="text-sm font-medium text-gray-700">Data</span><input type="date" value={form.data} onChange={set('data')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
+          <label className="block"><span className="text-sm font-medium text-gray-700">Data</span><input type="date" value={form.data} onChange={set('data')} disabled={editando} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500" /></label>
           <label className="block"><span className="text-sm font-medium text-gray-700">Hora</span><input type="time" value={form.hora} onChange={set('hora')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
           <label className="block"><span className="text-sm font-medium text-gray-700">Tipo</span><SelectBusca value={form.tipo} onChange={set('tipo')} className="mt-1 w-full"><option value="ENTRADA">Entrada</option><option value="SAIDA">Saída</option></SelectBusca></label>
           <label className="block"><span className="text-sm font-medium text-gray-700">Motivo</span><input value={form.obs} onChange={set('obs')} placeholder="Esqueceu de bater" className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
         </div>
-        <div className="flex justify-end gap-2 mt-4">
-          <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md font-medium text-sm">Cancelar</button>
-          <button onClick={salvar} disabled={salvando} className="px-4 py-2 bg-primary text-white rounded-md font-semibold text-sm disabled:opacity-60 inline-flex items-center gap-1">{salvando && <Loader2 className="h-4 w-4 animate-spin" />} Salvar</button>
+        {editando && <p className="text-xs text-gray-400 mt-2">As batidas do dia se reordenam sozinhas pelo horário após salvar.</p>}
+        <div className="flex items-center justify-between gap-2 mt-4">
+          <div>
+            {editando && <button onClick={excluir} disabled={excluindo || salvando} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md font-semibold text-sm disabled:opacity-60 inline-flex items-center gap-1"><Trash2 className="h-4 w-4" />{excluindo ? 'Excluindo…' : 'Excluir'}</button>}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md font-medium text-sm">Cancelar</button>
+            <button onClick={salvar} disabled={salvando || excluindo} className="px-4 py-2 bg-primary text-white rounded-md font-semibold text-sm disabled:opacity-60 inline-flex items-center gap-1">{salvando && <Loader2 className="h-4 w-4 animate-spin" />} Salvar</button>
+          </div>
         </div>
       </div>
     </div>

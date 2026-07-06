@@ -19,7 +19,7 @@ Cadastro operacional de funcionários da empresa: ficha completa, documentos, ex
 - **Documentos:** anexos em PDF/imagem por categoria (RG, CPF, CTPS, Residência, Contrato, Outro / pasta livre). Ver e excluir.
 - **Exames (ASO):** admissional, periódico, demissional, retorno e mudança de função, com **data**, **validade**, **resultado** (Apto/Inapto) e anexo. Mostra **badge** de validade (válido / vence em X dias / vencido).
 - **Atestados:** data de início, dias de afastamento, CID opcional e anexo.
-- **Cartão de ponto:** espelho do mês com **previsto × trabalhado**, **saldo (banco de horas)**, **hora extra** e faltas; cada batida com localização (mapa) e botão para **adicionar/ajustar batida** manualmente (quando o funcionário esquece de bater).
+- **Cartão de ponto:** espelho do mês com **previsto × trabalhado**, **saldo (banco de horas)**, **hora extra** e faltas. Cada batida vira uma pílula com bolinha de tipo (verde = entrada, laranja = saída) e link de localização (mapa) quando houver. **Clicar na hora abre o editor da batida** — dá para **mudar a hora**, o **tipo** (entrada/saída) e o **motivo**, ou **excluir** a batida. Também há o botão **adicionar/ajustar batida** para lançar uma batida manual (quando o funcionário esquece de bater). Ao adicionar ou editar, as batidas do dia **se reordenam sozinhas pelo horário**.
 - **Desempenho & Assiduidade:** nota média, número de atestados e avaliações; permite registrar avaliações (período + nota + observação).
 
 ## Observações

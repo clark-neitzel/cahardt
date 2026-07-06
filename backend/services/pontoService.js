@@ -79,7 +79,8 @@ const mapBatida = (b) => ({
     latLng: b.latLng || null,
     distanciaMetros: b.distanciaMetros,
     dentroCerca: b.dentroCerca,
-    origem: b.origem
+    origem: b.origem,
+    obs: b.obs || ''
 });
 
 // ─── Status / batidas do dia ─────────────────────────────────────────────────
