@@ -123,6 +123,21 @@ Sempre `px-2 py-1 text-xs font-semibold rounded-full` com as cores:
 <input className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
 ```
 
+### Dropdowns/menus — usar SEMPRE `SelectBusca`, nunca `<select>` nativo
+O `<select>` nativo renderiza como um menu escuro do sistema (macOS/iOS), sem busca — ruim de usar em lista longa. **Todo menu suspenso novo deve usar `frontend/src/components/SelectBusca.jsx`** (menu branco no tema, com busca no topo quando há muitas opções; renderiza em portal, então não é cortado dentro de modais e abre para cima quando falta espaço). É drop-in do `<select>` — mesma API:
+```jsx
+import SelectBusca from '../../components/SelectBusca'; // ajuste o caminho relativo
+<SelectBusca value={x} onChange={e => setX(e.target.value)} className="w-full">
+  <option value="todos">Todos</option>
+  {lista.map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}
+</SelectBusca>
+```
+- `onChange` recebe `{ target: { value } }` — só use `e.target.value`. **NÃO** funciona com handler compartilhado que lê `e.target.name`/`e.target.checked`, nem com o truque de resetar via `e.target.value = ''` (nesses casos, mantenha `<select>` nativo).
+- No `className` passe só utilitários de largura/margem (`w-full`, `md:w-48`, `flex-1`, `mt-1`…); borda/padding/foco já vêm do componente.
+- Suporta `disabled` (no componente e em cada `<option>`) e `<optgroup>` (vira cabeçalho de grupo).
+- Para multi-seleção use `MultiSelect.jsx`; para combobox de criação/ação extra use `ComboBusca.jsx`.
+- (Jul/2026 os ~143 `<select>` de filtro/formulário existentes já foram migrados; restam ~10 nativos de propósito — handler compartilhado ou chevron próprio.)
+
 ### Ícones de Módulo (topbar)
 Sempre: `bg-[cor]-100 p-2 rounded-lg` + ícone `h-5 w-5 text-[cor]-600`. Cada módulo tem sua cor:
 - Pedidos: blue | Clientes: green | Produtos: purple | Financeiro: amber
