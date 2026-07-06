@@ -1083,10 +1083,26 @@ const BaixaParcelaModal = ({ conta, parcela, onClose, onSuccess }) => {
     const [formaPagamento, setFormaPagamento] = useState('PIX');
     const [observacao, setObservacao] = useState('');
     const [salvando, setSalvando] = useState(false);
+    const [contaFinanceiraCaId, setContaFinanceiraCaId] = useState('');
+    const [contasFinanceiras, setContasFinanceiras] = useState([]);
+    // Se a despesa vai ao Conta Azul, o banco é obrigatório (a baixa é empurrada nesse banco).
+    const vaiAoCA = conta.statusEnvioCA && conta.statusEnvioCA !== 'NAO_ENVIAR';
+
+    useEffect(() => {
+        contasPagarService.opcoesBaixa()
+            .then(op => {
+                const cf = Array.isArray(op?.contasFinanceiras) ? op.contasFinanceiras : [];
+                setContasFinanceiras(cf);
+                const padrao = cf.find(c => c.padrao);
+                if (padrao) setContaFinanceiraCaId(padrao.id);
+            })
+            .catch(() => {});
+    }, []);
 
     const confirmar = async () => {
         const vp = parseNum(valorPago);
         if (vp <= 0) { toast.error('Informe o valor pago.'); return; }
+        if (vaiAoCA && !contaFinanceiraCaId) { toast.error('Escolha o banco/caixa de onde saiu o pagamento.'); return; }
         setSalvando(true);
         try {
             await contasPagarService.baixarParcela(conta.id, parcela.id, {
@@ -1096,6 +1112,7 @@ const BaixaParcelaModal = ({ conta, parcela, onClose, onSuccess }) => {
                 multa: parseNum(multa),
                 desconto: parseNum(desconto),
                 formaPagamento,
+                contaFinanceiraCaId: contaFinanceiraCaId || undefined,
                 observacao: observacao.trim() || undefined
             });
             toast.success('Baixa registrada!');
@@ -1157,6 +1174,17 @@ const BaixaParcelaModal = ({ conta, parcela, onClose, onSuccess }) => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Desconto</label>
               <input value={desconto} onChange={e => setDesconto(e.target.value)} placeholder="0,00" className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                         </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Banco / caixa {vaiAoCA ? <span className="text-red-500">*</span> : <span className="text-gray-400 font-normal">(opcional)</span>}
+                        </label>
+                        <SelectBusca value={contaFinanceiraCaId} onChange={e => setContaFinanceiraCaId(e.target.value)} className="w-full">
+                            <option value="">{vaiAoCA ? 'Escolha o banco/caixa…' : 'Não informar'}</option>
+                            {contasFinanceiras.map(c => <option key={c.id} value={c.id}>{c.nome}{c.padrao ? ' (padrão)' : ''}</option>)}
+                        </SelectBusca>
+                        <p className="text-xs text-gray-400 mt-1">{vaiAoCA ? 'Conta que vai ao Conta Azul: a baixa é lançada nesse banco.' : 'De onde saiu o dinheiro (aparece no relatório por conta).'}</p>
                     </div>
 
                     <div>
