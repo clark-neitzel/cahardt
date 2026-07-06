@@ -175,13 +175,33 @@ async function carregarPools(contaFinanceiraCaId, deYmd, ateYmd) {
     return { entradas, saidas };
 }
 
-/** Ids de pagamentos já vinculados a algum lançamento CONCILIADO (na conta). */
+/** Ids de pagamentos já vinculados (link 1↔1 legado OU item de grupo) na conta. */
 async function idsUsados(contaFinanceiraCaId) {
-    const usados = await prisma.extratoLancamento.findMany({
-        where: { contaFinanceiraCaId, status: 'CONCILIADO' },
-        select: { pagamentoParcelaId: true, pagamentoParcelaPagarId: true }
-    });
-    return new Set(usados.flatMap((u) => [u.pagamentoParcelaId, u.pagamentoParcelaPagarId]).filter(Boolean));
+    const [diretos, grupos] = await Promise.all([
+        prisma.extratoLancamento.findMany({
+            where: { contaFinanceiraCaId, status: 'CONCILIADO' },
+            select: { pagamentoParcelaId: true, pagamentoParcelaPagarId: true }
+        }),
+        prisma.conciliacaoGrupo.findMany({
+            where: { contaFinanceiraCaId },
+            select: { itens: { select: { pagamentoParcelaId: true, pagamentoParcelaPagarId: true } } }
+        })
+    ]);
+    return new Set([
+        ...diretos.flatMap((u) => [u.pagamentoParcelaId, u.pagamentoParcelaPagarId]),
+        ...grupos.flatMap((g) => g.itens.flatMap((i) => [i.pagamentoParcelaId, i.pagamentoParcelaPagarId]))
+    ].filter(Boolean));
+}
+
+/**
+ * Confere as somas de um grupo. Função PURA.
+ * @returns { ok, somaExtrato, somaBaixas, diferenca }
+ */
+function validarSomaGrupo(valoresExtrato, valoresBaixas) {
+    const somaExtrato = round2(valoresExtrato.reduce((s, v) => s + num(v), 0));
+    const somaBaixas = round2(valoresBaixas.reduce((s, v) => s + num(v), 0));
+    const diferenca = round2(somaExtrato - somaBaixas);
+    return { ok: Math.abs(diferenca) <= 0.01 && somaExtrato > 0, somaExtrato, somaBaixas, diferenca };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -261,6 +281,31 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
     const [pools, usados] = await Promise.all([carregarPools(contaFinanceiraCaId, de, ate), idsUsados(contaFinanceiraCaId)]);
     const labelPorId = new Map([...pools.entradas, ...pools.saidas].map((p) => [p.id, p.label]));
 
+    // Lançamentos conciliados via GRUPO (sem link 1↔1): montar o rótulo com as baixas do grupo
+    const idsSemLink = linhas.filter((l) => l.status === 'CONCILIADO' && !l.pagamentoParcelaId && !l.pagamentoParcelaPagarId).map((l) => l.id);
+    const grupoDoLancamento = new Map(); // lancamentoId → { qtd, labels }
+    if (idsSemLink.length > 0) {
+        const itensLanc = await prisma.conciliacaoGrupoItem.findMany({
+            where: { extratoLancamentoId: { in: idsSemLink } },
+            select: { grupoId: true, extratoLancamentoId: true }
+        });
+        const grupoIds = [...new Set(itensLanc.map((i) => i.grupoId))];
+        const itensTodos = grupoIds.length > 0
+            ? await prisma.conciliacaoGrupoItem.findMany({ where: { grupoId: { in: grupoIds } } })
+            : [];
+        const baixasPorGrupo = new Map();
+        for (const it of itensTodos) {
+            const pagId = it.pagamentoParcelaId || it.pagamentoParcelaPagarId;
+            if (!pagId) continue;
+            if (!baixasPorGrupo.has(it.grupoId)) baixasPorGrupo.set(it.grupoId, []);
+            baixasPorGrupo.get(it.grupoId).push(labelPorId.get(pagId) || 'Baixa do app');
+        }
+        for (const it of itensLanc) {
+            const labels = baixasPorGrupo.get(it.grupoId) || [];
+            grupoDoLancamento.set(it.extratoLancamentoId, { qtd: labels.length, labels });
+        }
+    }
+
     const lancamentos = linhas.map((l) => {
         const base = {
             id: l.id,
@@ -274,7 +319,13 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
         };
         if (l.status === 'CONCILIADO') {
             const pagId = l.pagamentoParcelaId || l.pagamentoParcelaPagarId;
-            return { ...base, conciliadoCom: labelPorId.get(pagId) || 'Baixa do app' };
+            if (pagId) return { ...base, conciliadoCom: labelPorId.get(pagId) || 'Baixa do app' };
+            const grupo = grupoDoLancamento.get(l.id);
+            return {
+                ...base,
+                conciliadoCom: grupo ? `Grupo: ${grupo.qtd} baixa(s)` : 'Grupo',
+                grupoBaixas: grupo?.labels || []
+            };
         }
         if (l.status === 'PENDENTE') {
             return {
@@ -392,8 +443,29 @@ async function ignorar({ lancamentoId, obs, userId }) {
     return { message: 'Lançamento marcado como ignorado.' };
 }
 
-/** Volta um lançamento (conciliado ou ignorado) para PENDENTE. */
+/**
+ * Volta um lançamento (conciliado ou ignorado) para PENDENTE.
+ * Se ele estiver num GRUPO, o grupo inteiro é dissolvido (todos os lançamentos
+ * do grupo voltam a pendente e as baixas ficam livres de novo).
+ */
 async function desfazer({ lancamentoId }) {
+    const item = await prisma.conciliacaoGrupoItem.findUnique({ where: { extratoLancamentoId: lancamentoId } });
+    if (item) {
+        const irmaos = await prisma.conciliacaoGrupoItem.findMany({
+            where: { grupoId: item.grupoId, extratoLancamentoId: { not: null } },
+            select: { extratoLancamentoId: true }
+        });
+        const idsLanc = irmaos.map((i) => i.extratoLancamentoId);
+        await prisma.$transaction(async (tx) => {
+            await tx.conciliacaoGrupo.delete({ where: { id: item.grupoId } }); // itens caem em cascata
+            await tx.extratoLancamento.updateMany({
+                where: { id: { in: idsLanc } },
+                data: { status: 'PENDENTE', conciliadoAuto: false, conciliadoPorId: null, conciliadoEm: null, obs: null }
+            });
+        }, { timeout: 20000, maxWait: 10000 });
+        return { message: idsLanc.length > 1 ? `Grupo desfeito — ${idsLanc.length} lançamentos voltaram para pendente.` : 'Grupo desfeito — lançamento voltou para pendente.' };
+    }
+
     const r = await prisma.extratoLancamento.updateMany({
         where: { id: lancamentoId, status: { in: ['CONCILIADO', 'IGNORADO'] } },
         data: {
@@ -408,6 +480,87 @@ async function desfazer({ lancamentoId }) {
     });
     if (r.count === 0) { const e = new Error('Nada para desfazer neste lançamento.'); e.status = 400; throw e; }
     return { message: 'Lançamento voltou para pendente.' };
+}
+
+/**
+ * Baixas do app DISPONÍVEIS (não conciliadas) na conta/período, para o modal
+ * de conciliação em grupo. tipo CREDITO → recebimentos; DEBITO → pagamentos.
+ */
+async function baixasDisponiveis({ contaFinanceiraCaId, de, ate, tipo }) {
+    const [pools, usados] = await Promise.all([carregarPools(contaFinanceiraCaId, de, ate), idsUsados(contaFinanceiraCaId)]);
+    const pool = tipo === 'CREDITO' ? pools.entradas : pools.saidas;
+    return pool
+        .filter((p) => !usados.has(p.id))
+        .sort((a, b) => b.data.localeCompare(a.data));
+}
+
+/**
+ * Concilia em GRUPO: N lançamentos do extrato ↔ M baixas do app, soma exata (±R$ 0,01).
+ * Todos do mesmo tipo (crédito OU débito) e da mesma conta.
+ */
+async function conciliarGrupo({ contaFinanceiraCaId, lancamentoIds, pagamentoIds, userId }) {
+    const idsLanc = [...new Set(lancamentoIds || [])];
+    const idsPag = [...new Set(pagamentoIds || [])];
+    if (idsLanc.length === 0 || idsPag.length === 0) {
+        const e = new Error('Escolha ao menos um lançamento do extrato e uma baixa do app.');
+        e.status = 400;
+        throw e;
+    }
+
+    const lancs = await prisma.extratoLancamento.findMany({ where: { id: { in: idsLanc } } });
+    if (lancs.length !== idsLanc.length) { const e = new Error('Lançamento do extrato não encontrado.'); e.status = 404; throw e; }
+    if (lancs.some((l) => l.contaFinanceiraCaId !== contaFinanceiraCaId)) { const e = new Error('Todos os lançamentos precisam ser da mesma conta.'); e.status = 400; throw e; }
+    if (lancs.some((l) => l.status !== 'PENDENTE')) { const e = new Error('Só é possível agrupar lançamentos pendentes.'); e.status = 400; throw e; }
+    const tipo = lancs[0].tipo;
+    if (lancs.some((l) => l.tipo !== tipo)) { const e = new Error('Não misture entradas e saídas no mesmo grupo.'); e.status = 400; throw e; }
+
+    // Baixas: existem, não estornadas, mesma conta, e ainda livres?
+    const usados = await idsUsados(contaFinanceiraCaId);
+    let baixas;
+    if (tipo === 'CREDITO') {
+        baixas = await prisma.pagamentoParcela.findMany({
+            where: { id: { in: idsPag } },
+            select: { id: true, estornado: true, contaFinanceiraCaId: true, valorRecebido: true }
+        });
+    } else {
+        baixas = await prisma.pagamentoParcelaPagar.findMany({
+            where: { id: { in: idsPag } },
+            select: { id: true, estornado: true, contaFinanceiraCaId: true, valorPago: true, juros: true, multa: true }
+        });
+    }
+    if (baixas.length !== idsPag.length) { const e = new Error('Baixa do app não encontrada.'); e.status = 400; throw e; }
+    if (baixas.some((b) => b.estornado)) { const e = new Error('Uma das baixas escolhidas foi estornada.'); e.status = 400; throw e; }
+    if (baixas.some((b) => b.contaFinanceiraCaId !== contaFinanceiraCaId)) { const e = new Error('Todas as baixas precisam ser da mesma conta do extrato.'); e.status = 400; throw e; }
+    if (idsPag.some((id) => usados.has(id))) { const e = new Error('Uma das baixas já está conciliada com outro lançamento.'); e.status = 400; throw e; }
+
+    const valoresBaixas = baixas.map((b) => tipo === 'CREDITO' ? num(b.valorRecebido) : round2(num(b.valorPago) + num(b.juros) + num(b.multa)));
+    const soma = validarSomaGrupo(lancs.map((l) => num(l.valor)), valoresBaixas);
+    if (!soma.ok) {
+        const e = new Error(`A soma não bate: extrato R$ ${soma.somaExtrato.toFixed(2)} × baixas R$ ${soma.somaBaixas.toFixed(2)} (diferença R$ ${Math.abs(soma.diferenca).toFixed(2)}).`);
+        e.status = 400;
+        throw e;
+    }
+
+    await prisma.$transaction(async (tx) => {
+        const grupo = await tx.conciliacaoGrupo.create({
+            data: { contaFinanceiraCaId, tipo, valor: soma.somaExtrato, criadoPorId: userId || null }
+        });
+        await tx.conciliacaoGrupoItem.createMany({
+            data: [
+                ...idsLanc.map((id) => ({ grupoId: grupo.id, extratoLancamentoId: id })),
+                ...idsPag.map((id) => (tipo === 'CREDITO'
+                    ? { grupoId: grupo.id, pagamentoParcelaId: id }
+                    : { grupoId: grupo.id, pagamentoParcelaPagarId: id }))
+            ]
+        });
+        const r = await tx.extratoLancamento.updateMany({
+            where: { id: { in: idsLanc }, status: 'PENDENTE' }, // guarda contra corrida
+            data: { status: 'CONCILIADO', conciliadoAuto: false, conciliadoPorId: userId || null, conciliadoEm: new Date() }
+        });
+        if (r.count !== idsLanc.length) throw new Error('Um dos lançamentos deixou de estar pendente — recarregue e tente de novo.');
+    }, { timeout: 20000, maxWait: 10000 });
+
+    return { message: `Grupo conciliado: ${idsLanc.length} lançamento(s) do extrato ↔ ${idsPag.length} baixa(s) do app (R$ ${soma.somaExtrato.toFixed(2)}).` };
 }
 
 async function listarImportacoes(contaFinanceiraCaId) {
@@ -432,10 +585,13 @@ module.exports = {
     listar,
     conciliarAutomatico,
     conciliar,
+    conciliarGrupo,
+    baixasDisponiveis,
     ignorar,
     desfazer,
     listarImportacoes,
     // puras (testáveis offline)
     parseOfx,
-    candidatosPara
+    candidatosPara,
+    validarSomaGrupo
 };

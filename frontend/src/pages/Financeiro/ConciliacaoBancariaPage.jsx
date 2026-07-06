@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import conciliacaoService from '../../services/conciliacaoBancariaService';
 import contasReceberService from '../../services/contasReceberService';
 import SelectBusca from '../../components/SelectBusca';
-import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDown, ChevronUp, Layers, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -50,6 +50,142 @@ const ValorCell = ({ tipo, valor }) => (
     </span>
 );
 
+// ── Modal de conciliação em GRUPO: N lançamentos do extrato ↔ M baixas (soma exata) ──
+// Cobre 1 PIX pagando várias notas, 2 PIX pagando uma baixa, e PIX parcial
+// (a parte da nota precisa estar registrada como baixa parcial no app).
+const GrupoModal = ({ lancamento, pendentes, contaId, periodo, onClose, onSuccess }) => {
+    const [disponiveis, setDisponiveis] = useState(null); // null = carregando
+    const [selLanc, setSelLanc] = useState(new Set([lancamento.id]));
+    const [selPag, setSelPag] = useState(new Set());
+    const [busca, setBusca] = useState('');
+    const [salvando, setSalvando] = useState(false);
+
+    const outrosPendentes = pendentes.filter(p => p.tipo === lancamento.tipo);
+
+    useEffect(() => {
+        conciliacaoService.baixasDisponiveis(contaId, periodo.de, periodo.ate, lancamento.tipo)
+            .then(setDisponiveis)
+            .catch(() => { toast.error('Não consegui carregar as baixas do app.'); setDisponiveis([]); });
+    }, [contaId, periodo, lancamento.tipo]);
+
+    const alternar = (setFn, id) => setFn(prev => {
+        const s = new Set(prev);
+        if (s.has(id)) s.delete(id); else s.add(id);
+        return s;
+    });
+
+    const somaLanc = outrosPendentes.filter(p => selLanc.has(p.id)).reduce((s, p) => s + p.valor, 0);
+    const somaPag = (disponiveis || []).filter(p => selPag.has(p.id)).reduce((s, p) => s + p.valor, 0);
+    const diferenca = Math.round((somaLanc - somaPag) * 100) / 100;
+    const somaBate = Math.abs(diferenca) <= 0.01 && selLanc.size > 0 && selPag.size > 0;
+
+    const listaBaixas = (disponiveis || []).filter(p =>
+        !busca.trim() || p.label.toLowerCase().includes(busca.trim().toLowerCase())
+    );
+
+    const confirmar = async () => {
+        setSalvando(true);
+        try {
+            const r = await conciliacaoService.conciliarGrupo(contaId, [...selLanc], [...selPag]);
+            toast.success(r.message);
+            onSuccess();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao conciliar o grupo');
+        } finally {
+            setSalvando(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-2xl w-full max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+                    <div>
+                        <p className="text-xs text-gray-500">Conciliar em grupo — {lancamento.tipo === 'CREDITO' ? 'entrada' : 'saída'}</p>
+                        <h2 className="font-bold text-gray-900">A soma dos dois lados precisa bater</h2>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                </div>
+
+                <div className="p-5 space-y-4 overflow-y-auto">
+                    {/* Lado do banco */}
+                    <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Lançamentos do extrato</p>
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                            {outrosPendentes.map(p => (
+                                <label key={p.id} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer ${selLanc.has(p.id) ? 'border-primary bg-mint/30' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                    <input type="checkbox" checked={selLanc.has(p.id)} onChange={() => alternar(setSelLanc, p.id)} className="accent-[#00754A]" />
+                                    <span className="text-xs text-gray-500 shrink-0">{fmtData(p.data)}</span>
+                                    <span className="text-sm text-gray-800 truncate flex-1">{p.descricao || '(sem descrição)'}</span>
+                                    <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.valor)}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Lado do app */}
+                    <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Baixas do app (marque as que este dinheiro cobre)</p>
+                        <div className="relative mb-2">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <input
+                                value={busca}
+                                onChange={e => setBusca(e.target.value)}
+                                placeholder="Buscar cliente/fornecedor..."
+                                className="w-full border border-gray-300 rounded pl-9 pr-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                            />
+                        </div>
+                        {disponiveis === null && (
+                            <div className="text-center text-gray-500 text-sm py-3 flex items-center justify-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" /> Carregando baixas…
+                            </div>
+                        )}
+                        {disponiveis !== null && listaBaixas.length === 0 && (
+                            <p className="text-sm text-gray-500 py-2">
+                                Nenhuma baixa livre encontrada no período. Se o pagamento cobriu parte de uma nota,
+                                registre primeiro a <strong>baixa parcial</strong> com esse valor em Contas a {lancamento.tipo === 'CREDITO' ? 'Receber' : 'Pagar'}.
+                            </p>
+                        )}
+                        <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                            {listaBaixas.map(p => (
+                                <label key={p.id} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer ${selPag.has(p.id) ? 'border-primary bg-mint/30' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                    <input type="checkbox" checked={selPag.has(p.id)} onChange={() => alternar(setSelPag, p.id)} className="accent-[#00754A]" />
+                                    <span className="text-xs text-gray-500 shrink-0">{fmtData(p.data)}</span>
+                                    <span className="text-sm text-gray-800 truncate flex-1">{p.label}</span>
+                                    <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.valor)}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Rodapé com a soma ao vivo */}
+                <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-2">
+                    <div className={`rounded-xl border p-3 flex items-center justify-between text-sm ${somaBate ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}>
+                        <span className={somaBate ? 'text-green-800' : 'text-amber-800'}>
+                            Extrato R$ {fmt(somaLanc)} × Baixas R$ {fmt(somaPag)}
+                        </span>
+                        <span className={`font-bold ${somaBate ? 'text-green-800' : 'text-amber-800'}`}>
+                            {somaBate ? '✓ Soma bate' : `Diferença R$ ${fmt(Math.abs(diferenca))}`}
+                        </span>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
+                        <button
+                            onClick={confirmar}
+                            disabled={!somaBate || salvando}
+                            className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                            {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                            Conciliar grupo ({selLanc.size} ↔ {selPag.size})
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const ConciliacaoBancariaPage = () => {
     const opcoesPeriodo = useMemo(periodos, []);
     const [contas, setContas] = useState([]);
@@ -63,6 +199,7 @@ const ConciliacaoBancariaPage = () => {
     const [autoRodando, setAutoRodando] = useState(false);
     const [escolhas, setEscolhas] = useState({}); // lancamentoId → id do pagamento escolhido
     const [mostrarSoNoApp, setMostrarSoNoApp] = useState(false);
+    const [grupoModal, setGrupoModal] = useState(null); // lançamento que abriu o modal de grupo
     const inputArquivo = useRef(null);
 
     useEffect(() => {
@@ -165,13 +302,21 @@ const ConciliacaoBancariaPage = () => {
                         {fmtData(l.sugestoes[0].data)} — {l.sugestoes[0].label}
                     </div>
                 )}
-                <div className="flex gap-1.5">
+                <div className="flex flex-wrap gap-1.5">
                     <button
                         onClick={() => conciliarLinha(l)}
                         disabled={agindo === l.id}
                         className="px-3 py-1.5 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-50"
                     >
                         <Check className="h-3.5 w-3.5" /> Conciliar
+                    </button>
+                    <button
+                        onClick={() => setGrupoModal(l)}
+                        disabled={agindo === l.id}
+                        className="px-3 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-medium inline-flex items-center gap-1 disabled:opacity-50"
+                        title="Um pagamento cobrindo várias baixas (ou o contrário)"
+                    >
+                        <Layers className="h-3.5 w-3.5" /> Várias…
                     </button>
                     <button
                         onClick={() => ignorarLinha(l)}
@@ -185,13 +330,23 @@ const ConciliacaoBancariaPage = () => {
         ) : (
             <div className="flex flex-col gap-1.5">
                 <div className="text-xs text-gray-500">Sem baixa parecida no app</div>
-                <button
-                    onClick={() => ignorarLinha(l)}
-                    disabled={agindo === l.id}
-                    className="self-start px-3 py-1.5 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-full text-xs font-medium inline-flex items-center gap-1 disabled:opacity-50"
-                >
-                    <X className="h-3.5 w-3.5" /> Ignorar
-                </button>
+                <div className="flex flex-wrap gap-1.5">
+                    <button
+                        onClick={() => setGrupoModal(l)}
+                        disabled={agindo === l.id}
+                        className="px-3 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-medium inline-flex items-center gap-1 disabled:opacity-50"
+                        title="Um pagamento cobrindo várias baixas (ou o contrário)"
+                    >
+                        <Layers className="h-3.5 w-3.5" /> Conciliar várias…
+                    </button>
+                    <button
+                        onClick={() => ignorarLinha(l)}
+                        disabled={agindo === l.id}
+                        className="px-3 py-1.5 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-full text-xs font-medium inline-flex items-center gap-1 disabled:opacity-50"
+                    >
+                        <X className="h-3.5 w-3.5" /> Ignorar
+                    </button>
+                </div>
             </div>
         )
     );
@@ -200,10 +355,17 @@ const ConciliacaoBancariaPage = () => {
         if (l.status === 'PENDENTE') return <AcoesPendente l={l} />;
         if (l.status === 'CONCILIADO') return (
             <div className="flex items-center gap-2 min-w-0">
-                <span className="text-xs text-gray-600 truncate" title={l.conciliadoCom}>
-                    {l.conciliadoAuto ? '🪄 ' : ''}{l.conciliadoCom}
-                </span>
-                <button onClick={() => desfazerLinha(l)} disabled={agindo === l.id} className="shrink-0 p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100" title="Desfazer">
+                <div className="min-w-0">
+                    <span className="text-xs text-gray-600 truncate block" title={l.conciliadoCom}>
+                        {l.conciliadoAuto ? '🪄 ' : ''}{l.conciliadoCom}
+                    </span>
+                    {(l.grupoBaixas || []).length > 0 && (
+                        <span className="text-xs text-gray-500 truncate block" title={l.grupoBaixas.join(' · ')}>
+                            {l.grupoBaixas.join(' · ')}
+                        </span>
+                    )}
+                </div>
+                <button onClick={() => desfazerLinha(l)} disabled={agindo === l.id} className="shrink-0 p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100" title="Desfazer (desfaz o grupo inteiro, se houver)">
                     <Undo2 className="h-4 w-4" />
                 </button>
             </div>
@@ -421,11 +583,24 @@ const ConciliacaoBancariaPage = () => {
                         <p className="text-xs text-gray-500">
                             Como funciona: exporte o extrato do banco em OFX e importe aqui (importar de novo não duplica).
                             O sistema sugere a baixa do app com o mesmo valor e data próxima (±3 dias) na mesma conta;
-                            "Conciliar automático" fecha sozinho os casos sem ambiguidade. Tarifas e transferências entre contas podem ser marcadas como ignoradas.
+                            "Conciliar automático" fecha sozinho os casos sem ambiguidade. Um PIX que pagou várias notas
+                            (ou parte de uma nota registrada como baixa parcial) usa o botão <strong>"Várias…"</strong> —
+                            a soma dos dois lados precisa bater. Tarifas e transferências entre contas podem ser marcadas como ignoradas.
                         </p>
                     </>
                 )}
             </div>
+
+            {grupoModal && (
+                <GrupoModal
+                    lancamento={grupoModal}
+                    pendentes={lancamentos.filter(x => x.status === 'PENDENTE')}
+                    contaId={contaId}
+                    periodo={periodo}
+                    onClose={() => setGrupoModal(null)}
+                    onSuccess={() => { setGrupoModal(null); carregar(); }}
+                />
+            )}
         </div>
     );
 };

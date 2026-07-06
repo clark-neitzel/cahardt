@@ -114,6 +114,48 @@ router.post('/conciliar-auto', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── GET /baixas-disponiveis?contaId&de&ate&tipo=CREDITO|DEBITO ──
+// Baixas do app ainda livres (para o modal de conciliação em grupo).
+router.get('/baixas-disponiveis', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const periodo = validarPeriodo(req, res);
+        if (!periodo) return;
+        const contaId = String(req.query.contaId || '').trim();
+        if (!contaId) return res.status(400).json({ error: 'Escolha o banco/caixa.' });
+        const tipo = String(req.query.tipo || '').toUpperCase();
+        if (!['CREDITO', 'DEBITO'].includes(tipo)) return res.status(400).json({ error: 'Informe o tipo (CREDITO ou DEBITO).' });
+        const baixas = await conciliacaoService.baixasDisponiveis({
+            contaFinanceiraCaId: contaId,
+            de: periodo.de,
+            ate: periodo.ate,
+            tipo
+        });
+        res.json(baixas);
+    } catch (error) {
+        console.error('Erro ao listar baixas disponíveis:', error);
+        res.status(500).json({ error: 'Erro ao listar as baixas disponíveis.' });
+    }
+});
+
+// ── POST /conciliar-grupo — N lançamentos do extrato ↔ M baixas (soma exata) ──
+// body: { contaId, lancamentoIds: [], pagamentoIds: [] }
+router.post('/conciliar-grupo', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const contaId = String(req.body.contaId || '').trim();
+        if (!contaId) return res.status(400).json({ error: 'Escolha o banco/caixa.' });
+        const r = await conciliacaoService.conciliarGrupo({
+            contaFinanceiraCaId: contaId,
+            lancamentoIds: Array.isArray(req.body.lancamentoIds) ? req.body.lancamentoIds : [],
+            pagamentoIds: Array.isArray(req.body.pagamentoIds) ? req.body.pagamentoIds : [],
+            userId: req.user.id
+        });
+        res.json(r);
+    } catch (error) {
+        console.error('Erro ao conciliar grupo:', error);
+        res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao conciliar o grupo.' });
+    }
+});
+
 // ── POST /:id/conciliar — vincula o lançamento à baixa escolhida ──
 router.post('/:id/conciliar', verificarAuth, checkAcesso, async (req, res) => {
     try {
