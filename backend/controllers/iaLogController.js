@@ -28,23 +28,29 @@ const iaLogController = {
             const inicio = dataInicio ? new Date(dataInicio + 'T00:00:00') : inicioDia;
             const fim = dataFim ? new Date(dataFim + 'T23:59:59') : fimDia;
 
-            // Montar cláusulas WHERE dinamicamente
-            const conditions = [
-                `l."criado_em" >= '${inicio.toISOString()}'`,
-                `l."criado_em" <= '${fim.toISOString()}'`,
-            ];
-            if (clienteId) conditions.push(`l."cliente_id" = '${clienteId.replace(/'/g, "''")}'`);
-            if (vendedorId) conditions.push(`l."vendedor_id" = '${vendedorId.replace(/'/g, "''")}'`);
-            if (disparadoPor) conditions.push(`l."disparado_por" = '${disparadoPor.replace(/'/g, "''")}'`);
-            if (usuarioId) conditions.push(`l."disparado_por_usuario_id" = '${usuarioId.replace(/'/g, "''")}'`);
+            // Montar cláusulas WHERE dinamicamente com parâmetros ($1, $2, ...)
+            // — nunca interpolar valor do usuário direto na SQL (evita injeção de SQL).
+            const whereParams = [];
+            const conditions = [];
+            const add = (sql, val) => { whereParams.push(val); conditions.push(sql.replace('?', `$${whereParams.length}`)); };
+
+            add(`l."criado_em" >= ?`, inicio.toISOString());
+            add(`l."criado_em" <= ?`, fim.toISOString());
+            if (clienteId) add(`l."cliente_id" = ?`, clienteId);
+            if (vendedorId) add(`l."vendedor_id" = ?`, vendedorId);
+            if (disparadoPor) add(`l."disparado_por" = ?`, disparadoPor);
+            if (usuarioId) add(`l."disparado_por_usuario_id" = ?`, usuarioId);
             if (sucesso === 'true') conditions.push(`l."sucesso" = true`);
             if (sucesso === 'false') conditions.push(`l."sucesso" = false`);
             if (busca) {
-                const b = busca.replace(/'/g, "''");
-                conditions.push(`(c."Nome" ILIKE '%${b}%' OR c."NomeFantasia" ILIKE '%${b}%')`);
+                whereParams.push(`%${busca}%`);
+                const p = whereParams.length;
+                conditions.push(`(c."Nome" ILIKE $${p} OR c."NomeFantasia" ILIKE $${p})`);
             }
 
             const where = conditions.join(' AND ');
+            const pLimit = whereParams.length + 1;   // placeholder do LIMIT
+            const pOffset = whereParams.length + 2;  // placeholder do OFFSET
 
             const dataRows = await prisma.$queryRawUnsafe(`
                 SELECT
@@ -68,15 +74,15 @@ const iaLogController = {
                 LEFT JOIN "clientes" c ON c."UUID" = l."cliente_id"
                 WHERE ${where}
                 ORDER BY l."criado_em" DESC
-                LIMIT ${limitNum} OFFSET ${offset}
-            `);
+                LIMIT $${pLimit} OFFSET $${pOffset}
+            `, ...whereParams, limitNum, offset);
 
             const [countRow] = await prisma.$queryRawUnsafe(`
                 SELECT COUNT(*)::int as total
                 FROM "ia_analise_logs" l
                 LEFT JOIN "clientes" c ON c."UUID" = l."cliente_id"
                 WHERE ${where}
-            `);
+            `, ...whereParams);
 
             const [resumo] = await prisma.$queryRawUnsafe(`
                 SELECT
@@ -88,7 +94,7 @@ const iaLogController = {
                 FROM "ia_analise_logs" l
                 LEFT JOIN "clientes" c ON c."UUID" = l."cliente_id"
                 WHERE ${where}
-            `);
+            `, ...whereParams);
 
             // Formatar dados para o frontend
             const data = dataRows.map(row => ({
