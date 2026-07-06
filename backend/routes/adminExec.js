@@ -33,6 +33,60 @@ router.get('/ping', (req, res) => {
     });
 });
 
+// GET /api/admin-exec/diag-parcela-ca?nota=1802  — diagnóstico de edição de vencimento no CA
+router.get('/diag-parcela-ca', async (req, res) => {
+    try {
+        const { nota } = req.query;
+        if (!nota) return res.status(400).json({ error: 'Informe ?nota=NUMERO' });
+
+        const conta = await prisma.contaPagar.findFirst({
+            where: { OR: [{ numeroNota: String(nota) }, { descricao: { contains: String(nota) } }] },
+            include: { parcelas: { orderBy: { numeroParcela: 'asc' } } },
+            orderBy: { criadoEm: 'desc' }
+        });
+        if (!conta) return res.json({ ok: false, motivo: `Nenhuma conta com nota "${nota}"` });
+
+        const parcelasLocal = conta.parcelas.map((p) => ({
+            id: p.id, numeroParcela: p.numeroParcela, status: p.status,
+            dataVencimentoLocal: p.dataVencimento, valorLocal: p.valor, idParcelaCA: p.idParcelaCA
+        }));
+
+        // Estado REAL no CA da 1ª parcela mapeada (mostra o nome/valor do campo de vencimento no CA)
+        let parcelaCA = null;
+        const mapeada = conta.parcelas.find((p) => p.idParcelaCA);
+        if (mapeada) {
+            try {
+                const det = await contaAzulService.buscarParcelaDetalhe(mapeada.idParcelaCA);
+                parcelaCA = {
+                    idParcelaCA: mapeada.idParcelaCA,
+                    versao: det?.versao,
+                    status: det?.status, status_traduzido: det?.status_traduzido,
+                    data_vencimento: det?.data_vencimento, vencimento: det?.vencimento,
+                    total: det?.total, valor_composicao: det?.valor_composicao,
+                    _chaves: Object.keys(det || {})
+                };
+            } catch (e) {
+                parcelaCA = { erro: e.response?.data || e.message };
+            }
+        }
+
+        const logs = await prisma.syncLog.findMany({
+            where: { tipo: { in: ['PARCELA_ATUALIZAR', 'PARCELA_DETALHE'] } },
+            orderBy: { dataHora: 'desc' }, take: 8,
+            select: { tipo: true, status: true, mensagem: true, requestMethod: true, responseStatus: true, responseBody: true, dataHora: true }
+        });
+
+        res.json({
+            ok: true,
+            conta: { id: conta.id, descricao: conta.descricao, numeroNota: conta.numeroNota, statusEnvioCA: conta.statusEnvioCA, idEventoCA: conta.idEventoCA },
+            parcelasLocal, parcelaCA, logsRecentes: logs
+        });
+    } catch (error) {
+        console.error('[admin-exec] Erro diag-parcela-ca:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/admin-exec/diag-conciliacao?nota=858860  (ou ?busca=produpan)
 // SOMENTE LEITURA: refaz a busca de conciliação ao vivo no CA e mostra por que casou/ não casou.
 router.get('/diag-conciliacao', async (req, res) => {
