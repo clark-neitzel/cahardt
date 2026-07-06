@@ -36,6 +36,8 @@ const loadFiltros = () => {
 
 // ── Helpers ──
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+// Valor unitário: até 4 casas para não perder precisão em itens baratos (ex.: R$ 0,3333)
+const fmtUnit = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—';
 const toYMD = (d) => d ? new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) : '';
 const hojeYMD = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
@@ -701,10 +703,28 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
             toast.error('Este produto já está na lista.');
             return;
         }
-        setItensCompra(prev => [...prev, { vinculo: op.value, nome: op.nome, unidade: op.unidade, sub: op.sub, quantidade: '', valorTotal: '' }]);
+        setItensCompra(prev => [...prev, { vinculo: op.value, nome: op.nome, unidade: op.unidade, sub: op.sub, quantidade: '', valorUnitario: '', valorTotal: '' }]);
     };
+    // Cálculo automático nos dois sentidos: qtd + unitário → total, ou qtd + total → unitário
     const setItemCompra = (idx, campo, valor) =>
-        setItensCompra(prev => prev.map((it, i) => (i === idx ? { ...it, [campo]: valor } : it)));
+        setItensCompra(prev => prev.map((it, i) => {
+            if (i !== idx) return it;
+            const n = { ...it, [campo]: valor };
+            const qtd = parseNum(n.quantidade);
+            if (campo === 'valorUnitario') {
+                const unit = parseNum(valor);
+                if (qtd > 0 && unit > 0) n.valorTotal = fmt(qtd * unit);
+            } else if (campo === 'valorTotal') {
+                const tot = parseNum(valor);
+                if (qtd > 0 && tot > 0) n.valorUnitario = fmtUnit(tot / qtd);
+            } else if (campo === 'quantidade') {
+                const unit = parseNum(n.valorUnitario);
+                const tot = parseNum(n.valorTotal);
+                if (qtd > 0 && unit > 0) n.valorTotal = fmt(qtd * unit);
+                else if (qtd > 0 && tot > 0) n.valorUnitario = fmtUnit(tot / qtd);
+            }
+            return n;
+        }));
     const removeItemCompra = (idx) => setItensCompra(prev => prev.filter((_, i) => i !== idx));
 
     // Já enviada ao Conta Azul: edição restrita (só vencimento/valor das parcelas em aberto).
@@ -876,6 +896,111 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                         />
                     </div>
 
+                    {/* Produtos comprados (opcional) — entrada de estoque + custo, como na conferência de nota */}
+                    {!editando && (
+                        <div>
+                            <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Produtos comprados (opcional)</div>
+                            {!mostraProdutos ? (
+                                <button
+                                    onClick={abrirProdutos}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-gray-300 text-gray-600 hover:border-primary hover:text-primary rounded-lg text-sm font-medium"
+                                >
+                                    <Package className="h-4 w-4" />
+                                    Lançar os produtos desta compra (dá entrada no estoque e atualiza o custo)
+                                </button>
+                            ) : (
+                                <div className="space-y-2">
+                                    {carregandoProds ? (
+                                        <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" /> Carregando produtos…
+                                        </div>
+                                    ) : (
+                                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                                            <input
+                                                value={buscaProd}
+                                                onChange={e => setBuscaProd(e.target.value)}
+                                                placeholder="Digite para filtrar produtos e insumos…"
+                                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                            />
+                                            <select
+                                                value=""
+                                                onChange={e => { addItemCompra(e.target.value); setBuscaProd(''); }}
+                                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white"
+                                            >
+                                                <option value="">+ Adicionar produto/insumo…</option>
+                                                {opcoesProdFiltradas.map(o => (
+                                                    <option key={o.value} value={o.value}>{o.nome} ({o.unidade}) — {o.sub}</option>
+                                                ))}
+                                            </select>
+                                            {opcoesProdFiltradas.length === 0 && (
+                                                <p className="text-xs text-gray-500">Nenhum produto encontrado com esse filtro.</p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {itensCompra.map((it, idx) => (
+                                        <div key={it.vinculo} className="border border-gray-200 rounded-lg px-3 py-2.5">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="min-w-0">
+                                                    <div className="text-sm font-medium text-gray-900 truncate">{it.nome}</div>
+                                                    <div className="text-xs text-gray-500 truncate">{it.sub}</div>
+                                                </div>
+                                                <button
+                                                    onClick={() => removeItemCompra(idx)}
+                                                    title="Remover produto"
+                                                    className="p-2 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100 shrink-0"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                            <div className="flex flex-wrap items-end gap-2 md:gap-3 mt-2">
+                                                <div>
+                                                    <label className="block text-[11px] font-medium text-gray-500 mb-0.5">Qtd ({it.unidade})</label>
+                                                    <input
+                                                        value={it.quantidade}
+                                                        onChange={e => setItemCompra(idx, 'quantidade', e.target.value)}
+                                                        placeholder="0"
+                                                        className="w-24 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[11px] font-medium text-gray-500 mb-0.5">Valor unitário</label>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-sm text-gray-500">R$</span>
+                                                        <input
+                                                            value={it.valorUnitario}
+                                                            onChange={e => setItemCompra(idx, 'valorUnitario', e.target.value)}
+                                                            placeholder="0,00"
+                                                            className="w-24 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[11px] font-medium text-gray-500 mb-0.5">Valor total</label>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-sm text-gray-500">R$</span>
+                                                        <input
+                                                            value={it.valorTotal}
+                                                            onChange={e => setItemCompra(idx, 'valorTotal', e.target.value)}
+                                                            placeholder="0,00"
+                                                            className="w-28 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {itensCompra.length > 0 && (
+                                        <p className="text-xs text-gray-500">
+                                            Preencha a quantidade e o valor <b>unitário</b> OU o <b>total</b> — o outro é calculado sozinho. Ao criar a despesa, cada produto dá entrada no estoque, atualiza o custo médio e entra no histórico de compras.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Parcelas dinâmicas */}
                     <div>
                         <div className="flex items-center justify-between mb-2">
@@ -950,103 +1075,6 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                             </div>
                         </div>
                     </div>
-
-                    {/* Produtos comprados (opcional) — entrada de estoque + custo, como na conferência de nota */}
-                    {!editando && (
-                        <div>
-                            <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Produtos comprados (opcional)</div>
-                            {!mostraProdutos ? (
-                                <button
-                                    onClick={abrirProdutos}
-                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-gray-300 text-gray-600 hover:border-primary hover:text-primary rounded-lg text-sm font-medium"
-                                >
-                                    <Package className="h-4 w-4" />
-                                    Lançar os produtos desta compra (dá entrada no estoque e atualiza o custo)
-                                </button>
-                            ) : (
-                                <div className="space-y-2">
-                                    {carregandoProds ? (
-                                        <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
-                                            <Loader2 className="h-4 w-4 animate-spin" /> Carregando produtos…
-                                        </div>
-                                    ) : (
-                                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
-                                            <input
-                                                value={buscaProd}
-                                                onChange={e => setBuscaProd(e.target.value)}
-                                                placeholder="Digite para filtrar produtos e insumos…"
-                                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                                            />
-                                            <select
-                                                value=""
-                                                onChange={e => { addItemCompra(e.target.value); setBuscaProd(''); }}
-                                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white"
-                                            >
-                                                <option value="">+ Adicionar produto/insumo…</option>
-                                                {opcoesProdFiltradas.map(o => (
-                                                    <option key={o.value} value={o.value}>{o.nome} ({o.unidade}) — {o.sub}</option>
-                                                ))}
-                                            </select>
-                                            {opcoesProdFiltradas.length === 0 && (
-                                                <p className="text-xs text-gray-500">Nenhum produto encontrado com esse filtro.</p>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {itensCompra.map((it, idx) => {
-                                        const qtd = parseNum(it.quantidade);
-                                        const val = parseNum(it.valorTotal);
-                                        return (
-                                            <div key={it.vinculo} className="border border-gray-200 rounded-lg px-3 py-2.5">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <div className="min-w-0">
-                                                        <div className="text-sm font-medium text-gray-900 truncate">{it.nome}</div>
-                                                        <div className="text-xs text-gray-500 truncate">{it.sub}</div>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => removeItemCompra(idx)}
-                                                        title="Remover produto"
-                                                        className="p-2 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100 shrink-0"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                                <div className="flex flex-wrap items-center gap-2 mt-2">
-                                                    <div className="flex items-center gap-1">
-                                                        <input
-                                                            value={it.quantidade}
-                                                            onChange={e => setItemCompra(idx, 'quantidade', e.target.value)}
-                                                            placeholder="Qtd"
-                                                            className="w-20 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                                                        />
-                                                        <span className="text-sm text-gray-500">{it.unidade}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-sm text-gray-500">R$</span>
-                                                        <input
-                                                            value={it.valorTotal}
-                                                            onChange={e => setItemCompra(idx, 'valorTotal', e.target.value)}
-                                                            placeholder="0,00"
-                                                            className="w-28 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                                                        />
-                                                    </div>
-                                                    {qtd > 0 && val > 0 && (
-                                                        <span className="text-xs text-gray-500">= R$ {fmt(val / qtd)} por {it.unidade}</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-
-                                    {itensCompra.length > 0 && (
-                                        <p className="text-xs text-gray-500">
-                                            Ao criar a despesa, cada produto dá entrada no estoque, atualiza o custo médio e entra no histórico de compras.
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
 
                     {!editando && (
                         <label className="flex items-start gap-2 text-sm text-gray-700 bg-blue-50 border border-blue-200 rounded-lg p-3 cursor-pointer">
