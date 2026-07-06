@@ -21,6 +21,11 @@ Gestão das despesas da empresa (contas a pagar): lançamento manual de contas c
 - Filtrar por busca (descrição, nota, fornecedor), status da conta, categoria e mês. **Os filtros ficam salvos**: ao sair da tela e voltar, continuam aplicados (guardados no próprio navegador/dispositivo). Quando há filtro ativo, aparece uma etiqueta **"N filtros ativos"** e os campos filtrados ficam destacados em azul; o botão **"Limpar filtros"** volta tudo ao padrão (mês corrente, sem busca/status/categoria)
 - **Clicar em qualquer despesa abre os detalhes completos**: descrição, categoria, observação, status de envio ao Conta Azul, todas as parcelas com o histórico de pagamentos e — quando a conta veio de uma NF-e — os **itens/produtos da nota** (o que foi comprado: descrição, quantidade, unidade, valor unitário e total de cada item), qual produto do estoque cada item alimentou, e as observações da própria nota fiscal. Serve para tirar dúvida do tipo "essa despesa é de quê?" sem sair da tela
 - Criar uma conta a pagar: fornecedor, descrição, categoria de despesa (vem do Conta Azul), número da nota, competência, observações e parcelas (valor + vencimento de cada uma)
+- **Lançar os produtos da compra junto com a despesa manual (opcional)**: na tela de Nova Despesa há a seção **"Produtos comprados"** — clique em "Lançar os produtos desta compra", busque o produto do catálogo ou insumo do PCP, informe a **quantidade** (na nossa unidade) e o **valor total** daquele item. Ao criar a despesa, cada produto:
+  - dá **entrada no estoque** (motivo COMPRA) — produto que não controla estoque só atualiza o custo;
+  - atualiza o **custo** por média ponderada com o estoque anterior (produto → custo manual; insumo PCP → custo unitário das receitas);
+  - entra no **histórico de compras** do produto (fornecedor, quantidade, custo).
+  É o mesmo efeito da conferência de uma NF-e, mas para compras sem nota capturada (ex.: compra no mercado, pagamento por PIX sem NF-e). Os produtos aparecem depois nos detalhes da despesa ("Produtos da despesa"). **Cancelar a despesa devolve o estoque** (estorna as entradas); o custo não é revertido. Só dá para lançar produtos ao CRIAR a despesa (não na edição).
 - Contas também **chegam sozinhas via NF-e** (origem NFE): a aba **Notas Recebidas** captura as notas dos fornecedores na SEFAZ e gera a conta a pagar já com número da nota, chave da NF-e, fornecedor e parcelas das duplicatas (ver manual [notas-recebidas.md](notas-recebidas.md))
 - **Importar do Conta Azul** (botão no topo): traz o histórico de despesas que só existe no Conta Azul (salário, combustível, imposto, pedágio, empréstimo...) a partir do **CSV exportado** lá (Financeiro → Contas a pagar → Exportar). Serve para a **DRE e o Fluxo de Caixa** terem os meses passados.
   - Ao subir o arquivo, aparece uma **prévia** (quantas contas, quanto já pago, categorias novas) antes de confirmar.
@@ -34,7 +39,7 @@ Gestão das despesas da empresa (contas a pagar): lançamento manual de contas c
 - Dar **baixa manual** numa parcela: valor pago, juros, multa, desconto e forma de pagamento (baixa parcial deixa a parcela como PARCIAL)
 - **Quitar várias de uma vez (baixa em lote)**: marque as caixinhas das parcelas em aberto (há um "selecionar todas" no cabeçalho da tabela) e clique em **"Quitar selecionadas"**. Informe **uma vez só** a data, a forma de pagamento e o banco/caixa — todas as marcadas são quitadas pelo **saldo restante** com essa condição. As despesas que já foram enviadas ao Conta Azul recebem a **baixa lá também** (no banco escolhido); as que são só locais ficam quitadas apenas no app. Útil quando um único PIX/dinheiro pagou várias notas (ex.: nota de serviço + nota de peça) — depois é só juntar essas baixas na conciliação bancária do CA.
 - **Estornar** um pagamento manual específico (baixas vindas do Conta Azul não podem ser estornadas no app — exclua a baixa no próprio CA)
-- Cancelar uma conta (só se não tiver pagamento registrado; estorne antes se precisar)
+- Cancelar uma conta (só se não tiver pagamento registrado; estorne antes se precisar). Se a despesa manual tinha **produtos lançados**, o cancelamento **devolve o estoque** automaticamente
 - Reenviar ao Conta Azul uma conta cujo envio deu erro (botão de reenvio, só aparece com status de envio ERRO)
 
 ---
@@ -95,6 +100,7 @@ A conta fica ABERTO / PARCIAL / QUITADO / CANCELADO conforme o conjunto das parc
 
 | Caminho | Papel |
 |---------|-------|
-| `backend/routes/contasPagar.js` | Rotas da API (listar, criar, editar, baixar, estornar, cancelar, reenviar, **detalhe com itens da nota**) |
+| `backend/routes/contasPagar.js` | Rotas da API (listar, criar, editar, baixar, estornar, cancelar, reenviar, **detalhe com itens da nota**, produtos-opcoes) |
 | `backend/services/contasPagarCaSyncService.js` | Robôs de envio ao CA e conferência de baixas |
+| `backend/services/compraEstoqueService.js` | Entrada de estoque/custo/histórico das compras (nota conferida e despesa manual com produtos) |
 | `frontend/src/pages/Financeiro/ContasPagar*` | Telas do módulo |

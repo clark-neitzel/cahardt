@@ -2652,10 +2652,10 @@ model FornecedorProdutoVinculo {
 // É o histórico de compras do produto (fornecedor, nota, quantidade, custo) e a
 // base da entrada de estoque. Estornada (sem apagar) quando a entrada é cancelada.
 model CompraItem {
-  id            String      @id @default(uuid())
-  notaEntradaId String      @map("nota_entrada_id")
-  notaEntrada   NotaEntrada @relation(fields: [notaEntradaId], references: [id])
-  contaPagarId  String?     @map("conta_pagar_id")
+  id            String       @id @default(uuid())
+  notaEntradaId String?      @map("nota_entrada_id") // null = compra lançada numa despesa MANUAL (sem NF-e)
+  notaEntrada   NotaEntrada? @relation(fields: [notaEntradaId], references: [id])
+  contaPagarId  String?      @map("conta_pagar_id")
 
   // Alvo do vínculo: Produto do catálogo OU insumo PCP (exatamente um)
   produtoId String?  @map("produto_id")
@@ -2686,6 +2686,7 @@ model CompraItem {
   @@index([produtoId])
   @@index([itemPcpId])
   @@index([notaEntradaId])
+  @@index([contaPagarId])
   @@map("compras_itens")
 }
 

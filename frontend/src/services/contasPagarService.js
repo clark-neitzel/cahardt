@@ -26,7 +26,12 @@ const contasPagarService = {
     },
     criar: async (dados) => {
         const response = await api.post('/contas-pagar', dados);
-        return response.data;
+        return response.data; // { message, conta, estoque?: { entradas, avisos } }
+    },
+    // Produtos do catálogo + insumos PCP para lançar compra junto com a despesa manual
+    produtosOpcoes: async () => {
+        const response = await api.get('/contas-pagar/produtos-opcoes');
+        return response.data; // [{ value:'PROD:<id>'|'PCP:<id>', nome, unidade, sub }]
     },
     atualizar: async (id, dados) => {
         const response = await api.put(`/contas-pagar/${id}`, dados);

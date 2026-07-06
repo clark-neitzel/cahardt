@@ -43,39 +43,46 @@ function custoMedioPonderado(estoqueAntes, custoAtual, qtdEntrada, custoEntrada)
 }
 
 /**
- * Registra as entradas de estoque/custo/histórico de uma nota conferida.
- * @param {object} nota       NotaEntrada (com fornecedorNome/Cnpj, numero, emissao)
- * @param {string} contaPagarId
- * @param {Array}  entradas   [{ itemNota, produtoId?, itemPcpId?, fator }] — itemNota = NotaEntradaItem
+ * Núcleo compartilhado: registra as entradas de estoque/custo/histórico de compras.
+ * Usado pela conferência de nota (registrarEntradasCompra) e pela despesa manual
+ * com produtos (registrarComprasManuais).
+ *
+ * @param {object} origem    { notaEntradaId?, contaPagarId?, fornecedorId?, fornecedorNome,
+ *                             fornecedorCnpj?, numeroNota?, dataCompra, observacaoMov }
+ * @param {Array}  entradas  [{ descricao, quantidadeFornecedor, unidadeFornecedor?, fator,
+ *                             produtoId?, itemPcpId?, valorTotal }]
  * @param {string} criadoPorId
  * @returns {{ registradas: number, avisos: string[] }}
  */
-async function registrarEntradasCompra(nota, contaPagarId, entradas, criadoPorId) {
+async function registrarCompras(origem, entradas, criadoPorId) {
     let registradas = 0;
     const avisos = [];
 
     for (const e of entradas) {
-        const { itemNota, produtoId, itemPcpId } = e;
+        const { produtoId, itemPcpId } = e;
         if (!produtoId && !itemPcpId) continue;
         const fator = num(e.fator) > 0 ? num(e.fator) : 1;
 
         try {
-            const qtdFornecedor = num(itemNota.quantidade);
+            const qtdFornecedor = num(e.quantidadeFornecedor);
             const quantidade = round(qtdFornecedor * fator, 3);
-            const valorTotal = num(itemNota.valorTotal);
+            const valorTotal = num(e.valorTotal);
             if (quantidade <= 0) {
-                avisos.push(`Item "${itemNota.descricao}": quantidade convertida zero — entrada de estoque pulada.`);
+                avisos.push(`Item "${e.descricao}": quantidade convertida zero — entrada de estoque pulada.`);
                 continue;
             }
             const custoUnitario = round(valorTotal / quantidade, 6);
 
-            // Idempotência: se já existe compra ATIVA desta nota para este item da nota, pula
+            // Idempotência: se já existe compra ATIVA desta origem para este item, pula
             // (reconferência após cancelar gera novo registro porque o antigo fica estornado).
+            const chaveOrigem = origem.notaEntradaId
+                ? { notaEntradaId: origem.notaEntradaId }
+                : { contaPagarId: origem.contaPagarId, notaEntradaId: null };
             const jaExiste = await prisma.compraItem.findFirst({
                 where: {
-                    notaEntradaId: nota.id,
+                    ...chaveOrigem,
                     estornado: false,
-                    descricaoFornecedor: itemNota.descricao,
+                    descricaoFornecedor: e.descricao,
                     produtoId: produtoId || null,
                     itemPcpId: itemPcpId || null
                 },
@@ -84,13 +91,13 @@ async function registrarEntradasCompra(nota, contaPagarId, entradas, criadoPorId
             if (jaExiste) continue;
 
             // Alvo (para unidade e custo atual)
-            let unidadeNossa = itemNota.unidade;
+            let unidadeNossa = e.unidadeFornecedor;
             if (produtoId) {
                 const p = await prisma.produto.findUnique({
                     where: { id: produtoId },
                     select: { nome: true, unidade: true, estoqueTotal: true, custoManual: true, custoMedio: true, categoria: true, controlaEstoque: true }
                 });
-                if (!p) { avisos.push(`Produto do item "${itemNota.descricao}" não encontrado.`); continue; }
+                if (!p) { avisos.push(`Produto do item "${e.descricao}" não encontrado.`); continue; }
                 unidadeNossa = p.unidade || unidadeNossa;
                 // Produto que NÃO controla estoque: registra a compra e atualiza o custo,
                 // mas não movimenta quantidade.
@@ -98,17 +105,17 @@ async function registrarEntradasCompra(nota, contaPagarId, entradas, criadoPorId
 
                 await prisma.compraItem.create({
                     data: {
-                        notaEntradaId: nota.id,
-                        contaPagarId,
+                        notaEntradaId: origem.notaEntradaId || null,
+                        contaPagarId: origem.contaPagarId || null,
                         produtoId,
-                        fornecedorId: nota.fornecedorId || null,
-                        fornecedorNome: nota.fornecedorNome,
-                        fornecedorCnpj: nota.fornecedorCnpj || null,
-                        numeroNota: nota.numero,
-                        dataCompra: nota.emissao || new Date(),
-                        descricaoFornecedor: itemNota.descricao,
+                        fornecedorId: origem.fornecedorId || null,
+                        fornecedorNome: origem.fornecedorNome,
+                        fornecedorCnpj: origem.fornecedorCnpj || null,
+                        numeroNota: origem.numeroNota || null,
+                        dataCompra: origem.dataCompra || new Date(),
+                        descricaoFornecedor: e.descricao,
                         quantidadeFornecedor: qtdFornecedor,
-                        unidadeFornecedor: itemNota.unidade,
+                        unidadeFornecedor: e.unidadeFornecedor || unidadeNossa,
                         fatorConversao: fator,
                         quantidade,
                         unidade: unidadeNossa,
@@ -125,7 +132,7 @@ async function registrarEntradasCompra(nota, contaPagarId, entradas, criadoPorId
                         tipo: 'ENTRADA',
                         quantidade,
                         motivo: 'COMPRA',
-                        observacao: `Compra ${nota.tipo === 'NFSE' ? 'NFS-e' : 'NF-e'} ${nota.numero || 's/nº'} — ${nota.fornecedorNome}`
+                        observacao: origem.observacaoMov
                     });
                 }
 
@@ -147,22 +154,22 @@ async function registrarEntradasCompra(nota, contaPagarId, entradas, criadoPorId
                     where: { id: itemPcpId },
                     select: { unidade: true, estoqueAtual: true, custoUnitario: true }
                 });
-                if (!i) { avisos.push(`Insumo do item "${itemNota.descricao}" não encontrado.`); continue; }
+                if (!i) { avisos.push(`Insumo do item "${e.descricao}" não encontrado.`); continue; }
                 unidadeNossa = i.unidade || unidadeNossa;
 
                 await prisma.compraItem.create({
                     data: {
-                        notaEntradaId: nota.id,
-                        contaPagarId,
+                        notaEntradaId: origem.notaEntradaId || null,
+                        contaPagarId: origem.contaPagarId || null,
                         itemPcpId,
-                        fornecedorId: nota.fornecedorId || null,
-                        fornecedorNome: nota.fornecedorNome,
-                        fornecedorCnpj: nota.fornecedorCnpj || null,
-                        numeroNota: nota.numero,
-                        dataCompra: nota.emissao || new Date(),
-                        descricaoFornecedor: itemNota.descricao,
+                        fornecedorId: origem.fornecedorId || null,
+                        fornecedorNome: origem.fornecedorNome,
+                        fornecedorCnpj: origem.fornecedorCnpj || null,
+                        numeroNota: origem.numeroNota || null,
+                        dataCompra: origem.dataCompra || new Date(),
+                        descricaoFornecedor: e.descricao,
                         quantidadeFornecedor: qtdFornecedor,
-                        unidadeFornecedor: itemNota.unidade,
+                        unidadeFornecedor: e.unidadeFornecedor || unidadeNossa,
                         fatorConversao: fator,
                         quantidade,
                         unidade: unidadeNossa,
@@ -176,7 +183,7 @@ async function registrarEntradasCompra(nota, contaPagarId, entradas, criadoPorId
                     tipo: 'ENTRADA',
                     quantidade,
                     motivo: 'COMPRA',
-                    observacao: `Compra ${nota.tipo === 'NFSE' ? 'NFS-e' : 'NF-e'} ${nota.numero || 's/nº'} — ${nota.fornecedorNome}`,
+                    observacao: origem.observacaoMov,
                     criadoPorId: criadoPorId || null
                 });
 
@@ -189,12 +196,82 @@ async function registrarEntradasCompra(nota, contaPagarId, entradas, criadoPorId
 
             registradas++;
         } catch (err) {
-            console.error(`[CompraEstoque] Falha na entrada do item "${itemNota?.descricao}":`, err.message);
-            avisos.push(`Item "${itemNota?.descricao}": falha na entrada de estoque (${err.message}). Ajuste manualmente se necessário.`);
+            console.error(`[CompraEstoque] Falha na entrada do item "${e?.descricao}":`, err.message);
+            avisos.push(`Item "${e?.descricao}": falha na entrada de estoque (${err.message}). Ajuste manualmente se necessário.`);
         }
     }
 
     return { registradas, avisos };
+}
+
+/**
+ * Registra as entradas de estoque/custo/histórico de uma nota conferida.
+ * @param {object} nota       NotaEntrada (com fornecedorNome/Cnpj, numero, emissao)
+ * @param {string} contaPagarId
+ * @param {Array}  entradas   [{ itemNota, produtoId?, itemPcpId?, fator }] — itemNota = NotaEntradaItem
+ * @param {string} criadoPorId
+ * @returns {{ registradas: number, avisos: string[] }}
+ */
+async function registrarEntradasCompra(nota, contaPagarId, entradas, criadoPorId) {
+    const origem = {
+        notaEntradaId: nota.id,
+        contaPagarId,
+        fornecedorId: nota.fornecedorId || null,
+        fornecedorNome: nota.fornecedorNome,
+        fornecedorCnpj: nota.fornecedorCnpj || null,
+        numeroNota: nota.numero,
+        dataCompra: nota.emissao || new Date(),
+        observacaoMov: `Compra ${nota.tipo === 'NFSE' ? 'NFS-e' : 'NF-e'} ${nota.numero || 's/nº'} — ${nota.fornecedorNome}`
+    };
+    return registrarCompras(
+        origem,
+        entradas.map((e) => ({
+            descricao: e.itemNota.descricao,
+            quantidadeFornecedor: e.itemNota.quantidade,
+            unidadeFornecedor: e.itemNota.unidade,
+            valorTotal: e.itemNota.valorTotal,
+            fator: e.fator,
+            produtoId: e.produtoId || null,
+            itemPcpId: e.itemPcpId || null
+        })),
+        criadoPorId
+    );
+}
+
+/**
+ * Registra as compras de uma despesa MANUAL (sem nota fiscal): produtos escolhidos
+ * na tela de Nova Despesa. Quantidade já vem na NOSSA unidade (fator 1).
+ * @param {object} conta      ContaPagar criada (id, numeroNota, competencia)
+ * @param {object} fornecedor Fornecedor da conta (ou null)
+ * @param {Array}  itens      [{ descricao, quantidade, unidade?, valorTotal, produtoId?, itemPcpId? }]
+ * @param {string} criadoPorId
+ * @returns {{ registradas: number, avisos: string[] }}
+ */
+async function registrarComprasManuais(conta, fornecedor, itens, criadoPorId) {
+    const nomeFornecedor = fornecedor?.razaoSocial || fornecedor?.nomeFantasia || 'Sem fornecedor';
+    const origem = {
+        notaEntradaId: null,
+        contaPagarId: conta.id,
+        fornecedorId: fornecedor?.id || null,
+        fornecedorNome: nomeFornecedor,
+        fornecedorCnpj: fornecedor?.cnpjCpf || null,
+        numeroNota: conta.numeroNota || null,
+        dataCompra: new Date(),
+        observacaoMov: `Compra (despesa manual) — ${nomeFornecedor}`
+    };
+    return registrarCompras(
+        origem,
+        itens.map((it) => ({
+            descricao: it.descricao,
+            quantidadeFornecedor: it.quantidade,
+            unidadeFornecedor: it.unidade || null,
+            valorTotal: it.valorTotal,
+            fator: 1,
+            produtoId: it.produtoId || null,
+            itemPcpId: it.itemPcpId || null
+        })),
+        criadoPorId
+    );
 }
 
 /**
@@ -206,6 +283,21 @@ async function estornarEntradasNota(notaEntradaId, criadoPorId) {
     const compras = await prisma.compraItem.findMany({
         where: { notaEntradaId, estornado: false }
     });
+    return estornarCompras(compras, criadoPorId);
+}
+
+/**
+ * Estorna as compras de uma despesa MANUAL cancelada (só as sem nota — as de nota
+ * são estornadas pelo cancelar-conferência da própria nota).
+ */
+async function estornarEntradasConta(contaPagarId, criadoPorId) {
+    const compras = await prisma.compraItem.findMany({
+        where: { contaPagarId, notaEntradaId: null, estornado: false }
+    });
+    return estornarCompras(compras, criadoPorId);
+}
+
+async function estornarCompras(compras, criadoPorId) {
     let estornadas = 0;
     const avisos = [];
 
@@ -282,7 +374,9 @@ async function historicoCompras({ produtoId, itemPcpId, take = 50 }) {
 
 module.exports = {
     registrarEntradasCompra,
+    registrarComprasManuais,
     estornarEntradasNota,
+    estornarEntradasConta,
     historicoCompras,
     // pura (testável offline)
     custoMedioPonderado

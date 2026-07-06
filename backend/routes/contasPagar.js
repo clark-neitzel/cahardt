@@ -129,6 +129,42 @@ router.get('/opcoes-baixa', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── GET /produtos-opcoes — produtos do catálogo + insumos PCP para lançar compra na despesa manual ──
+// Retorna opções unificadas { value:'PROD:<id>'|'PCP:<id>', nome, unidade, sub }.
+router.get('/produtos-opcoes', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const [produtos, insumos] = await Promise.all([
+            prisma.produto.findMany({
+                where: { ativo: true },
+                select: { id: true, codigo: true, nome: true, unidade: true, categoria: true },
+                orderBy: { nome: 'asc' }
+            }),
+            prisma.itemPcp.findMany({
+                where: { ativo: true },
+                select: { id: true, codigo: true, nome: true, tipo: true, unidade: true },
+                orderBy: { nome: 'asc' }
+            })
+        ]);
+        res.json([
+            ...produtos.map((p) => ({
+                value: `PROD:${p.id}`,
+                nome: p.nome,
+                unidade: p.unidade,
+                sub: `Produto${p.codigo ? ` · ${p.codigo}` : ''}${p.categoria ? ` · ${p.categoria}` : ''}`
+            })),
+            ...insumos.map((i) => ({
+                value: `PCP:${i.id}`,
+                nome: i.nome,
+                unidade: i.unidade,
+                sub: `Insumo PCP · ${i.codigo}`
+            }))
+        ]);
+    } catch (error) {
+        console.error('Erro ao listar opções de produto:', error);
+        res.status(500).json({ error: 'Erro ao listar produtos.' });
+    }
+});
+
 // ── POST /importar-ca — importar o CSV "Contas a pagar" do Conta Azul ──
 // dryRun=1 → só devolve a prévia (não grava). Sem dryRun → grava de fato.
 // As contas nascem IMPORTADO_CA / NAO_ENVIAR (não voltam ao CA — já existem lá).
@@ -314,6 +350,18 @@ router.get('/:id/detalhe', verificarAuth, checkAcesso, async (req, res) => {
             if (nome && c.descricaoFornecedor) vinculoPorDescricao[c.descricaoFornecedor] = nome;
         }
 
+        // Despesa manual (sem nota): os "itens" são as compras lançadas junto com a despesa
+        const comprasManuais = !nota
+            ? await prisma.compraItem.findMany({
+                where: { contaPagarId: conta.id, notaEntradaId: null, estornado: false },
+                include: {
+                    produto: { select: { nome: true } },
+                    itemPcp: { select: { nome: true } }
+                },
+                orderBy: { criadoEm: 'asc' }
+            })
+            : [];
+
         res.json({
             id: conta.id,
             origem: conta.origem,
@@ -328,20 +376,35 @@ router.get('/:id/detalhe', verificarAuth, checkAcesso, async (req, res) => {
                 observacoes: nota.infComplementar || null,
                 temXml: !!nota.xmlPath
             } : null,
-            itens: (nota?.itens || []).map((i) => ({
-                numeroItem: i.numeroItem,
-                codigo: i.codigoFornecedor,
-                ean: i.ean,
-                descricao: i.descricao,
-                ncm: i.ncm,
-                unidade: i.unidade,
-                quantidade: num(i.quantidade),
-                valorUnitario: num(i.valorUnitario),
-                valorTotal: num(i.valorTotal),
-                categoria: i.categoria,
-                infAdProd: i.infAdProd,
-                produtoVinculado: vinculoPorDescricao[i.descricao] || null
-            }))
+            itens: nota
+                ? (nota.itens || []).map((i) => ({
+                    numeroItem: i.numeroItem,
+                    codigo: i.codigoFornecedor,
+                    ean: i.ean,
+                    descricao: i.descricao,
+                    ncm: i.ncm,
+                    unidade: i.unidade,
+                    quantidade: num(i.quantidade),
+                    valorUnitario: num(i.valorUnitario),
+                    valorTotal: num(i.valorTotal),
+                    categoria: i.categoria,
+                    infAdProd: i.infAdProd,
+                    produtoVinculado: vinculoPorDescricao[i.descricao] || null
+                }))
+                : comprasManuais.map((c, idx) => ({
+                    numeroItem: idx + 1,
+                    codigo: null,
+                    ean: null,
+                    descricao: c.descricaoFornecedor,
+                    ncm: null,
+                    unidade: c.unidade,
+                    quantidade: num(c.quantidade),
+                    valorUnitario: num(c.custoUnitario),
+                    valorTotal: num(c.valorTotal),
+                    categoria: null,
+                    infAdProd: null,
+                    produtoVinculado: c.produto?.nome || c.itemPcp?.nome || null
+                }))
         });
     } catch (error) {
         console.error('Erro ao carregar detalhe da conta a pagar:', error);
@@ -367,24 +430,68 @@ const parseVencimento = (v) => {
     return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T12:00:00-03:00`) : new Date(s);
 };
 
+// Decodifica o vínculo unificado "PROD:<id>" / "PCP:<id>" → { produtoId, itemPcpId } (o não usado = null)
+const decodeVinculo = (value) => {
+    const s = String(value || '');
+    if (s.startsWith('PROD:')) return { produtoId: s.slice(5) || null, itemPcpId: null };
+    if (s.startsWith('PCP:')) return { produtoId: null, itemPcpId: s.slice(4) || null };
+    return { produtoId: null, itemPcpId: null };
+};
+
 // ── POST / — criar conta a pagar ──
 router.post('/', verificarAuth, checkEscrita, async (req, res) => {
     try {
         const {
             fornecedorId, descricao, categoria, categoriaCaId, numeroNota,
-            competencia, observacoes, enviarCA, parcelas
+            competencia, observacoes, enviarCA, parcelas, itens
         } = req.body;
 
         if (!descricao?.trim()) return res.status(400).json({ error: 'Informe a descrição da conta.' });
         const erroParcelas = validarParcelasBody(parcelas);
         if (erroParcelas) return res.status(400).json({ error: erroParcelas });
 
+        let fornecedor = null;
         if (fornecedorId) {
-            const fornecedor = await prisma.fornecedor.findUnique({ where: { id: fornecedorId } });
+            fornecedor = await prisma.fornecedor.findUnique({ where: { id: fornecedorId } });
             if (!fornecedor) return res.status(400).json({ error: 'Fornecedor não encontrado.' });
         }
         if (enviarCA && !fornecedorId) {
             return res.status(400).json({ error: 'Para enviar ao Conta Azul é obrigatório informar o fornecedor.' });
+        }
+
+        // ── Produtos comprados (opcional): validação antes de criar a conta ──
+        const itensBody = Array.isArray(itens) ? itens : [];
+        const itensCompra = [];
+        for (const it of itensBody) {
+            const { produtoId, itemPcpId } = decodeVinculo(it?.vinculo);
+            if (!produtoId && !itemPcpId) {
+                return res.status(400).json({ error: 'Todo produto lançado precisa estar vinculado a um item do catálogo ou insumo PCP.' });
+            }
+            const quantidade = Number(it?.quantidade);
+            const valorTotal = Number(it?.valorTotal);
+            if (!Number.isFinite(quantidade) || quantidade <= 0) {
+                return res.status(400).json({ error: `Produto "${it?.descricao || '?'}": informe uma quantidade maior que zero.` });
+            }
+            if (!Number.isFinite(valorTotal) || valorTotal <= 0) {
+                return res.status(400).json({ error: `Produto "${it?.descricao || '?'}": informe um valor maior que zero.` });
+            }
+            let alvoNome = null;
+            let alvoUnidade = null;
+            if (produtoId) {
+                const p = await prisma.produto.findUnique({ where: { id: produtoId }, select: { nome: true, unidade: true } });
+                if (!p) return res.status(400).json({ error: 'Produto não encontrado no catálogo.' });
+                alvoNome = p.nome; alvoUnidade = p.unidade;
+            } else {
+                const i = await prisma.itemPcp.findUnique({ where: { id: itemPcpId }, select: { nome: true, unidade: true } });
+                if (!i) return res.status(400).json({ error: 'Insumo PCP não encontrado.' });
+                alvoNome = i.nome; alvoUnidade = i.unidade;
+            }
+            itensCompra.push({
+                produtoId, itemPcpId,
+                descricao: String(it?.descricao || '').trim() || alvoNome,
+                unidade: alvoUnidade,
+                quantidade, valorTotal
+            });
         }
 
         const valorTotal = round2(parcelas.reduce((s, p) => s + Number(p.valor), 0));
@@ -417,7 +524,24 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
             }
         });
 
-        res.status(201).json({ message: 'Conta a pagar criada!', conta: formatarConta(conta) });
+        // Produtos lançados dão ENTRADA no estoque, atualizam o custo e alimentam o
+        // histórico de compras. Best-effort: falha aqui NÃO desfaz a conta criada.
+        let estoque = { registradas: 0, avisos: [] };
+        if (itensCompra.length > 0) {
+            try {
+                const compraEstoqueService = require('../services/compraEstoqueService');
+                estoque = await compraEstoqueService.registrarComprasManuais(conta, fornecedor, itensCompra, req.user.id);
+            } catch (e) {
+                console.error('[ContasPagar] Falha na entrada de estoque da despesa manual:', e.message);
+                estoque.avisos.push('Falha na entrada de estoque — ajuste manualmente se necessário.');
+            }
+        }
+
+        res.status(201).json({
+            message: 'Conta a pagar criada!',
+            conta: formatarConta(conta),
+            estoque: { entradas: estoque.registradas, avisos: estoque.avisos }
+        });
     } catch (error) {
         console.error('Erro ao criar conta a pagar:', error);
         res.status(500).json({ error: 'Erro ao criar conta a pagar.' });
@@ -552,7 +676,23 @@ router.post('/:id/cancelar', verificarAuth, checkEscrita, async (req, res) => {
             console.warn(`[ContasPagar] ⚠️ Conta ${conta.id} cancelada localmente mas já enviada ao CA — remover manualmente no Conta Azul se necessário.`);
         }
 
-        res.json({ message: 'Conta cancelada com sucesso!' });
+        // Despesa manual com produtos lançados → estorna as entradas de estoque.
+        // (Compras vindas de NF-e são estornadas pelo cancelar-conferência da nota.)
+        let estorno = { estornadas: 0, avisos: [] };
+        try {
+            const compraEstoqueService = require('../services/compraEstoqueService');
+            estorno = await compraEstoqueService.estornarEntradasConta(conta.id, req.user.id);
+        } catch (e) {
+            console.error('[ContasPagar] Falha ao estornar compras da despesa manual:', e.message);
+            estorno.avisos.push('Falha ao estornar o estoque — confira e ajuste manualmente.');
+        }
+
+        res.json({
+            message: estorno.estornadas > 0
+                ? `Conta cancelada. ${estorno.estornadas} produto(s) devolvido(s) do estoque.`
+                : 'Conta cancelada com sucesso!',
+            estoque: { estornadas: estorno.estornadas, avisos: estorno.avisos }
+        });
     } catch (error) {
         console.error('Erro ao cancelar conta a pagar:', error);
         res.status(500).json({ error: 'Erro ao cancelar conta a pagar.' });

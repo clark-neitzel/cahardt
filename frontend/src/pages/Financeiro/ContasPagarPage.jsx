@@ -667,6 +667,46 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
         );
     }, [fornecedores, buscaForn]);
 
+    // ── Produtos comprados (opcional, só ao criar): dão entrada no estoque e atualizam o custo ──
+    const [mostraProdutos, setMostraProdutos] = useState(false);
+    const [itensCompra, setItensCompra] = useState([]); // { vinculo, nome, unidade, sub, quantidade, valorTotal }
+    const [opcoesProd, setOpcoesProd] = useState(null); // null = ainda não carregado
+    const [carregandoProds, setCarregandoProds] = useState(false);
+    const [buscaProd, setBuscaProd] = useState('');
+
+    const abrirProdutos = () => {
+        setMostraProdutos(true);
+        if (opcoesProd !== null) return;
+        setCarregandoProds(true);
+        contasPagarService.produtosOpcoes()
+            .then(o => setOpcoesProd(Array.isArray(o) ? o : []))
+            .catch(() => { setOpcoesProd([]); toast.error('Não consegui carregar a lista de produtos.'); })
+            .finally(() => setCarregandoProds(false));
+    };
+
+    const opcoesProdFiltradas = useMemo(() => {
+        const lista = opcoesProd || [];
+        const q = buscaProd.trim().toLowerCase();
+        if (!q) return lista;
+        return lista.filter(o =>
+            String(o.nome || '').toLowerCase().includes(q) ||
+            String(o.sub || '').toLowerCase().includes(q)
+        );
+    }, [opcoesProd, buscaProd]);
+
+    const addItemCompra = (value) => {
+        const op = (opcoesProd || []).find(o => o.value === value);
+        if (!op) return;
+        if (itensCompra.some(it => it.vinculo === op.value)) {
+            toast.error('Este produto já está na lista.');
+            return;
+        }
+        setItensCompra(prev => [...prev, { vinculo: op.value, nome: op.nome, unidade: op.unidade, sub: op.sub, quantidade: '', valorTotal: '' }]);
+    };
+    const setItemCompra = (idx, campo, valor) =>
+        setItensCompra(prev => prev.map((it, i) => (i === idx ? { ...it, [campo]: valor } : it)));
+    const removeItemCompra = (idx) => setItensCompra(prev => prev.filter((_, i) => i !== idx));
+
     const somaParcelas = parcelas.reduce((s, p) => s + parseNum(p.valor), 0);
     const totalInformado = parseNum(valorTotal);
     const somaDiverge = totalInformado > 0 && Math.abs(somaParcelas - totalInformado) > 0.01;
@@ -686,6 +726,12 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
             return;
         }
         if (somaDiverge) { toast.error('A soma das parcelas não bate com o valor total informado.'); return; }
+        for (const it of itensCompra) {
+            if (parseNum(it.quantidade) <= 0 || parseNum(it.valorTotal) <= 0) {
+                toast.error(`Preencha a quantidade e o valor do produto "${it.nome}" (ou remova-o da lista).`);
+                return;
+            }
+        }
         setSalvando(true);
         try {
             const payload = {
@@ -698,12 +744,24 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                 enviarCA,
                 parcelas: parcelasValidas.map(p => ({ valor: parseNum(p.valor), dataVencimento: p.dataVencimento }))
             };
+            if (!editando && itensCompra.length > 0) {
+                payload.itens = itensCompra.map(it => ({
+                    vinculo: it.vinculo,
+                    descricao: it.nome,
+                    quantidade: parseNum(it.quantidade),
+                    valorTotal: parseNum(it.valorTotal)
+                }));
+            }
             if (editando) {
                 await contasPagarService.atualizar(conta.id, payload);
                 toast.success('Despesa atualizada!');
             } else {
-                await contasPagarService.criar(payload);
-                toast.success('Despesa criada!');
+                const r = await contasPagarService.criar(payload);
+                const entradas = Number(r?.estoque?.entradas || 0);
+                toast.success(entradas > 0
+                    ? `Despesa criada! ${entradas} produto(s) deram entrada no estoque.`
+                    : 'Despesa criada!');
+                (r?.estoque?.avisos || []).forEach(a => toast(a, { icon: '⚠️', duration: 6000 }));
             }
             if (onFornecedoresChanged) onFornecedoresChanged();
             onSuccess();
@@ -874,6 +932,103 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                             </div>
                         </div>
                     </div>
+
+                    {/* Produtos comprados (opcional) — entrada de estoque + custo, como na conferência de nota */}
+                    {!editando && (
+                        <div>
+                            <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Produtos comprados (opcional)</div>
+                            {!mostraProdutos ? (
+                                <button
+                                    onClick={abrirProdutos}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-gray-300 text-gray-600 hover:border-primary hover:text-primary rounded-lg text-sm font-medium"
+                                >
+                                    <Package className="h-4 w-4" />
+                                    Lançar os produtos desta compra (dá entrada no estoque e atualiza o custo)
+                                </button>
+                            ) : (
+                                <div className="space-y-2">
+                                    {carregandoProds ? (
+                                        <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" /> Carregando produtos…
+                                        </div>
+                                    ) : (
+                                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                                            <input
+                                                value={buscaProd}
+                                                onChange={e => setBuscaProd(e.target.value)}
+                                                placeholder="Digite para filtrar produtos e insumos…"
+                                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                            />
+                                            <select
+                                                value=""
+                                                onChange={e => { addItemCompra(e.target.value); setBuscaProd(''); }}
+                                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white"
+                                            >
+                                                <option value="">+ Adicionar produto/insumo…</option>
+                                                {opcoesProdFiltradas.map(o => (
+                                                    <option key={o.value} value={o.value}>{o.nome} ({o.unidade}) — {o.sub}</option>
+                                                ))}
+                                            </select>
+                                            {opcoesProdFiltradas.length === 0 && (
+                                                <p className="text-xs text-gray-500">Nenhum produto encontrado com esse filtro.</p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {itensCompra.map((it, idx) => {
+                                        const qtd = parseNum(it.quantidade);
+                                        const val = parseNum(it.valorTotal);
+                                        return (
+                                            <div key={it.vinculo} className="border border-gray-200 rounded-lg px-3 py-2.5">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="min-w-0">
+                                                        <div className="text-sm font-medium text-gray-900 truncate">{it.nome}</div>
+                                                        <div className="text-xs text-gray-500 truncate">{it.sub}</div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => removeItemCompra(idx)}
+                                                        title="Remover produto"
+                                                        className="p-2 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100 shrink-0"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            value={it.quantidade}
+                                                            onChange={e => setItemCompra(idx, 'quantidade', e.target.value)}
+                                                            placeholder="Qtd"
+                                                            className="w-20 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                                        />
+                                                        <span className="text-sm text-gray-500">{it.unidade}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-sm text-gray-500">R$</span>
+                                                        <input
+                                                            value={it.valorTotal}
+                                                            onChange={e => setItemCompra(idx, 'valorTotal', e.target.value)}
+                                                            placeholder="0,00"
+                                                            className="w-28 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                                        />
+                                                    </div>
+                                                    {qtd > 0 && val > 0 && (
+                                                        <span className="text-xs text-gray-500">= R$ {fmt(val / qtd)} por {it.unidade}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {itensCompra.length > 0 && (
+                                        <p className="text-xs text-gray-500">
+                                            Ao criar a despesa, cada produto dá entrada no estoque, atualiza o custo médio e entra no histórico de compras.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {!editando && (
                         <label className="flex items-start gap-2 text-sm text-gray-700 bg-blue-50 border border-blue-200 rounded-lg p-3 cursor-pointer">
@@ -1220,7 +1375,7 @@ const DetalheContaModal = ({ conta, podeBaixar, onClose, onEditar, onBaixar, onC
                         <div>
                             <div className="flex items-center gap-2 mb-2">
                                 <Package className="h-4 w-4 text-blue-600" />
-                                <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Itens da nota</span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-600">{nota ? 'Itens da nota' : 'Produtos da despesa'}</span>
                             </div>
 
                             {nota && (
