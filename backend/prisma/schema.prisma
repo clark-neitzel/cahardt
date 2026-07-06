@@ -315,6 +315,8 @@ model PedidoItem {
   nomePromocao String? @map("nome_promocao")
   tipoPromocao String? @map("tipo_promocao") // SIMPLES ou CONDICIONAL
 
+  @@index([pedidoId])
+  @@index([produtoId])
   @@map("pedido_itens")
 }
 
@@ -456,6 +458,9 @@ model MovimentacaoEstoque {
   vendedor Vendedor? @relation(fields: [vendedorId], references: [id])
   pedido   Pedido?   @relation(fields: [pedidoId], references: [id])
 
+  @@index([produtoId])
+  @@index([pedidoId])
+  @@index([createdAt])
   @@map("movimentacoes_estoque")
 }
 
@@ -980,6 +985,7 @@ model PedidoPagamentoReal {
 
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([pedidoId])
   @@map("pedido_pagamentos_reais")
 }
 
@@ -995,6 +1001,7 @@ model EntregaItemDevolvido {
 
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([pedidoId])
   @@map("entrega_itens_devolvidos")
 }
 
@@ -1453,6 +1460,7 @@ model PagamentoParcela {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([parcelaId])
+  @@index([dataPagamento])
   @@map("pagamentos_parcela")
 }
 
@@ -2521,6 +2529,7 @@ model PagamentoParcelaPagar {
   criadoEm DateTime @default(now()) @map("criado_em")
 
   @@index([parcelaPagarId])
+  @@index([dataPagamento])
   @@map("pagamentos_parcela_pagar")
 }
 
