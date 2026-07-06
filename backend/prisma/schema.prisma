@@ -1411,6 +1411,7 @@ model Parcela {
   valorPago          Decimal?  @map("valor_pago") @db.Decimal(12, 2)
   valorDescontoTotal Decimal   @default(0) @map("valor_desconto_total") @db.Decimal(12, 2)
   formaPagamento     String?   @map("forma_pagamento")
+  contaFinanceiraCaId String?  @map("conta_financeira_ca_id") // UUID do banco/caixa no CA em que o dinheiro ENTROU (vem da baixa sincronizada do CA)
   baixadoPorId       String?   @map("baixado_por_id")
   baixadoPor         Vendedor? @relation("BaixasRealizadas", fields: [baixadoPorId], references: [id])
   status             String    @default("PENDENTE") // PENDENTE | PARCIAL | PAGO | VENCIDO | CANCELADO
@@ -1437,6 +1438,7 @@ model PagamentoParcela {
   valorDesconto  Decimal  @default(0) @map("valor_desconto") @db.Decimal(12, 2)
   motivoDesconto String?  @map("motivo_desconto")
   formaPagamento String?  @map("forma_pagamento")
+  contaFinanceiraCaId String? @map("conta_financeira_ca_id") // UUID do banco/caixa no CA em que o dinheiro entrou
   dataPagamento  DateTime @map("data_pagamento")
   observacao     String?  @db.Text
 

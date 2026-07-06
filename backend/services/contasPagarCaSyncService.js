@@ -56,6 +56,14 @@ const parseDataCA = (str) => {
     return new Date(`${str}T12:00:00-03:00`);
 };
 
+// A conta financeira na baixa do CA vem como UUID (listagem de baixas) OU como objeto
+// { id, banco, nome, ... } (detalhe da parcela). Normaliza para o UUID.
+const extrairContaFinanceiraId = (cf) => {
+    if (!cf) return null;
+    if (typeof cf === 'string') return cf || null;
+    return cf.id || null;
+};
+
 const mapMetodoCA = (metodo) => {
     if (!metodo) return null;
     const map = {
@@ -1046,6 +1054,8 @@ async function conferirBaixasCA() {
                                 desconto: Number(comp.desconto || 0),
                                 formaPagamento: mapMetodoCA(baixa.metodo_pagamento),
                                 dataPagamento: parseDataCA(baixa.data_pagamento) || new Date(),
+                                // De qual banco/caixa saiu o pagamento (na baixa do CA é UUID; às vezes objeto)
+                                contaFinanceiraCaId: extrairContaFinanceiraId(baixa.conta_financeira),
                                 observacao: baixa.observacao || 'Baixa sincronizada do Conta Azul',
                                 origem: 'CA',
                                 idBaixaCA: baixa.id
@@ -1078,10 +1088,96 @@ async function conferirBaixasCA() {
     }
 }
 
+// ─────────────────────────────────────────────────────────────
+// Sincronização da lista de contas financeiras (bancos/caixas) do CA
+// Popula a tabela local contas_financeiras (nome do banco) para exibir
+// "por qual conta" nos relatórios sem precisar chamar o CA a cada tela.
+// ─────────────────────────────────────────────────────────────
+async function sincronizarContasFinanceiras() {
+    if (!(await temTokenCA())) return { ok: false, motivo: 'sem token CA' };
+    let contas;
+    try {
+        contas = await contaAzulService.listarContasFinanceiras();
+    } catch (error) {
+        console.warn('[ContasPagar CA] Falha ao sincronizar contas financeiras:', erroCAtexto(error));
+        return { ok: false, motivo: erroCAtexto(error) };
+    }
+    let upserts = 0;
+    for (const c of contas) {
+        if (!c?.id) continue;
+        try {
+            await prisma.contaFinanceira.upsert({
+                where: { id: c.id },
+                update: { nomeBanco: c.nome || 'Conta', tipoUso: c.tipo || 'OUTROS', ativo: true, obs: c.banco || null },
+                create: { id: c.id, nomeBanco: c.nome || 'Conta', tipoUso: c.tipo || 'OUTROS', ativo: true, obs: c.banco || null }
+            });
+            upserts++;
+        } catch (e) {
+            console.warn(`[ContasPagar CA] Falha ao upsert conta financeira ${c.id}:`, e.message);
+        }
+    }
+    console.log(`[ContasPagar CA] Contas financeiras sincronizadas: ${upserts}.`);
+    return { ok: true, total: contas.length, upserts };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Backfill: preenche contaFinanceiraCaId nas baixas de CONTAS A PAGAR já
+// registradas que não têm o banco (baixas antigas, feitas antes desta feature,
+// ou puxadas do DDA quando o campo era ignorado). Relê as baixas no CA e casa
+// pelo idBaixaCA. Idempotente e limitado por ciclo (rate limit do CA).
+// ─────────────────────────────────────────────────────────────
+async function backfillContasFinanceirasPagar(limiteParcelas = 300) {
+    if (!(await temTokenCA())) return { ok: false, motivo: 'sem token CA' };
+
+    // Parcelas cujo ledger tem ao menos um pagamento sem conta e que estão mapeadas no CA
+    const parcelas = await prisma.parcelaPagar.findMany({
+        where: {
+            idParcelaCA: { not: null },
+            pagamentos: { some: { contaFinanceiraCaId: null, estornado: false } }
+        },
+        select: { id: true, idParcelaCA: true },
+        take: limiteParcelas
+    });
+    if (parcelas.length === 0) return { ok: true, parcelas: 0, atualizadas: 0 };
+
+    let atualizadas = 0;
+    for (let i = 0; i < parcelas.length; i += 10) {
+        const lote = parcelas.slice(i, i + 10);
+        for (const parcela of lote) {
+            try {
+                const resp = await contaAzulService._axiosGet(
+                    `${BASE}/v1/financeiro/eventos-financeiros/parcelas/${parcela.idParcelaCA}/baixa`, 'CONTA_PAGAR_BAIXAS'
+                );
+                const baixas = Array.isArray(resp.data) ? resp.data : (resp.data?.itens || []);
+                for (const baixa of baixas) {
+                    const contaFin = extrairContaFinanceiraId(baixa.conta_financeira);
+                    if (!baixa?.id || !contaFin) continue;
+                    const r = await prisma.pagamentoParcelaPagar.updateMany({
+                        where: { idBaixaCA: baixa.id, contaFinanceiraCaId: null },
+                        data: { contaFinanceiraCaId: contaFin }
+                    });
+                    atualizadas += r.count;
+                }
+            } catch (error) {
+                if (error?.response?.status !== 404) {
+                    console.warn(`[ContasPagar CA] Backfill: falha na parcela ${parcela.id}:`, erroCAtexto(error));
+                }
+            }
+            await sleep(300);
+        }
+        await sleep(1500);
+    }
+    console.log(`[ContasPagar CA] Backfill conta financeira (pagar): ${atualizadas} baixa(s) atualizada(s) de ${parcelas.length} parcela(s).`);
+    return { ok: true, parcelas: parcelas.length, atualizadas };
+}
+
 module.exports = {
     processarFilaFornecedores,
     processarFilaDespesas,
     conferirBaixasCA,
+    sincronizarContasFinanceiras,
+    backfillContasFinanceirasPagar,
+    extrairContaFinanceiraId,
     importarFornecedoresCA,
     listarCategoriasDespesaSeguro,
     listarContasFinanceirasSeguro,

@@ -149,9 +149,15 @@ async function sincronizarConta(contaId, opts = {}) {
             const valorPago = todasBaixas.length > 0
                 ? todasBaixas.reduce((sum, b) => sum + Number(b?.valor_composicao?.valor_bruto || 0), 0)
                 : Number(caPar.valor_composicao?.valor_bruto || local.valor);
-            const baixaPrincipal = todasBaixas[0];
+            // Baixa "principal" = a de maior valor (representa melhor a conta em pagamentos parciais/múltiplos)
+            const baixaPrincipal = todasBaixas.length > 0
+                ? todasBaixas.slice().sort((a, b) => Number(b?.valor_composicao?.valor_bruto || 0) - Number(a?.valor_composicao?.valor_bruto || 0))[0]
+                : null;
             const dataPgto = baixaPrincipal?.data_pagamento ? new Date(baixaPrincipal.data_pagamento + 'T12:00:00-03:00') : hoje;
             const forma = mapMetodoCA(baixaPrincipal?.metodo_pagamento || caPar.metodo_pagamento);
+            // Conta financeira (banco/caixa) em que o dinheiro entrou. No CA a baixa traz UUID ou objeto {id,...}.
+            const cfRaw = baixaPrincipal?.conta_financeira ?? caPar.conta_financeira ?? caPar.id_conta_financeira;
+            const contaFinanceiraCaId = cfRaw ? (typeof cfRaw === 'string' ? cfRaw : cfRaw.id || null) : null;
 
             // Monta detalhe das baixas para a observação (ex: "Dinheiro R$120,50 + Outros R$21,24 (desc. R$21,23)")
             const detalheBaixas = todasBaixas.length > 1
@@ -163,10 +169,14 @@ async function sincronizarConta(contaId, opts = {}) {
                 }).join(' + ')
                 : null;
 
-            // Só atualiza (e conta como "aplicada") se houver mudança real
+            // Só atualiza (e conta como "aplicada") se houver mudança real.
+            // Exceção: se já está PAGO com o valor certo MAS falta o banco (contaFinanceiraCaId),
+            // e agora temos essa info do CA, atualiza mesmo assim para preencher (backfill natural).
             const valorPagoArredondado = Math.round(valorPago * 100) / 100;
+            const faltaConta = !!contaFinanceiraCaId && !local.contaFinanceiraCaId;
             const jaAtualizado = local.status === 'PAGO' &&
-                Math.abs((local.valorPago || 0) - valorPagoArredondado) < 0.01;
+                Math.abs((local.valorPago || 0) - valorPagoArredondado) < 0.01 &&
+                !faltaConta;
             if (jaAtualizado) continue;
 
             const obsSync = detalheBaixas
@@ -179,6 +189,7 @@ async function sincronizarConta(contaId, opts = {}) {
                     status: 'PAGO',
                     valorPago: valorPagoArredondado,
                     formaPagamento: forma,
+                    contaFinanceiraCaId,
                     dataPagamento: dataPgto,
                     baixadoPorId,
                     observacao: obsSync
@@ -208,7 +219,7 @@ async function sincronizarConta(contaId, opts = {}) {
         else novoStatus = 'ABERTO';
 
         await tx.contaReceber.update({ where: { id: conta.id }, data: { status: novoStatus } });
-    });
+    }, { timeout: 20000, maxWait: 10000 }); // banco compartilhado é lento — nunca confiar no padrão de 5s
 
     return { aplicadas, vencimentosAtualizados, verificadas: parcelasCA.length, pagasCA: pagasCA.length, detalhes, debug };
 }

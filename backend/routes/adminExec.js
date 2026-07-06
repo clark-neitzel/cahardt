@@ -1574,6 +1574,91 @@ router.post('/contas-pagar-reconciliar', async (req, res) => {
     }
 });
 
+// ── Financeiro POR CONTA (banco/caixa) — diagnóstico e backfill ──
+
+// GET /api/admin-exec/financeiro-contas-diag — quanto de cada lado já tem a conta financeira preenchida
+router.get('/financeiro-contas-diag', async (req, res) => {
+    try {
+        const [contasFin, pagTotal, pagSemConta, recPagas, recSemConta] = await Promise.all([
+            prisma.contaFinanceira.count(),
+            prisma.pagamentoParcelaPagar.count({ where: { estornado: false } }),
+            prisma.pagamentoParcelaPagar.count({ where: { estornado: false, contaFinanceiraCaId: null } }),
+            prisma.parcela.count({ where: { status: 'PAGO' } }),
+            prisma.parcela.count({ where: { status: 'PAGO', contaFinanceiraCaId: null } })
+        ]);
+        const bancos = await prisma.contaFinanceira.findMany({ select: { id: true, nomeBanco: true, tipoUso: true, ativo: true }, orderBy: { nomeBanco: 'asc' } });
+        res.json({
+            ok: true,
+            contasFinanceirasCadastradas: contasFin,
+            pagar: { totalBaixas: pagTotal, semConta: pagSemConta, comConta: pagTotal - pagSemConta },
+            receber: { totalPagas: recPagas, semConta: recSemConta, comConta: recPagas - recSemConta },
+            bancos
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/admin-exec/contas-financeiras-sync — puxa a lista de bancos/caixas do CA para a tabela local
+router.post('/contas-financeiras-sync', async (req, res) => {
+    try {
+        const caSync = require('../services/contasPagarCaSyncService');
+        const r = await caSync.sincronizarContasFinanceiras();
+        res.json(r);
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/admin-exec/backfill-conta-pagar?limite=300 — preenche o banco nas baixas antigas de contas a PAGAR
+router.post('/backfill-conta-pagar', async (req, res) => {
+    try {
+        const caSync = require('../services/contasPagarCaSyncService');
+        const limite = Math.min(1000, Math.max(1, parseInt(req.query.limite, 10) || 300));
+        const r = await caSync.backfillContasFinanceirasPagar(limite);
+        res.json(r);
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/admin-exec/backfill-conta-receber?limite=40 — re-sincroniza do CA as contas a RECEBER
+// pagas que estão sem banco, para preencher contaFinanceiraCaId. Limitado (cada conta bate no CA).
+router.post('/backfill-conta-receber', async (req, res) => {
+    try {
+        const receberSync = require('../services/contasReceberSyncService');
+        const caConfig = await prisma.contaAzulConfig.findFirst().catch(() => null);
+        if (!caConfig) return res.status(400).json({ ok: false, error: 'Conta Azul não conectada (sem token).' });
+
+        const limite = Math.min(200, Math.max(1, parseInt(req.query.limite, 10) || 40));
+        // Contas com alguma parcela PAGA sem banco, cujo pedido já tem espelho no CA
+        const parcelas = await prisma.parcela.findMany({
+            where: { status: 'PAGO', contaFinanceiraCaId: null, contaReceber: { pedido: { idVendaContaAzul: { not: null }, especial: false } } },
+            select: { contaReceberId: true },
+            take: limite * 8
+        });
+        const contaIds = [...new Set(parcelas.map((p) => p.contaReceberId))].slice(0, limite);
+
+        let reSincronizadas = 0, preenchidas = 0;
+        const detalhes = [];
+        for (const contaId of contaIds) {
+            try {
+                await receberSync.sincronizarConta(contaId);
+                reSincronizadas++;
+                const restam = await prisma.parcela.count({ where: { contaReceberId: contaId, status: 'PAGO', contaFinanceiraCaId: null } });
+                const cheias = await prisma.parcela.count({ where: { contaReceberId: contaId, status: 'PAGO', contaFinanceiraCaId: { not: null } } });
+                if (cheias > 0) preenchidas++;
+                detalhes.push({ contaId, restamSemConta: restam, comConta: cheias });
+            } catch (err) {
+                detalhes.push({ contaId, erro: err.message });
+            }
+        }
+        res.json({ ok: true, contasAlvo: contaIds.length, reSincronizadas, comAlgumBanco: preenchidas, detalhes });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/compras-estoque-check
 // SOMENTE LEITURA. Para CADA nota CONFERIDA: quantos itens tinha, quantos estavam
 // vinculados a produto/insumo (de-para memorizado) e quantas entradas de estoque

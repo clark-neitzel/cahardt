@@ -109,6 +109,15 @@ function startSchedulers() {
     setTimeout(_runBaixasPagar, 600000);
     setInterval(_runBaixasPagar, 1800000); // 30 minutos
 
+    // Sincronização da lista de contas financeiras (bancos/caixas) do CA — para os
+    // relatórios "por conta" mostrarem o nome do banco. 3min após o start, depois a cada 6h.
+    const _runContasFin = () => {
+        contasPagarCaSync.sincronizarContasFinanceiras()
+            .catch(err => console.error('⚠️ Worker Contas Financeiras Error:', err.message));
+    };
+    setTimeout(_runContasFin, 180000);
+    setInterval(_runContasFin, 6 * 3600000); // 6 horas
+
     // === 4.3. CAPTURA DE NF-e (SEFAZ Distribuição DF-e) ===
     // A cada 1 hora consulta as NF-e emitidas contra o nosso CNPJ e alimenta a
     // caixa de Notas Recebidas. 100% isolado: sem certificado instalado ou com a
