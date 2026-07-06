@@ -411,36 +411,36 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg h-[90vh] flex flex-col overflow-hidden relative">
 
                 {/* Cabeçalho */}
-                <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between bg-sky-600 text-white rounded-t-xl">
+                <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between bg-house text-white rounded-t-xl">
                     <div className="flex flex-col flex-1 truncate">
-                        <span className="text-xs uppercase font-bold text-sky-200 tracking-wider">Check-in de Doca</span>
+                        <span className="text-xs uppercase font-bold text-white/60 tracking-wider">Check-in de Doca</span>
                         <h3 className="text-lg font-bold truncate leading-tight">{pedido.cliente?.NomeFantasia}</h3>
-                        <p className="text-xs text-sky-100 font-mono">Ped #{pedido.numero || 'X'} / Emb: #{pedido.embarque?.numero}</p>
+                        <p className="text-xs text-white/70 font-mono">Ped #{pedido.numero || 'X'} / Emb: #{pedido.embarque?.numero}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span className="text-sm font-black text-white">R$ {pedido.itens.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0).toFixed(2)}</span>
                             {descricaoCondicao && (
-                                <span className="text-[10px] bg-sky-800 text-sky-100 px-2 py-0.5 rounded-full font-bold">{descricaoCondicao}</span>
+                                <span className="text-[10px] bg-white/15 text-white/90 px-2 py-0.5 rounded-full font-bold">{descricaoCondicao}</span>
                             )}
                         </div>
                         {(pedido.vendedor || pedido.usuarioLancamento) && (
-                            <p className="text-[10px] text-sky-200 mt-0.5 truncate">
+                            <p className="text-[10px] text-white/60 mt-0.5 truncate">
                                 {pedido.vendedor && <>Vend: {pedido.vendedor.nome}</>}
                                 {pedido.vendedor && pedido.usuarioLancamento && ' · '}
                                 {pedido.usuarioLancamento && <>Lanç: {pedido.usuarioLancamento.nome}</>}
                             </p>
                         )}
                     </div>
-                    <button onClick={onClose} className="p-2 ml-2 bg-sky-700 hover:bg-sky-800 rounded-full text-white">
+                    <button onClick={onClose} className="p-2 ml-2 bg-white/15 hover:bg-white/25 rounded-full text-white">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
                 {/* STEPS INDICATOR */}
                 <div className="flex border-b border-gray-100">
-                    <div className={`flex-1 h-1 ${step >= 1 ? 'bg-sky-500' : 'bg-gray-200'}`}></div>
-                    <div className={`flex-1 h-1 ${step >= 2 ? 'bg-sky-500' : 'bg-gray-200'}`}></div>
-                    <div className={`flex-1 h-1 ${step >= 3 ? 'bg-sky-500' : 'bg-gray-200'}`}></div>
-                    <div className={`flex-1 h-1 ${step >= 4 ? 'bg-sky-500' : 'bg-gray-200'}`}></div>
+                    <div className={`flex-1 h-1 ${step >= 1 ? 'bg-primary' : 'bg-gray-200'}`}></div>
+                    <div className={`flex-1 h-1 ${step >= 2 ? 'bg-primary' : 'bg-gray-200'}`}></div>
+                    <div className={`flex-1 h-1 ${step >= 3 ? 'bg-primary' : 'bg-gray-200'}`}></div>
+                    <div className={`flex-1 h-1 ${step >= 4 ? 'bg-primary' : 'bg-gray-200'}`}></div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto bg-gray-50 flex flex-col relative">
@@ -536,7 +536,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                 </div>
                                 <div className="flex space-x-3">
                                     <button onClick={() => setStep(1)} className="flex-1 py-3 text-sm font-bold text-gray-600 bg-gray-100 rounded-xl active:bg-gray-200">Voltar</button>
-                                    <button onClick={avancarParaCaixa} className="flex-[2] py-3 text-sm font-bold text-white bg-sky-600 rounded-xl active:bg-sky-700 shadow-md">Ir para Cobrança</button>
+                                    <button onClick={avancarParaCaixa} className="flex-[2] py-3 text-sm font-bold text-white bg-primary rounded-xl active:bg-primaryDark shadow-md">Ir para Cobrança</button>
                                 </div>
                             </div>
                         </div>
@@ -547,19 +547,19 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                     {step === 3 && (
                         <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 bg-gray-50">
                             {/* Header Resumo Matemático */}
-                            <div className="bg-sky-600 text-white p-6 shadow-md z-10">
+                            <div className="bg-house text-white p-6 shadow-md z-10">
                                 <div className="flex justify-between items-end">
                                     <div>
-                                        <p className="text-sky-200 text-xs font-bold uppercase tracking-wider mb-1">A Receber Líquido</p>
+                                        <p className="text-white/60 text-xs font-bold uppercase tracking-wider mb-1">A Receber Líquido</p>
                                         <h2 className="text-4xl font-black tracking-tighter">
                                             R$ {saldoLiquidoDevedor.toFixed(2)}
                                         </h2>
                                         {totalDescontoDevolucao > 0 && (
-                                            <p className="text-sky-100 text-xs mt-1">(Desconto R$ {totalDescontoDevolucao.toFixed(2)} por devolução acatado)</p>
+                                            <p className="text-white/70 text-xs mt-1">(Desconto R$ {totalDescontoDevolucao.toFixed(2)} por devolução acatado)</p>
                                         )}
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-sky-200 text-[10px] font-bold uppercase mb-1">Saldo a Registrar</p>
+                                        <p className="text-white/60 text-[10px] font-bold uppercase mb-1">Saldo a Registrar</p>
                                         <h3 className={`text-xl font-bold ${saldoRestante < 0 ? 'text-red-300' : saldoRestante === 0 ? 'text-green-300' : 'text-white'}`}>
                                             R$ {saldoRestante.toFixed(2)}
                                         </h3>
@@ -574,7 +574,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                         <DollarSign className="h-4 w-4 text-blue-500 shrink-0" />
                                         <div>
                                             <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wide">Previsto no Pedido</span>
-                                            <p className="text-sm font-bold text-blue-800">{descricaoCondicao}</p>
+                                            <p className="text-sm font-bold text-primaryDark">{descricaoCondicao}</p>
                                         </div>
                                     </div>
                                 )}
@@ -609,7 +609,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                             <div className="mb-3 pr-8">
                                                 <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wide">Como pagou?</label>
                                                 <select
-                                                    className="w-full mt-1 border-b-2 border-gray-300 focus:border-sky-500 bg-transparent py-1 text-sm font-bold text-gray-800 focus:outline-none"
+                                                    className="w-full mt-1 border-b-2 border-gray-300 focus:border-primary bg-transparent py-1 text-sm font-bold text-gray-800 focus:outline-none"
                                                     value={pg._selectId}
                                                     onChange={(e) => updatePagamento(pg.idLocal, '_selectId', e.target.value)}
                                                 >
@@ -637,7 +637,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                                     type="number"
                                                     step="0.01"
                                                     min="0.01"
-                                                    className="w-full mt-1 border-b-2 border-sky-300 focus:border-sky-600 bg-sky-50 font-mono text-xl py-2 px-2 text-sky-900 rounded font-bold outline-none"
+                                                    className="w-full mt-1 border-b-2 border-mint focus:border-primary bg-mint/40 font-mono text-xl py-2 px-2 text-primaryDark rounded font-bold outline-none"
                                                     value={pg.valor}
                                                     onChange={(e) => updatePagamento(pg.idLocal, 'valor', e.target.value)}
                                                 />
@@ -649,7 +649,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                 {saldoRestante > 0.01 && (
                                     <button
                                         onClick={handleAddPagamento}
-                                        className="w-full py-4 border-2 border-dashed border-sky-300 text-sky-600 font-bold rounded-xl flex items-center justify-center hover:bg-sky-50 active:bg-sky-100 transition-colors"
+                                        className="w-full py-4 border-2 border-dashed border-primary/40 text-primary font-bold rounded-xl flex items-center justify-center hover:bg-mint/30 active:bg-mint/60 transition-colors"
                                     >
                                         <Plus className="h-5 w-5 mr-1" /> Adicionar Forma de Pagamento
                                     </button>
@@ -693,8 +693,8 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                     {step === 4 && (
                         <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4">
                             <div className="p-6 bg-white flex-1 flex flex-col items-center justify-center text-center space-y-6">
-                                <div className="bg-sky-50 w-24 h-24 rounded-full flex items-center justify-center">
-                                    <Navigation className="h-10 w-10 text-sky-600" />
+                                <div className="bg-mint w-24 h-24 rounded-full flex items-center justify-center">
+                                    <Navigation className="h-10 w-10 text-primary" />
                                 </div>
                                 <div>
                                     <h4 className="text-2xl font-black text-gray-800">Verificação Final GPS</h4>
@@ -708,7 +708,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                             <CheckCircle className="h-4 w-4 mr-2" /> Geo Capturado: {gpsCoords}
                                         </div>
                                     ) : (
-                                        <button onClick={capturarGPS} disabled={capturingGps} className="w-full bg-blue-100 text-blue-800 font-bold py-4 rounded-xl border border-blue-200 flex items-center justify-center active:bg-blue-200 transition-colors shadow-sm">
+                                        <button onClick={capturarGPS} disabled={capturingGps} className="w-full bg-mint text-primaryDark font-bold py-4 rounded-xl border border-primary/30 flex items-center justify-center active:bg-mint/70 transition-colors shadow-sm">
                                             {capturingGps ? 'Pescando Satélites...' : '1. Obter Localização Exata (MAPS)'}
                                         </button>
                                     )}
