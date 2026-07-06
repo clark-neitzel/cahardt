@@ -87,6 +87,40 @@ router.get('/diag-parcela-ca', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/teste-vencimento-ca?parcelaCA=UUID&testeData=2026-07-20
+// Prova se o CA honra o campo `vencimento` no PATCH: GET → PATCH(testeData) → GET → PATCH(original) → GET.
+// Não deixa mudança permanente (restaura a data original ao final).
+router.post('/teste-vencimento-ca', async (req, res) => {
+    try {
+        const parcelaId = req.query.parcelaCA;
+        const testeData = req.query.testeData || '2026-07-20';
+        if (!parcelaId) return res.status(400).json({ error: 'Informe ?parcelaCA=UUID' });
+
+        const passos = [];
+        const snap = async (rotulo) => {
+            const d = await contaAzulService.buscarParcelaDetalhe(parcelaId);
+            passos.push({ rotulo, versao: d?.versao, data_vencimento: d?.data_vencimento });
+            return d;
+        };
+
+        const antes = await snap('1-antes');
+        const original = antes.data_vencimento;
+
+        await contaAzulService.atualizarParcela(parcelaId, { versao: antes.versao, vencimento: testeData });
+        const depoisTeste = await snap('2-apos-mudar-para-teste');
+
+        // Restaura a data original
+        await contaAzulService.atualizarParcela(parcelaId, { versao: depoisTeste.versao, vencimento: original });
+        await snap('3-restaurada');
+
+        const funcionou = passos[1].data_vencimento === testeData;
+        res.json({ ok: true, funcionou, testeData, original, passos });
+    } catch (error) {
+        console.error('[admin-exec] Erro teste-vencimento-ca:', error.response?.data || error.message);
+        res.status(500).json({ error: error.response?.data || error.message });
+    }
+});
+
 // GET /api/admin-exec/diag-conciliacao?nota=858860  (ou ?busca=produpan)
 // SOMENTE LEITURA: refaz a busca de conciliação ao vivo no CA e mostra por que casou/ não casou.
 router.get('/diag-conciliacao', async (req, res) => {
