@@ -5,6 +5,7 @@ import pedidoService from '../../services/pedidoService';
 import { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
 import vendedorService from '../../services/vendedorService';
+import SelectBusca from '../../components/SelectBusca';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import ListaDevolucoes from './ListaDevolucoes';
@@ -639,17 +640,17 @@ const ListaPedidos = () => {
                             <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1 mb-0.5">
                                 <User className="h-3 w-3" /> Vendedor
                             </label>
-                            <select
+                            <SelectBusca
                                 value={filtros.vendedorId}
                                 disabled={!podeVerTodosVendedores}
                                 onChange={e => setFiltros(prev => ({ ...prev, vendedorId: e.target.value }))}
-                                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-0 bg-white disabled:bg-gray-50"
+                                className="w-full"
                             >
                                 <option value="">Todos</option>
                                 {todosVendedores.map(v => (
                                     <option key={v.id} value={v.id}>{v.nome}</option>
                                 ))}
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1 mb-0.5">
@@ -1279,16 +1280,16 @@ const ListaPedidos = () => {
                                 </div>
                                 {podeReatribuirVendedor && (
                                     <div className="mt-2 flex flex-col sm:flex-row gap-2">
-                                        <select
+                                        <SelectBusca
                                             value={novoVendedorId}
                                             onChange={e => setNovoVendedorId(e.target.value)}
-                                            className="flex-1 text-sm border border-gray-300 rounded px-2 py-1.5 bg-white"
+                                            className="flex-1"
                                         >
                                             <option value="">Selecionar novo vendedor…</option>
                                             {todosVendedores.filter(v => v.id !== selectedPedido.vendedorId).map(v => (
                                                 <option key={v.id} value={v.id}>{v.nome}</option>
                                             ))}
-                                        </select>
+                                        </SelectBusca>
                                         <button
                                             onClick={handleReatribuirVendedor}
                                             disabled={!novoVendedorId || reatribuindo}

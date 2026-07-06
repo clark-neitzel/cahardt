@@ -6,6 +6,7 @@ import pedidoService from '../../services/pedidoService';
 import clienteService from '../../services/clienteService';
 import categoriaClienteService from '../../services/categoriaClienteService';
 import ClientePopup from '../Rota/ClientePopup';
+import SelectBusca from '../../components/SelectBusca';
 import {
     DollarSign, Search, Filter, X, RefreshCw, CheckCircle, Undo2,
     Download, ArrowUpDown, CheckSquare, Square, Link as LinkIcon,
@@ -809,25 +810,25 @@ const ContasReceberTabela = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Origem</label>
-                        <select value={filtros.origem} onChange={e => setFiltros(f => ({ ...f, origem: e.target.value }))} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+                        <SelectBusca value={filtros.origem} onChange={e => setFiltros(f => ({ ...f, origem: e.target.value }))} className="w-full">
                             <option value="">Todas</option>
                             <option value="FATURADO_CA">Faturado CA</option>
                             <option value="ESPECIAL">Especial</option>
-                        </select>
+                        </SelectBusca>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Vendedor</label>
-                        <select value={filtros.vendedorId} onChange={e => setFiltros(f => ({ ...f, vendedorId: e.target.value }))} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+                        <SelectBusca value={filtros.vendedorId} onChange={e => setFiltros(f => ({ ...f, vendedorId: e.target.value }))} className="w-full">
                             <option value="">Todos</option>
                             {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                        </select>
+                        </SelectBusca>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Categoria Cliente</label>
-                        <select value={filtros.categoriaClienteId} onChange={e => setFiltros(f => ({ ...f, categoriaClienteId: e.target.value }))} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+                        <SelectBusca value={filtros.categoriaClienteId} onChange={e => setFiltros(f => ({ ...f, categoriaClienteId: e.target.value }))} className="w-full">
                             <option value="">Todas</option>
                             {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                        </select>
+                        </SelectBusca>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Condição Pgto</label>
@@ -1105,10 +1106,10 @@ const ContasReceberTabela = () => {
                         <div className="space-y-3">
                             <div>
                                 <label className="text-xs text-gray-500">Forma de pagamento</label>
-                                <select value={baixaLoteForm.formaPagamento} onChange={e => setBaixaLoteForm(f => ({ ...f, formaPagamento: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm">
+                                <SelectBusca value={baixaLoteForm.formaPagamento} onChange={e => setBaixaLoteForm(f => ({ ...f, formaPagamento: e.target.value }))} className="w-full">
                                     <option value="">—</option>
                                     {FORMAS.map(f => <option key={f}>{f}</option>)}
-                                </select>
+                                </SelectBusca>
                             </div>
                             <div>
                                 <label className="text-xs text-gray-500">Data do pagamento</label>
@@ -2026,10 +2027,10 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
-                                        <select value={tipoDesconto} onChange={e => handleTipoDesconto(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+                                        <SelectBusca value={tipoDesconto} onChange={e => handleTipoDesconto(e.target.value)} className="w-full">
                                             <option value="R$">R$ (valor fixo)</option>
                                             <option value="%">% do saldo</option>
-                                        </select>
+                                        </SelectBusca>
                                     </div>
                                     <div>
                                         <label className="block text-xs font-medium text-gray-700 mb-1">Valor do desconto</label>
@@ -2060,9 +2061,9 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
-                            <select value={formaPagamento} onChange={e => setFormaPagamento(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+                            <SelectBusca value={formaPagamento} onChange={e => setFormaPagamento(e.target.value)} className="w-full">
                                 {FORMAS.map(f => <option key={f}>{f}</option>)}
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Data do pagamento</label>

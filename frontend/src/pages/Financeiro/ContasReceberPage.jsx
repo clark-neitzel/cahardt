@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { API_URL } from '../../services/api';
+import SelectBusca from '../../components/SelectBusca';
 
 const LS_KEY = 'contasReceber_filters';
 
@@ -402,40 +403,40 @@ const ContasReceberPage = () => {
                         </div>
                         <div>
                             <label className="text-xs text-gray-500 font-medium">Status</label>
-                            <select
+                            <SelectBusca
                                 value={filtroStatus}
                                 onChange={(e) => setFiltroStatus(e.target.value)}
-                                className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900"
+                                className="w-full mt-1"
                             >
                                 <option value="">Todos</option>
                                 <option value="ABERTO">Aberto</option>
                                 <option value="PARCIAL">Parcial</option>
                                 <option value="QUITADO">Quitado</option>
                                 <option value="CANCELADO">Cancelado</option>
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="text-xs text-gray-500 font-medium">Origem</label>
-                            <select
+                            <SelectBusca
                                 value={filtroOrigem}
                                 onChange={(e) => setFiltroOrigem(e.target.value)}
-                                className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900"
+                                className="w-full mt-1"
                             >
                                 <option value="">Todas</option>
                                 <option value="ESPECIAL">Especial</option>
                                 <option value="FATURADO_CA">Faturado CA</option>
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="text-xs text-gray-500 font-medium">Ordenar por</label>
-                            <select
+                            <SelectBusca
                                 value={ordenarPor}
                                 onChange={(e) => handleOrdenarChange(e.target.value)}
-                                className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900"
+                                className="w-full mt-1"
                             >
                                 <option value="vencimento">Vencimento (mais próximo)</option>
                                 <option value="recente">Mais recente</option>
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="text-xs text-gray-500 font-medium">Vencimento de</label>

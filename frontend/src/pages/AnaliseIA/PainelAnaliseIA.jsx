@@ -8,6 +8,7 @@ import {
     Zap, Clock, Hash, AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import SelectBusca from '../../components/SelectBusca';
 
 const DISPARADO_POR_OPTIONS = [
     { value: '', label: 'Todos os disparos' },
@@ -312,21 +313,21 @@ const PainelAnaliseIA = () => {
 
                     {/* Selects */}
                     <div className="flex gap-2 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
-                        <select value={filtros.vendedorId} onChange={e => handleFiltro('vendedorId', e.target.value)}
-                            className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm flex-1 min-w-0 focus:ring-2 focus:ring-violet-500 focus:border-violet-500">
+                        <SelectBusca value={filtros.vendedorId} onChange={e => handleFiltro('vendedorId', e.target.value)}
+                            className="flex-1 min-w-0">
                             <option value="">Todos vendedores</option>
                             {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                        </select>
-                        <select value={filtros.disparadoPor} onChange={e => handleFiltro('disparadoPor', e.target.value)}
-                            className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm flex-1 min-w-0 focus:ring-2 focus:ring-violet-500 focus:border-violet-500">
+                        </SelectBusca>
+                        <SelectBusca value={filtros.disparadoPor} onChange={e => handleFiltro('disparadoPor', e.target.value)}
+                            className="flex-1 min-w-0">
                             {DISPARADO_POR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                        <select value={filtros.sucesso} onChange={e => handleFiltro('sucesso', e.target.value)}
-                            className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm flex-1 min-w-0 focus:ring-2 focus:ring-violet-500 focus:border-violet-500">
+                        </SelectBusca>
+                        <SelectBusca value={filtros.sucesso} onChange={e => handleFiltro('sucesso', e.target.value)}
+                            className="flex-1 min-w-0">
                             <option value="">Todos status</option>
                             <option value="true">Sucesso</option>
                             <option value="false">Erro</option>
-                        </select>
+                        </SelectBusca>
                     </div>
                 </div>
 

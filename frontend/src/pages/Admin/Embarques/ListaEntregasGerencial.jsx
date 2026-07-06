@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Search, Filter, RefreshCw, X, Truck, Calendar, User, AlertTriangle } from 'lucide-react';
 import entregasService from '../../../services/entregasService';
 import vendedorService from '../../../services/vendedorService';
+import SelectBusca from '../../../components/SelectBusca';
 import ModalDetalheEntrega from './ModalDetalheEntrega';
 
 const ListaEntregasGerencial = () => {
@@ -168,8 +169,8 @@ const ListaEntregasGerencial = () => {
                 <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 xl:grid-cols-6 gap-4 ${showFilters ? 'block' : 'hidden md:grid'}`}>
                     <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-                        <select
-                            className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-primary focus:border-primary"
+                        <SelectBusca
+                            className="w-full"
                             value={status}
                             onChange={(e) => { setStatus(e.target.value); setPage(1); }}
                         >
@@ -178,7 +179,7 @@ const ListaEntregasGerencial = () => {
                             <option value="ENTREGUE_PARCIAL">Entregue Parcial</option>
                             <option value="DEVOLVIDO">Devolvido Total</option>
                             <option value="PENDENTE">Apenas Pendentes</option>
-                        </select>
+                        </SelectBusca>
                     </div>
 
                     <div>
@@ -203,26 +204,26 @@ const ListaEntregasGerencial = () => {
 
                     <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">Vendedor</label>
-                        <select
-                            className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-primary focus:border-primary"
+                        <SelectBusca
+                            className="w-full"
                             value={vendedorId}
                             onChange={(e) => { setVendedorId(e.target.value); setPage(1); }}
                         >
                             <option value="">Todos</option>
                             {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                        </select>
+                        </SelectBusca>
                     </div>
 
                     <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">Entregador</label>
-                        <select
-                            className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-primary focus:border-primary"
+                        <SelectBusca
+                            className="w-full"
                             value={entregadorId}
                             onChange={(e) => { setEntregadorId(e.target.value); setPage(1); }}
                         >
                             <option value="">Todos</option>
                             {entregadores.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                        </select>
+                        </SelectBusca>
                     </div>
 
                     <div className="flex items-end">

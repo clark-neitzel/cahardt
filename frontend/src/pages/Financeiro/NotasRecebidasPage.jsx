@@ -6,6 +6,7 @@ import contasPagarService from '../../services/contasPagarService';
 import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
+import SelectBusca from '../../components/SelectBusca';
 
 // ── Helpers ──
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -890,13 +891,13 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                                                 />
                                                 <div className="flex gap-2">
-                                                    <select
+                                                    <SelectBusca
                                                         value={v.novo.tipo}
                                                         onChange={e => setVinculo(idx, { novo: { ...v.novo, tipo: e.target.value } })}
-                                                        className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-2 text-sm focus:border-primary focus:outline-none"
+                                                        className="flex-1 min-w-0"
                                                     >
                                                         {TIPOS_ITEM_PCP.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                                    </select>
+                                                    </SelectBusca>
                                                     <input
                                                         value={v.novo.unidade}
                                                         onChange={e => setVinculo(idx, { novo: { ...v.novo, unidade: e.target.value } })}
@@ -1100,29 +1101,29 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
                                         <label className="text-sm font-medium text-gray-700">Forma de pagamento</label>
-                                        <select
+                                        <SelectBusca
                                             value={metodoPagamento}
                                             onChange={e => setMetodoPagamento(e.target.value)}
-                                            className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white"
+                                            className="mt-1 w-full"
                                         >
                                             <option value="">Selecionar…</option>
                                             {opcoesBaixa.metodosPagamento.map(m => (
                                                 <option key={m.value} value={m.value}>{m.label}</option>
                                             ))}
-                                        </select>
+                                        </SelectBusca>
                                     </div>
                                     <div>
                                         <label className="text-sm font-medium text-gray-700">Banco / caixa</label>
-                                        <select
+                                        <SelectBusca
                                             value={contaFinanceiraCaId}
                                             onChange={e => setContaFinanceiraCaId(e.target.value)}
-                                            className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white"
+                                            className="mt-1 w-full"
                                         >
                                             <option value="">Selecionar…</option>
                                             {opcoesBaixa.contasFinanceiras.map(c => (
                                                 <option key={c.id} value={c.id}>{c.nome}{c.padrao ? ' (padrão)' : ''}</option>
                                             ))}
-                                        </select>
+                                        </SelectBusca>
                                         {opcoesCarregadas && opcoesBaixa.contasFinanceiras.length === 0 && (
                                             <p className="text-xs text-amber-700 mt-1">Nenhum banco encontrado na Conta Azul.</p>
                                         )}

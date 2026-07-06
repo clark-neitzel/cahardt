@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import ModalNovoLead from '../Rota/ModalNovoLead';
 import ModalReferenciarCliente from './ModalReferenciarCliente';
 import ModalEditarLead from './ModalEditarLead';
+import SelectBusca from '../../components/SelectBusca';
 
 const ETAPA_COLORS = {
     NOVO: 'bg-blue-100 text-blue-700',
@@ -438,35 +439,35 @@ const ListaLeads = () => {
                     />
                 </div>
                 <div className="flex gap-2">
-                    <select
+                    <SelectBusca
                         value={etapa}
                         onChange={e => handleEtapaChange(e.target.value)}
-                        className="flex-1 md:flex-none px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-blue-400 outline-none"
+                        className="flex-1 md:flex-none"
                     >
                         <option value="">Todas etapas</option>
                         {ETAPAS.filter(Boolean).map(e => (
                             <option key={e} value={e}>{e}</option>
                         ))}
-                    </select>
+                    </SelectBusca>
                     {podeEscolherVendedor && (
-                        <select
+                        <SelectBusca
                             value={vendedorId}
                             onChange={e => handleVendedorChange(e.target.value)}
-                            className="flex-1 md:flex-none px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-blue-400 outline-none"
+                            className="flex-1 md:flex-none"
                         >
                             <option value="">Todos vend.</option>
                             {vendedores.map(v => (
                                 <option key={v.id} value={v.id}>{v.nome}</option>
                             ))}
-                        </select>
+                        </SelectBusca>
                     )}
-                    <select
+                    <SelectBusca
                         value={limit}
                         onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}
-                        className="hidden md:block px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 outline-none"
+                        className="hidden md:block"
                     >
                         {LIMITS.map(l => <option key={l} value={l}>{l} por pág.</option>)}
-                    </select>
+                    </SelectBusca>
                 </div>
             </div>
 

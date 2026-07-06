@@ -39,6 +39,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import MultiSelect from '../../components/MultiSelect';
+import SelectBusca from '../../components/SelectBusca';
 import { useAuth } from '../../contexts/AuthContext';
 
 const fmtBRL = (v) =>
@@ -1310,16 +1311,16 @@ const DashboardAdminSection = () => {
                                 </div>
                                 <div>
                                     <label className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Vendedor (opcional)</label>
-                                    <select
+                                    <SelectBusca
                                         value={weeklyVendedorId}
                                         onChange={(e) => handleTrocaVendedorSemanal(e.target.value)}
-                                        className="mt-1 w-full border rounded px-2 py-2 text-sm"
+                                        className="mt-1 w-full"
                                     >
                                         <option value="">Todos da equipe</option>
                                         {weeklyVendedores.map((vendedor) => (
                                             <option key={vendedor.id} value={vendedor.id}>{vendedor.nome}</option>
                                         ))}
-                                    </select>
+                                    </SelectBusca>
                                 </div>
                                 <div className="sm:col-span-2 lg:col-span-1">
                                     <label className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Período</label>
@@ -1648,19 +1649,18 @@ const DashboardAdminSection = () => {
                         </div>
                         <div className="flex items-center gap-2">
                             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vendedor</label>
-                            <select
+                            <SelectBusca
                                 value={visitasVendedorId}
                                 onChange={e => {
                                     setVisitasVendedorId(e.target.value);
                                     setVisitasLoading(true);
                                 }}
-                                className="border rounded px-2 py-1 text-xs"
                             >
                                 <option value="">Todos</option>
                                 {visitasVendedores.map(v => (
                                     <option key={v.id} value={v.id}>{v.nome}</option>
                                 ))}
-                            </select>
+                            </SelectBusca>
                         </div>
                         {visitasLoading && <span className="text-xs text-gray-400">Carregando...</span>}
                     </div>
@@ -2010,8 +2010,8 @@ const DashboardAdminSection = () => {
                             </div>
                             <div>
                                 <label className="block text-[11px] font-medium text-gray-500 mb-1">Vendedor</label>
-                                <select
-                                    className="block w-full border border-gray-300 rounded-md px-2 py-[7px] bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                                <SelectBusca
+                                    className="w-full"
                                     value={recompraVendedorId}
                                     onChange={(e) => { setRecompraVendedorId(e.target.value); setRecompraPage(1); }}
                                 >
@@ -2019,7 +2019,7 @@ const DashboardAdminSection = () => {
                                     {recompraVendedores.map((v) => (
                                         <option key={v.id} value={v.id}>{v.nome}</option>
                                     ))}
-                                </select>
+                                </SelectBusca>
                             </div>
                             <div>
                                 <label className="block text-[11px] font-medium text-gray-500 mb-1">Cidade</label>

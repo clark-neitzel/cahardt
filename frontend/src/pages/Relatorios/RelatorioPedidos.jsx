@@ -6,6 +6,7 @@ import {
     TrendingUp, ShoppingCart, DollarSign, Package
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import SelectBusca from '../../components/SelectBusca';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
@@ -186,13 +187,13 @@ const RelatorioPedidos = () => {
                         {podeVerTodos && (
                             <div>
                                 <label className="text-xs text-gray-500 font-medium">Vendedor</label>
-                                <select value={vendedorId} onChange={(e) => setVendedorId(e.target.value)}
-                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900">
+                                <SelectBusca value={vendedorId} onChange={(e) => setVendedorId(e.target.value)}
+                                    className="w-full mt-1">
                                     <option value="">Todos</option>
                                     {vendedores.map(v => (
                                         <option key={v.id} value={v.id}>{v.nome}</option>
                                     ))}
-                                </select>
+                                </SelectBusca>
                             </div>
                         )}
                         <div>
@@ -217,54 +218,54 @@ const RelatorioPedidos = () => {
                         </div>
                         <div>
                             <label className="text-xs text-gray-500 font-medium">Status Envio</label>
-                            <select value={statusEnvio} onChange={(e) => setStatusEnvio(e.target.value)}
-                                className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900">
+                            <SelectBusca value={statusEnvio} onChange={(e) => setStatusEnvio(e.target.value)}
+                                className="w-full mt-1">
                                 <option value="">Todos</option>
                                 <option value="ABERTO">Aberto</option>
                                 <option value="ENVIAR">Enviar</option>
                                 <option value="RECEBIDO">Recebido</option>
                                 <option value="ERRO">Erro</option>
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="text-xs text-gray-500 font-medium">Tipo</label>
-                            <select value={especial} onChange={(e) => setEspecial(e.target.value)}
-                                className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900">
+                            <SelectBusca value={especial} onChange={(e) => setEspecial(e.target.value)}
+                                className="w-full mt-1">
                                 <option value="">Todos</option>
                                 <option value="false">Normal</option>
                                 <option value="true">Especial</option>
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="text-xs text-gray-500 font-medium">Situação CA</label>
-                            <select value={situacaoCA} onChange={(e) => setSituacaoCA(e.target.value)}
-                                className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900">
+                            <SelectBusca value={situacaoCA} onChange={(e) => setSituacaoCA(e.target.value)}
+                                className="w-full mt-1">
                                 <option value="">Todas</option>
                                 <option value="APROVADO">Aprovado</option>
                                 <option value="FATURADO">Faturado</option>
                                 <option value="EM_ABERTO">Em Aberto</option>
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="text-xs text-gray-500 font-medium">Entrega</label>
-                            <select value={statusEntrega} onChange={(e) => setStatusEntrega(e.target.value)}
-                                className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900">
+                            <SelectBusca value={statusEntrega} onChange={(e) => setStatusEntrega(e.target.value)}
+                                className="w-full mt-1">
                                 <option value="">Todas</option>
                                 <option value="PENDENTE">Pendente</option>
                                 <option value="ENTREGUE">Entregue</option>
                                 <option value="ENTREGUE_PARCIAL">Parcial</option>
                                 <option value="DEVOLVIDO">Devolvido</option>
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="text-xs text-gray-500 font-medium">Flex</label>
-                            <select value={filtroFlex} onChange={(e) => setFiltroFlex(e.target.value)}
-                                className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900">
+                            <SelectBusca value={filtroFlex} onChange={(e) => setFiltroFlex(e.target.value)}
+                                className="w-full mt-1">
                                 <option value="">Todos</option>
                                 <option value="negativo">Flex Negativo (descontos)</option>
                                 <option value="positivo">Flex Positivo (acréscimos)</option>
                                 <option value="zerado">Sem Flex</option>
-                            </select>
+                            </SelectBusca>
                         </div>
                     </div>
                     <div className="flex justify-end gap-2 mt-4">

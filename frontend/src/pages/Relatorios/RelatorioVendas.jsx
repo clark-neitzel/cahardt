@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import { BarChart2, Filter, Download, Printer, ChevronUp, ChevronDown, ChevronsUpDown, X, ArrowLeft, ListFilter, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
+import SelectBusca from '../../components/SelectBusca';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (v) => v ? new Date(v + 'T12:00:00').toLocaleDateString('pt-BR') : '-';
@@ -608,30 +609,30 @@ export default function RelatorioVendas() {
                             {podeVerTodos && (
                                 <div>
                                     <label className="text-xs text-gray-500 font-medium">Vendedor</label>
-                                    <select value={vendedorId} onChange={e => setVendedorId(e.target.value)}
-                                        className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900">
+                                    <SelectBusca value={vendedorId} onChange={e => setVendedorId(e.target.value)}
+                                        className="w-full mt-1">
                                         <option value="">Todos</option>
                                         {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                                    </select>
+                                    </SelectBusca>
                                 </div>
                             )}
                             <div>
                                 <label className="text-xs text-gray-500 font-medium">Situação CA</label>
-                                <select value={situacaoCA} onChange={e => setSituacaoCA(e.target.value)}
-                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900">
+                                <SelectBusca value={situacaoCA} onChange={e => setSituacaoCA(e.target.value)}
+                                    className="w-full mt-1">
                                     <option value="">Todas</option>
                                     <option value="FATURADO">Faturado</option>
                                     <option value="APROVADO">Aprovado</option>
                                     <option value="EM_ABERTO">Em Aberto</option>
-                                </select>
+                                </SelectBusca>
                             </div>
                             <div>
                                 <label className="text-xs text-gray-500 font-medium">Bonificações</label>
-                                <select value={excluirBonificacao} onChange={e => setExcluirBonificacao(e.target.value)}
-                                    className="w-full mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900">
+                                <SelectBusca value={excluirBonificacao} onChange={e => setExcluirBonificacao(e.target.value)}
+                                    className="w-full mt-1">
                                     <option value="true">Excluir bonificações</option>
                                     <option value="false">Incluir tudo</option>
-                                </select>
+                                </SelectBusca>
                             </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">

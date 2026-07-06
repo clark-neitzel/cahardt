@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import atendimentoService from '../../services/atendimentoService';
 import vendedorService from '../../services/vendedorService';
+import SelectBusca from '../../components/SelectBusca';
 import ClientePopup from '../Rota/ClientePopup';
 import {
     Search, RefreshCw, ChevronLeft, ChevronRight,
@@ -334,21 +335,21 @@ const PainelAtendimentos = () => {
                         </div>
 
                         {/* Vendedor */}
-                        <select value={filtros.vendedorId} onChange={e => handleFiltro('vendedorId', e.target.value)}
-                            className="border border-gray-300 rounded-lg px-2 py-1 text-sm min-w-[130px] flex-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <SelectBusca value={filtros.vendedorId} onChange={e => handleFiltro('vendedorId', e.target.value)}
+                            className="min-w-[130px] flex-1">
                             <option value="">Todos vendedores</option>
                             {vendedores.map(v => (
                                 <option key={v.id} value={v.id}>
                                     {v.nome}{!v.ativo ? ' (inativo)' : ''}
                                 </option>
                             ))}
-                        </select>
+                        </SelectBusca>
 
                         {/* Tipo */}
-                        <select value={filtros.tipo} onChange={e => handleFiltro('tipo', e.target.value)}
-                            className="border border-gray-300 rounded-lg px-2 py-1 text-sm min-w-[120px] flex-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <SelectBusca value={filtros.tipo} onChange={e => handleFiltro('tipo', e.target.value)}
+                            className="min-w-[120px] flex-1">
                             {TIPOS_ATENDIMENTO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                        </select>
+                        </SelectBusca>
 
                         {/* Limpar filtros */}
                         {temFiltroAtivo && (
@@ -385,11 +386,11 @@ const PainelAtendimentos = () => {
                         </div>
 
                         {/* Ação */}
-                        <select value={filtros.acao} onChange={e => handleFiltro('acao', e.target.value)}
-                            className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm min-w-[130px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <SelectBusca value={filtros.acao} onChange={e => handleFiltro('acao', e.target.value)}
+                            className="min-w-[130px]">
                             <option value="">Todas as ações</option>
                             {acoesDisponiveis.map(a => <option key={a} value={a}>{a}</option>)}
-                        </select>
+                        </SelectBusca>
                     </div>
                 </div>
             </div>

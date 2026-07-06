@@ -5,6 +5,7 @@ import clienteService from '../../services/clienteService';
 import vendedorService from '../../services/vendedorService';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
 import { Search, MapPin, Phone, User, Filter, Settings, X, Save, AlertTriangle, MessageCircle, AlertCircle } from 'lucide-react';
+import SelectBusca from '../../components/SelectBusca';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 
@@ -245,20 +246,20 @@ const ListaClientes = () => {
                 <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-2 ${showFilters ? 'grid' : 'hidden md:grid'}`}>
                     <div>
                         <label className="block text-[11px] font-medium text-gray-500 mb-1">Status</label>
-                        <select
-                            className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                        <SelectBusca
+                            className="w-full"
                             value={activeTab}
                             onChange={(e) => { setActiveTab(e.target.value); setPage(1); }}
                         >
                             <option value="ativos">Apenas Ativos</option>
                             <option value="inativos">Apenas Inativos</option>
-                        </select>
+                        </SelectBusca>
                     </div>
 
                     <div>
                         <label className="block text-[11px] font-medium text-gray-500 mb-1">Vendedor</label>
-                        <select
-                            className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                        <SelectBusca
+                            className="w-full"
                             value={idVendedor}
                             onChange={(e) => { setIdVendedor(e.target.value); setPage(1); }}
                         >
@@ -266,37 +267,37 @@ const ListaClientes = () => {
                             {vendedores.map(v => (
                                 <option key={v.id} value={v.id}>{v.nome}</option>
                             ))}
-                        </select>
+                        </SelectBusca>
                     </div>
 
                     <div>
                         <label className="block text-[11px] font-medium text-gray-500 mb-1">Dia de Entrega</label>
-                        <select
-                            className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                        <SelectBusca
+                            className="w-full"
                             value={diaEntrega}
                             onChange={(e) => { setDiaEntrega(e.target.value); setPage(1); }}
                         >
                             <option value="">Qualquer Dia</option>
                             {DIAS_SEMANA.map(dia => <option key={dia} value={dia}>{dia}</option>)}
-                        </select>
+                        </SelectBusca>
                     </div>
 
                     <div>
                         <label className="block text-[11px] font-medium text-gray-500 mb-1">Dia de Venda</label>
-                        <select
-                            className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                        <SelectBusca
+                            className="w-full"
                             value={diaVenda}
                             onChange={(e) => { setDiaVenda(e.target.value); setPage(1); }}
                         >
                             <option value="">Qualquer Dia</option>
                             {DIAS_SEMANA.map(dia => <option key={dia} value={dia}>{dia}</option>)}
-                        </select>
+                        </SelectBusca>
                     </div>
 
                     <div>
                         <label className="block text-[11px] font-medium text-gray-500 mb-1">Condição Padrão</label>
-                        <select
-                            className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                        <SelectBusca
+                            className="w-full"
                             value={condicaoPagamento}
                             onChange={(e) => { setCondicaoPagamento(e.target.value); setPage(1); }}
                         >
@@ -304,13 +305,13 @@ const ListaClientes = () => {
                             {condicoesPagamento.map(c => (
                                 <option key={c.idCondicao} value={c.idCondicao}>{c.nomeCondicao}</option>
                             ))}
-                        </select>
+                        </SelectBusca>
                     </div>
 
                     <div>
                         <label className="block text-[11px] font-medium text-gray-500 mb-1">Condição Permitida</label>
-                        <select
-                            className="block w-full border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                        <SelectBusca
+                            className="w-full"
                             value={condicaoPermitida}
                             onChange={(e) => { setCondicaoPermitida(e.target.value); setPage(1); }}
                         >
@@ -318,7 +319,7 @@ const ListaClientes = () => {
                             {condicoesPagamento.map(c => (
                                 <option key={c.idCondicao} value={c.idCondicao}>{c.nomeCondicao}</option>
                             ))}
-                        </select>
+                        </SelectBusca>
                     </div>
 
                     <div className="flex items-end col-span-2 sm:col-span-1">
@@ -555,8 +556,7 @@ const ListaClientes = () => {
             <div className="flex justify-between items-center mt-3 gap-3 px-1">
                 <div className="hidden md:flex items-center gap-2">
                     <span className="text-xs text-gray-500">Exibir</span>
-                    <select
-                        className="border border-gray-300 rounded text-xs p-1.5 focus:ring-primary bg-white text-gray-900"
+                    <SelectBusca
                         value={limit}
                         onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
                     >
@@ -564,7 +564,7 @@ const ListaClientes = () => {
                         <option value="50">50</option>
                         <option value="100">100</option>
                         <option value="200">200</option>
-                    </select>
+                    </SelectBusca>
                     <span className="text-xs text-gray-500">por página</span>
                 </div>
 
@@ -614,38 +614,38 @@ const ListaClientes = () => {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Novo Vendedor</label>
-                                <select
-                                    className="block w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                                <SelectBusca
+                                    className="w-full"
                                     value={batchData.idVendedor}
                                     onChange={(e) => setBatchData({ ...batchData, idVendedor: e.target.value })}
                                 >
                                     <option value="">Não alterar</option>
                                     {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                                </select>
+                                </SelectBusca>
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Novo Dia de Entrega</label>
-                                <select
-                                    className="block w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                                <SelectBusca
+                                    className="w-full"
                                     value={batchData.Dia_de_entrega}
                                     onChange={(e) => setBatchData({ ...batchData, Dia_de_entrega: e.target.value })}
                                 >
                                     <option value="">Não alterar</option>
                                     {DIAS_SEMANA.map(dia => <option key={dia} value={dia}>{dia}</option>)}
-                                </select>
+                                </SelectBusca>
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Novo Dia de Venda</label>
-                                <select
-                                    className="block w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900 text-sm focus:ring-primary focus:border-primary"
+                                <SelectBusca
+                                    className="w-full"
                                     value={batchData.Dia_de_venda}
                                     onChange={(e) => setBatchData({ ...batchData, Dia_de_venda: e.target.value })}
                                 >
                                     <option value="">Não alterar</option>
                                     {DIAS_SEMANA.map(dia => <option key={dia} value={dia}>{dia}</option>)}
-                                </select>
+                                </SelectBusca>
                             </div>
 
                             <div>

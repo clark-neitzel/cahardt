@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowUpCircle, ArrowDownCircle, Filter, ChevronLeft, Loader2, AlertCircle, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import estoqueService from '../../services/estoqueService';
+import SelectBusca from '../../components/SelectBusca';
 
 const MOTIVO_LABEL = {
     AJUSTE_MANUAL: 'Ajuste Manual',
@@ -185,28 +186,28 @@ export default function HistoricoEstoque() {
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
-                            <select
+                            <SelectBusca
                                 value={filtros.tipo}
                                 onChange={e => setFiltros(f => ({ ...f, tipo: e.target.value }))}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full"
                             >
                                 <option value="">Todos</option>
                                 <option value="ENTRADA">Entrada</option>
                                 <option value="SAIDA">Saída</option>
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Motivo</label>
-                            <select
+                            <SelectBusca
                                 value={filtros.motivo}
                                 onChange={e => setFiltros(f => ({ ...f, motivo: e.target.value }))}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full"
                             >
                                 <option value="">Todos</option>
                                 {Object.entries(MOTIVO_LABEL).map(([k, v]) => (
                                     <option key={k} value={k}>{v}</option>
                                 ))}
-                            </select>
+                            </SelectBusca>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
