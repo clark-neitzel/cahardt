@@ -50,6 +50,7 @@
 | DRE — Resultado | `/financeiro/dre` | Demonstração de resultado mês a mês: receita − despesas por categoria = lucro e margem (gerencial) | [dre.md](dre.md) |
 | Categorias de Despesa | `/financeiro/categorias-despesa` | Classifica cada categoria em "baldes" (Operação, Financeiro, Fora da DRE) para a DRE mostrar o lucro certo | [categorias-despesa.md](categorias-despesa.md) |
 | Margem por Produto | `/financeiro/margem-produtos` | Custo (ficha técnica/compras) × preço × vendas por produto: margem em R$ e %, com fonte do custo (gerencial) | [margem-produtos.md](margem-produtos.md) |
+| Conciliação Bancária | `/financeiro/conciliacao` | Importa o extrato OFX do banco e bate com as baixas do app: automático + revisão dos pendentes (gerencial) | [conciliacao-bancaria.md](conciliacao-bancaria.md) |
 
 ---
 
