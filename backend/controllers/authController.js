@@ -10,12 +10,12 @@ const authController = {
     // Retorna a URL para redirecionar o usuário
     getAuthUrl: (req, res) => {
         const state = 'ESTADO_SEGURANCA';
-        // CONFIGURAÇÃO HÍBRIDA (Modern Auth + Legacy Scope)
         // O redirect URI deve ser Exatamente: https://cahardt-hardt-backend.xrqvlq.easypanel.host/api/auth/callback
         const redirectUri = 'https://cahardt-hardt-backend.xrqvlq.easypanel.host/api/auth/callback';
 
-        // TENTATIVA CRÍTICA: Modern Auth com Scope SALES
-        const url = `https://auth.contaazul.com/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=openid+profile+sales`;
+        // Scope comprovado em produção (app antiga). Cuidado: 'sales' NÃO é aceito por
+        // apps novos e causa unauthorized_client na troca do código.
+        const url = `https://auth.contaazul.com/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=openid+profile+aws.cognito.signin.user.admin`;
         res.json({ url });
     },
 
