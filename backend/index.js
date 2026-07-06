@@ -82,23 +82,9 @@ const PORT = process.env.PORT || 3000;
 // (necessário para a trava de força bruta do login enxergar cada usuário).
 app.set('trust proxy', 1);
 
-// CORS: libera as origens conhecidas do app + as de CORS_ORIGINS (env, separadas por
-// vírgula) + localhost (dev). Requisições SEM Origin (server-to-server, apps, curl) são
-// sempre permitidas. Como o app autentica por token no header (não cookie), isto não
-// expõe sessão de terceiros — é uma camada extra.
-const origensPermitidas = new Set([
-    'https://hardtsalgados.com.br',
-    'https://www.hardtsalgados.com.br',
-    ...(process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean),
-]);
-app.use(cors({
-    origin: (origin, cb) => {
-        if (!origin) return cb(null, true);
-        if (origensPermitidas.has(origin)) return cb(null, true);
-        if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return cb(null, true);
-        return cb(null, false); // origem não liberada: sem cabeçalho CORS (navegador bloqueia)
-    }
-}));
+// CORS aberto (revertido para destravar o app). Restrição por allowlist será
+// reintroduzida depois de confirmar a origem exata que o app usa no navegador.
+app.use(cors());
 
 // Cabeçalhos de segurança. CSP e cross-origin-resource-policy desligados para não
 // bloquear imagens de /uploads (carregadas pelo frontend em outro domínio) nem o
