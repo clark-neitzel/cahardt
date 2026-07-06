@@ -56,7 +56,30 @@ const vendedorController = {
     atualizar: async (req, res) => {
         try {
             const { id } = req.params;
+
+            // --- SEGURANÇA: controle de acesso ---
+            // Sem esta checagem, QUALQUER usuário logado podia se tornar admin ou
+            // trocar a senha de qualquer pessoa. Espelha o acesso da tela "Vendedores"
+            // (hasPermission('vendedores','edit')) e restringe campos sensíveis a admin.
+            const perms = req.user?.permissoes || {};
+            const isAdmin = perms.admin === true;
+            const podeGerenciar = isAdmin
+                || perms.vendedores === true
+                || (perms.vendedores && perms.vendedores.edit === true);
+
+            if (!podeGerenciar) {
+                return res.status(403).json({ error: 'Sem permissão para editar usuários.' });
+            }
+
             const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, percentualFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento } = req.body;
+
+            // Campos sensíveis (permissões, login, senha, status) só por admin — evita
+            // escalonamento de privilégio e sequestro de conta por um gestor não-admin.
+            const tentouCamposSensiveis = permissoes !== undefined || login !== undefined
+                || ativo !== undefined || (senha && senha.trim() !== '');
+            if (tentouCamposSensiveis && !isAdmin) {
+                return res.status(403).json({ error: 'Apenas administradores podem alterar permissões, login, senha ou status de usuários.' });
+            }
 
             const dataToUpdate = {};
             if (email !== undefined) dataToUpdate.email = email;
