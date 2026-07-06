@@ -29,11 +29,15 @@ function coletarOpcoes(children) {
             out.push({ grupo: child.props.label });
             Children.forEach(child.props.children, (o) => {
                 if (o && o.type === 'option') {
-                    out.push({ value: o.props.value != null ? o.props.value : '', label: textoDoNo(o.props.children), disabled: !!o.props.disabled });
+                    const label = textoDoNo(o.props.children);
+                    // Igual ao <select> nativo: sem value, o texto da <option> vira o value.
+                    out.push({ value: o.props.value != null ? o.props.value : label, label, disabled: !!o.props.disabled });
                 }
             });
         } else if (child.type === 'option') {
-            out.push({ value: child.props.value != null ? child.props.value : '', label: textoDoNo(child.props.children), disabled: !!child.props.disabled });
+            const label = textoDoNo(child.props.children);
+            // Igual ao <select> nativo: sem value, o texto da <option> vira o value.
+            out.push({ value: child.props.value != null ? child.props.value : label, label, disabled: !!child.props.disabled });
         }
     });
     return out;
