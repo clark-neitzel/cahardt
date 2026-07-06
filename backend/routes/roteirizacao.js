@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const verificarAuth = require('../middlewares/authMiddleware');
 const axios = require('axios');
 

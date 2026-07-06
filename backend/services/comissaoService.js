@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const dayjs = require('dayjs');
 
 // Calcula o valor da comissão base para um determinado valor de vendas

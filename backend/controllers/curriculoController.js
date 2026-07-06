@@ -1,4 +1,3 @@
-const { PrismaClient } = require('@prisma/client');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -6,7 +5,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const webhookService = require('../services/webhookService');
 
-const prisma = new PrismaClient();
+const prisma = require('../config/database'); // singleton compartilhado (pool único)
 
 // ─── Verificação de acesso do candidato ao próprio currículo ────────────────
 // O candidato prova que é dono do CPF recebendo um código no WhatsApp CADASTRADO.

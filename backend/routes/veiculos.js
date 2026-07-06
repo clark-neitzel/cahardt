@@ -3,8 +3,7 @@ const router = express.Router();
 const veiculoController = require('../controllers/veiculoController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const uploadVeiculo = require('../middlewares/uploadVeiculoMiddleware');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database'); // singleton compartilhado (pool único)
 
 // Rotas públicas (para vendedores listarem ao iniciar o dia)
 router.get('/', authMiddleware, veiculoController.listarAtivos);

@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const dayjs = require('dayjs');
 const isBetween = require('dayjs/plugin/isBetween');
 dayjs.extend(isBetween);

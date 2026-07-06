@@ -1,6 +1,5 @@
 const pedidoService = require('../services/pedidoService');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const axios = require('axios');
 const contaAzulService = require('../services/contaAzulService');
 const estoqueService = require('../services/estoqueService');
