@@ -61,7 +61,7 @@ A automação do BotConversa ("catch" webhook, painel **Automação → AppHardt
 
 > **TEMA STARBUCKS aplicado em 07/2026** (aprovado pelo usuário). Tokens abaixo já refletem o tema novo.
 > Existe uma **camada de remapeamento global** em `frontend/src/index.css` (seção "TEMA STARBUCKS") que converte azuis de ação legados (`bg-blue-600`, `text-blue-600`, `hover:bg-blue-700`...) para os verdes e transforma `button.rounded/rounded-md` em pílula — código antigo fica verde sem precisar ser editado. **Código NOVO deve usar os tokens diretamente** (`bg-primary hover:bg-primaryDark`, `rounded-full`), não os azuis legados.
-> `design-system.html` na raiz ainda mostra o tema azul antigo (pendente de atualização).
+> Referência visual completa: `design-system.html` na raiz (atualizado para o tema Starbucks; também publicado como Artifact para a equipe).
 
 ### Tokens Principais
 

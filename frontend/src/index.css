@@ -100,6 +100,34 @@ html, body {
 .bg-gray-100 { background-color: #eceae5; }
 .hover\:bg-gray-100:hover { background-color: #eceae5; }
 
+/* Botões sólidos azuis/anil legados → verde.
+   Escopo em button/a de propósito: divs com bg-blue-500 (barras de progresso
+   de meta) e chips de módulo sky/indigo DEVEM continuar como estão. */
+button.bg-blue-500, a.bg-blue-500,
+button.bg-sky-500, button.bg-sky-600, a.bg-sky-600,
+button.bg-indigo-500, button.bg-indigo-600, a.bg-indigo-600 { background-color: #00754A; }
+button.hover\:bg-sky-600:hover, button.hover\:bg-sky-700:hover, a.hover\:bg-sky-700:hover,
+button.hover\:bg-indigo-600:hover, button.hover\:bg-indigo-700:hover, a.hover\:bg-indigo-700:hover { background-color: #006241; }
+
+/* Abas/seleção e links azuis restantes */
+.border-blue-500 { border-color: #00754A; }
+.text-blue-500 { color: #00754A; }
+.hover\:text-blue-600:hover { color: #00754A; }
+.text-blue-900 { color: #0b3d2c; }
+
+/* Anéis de foco sky/indigo → verde */
+.focus\:ring-sky-500:focus, .focus\:ring-indigo-500:focus { --tw-ring-color: #00754A; }
+.focus\:border-sky-400:focus, .focus\:border-sky-500:focus, .focus\:border-indigo-500:focus { border-color: #00754A; }
+
+/* Painéis informativos azuis → verde-claro quente (o texto deles, blue-600/700,
+   já vira verde acima — fundo azul + texto verde brigava) */
+.bg-blue-50 { background-color: #edf4f0; }
+.hover\:bg-blue-50:hover { background-color: #edf4f0; }
+.hover\:bg-blue-100:hover { background-color: #dcebe3; }
+.border-blue-100 { border-color: #dcebe3; }
+.border-blue-200 { border-color: #cfe3d9; }
+.border-blue-300 { border-color: #b6d5c7; }
+
 /* Botões em pílula (raio 50px universal da Starbucks) + toque que "afunda" */
 button.rounded, button.rounded-md { border-radius: 9999px; }
 button:active:not(:disabled) { transform: scale(0.97); }

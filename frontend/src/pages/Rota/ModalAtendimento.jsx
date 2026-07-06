@@ -414,7 +414,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
                                         onClick={() => setForm(f => ({ ...f, acaoAtendimento: a.value }))}
                                         className={`px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-colors`}
                                         style={form.acaoAtendimento === a.value
-                                            ? { backgroundColor: a.cor || '#2563eb', color: '#fff', borderColor: a.cor || '#2563eb' }
+                                            ? { backgroundColor: a.cor || '#00754A', color: '#fff', borderColor: a.cor || '#00754A' }
                                             : { borderColor: a.cor || '#d1d5db', color: a.cor || '#374151' }
                                         }
                                     >

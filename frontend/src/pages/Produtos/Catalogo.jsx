@@ -203,7 +203,7 @@ function Pill({ active, cor, onClick, children }) {
     if (active) {
         return (
             <button onClick={onClick} className={base + ' text-white'}
-                style={{ backgroundColor: cor || '#2563eb', borderColor: cor || '#2563eb' }}>
+                style={{ backgroundColor: cor || '#00754A', borderColor: cor || '#00754A' }}>
                 {children}
             </button>
         );
