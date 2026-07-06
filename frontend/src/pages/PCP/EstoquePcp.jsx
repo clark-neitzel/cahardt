@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Search, AlertTriangle, Package, ArrowUpCircle, ArrowDownCircle, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpEstoqueService from '../../services/pcpEstoqueService';
+import SelectBusca from '../../components/SelectBusca';
 
 const TIPO_CORES = {
     MP: 'bg-amber-100 text-amber-800',
@@ -85,17 +86,16 @@ export default function EstoquePcp() {
                         className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary"
                     />
                 </div>
-                <select
+                <SelectBusca
                     value={tipoFiltro}
                     onChange={e => setTipoFiltro(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
                 >
                     <option value="">Todos os tipos</option>
                     <option value="MP">Materia-Prima</option>
                     <option value="SUB">Subproduto</option>
                     <option value="PA">Produto Acabado</option>
                     <option value="EMB">Embalagem</option>
-                </select>
+                </SelectBusca>
                 <label className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer">
                     <input
                         type="checkbox"

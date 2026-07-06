@@ -7,6 +7,7 @@ import NotasCertificadoConfig from './NotasCertificadoConfig';
 import { useAuth } from '../../../contexts/AuthContext';
 import api from '../../../services/api';
 import caixaService from '../../../services/caixaService';
+import SelectBusca from '../../../components/SelectBusca';
 
 
 // classes estáticas por cor — Tailwind não compila classes montadas em runtime
@@ -126,16 +127,16 @@ const AcaoCard = ({ acao, onAtualizar, onRemover, vendedores, isPadrao }) => {
                                 {(acao.modoTransferencia || 'fixo') === 'fixo' && (
                                     <div>
                                         <label className="text-[11px] font-medium text-gray-500">Responsável fixo</label>
-                                        <select
+                                        <SelectBusca
                                             value={acao.responsavelTransferenciaId || ''}
                                             onChange={e => onAtualizar(acao.value, 'responsavelTransferenciaId', e.target.value || null)}
-                                            className="block w-full border border-gray-300 rounded px-2 py-1.5 text-[13px] mt-0.5 focus:ring-1 focus:ring-blue-500"
+                                            className="block w-full mt-0.5"
                                         >
                                             <option value="">Selecione...</option>
                                             {vendedores.map(v => (
                                                 <option key={v.id} value={v.id}>{v.nome}</option>
                                             ))}
-                                        </select>
+                                        </SelectBusca>
                                     </div>
                                 )}
                                 {acao.modoTransferencia === 'escolhe' && (

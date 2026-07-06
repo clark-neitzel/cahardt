@@ -8,6 +8,7 @@ import {
 import toast from 'react-hot-toast';
 import ImportarCaModal from './ImportarCaModal';
 import ComboBusca from '../../components/ComboBusca';
+import SelectBusca from '../../components/SelectBusca';
 
 // Filtros salvos por navegador/usuário — ao sair e voltar, continuam aplicados
 const LS_FILTROS = 'contasPagar_filtros';
@@ -355,21 +356,21 @@ const ContasPagarPage = () => {
                             placeholder="Buscar fornecedor ou descrição…"
                             className={`w-full md:w-64 border rounded px-3 py-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none ${filtros.busca ? '!border-primary bg-blue-50/60' : 'border-gray-300 focus:border-primary'}`}
                         />
-                        <select
+                        <SelectBusca
                             value={filtros.status}
                             onChange={e => setFiltros(f => ({ ...f, status: e.target.value }))}
-                            className={`w-full md:w-44 border rounded px-3 py-2 text-sm text-gray-700 focus:outline-none ${filtros.status ? '!border-primary bg-blue-50/60 font-medium' : 'border-gray-300 focus:border-primary'}`}
+                            className="w-full md:w-44"
                         >
                             {STATUS_OPCOES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                        <select
+                        </SelectBusca>
+                        <SelectBusca
                             value={filtros.categoria}
                             onChange={e => setFiltros(f => ({ ...f, categoria: e.target.value }))}
-                            className={`w-full md:w-44 border rounded px-3 py-2 text-sm text-gray-700 focus:outline-none ${filtros.categoria ? '!border-primary bg-blue-50/60 font-medium' : 'border-gray-300 focus:border-primary'}`}
+                            className="w-full md:w-44"
                         >
                             <option value="">Categoria: Todas</option>
                             {categorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
-                        </select>
+                        </SelectBusca>
                         {/* Período por vencimento: De (data) … Até (data) */}
                         <div className="flex items-center gap-2 w-full md:w-auto">
                             <input
@@ -1160,9 +1161,9 @@ const BaixaParcelaModal = ({ conta, parcela, onClose, onSuccess }) => {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
-            <select value={formaPagamento} onChange={e => setFormaPagamento(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+            <SelectBusca value={formaPagamento} onChange={e => setFormaPagamento(e.target.value)} className="w-full">
                             {FORMAS_PGTO.map(f => <option key={f}>{f}</option>)}
-                        </select>
+                        </SelectBusca>
                     </div>
 
                     <div>
@@ -1247,17 +1248,17 @@ const BaixaLoteModal = ({ parcelaIds, valorTotal, onClose, onSuccess }) => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
-                                    <select value={metodoPagamento} onChange={e => setMetodoPagamento(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white">
+                                    <SelectBusca value={metodoPagamento} onChange={e => setMetodoPagamento(e.target.value)} className="w-full">
                                         <option value="">Selecionar…</option>
                                         {opcoes.metodosPagamento.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                                    </select>
+                                    </SelectBusca>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Banco / caixa</label>
-                                    <select value={contaFinanceiraCaId} onChange={e => setContaFinanceiraCaId(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white">
+                                    <SelectBusca value={contaFinanceiraCaId} onChange={e => setContaFinanceiraCaId(e.target.value)} className="w-full">
                                         <option value="">Selecionar…</option>
                                         {opcoes.contasFinanceiras.map(c => <option key={c.id} value={c.id}>{c.nome}{c.padrao ? ' (padrão)' : ''}</option>)}
-                                    </select>
+                                    </SelectBusca>
                                 </div>
                             </div>
                         </>

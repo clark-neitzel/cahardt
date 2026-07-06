@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Plus, Clock, Upload, ChevronRight, RefreshCw } from 'lucide-react';
 import funcionarioService from '../../services/funcionarioService';
+import SelectBusca from '../../components/SelectBusca';
 
 export default function FuncionariosLista() {
   const navigate = useNavigate();
@@ -57,10 +58,10 @@ export default function FuncionariosLista() {
             placeholder="Buscar por nome, CPF, cargo…"
             className="w-full md:w-72 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
           />
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full md:w-44 border border-gray-300 rounded px-3 py-2 text-sm">
+          <SelectBusca value={status} onChange={(e) => setStatus(e.target.value)} className="w-full md:w-44">
             <option value="ativos">Ativos</option>
             <option value="inativos">Inativos</option>
-          </select>
+          </SelectBusca>
           <button onClick={carregar} className="p-2 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 self-start">
             <RefreshCw className={`h-4 w-4 ${carregando ? 'animate-spin' : ''}`} />
           </button>

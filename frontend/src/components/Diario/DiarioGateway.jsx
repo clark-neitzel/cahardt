@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useDiario } from '../../contexts/DiarioContext';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
+import SelectBusca from '../SelectBusca';
 
 const DiarioGateway = () => {
     const { logout, user, signed } = useAuth();
@@ -260,9 +261,8 @@ const DiarioGateway = () => {
                                 <div className="sm:col-span-2">
                                     <label className="block text-sm font-bold text-gray-700 mb-1">Qual veículo vai utilizar? *</label>
                                     <div className="flex">
-                                        <select
-                                            required
-                                            className="block w-full border-gray-300 rounded-l-md focus:border-green-500 focus:ring-green-500 sm:text-lg bg-gray-50 h-12"
+                                        <SelectBusca
+                                            className="w-full"
                                             value={veiculoId}
                                             onChange={(e) => setVeiculoId(e.target.value)}
                                         >
@@ -275,7 +275,7 @@ const DiarioGateway = () => {
                                                     </option>
                                                 );
                                             })}
-                                        </select>
+                                        </SelectBusca>
 
                                         {/* Botão de Documento (se existir URL no veiculo) */}
                                         {veiculoId && veiculos.find(v => v.id === veiculoId)?.documentoUrl ? (

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, AlertTriangle } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import SelectBusca from '../../components/SelectBusca';
 
 const CATEGORIAS = [
     { value: 'MERCADORIA_EMPRESA', label: 'Mercadoria da Empresa' },
@@ -189,17 +190,16 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
                     {/* Categoria */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
-                        <select
+                        <SelectBusca
                             value={categoria}
                             onChange={(e) => { setCategoria(e.target.value); setAlertaPreco(null); setConfirmandoPreco(false); }}
-                            className="w-full border-gray-300 rounded-md shadow-sm text-sm focus:ring-primary focus:border-primary p-2 border"
-                            required
+                            className="w-full"
                         >
                             <option value="">Selecione...</option>
                             {CATEGORIAS.map(c => (
                                 <option key={c.value} value={c.value}>{c.label}</option>
                             ))}
-                        </select>
+                        </SelectBusca>
                     </div>
 
                     {/* Aviso: sem placa no dia — bloqueia completamente para não-admin */}
@@ -218,18 +218,17 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
                         <>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Veículo *</label>
-                                <select
+                                <SelectBusca
                                     value={veiculoId}
                                     onChange={(e) => setVeiculoId(e.target.value)}
                                     disabled={!podeEditarVeiculos && !!veiculoDoDia && !despesaEditando}
-                                    className={`w-full rounded-md shadow-sm text-sm focus:ring-primary focus:border-primary p-2 border ${!podeEditarVeiculos && veiculoDoDia && !despesaEditando ? 'bg-gray-100 text-gray-600 border-gray-200' : 'border-gray-300'}`}
-                                    required
+                                    className="w-full"
                                 >
                                     <option value="">Selecione o veículo...</option>
                                     {veiculos.map(v => (
                                         <option key={v.id} value={v.id}>{v.placa} — {v.modelo}</option>
                                     ))}
-                                </select>
+                                </SelectBusca>
                                 {!podeEditarVeiculos && veiculoDoDia && !despesaEditando && (
                                     <p className="text-[10px] text-gray-500 mt-1">Veículo do dia selecionado automaticamente</p>
                                 )}
@@ -309,16 +308,16 @@ const NovaDespesaModal = ({ onClose, onSaved, vendedorId, dataReferencia, despes
                     {categoria === 'MANUTENCAO_VEICULO' && (
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Manutenção</label>
-                            <select
+                            <SelectBusca
                                 value={tipoManutencao}
                                 onChange={(e) => setTipoManutencao(e.target.value)}
-                                className="w-full border-gray-300 rounded-md shadow-sm text-sm focus:ring-primary focus:border-primary p-2 border"
+                                className="w-full"
                             >
                                 <option value="">Selecione...</option>
                                 {TIPOS_MANUTENCAO.map(t => (
                                     <option key={t.value} value={t.value}>{t.label}</option>
                                 ))}
-                            </select>
+                            </SelectBusca>
                         </div>
                     )}
 

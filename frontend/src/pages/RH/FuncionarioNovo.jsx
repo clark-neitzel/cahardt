@@ -4,6 +4,7 @@ import { UserPlus, Search, Check, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clienteService from '../../services/clienteService';
 import funcionarioService from '../../services/funcionarioService';
+import SelectBusca from '../../components/SelectBusca';
 
 export default function FuncionarioNovo() {
   const navigate = useNavigate();
@@ -115,10 +116,10 @@ export default function FuncionarioNovo() {
           <label className="block"><span className="text-sm font-medium text-gray-700">Admissão</span><input type="date" value={form.dataAdmissao} onChange={set('dataAdmissao')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
           <label className="block"><span className="text-sm font-medium text-gray-700">Salário (R$)</span><input value={form.salario} onChange={set('salario')} placeholder="2.500,00" className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
           <label className="block md:col-span-2"><span className="text-sm font-medium text-gray-700">Hora extra</span>
-            <select value={form.tipoHoraExtra} onChange={set('tipoHoraExtra')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm">
+            <SelectBusca value={form.tipoHoraExtra} onChange={set('tipoHoraExtra')} className="mt-1 w-full">
               <option value="BANCO">Banco de horas (compensatório)</option>
               <option value="PAGA">Hora extra paga (50%/100%)</option>
-            </select>
+            </SelectBusca>
           </label>
         </div>
         <div className="px-5 py-3 border-t border-gray-100 flex justify-end gap-3">

@@ -7,6 +7,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import pcpAgendaService from '../../services/pcpAgendaService';
 import pcpOrdemService from '../../services/pcpOrdemService';
+import SelectBusca from '../../components/SelectBusca';
 
 const STATUS_CORES_BG = {
     PLANEJADA: '#3B82F6',
@@ -224,10 +225,10 @@ export default function CalendarioProducao() {
                         <div className="space-y-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Ordem de Producao *</label>
-                                <select
+                                <SelectBusca
                                     value={formEvento.ordemProducaoId}
                                     onChange={e => handleOrdemChange(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                    className="w-full"
                                 >
                                     <option value="">Selecione...</option>
                                     {ordens.map(o => (
@@ -235,7 +236,7 @@ export default function CalendarioProducao() {
                                             #{o.numero} - {o.receita?.nome} ({o.status})
                                         </option>
                                     ))}
-                                </select>
+                                </SelectBusca>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Titulo *</label>

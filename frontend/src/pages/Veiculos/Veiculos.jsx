@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import api, { API_URL } from '../../services/api';
 import VeiculoFicha from './VeiculoFicha';
 import { useAuth } from '../../contexts/AuthContext';
+import SelectBusca from '../../components/SelectBusca';
 
 const Veiculos = () => {
     const { user } = useAuth();
@@ -355,17 +356,16 @@ const Veiculos = () => {
                                         {/* Formulário Novo Alerta */}
                                         <form onSubmit={handleCriarAlerta} className="bg-amber-50 p-4 rounded-lg border border-amber-200 space-y-3">
                                             <h3 className="text-sm font-bold text-amber-900">Novo Alerta</h3>
-                                            <select
+                                            <SelectBusca
                                                 value={novoAlerta.tipo}
                                                 onChange={(e) => setNovoAlerta(prev => ({ ...prev, tipo: e.target.value }))}
-                                                className="w-full border border-gray-300 rounded-md p-2 text-sm"
-                                                required
+                                                className="w-full"
                                             >
                                                 <option value="">Tipo de manutenção...</option>
                                                 {TIPOS_MANUTENCAO.map(t => (
                                                     <option key={t.value} value={t.value}>{t.label}</option>
                                                 ))}
-                                            </select>
+                                            </SelectBusca>
                                             <input
                                                 type="text"
                                                 placeholder="Descrição (opcional)"

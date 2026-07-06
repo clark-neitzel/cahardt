@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import api from '../../../services/api';
 import tabelaPrecoService from '../../../services/tabelaPrecoService';
 import formasPagamentoService from '../../../services/formasPagamentoService';
+import SelectBusca from '../../../components/SelectBusca';
 
 const STORAGE_KEY = 'auditoria_filtros';
 const hojeISO = new Date().toISOString().slice(0, 10);
@@ -449,8 +450,8 @@ const AuditoriaEntregas = () => {
                         {editPagamentos.map((pg, idx) => (
                             <div key={idx} className="flex gap-2 items-start">
                                 <div className="flex-1 space-y-1.5">
-                                    <select
-                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
+                                    <SelectBusca
+                                        className="w-full"
                                         value={pg._selectId || ''}
                                         onChange={(e) => {
                                             const selected = formasPagamento.find(f => f._selectId === e.target.value);
@@ -468,7 +469,7 @@ const AuditoriaEntregas = () => {
                                         {formasPagamento.map(f => (
                                             <option key={f._selectId} value={f._selectId}>{f.nome}</option>
                                         ))}
-                                    </select>
+                                    </SelectBusca>
                                     <input
                                         type="number"
                                         step="0.01"

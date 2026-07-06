@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Save, X, Trash2, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import formasPagamentoService from '../../services/formasPagamentoService';
+import SelectBusca from '../../components/SelectBusca';
 
 const FormasPagamentoEntrega = () => {
     const [formas, setFormas] = useState([]);
@@ -213,14 +214,13 @@ const FormasPagamentoEntrega = () => {
                                 </td>
                                 <td className="px-6 py-4 text-center">
                                     {editingId === forma.id ? (
-                                        <select
-                                            className="border border-gray-300 rounded px-2 py-1 text-sm bg-white"
+                                        <SelectBusca
                                             value={editForm.ativo}
                                             onChange={(e) => setEditForm({ ...editForm, ativo: e.target.value === 'true' })}
                                         >
                                             <option value="true">Ativo</option>
                                             <option value="false">Inativo</option>
-                                        </select>
+                                        </SelectBusca>
                                     ) : (
                                         forma.ativo
                                             ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Ativo</span>

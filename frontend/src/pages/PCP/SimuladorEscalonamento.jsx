@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Calculator, AlertTriangle, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpReceitaService from '../../services/pcpReceitaService';
+import SelectBusca from '../../components/SelectBusca';
 
 function BomTree({ itens, nivel = 0 }) {
     const [expandidos, setExpandidos] = useState({});
@@ -143,10 +144,9 @@ export default function SimuladorEscalonamento({ receitaId, itensReceita }) {
                             placeholder="10"
                         />
                         <label className="text-sm text-gray-600">de</label>
-                        <select
+                        <SelectBusca
                             value={itemLimitanteId}
                             onChange={e => setItemLimitanteId(e.target.value)}
-                            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="">Selecione ingrediente...</option>
                             {itensReceita?.map(i => (
@@ -154,7 +154,7 @@ export default function SimuladorEscalonamento({ receitaId, itensReceita }) {
                                     {i.itemPcp?.nome || i.nome}
                                 </option>
                             ))}
-                        </select>
+                        </SelectBusca>
                     </div>
                 )}
 

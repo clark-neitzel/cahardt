@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import api, { API_URL } from '../../services/api';
 import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
+import SelectBusca from '../../components/SelectBusca';
 
 const TABS = [
     { id: 'resumo', label: 'Resumo', icon: Car },
@@ -614,11 +615,11 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                             {!readOnly && (
                             <form onSubmit={handleCriarAlerta} className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
                                 <h3 className="text-sm font-bold text-amber-900">Novo Alerta de Manutenção</h3>
-                                <select required value={novoAlerta.tipo} onChange={e => setNovoAlerta(p => ({ ...p, tipo: e.target.value }))}
-                                    className="w-full border border-gray-300 rounded-md p-2 text-sm">
+                                <SelectBusca value={novoAlerta.tipo} onChange={e => setNovoAlerta(p => ({ ...p, tipo: e.target.value }))}
+                                    className="w-full">
                                     <option value="">Tipo de manutenção...</option>
                                     {TIPOS_MANUTENCAO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                </select>
+                                </SelectBusca>
                                 <input type="text" placeholder="Descrição (opcional)" value={novoAlerta.descricao}
                                     onChange={e => setNovoAlerta(p => ({ ...p, descricao: e.target.value }))}
                                     className="w-full border border-gray-300 rounded-md p-2 text-sm" />
@@ -752,13 +753,13 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                     <div>
                                         <label className="block text-xs text-gray-500 mb-1">Tipo de Combustível</label>
                                         {editando ? (
-                                            <select value={form.tipoCombustivel || ''}
+                                            <SelectBusca value={form.tipoCombustivel || ''}
                                                 onChange={e => setForm(p => ({ ...p, tipoCombustivel: e.target.value }))}
-                                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                                                className="w-full">
                                                 <option value="">Não definido</option>
                                                 <option value="GASOLINA">Gasolina</option>
                                                 <option value="DIESEL">Diesel</option>
-                                            </select>
+                                            </SelectBusca>
                                         ) : (
                                             <p className="text-base font-bold text-gray-900">
                                                 {ficha?.tipoCombustivel === 'DIESEL' ? 'Diesel' : ficha?.tipoCombustivel === 'GASOLINA' ? 'Gasolina' : '—'}
@@ -993,14 +994,14 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
 
                                     <div>
                                         <label className="block text-xs text-gray-600 mb-1">Motorista (do sistema)</label>
-                                        <select
+                                        <SelectBusca
                                             value={usoForm.motoristaId}
                                             onChange={e => setUsoForm(p => ({ ...p, motoristaId: e.target.value }))}
-                                            className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                                            className="w-full"
                                         >
                                             <option value="">Selecione (ou digite nome abaixo)</option>
                                             {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                                        </select>
+                                        </SelectBusca>
                                     </div>
 
                                     {!usoForm.motoristaId && (
@@ -1080,12 +1081,12 @@ const VeiculoFicha = ({ veiculoId, onClose, onUpdate, readOnly = false, allowedT
                                             </div>
                                             <div>
                                                 <label className="block text-[10px] text-gray-500 mb-0.5">Motorista (do sistema)</label>
-                                                <select value={editUsoForm.motoristaId}
+                                                <SelectBusca value={editUsoForm.motoristaId}
                                                     onChange={e => setEditUsoForm(p => ({ ...p, motoristaId: e.target.value }))}
-                                                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm">
+                                                    className="w-full">
                                                     <option value="">Selecione (ou digite nome abaixo)</option>
                                                     {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                                                </select>
+                                                </SelectBusca>
                                             </div>
                                             {!editUsoForm.motoristaId && (
                                                 <div>

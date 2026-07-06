@@ -4,6 +4,7 @@ import { ChevronLeft, Copy, MessageCircle, RefreshCw, Loader2, Upload, Trash2, P
 import toast from 'react-hot-toast';
 import funcionarioService from '../../services/funcionarioService';
 import configService from '../../services/configService';
+import SelectBusca from '../../components/SelectBusca';
 import { API_URL } from '../../services/api';
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -136,9 +137,9 @@ function AbaDados({ f, onSaved }) {
         <label className="block"><span className="text-sm font-medium text-gray-700">Cargo</span><input value={form.cargo} onChange={set('cargo')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
         <label className="block"><span className="text-sm font-medium text-gray-700">Salário (R$)</span><input value={form.salario} onChange={set('salario')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
         <label className="block"><span className="text-sm font-medium text-gray-700">Hora extra</span>
-          <select value={form.tipoHoraExtra} onChange={set('tipoHoraExtra')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm">
+          <SelectBusca value={form.tipoHoraExtra} onChange={set('tipoHoraExtra')} className="mt-1 w-full">
             <option value="BANCO">Banco de horas</option><option value="PAGA">Hora extra paga</option>
-          </select>
+          </SelectBusca>
         </label>
       </div>
 
@@ -240,9 +241,9 @@ function AbaDocumentos({ f, onSaved }) {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className="border border-gray-300 rounded px-3 py-2 text-sm">
+        <SelectBusca value={categoria} onChange={(e) => setCategoria(e.target.value)}>
           {CATS_DOC.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+        </SelectBusca>
         <label className="px-3 py-2 bg-primary hover:bg-blue-700 text-white rounded-md text-sm font-semibold cursor-pointer inline-flex items-center gap-1">
           {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Anexar (PDF/imagem)
           <input type="file" accept="image/*,application/pdf" hidden onChange={enviar} />
@@ -277,10 +278,10 @@ function AbaExames({ f, onSaved }) {
   return (
     <div>
       <div className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3">
-        <select value={form.tipo} onChange={set('tipo')} className="border border-gray-300 rounded px-2 py-2 text-sm">{TIPOS_EXAME.map(t => <option key={t} value={t}>{t}</option>)}</select>
+        <SelectBusca value={form.tipo} onChange={set('tipo')}>{TIPOS_EXAME.map(t => <option key={t} value={t}>{t}</option>)}</SelectBusca>
         <input type="date" value={form.data} onChange={set('data')} className="border border-gray-300 rounded px-2 py-2 text-sm" />
         <input type="date" value={form.validade} onChange={set('validade')} placeholder="validade" className="border border-gray-300 rounded px-2 py-2 text-sm" />
-        <select value={form.resultado} onChange={set('resultado')} className="border border-gray-300 rounded px-2 py-2 text-sm"><option value="APTO">Apto</option><option value="INAPTO">Inapto</option></select>
+        <SelectBusca value={form.resultado} onChange={set('resultado')}><option value="APTO">Apto</option><option value="INAPTO">Inapto</option></SelectBusca>
         <label className="border border-gray-300 rounded px-2 py-2 text-sm text-gray-600 cursor-pointer truncate">{file ? file.name : 'Anexo (opcional)'}<input type="file" accept="image/*,application/pdf" hidden onChange={(e) => setFile(e.target.files?.[0])} /></label>
       </div>
       <button onClick={salvar} disabled={salvando} className="px-3 py-2 bg-primary hover:bg-blue-700 text-white rounded-md text-sm font-semibold mb-4 inline-flex items-center gap-1">{salvando && <Loader2 className="h-4 w-4 animate-spin" />}<Plus className="h-4 w-4" /> Adicionar exame</button>
@@ -443,7 +444,7 @@ function ModalBatida({ funcionarioId, onClose, onSaved }) {
         <div className="grid grid-cols-2 gap-3">
           <label className="block"><span className="text-sm font-medium text-gray-700">Data</span><input type="date" value={form.data} onChange={set('data')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
           <label className="block"><span className="text-sm font-medium text-gray-700">Hora</span><input type="time" value={form.hora} onChange={set('hora')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
-          <label className="block"><span className="text-sm font-medium text-gray-700">Tipo</span><select value={form.tipo} onChange={set('tipo')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm"><option value="ENTRADA">Entrada</option><option value="SAIDA">Saída</option></select></label>
+          <label className="block"><span className="text-sm font-medium text-gray-700">Tipo</span><SelectBusca value={form.tipo} onChange={set('tipo')} className="mt-1 w-full"><option value="ENTRADA">Entrada</option><option value="SAIDA">Saída</option></SelectBusca></label>
           <label className="block"><span className="text-sm font-medium text-gray-700">Motivo</span><input value={form.obs} onChange={set('obs')} placeholder="Esqueceu de bater" className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm" /></label>
         </div>
         <div className="flex justify-end gap-2 mt-4">

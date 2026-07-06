@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Upload, FileText, Loader2, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import funcionarioService from '../../services/funcionarioService';
+import SelectBusca from '../../components/SelectBusca';
 
 // Normaliza data para YYYY-MM-DD (aceita DD/MM/AAAA, AAAA-MM-DD, DD.MM.AAAA)
 function normalizarData(s) {
@@ -77,10 +78,10 @@ export default function ImportarPonto() {
   const Col = ({ campo, label, obrig }) => (
     <label className="block">
       <span className="text-sm font-medium text-gray-700">{label}{obrig && ' *'}</span>
-      <select value={map[campo]} onChange={(e) => setMap(m => ({ ...m, [campo]: e.target.value }))} className="mt-1 w-full border border-gray-300 rounded px-2 py-2 text-sm">
+      <SelectBusca value={map[campo]} onChange={(e) => setMap(m => ({ ...m, [campo]: e.target.value }))} className="mt-1 w-full">
         <option value="">— não usar —</option>
         {parsed.header.map((h, i) => <option key={i} value={i}>{h || `coluna ${i + 1}`}</option>)}
-      </select>
+      </SelectBusca>
     </label>
   );
 

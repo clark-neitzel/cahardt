@@ -7,6 +7,7 @@ import promocaoService from '../../../services/promocaoService';
 import { API_URL } from '../../../services/api';
 import categoriaProdutoService from '../../../services/categoriaProdutoService';
 import toast from 'react-hot-toast';
+import SelectBusca from '../../../components/SelectBusca';
 import {
     ArrowLeft, Loader, AlertCircle, Camera, Tag, Plus, X,
     CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Trash2, Search, Save, Sparkles,
@@ -456,12 +457,12 @@ const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-                            <select value={novaPromo.tipo}
+                            <SelectBusca value={novaPromo.tipo}
                                 onChange={e => setNovaPromo(p => ({ ...p, tipo: e.target.value }))}
-                                className="w-full rounded-md border border-gray-300 py-2 px-3 bg-white text-gray-900 focus:ring-primary focus:border-primary">
+                                className="w-full">
                                 <option value="SIMPLES">Simples (por período)</option>
                                 <option value="CONDICIONAL">Condicional (SE / OU)</option>
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Preço Promocional (R$) <span className="text-red-500">*</span></label>

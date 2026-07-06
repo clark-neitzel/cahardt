@@ -3,6 +3,7 @@ import { Search, Plus, BookOpen, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import pcpReceitaService from '../../services/pcpReceitaService';
+import SelectBusca from '../../components/SelectBusca';
 
 const STATUS_CORES = {
     ativa: 'bg-green-100 text-green-800',
@@ -67,16 +68,15 @@ export default function ReceitasList() {
                         className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
-                <select
+                <SelectBusca
                     value={statusFiltro}
                     onChange={e => setStatusFiltro(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
                 >
                     <option value="">Todos os status</option>
                     <option value="ativa">Ativa</option>
                     <option value="inativa">Inativa</option>
                     <option value="rascunho">Rascunho</option>
-                </select>
+                </SelectBusca>
             </div>
 
             {loading ? (

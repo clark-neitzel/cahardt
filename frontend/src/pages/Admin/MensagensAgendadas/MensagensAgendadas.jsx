@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Play, BellRing, Phone, X, Save, Eye } from 'lucid
 import toast from 'react-hot-toast';
 import mensagemAgendadaService from '../../../services/mensagemAgendadaService';
 import vendedorService from '../../../services/vendedorService';
+import SelectBusca from '../../../components/SelectBusca';
 
 const DIAS = [
     { sigla: 'SEG', label: 'Seg' },
@@ -312,22 +313,22 @@ export default function MensagensAgendadas() {
                     <div className="space-y-4">
                         <div>
                             <label className="text-xs font-medium text-gray-600 block mb-1">Vendedor</label>
-                            <select value={form.vendedorId} onChange={e => setForm(f => ({ ...f, vendedorId: e.target.value }))}
-                                className="w-full px-3 py-2 text-sm border rounded-lg bg-white" disabled={!!editando}>
+                            <SelectBusca value={form.vendedorId} onChange={e => setForm(f => ({ ...f, vendedorId: e.target.value }))}
+                                className="w-full" disabled={!!editando}>
                                 <option value="">Selecione...</option>
                                 {vendedores.map(v => (
                                     <option key={v.id} value={v.id}>
                                         {v.nome}{!v.telefone ? ' ⚠️ sem telefone' : ''}
                                     </option>
                                 ))}
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="text-xs font-medium text-gray-600 block mb-1">Tipo de mensagem</label>
-                            <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
-                                className="w-full px-3 py-2 text-sm border rounded-lg bg-white">
+                            <SelectBusca value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
+                                className="w-full">
                                 {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="text-xs font-medium text-gray-600 block mb-1">Horário (fuso São Paulo)</label>

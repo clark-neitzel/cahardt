@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Camera, Upload, CheckCircle, User, ChevronRight, ChevronLeft, X } from 'lucide-react';
 import { buscarCurriculoPorCpf, salvarCurriculo, uploadFotoCurriculo } from '../../services/curriculoService';
+import SelectBusca from '../../components/SelectBusca';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function formatarCPF(v) {
@@ -373,16 +374,16 @@ export default function Candidatura() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Campo label="Estado civil">
-                <select value={form.estadoCivil} onChange={e => setForm(f => ({ ...f, estadoCivil: e.target.value }))} className={selectCls}>
+                <SelectBusca value={form.estadoCivil} onChange={e => setForm(f => ({ ...f, estadoCivil: e.target.value }))} className="w-full">
                   <option value="">Selecione</option>
                   {ESTADOS_CIVIS.map(v => <option key={v}>{v}</option>)}
-                </select>
+                </SelectBusca>
               </Campo>
               <Campo label="Tem filhos?">
-                <select value={form.temFilhos} onChange={e => setForm(f => ({ ...f, temFilhos: e.target.value }))} className={selectCls}>
+                <SelectBusca value={form.temFilhos} onChange={e => setForm(f => ({ ...f, temFilhos: e.target.value }))} className="w-full">
                   <option value="">Selecione</option>
                   {FILHOS.map(v => <option key={v}>{v}</option>)}
-                </select>
+                </SelectBusca>
               </Campo>
             </div>
 
@@ -449,24 +450,24 @@ export default function Candidatura() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Campo label="Horário disponível para início">
-                <select value={form.horarioInicio} onChange={e => setForm(f => ({ ...f, horarioInicio: e.target.value }))} className={selectCls}>
+                <SelectBusca value={form.horarioInicio} onChange={e => setForm(f => ({ ...f, horarioInicio: e.target.value }))} className="w-full">
                   <option value="">Selecione</option>
                   {HORARIOS_INICIO.map(v => <option key={v}>{v}</option>)}
-                </select>
+                </SelectBusca>
               </Campo>
               <Campo label="Disponível para horas extras?">
-                <select value={form.horasExtras} onChange={e => setForm(f => ({ ...f, horasExtras: e.target.value }))} className={selectCls}>
+                <SelectBusca value={form.horasExtras} onChange={e => setForm(f => ({ ...f, horasExtras: e.target.value }))} className="w-full">
                   <option value="">Selecione</option>
                   <option>Sim</option><option>Não</option>
-                </select>
+                </SelectBusca>
               </Campo>
             </div>
 
             <Campo label="Disponibilidade de horário">
-              <select value={form.disponibilidade} onChange={e => setForm(f => ({ ...f, disponibilidade: e.target.value }))} className={selectCls}>
+              <SelectBusca value={form.disponibilidade} onChange={e => setForm(f => ({ ...f, disponibilidade: e.target.value }))} className="w-full">
                 <option value="">Selecione</option>
                 {DISPONIBILIDADES.map(v => <option key={v}>{v}</option>)}
-              </select>
+              </SelectBusca>
             </Campo>
 
             {/* ── EXPERIÊNCIA ── */}

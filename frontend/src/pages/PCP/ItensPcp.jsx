@@ -3,6 +3,7 @@ import { Search, Plus, Package, ToggleLeft, ToggleRight, Pencil } from 'lucide-r
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import pcpItemService from '../../services/pcpItemService';
+import SelectBusca from '../../components/SelectBusca';
 
 const TIPO_CORES = {
     MP: 'bg-amber-100 text-amber-800',
@@ -73,15 +74,14 @@ export default function ItensPcp() {
                         className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                 </div>
-                <select
+                <SelectBusca
                     value={ativoFiltro}
                     onChange={e => setAtivoFiltro(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                 >
                     <option value="true">Ativos</option>
                     <option value="false">Inativos</option>
                     <option value="">Todos</option>
-                </select>
+                </SelectBusca>
             </div>
 
             {/* Tabela */}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
+import SelectBusca from '../../components/SelectBusca';
 
 export default function EtiquetasDados() {
     const navigate = useNavigate();
@@ -85,15 +86,14 @@ export default function EtiquetasDados() {
                         className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                 </div>
-                <select
+                <SelectBusca
                     value={ativoFiltro}
                     onChange={e => setAtivoSalvo(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
                 >
                     <option value="true">Ativos</option>
                     <option value="false">Inativos</option>
                     <option value="">Todos</option>
-                </select>
+                </SelectBusca>
             </div>
 
             {/* Tabela */}

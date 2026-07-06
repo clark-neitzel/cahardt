@@ -8,6 +8,7 @@ import { API_URL } from '../../../services/api';
 import { Search, ArrowLeft, Plus, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MultiSelect from '../../../components/MultiSelect';
+import SelectBusca from '../../../components/SelectBusca';
 
 const STORAGE_KEY = '@CAHardt:ProdutosFiltros';
 
@@ -235,11 +236,11 @@ const ListaProdutos = () => {
                             </div>
                             <div className="md:col-span-2">
                                 <label className="text-sm font-medium text-gray-700">Categoria (do Conta Azul)</label>
-                                <select value={novoProduto.categoria} onChange={e => setNovoProduto({ ...novoProduto, categoria: e.target.value })}
-                                    className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
+                                <SelectBusca value={novoProduto.categoria} onChange={e => setNovoProduto({ ...novoProduto, categoria: e.target.value })}
+                                    className="mt-1 w-full">
                                     <option value="">Sem categoria</option>
                                     {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
+                                </SelectBusca>
                             </div>
                         </div>
                         <div className="flex flex-col md:flex-row gap-3 pt-1">

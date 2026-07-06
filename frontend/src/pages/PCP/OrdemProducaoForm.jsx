@@ -4,6 +4,7 @@ import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpOrdemService from '../../services/pcpOrdemService';
 import pcpReceitaService from '../../services/pcpReceitaService';
+import SelectBusca from '../../components/SelectBusca';
 
 export default function OrdemProducaoForm() {
     const navigate = useNavigate();
@@ -101,10 +102,10 @@ export default function OrdemProducaoForm() {
                 <div className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Receita *</label>
-                        <select
+                        <SelectBusca
                             value={form.receitaId}
                             onChange={e => handleReceitaChange(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                            className="w-full"
                             required
                         >
                             <option value="">Selecione uma receita...</option>
@@ -113,7 +114,7 @@ export default function OrdemProducaoForm() {
                                     {r.nome} (v{r.versao}) — {r.itemPcp?.nome} — Rend: {parseFloat(r.rendimentoBase).toFixed(1)} {r.itemPcp?.unidade}
                                 </option>
                             ))}
-                        </select>
+                        </SelectBusca>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

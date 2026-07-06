@@ -5,6 +5,7 @@ import vendedorService from '../../services/vendedorService';
 import configService from '../../services/configService';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import SelectBusca from '../../components/SelectBusca';
 
 const DIAS_OPCOES = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 const CANAIS = [
@@ -275,16 +276,16 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                         {podeEscolherVendedor && (
                             <div>
                                 <label className="block text-[13px] font-semibold text-gray-700 mb-1">Vendedor Responsável</label>
-                                <select
+                                <SelectBusca
                                     value={form.idVendedor}
                                     onChange={e => setForm(f => ({ ...f, idVendedor: e.target.value }))}
-                                    className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary"
+                                    className="w-full"
                                 >
                                     <option value="">Selecione um vendedor (Opcional)</option>
                                     {vendedores.map(v => (
                                         <option key={v.id} value={v.id}>{v.nome}</option>
                                     ))}
-                                </select>
+                                </SelectBusca>
                             </div>
                         )}
                     </div>
@@ -315,19 +316,19 @@ const ModalNovoLead = ({ onClose, onSalvo, onCriado, user, vendedorId: propVende
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-[13px] font-semibold text-gray-700 mb-1">Origem *</label>
-                            <select value={form.origemLead} onChange={e => setForm(f => ({ ...f, origemLead: e.target.value }))}
-                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary">
+                            <SelectBusca value={form.origemLead} onChange={e => setForm(f => ({ ...f, origemLead: e.target.value }))}
+                                className="w-full">
                                 <option value="">Selecione...</option>
                                 {origens.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="block text-[13px] font-semibold text-gray-700 mb-1">Categoria *</label>
-                            <select value={form.categoriaClienteId} onChange={e => setForm(f => ({ ...f, categoriaClienteId: e.target.value }))}
-                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary">
+                            <SelectBusca value={form.categoriaClienteId} onChange={e => setForm(f => ({ ...f, categoriaClienteId: e.target.value }))}
+                                className="w-full">
                                 <option value="">Selecione...</option>
                                 {categoriasCliente.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                            </select>
+                            </SelectBusca>
                         </div>
                     </div>
 

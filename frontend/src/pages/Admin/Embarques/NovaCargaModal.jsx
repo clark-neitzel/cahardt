@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Save, Calendar, User, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
+import SelectBusca from '../../../components/SelectBusca';
 
 const NovaCargaModal = ({ onClose, vendedores, onSuccess }) => {
     const [dataSaida, setDataSaida] = useState(() => {
@@ -62,17 +63,16 @@ const NovaCargaModal = ({ onClose, vendedores, onSuccess }) => {
                             <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5 flex items-center gap-1">
                                 <User className="h-3.5 w-3.5" /> Motorista / Responsável
                             </label>
-                            <select
-                                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white focus:ring-1 focus:ring-sky-500 focus:border-sky-500 focus:outline-none"
+                            <SelectBusca
+                                className="w-full"
                                 value={responsavelId}
                                 onChange={(e) => setResponsavelId(e.target.value)}
-                                required
                             >
                                 <option value="" disabled>Selecione quem vai entregar…</option>
                                 {vendedores.map((v) => (
                                     <option key={v.id} value={v.id}>{v.nome}</option>
                                 ))}
-                            </select>
+                            </SelectBusca>
                         </div>
                     </div>
 

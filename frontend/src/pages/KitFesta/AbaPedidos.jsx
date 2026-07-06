@@ -5,6 +5,7 @@ import { kitFestaService } from '../../services/kitFestaService';
 import clienteService from '../../services/clienteService';
 import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
+import SelectBusca from '../../components/SelectBusca';
 
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
 const STATUS_FILTROS = [
@@ -306,18 +307,18 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-gray-500">Tipo de pedido</label>
-                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={tipo} onChange={e => setTipo(e.target.value)}>
+                  <SelectBusca className="w-full" value={tipo} onChange={e => setTipo(e.target.value)}>
                     <option value="NORMAL">Normal</option>
                     <option value="ESPECIAL">Especial (sem nota)</option>
                     <option value="BONIFICACAO">Bonificação</option>
-                  </select>
+                  </SelectBusca>
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Vendedor</label>
-                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={vendedorId} onChange={e => setVendedorId(e.target.value)}>
+                  <SelectBusca className="w-full" value={vendedorId} onChange={e => setVendedorId(e.target.value)}>
                     <option value="">— sem vendedor —</option>
                     {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                  </select>
+                  </SelectBusca>
                 </div>
               </div>
               <div className="flex gap-2">

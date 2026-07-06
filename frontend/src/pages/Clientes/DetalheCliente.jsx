@@ -14,6 +14,7 @@ import devolucaoService from '../../services/devolucaoService';
 import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink, Truck, CreditCard, AlertTriangle } from 'lucide-react';
+import SelectBusca from '../../components/SelectBusca';
 
 // Toggle switch inline
 const Toggle = ({ checked, onChange }) => (
@@ -803,8 +804,8 @@ const DetalheCliente = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Vendedor Responsável</label>
-                            <select
-                                className="block w-full border border-gray-200 rounded-lg p-2.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            <SelectBusca
+                                className="w-full"
                                 value={formData.idVendedor}
                                 onChange={(e) => setFormData({ ...formData, idVendedor: e.target.value })}
                             >
@@ -812,7 +813,7 @@ const DetalheCliente = () => {
                                 {vendedores.filter(v => v.ativo !== false || v.id === formData.idVendedor).map(v => (
                                     <option key={v.id} value={v.id}>{v.nome}{v.ativo === false ? ' (INATIVO)' : ''}</option>
                                 ))}
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div className="relative">
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Indicação (quem indicou)</label>
@@ -901,8 +902,8 @@ const DetalheCliente = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Condição de Pagamento Padrão</label>
-                            <select
-                                className="block w-full border border-gray-200 rounded-lg p-2.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            <SelectBusca
+                                className="w-full"
                                 value={formData.Condicao_de_pagamento}
                                 onChange={(e) => setFormData({ ...formData, Condicao_de_pagamento: e.target.value })}
                             >
@@ -910,7 +911,7 @@ const DetalheCliente = () => {
                                 {condicoesPagamento.map(c => (
                                     <option key={c.id} value={c.id}>{c.nomeCondicao}</option>
                                 ))}
-                            </select>
+                            </SelectBusca>
                             {formData.Condicao_de_pagamento && (() => {
                                 const sel = condicoesPagamento.find(c => c.idCondicao === formData.Condicao_de_pagamento);
                                 if (!sel) return null;
@@ -952,8 +953,8 @@ const DetalheCliente = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Categoria (Segmento)</label>
-                            <select
-                                className="block w-full border border-gray-200 rounded-lg p-2.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            <SelectBusca
+                                className="w-full"
                                 value={formData.categoriaClienteId}
                                 onChange={(e) => setFormData({ ...formData, categoriaClienteId: e.target.value })}
                             >
@@ -961,7 +962,7 @@ const DetalheCliente = () => {
                                 {categoriasCliente.map(c => (
                                     <option key={c.id} value={c.id}>{c.nome} (Ciclo: {c.cicloPadraoDias} dias)</option>
                                 ))}
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Sobrescrever Ciclo (Dias)</label>
@@ -1035,8 +1036,8 @@ const DetalheCliente = () => {
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Indicador de IE</label>
-                            <select
-                                className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            <SelectBusca
+                                className="w-full"
                                 value={formData.Indicador_Inscricao_Estadual}
                                 onChange={(e) => setFormData({ ...formData, Indicador_Inscricao_Estadual: e.target.value })}
                             >
@@ -1044,7 +1045,7 @@ const DetalheCliente = () => {
                                 <option value="CONTRIBUINTE">Contribuinte</option>
                                 <option value="CONTRIBUINTE_ISENTO">Contribuinte Isento</option>
                                 <option value="NAO_CONTRIBUINTE">Não Contribuinte</option>
-                            </select>
+                            </SelectBusca>
                         </div>
                     </div>
                     {/* Telefone fixo (CA, somente leitura) */}

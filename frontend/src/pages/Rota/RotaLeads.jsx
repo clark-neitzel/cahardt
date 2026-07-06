@@ -1382,12 +1382,12 @@ const EditarEntregaModal = ({ pedido, onClose, onSuccess }) => {
                     {/* Status */}
                     <div>
                         <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1">Status da Entrega</label>
-                        <select value={statusEntrega} onChange={e => setStatusEntrega(e.target.value)}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-[13px] focus:ring-sky-500 focus:border-sky-500 outline-none">
+                        <SelectBusca value={statusEntrega} onChange={e => setStatusEntrega(e.target.value)}
+                            className="w-full">
                             <option value="ENTREGUE">Entregue</option>
                             <option value="ENTREGUE_PARCIAL">Entregue Parcial</option>
                             <option value="DEVOLVIDO">Devolvido 100%</option>
-                        </select>
+                        </SelectBusca>
                     </div>
 
                     {/* Divergência */}
@@ -1408,11 +1408,11 @@ const EditarEntregaModal = ({ pedido, onClose, onSuccess }) => {
                         {pagamentos.length === 0 && <p className="text-[11px] text-gray-400 italic">Nenhum pagamento registrado.</p>}
                         {pagamentos.map((p, i) => (
                             <div key={i} className="flex items-center gap-2 mb-1.5">
-                                <select value={p.forma} onChange={e => updatePagamento(i, 'forma', e.target.value)}
-                                    className="flex-1 border border-gray-200 rounded px-2 py-1.5 text-[12px] outline-none focus:border-sky-400">
+                                <SelectBusca value={p.forma} onChange={e => updatePagamento(i, 'forma', e.target.value)}
+                                    className="flex-1">
                                     {formasDisp.map(f => <option key={f} value={f}>{f}</option>)}
                                     {p.forma && !formasDisp.includes(p.forma) && <option value={p.forma}>{p.forma}</option>}
-                                </select>
+                                </SelectBusca>
                                 <div className="relative w-28">
                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-gray-400">R$</span>
                                     <input type="number" step="0.01" value={p.valor || ''} onChange={e => updatePagamento(i, 'valor', e.target.value)}

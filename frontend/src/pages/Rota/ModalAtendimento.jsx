@@ -5,6 +5,7 @@ import configService from '../../services/configService';
 import toast from 'react-hot-toast';
 import AlertaGpsFaltante from '../../components/AlertaGpsFaltante';
 import ClientePopup from './ClientePopup';
+import SelectBusca from '../../components/SelectBusca';
 
 const TIPOS_PADRAO = [
     { value: 'VISITA', label: 'Visita Presencial' },
@@ -440,16 +441,16 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
                                 <ArrowRight className="h-3.5 w-3.5 inline mr-1" />
                                 Transferir para *
                             </label>
-                            <select
+                            <SelectBusca
                                 value={form.transferirParaId}
                                 onChange={e => setForm(f => ({ ...f, transferirParaId: e.target.value }))}
-                                className={`block w-full border rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-blue-500 focus:border-blue-500 ${!form.transferirParaId ? 'border-red-300' : 'border-gray-300'}`}
+                                className="w-full"
                             >
                                 <option value="">Selecione o vendedor...</option>
                                 {vendedores.filter(v => v.id !== vendedorId).map(v => (
                                     <option key={v.id} value={v.id}>{v.nome}</option>
                                 ))}
-                            </select>
+                            </SelectBusca>
                         </div>
                     )}
 
@@ -503,13 +504,13 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
                     {isLead && (
                         <div>
                             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Etapa do Lead</label>
-                            <select
+                            <SelectBusca
                                 value={form.etapaNova}
                                 onChange={e => setForm(f => ({ ...f, etapaNova: e.target.value }))}
-                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full"
                             >
                                 {ETAPAS.map(e => <option key={e} value={e}>{e}</option>)}
-                            </select>
+                            </SelectBusca>
                         </div>
                     )}
 

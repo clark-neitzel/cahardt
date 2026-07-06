@@ -3,6 +3,7 @@ import { Snowflake, Package, ClipboardList, Settings, Search, Check, X, Link2, T
 import toast from 'react-hot-toast';
 import congeladosService from '../../services/congeladosService';
 import api, { API_URL } from '../../services/api';
+import SelectBusca from '../../components/SelectBusca';
 
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
 const imgUrl = (u) => !u ? null : (u.startsWith('http') ? u : `${API_URL}${u}`);
@@ -649,10 +650,10 @@ function ModalConfigProduto({ produto, embalagens = [], onEmbalagens, onClose, o
         </div>
         <div>
           <label className="text-xs text-gray-500">Embalagem (como aparece no card)</label>
-          <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.embalagem}
+          <SelectBusca className="w-full" value={form.embalagem}
             onChange={e => setForm({ ...form, embalagem: e.target.value })}>
             {opcoesEmb.map(e => <option key={e} value={e}>{e}</option>)}
-          </select>
+          </SelectBusca>
           <div className="flex flex-wrap items-center gap-1.5 mt-2">
             {(embalagens || []).map(e => (
               <span key={e} className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${form.embalagem === e ? 'bg-sky-50 border-sky-300 text-sky-700' : 'border-gray-200 text-gray-600'}`}>

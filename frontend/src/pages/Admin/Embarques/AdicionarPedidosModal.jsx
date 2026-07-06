@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, CheckSquare, Square, Save, X, Package, ChevronDown, MapPin, User, CreditCard, Calendar, DollarSign } from 'lucide-react';
+import { Search, CheckSquare, Square, Save, X, Package, MapPin, User, CreditCard, Calendar, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
+import SelectBusca from '../../../components/SelectBusca';
 
 const TipoBadge = ({ pedido }) => {
     if (pedido.bonificacao) return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200">BN</span>;
@@ -210,33 +211,25 @@ const AdicionarPedidosModal = ({ embarqueId, onClose, onSuccess }) => {
                     {aba === 'pedidos' && (
                         <div className="flex flex-wrap gap-2 items-center">
                             {/* Tipo */}
-                            <div className="relative">
-                                <select
-                                    value={filtroTipo}
-                                    onChange={(e) => setFiltroTipo(e.target.value)}
-                                    className="appearance-none pl-2.5 pr-6 py-1.5 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 font-medium text-gray-700"
-                                >
-                                    <option value="todos">Todos os tipos</option>
-                                    <option value="normal">CA — Normal</option>
-                                    <option value="especial">ZZ — Especial</option>
-                                    <option value="bonificacao">BN — Bonificação</option>
-                                </select>
-                                <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
-                            </div>
+                            <SelectBusca
+                                value={filtroTipo}
+                                onChange={(e) => setFiltroTipo(e.target.value)}
+                            >
+                                <option value="todos">Todos os tipos</option>
+                                <option value="normal">CA — Normal</option>
+                                <option value="especial">ZZ — Especial</option>
+                                <option value="bonificacao">BN — Bonificação</option>
+                            </SelectBusca>
 
                             {/* Vendedor */}
                             {vendedoresUnicos.length > 0 && (
-                                <div className="relative">
-                                    <select
-                                        value={filtroVendedor}
-                                        onChange={(e) => setFiltroVendedor(e.target.value)}
-                                        className="appearance-none pl-2.5 pr-6 py-1.5 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 font-medium text-gray-700"
-                                    >
-                                        <option value="">Todos os vendedores</option>
-                                        {vendedoresUnicos.map(v => <option key={v} value={v}>{v}</option>)}
-                                    </select>
-                                    <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
-                                </div>
+                                <SelectBusca
+                                    value={filtroVendedor}
+                                    onChange={(e) => setFiltroVendedor(e.target.value)}
+                                >
+                                    <option value="">Todos os vendedores</option>
+                                    {vendedoresUnicos.map(v => <option key={v} value={v}>{v}</option>)}
+                                </SelectBusca>
                             )}
 
                             {/* Data de/até */}

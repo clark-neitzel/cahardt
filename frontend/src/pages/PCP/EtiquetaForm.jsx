@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
 import produtoService from '../../services/produtoService';
 import { ALERGENOS_LISTA } from './EtiquetaLabel';
+import SelectBusca from '../../components/SelectBusca';
 
 const VAZIO = {
     produtoId: '',
@@ -200,7 +201,7 @@ export default function EtiquetaForm() {
                                     Carregando produtos...
                                 </div>
                             ) : (
-                                <select value={form.produtoId} onChange={e => set('produtoId', e.target.value)} className={inputCls}>
+                                <SelectBusca value={form.produtoId} onChange={e => set('produtoId', e.target.value)} className="w-full">
                                     <option value="">— Nenhum —</option>
                                     {(() => {
                                         const semEtiqueta = produtos.filter(p =>
@@ -231,7 +232,7 @@ export default function EtiquetaForm() {
                                             </>
                                         );
                                     })()}
-                                </select>
+                                </SelectBusca>
                             )}
                             <p className="text-xs text-gray-400 mt-1">Um produto pode ter múltiplas etiquetas (ex: versão 22g e 28g)</p>
                         </Campo>

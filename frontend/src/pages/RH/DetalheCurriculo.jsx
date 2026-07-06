@@ -4,6 +4,7 @@ import { ChevronLeft, MessageCircle, Clock, User, Check, AlertCircle, X, Trash2,
 import { obterCurriculo, atualizarCurriculo, gerarLinkWhatsapp, excluirCurriculo } from '../../services/curriculoService';
 import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import SelectBusca from '../../components/SelectBusca';
 import toast from 'react-hot-toast';
 
 const STATUS_OPCOES = [
@@ -282,10 +283,10 @@ export default function DetalheCurriculo() {
             <div className={`inline-flex px-3 py-1.5 rounded-lg border text-sm font-medium mb-3 ${STATUS_COR[curriculo.status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
               {curriculo.status}
             </div>
-            <select value={status} onChange={e => salvarStatus(e.target.value)} disabled={salvando}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+            <SelectBusca value={status} onChange={e => salvarStatus(e.target.value)} disabled={salvando}
+              className="w-full">
               {STATUS_OPCOES.map(s => <option key={s}>{s}</option>)}
-            </select>
+            </SelectBusca>
           </div>
 
           {/* Observação */}
@@ -474,16 +475,16 @@ function EditarDadosModal({ curriculo, onClose, onSaved }) {
                 <input type="date" value={form.dataNascimento} onChange={e => update('dataNascimento', e.target.value)} className={inputCls} />
               </EditField>
               <EditField label="Estado civil">
-                <select value={form.estadoCivil} onChange={e => update('estadoCivil', e.target.value)} className={inputCls}>
+                <SelectBusca value={form.estadoCivil} onChange={e => update('estadoCivil', e.target.value)} className="w-full">
                   <option value="">—</option>
                   {ESTADOS_CIVIS.map(s => <option key={s}>{s}</option>)}
-                </select>
+                </SelectBusca>
               </EditField>
               <EditField label="Tem filhos?">
-                <select value={form.temFilhos} onChange={e => update('temFilhos', e.target.value)} className={inputCls}>
+                <SelectBusca value={form.temFilhos} onChange={e => update('temFilhos', e.target.value)} className="w-full">
                   <option value="">—</option>
                   {SIM_NAO.map(s => <option key={s}>{s}</option>)}
-                </select>
+                </SelectBusca>
               </EditField>
               <EditField label="Naturalidade">
                 <input type="text" value={form.naturalidade} onChange={e => update('naturalidade', e.target.value)} className={inputCls} />
@@ -499,28 +500,28 @@ function EditarDadosModal({ curriculo, onClose, onSaved }) {
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Disponibilidade</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <EditField label="Área de interesse">
-                <select value={form.areaInteresse} onChange={e => update('areaInteresse', e.target.value)} className={inputCls}>
+                <SelectBusca value={form.areaInteresse} onChange={e => update('areaInteresse', e.target.value)} className="w-full">
                   <option value="">Selecione</option>
                   {AREAS_EDIT.map(a => <option key={a}>{a}</option>)}
-                </select>
+                </SelectBusca>
               </EditField>
               <EditField label="Horário de início">
-                <select value={form.horarioInicio} onChange={e => update('horarioInicio', e.target.value)} className={inputCls}>
+                <SelectBusca value={form.horarioInicio} onChange={e => update('horarioInicio', e.target.value)} className="w-full">
                   <option value="">—</option>
                   {HORARIOS_INICIO.map(s => <option key={s}>{s}</option>)}
-                </select>
+                </SelectBusca>
               </EditField>
               <EditField label="Horas extras">
-                <select value={form.horasExtras} onChange={e => update('horasExtras', e.target.value)} className={inputCls}>
+                <SelectBusca value={form.horasExtras} onChange={e => update('horasExtras', e.target.value)} className="w-full">
                   <option value="">—</option>
                   {HORAS_EXTRAS_OPCOES.map(s => <option key={s}>{s}</option>)}
-                </select>
+                </SelectBusca>
               </EditField>
               <EditField label="Disponibilidade">
-                <select value={form.disponibilidade} onChange={e => update('disponibilidade', e.target.value)} className={inputCls}>
+                <SelectBusca value={form.disponibilidade} onChange={e => update('disponibilidade', e.target.value)} className="w-full">
                   <option value="">—</option>
                   {DISPONIBILIDADE_OPCOES.map(s => <option key={s}>{s}</option>)}
-                </select>
+                </SelectBusca>
               </EditField>
             </div>
           </div>

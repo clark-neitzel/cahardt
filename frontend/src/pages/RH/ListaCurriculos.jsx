@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Users, TrendingUp, ChevronRight, RefreshCw, ChevronDown, Check } from 'lucide-react';
 import { listarCurriculos, obterContagens } from '../../services/curriculoService';
+import SelectBusca from '../../components/SelectBusca';
 import { API_URL } from '../../services/api';
 
 const STORAGE_KEY = 'rh.curriculos.filtros.v1';
@@ -194,12 +195,11 @@ export default function ListaCurriculos() {
               </div>
             )}
           </div>
-          <select value={filtros.areaInteresse}
-            onChange={e => setFiltros(f => ({ ...f, areaInteresse: e.target.value }))}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+          <SelectBusca value={filtros.areaInteresse}
+            onChange={e => setFiltros(f => ({ ...f, areaInteresse: e.target.value }))}>
             <option value="">Todas as áreas</option>
             {AREAS.filter(Boolean).map(a => <option key={a}>{a}</option>)}
-          </select>
+          </SelectBusca>
           {(filtros.status.length > 0 || filtros.areaInteresse || filtros.busca) && (
             <button onClick={() => { setFiltros({ status: [], areaInteresse: '', busca: '' }); setBuscaInput(''); }}
               className="text-sm text-gray-500 hover:text-red-500 flex items-center gap-1">

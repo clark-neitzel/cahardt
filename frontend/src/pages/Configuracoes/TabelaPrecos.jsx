@@ -5,6 +5,7 @@ import formasPagamentoService from '../../services/formasPagamentoService';
 import api from '../../services/api';
 import { BadgeDollarSign, Landmark, X, Save, Plus, Wallet, Trash2, Truck } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import SelectBusca from '../../components/SelectBusca';
 
 const TabelaPrecos = () => {
     const [condicoes, setCondicoes] = useState([]);
@@ -446,8 +447,8 @@ const TabelaPrecos = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Tipo de Pagamento</label>
-                                    <select
-                                        className="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 px-3 bg-white text-gray-900 font-medium"
+                                    <SelectBusca
+                                        className="w-full"
                                         value={editForm.tipoPagamento}
                                         onChange={(e) => setEditForm({ ...editForm, tipoPagamento: e.target.value })}
                                     >
@@ -456,7 +457,7 @@ const TabelaPrecos = () => {
                                         <option value="PIX">Pix</option>
                                         <option value="BOLETO_BANCARIO">Boleto Bancário</option>
                                         <option value="CARTAO">Cartão</option>
-                                    </select>
+                                    </SelectBusca>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Opção (Ex: À vista)</label>
@@ -746,8 +747,8 @@ const TabelaPrecos = () => {
                                 {editForm.exigeBanco && (
                                     <div>
                                         <label className="block text-xs font-semibold text-gray-500 mb-1">Banco Padrão (Conta Financeira)</label>
-                                        <select
-                                            className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 py-1.5 px-3 bg-white text-gray-900 text-sm font-medium"
+                                        <SelectBusca
+                                            className="w-full"
                                             value={editForm.bancoPadrao}
                                             onChange={(e) => setEditForm({ ...editForm, bancoPadrao: e.target.value })}
                                         >
@@ -757,7 +758,7 @@ const TabelaPrecos = () => {
                                                     {b.nomeBanco} (ID: {b.id.substring(0, 8)}...)
                                                 </option>
                                             ))}
-                                        </select>
+                                        </SelectBusca>
                                     </div>
                                 )}
                             </div>
@@ -785,8 +786,8 @@ const TabelaPrecos = () => {
                                     <div className="space-y-2 bg-purple-50 p-3 rounded-lg border border-purple-200">
                                         {(editForm.regrasCategoria || []).map((regra, idx) => (
                                             <div key={idx} className="flex items-center gap-2 bg-white p-2 rounded border border-purple-100">
-                                                <select
-                                                    className="flex-1 text-xs border-gray-300 rounded py-1.5 px-2 bg-white text-gray-900"
+                                                <SelectBusca
+                                                    className="flex-1"
                                                     value={regra.categoria}
                                                     onChange={(e) => {
                                                         const regras = [...editForm.regrasCategoria];
@@ -798,9 +799,9 @@ const TabelaPrecos = () => {
                                                     {categoriasCA.map(cat => (
                                                         <option key={cat} value={cat}>{cat}</option>
                                                     ))}
-                                                </select>
-                                                <select
-                                                    className="w-28 text-xs border-gray-300 rounded py-1.5 px-2 bg-white text-gray-900"
+                                                </SelectBusca>
+                                                <SelectBusca
+                                                    className="w-28"
                                                     value={regra.precoBase}
                                                     onChange={(e) => {
                                                         const regras = [...editForm.regrasCategoria];
@@ -810,7 +811,7 @@ const TabelaPrecos = () => {
                                                 >
                                                     <option value="valorVenda">Preço Venda</option>
                                                     <option value="custoMedio">Custo Médio</option>
-                                                </select>
+                                                </SelectBusca>
                                                 <div className="relative w-20">
                                                     <input
                                                         type="number"
@@ -848,14 +849,14 @@ const TabelaPrecos = () => {
 
                             <div className="pt-2 border-t border-gray-100">
                                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Status da Tabela no Sistema</label>
-                                <select
-                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2.5 px-3 bg-gray-50/50 text-gray-900 font-medium"
+                                <SelectBusca
+                                    className="w-full"
                                     value={editForm.ativo ? 'true' : 'false'}
                                     onChange={(e) => setEditForm({ ...editForm, ativo: e.target.value === 'true' })}
                                 >
                                     <option value="true">Ativa para vendas</option>
                                     <option value="false">Inativa (Oculta do Vendedor)</option>
-                                </select>
+                                </SelectBusca>
                             </div>
                         </div>
 

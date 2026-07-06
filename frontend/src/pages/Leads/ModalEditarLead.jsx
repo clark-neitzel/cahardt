@@ -6,6 +6,7 @@ import atendimentoService from '../../services/atendimentoService';
 import configService from '../../services/configService';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import SelectBusca from '../../components/SelectBusca';
 
 const DIAS_OPCOES = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 const CANAIS = [
@@ -266,19 +267,19 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, onExcluido, user }) => {
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-[13px] font-semibold text-gray-700 mb-1">Origem</label>
-                            <select value={form.origemLead} onChange={e => setForm(f => ({ ...f, origemLead: e.target.value }))}
-                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary">
+                            <SelectBusca value={form.origemLead} onChange={e => setForm(f => ({ ...f, origemLead: e.target.value }))}
+                                className="w-full">
                                 <option value="">Selecione...</option>
                                 {origens.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </select>
+                            </SelectBusca>
                         </div>
                         <div>
                             <label className="block text-[13px] font-semibold text-gray-700 mb-1">Categoria</label>
-                            <select value={form.categoriaClienteId} onChange={e => setForm(f => ({ ...f, categoriaClienteId: e.target.value }))}
-                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary">
+                            <SelectBusca value={form.categoriaClienteId} onChange={e => setForm(f => ({ ...f, categoriaClienteId: e.target.value }))}
+                                className="w-full">
                                 <option value="">Selecione...</option>
                                 {categoriasCliente.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                            </select>
+                            </SelectBusca>
                         </div>
                     </div>
 
@@ -286,11 +287,11 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, onExcluido, user }) => {
                     {acoes.length > 0 && (
                         <div>
                             <label className="block text-[13px] font-semibold text-gray-700 mb-1">Ação do Atendimento</label>
-                            <select value={acaoAtendimento} onChange={e => setAcaoAtendimento(e.target.value)}
-                                className="block w-full border border-orange-300 rounded-lg p-3 bg-orange-50 text-gray-900 text-[14px] focus:ring-primary focus:border-primary">
+                            <SelectBusca value={acaoAtendimento} onChange={e => setAcaoAtendimento(e.target.value)}
+                                className="w-full">
                                 <option value="">Nenhuma ação (apenas salvar)</option>
                                 {acoes.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
-                            </select>
+                            </SelectBusca>
                             <p className="text-[11px] text-gray-400 mt-1">Selecione para registrar um atendimento ao salvar.</p>
                         </div>
                     )}
@@ -299,11 +300,11 @@ const ModalEditarLead = ({ lead, onClose, onSalvo, onExcluido, user }) => {
                     {podeEscolherVendedor && (
                         <div>
                             <label className="block text-[13px] font-semibold text-gray-700 mb-1">Vendedor Responsável</label>
-                            <select value={form.idVendedor} onChange={e => setForm(f => ({ ...f, idVendedor: e.target.value }))}
-                                className="block w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-900 text-[14px] focus:ring-primary focus:border-primary">
+                            <SelectBusca value={form.idVendedor} onChange={e => setForm(f => ({ ...f, idVendedor: e.target.value }))}
+                                className="w-full">
                                 <option value="">Selecione...</option>
                                 {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                            </select>
+                            </SelectBusca>
                         </div>
                     )}
 

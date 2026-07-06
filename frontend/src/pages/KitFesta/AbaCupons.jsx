@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Trash2, Ticket, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { kitFestaService } from '../../services/kitFestaService';
+import SelectBusca from '../../components/SelectBusca';
 
 const vazio = { codigo: '', tipo: 'pct', valor: '', label: '', minCaixas: '', validade: '', primeiraCompra: false, usoMaximo: '', ativo: true };
 
@@ -64,11 +65,11 @@ export default function AbaCupons() {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-gray-500">Tipo</label>
-              <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.tipo}
+              <SelectBusca className="w-full" value={form.tipo}
                 onChange={e => setForm({ ...form, tipo: e.target.value })}>
                 <option value="pct">% desconto</option>
                 <option value="brl">R$ desconto</option>
-              </select>
+              </SelectBusca>
             </div>
             <div>
               <label className="text-xs text-gray-500">Valor</label>

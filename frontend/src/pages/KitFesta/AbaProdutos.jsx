@@ -3,6 +3,7 @@ import { Search, Loader2, Check, Star, X, ImageOff, Tag, Plus, Trash2 } from 'lu
 import toast from 'react-hot-toast';
 import { kitFestaService } from '../../services/kitFestaService';
 import { API_URL } from '../../services/api';
+import SelectBusca from '../../components/SelectBusca';
 
 const imgUrl = (u) => !u ? null : (u.startsWith('http') ? u : `${API_URL}${u}`);
 
@@ -137,11 +138,11 @@ function ModalConfig({ produto, categorias, onClose, onSaved }) {
         <div className="p-4 space-y-3">
           <div>
             <label className="text-xs text-gray-500">Categoria no site</label>
-            <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.categoriaId}
+            <SelectBusca className="w-full" value={form.categoriaId}
               onChange={e => setForm({ ...form, categoriaId: e.target.value })}>
               <option value="">— sem categoria —</option>
               {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
+            </SelectBusca>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>

@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import fornecedorService from '../../services/fornecedorService';
 import { Building2, X, Download, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import SelectBusca from '../../components/SelectBusca';
 
 const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
@@ -339,10 +340,10 @@ const FornecedorModal = ({ fornecedor, onClose, onSuccess }) => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">UF</label>
-                            <select value={form.uf} onChange={e => set('uf', e.target.value)} className={inputCls}>
+                            <SelectBusca value={form.uf} onChange={e => set('uf', e.target.value)} className="w-full">
                                 <option value="">—</option>
                                 {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-                            </select>
+                            </SelectBusca>
                         </div>
                     </div>
                     <div>

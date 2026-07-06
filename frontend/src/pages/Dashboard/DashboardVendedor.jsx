@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import api from '../../services/api';
 import DashboardAdminSection from './DashboardAdminSection';
 import DashboardAdminSectionClassic from './DashboardAdminSectionClassic';
+import SelectBusca from '../../components/SelectBusca';
 
 dayjs.locale('pt-br');
 
@@ -418,14 +419,13 @@ const DashboardVendedor = () => {
                     {isAdmin && vendedores.length > 0 && (
                         <div className="flex items-center gap-2">
                             <Users size={18} className="text-gray-400" />
-                            <select
+                            <SelectBusca
                                 value={vendedorSelecionado}
                                 onChange={(e) => setVendedorSelecionado(e.target.value)}
-                                className="border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
                                 <option value="">Meu Dashboard</option>
                                 {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                            </select>
+                            </SelectBusca>
                         </div>
                     )}
                 </div>

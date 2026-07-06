@@ -12,6 +12,7 @@ import api from '../../services/api';
 import NovaDespesaModal from './NovaDespesaModal';
 import VeiculoFicha from '../Veiculos/VeiculoFicha';
 import ModalDevolucao from '../Pedidos/ModalDevolucao';
+import SelectBusca from '../../components/SelectBusca';
 
 const SESSION_KEY = '@CAHardt:CaixaFiltros';
 
@@ -297,16 +298,15 @@ const CaixaDiarioPage = () => {
                         title={!podeVerHistorico ? 'Você só pode visualizar o caixa do dia atual.' : ''}
                     />
                     {isAdmin && (
-                        <select
+                        <SelectBusca
                             value={vendedorId}
                             onChange={(e) => setVendedorId(e.target.value)}
-                            className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm bg-white text-gray-900"
                         >
                             <option value="">Selecione vendedor...</option>
                             {vendedores.map(v => (
                                 <option key={v.id} value={v.id}>{v.nome}</option>
                             ))}
-                        </select>
+                        </SelectBusca>
                     )}
                 </div>
             </div>

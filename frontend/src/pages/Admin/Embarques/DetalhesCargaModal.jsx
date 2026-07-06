@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
 import AdicionarPedidosModal from './AdicionarPedidosModal';
 import { useAuth } from '../../../contexts/AuthContext';
+import SelectBusca from '../../../components/SelectBusca';
 
 const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] }) => {
     const { user } = useAuth();
@@ -464,16 +465,16 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                             </div>
                                             <div>
                                                 <label className="text-xs text-gray-500 font-medium">Motorista Responsável</label>
-                                                <select
+                                                <SelectBusca
                                                     value={editData.responsavelId}
                                                     onChange={e => setEditData(d => ({ ...d, responsavelId: e.target.value }))}
-                                                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-sky-500 focus:border-sky-500"
+                                                    className="mt-1 block w-full"
                                                 >
                                                     <option value="">Selecione...</option>
                                                     {motoristas.map(m => (
                                                         <option key={m.id} value={m.id}>{m.nome}</option>
                                                     ))}
-                                                </select>
+                                                </SelectBusca>
                                             </div>
                                             <div className="flex gap-2">
                                                 <button

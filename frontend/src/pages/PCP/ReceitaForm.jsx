@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import pcpReceitaService from '../../services/pcpReceitaService';
 import pcpItemService from '../../services/pcpItemService';
 import api from '../../services/api';
+import SelectBusca from '../../components/SelectBusca';
 
 const TIPOS_CONSUMO = ['MP', 'SUB', 'EMB'];
 const ETAPAS = ['', 'preparo', 'modelagem', 'fritura', 'cozimento', 'montagem', 'embalagem'];
@@ -504,15 +505,15 @@ export default function ReceitaForm() {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                            <select
+                            <SelectBusca
                                 value={form.status}
                                 onChange={e => handleChange('status', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                className="w-full"
                             >
                                 <option value="ativa">Ativa</option>
                                 <option value="rascunho">Rascunho</option>
                                 <option value="inativa">Inativa</option>
-                            </select>
+                            </SelectBusca>
                         </div>
                     </div>
 
@@ -589,22 +590,22 @@ export default function ReceitaForm() {
                                                 )}
                                             </div>
                                             <div className="col-span-1">
-                                                <select
+                                                <SelectBusca
                                                     value={item.tipo}
                                                     onChange={e => updateItem(idx, 'tipo', e.target.value)}
-                                                    className="w-full px-1 py-1.5 border border-gray-300 rounded text-xs"
+                                                    className="w-full"
                                                 >
                                                     {TIPOS_CONSUMO.map(t => <option key={t} value={t}>{t}</option>)}
-                                                </select>
+                                                </SelectBusca>
                                             </div>
                                             <div className="col-span-1">
-                                                <select
+                                                <SelectBusca
                                                     value={item.ordemEtapa}
                                                     onChange={e => updateItem(idx, 'ordemEtapa', e.target.value)}
-                                                    className="w-full px-1 py-1.5 border border-gray-300 rounded text-xs"
+                                                    className="w-full"
                                                 >
                                                     {ETAPAS.map(e => <option key={e} value={e}>{e || '—'}</option>)}
-                                                </select>
+                                                </SelectBusca>
                                             </div>
                                             <div className="col-span-1">
                                                 <input

@@ -3,6 +3,7 @@ import { Loader2, Save, Store, Megaphone, ListChecks, Gift, Truck, Star, Plus, T
 import toast from 'react-hot-toast';
 import { kitFestaService } from '../../services/kitFestaService';
 import { API_URL } from '../../services/api';
+import SelectBusca from '../../components/SelectBusca';
 
 const imgUrl = (u) => !u ? null : (u.startsWith('http') ? u : `${API_URL}${u}`);
 
@@ -91,11 +92,11 @@ export default function AbaConfig() {
             onChange={e => up('indicacao', { descontoIndicado: e.target.value })} />
           <div>
             <label className="text-xs text-gray-500">Tipo do desconto</label>
-            <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={cfg.indicacao?.descontoIndicadoTipo || 'brl'}
+            <SelectBusca className="w-full" value={cfg.indicacao?.descontoIndicadoTipo || 'brl'}
               onChange={e => up('indicacao', { descontoIndicadoTipo: e.target.value })}>
               <option value="brl">R$ (valor)</option>
               <option value="pct">% (porcentagem)</option>
-            </select>
+            </SelectBusca>
           </div>
         </div>
         <p className="text-xs text-gray-400">O crédito do indicador é liberado <b>automaticamente</b> quando o Financeiro baixa o pedido do indicado no Contas a Receber. Cada crédito vale 1 desconto por pedido.</p>
@@ -237,10 +238,10 @@ function Avaliacoes({ lista, onChanged }) {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-gray-500">Estrelas</label>
-              <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.estrelas}
+              <SelectBusca className="w-full" value={form.estrelas}
                 onChange={e => setForm({ ...form, estrelas: Number(e.target.value) })}>
                 {[5, 4, 3, 2, 1].map(n => <option key={n} value={n}>{n} ★</option>)}
-              </select>
+              </SelectBusca>
             </div>
             <Campo label="Data (texto)" value={form.dataLabel} onChange={e => setForm({ ...form, dataLabel: e.target.value })} placeholder="mai/2026" />
           </div>

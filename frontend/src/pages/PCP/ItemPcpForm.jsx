@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Loader2, ShoppingCart } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpItemService from '../../services/pcpItemService';
+import SelectBusca from '../../components/SelectBusca';
 
 const UNIDADES = ['KG', 'UN', 'L', 'PCT', 'CX', 'G', 'ML'];
 
@@ -163,13 +164,13 @@ export default function ItemPcpForm() {
                                 disabled
                             />
                         ) : (
-                            <select
+                            <SelectBusca
                                 value={form.unidade}
                                 onChange={e => handleChange('unidade', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                className="w-full"
                             >
                                 {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
-                            </select>
+                            </SelectBusca>
                         )}
                     </div>
                     <div>

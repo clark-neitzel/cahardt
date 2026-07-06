@@ -13,6 +13,7 @@ import configService from '../../../services/configService';
 import tabelaPrecoService from '../../../services/tabelaPrecoService';
 import categoriaProdutoService from '../../../services/categoriaProdutoService';
 import toast from 'react-hot-toast';
+import SelectBusca from '../../../components/SelectBusca';
 
 const DEFAULT_PERMISSIONS = {
     catalogo: { view: false, edit: false },
@@ -360,8 +361,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                     <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
                         <label className="block text-sm font-bold text-indigo-900 mb-2">Copiar Permissões de Outro Usuário</label>
                         <div className="flex gap-2">
-                            <select
-                                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2 bg-white text-gray-900"
+                            <SelectBusca
+                                className="flex-1"
                                 value={vendedorOrigemId}
                                 onChange={e => setVendedorOrigemId(e.target.value)}
                             >
@@ -369,7 +370,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                 {todosVendedores.map(v => (
                                     <option key={v.id} value={v.id}>{v.nome}</option>
                                 ))}
-                            </select>
+                            </SelectBusca>
                             <button
                                 onClick={handleClonar}
                                 disabled={!vendedorOrigemId || clonando}
@@ -433,15 +434,15 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                             <h4 className="font-bold text-blue-900 text-sm">Tela Inicial</h4>
                         </div>
                         <p className="text-xs text-blue-700 mb-2">Qual página abre primeiro ao fazer login (após telas obrigatórias como Diário).</p>
-                        <select
-                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 bg-white text-gray-900"
+                        <SelectBusca
+                            className="w-full"
                             value={permissoes.telaInicial || '/'}
                             onChange={e => setPermissoes(prev => ({ ...prev, telaInicial: e.target.value }))}
                         >
                             {TELAS_INICIAIS.map(t => (
                                 <option key={t.value} value={t.value}>{t.label}</option>
                             ))}
-                        </select>
+                        </SelectBusca>
                     </div>
 
                     {/* ── Barra de visitantes online ── */}
@@ -834,21 +835,21 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         <div className="space-y-2">
                             {(permissoes.estoque || []).map((regra, idx) => (
                                 <div key={idx} className="flex items-center gap-2 flex-wrap bg-gray-50 p-2 rounded-md">
-                                    <select
+                                    <SelectBusca
                                         value={regra.categoria || ''}
                                         onChange={e => {
                                             const nova = [...(permissoes.estoque || [])];
                                             nova[idx] = { ...nova[idx], categoria: e.target.value };
                                             setPermissoes(prev => ({ ...prev, estoque: nova }));
                                         }}
-                                        className="flex-1 min-w-[120px] border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                        className="flex-1 min-w-[120px]"
                                     >
                                         <option value="">Todas as categorias</option>
                                         {todasCategorias.map(c => {
                                             const nome = typeof c === 'string' ? c : (c.descricao || c.nome || c.id);
                                             return <option key={nome} value={nome}>{nome}</option>;
                                         })}
-                                    </select>
+                                    </SelectBusca>
                                     <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                                         <input type="checkbox" className="rounded border-teal-300 text-teal-600 focus:ring-teal-500"
                                             checked={regra.pode?.includes('adicionar')}
