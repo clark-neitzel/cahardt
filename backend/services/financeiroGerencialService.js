@@ -552,14 +552,154 @@ async function extratoPorConta(contaId, de, ate) {
     };
 }
 
+// ─────────────────────────────────────────────────────────────
+// MARGEM POR PRODUTO (Fase 3) — custo × preço × vendas
+// Vendas com a MESMA regra de receita da DRE (bonificacao=false,
+// FATURADO ou especial, por data_venda) para os números baterem.
+// Custo unitário por prioridade:
+//   1. FICHA   — custo por unidade da receita ATIVA do item PCP (tipo PA)
+//                vinculado ao produto (ficha técnica, se atualiza com as compras)
+//   2. COMPRA  — Produto.custoManual (média ponderada das notas de entrada)
+//   3. CA      — Produto.custoMedio (sincronizado do Conta Azul)
+//   4. SEM_CUSTO — nenhum dos três; a linha é sinalizada e fica fora dos totais de custo/margem
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Monta as linhas e totais da margem. Função PURA (testável offline).
+ * @param {Array} vendas   [{ produtoId, quantidade, receita }]
+ * @param {Map}   produtos produtoId → { nome, categoria, unidade, valorVenda, custoManual, custoMedio }
+ * @param {Map}   custosFicha produtoId → custoPorUnidade (receita ativa)
+ */
+function montarMargemProdutos(vendas, produtos, custosFicha) {
+    const linhas = [];
+    for (const v of vendas) {
+        const p = produtos.get(v.produtoId);
+        if (!p) continue;
+        const qtd = num(v.quantidade);
+        const receita = round2(v.receita);
+        if (qtd <= 0 && receita === 0) continue;
+
+        const ficha = num(custosFicha.get(v.produtoId));
+        const compra = num(p.custoManual);
+        const ca = num(p.custoMedio);
+        let custoUnitario = 0;
+        let fonteCusto = 'SEM_CUSTO';
+        if (ficha > 0) { custoUnitario = ficha; fonteCusto = 'FICHA'; }
+        else if (compra > 0) { custoUnitario = compra; fonteCusto = 'COMPRA'; }
+        else if (ca > 0) { custoUnitario = ca; fonteCusto = 'CA'; }
+
+        const custoTotal = round2(custoUnitario * qtd);
+        const margem = fonteCusto === 'SEM_CUSTO' ? null : round2(receita - custoTotal);
+        linhas.push({
+            produtoId: v.produtoId,
+            nome: p.nome,
+            categoria: p.categoria || null,
+            unidade: p.unidade || null,
+            quantidade: Math.round(qtd * 1000) / 1000,
+            receita,
+            precoMedio: qtd > 0 ? round2(receita / qtd) : null,
+            valorVenda: num(p.valorVenda) > 0 ? round2(p.valorVenda) : null,
+            custoUnitario: fonteCusto === 'SEM_CUSTO' ? null : Math.round(custoUnitario * 10000) / 10000,
+            fonteCusto,
+            custoTotal: fonteCusto === 'SEM_CUSTO' ? null : custoTotal,
+            margem,
+            margemPct: margem != null && receita > 0 ? Math.round((margem / receita) * 1000) / 10 : null
+        });
+    }
+    linhas.sort((a, b) => b.receita - a.receita);
+
+    const comCusto = linhas.filter((l) => l.fonteCusto !== 'SEM_CUSTO');
+    const receitaTotal = round2(linhas.reduce((s, l) => s + l.receita, 0));
+    const receitaComCusto = round2(comCusto.reduce((s, l) => s + l.receita, 0));
+    const custoTotal = round2(comCusto.reduce((s, l) => s + l.custoTotal, 0));
+    const margemTotal = round2(receitaComCusto - custoTotal);
+    return {
+        linhas,
+        totais: {
+            produtos: linhas.length,
+            semCusto: linhas.length - comCusto.length,
+            receitaTotal,
+            receitaComCusto,
+            custoTotal,
+            margemTotal,
+            margemPct: receitaComCusto > 0 ? Math.round((margemTotal / receitaComCusto) * 1000) / 10 : null
+        }
+    };
+}
+
+/**
+ * @param {string} de  'YYYY-MM-DD'
+ * @param {string} ate 'YYYY-MM-DD'
+ */
+async function margemProdutos(de, ate) {
+    const gte = inicioDiaSP(de);
+    const lte = fimDiaSP(ate);
+
+    // 1. Vendas por produto no período (SQL — mesma regra de receita da DRE)
+    const vendasRaw = await prisma.$queryRaw`
+        SELECT i.produto_id AS produto_id,
+               COALESCE(SUM(i.quantidade), 0)::float AS quantidade,
+               COALESCE(SUM(i.valor * i.quantidade), 0)::float AS receita
+        FROM pedidos p
+        JOIN pedido_itens i ON i.pedido_id = p.id
+        WHERE p.bonificacao = false
+          AND (p.situacao_ca = 'FATURADO' OR p.especial = true)
+          AND p.data_venda >= ${gte} AND p.data_venda <= ${lte}
+        GROUP BY 1
+    `;
+    const vendas = vendasRaw.map((v) => ({ produtoId: v.produto_id, quantidade: num(v.quantidade), receita: num(v.receita) }));
+    const ids = vendas.map((v) => v.produtoId);
+    if (ids.length === 0) return { de, ate, ...montarMargemProdutos([], new Map(), new Map()) };
+
+    // 2. Dados dos produtos vendidos
+    const produtosDb = await prisma.produto.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, nome: true, categoria: true, unidade: true, valorVenda: true, custoManual: true, custoMedio: true }
+    });
+    const produtos = new Map(produtosDb.map((p) => [p.id, p]));
+
+    // 3. Custo da ficha técnica: itens PCP vinculados a esses produtos com receita ativa.
+    //    Falha em uma receita não derruba o relatório — o produto cai para o custo de compra/CA.
+    const pcpReceitaService = require('./pcpReceitaService');
+    const itensPcp = await prisma.itemPcp.findMany({
+        where: { produtoId: { in: ids }, ativo: true },
+        select: { id: true, produtoId: true }
+    });
+    const custosFicha = new Map();
+    for (const item of itensPcp) {
+        if (custosFicha.has(item.produtoId)) continue;
+        try {
+            const receita = await prisma.receita.findFirst({
+                where: {
+                    itemPcpId: item.id,
+                    status: 'ativa',
+                    dataInicioVigencia: { lte: new Date() },
+                    OR: [{ dataFimVigencia: null }, { dataFimVigencia: { gte: new Date() } }]
+                },
+                orderBy: { versao: 'desc' },
+                select: { id: true }
+            });
+            if (!receita) continue;
+            const custo = await pcpReceitaService.calcularCusto(receita.id);
+            if (num(custo?.custoPorUnidade) > 0) custosFicha.set(item.produtoId, num(custo.custoPorUnidade));
+        } catch (err) {
+            console.error(`[MargemProdutos] Falha no custo da ficha do produto ${item.produtoId}:`, err.message);
+        }
+    }
+
+    return { de, ate, ...montarMargemProdutos(vendas, produtos, custosFicha) };
+}
+
 module.exports = {
     fluxoCaixa,
     dre,
     saldosPorConta,
     extratoPorConta,
+    margemProdutos,
     // puras (testáveis offline)
     gerarBuckets,
     agregarFluxo,
     montarDre,
-    competenciaConta
+    competenciaConta,
+    montarMargemProdutos
 };

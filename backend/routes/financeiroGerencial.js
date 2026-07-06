@@ -114,6 +114,26 @@ router.get('/por-conta/extrato', verificarAuth, checkAcesso, async (req, res) =>
     }
 });
 
+// ── GET /margem-produtos?de=YYYY-MM-DD&ate=YYYY-MM-DD ──
+// Margem por produto: vendas do período (mesma regra da DRE) × custo unitário
+// (ficha técnica ativa do PCP > custo de compra > custo do CA).
+router.get('/margem-produtos', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const { de, ate } = req.query;
+        if (!YMD.test(String(de)) || !YMD.test(String(ate))) {
+            return res.status(400).json({ error: 'Informe de e ate no formato YYYY-MM-DD.' });
+        }
+        if (String(ate) < String(de)) {
+            return res.status(400).json({ error: 'A data final precisa ser maior ou igual à inicial.' });
+        }
+        const dados = await financeiroGerencialService.margemProdutos(String(de), String(ate));
+        res.json(dados);
+    } catch (error) {
+        console.error('Erro na margem por produto:', error);
+        res.status(500).json({ error: 'Erro ao montar a margem por produto.' });
+    }
+});
+
 // ── GET /categorias-despesa — categorias com o "balde" (classificação) e o total gasto ──
 // Garante uma linha para toda categoria já vista nas contas (com o palpite padrão),
 // para o usuário nunca ficar com categoria "solta" fora da classificação.

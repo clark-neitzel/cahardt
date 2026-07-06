@@ -49,6 +49,7 @@
 | Saldos por Conta | `/financeiro/por-conta` | Entradas, saídas e resultado por banco/caixa no período + saldo atual no CA + extrato por conta (gerencial) | [saldos-por-conta.md](saldos-por-conta.md) |
 | DRE — Resultado | `/financeiro/dre` | Demonstração de resultado mês a mês: receita − despesas por categoria = lucro e margem (gerencial) | [dre.md](dre.md) |
 | Categorias de Despesa | `/financeiro/categorias-despesa` | Classifica cada categoria em "baldes" (Operação, Financeiro, Fora da DRE) para a DRE mostrar o lucro certo | [categorias-despesa.md](categorias-despesa.md) |
+| Margem por Produto | `/financeiro/margem-produtos` | Custo (ficha técnica/compras) × preço × vendas por produto: margem em R$ e %, com fonte do custo (gerencial) | [margem-produtos.md](margem-produtos.md) |
 
 ---
 

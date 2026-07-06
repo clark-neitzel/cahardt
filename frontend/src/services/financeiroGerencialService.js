@@ -32,6 +32,11 @@ const financeiroGerencialService = {
     extratoPorConta: async (contaId, de, ate) => {
         const response = await api.get('/financeiro-gerencial/por-conta/extrato', { params: { contaId: contaId || 'sem', de, ate } });
         return response.data;
+    },
+    // Margem por produto: { de, ate, linhas:[{produtoId, nome, quantidade, receita, custoUnitario, fonteCusto, margem, margemPct}], totais }
+    margemProdutos: async (de, ate) => {
+        const response = await api.get('/financeiro-gerencial/margem-produtos', { params: { de, ate } });
+        return response.data;
     }
 };
 

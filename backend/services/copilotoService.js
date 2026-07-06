@@ -60,6 +60,7 @@ const ABAS = [
     { slug: 'fluxo-caixa',        nome: 'Fluxo de Caixa',               rota: '/financeiro/fluxo-caixa',             perm: 'Pode_Acessar_Financeiro_Gerencial' },
     { slug: 'saldos-por-conta',   nome: 'Saldos por Conta',             rota: '/financeiro/por-conta',               perm: 'Pode_Acessar_Financeiro_Gerencial' },
     { slug: 'dre',                nome: 'DRE — Resultado',              rota: '/financeiro/dre',                     perm: 'Pode_Acessar_Financeiro_Gerencial' },
+    { slug: 'margem-produtos',    nome: 'Margem por Produto',           rota: '/financeiro/margem-produtos',         perm: 'Pode_Acessar_Financeiro_Gerencial' },
     { slug: 'categorias-despesa', nome: 'Categorias de Despesa',        rota: '/financeiro/categorias-despesa',      perm: 'Pode_Acessar_Financeiro_Gerencial' },
     // ── Admin ────────────────────────────────────
     { slug: 'produtos',           nome: 'Produtos',                     rota: '/admin/produtos',                     perm: 'produtos' },

@@ -40,6 +40,7 @@ import NotasRecebidasPage from './pages/Financeiro/NotasRecebidasPage';
 import FluxoCaixaPage from './pages/Financeiro/FluxoCaixaPage';
 import ContasBancosPage from './pages/Financeiro/ContasBancosPage';
 import DrePage from './pages/Financeiro/DrePage';
+import MargemProdutosPage from './pages/Financeiro/MargemProdutosPage';
 import CategoriasDespesaPage from './pages/Financeiro/CategoriasDespesaPage';
 import RelatorioPedidos from './pages/Relatorios/RelatorioPedidos';
 import RelatorioVendas from './pages/Relatorios/RelatorioVendas';
@@ -259,6 +260,7 @@ const Layout = ({ children }) => {
           {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/fluxo-caixa" icon={TrendingUp} label="Fluxo de Caixa" />}
           {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/por-conta" icon={Landmark} label="Saldos por Conta" />}
           {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/dre" icon={BarChart3} label="DRE" />}
+          {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/margem-produtos" icon={Percent} label="Margem por Produto" />}
           {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/categorias-despesa" icon={Tag} label="Categorias de Despesa" />}
 
           {/* Admin */}
@@ -434,6 +436,7 @@ const Layout = ({ children }) => {
                 {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/fluxo-caixa" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Fluxo de Caixa</NavLink>}
                 {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/por-conta" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Saldos por Conta</NavLink>}
                 {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/dre" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>DRE</NavLink>}
+                {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/margem-produtos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Margem por Produto</NavLink>}
                 {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/categorias-despesa" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Categorias de Despesa</NavLink>}
               </MobileMenuSection>
             )}
@@ -615,6 +618,7 @@ function App() {
               <Route path="/notas-recebidas" element={<PrivateRoute tab="Pode_Acessar_Notas_Recebidas"><NotasRecebidasPage /></PrivateRoute>} />
               <Route path="/fornecedores" element={<PrivateRoute tab="Pode_Acessar_Fornecedores"><FornecedoresPage /></PrivateRoute>} />
               <Route path="/financeiro/fluxo-caixa" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><FluxoCaixaPage /></PrivateRoute>} />
+              <Route path="/financeiro/margem-produtos" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><MargemProdutosPage /></PrivateRoute>} />
               <Route path="/financeiro/por-conta" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><ContasBancosPage /></PrivateRoute>} />
               <Route path="/financeiro/dre" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><DrePage /></PrivateRoute>} />
               <Route path="/financeiro/categorias-despesa" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><CategoriasDespesaPage /></PrivateRoute>} />
