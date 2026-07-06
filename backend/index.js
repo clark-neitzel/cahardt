@@ -2,6 +2,7 @@ process.env.TZ = 'America/Sao_Paulo';
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const path = require('path');
 const axios = require('axios');
 require('dotenv').config();
@@ -81,8 +82,33 @@ const PORT = process.env.PORT || 3000;
 // (necessário para a trava de força bruta do login enxergar cada usuário).
 app.set('trust proxy', 1);
 
-// Middlewares
-app.use(cors());
+// CORS: libera as origens conhecidas do app + as de CORS_ORIGINS (env, separadas por
+// vírgula) + localhost (dev). Requisições SEM Origin (server-to-server, apps, curl) são
+// sempre permitidas. Como o app autentica por token no header (não cookie), isto não
+// expõe sessão de terceiros — é uma camada extra.
+const origensPermitidas = new Set([
+    'https://hardtsalgados.com.br',
+    'https://www.hardtsalgados.com.br',
+    ...(process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean),
+]);
+app.use(cors({
+    origin: (origin, cb) => {
+        if (!origin) return cb(null, true);
+        if (origensPermitidas.has(origin)) return cb(null, true);
+        if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return cb(null, true);
+        return cb(null, false); // origem não liberada: sem cabeçalho CORS (navegador bloqueia)
+    }
+}));
+
+// Cabeçalhos de segurança. CSP e cross-origin-resource-policy desligados para não
+// bloquear imagens de /uploads (carregadas pelo frontend em outro domínio) nem o
+// HTML servido pelo backend.
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
+}));
+
 app.use(express.json());
 app.use((req, res, next) => {
     // Log básico para debug

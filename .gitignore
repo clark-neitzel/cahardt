@@ -19,6 +19,11 @@ npm-debug.log*
 .admin-secret
 backend/scripts/.admin-secret
 
+# Variáveis de ambiente (só o .env.example é versionado, como template)
+.env
+.env.*
+!.env.example
+
 # Protótipo Kit Festa (referência local, não versionar)
 /Pedidos Kit Festa/
 # Protótipo Congelados (referência local, não versionar)

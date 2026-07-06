@@ -51,6 +51,7 @@ router.get('/ping', (req, res) => {
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
         jwtConfigurada: !!process.env.JWT_SECRET,          // termômetro: JWT_SECRET setado no ambiente?
         certEncKeyConfigurada: !!process.env.CERT_ENC_KEY, // idem para a chave do certificado A1
+        caClientConfigurada: !!(process.env.CONTA_AZUL_CLIENT_ID && process.env.CONTA_AZUL_CLIENT_SECRET),
         node: process.version,
     });
 });
