@@ -707,6 +707,12 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
         setItensCompra(prev => prev.map((it, i) => (i === idx ? { ...it, [campo]: valor } : it)));
     const removeItemCompra = (idx) => setItensCompra(prev => prev.filter((_, i) => i !== idx));
 
+    // Já enviada ao Conta Azul: edição restrita (só vencimento/valor das parcelas em aberto).
+    const statusEnvioModal = String(conta?.statusEnvioCA || '').toUpperCase();
+    const enviadaCA = editando && (statusEnvioModal === 'ENVIADO' || statusEnvioModal === 'SINCRONIZADO');
+    const emEnvioCA = editando && (statusEnvioModal === 'ENVIANDO' || statusEnvioModal === 'AGUARDANDO_PROTOCOLO');
+    const parcelasTravadas = enviadaCA || emEnvioCA; // não pode adicionar/remover parcela
+
     const somaParcelas = parcelas.reduce((s, p) => s + parseNum(p.valor), 0);
     const totalInformado = parseNum(valorTotal);
     const somaDiverge = totalInformado > 0 && Math.abs(somaParcelas - totalInformado) > 0.01;
@@ -742,7 +748,7 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                 competencia: competencia || undefined,
                 observacoes: observacoes.trim() || undefined,
                 enviarCA,
-                parcelas: parcelasValidas.map(p => ({ valor: parseNum(p.valor), dataVencimento: p.dataVencimento }))
+                parcelas: parcelasValidas.map(p => ({ ...(p.id ? { id: p.id } : {}), valor: parseNum(p.valor), dataVencimento: p.dataVencimento }))
             };
             if (!editando && itensCompra.length > 0) {
                 payload.itens = itensCompra.map(it => ({
@@ -874,13 +880,25 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                     <div>
                         <div className="flex items-center justify-between mb-2">
                             <div className="text-xs font-bold uppercase tracking-widest text-gray-600">Parcelas</div>
-                            <button
-                                onClick={addParcela}
-                                className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-xs"
-                            >
-                                + Adicionar parcela
-                            </button>
+                            {!parcelasTravadas && (
+                                <button
+                                    onClick={addParcela}
+                                    className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-xs"
+                                >
+                                    + Adicionar parcela
+                                </button>
+                            )}
                         </div>
+                        {enviadaCA && (
+                            <div className="mb-2 text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                                Despesa já enviada ao Conta Azul. Você pode ajustar o <b>vencimento</b> e o <b>valor</b> das parcelas em aberto — a mudança é aplicada também no Conta Azul. Não é possível adicionar, excluir ou mexer em parcela já paga.
+                            </div>
+                        )}
+                        {emEnvioCA && (
+                            <div className="mb-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                Esta despesa ainda está sendo enviada ao Conta Azul. Aguarde alguns minutos para poder ajustar as parcelas.
+                            </div>
+                        )}
                         <div className="space-y-2">
                             {parcelas.map((p, idx) => (
                                 <div key={p.id || `nova-${idx}`} className={`border rounded-lg px-3 py-2.5 flex flex-wrap items-center gap-2 md:gap-3 ${p.paga ? 'border-green-200 bg-green-50/40' : 'border-gray-200'}`}>
@@ -888,7 +906,7 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                                     <input
                                         type="date"
                                         value={p.dataVencimento}
-                                        disabled={p.paga}
+                                        disabled={p.paga || emEnvioCA}
                                         onChange={e => setParcela(idx, 'dataVencimento', e.target.value)}
                                         className="border border-gray-300 rounded px-2 py-2 text-sm text-gray-700 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
                                     />
@@ -896,7 +914,7 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                                         <span className="text-sm text-gray-500">R$</span>
                                         <input
                                             value={p.valor}
-                                            disabled={p.paga}
+                                            disabled={p.paga || emEnvioCA}
                                             onChange={e => setParcela(idx, 'valor', e.target.value)}
                                             placeholder="0,00"
                                             className="w-28 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
@@ -904,7 +922,7 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                                     </div>
                                     {p.paga ? (
                                         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">já paga</span>
-                                    ) : (
+                                    ) : !parcelasTravadas ? (
                                         <button
                                             onClick={() => removeParcela(idx)}
                                             disabled={parcelas.length <= 1}
@@ -913,7 +931,7 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                                         >
                                             <Trash2 className="h-4 w-4" />
                                         </button>
-                                    )}
+                                    ) : null}
                                 </div>
                             ))}
                         </div>

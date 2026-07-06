@@ -14,6 +14,7 @@ const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
 const importacaoCaService = require('../services/importacaoCaService');
+const contaAzulService = require('../services/contaAzulService');
 
 // CSV do Conta Azul fica em memória (máx 15 MB) — parse imediato, nada salvo em disco.
 const uploadCsv = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
@@ -582,17 +583,111 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
         if (competencia !== undefined) dadosConta.competencia = competencia ? parseVencimento(competencia) : null;
         if (observacoes !== undefined) dadosConta.observacoes = observacoes?.trim() || null;
 
-        // Edição de parcelas: só as NÃO pagas, e só antes do envio ao CA
+        // Edição de parcelas.
+        //  • Antes do envio ao CA (NAO_ENVIAR / ENVIAR / ERRO): edição livre local (add/remove/valor/venc).
+        //  • Já enviada ao CA (ENVIADO / SINCRONIZADO): edição RESTRITA — só vencimento e valor das
+        //    parcelas em aberto, propagando a mudança para o Conta Azul (PATCH updateInstallment).
+        //  • Em trânsito (ENVIANDO / AGUARDANDO_PROTOCOLO): bloqueado até o envio terminar.
         let novoValorTotal = null;
         if (Array.isArray(parcelas)) {
-            if (!['NAO_ENVIAR', 'ENVIAR', 'ERRO'].includes(conta.statusEnvioCA)) {
-                return res.status(400).json({ error: 'Conta já enviada (ou em envio) ao Conta Azul — as parcelas não podem mais ser alteradas por aqui.' });
+            const preEnvio = ['NAO_ENVIAR', 'ENVIAR', 'ERRO'].includes(conta.statusEnvioCA);
+            const enviadaCA = ['ENVIADO', 'SINCRONIZADO'].includes(conta.statusEnvioCA);
+            if (!preEnvio && !enviadaCA) {
+                return res.status(400).json({ error: 'Conta em envio para o Conta Azul — aguarde terminar (alguns minutos) para alterar as parcelas.' });
             }
             const erroParcelas = validarParcelasBody(parcelas);
             if (erroParcelas) return res.status(400).json({ error: erroParcelas });
 
             const fixas = conta.parcelas.filter((p) => p.status === 'PAGO' || p.status === 'PARCIAL' || p.pagamentos.length > 0);
             const editaveisIds = new Set(conta.parcelas.filter((p) => !fixas.some((f) => f.id === p.id)).map((p) => p.id));
+
+            // ── Despesa já no Conta Azul: só ajustar vencimento/valor das parcelas em aberto ──
+            if (enviadaCA) {
+                const abertas = conta.parcelas.filter((p) => editaveisIds.has(p.id) && p.status !== 'CANCELADO');
+                const abertasIds = new Set(abertas.map((p) => p.id));
+                const enviadosIds = new Set(parcelas.filter((p) => p.id).map((p) => p.id));
+
+                // Pós-envio não permite adicionar nem remover parcelas — só editar as existentes em aberto.
+                if (parcelas.some((p) => !p.id)) {
+                    return res.status(400).json({ error: 'Esta despesa já foi enviada ao Conta Azul — não dá para adicionar parcelas novas por aqui, só ajustar o vencimento/valor das que estão em aberto.' });
+                }
+                for (const id of abertasIds) {
+                    if (!enviadosIds.has(id)) {
+                        return res.status(400).json({ error: 'Esta despesa já foi enviada ao Conta Azul — não dá para excluir parcelas por aqui.' });
+                    }
+                }
+                for (const p of parcelas) {
+                    if (!abertasIds.has(p.id)) {
+                        return res.status(400).json({ error: 'Parcela inválida para edição (já paga ou inexistente nesta despesa).' });
+                    }
+                }
+
+                const ymd = (d) => new Date(d).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+
+                // Detecta o que mudou
+                const alteracoes = [];
+                for (const p of parcelas) {
+                    const atual = abertas.find((a) => a.id === p.id);
+                    const novoVenc = parseVencimento(p.dataVencimento);
+                    const novoValor = round2(p.valor);
+                    const vencMudou = ymd(atual.dataVencimento) !== ymd(novoVenc);
+                    const valorMudou = round2(Number(atual.valor)) !== novoValor;
+                    if (vencMudou || valorMudou) alteracoes.push({ atual, novoVenc, novoValor, vencMudou, valorMudou });
+                }
+
+                // Passo 1 — valida no CA (versão + não pode estar paga lá). Nada é gravado ainda.
+                const preparadas = [];
+                for (const alt of alteracoes) {
+                    if (!alt.atual.idParcelaCA) {
+                        return res.status(400).json({ error: `A parcela ${alt.atual.numeroParcela} ainda não terminou de sincronizar com o Conta Azul — tente de novo em alguns minutos.` });
+                    }
+                    let detalhe;
+                    try {
+                        detalhe = await contaAzulService.buscarParcelaDetalhe(alt.atual.idParcelaCA);
+                    } catch (e) {
+                        console.error('[ContasPagar] Falha ao consultar parcela no CA:', e.response?.data || e.message);
+                        return res.status(502).json({ error: 'Não consegui consultar a parcela no Conta Azul agora. Tente novamente em instantes.' });
+                    }
+                    const statusCA = String(detalhe?.status || detalhe?.status_traduzido || '').toUpperCase();
+                    if (['RECEBIDO', 'RECEBIDO_PARCIAL', 'PAGO', 'PAGO_PARCIAL'].includes(statusCA)) {
+                        return res.status(409).json({ error: `A parcela ${alt.atual.numeroParcela} já está paga no Conta Azul — não dá para alterar o vencimento/valor por aqui.` });
+                    }
+                    const payloadCA = { versao: detalhe.versao };
+                    if (alt.vencMudou) payloadCA.vencimento = ymd(alt.novoVenc);
+                    if (alt.valorMudou) payloadCA.composicao_valor = { valor_bruto: alt.novoValor, valor_liquido: alt.novoValor };
+                    preparadas.push({ alt, payloadCA });
+                }
+
+                // Passo 2 — aplica no CA e espelha no banco (parcela a parcela).
+                for (const { alt, payloadCA } of preparadas) {
+                    try {
+                        await contaAzulService.atualizarParcela(alt.atual.idParcelaCA, payloadCA);
+                    } catch (e) {
+                        console.error('[ContasPagar] Falha ao atualizar parcela no CA:', e.response?.data || e.message);
+                        return res.status(502).json({ error: `Não consegui atualizar a parcela ${alt.atual.numeroParcela} no Conta Azul. As parcelas anteriores desta lista que já mudaram foram salvas; refaça a edição das restantes.` });
+                    }
+                    await prisma.parcelaPagar.update({
+                        where: { id: alt.atual.id },
+                        data: { dataVencimento: alt.novoVenc, valor: alt.novoValor }
+                    });
+                }
+
+                const todas = await prisma.parcelaPagar.findMany({ where: { contaPagarId: conta.id, status: { not: 'CANCELADO' } } });
+                novoValorTotal = round2(todas.reduce((s, p) => s + Number(p.valor), 0));
+                await prisma.contaPagar.update({
+                    where: { id: conta.id },
+                    data: { ...dadosConta, valorTotal: novoValorTotal }
+                });
+
+                const atualizada = await prisma.contaPagar.findUnique({
+                    where: { id: conta.id },
+                    include: {
+                        fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true } },
+                        parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } } }
+                    }
+                });
+                return res.json({ message: 'Despesa atualizada e sincronizada com o Conta Azul!', conta: formatarConta(atualizada) });
+            }
 
             await prisma.$transaction(async (tx) => {
                 // Remove parcelas editáveis que não vieram no payload
