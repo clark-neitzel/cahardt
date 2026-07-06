@@ -21,7 +21,7 @@ const CERT_DIR = path.join(__dirname, '..', 'uploads', 'certificado');
 // Mesma env do auth (middlewares/authMiddleware.js usa JWT_SECRET)
 const _chave = () => crypto
     .createHash('sha256')
-    .update(process.env.CERT_ENC_KEY || process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123')
+    .update(process.env.CERT_ENC_KEY || require('../config/jwtSecret'))
     .digest();
 
 // ── Criptografia AES-256-GCM ──────────────────────────────────

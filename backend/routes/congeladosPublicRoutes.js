@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 const ctrl = require('../controllers/congeladosController');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123';
+const JWT_SECRET = require('../config/jwtSecret');
 
 // Auth do CLIENTE do site de congelados (token tipo 'congelados'). Opcional em algumas rotas.
 function clienteAuth(obrigatorio) {

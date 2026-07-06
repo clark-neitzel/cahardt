@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/database');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123';
+const JWT_SECRET = require('../config/jwtSecret');
 
 const appAuthController = {
     login: async (req, res) => {

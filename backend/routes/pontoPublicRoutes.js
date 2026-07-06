@@ -8,7 +8,7 @@ const pontoService = require('../services/pontoService');
 // Rotas PÚBLICAS (sem login do app) — tela /ponto/:token do funcionário.
 // O token pessoal (Funcionario.pontoToken) identifica a pessoa; o acesso para
 // bater ponto exige a SENHA do funcionário (mesmo padrão bcrypt+JWT dos sites).
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123';
+const JWT_SECRET = require('../config/jwtSecret');
 
 async function buscarPorToken(token) {
     if (!token) return null;

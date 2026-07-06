@@ -18,7 +18,7 @@ function mergeConfig(defaults, map) {
     return out;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123';
+const JWT_SECRET = require('../config/jwtSecret');
 
 // ───────── Helpers ─────────
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');

@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
 // ─── Verificação de acesso do candidato ao próprio currículo ────────────────
 // O candidato prova que é dono do CPF recebendo um código no WhatsApp CADASTRADO.
 // Sem isso, qualquer um veria/editaria dados pessoais só digitando o CPF (LGPD).
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123';
+const JWT_SECRET = require('../config/jwtSecret');
 const ACESSO_TTL_MIN = 30;          // validade do código
 const ACESSO_MAX_TENTATIVAS = 5;    // erros de código antes de exigir novo
 const ACESSO_REENVIO_SEG = 60;      // intervalo mínimo entre envios (anti-spam)

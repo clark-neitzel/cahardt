@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const pedidoService = require('./pedidoService');
 const webhookService = require('./webhookService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123';
+const JWT_SECRET = require('../config/jwtSecret');
 const money2 = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
 
 // ───────── Helpers ─────────

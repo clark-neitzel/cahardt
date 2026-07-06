@@ -4,7 +4,7 @@
 const jwt = require('jsonwebtoken');
 const { VERSAO_API, AVISOS } = require('../config/iaConsultaVersao');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_hardt_app_123';
+const JWT_SECRET = require('../config/jwtSecret');
 
 const JANELA_MS = 60 * 1000;
 const LIMITE_POR_JANELA = 60; // requisições por chave a cada 60s
