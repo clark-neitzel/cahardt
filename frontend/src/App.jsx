@@ -1,91 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import VisitorBar from './components/VisitorBar';
 import { BrowserRouter as Router, Routes, Route, Link, NavLink, Navigate, useLocation } from 'react-router-dom';
-import Catalogo from './pages/Produtos/Catalogo';
-import DetalheProduto from './pages/Produtos/DetalheProduto';
-import ListaProdutos from './pages/Admin/Produtos/ListaProdutos';
-import GerenciarProduto from './pages/Admin/Produtos/GerenciarProduto';
-import PainelSync from './pages/Admin/Sync/PainelSync';
-import ListaClientes from './pages/Clientes/ListaClientes';
-import DetalheCliente from './pages/Clientes/DetalheCliente';
-import ListaVendedores from './pages/Admin/Vendedores/ListaVendedores';
-import Configuracoes from './pages/Admin/Configuracoes/Configuracoes';
-import TabelaPrecos from './pages/Configuracoes/TabelaPrecos';
-import ContasFinanceiras from './pages/Configuracoes/ContasFinanceiras';
-import GerenciarMetas from './pages/Configuracoes/Metas/GerenciarMetas';
-import GerenciarComissoes from './pages/Configuracoes/Comissoes/GerenciarComissoes';
-import CategoriasProduto from './pages/Configuracoes/CategoriasProduto';
-import CategoriasCliente from './pages/Configuracoes/CategoriasCliente';
-import CategoriasEstoque from './pages/Configuracoes/CategoriasEstoque';
-import DashboardVendedor from './pages/Dashboard/DashboardVendedor';
-import ListaPedidos from './pages/Pedidos/ListaPedidos';
-import Veiculos from './pages/Veiculos/Veiculos';
-import NovoPedido from './pages/Pedidos/NovoPedido';
-import ImpressaoPedido from './pages/Pedidos/ImpressaoPedido';
-import RotaLeads from './pages/Rota/RotaLeads';
-import ListaLeads from './pages/Leads/ListaLeads';
+const Catalogo = lazy(() => import('./pages/Produtos/Catalogo'));
+const DetalheProduto = lazy(() => import('./pages/Produtos/DetalheProduto'));
+const ListaProdutos = lazy(() => import('./pages/Admin/Produtos/ListaProdutos'));
+const GerenciarProduto = lazy(() => import('./pages/Admin/Produtos/GerenciarProduto'));
+const PainelSync = lazy(() => import('./pages/Admin/Sync/PainelSync'));
+const ListaClientes = lazy(() => import('./pages/Clientes/ListaClientes'));
+const DetalheCliente = lazy(() => import('./pages/Clientes/DetalheCliente'));
+const ListaVendedores = lazy(() => import('./pages/Admin/Vendedores/ListaVendedores'));
+const Configuracoes = lazy(() => import('./pages/Admin/Configuracoes/Configuracoes'));
+const TabelaPrecos = lazy(() => import('./pages/Configuracoes/TabelaPrecos'));
+const ContasFinanceiras = lazy(() => import('./pages/Configuracoes/ContasFinanceiras'));
+const GerenciarMetas = lazy(() => import('./pages/Configuracoes/Metas/GerenciarMetas'));
+const GerenciarComissoes = lazy(() => import('./pages/Configuracoes/Comissoes/GerenciarComissoes'));
+const CategoriasProduto = lazy(() => import('./pages/Configuracoes/CategoriasProduto'));
+const CategoriasCliente = lazy(() => import('./pages/Configuracoes/CategoriasCliente'));
+const CategoriasEstoque = lazy(() => import('./pages/Configuracoes/CategoriasEstoque'));
+const DashboardVendedor = lazy(() => import('./pages/Dashboard/DashboardVendedor'));
+const ListaPedidos = lazy(() => import('./pages/Pedidos/ListaPedidos'));
+const Veiculos = lazy(() => import('./pages/Veiculos/Veiculos'));
+const NovoPedido = lazy(() => import('./pages/Pedidos/NovoPedido'));
+const ImpressaoPedido = lazy(() => import('./pages/Pedidos/ImpressaoPedido'));
+const RotaLeads = lazy(() => import('./pages/Rota/RotaLeads'));
+const ListaLeads = lazy(() => import('./pages/Leads/ListaLeads'));
 import Login from './pages/Login/Login';
-import PainelEmbarque from './pages/Admin/Embarques/PainelEmbarque';
-import AuditoriaEntregas from './pages/Admin/Embarques/AuditoriaEntregas';
-import ListaEntregasGerencial from './pages/Admin/Embarques/ListaEntregasGerencial';
-import FormasPagamentoEntrega from './pages/Configuracoes/FormasPagamentoEntrega';
-import PainelMotorista from './pages/Motorista/Entregas/PainelMotorista';
-import DespesasPage from './pages/Caixa/DespesasPage';
-import CaixaDiarioPage from './pages/Caixa/CaixaDiarioPage';
-import RelatorioCaixaPrint from './pages/Caixa/RelatorioCaixaPrint';
-import ContasReceberTabela from './pages/Financeiro/ContasReceberTabela';
-import ContasPagarPage from './pages/Financeiro/ContasPagarPage';
-import FornecedoresPage from './pages/Financeiro/FornecedoresPage';
-import NotasRecebidasPage from './pages/Financeiro/NotasRecebidasPage';
-import FluxoCaixaPage from './pages/Financeiro/FluxoCaixaPage';
-import ContasBancosPage from './pages/Financeiro/ContasBancosPage';
-import DrePage from './pages/Financeiro/DrePage';
-import MargemProdutosPage from './pages/Financeiro/MargemProdutosPage';
-import ConciliacaoBancariaPage from './pages/Financeiro/ConciliacaoBancariaPage';
-import DashboardFinanceiroPage from './pages/Financeiro/DashboardFinanceiroPage';
-import CategoriasDespesaPage from './pages/Financeiro/CategoriasDespesaPage';
-import RelatorioPedidos from './pages/Relatorios/RelatorioPedidos';
-import RelatorioVendas from './pages/Relatorios/RelatorioVendas';
-import RelatorioFlex from './pages/Relatorios/RelatorioFlex';
-import PainelEstoque from './pages/Estoque/PainelEstoque';
-import HistoricoEstoque from './pages/Estoque/HistoricoEstoque';
-import PosicaoEstoque from './pages/Estoque/PosicaoEstoque';
-import ItensPcp from './pages/PCP/ItensPcp';
-import ItemPcpForm from './pages/PCP/ItemPcpForm';
-import ReceitasList from './pages/PCP/ReceitasList';
-import ReceitaForm from './pages/PCP/ReceitaForm';
-import ReceitaDetalhe from './pages/PCP/ReceitaDetalhe';
-import EstoquePcp from './pages/PCP/EstoquePcp';
-import OrdensProducao from './pages/PCP/OrdensProducao';
-import OrdemProducaoForm from './pages/PCP/OrdemProducaoForm';
-import PainelOperacional from './pages/PCP/PainelOperacional';
-import CalendarioProducao from './pages/PCP/CalendarioProducao';
-import SugestoesProducao from './pages/PCP/SugestoesProducao';
-import DashboardPcp from './pages/PCP/DashboardPcp';
-import EtiquetasList from './pages/PCP/EtiquetasList';
-import EtiquetasDados from './pages/PCP/EtiquetasDados';
-import EtiquetaForm from './pages/PCP/EtiquetaForm';
-import EtiquetaImprimir from './pages/PCP/EtiquetaImprimir';
-import DeliveryKanban from './pages/Delivery/DeliveryKanban';
-import DeliveryConfig from './pages/Delivery/DeliveryConfig';
-import PainelAtendimentos from './pages/Atendimentos/PainelAtendimentos';
-import PainelAnaliseIA from './pages/AnaliseIA/PainelAnaliseIA';
-import MensagensAgendadas from './pages/Admin/MensagensAgendadas/MensagensAgendadas';
-import Candidatura from './pages/Candidatura/Candidatura';
-import ListaCurriculos from './pages/RH/ListaCurriculos';
-import DetalheCurriculo from './pages/RH/DetalheCurriculo';
-import FuncionariosLista from './pages/RH/FuncionariosLista';
-import FuncionarioNovo from './pages/RH/FuncionarioNovo';
-import FuncionarioFicha from './pages/RH/FuncionarioFicha';
-import PontoPainel from './pages/RH/PontoPainel';
-import ImportarPonto from './pages/RH/ImportarPonto';
-import ConfigPonto from './pages/RH/ConfigPonto';
-import BaterPonto from './pages/Ponto/BaterPonto';
-import KitFestaAdmin from './pages/KitFesta/KitFestaAdmin';
-import KitFestaSite from './pages/KitFestaSite/KitFestaSite';
-import HomeSite from './pages/Site/HomeSite';
-import CongeladosSite from './pages/Site/CongeladosSite';
-import SiteAdmin from './pages/SiteAdmin/SiteAdmin';
+const PainelEmbarque = lazy(() => import('./pages/Admin/Embarques/PainelEmbarque'));
+const AuditoriaEntregas = lazy(() => import('./pages/Admin/Embarques/AuditoriaEntregas'));
+const ListaEntregasGerencial = lazy(() => import('./pages/Admin/Embarques/ListaEntregasGerencial'));
+const FormasPagamentoEntrega = lazy(() => import('./pages/Configuracoes/FormasPagamentoEntrega'));
+const PainelMotorista = lazy(() => import('./pages/Motorista/Entregas/PainelMotorista'));
+const DespesasPage = lazy(() => import('./pages/Caixa/DespesasPage'));
+const CaixaDiarioPage = lazy(() => import('./pages/Caixa/CaixaDiarioPage'));
+const RelatorioCaixaPrint = lazy(() => import('./pages/Caixa/RelatorioCaixaPrint'));
+const ContasReceberTabela = lazy(() => import('./pages/Financeiro/ContasReceberTabela'));
+const ContasPagarPage = lazy(() => import('./pages/Financeiro/ContasPagarPage'));
+const FornecedoresPage = lazy(() => import('./pages/Financeiro/FornecedoresPage'));
+const NotasRecebidasPage = lazy(() => import('./pages/Financeiro/NotasRecebidasPage'));
+const FluxoCaixaPage = lazy(() => import('./pages/Financeiro/FluxoCaixaPage'));
+const ContasBancosPage = lazy(() => import('./pages/Financeiro/ContasBancosPage'));
+const DrePage = lazy(() => import('./pages/Financeiro/DrePage'));
+const MargemProdutosPage = lazy(() => import('./pages/Financeiro/MargemProdutosPage'));
+const ConciliacaoBancariaPage = lazy(() => import('./pages/Financeiro/ConciliacaoBancariaPage'));
+const DashboardFinanceiroPage = lazy(() => import('./pages/Financeiro/DashboardFinanceiroPage'));
+const CategoriasDespesaPage = lazy(() => import('./pages/Financeiro/CategoriasDespesaPage'));
+const RelatorioPedidos = lazy(() => import('./pages/Relatorios/RelatorioPedidos'));
+const RelatorioVendas = lazy(() => import('./pages/Relatorios/RelatorioVendas'));
+const RelatorioFlex = lazy(() => import('./pages/Relatorios/RelatorioFlex'));
+const PainelEstoque = lazy(() => import('./pages/Estoque/PainelEstoque'));
+const HistoricoEstoque = lazy(() => import('./pages/Estoque/HistoricoEstoque'));
+const PosicaoEstoque = lazy(() => import('./pages/Estoque/PosicaoEstoque'));
+const ItensPcp = lazy(() => import('./pages/PCP/ItensPcp'));
+const ItemPcpForm = lazy(() => import('./pages/PCP/ItemPcpForm'));
+const ReceitasList = lazy(() => import('./pages/PCP/ReceitasList'));
+const ReceitaForm = lazy(() => import('./pages/PCP/ReceitaForm'));
+const ReceitaDetalhe = lazy(() => import('./pages/PCP/ReceitaDetalhe'));
+const EstoquePcp = lazy(() => import('./pages/PCP/EstoquePcp'));
+const OrdensProducao = lazy(() => import('./pages/PCP/OrdensProducao'));
+const OrdemProducaoForm = lazy(() => import('./pages/PCP/OrdemProducaoForm'));
+const PainelOperacional = lazy(() => import('./pages/PCP/PainelOperacional'));
+const CalendarioProducao = lazy(() => import('./pages/PCP/CalendarioProducao'));
+const SugestoesProducao = lazy(() => import('./pages/PCP/SugestoesProducao'));
+const DashboardPcp = lazy(() => import('./pages/PCP/DashboardPcp'));
+const EtiquetasList = lazy(() => import('./pages/PCP/EtiquetasList'));
+const EtiquetasDados = lazy(() => import('./pages/PCP/EtiquetasDados'));
+const EtiquetaForm = lazy(() => import('./pages/PCP/EtiquetaForm'));
+const EtiquetaImprimir = lazy(() => import('./pages/PCP/EtiquetaImprimir'));
+const DeliveryKanban = lazy(() => import('./pages/Delivery/DeliveryKanban'));
+const DeliveryConfig = lazy(() => import('./pages/Delivery/DeliveryConfig'));
+const PainelAtendimentos = lazy(() => import('./pages/Atendimentos/PainelAtendimentos'));
+const PainelAnaliseIA = lazy(() => import('./pages/AnaliseIA/PainelAnaliseIA'));
+const MensagensAgendadas = lazy(() => import('./pages/Admin/MensagensAgendadas/MensagensAgendadas'));
+const Candidatura = lazy(() => import('./pages/Candidatura/Candidatura'));
+const ListaCurriculos = lazy(() => import('./pages/RH/ListaCurriculos'));
+const DetalheCurriculo = lazy(() => import('./pages/RH/DetalheCurriculo'));
+const FuncionariosLista = lazy(() => import('./pages/RH/FuncionariosLista'));
+const FuncionarioNovo = lazy(() => import('./pages/RH/FuncionarioNovo'));
+const FuncionarioFicha = lazy(() => import('./pages/RH/FuncionarioFicha'));
+const PontoPainel = lazy(() => import('./pages/RH/PontoPainel'));
+const ImportarPonto = lazy(() => import('./pages/RH/ImportarPonto'));
+const ConfigPonto = lazy(() => import('./pages/RH/ConfigPonto'));
+const BaterPonto = lazy(() => import('./pages/Ponto/BaterPonto'));
+const KitFestaAdmin = lazy(() => import('./pages/KitFesta/KitFestaAdmin'));
+const KitFestaSite = lazy(() => import('./pages/KitFestaSite/KitFestaSite'));
+const HomeSite = lazy(() => import('./pages/Site/HomeSite'));
+const CongeladosSite = lazy(() => import('./pages/Site/CongeladosSite'));
+const SiteAdmin = lazy(() => import('./pages/SiteAdmin/SiteAdmin'));
 
 import {
   Menu, X, LogOut, ChevronDown,
@@ -557,6 +557,7 @@ function App() {
       <AuthProvider>
         <DiarioProvider>
           <Layout>
+            <Suspense fallback={<div className="p-8 text-center text-gray-500">Carregando…</div>}>
             <Routes>
               {/* Página pública de candidatura (sem autenticação) */}
               <Route path="/candidatura" element={<Candidatura />} />
@@ -695,6 +696,7 @@ function App() {
               <Route path="/rh/ponto/importar" element={<PrivateRoute tab="Pode_Ver_Ponto"><ImportarPonto /></PrivateRoute>} />
               <Route path="/rh/ponto/config" element={<PrivateRoute tab="Pode_Ver_Ponto"><ConfigPonto /></PrivateRoute>} />
             </Routes>
+            </Suspense>
           </Layout>
           <Toaster position="top-right" />
         </DiarioProvider>
