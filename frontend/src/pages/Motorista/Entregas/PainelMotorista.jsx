@@ -68,7 +68,7 @@ const PainelMotorista = () => {
     return (
         <div className="max-w-md mx-auto min-h-screen bg-gray-100 pb-20">
             {/* Header Fixo Mobile */}
-            <div className="bg-sky-600 text-white p-4 shadow-md sticky top-0 z-10 flex justify-between items-center">
+            <div className="bg-house text-white p-4 shadow-md sticky top-0 z-10 flex justify-between items-center">
                 <div className="flex items-center space-x-2">
                     <Truck className="h-6 w-6" />
                     <h1 className="text-xl font-bold tracking-tight">Meu Roteiro</h1>
@@ -79,7 +79,7 @@ const PainelMotorista = () => {
                             <Star className="h-3 w-3" /> {totalPrioridades}
                         </div>
                     )}
-                    <div className="text-xs font-semibold bg-sky-700 px-2 py-1 rounded">
+                    <div className="text-xs font-semibold bg-white/15 px-2 py-1 rounded">
                         {entregas.length} {abaAtiva === 'pendentes' ? 'Restantes' : 'Feitas'}
                     </div>
                 </div>
@@ -89,13 +89,13 @@ const PainelMotorista = () => {
             <div className="flex bg-white shadow-sm mb-4">
                 <button
                     onClick={() => setAbaAtiva('pendentes')}
-                    className={`flex-1 py-3 text-center text-sm font-bold border-b-2 transition-colors ${abaAtiva === 'pendentes' ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-500'}`}
+                    className={`flex-1 py-3 text-center text-sm font-bold border-b-2 transition-colors ${abaAtiva === 'pendentes' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}
                 >
                     A Entregar
                 </button>
                 <button
                     onClick={() => setAbaAtiva('concluidas')}
-                    className={`flex-1 py-3 text-center text-sm font-bold border-b-2 transition-colors ${abaAtiva === 'concluidas' ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-500'}`}
+                    className={`flex-1 py-3 text-center text-sm font-bold border-b-2 transition-colors ${abaAtiva === 'concluidas' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}
                 >
                     Já Finalizadas
                 </button>
@@ -105,7 +105,7 @@ const PainelMotorista = () => {
             <div className="px-4 space-y-4">
                 {loading ? (
                     <div className="text-center py-12 flex flex-col items-center justify-center opacity-60">
-                        <Truck className="h-10 w-10 text-sky-600 animate-pulse mb-3" />
+                        <Truck className="h-10 w-10 text-primary animate-pulse mb-3" />
                         <p className="font-semibold text-gray-600">Sincronizando rota com a nuvem...</p>
                     </div>
                 ) : entregas.length === 0 ? (
@@ -171,7 +171,7 @@ const PainelMotorista = () => {
                                         </button>
                                         <button
                                             onClick={() => setEntregaAtivaParaCheckout(entrega)}
-                                            className="flex-[2] flex justify-center items-center py-2 bg-sky-600 text-white rounded-lg text-sm font-bold active:bg-sky-700 shadow-sm"
+                                            className="flex-[2] flex justify-center items-center py-2 bg-primary text-white rounded-lg text-sm font-bold active:bg-primaryDark shadow-sm"
                                         >
                                             <CheckCircle className="h-4 w-4 mr-1" />
                                             Fazer Check-in (Entregar)

@@ -811,7 +811,7 @@ const DashboardAdminSection = () => {
                 <div className="space-y-6">
                     {podeVerVendas && (
                         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-900 text-white p-6 lg:p-7 shadow-xl">
-                            <div className="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-indigo-500/20 blur-3xl" />
+                            <div className="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-primary/20 blur-3xl" />
                             <div className="absolute -left-10 -bottom-10 w-60 h-60 rounded-full bg-emerald-500/10 blur-3xl" />
 
                             <div className="relative grid grid-cols-1 xl:grid-cols-3 gap-5">
@@ -1228,7 +1228,7 @@ const DashboardAdminSection = () => {
                                 <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden relative">
                                     <div className={`h-full ${corPct(metas.pctTotal)} rounded-full`} style={{ width: `${Math.min(100, metas.pctTotal || 0)}%` }} />
                                     {metas.pctProjecao != null && (
-                                        <div className="absolute top-0 h-full w-px bg-indigo-700" style={{ left: `${Math.min(100, metas.pctProjecao)}%` }} title={`Projeção: ${fmtPct(metas.pctProjecao, false)}`} />
+                                        <div className="absolute top-0 h-full w-px bg-house" style={{ left: `${Math.min(100, metas.pctProjecao)}%` }} title={`Projeção: ${fmtPct(metas.pctProjecao, false)}`} />
                                     )}
                                 </div>
                             </div>

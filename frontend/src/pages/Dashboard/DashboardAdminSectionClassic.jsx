@@ -154,7 +154,7 @@ const DashboardAdminSectionClassic = () => {
             {/* ═══════════ HERO: VENDAS DO MÊS ═══════════ */}
             {podeVerVendas && (
                 <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 text-white p-6 lg:p-8 shadow-xl mb-6">
-                    <div className="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-indigo-500/20 blur-3xl" />
+                    <div className="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-primary/20 blur-3xl" />
                     <div className="absolute -left-10 -bottom-10 w-60 h-60 rounded-full bg-emerald-500/10 blur-3xl" />
 
                     <div className="relative grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -266,7 +266,7 @@ const DashboardAdminSectionClassic = () => {
                                 <div className="h-3 bg-gray-200 rounded-full overflow-hidden relative">
                                     <div className={`h-full ${corPct(m.pctTotal)} rounded-full transition-all`} style={{ width: `${Math.min(100, m.pctTotal || 0)}%` }} />
                                     {m.pctProjecao != null && (
-                                        <div className="absolute top-0 h-full w-px bg-indigo-700" style={{ left: `${Math.min(100, m.pctProjecao)}%` }} title={`Projeção: ${fmtPct(m.pctProjecao, false)}`} />
+                                        <div className="absolute top-0 h-full w-px bg-house" style={{ left: `${Math.min(100, m.pctProjecao)}%` }} title={`Projeção: ${fmtPct(m.pctProjecao, false)}`} />
                                     )}
                                 </div>
                                 <div className="text-[10px] text-gray-400 mt-1">linha vertical = projeção do mês</div>
