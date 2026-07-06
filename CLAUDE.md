@@ -323,6 +323,29 @@ Isso se aplica a qualquer campo que já existia em produção — mesmo que não
 
 ---
 
+## Regras de Transação Prisma (`$transaction`) — banco compartilhado é LENTO
+
+O banco de produção é compartilhado e em horário de pico fica lento. O timeout padrão de uma transação interativa do Prisma é **5 segundos** — fácil de estourar quando a transação tem várias operações. Sintoma real: operação (ex.: dar baixa em parcela) **falha de forma intermitente e só funciona "na 2ª/3ª tentativa"** — é a transação dando timeout e fazendo rollback; ao repetir, uma hora o banco responde rápido o bastante e passa.
+
+**Regras OBRIGATÓRIAS ao escrever qualquer `prisma.$transaction` com callback:**
+
+1. **Sempre passar timeout generoso** — nunca confiar no padrão de 5s:
+   ```js
+   await prisma.$transaction(async (tx) => { /* ... */ }, { timeout: 20000, maxWait: 10000 });
+   ```
+2. **Dentro da transação, só o que é atômico de verdade** (o que precisa dar certo junto ou desfazer junto — ex.: criar o registro de pagamento + atualizar a parcela + atualizar a conta).
+3. **Tirar da transação tudo que é secundário/log** (registro de `Atendimento`/histórico, notificação, webhook, etc.) e rodar **depois**, em `try/catch` próprio — um log lento ou que falha **nunca** pode derrubar nem fazer rollback da operação principal:
+   ```js
+   await prisma.$transaction(async (tx) => { /* crítico */ }, { timeout: 20000, maxWait: 10000 });
+   try { await prisma.atendimento.create({ /* log */ }); }
+   catch (logErr) { console.error('Falha no log (operação já efetivada):', logErr); }
+   ```
+4. **Nunca** colocar dentro da transação chamada de rede/API externa (Conta Azul, BotConversa, etc.) — só banco.
+
+**Por que é crítico:** operação financeira (baixa, estorno) que falha silenciosamente por timeout faz o usuário clicar várias vezes achando que travou — e no pior caso registra duplicado se a lógica não for idempotente. Referência do padrão correto: `backend/routes/contasReceber.js` (rota `POST /:parcelaId/baixa`).
+
+---
+
 ## API de Consulta para IA Externa (`/api/ia-consulta/v1`) — NUNCA QUEBRAR O CONTRATO
 
 Existe uma IA de atendimento via WhatsApp num projeto separado ("Antigravity", fora deste repo) que consulta dados do Hardt (catálogo/agenda/entrega do Kit Festa; catálogo/condição comercial dos Congelados; reconhecimento de cliente/histórico/criação de lead em `/cliente/*`, geral para qualquer linha) através de `backend/routes/iaConsultaRoutes.js`. Documentação completa: `backend/docs/ia-consulta-api.md`.
