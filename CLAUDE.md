@@ -59,17 +59,24 @@ A automação do BotConversa ("catch" webhook, painel **Automação → AppHardt
 
 ## Padrão Visual do Sistema (Design System)
 
-> Referência visual completa: `design-system.html` na raiz do projeto. Sempre seguir este padrão ao criar ou alterar telas.
+> **TEMA STARBUCKS aplicado em 07/2026** (aprovado pelo usuário). Tokens abaixo já refletem o tema novo.
+> Existe uma **camada de remapeamento global** em `frontend/src/index.css` (seção "TEMA STARBUCKS") que converte azuis de ação legados (`bg-blue-600`, `text-blue-600`, `hover:bg-blue-700`...) para os verdes e transforma `button.rounded/rounded-md` em pílula — código antigo fica verde sem precisar ser editado. **Código NOVO deve usar os tokens diretamente** (`bg-primary hover:bg-primaryDark`, `rounded-full`), não os azuis legados.
+> `design-system.html` na raiz ainda mostra o tema azul antigo (pendente de atualização).
 
 ### Tokens Principais
 
 | Token | Valor |
 |---|---|
-| Cor primária | `#005fcc` (classe `primary`) |
-| Background geral | `#f3f4f6` (classe `secondary`) |
+| Cor primária (CTA/botões) | `#00754A` (classe `primary`) |
+| Primária escura (hover/títulos) | `#006241` (classe `primaryDark`) |
+| Verde-escuro (sidebar/bandas) | `#1E3932` (classe `house`) |
+| Verde-claro (chips/estados válidos) | `#d4e9e2` (classe `mint`) |
+| Background geral | `#f2f0eb` creme quente (classe `secondary`) |
 | Surface (cards) | `#ffffff` |
-| Texto principal | `#1f2937` (gray-900) |
-| Fonte | SF Pro Text, -apple-system, Roboto, sans-serif |
+| Texto principal | `rgba(0,0,0,0.87)` |
+| Fonte | Manrope (com `letter-spacing: -0.01em` e números tabulares globais via `:root`), fallback SF Pro Text |
+
+**Regras do tema:** botões sempre em pílula (`rounded-full`); dourado `#cba258` reservado só a destaques especiais; NUNCA mudar as cores semânticas dos badges de status (verde=pago, vermelho=vencido etc. — ver seção Badges); barras de progresso mantêm a escala de cor por % (inclusive azul).
 
 ### Estrutura de Card (padrão de toda seção de conteúdo)
 ```jsx
@@ -82,11 +89,12 @@ A automação do BotConversa ("catch" webhook, painel **Automação → AppHardt
 </div>
 ```
 
-### Botões
-- **Primário:** `px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-sm`
-- **Secundário:** `px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm`
-- **Perigo:** `px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md font-semibold text-sm`
-- **Ícone sutil:** `p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100`
+### Botões (tema Starbucks: pílula universal)
+- **Primário:** `px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm`
+- **Secundário (outline verde):** `px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm`
+- **Perigo:** `px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full font-semibold text-sm`
+- **Ícone sutil:** `p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100`
+- (Legado: `rounded`/`rounded-md` em `<button>` vira pílula automaticamente pela camada de tema)
 
 ### Badges de Status
 Sempre `px-2 py-1 text-xs font-semibold rounded-full` com as cores:
@@ -119,6 +127,7 @@ Sempre `px-2 py-1 text-xs font-semibold rounded-full` com as cores:
 Sempre: `bg-[cor]-100 p-2 rounded-lg` + ícone `h-5 w-5 text-[cor]-600`. Cada módulo tem sua cor:
 - Pedidos: blue | Clientes: green | Produtos: purple | Financeiro: amber
 - Expedição: sky | Dashboard: red | Rota: orange | PCP: teal
+- **Tema Starbucks:** chips azuis usam `bg-mint` no lugar de `bg-blue-100` (o ícone `text-blue-600` vira verde pela camada de tema; fundo azul + ícone verde briga). Demais cores de módulo permanecem.
 
 ### Regras de Raio de Borda
 - Inputs/botões: `rounded` (4px) ou `rounded-md` (6px)

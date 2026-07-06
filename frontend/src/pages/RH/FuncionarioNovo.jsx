@@ -62,7 +62,7 @@ export default function FuncionarioNovo() {
   return (
     <div className="max-w-2xl mx-auto p-3 md:p-6">
       <div className="flex items-center gap-2 mb-4">
-        <div className="bg-blue-100 p-2 rounded-lg"><UserPlus className="h-5 w-5 text-blue-600" /></div>
+        <div className="bg-mint p-2 rounded-lg"><UserPlus className="h-5 w-5 text-blue-600" /></div>
         <h1 className="text-lg md:text-2xl font-bold text-gray-900">Novo funcionário</h1>
       </div>
 

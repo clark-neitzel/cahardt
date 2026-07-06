@@ -33,7 +33,7 @@ export default function FuncionariosLista() {
         {/* topbar */}
         <div className="flex items-center justify-between p-3 md:p-5 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <div className="bg-blue-100 p-1.5 md:p-2 rounded-lg"><Users className="h-4 w-4 md:h-5 md:w-5 text-blue-600" /></div>
+            <div className="bg-mint p-1.5 md:p-2 rounded-lg"><Users className="h-4 w-4 md:h-5 md:w-5 text-blue-600" /></div>
             <h1 className="text-base md:text-2xl font-bold text-gray-900">Funcionários</h1>
           </div>
           <div className="flex items-center gap-2">

@@ -3,13 +3,17 @@
 @tailwind utilities;
 
 :root {
-  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Tema Starbucks: Manrope (substituta aberta da SoDoSans) + espaçamento apertado */
+  font-family: "Manrope", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
+  letter-spacing: -0.01em;
+  /* Números tabulares: dígitos com largura igual — valores e datas alinham em colunas */
+  font-variant-numeric: tabular-nums;
 
   color-scheme: light;
-  color: #1f2937;
-  background-color: #f3f4f6;
+  color: rgba(0, 0, 0, 0.87);
+  background-color: #f2f0eb; /* Neutral Warm — canvas creme Starbucks */
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -19,11 +23,11 @@
 
 a {
   font-weight: 500;
-  color: #3b82f6;
+  color: #00754A;
   text-decoration: inherit;
 }
 a:hover {
-  color: #2563eb;
+  color: #006241;
 }
 
 html, body {
@@ -66,3 +70,36 @@ html, body {
     display: none; /* Chrome, Safari and Opera */
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   TEMA STARBUCKS (07/2026) — camada de remapeamento global
+   Converte os azuis de AÇÃO (botões, links, ícones) para os verdes
+   oficiais da marca e aquece os cinzas de fundo para o tom creme.
+   NÃO altera: badges de status azuis (bg-blue-100/text-blue-800),
+   barras de progresso (bg-blue-500) e cores de identidade de módulo.
+   Estas regras vêm DEPOIS de @tailwind utilities, então vencem o
+   empate de especificidade com as classes originais.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Azuis de ação → verdes Starbucks */
+.bg-blue-600 { background-color: #00754A; }
+.hover\:bg-blue-600:hover { background-color: #00754A; }
+.bg-blue-700 { background-color: #006241; }
+.hover\:bg-blue-700:hover { background-color: #006241; }
+.text-blue-600 { color: #00754A; }
+.text-blue-700 { color: #006241; }
+.hover\:text-blue-700:hover { color: #006241; }
+.hover\:text-blue-800:hover { color: #006241; }
+.border-blue-600 { border-color: #00754A; }
+.focus\:ring-blue-500:focus { --tw-ring-color: #00754A; }
+.focus\:border-blue-500:focus { border-color: #00754A; }
+
+/* Cinzas frios → neutros quentes (canvas creme) */
+.bg-gray-50 { background-color: #f7f5f0; }
+.hover\:bg-gray-50:hover { background-color: #f7f5f0; }
+.bg-gray-100 { background-color: #eceae5; }
+.hover\:bg-gray-100:hover { background-color: #eceae5; }
+
+/* Botões em pílula (raio 50px universal da Starbucks) + toque que "afunda" */
+button.rounded, button.rounded-md { border-radius: 9999px; }
+button:active:not(:disabled) { transform: scale(0.97); }

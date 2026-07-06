@@ -343,7 +343,7 @@ const ModalAtendimento = ({ dados, onClose, onSalvo, vendedorId, onAbrirAmostra 
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-2xl">
                     <div className="flex items-center gap-3">
-                        <div className="bg-blue-100 p-1.5 rounded-lg flex-shrink-0">
+                        <div className="bg-mint p-1.5 rounded-lg flex-shrink-0">
                             <Navigation className="h-4 w-4 text-blue-600" />
                         </div>
                         <div>

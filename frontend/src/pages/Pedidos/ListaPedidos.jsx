@@ -550,7 +550,7 @@ const ListaPedidos = () => {
         <div className="w-full py-3 sm:py-5 overflow-x-hidden px-3 sm:px-0">
             {/* Topbar */}
             <div className="flex items-center gap-3 mb-4">
-                <div className="bg-blue-100 p-2 rounded-lg">
+                <div className="bg-mint p-2 rounded-lg">
                     <Package className="h-5 w-5 text-blue-600" />
                 </div>
                 <h1 className="text-lg font-bold text-gray-900">Pedidos</h1>

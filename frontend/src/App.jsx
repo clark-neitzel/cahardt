@@ -141,8 +141,8 @@ const SidebarItem = ({ to, icon: Icon, label, end }) => {
       end={end}
       title={label}
       className={`flex items-center gap-3 mx-2 px-3 py-2 rounded-lg text-[13px] transition-colors ${isActive
-        ? 'bg-blue-50 text-primary font-semibold'
-        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+        ? 'bg-primary text-white font-semibold'
+        : 'text-white/70 hover:bg-white/10 hover:text-white'
         }`}
     >
       <Icon className="h-5 w-5 shrink-0" />
@@ -153,8 +153,8 @@ const SidebarItem = ({ to, icon: Icon, label, end }) => {
 
 const SidebarSection = ({ label }) => (
   <div className="mx-2 mt-4 mb-1 px-3">
-    <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200">{label}</span>
-    <div className="h-px bg-gray-100 mt-1"></div>
+    <span className="text-[9px] font-bold uppercase tracking-widest text-white/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200">{label}</span>
+    <div className="h-px bg-white/10 mt-1"></div>
   </div>
 );
 
@@ -207,14 +207,14 @@ const Layout = ({ children }) => {
   const showPonto = isAdmin || hasPermission('Pode_Ver_Ponto') || hasPermission('Pode_Editar_Ponto');
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-secondary flex">
       {/* ═══════════════════════════════════════════ */}
       {/* SIDEBAR — Desktop only                     */}
       {/* ═══════════════════════════════════════════ */}
-      <aside className="hidden md:flex group fixed left-0 top-0 h-screen w-16 hover:w-60 bg-white border-r border-gray-200 flex-col z-50 transition-all duration-200 overflow-hidden shadow-sm">
+      <aside className="hidden md:flex group fixed left-0 top-0 h-screen w-16 hover:w-60 bg-house border-r border-black/20 flex-col z-50 transition-all duration-200 overflow-hidden shadow-sm">
         {/* Logo */}
-        <div className="flex items-center h-14 px-4 border-b border-gray-100 shrink-0">
-          <Link to="/" className="flex items-center gap-2 text-primary font-bold text-lg tracking-tight">
+        <div className="flex items-center h-14 px-4 border-b border-white/10 shrink-0">
+          <Link to="/" className="flex items-center gap-2 text-white font-bold text-lg tracking-tight">
             <span className="w-8 h-8 bg-primary text-white rounded-lg flex items-center justify-center text-sm font-black shrink-0">H</span>
             <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Hardt App</span>
           </Link>
@@ -305,17 +305,17 @@ const Layout = ({ children }) => {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-gray-100 p-2 shrink-0 space-y-1">
+        <div className="border-t border-white/10 p-2 shrink-0 space-y-1">
           <DiarioCheckout />
           <div className="flex items-center gap-2 px-3 py-2">
-            <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center shrink-0">
-              <span className="text-[11px] font-bold text-gray-600">{(user.nome || user.login || '?')[0].toUpperCase()}</span>
+            <div className="w-7 h-7 bg-white/15 rounded-full flex items-center justify-center shrink-0">
+              <span className="text-[11px] font-bold text-white">{(user.nome || user.login || '?')[0].toUpperCase()}</span>
             </div>
-            <span className="text-[12px] font-medium text-gray-700 truncate opacity-0 group-hover:opacity-100 transition-opacity duration-200">{user.nome || user.login}</span>
+            <span className="text-[12px] font-medium text-white/80 truncate opacity-0 group-hover:opacity-100 transition-opacity duration-200">{user.nome || user.login}</span>
             <button
               onClick={() => window.location.reload()}
               title={updateAvailable ? 'Nova versão disponível — clique para atualizar' : 'Atualizar app'}
-              className={`relative p-1.5 transition-colors shrink-0 opacity-0 group-hover:opacity-100 ${updateAvailable ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}
+              className={`relative p-1.5 transition-colors shrink-0 opacity-0 group-hover:opacity-100 ${updateAvailable ? 'text-white' : 'text-white/50 hover:text-white'}`}
             >
               <RefreshCw className={`h-4 w-4 ${updateAvailable ? 'animate-spin' : ''}`} style={updateAvailable ? { animationDuration: '3s' } : undefined} />
               {updateAvailable && <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
@@ -323,7 +323,7 @@ const Layout = ({ children }) => {
             <button
               onClick={logout}
               title="Sair"
-              className="ml-auto p-1.5 text-gray-400 hover:text-red-600 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+              className="ml-auto p-1.5 text-white/50 hover:text-red-300 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -341,16 +341,16 @@ const Layout = ({ children }) => {
       {/* ═══════════════════════════════════════════ */}
       <div className={`flex-1 md:ml-16 flex flex-col min-h-screen min-w-0${visitorBar ? ' md:pt-[38px]' : ''}`}>
         {/* ── Mobile top bar ── */}
-        <nav className="no-print md:hidden bg-white shadow-sm fixed top-0 left-0 right-0 z-50">
+        <nav className="no-print md:hidden bg-house shadow-sm fixed top-0 left-0 right-0 z-50">
           <div className="px-4 flex justify-between h-14 items-center">
-            <Link to="/" className="flex items-center text-primary font-bold text-lg tracking-tight">
+            <Link to="/" className="flex items-center text-white font-bold text-lg tracking-tight">
               Hardt App
             </Link>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => window.location.reload()}
                 title={updateAvailable ? 'Nova versão disponível — clique para atualizar' : 'Atualizar app'}
-                className={`relative p-2 rounded-md transition-colors ${updateAvailable ? 'text-primary' : 'text-gray-400 hover:text-gray-500 hover:bg-gray-100'}`}
+                className={`relative p-2 rounded-md transition-colors ${updateAvailable ? 'text-white' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
               >
                 <RefreshCw className={`h-5 w-5 ${updateAvailable ? 'animate-spin' : ''}`} style={updateAvailable ? { animationDuration: '3s' } : undefined} />
                 {updateAvailable && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
@@ -358,7 +358,7 @@ const Layout = ({ children }) => {
               <DiarioCheckout />
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+                className="inline-flex items-center justify-center p-2 rounded-md text-white/60 hover:text-white hover:bg-white/10"
               >
                 {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
