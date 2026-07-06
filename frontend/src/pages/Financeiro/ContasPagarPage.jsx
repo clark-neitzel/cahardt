@@ -12,14 +12,18 @@ import ImportarCaModal from './ImportarCaModal';
 const LS_FILTROS = 'contasPagar_filtros';
 const mesAtual = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
 const loadFiltros = () => {
-    const def = { busca: '', status: '', categoria: '', mes: mesAtual() };
+    const def = { busca: '', status: '', categoria: '', mesDe: mesAtual(), mesAte: mesAtual() };
     try {
         const s = JSON.parse(localStorage.getItem(LS_FILTROS) || '{}');
+        // Migração do filtro antigo (mês único `mes`) → intervalo (mesDe..mesAte).
+        const mesDe = s.mesDe !== undefined ? s.mesDe : (s.mes !== undefined ? s.mes : def.mesDe);
+        const mesAte = s.mesAte !== undefined ? s.mesAte : (s.mes !== undefined ? s.mes : def.mesAte);
         return {
             busca: s.busca || '',
             status: s.status || '',
             categoria: s.categoria || '',
-            mes: s.mes !== undefined ? s.mes : def.mes // '' = "todos os meses" (filtro proposital)
+            mesDe, // '' = sem início (mais antigo)
+            mesAte // '' = sem fim (mais novo). Ambos '' = todos os meses
         };
     } catch { return def; }
 };
@@ -101,15 +105,21 @@ const BadgeStatusParcela = ({ parcela }) => {
 };
 
 // Opções de mês (12 últimos meses, mais recente primeiro)
+const labelMesAno = (mesYM) => {
+    const [ano, mes] = mesYM.split('-');
+    const d = new Date(Number(ano), Number(mes) - 1, 1);
+    const l = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return (l.charAt(0).toUpperCase() + l.slice(1)).replace(' de ', '/');
+};
+
+// Últimos 24 meses (mais recente primeiro) — cobre o histórico importado do Conta Azul
 const mesesOpcoes = () => {
     const ops = [];
     const agora = new Date();
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 24; i++) {
         const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
         const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        let label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        label = label.charAt(0).toUpperCase() + label.slice(1).replace(' de ', '/');
-        ops.push({ value, label });
+        ops.push({ value, label: labelMesAno(value) });
     }
     return ops;
 };
@@ -119,6 +129,15 @@ const nomeMes = (mesYM) => {
     const [ano, mes] = mesYM.split('-');
     const d = new Date(Number(ano), Number(mes) - 1, 1);
     return d.toLocaleDateString('pt-BR', { month: 'long' });
+};
+
+// Rótulo do período escolhido (para cabeçalho e KPIs)
+const rotuloPeriodo = (mesDe, mesAte) => {
+    if (!mesDe && !mesAte) return 'Todos os meses';
+    if (mesDe && mesAte && mesDe === mesAte) return labelMesAno(mesDe);
+    if (mesDe && mesAte) return `${labelMesAno(mesDe)} → ${labelMesAno(mesAte)}`;
+    if (mesDe) return `De ${labelMesAno(mesDe)}`;
+    return `Até ${labelMesAno(mesAte)}`;
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -148,12 +167,21 @@ const ContasPagarPage = () => {
         if (filtros.busca) n++;
         if (filtros.status) n++;
         if (filtros.categoria) n++;
-        if (filtros.mes !== mesAtual()) n++; // mês diferente do corrente (inclui "todos os meses")
+        // período diferente do padrão (mês corrente em ambas as pontas)
+        if (filtros.mesDe !== mesAtual() || filtros.mesAte !== mesAtual()) n++;
         return n;
     }, [filtros]);
 
+    // Rótulo curto do período para os KPIs ("Em aberto (…)")
+    const kpiPeriodo = useMemo(() => {
+        if (!filtros.mesDe && !filtros.mesAte) return 'total';
+        if (filtros.mesDe && filtros.mesAte && filtros.mesDe === filtros.mesAte) return nomeMes(filtros.mesDe);
+        return 'período';
+    }, [filtros.mesDe, filtros.mesAte]);
+    const periodoAtivo = filtros.mesDe !== mesAtual() || filtros.mesAte !== mesAtual();
+
     const limparFiltros = () => {
-        setFiltros({ busca: '', status: '', categoria: '', mes: mesAtual() });
+        setFiltros({ busca: '', status: '', categoria: '', mesDe: mesAtual(), mesAte: mesAtual() });
         setBuscaInput('');
     };
 
@@ -178,7 +206,8 @@ const ContasPagarPage = () => {
             if (filtros.busca) params.busca = filtros.busca;
             if (filtros.status) params.status = filtros.status;
             if (filtros.categoria) params.categoria = filtros.categoria;
-            if (filtros.mes) params.mes = filtros.mes;
+            if (filtros.mesDe) params.de = filtros.mesDe;
+            if (filtros.mesAte) params.ate = filtros.mesAte;
             const data = await contasPagarService.listar(params);
             setKpis(data?.kpis || {});
             setContas(data?.contas || []);
@@ -296,7 +325,7 @@ const ContasPagarPage = () => {
                         <div className="text-xs text-gray-500">{Number(kpis?.proximos7?.qtd || 0)} parcela(s)</div>
                     </div>
                     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Em aberto ({nomeMes(filtros.mes)})</div>
+                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Em aberto ({kpiPeriodo})</div>
                         <div className="text-lg md:text-2xl font-bold text-gray-900 mt-1">R$ {fmt(kpis?.abertoMes?.valor)}</div>
                         <div className="text-xs text-gray-500">{Number(kpis?.abertoMes?.qtd || 0)} parcela(s)</div>
                     </div>
@@ -331,14 +360,28 @@ const ContasPagarPage = () => {
                             <option value="">Categoria: Todas</option>
                             {categorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
                         </select>
-                        <select
-                            value={filtros.mes}
-                            onChange={e => setFiltros(f => ({ ...f, mes: e.target.value }))}
-                            className={`w-full md:w-44 border rounded px-3 py-2 text-sm text-gray-700 focus:outline-none ${filtros.mes !== mesAtual() ? '!border-primary bg-blue-50/60 font-medium' : 'border-gray-300 focus:border-primary'}`}
-                        >
-                            <option value="">Todos os meses</option>
-                            {meses.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                        </select>
+                        {/* Período: De … Até (intervalo por vencimento) */}
+                        <div className="flex items-center gap-2 w-full md:w-auto">
+                            <select
+                                value={filtros.mesDe}
+                                onChange={e => setFiltros(f => ({ ...f, mesDe: e.target.value }))}
+                                title="Mês inicial do período"
+                                className={`flex-1 md:flex-none md:w-40 border rounded px-3 py-2 text-sm text-gray-700 focus:outline-none ${periodoAtivo ? '!border-primary bg-blue-50/60 font-medium' : 'border-gray-300 focus:border-primary'}`}
+                            >
+                                <option value="">De: mais antigo</option>
+                                {meses.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                            </select>
+                            <span className="text-sm text-gray-500 shrink-0">até</span>
+                            <select
+                                value={filtros.mesAte}
+                                onChange={e => setFiltros(f => ({ ...f, mesAte: e.target.value }))}
+                                title="Mês final do período"
+                                className={`flex-1 md:flex-none md:w-40 border rounded px-3 py-2 text-sm text-gray-700 focus:outline-none ${periodoAtivo ? '!border-primary bg-blue-50/60 font-medium' : 'border-gray-300 focus:border-primary'}`}
+                            >
+                                <option value="">Até: mais novo</option>
+                                {meses.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                            </select>
+                        </div>
                     </div>
                     {filtrosAtivos > 0 && (
                         <div className="flex items-center gap-2 pt-0.5">
@@ -435,7 +478,7 @@ const ContasPagarPage = () => {
                     <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
                         <FileText className="h-4 w-4 text-blue-600" />
                         <span className="text-xs font-bold uppercase tracking-widest text-gray-600">
-                            {filtros.mes ? `DESPESAS DE ${meses.find(m => m.value === filtros.mes)?.label?.toUpperCase() || filtros.mes}` : 'DESPESAS'}
+                            {`DESPESAS · ${rotuloPeriodo(filtros.mesDe, filtros.mesAte).toUpperCase()}`}
                         </span>
                     </div>
                     <div className="overflow-x-auto">

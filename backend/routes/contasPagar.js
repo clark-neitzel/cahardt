@@ -161,19 +161,24 @@ router.post('/importar-ca', verificarAuth, checkEscrita, uploadCsv.single('arqui
 // ── GET / — listar contas com KPIs ──
 router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     try {
-        const { busca, status, categoria, mes } = req.query;
+        const { busca, status, categoria, mes, de, ate } = req.query;
+        const isYM = (v) => /^\d{4}-\d{2}$/.test(v || '');
 
-        // Mês de referência (default: mês corrente)
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
-        let ano = hoje.getFullYear();
-        let mesIdx = hoje.getMonth();
-        if (mes && /^\d{4}-\d{2}$/.test(mes)) {
-            ano = Number(mes.split('-')[0]);
-            mesIdx = Number(mes.split('-')[1]) - 1;
-        }
-        const inicioMes = new Date(ano, mesIdx, 1);
-        const fimMes = new Date(ano, mesIdx + 1, 0, 23, 59, 59, 999);
+
+        // Período por vencimento: de..ate (YYYY-MM). Compatibilidade: `mes` = de=ate=mes.
+        // Vazio nas duas pontas = sem limite (todos os meses).
+        let mDe = isYM(de) ? de : (isYM(mes) ? mes : '');
+        let mAte = isYM(ate) ? ate : (isYM(mes) ? mes : '');
+        if (mDe && mAte && mDe > mAte) { const t = mDe; mDe = mAte; mAte = t; } // normaliza ordem
+
+        const inicioMes = mDe
+            ? new Date(Number(mDe.slice(0, 4)), Number(mDe.slice(5, 7)) - 1, 1)
+            : new Date(2000, 0, 1);
+        const fimMes = mAte
+            ? new Date(Number(mAte.slice(0, 4)), Number(mAte.slice(5, 7)), 0, 23, 59, 59, 999)
+            : new Date(2999, 11, 31, 23, 59, 59, 999);
 
         const where = {
             parcelas: { some: { dataVencimento: { gte: inicioMes, lte: fimMes } } }
