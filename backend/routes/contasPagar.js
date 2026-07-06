@@ -162,23 +162,27 @@ router.post('/importar-ca', verificarAuth, checkEscrita, uploadCsv.single('arqui
 router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     try {
         const { busca, status, categoria, mes, de, ate } = req.query;
-        const isYM = (v) => /^\d{4}-\d{2}$/.test(v || '');
 
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
 
-        // Período por vencimento: de..ate (YYYY-MM). Compatibilidade: `mes` = de=ate=mes.
-        // Vazio nas duas pontas = sem limite (todos os meses).
-        let mDe = isYM(de) ? de : (isYM(mes) ? mes : '');
-        let mAte = isYM(ate) ? ate : (isYM(mes) ? mes : '');
-        if (mDe && mAte && mDe > mAte) { const t = mDe; mDe = mAte; mAte = t; } // normaliza ordem
+        // Período por vencimento: de..ate. Aceita DATA (YYYY-MM-DD) ou MÊS (YYYY-MM);
+        // compat: `mes` = de=ate=mês. Vazio nas duas pontas = sem limite (todas as datas).
+        // Início de `de`: dia (00:00) ou 1º dia do mês. Fim de `ate`: dia (23:59) ou último dia do mês.
+        const parseInicio = (v) => {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return new Date(Number(v.slice(0, 4)), Number(v.slice(5, 7)) - 1, Number(v.slice(8, 10)), 0, 0, 0, 0);
+            if (/^\d{4}-\d{2}$/.test(v)) return new Date(Number(v.slice(0, 4)), Number(v.slice(5, 7)) - 1, 1);
+            return null;
+        };
+        const parseFim = (v) => {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return new Date(Number(v.slice(0, 4)), Number(v.slice(5, 7)) - 1, Number(v.slice(8, 10)), 23, 59, 59, 999);
+            if (/^\d{4}-\d{2}$/.test(v)) return new Date(Number(v.slice(0, 4)), Number(v.slice(5, 7)), 0, 23, 59, 59, 999);
+            return null;
+        };
 
-        const inicioMes = mDe
-            ? new Date(Number(mDe.slice(0, 4)), Number(mDe.slice(5, 7)) - 1, 1)
-            : new Date(2000, 0, 1);
-        const fimMes = mAte
-            ? new Date(Number(mAte.slice(0, 4)), Number(mAte.slice(5, 7)), 0, 23, 59, 59, 999)
-            : new Date(2999, 11, 31, 23, 59, 59, 999);
+        let inicioMes = parseInicio(de) || parseInicio(mes) || new Date(2000, 0, 1);
+        let fimMes = parseFim(ate) || parseFim(mes) || new Date(2999, 11, 31, 23, 59, 59, 999);
+        if (inicioMes > fimMes) { const t = inicioMes; inicioMes = fimMes; fimMes = t; } // normaliza ordem
 
         const where = {
             parcelas: { some: { dataVencimento: { gte: inicioMes, lte: fimMes } } }

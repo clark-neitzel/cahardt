@@ -11,19 +11,25 @@ import ImportarCaModal from './ImportarCaModal';
 // Filtros salvos por navegador/usuário — ao sair e voltar, continuam aplicados
 const LS_FILTROS = 'contasPagar_filtros';
 const mesAtual = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
+// Período por DATA (YYYY-MM-DD). Default: do 1º ao último dia do mês corrente.
+const primeiroDiaMesAtual = () => `${mesAtual()}-01`;
+const ultimoDiaDoMes = (ym) => { const [a, m] = ym.split('-').map(Number); return `${ym}-${String(new Date(a, m, 0).getDate()).padStart(2, '0')}`; };
+const ultimoDiaMesAtual = () => ultimoDiaDoMes(mesAtual());
 const loadFiltros = () => {
-    const def = { busca: '', status: '', categoria: '', mesDe: mesAtual(), mesAte: mesAtual() };
+    const def = { busca: '', status: '', categoria: '', dataDe: primeiroDiaMesAtual(), dataAte: ultimoDiaMesAtual() };
     try {
         const s = JSON.parse(localStorage.getItem(LS_FILTROS) || '{}');
-        // Migração do filtro antigo (mês único `mes`) → intervalo (mesDe..mesAte).
-        const mesDe = s.mesDe !== undefined ? s.mesDe : (s.mes !== undefined ? s.mes : def.mesDe);
-        const mesAte = s.mesAte !== undefined ? s.mesAte : (s.mes !== undefined ? s.mes : def.mesAte);
+        // Migração de filtros antigos: intervalo por mês (mesDe/mesAte) ou mês único (mes) → datas.
+        const de = s.dataDe !== undefined ? s.dataDe
+            : (s.mesDe !== undefined ? (s.mesDe ? `${s.mesDe}-01` : '') : (s.mes !== undefined ? (s.mes ? `${s.mes}-01` : '') : def.dataDe));
+        const ate = s.dataAte !== undefined ? s.dataAte
+            : (s.mesAte !== undefined ? (s.mesAte ? ultimoDiaDoMes(s.mesAte) : '') : (s.mes !== undefined ? (s.mes ? ultimoDiaDoMes(s.mes) : '') : def.dataAte));
         return {
             busca: s.busca || '',
             status: s.status || '',
             categoria: s.categoria || '',
-            mesDe, // '' = sem início (mais antigo)
-            mesAte // '' = sem fim (mais novo). Ambos '' = todos os meses
+            dataDe: de,  // '' = sem início (mais antigo)
+            dataAte: ate // '' = sem fim (mais novo). Ambos '' = todas as datas
         };
     } catch { return def; }
 };
@@ -131,13 +137,16 @@ const nomeMes = (mesYM) => {
     return d.toLocaleDateString('pt-BR', { month: 'long' });
 };
 
-// Rótulo do período escolhido (para cabeçalho e KPIs)
-const rotuloPeriodo = (mesDe, mesAte) => {
-    if (!mesDe && !mesAte) return 'Todos os meses';
-    if (mesDe && mesAte && mesDe === mesAte) return labelMesAno(mesDe);
-    if (mesDe && mesAte) return `${labelMesAno(mesDe)} → ${labelMesAno(mesAte)}`;
-    if (mesDe) return `De ${labelMesAno(mesDe)}`;
-    return `Até ${labelMesAno(mesAte)}`;
+// 'YYYY-MM-DD' → 'DD/MM/YYYY' (sem virar dia anterior por fuso)
+const dmy = (ymd) => (ymd ? ymd.split('-').reverse().join('/') : '');
+
+// Rótulo do período (datas) escolhido — para cabeçalho e KPIs
+const rotuloPeriodo = (de, ate) => {
+    if (!de && !ate) return 'Todas as datas';
+    if (de && ate && de === ate) return dmy(de);
+    if (de && ate) return `${dmy(de)} → ${dmy(ate)}`;
+    if (de) return `A partir de ${dmy(de)}`;
+    return `Até ${dmy(ate)}`;
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -167,21 +176,20 @@ const ContasPagarPage = () => {
         if (filtros.busca) n++;
         if (filtros.status) n++;
         if (filtros.categoria) n++;
-        // período diferente do padrão (mês corrente em ambas as pontas)
-        if (filtros.mesDe !== mesAtual() || filtros.mesAte !== mesAtual()) n++;
+        // período diferente do padrão (mês corrente: 1º ao último dia)
+        if (filtros.dataDe !== primeiroDiaMesAtual() || filtros.dataAte !== ultimoDiaMesAtual()) n++;
         return n;
     }, [filtros]);
 
     // Rótulo curto do período para os KPIs ("Em aberto (…)")
     const kpiPeriodo = useMemo(() => {
-        if (!filtros.mesDe && !filtros.mesAte) return 'total';
-        if (filtros.mesDe && filtros.mesAte && filtros.mesDe === filtros.mesAte) return nomeMes(filtros.mesDe);
+        if (!filtros.dataDe && !filtros.dataAte) return 'total';
         return 'período';
-    }, [filtros.mesDe, filtros.mesAte]);
-    const periodoAtivo = filtros.mesDe !== mesAtual() || filtros.mesAte !== mesAtual();
+    }, [filtros.dataDe, filtros.dataAte]);
+    const periodoAtivo = filtros.dataDe !== primeiroDiaMesAtual() || filtros.dataAte !== ultimoDiaMesAtual();
 
     const limparFiltros = () => {
-        setFiltros({ busca: '', status: '', categoria: '', mesDe: mesAtual(), mesAte: mesAtual() });
+        setFiltros({ busca: '', status: '', categoria: '', dataDe: primeiroDiaMesAtual(), dataAte: ultimoDiaMesAtual() });
         setBuscaInput('');
     };
 
@@ -191,7 +199,6 @@ const ContasPagarPage = () => {
     const [baixaModal, setBaixaModal] = useState(null);     // { conta, parcela }
     const [detalheConta, setDetalheConta] = useState(null); // conta
 
-    const meses = useMemo(() => mesesOpcoes(), []);
 
     // Debounce da busca
     useEffect(() => {
@@ -206,8 +213,8 @@ const ContasPagarPage = () => {
             if (filtros.busca) params.busca = filtros.busca;
             if (filtros.status) params.status = filtros.status;
             if (filtros.categoria) params.categoria = filtros.categoria;
-            if (filtros.mesDe) params.de = filtros.mesDe;
-            if (filtros.mesAte) params.ate = filtros.mesAte;
+            if (filtros.dataDe) params.de = filtros.dataDe;
+            if (filtros.dataAte) params.ate = filtros.dataAte;
             const data = await contasPagarService.listar(params);
             setKpis(data?.kpis || {});
             setContas(data?.contas || []);
@@ -360,27 +367,25 @@ const ContasPagarPage = () => {
                             <option value="">Categoria: Todas</option>
                             {categorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
                         </select>
-                        {/* Período: De … Até (intervalo por vencimento) */}
+                        {/* Período por vencimento: De (data) … Até (data) */}
                         <div className="flex items-center gap-2 w-full md:w-auto">
-                            <select
-                                value={filtros.mesDe}
-                                onChange={e => setFiltros(f => ({ ...f, mesDe: e.target.value }))}
-                                title="Mês inicial do período"
+                            <input
+                                type="date"
+                                value={filtros.dataDe}
+                                max={filtros.dataAte || undefined}
+                                onChange={e => setFiltros(f => ({ ...f, dataDe: e.target.value }))}
+                                title="Data inicial (vencimento)"
                                 className={`flex-1 md:flex-none md:w-40 border rounded px-3 py-2 text-sm text-gray-700 focus:outline-none ${periodoAtivo ? '!border-primary bg-blue-50/60 font-medium' : 'border-gray-300 focus:border-primary'}`}
-                            >
-                                <option value="">De: mais antigo</option>
-                                {meses.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                            </select>
+                            />
                             <span className="text-sm text-gray-500 shrink-0">até</span>
-                            <select
-                                value={filtros.mesAte}
-                                onChange={e => setFiltros(f => ({ ...f, mesAte: e.target.value }))}
-                                title="Mês final do período"
+                            <input
+                                type="date"
+                                value={filtros.dataAte}
+                                min={filtros.dataDe || undefined}
+                                onChange={e => setFiltros(f => ({ ...f, dataAte: e.target.value }))}
+                                title="Data final (vencimento)"
                                 className={`flex-1 md:flex-none md:w-40 border rounded px-3 py-2 text-sm text-gray-700 focus:outline-none ${periodoAtivo ? '!border-primary bg-blue-50/60 font-medium' : 'border-gray-300 focus:border-primary'}`}
-                            >
-                                <option value="">Até: mais novo</option>
-                                {meses.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                            </select>
+                            />
                         </div>
                     </div>
                     {filtrosAtivos > 0 && (
@@ -478,7 +483,7 @@ const ContasPagarPage = () => {
                     <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
                         <FileText className="h-4 w-4 text-blue-600" />
                         <span className="text-xs font-bold uppercase tracking-widest text-gray-600">
-                            {`DESPESAS · ${rotuloPeriodo(filtros.mesDe, filtros.mesAte).toUpperCase()}`}
+                            {`DESPESAS · ${rotuloPeriodo(filtros.dataDe, filtros.dataAte).toUpperCase()}`}
                         </span>
                     </div>
                     <div className="overflow-x-auto">
