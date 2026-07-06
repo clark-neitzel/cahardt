@@ -2040,8 +2040,14 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">Motivo do desconto</label>
-                                    <input value={motivoDesconto} onChange={e => setMotivoDesconto(e.target.value)} placeholder="Ex.: negociação com cliente, produto avariado..." className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                        Motivo do desconto <span className="text-red-500">*</span>
+                                    </label>
+                                    <input value={motivoDesconto} onChange={e => setMotivoDesconto(e.target.value)} placeholder="Ex.: negociação com cliente, produto avariado..."
+                                        className={`w-full border rounded px-3 py-2 text-sm focus:ring-1 focus:outline-none ${motivoObrigatorioFaltando ? 'border-red-400 focus:border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:border-primary focus:ring-primary'}`} />
+                                    {motivoObrigatorioFaltando && (
+                                        <p className="text-[11px] text-red-600 mt-1">Obrigatório para aplicar o desconto.</p>
+                                    )}
                                 </div>
                                 <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 inline-flex items-start gap-1.5">
                                     <ShieldAlert className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
