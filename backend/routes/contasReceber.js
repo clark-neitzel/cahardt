@@ -591,12 +591,16 @@ router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => 
                 where: { id: parcela.contaReceberId },
                 data: { status: novoStatusConta }
             });
+        }, { timeout: 20000, maxWait: 10000 });
 
+        // Log de auditoria no histórico do cliente — fora da transação para não
+        // derrubar a baixa se estiver lento (a baixa em si já foi efetivada).
+        try {
             const conta = parcela.contaReceber;
             const partes = [];
             if (recebido > 0) partes.push(`recebido R$ ${recebido.toFixed(2)}${formaPagamento ? ` (${formaPagamento})` : ''}`);
             if (desconto > 0) partes.push(`desconto R$ ${desconto.toFixed(2)} (${motivoDesconto.trim()})`);
-            await tx.atendimento.create({
+            await prisma.atendimento.create({
                 data: {
                     tipo: 'FINANCEIRO',
                     observacao: `Baixa parcela ${parcela.numeroParcela} - ${partes.join(' + ')} - status: ${novoStatusParcela}${observacao ? ` | ${observacao}` : ''}`,
@@ -605,7 +609,9 @@ router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => 
                     pedidoId: conta.pedidoId || null
                 }
             });
-        });
+        } catch (logErr) {
+            console.error('Falha ao registrar histórico da baixa (baixa já efetivada):', logErr);
+        }
 
         res.json({
             message: novoStatusParcela === 'PAGO' ? 'Parcela quitada com sucesso!' : 'Baixa parcial registrada com sucesso!',
@@ -659,7 +665,7 @@ router.delete('/:parcelaId/pagamentos/:pagamentoId', verificarAuth, checkBaixa, 
             novoStatusConta = calcularStatusConta(parcelasAtualizadas);
 
             await tx.contaReceber.update({ where: { id: parcela.contaReceberId }, data: { status: novoStatusConta } });
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         res.json({ message: 'Pagamento estornado com sucesso!', novoStatusParcela, novoStatusConta });
     } catch (error) {
@@ -708,7 +714,7 @@ router.delete('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) =
             novoStatusConta = calcularStatusConta(parcelasAtualizadas);
 
             await tx.contaReceber.update({ where: { id: parcela.contaReceberId }, data: { status: novoStatusConta } });
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         res.json({ message: 'Baixa estornada com sucesso!', novoStatus: novoStatusConta });
     } catch (error) {
