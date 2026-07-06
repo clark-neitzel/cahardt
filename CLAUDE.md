@@ -344,6 +344,8 @@ O banco de produção é compartilhado e em horário de pico fica lento. O timeo
 
 **Por que é crítico:** operação financeira (baixa, estorno) que falha silenciosamente por timeout faz o usuário clicar várias vezes achando que travou — e no pior caso registra duplicado se a lógica não for idempotente. Referência do padrão correto: `backend/routes/contasReceber.js` (rota `POST /:parcelaId/baixa`).
 
+**Regra de "boy scout" (pedido explícito do usuário):** ao mexer em **qualquer arquivo que já tenha `$transaction`**, verificar as transações vizinhas do mesmo arquivo e ajustar as que não seguem este padrão (faltando `timeout`, ou com log/API externa dentro) — mesmo que não sejam o foco da tarefa. Não é preciso sair varrendo o projeto inteiro de uma vez; a correção acontece naturalmente conforme cada arquivo é tocado. (Em julho/2026 havia ~25 arquivos no backend usando `$transaction` — a maioria ainda no padrão antigo.)
+
 ---
 
 ## API de Consulta para IA Externa (`/api/ia-consulta/v1`) — NUNCA QUEBRAR O CONTRATO
