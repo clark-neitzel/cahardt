@@ -1527,7 +1527,7 @@ const contaAzulService = {
                                                     itens: { create: novosItens }
                                                 }
                                             });
-                                        });
+                                        }, { timeout: 20000, maxWait: 10000 });
                                         console.log(`✅ [Sync CA] Pedido #${pedidoLocal.numero} atualizado com ${novosItens.length} itens do CA.`);
                                         count++;
                                     } else {

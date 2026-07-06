@@ -363,7 +363,7 @@ async function registrarNfse(xmlString, nsu, cnpjNosso) {
                 valorTotal: nota.valorTotal ?? 0
             }
         });
-    });
+    }, { timeout: 20000, maxWait: 10000 });
 
     return { capturada: !existente };
 }

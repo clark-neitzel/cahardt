@@ -158,7 +158,7 @@ const pcpSugestaoService = {
             });
 
             return { sugestaoId: id, ordemProducaoId: ordem.id, numero: ordem.numero };
-        });
+        }, { timeout: 20000, maxWait: 10000 });
     },
 
     rejeitar: async (id) => {

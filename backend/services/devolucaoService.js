@@ -253,7 +253,7 @@ const devolucaoService = {
             }
 
             return dev;
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         // 6d. Creditar estoque (fora da transação principal pois estoqueService tem sua própria)
         try {
@@ -334,7 +334,7 @@ const devolucaoService = {
                     }
                 });
             }
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         // 4. Debitar estoque de volta
         try {

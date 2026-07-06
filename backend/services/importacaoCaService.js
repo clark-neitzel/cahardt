@@ -543,7 +543,7 @@ async function reconciliarPagamento(contaId, c, userId) {
             });
         }
         await tx.contaPagar.update({ where: { id: conta.id }, data: { status: 'QUITADO' } });
-    });
+    }, { timeout: 20000, maxWait: 10000 });
 }
 
 module.exports = {

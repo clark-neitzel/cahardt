@@ -126,7 +126,7 @@ const pcpOrdemService = {
                     }
                 }
             });
-        });
+        }, { timeout: 20000, maxWait: 10000 });
     },
 
     iniciar: async (id) => {
@@ -163,7 +163,7 @@ const pcpOrdemService = {
                     }
                 }
             });
-        });
+        }, { timeout: 20000, maxWait: 10000 });
     },
 
     finalizar: async (id, { quantidadeProduzida, criadoPorId }) => {
@@ -219,7 +219,7 @@ const pcpOrdemService = {
                     dataFim: new Date()
                 }
             });
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         // 4. Bridge: atualizar estoque comercial se PA tem produtoId
         const itemPa = ordem.receita.itemPcp;
@@ -270,7 +270,7 @@ const pcpOrdemService = {
             await tx.ordemConsumo.deleteMany({ where: { ordemProducaoId: id } });
             await tx.ordemProducao.delete({ where: { id } });
             return { ok: true };
-        });
+        }, { timeout: 20000, maxWait: 10000 });
     }
 };
 

@@ -721,7 +721,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                 where: { id: nota.id },
                 data: { status: 'CONFERIDA', contaPagarId: contaCriada.id, fornecedorId: fornecedor?.id || nota.fornecedorId }
             });
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         // 5) Salva o XML na pasta do mês na Contabilidade (Drive) — best-effort, não bloqueia a entrada.
         googleDriveService.salvarXmlNota(nota, xmlAbsPath(nota))
@@ -835,7 +835,7 @@ router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req
                 where: { id: nota.id },
                 data: { status: nota.xmlPath ? 'NOVA' : 'AGUARDANDO_XML', contaPagarId: null }
             });
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         // Fase 6 — estorna as entradas de estoque desta nota (saída na mesma quantidade;
         // o histórico fica marcado como estornado). Best-effort: falha não trava o cancelamento.

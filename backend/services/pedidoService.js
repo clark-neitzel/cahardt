@@ -335,7 +335,7 @@ const pedidoService = {
             }
 
             return novoPedido;
-        });
+        }, { timeout: 20000, maxWait: 10000 });
     },
 
     editar: async (id, dadosPedido) => {
@@ -520,7 +520,7 @@ const pedidoService = {
             }, 0);
 
             return pedidoAtualizado;
-        });
+        }, { timeout: 20000, maxWait: 10000 });
     },
 
     // 3. Buscar último preço de um produto vendido para um cliente
@@ -723,7 +723,7 @@ const pedidoService = {
             await tx.caixaEntregaConferida.deleteMany({ where: { pedidoId: id } });
             // Remove pedido
             return await tx.pedido.delete({ where: { id } });
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         // Recalcula estoqueReservado/estoqueDisponivel dos produtos afetados
         for (const produtoId of produtosAfetados) {

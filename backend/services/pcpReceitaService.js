@@ -207,7 +207,7 @@ const pcpReceitaService = {
             });
 
             return nova;
-        });
+        }, { timeout: 20000, maxWait: 10000 });
     },
 
     historicoPorItem: async (itemPcpId) => {
@@ -288,7 +288,7 @@ const pcpReceitaService = {
                     itens: { include: { itemPcp: { select: { id: true, nome: true, codigo: true, tipo: true, unidade: true } } } }
                 }
             });
-        });
+        }, { timeout: 20000, maxWait: 10000 });
     },
 
     novaVersao: async (receitaId) => {
@@ -336,7 +336,7 @@ const pcpReceitaService = {
             });
 
             return nova;
-        });
+        }, { timeout: 20000, maxWait: 10000 });
     },
 
     alterarStatus: async (id, status) => {
@@ -445,7 +445,7 @@ const pcpReceitaService = {
         return prisma.$transaction(async (tx) => {
             await tx.receitaItem.deleteMany({ where: { receitaId: id } });
             return tx.receita.delete({ where: { id } });
-        });
+        }, { timeout: 20000, maxWait: 10000 });
     },
 
     buscarReceitaAtiva: async (itemPcpId) => {

@@ -885,7 +885,7 @@ router.post('/corrigir-especiais-abertos', async (req, res) => {
                     });
                 }
                 await tx.contaReceber.update({ where: { id: conta.id }, data: { status: 'QUITADO' } });
-            });
+            }, { timeout: 20000, maxWait: 10000 });
             corrigidos++;
         }
 

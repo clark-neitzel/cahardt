@@ -338,7 +338,7 @@ const pedidoController = {
                 }
 
                 return updated;
-            });
+            }, { timeout: 20000, maxWait: 10000 });
 
             res.json({ message: 'Pedido especial aprovado com sucesso.', pedido: pedidoAprovado });
         } catch (error) {

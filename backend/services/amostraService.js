@@ -115,7 +115,7 @@ const amostraService = {
             await tx.amostraItem.deleteMany({ where: { amostraId: id } });
             await tx.atendimento.updateMany({ where: { amostraId: id }, data: { amostraId: null } });
             return await tx.amostra.delete({ where: { id } });
-        });
+        }, { timeout: 20000, maxWait: 10000 });
     },
 
     // Amostras com status LIBERADO e sem embarque (para embarcar)

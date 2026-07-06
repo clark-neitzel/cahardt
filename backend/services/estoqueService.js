@@ -105,7 +105,7 @@ const estoqueService = {
             // Se a categoria controla estoque, recalcula reservado/disponivel
             const recalc = await recalcularEstoqueProduto(produtoId, tx);
             return { movId: mov.id, recalc };
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         const reservado = result.recalc?.estoqueReservado ?? parseFloat(produto.estoqueReservado || 0);
         const disponivel = result.recalc?.estoqueDisponivel ?? totalDepois;
@@ -178,7 +178,7 @@ const estoqueService = {
             for (const pid of produtosAfetados) {
                 await recalcularEstoqueProduto(pid, tx);
             }
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         return resultados;
     },
@@ -240,7 +240,7 @@ const estoqueService = {
             for (const pid of produtosAfetados) {
                 await recalcularEstoqueProduto(pid, tx);
             }
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         return resultados;
     },
@@ -294,7 +294,7 @@ const estoqueService = {
             for (const pid of produtosAfetados) {
                 await recalcularEstoqueProduto(pid, tx);
             }
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         return resultados;
     },
@@ -348,7 +348,7 @@ const estoqueService = {
             for (const pid of produtosAfetados) {
                 await recalcularEstoqueProduto(pid, tx);
             }
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         return resultados;
     },

@@ -377,7 +377,7 @@ async function registrarProcNFe(xmlString, nsu, cnpjNosso) {
                 data: nota.duplicatas.map((d) => ({ notaEntradaId: notaId, ...d }))
             });
         }
-    });
+    }, { timeout: 20000, maxWait: 10000 });
 
     // capturada = virou NOVA agora (era inexistente ou só resumo)
     return { capturada: !existente || existente.status === 'AGUARDANDO_XML' };

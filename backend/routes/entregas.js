@@ -465,7 +465,7 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
                     }
                 }
             }
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         res.json({ message: 'Entrega Finalizada e Registrada com Sucesso!' });
     } catch (error) {
@@ -532,7 +532,7 @@ router.patch('/:id/editar', verificarAuth, checkAjustador, async (req, res) => {
                     });
                 }
             }
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         res.json({ message: 'Lançamento de entrega atualizado com sucesso.' });
     } catch (error) {
@@ -697,7 +697,7 @@ router.delete('/:id/estorno', verificarAuth, checkAjustador, async (req, res) =>
                     dataEntrega: null
                 }
             });
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         res.status(204).send();
     } catch (error) {

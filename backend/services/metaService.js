@@ -60,7 +60,7 @@ const metaService = {
             await tx.metaPromocao.deleteMany({ where: { metaMensalVendedorId: id } });
             await tx.metaCidade.deleteMany({ where: { metaMensalVendedorId: id } });
             return await tx.metaMensalVendedor.delete({ where: { id } });
-        });
+        }, { timeout: 20000, maxWait: 10000 });
     },
 
     listarMetasMensais: async (mesReferencia) => {

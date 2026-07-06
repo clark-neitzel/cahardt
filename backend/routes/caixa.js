@@ -1373,8 +1373,12 @@ router.post('/quitar-ca', async (req, res) => {
                         data: { status: novoStatus }
                     });
 
-                    // Registrar no histórico
-                    await tx.atendimento.create({
+                }, { timeout: 20000, maxWait: 10000 });
+
+                // Log de histórico FORA da transação — um log lento/falho nunca pode
+                // derrubar (rollback) uma baixa já efetivada.
+                try {
+                    await prisma.atendimento.create({
                         data: {
                             tipo: 'FINANCEIRO',
                             observacao: `Baixa caixa (especial) - R$ ${pedido._valorElegivel.toFixed(2)} (${detalhePgtos})${isParcial ? ' — PARCIAL' : ''} | ${obs}`,
@@ -1383,7 +1387,9 @@ router.post('/quitar-ca', async (req, res) => {
                             pedidoId: pedido.id
                         }
                     });
-                });
+                } catch (logErr) {
+                    console.error('[caixa baixa-lote] falha no log (baixa já efetivada):', logErr.message);
+                }
 
                 const valorTotal = parcelasElegiveis.reduce((s, p) => s + Number(p.valor), 0);
                 resultados.push({
