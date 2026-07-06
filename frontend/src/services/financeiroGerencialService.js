@@ -37,6 +37,11 @@ const financeiroGerencialService = {
     margemProdutos: async (de, ate) => {
         const response = await api.get('/financeiro-gerencial/margem-produtos', { params: { de, ate } });
         return response.data;
+    },
+    // Visão geral: { kpis, fluxo30, contas30, aging, margemMes, dreMes, conciliacaoPendentes }
+    dashboard: async () => {
+        const response = await api.get('/financeiro-gerencial/dashboard');
+        return response.data;
     }
 };
 

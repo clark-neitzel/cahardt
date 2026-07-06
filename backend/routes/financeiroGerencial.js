@@ -114,6 +114,19 @@ router.get('/por-conta/extrato', verificarAuth, checkAcesso, async (req, res) =>
     }
 });
 
+// ── GET /dashboard — visão geral do financeiro em uma tela ──
+// Fluxo próximos 30 dias, movimento por conta (últimos 30), aging de recebíveis,
+// margem e DRE do mês corrente, pendências de conciliação.
+router.get('/dashboard', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const dados = await financeiroGerencialService.dashboardFinanceiro();
+        res.json(dados);
+    } catch (error) {
+        console.error('Erro no dashboard financeiro:', error);
+        res.status(500).json({ error: 'Erro ao montar o dashboard financeiro.' });
+    }
+});
+
 // ── GET /margem-produtos?de=YYYY-MM-DD&ate=YYYY-MM-DD ──
 // Margem por produto: vendas do período (mesma regra da DRE) × custo unitário
 // (ficha técnica ativa do PCP > custo de compra > custo do CA).

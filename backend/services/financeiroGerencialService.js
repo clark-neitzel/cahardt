@@ -690,16 +690,122 @@ async function margemProdutos(de, ate) {
     return { de, ate, ...montarMargemProdutos(vendas, produtos, custosFicha) };
 }
 
+// ─────────────────────────────────────────────────────────────
+// DASHBOARD FINANCEIRO (Fase 5) — visão geral em uma tela
+// ─────────────────────────────────────────────────────────────
+
+const FAIXAS_AGING = [
+    { key: 'aVencer', label: 'A vencer', de: null, ate: 0 },       // atraso <= 0
+    { key: 'd1_7', label: '1–7 dias', de: 1, ate: 7 },
+    { key: 'd8_30', label: '8–30 dias', de: 8, ate: 30 },
+    { key: 'd31_60', label: '31–60 dias', de: 31, ate: 60 },
+    { key: 'd60mais', label: 'Mais de 60 dias', de: 61, ate: null }
+];
+
+/**
+ * Classifica parcelas em faixas por dias de atraso. Função PURA.
+ * @param parcelas [{ saldo, diasAtraso }] — saldo > 0, diasAtraso <= 0 = a vencer
+ */
+function montarAging(parcelas) {
+    const faixas = FAIXAS_AGING.map((f) => ({ key: f.key, label: f.label, qtd: 0, valor: 0 }));
+    for (const p of parcelas) {
+        if (!(num(p.saldo) > 0)) continue;
+        const d = Math.floor(num(p.diasAtraso));
+        const i = FAIXAS_AGING.findIndex((f) =>
+            (f.de === null || d >= f.de) && (f.ate === null || d <= f.ate));
+        if (i >= 0) { faixas[i].qtd++; faixas[i].valor = round2(faixas[i].valor + num(p.saldo)); }
+    }
+    const vencido = faixas.filter((f) => f.key !== 'aVencer');
+    return {
+        faixas,
+        totalAberto: round2(faixas.reduce((s, f) => s + f.valor, 0)),
+        totalVencido: round2(vencido.reduce((s, f) => s + f.valor, 0)),
+        qtdVencidas: vencido.reduce((s, f) => s + f.qtd, 0)
+    };
+}
+
+/** Aging (inadimplência por idade) das parcelas a receber em aberto. */
+async function agingRecebiveis() {
+    const hoje = ymdSP(new Date());
+    const parcelas = await prisma.parcela.findMany({
+        where: {
+            status: { in: ['PENDENTE', 'VENCIDO', 'PARCIAL'] },
+            contaReceber: { status: { not: 'CANCELADO' } }
+        },
+        select: { valor: true, valorPago: true, valorDescontoTotal: true, dataVencimento: true }
+    });
+    const diasEntre = (a, b) => Math.round((new Date(`${a}T12:00:00Z`) - new Date(`${b}T12:00:00Z`)) / 86400000);
+    return montarAging(parcelas.map((p) => ({
+        saldo: num(p.valor) - num(p.valorPago) - num(p.valorDescontoTotal),
+        diasAtraso: diasEntre(hoje, ymdSP(p.dataVencimento))
+    })));
+}
+
+/** Visão geral: junta fluxo 30 dias, contas, aging, margem, DRE do mês e conciliação. */
+async function dashboardFinanceiro() {
+    const hoje = ymdSP(new Date());
+    const mes = hoje.slice(0, 7);
+    const [fluxo, saldos, aging, margem, dreMes, conciliacaoPendentes] = await Promise.all([
+        fluxoCaixa(hoje, somaDias(hoje, 29), 'dia'),
+        saldosPorConta(somaDias(hoje, -29), hoje, false),
+        agingRecebiveis(),
+        margemProdutos(`${mes}-01`, hoje),
+        dre(mes, mes),
+        prisma.extratoLancamento.count({ where: { status: 'PENDENTE' } })
+    ]);
+
+    const pioresMargens = (margem.linhas || [])
+        .filter((l) => l.margemPct != null && l.quantidade > 0)
+        .sort((a, b) => a.margemPct - b.margemPct)
+        .slice(0, 3)
+        .map((l) => ({ nome: l.nome, margemPct: l.margemPct, receita: l.receita }));
+
+    return {
+        hoje,
+        kpis: fluxo.kpis,
+        fluxo30: {
+            de: hoje,
+            ate: somaDias(hoje, 29),
+            saldoPrevisto: fluxo.kpis?.saldoPrevistoPeriodo ?? null,
+            linhas: (fluxo.linhas || []).map((l) => ({
+                chave: l.chave,
+                entradasPrevistas: l.entradasPrevistas,
+                saidasPrevistas: l.saidasPrevistas
+            }))
+        },
+        contas30: { contas: saldos.contas.slice(0, 6), totais: saldos.totais, outras: Math.max(0, saldos.contas.length - 6) },
+        aging,
+        margemMes: {
+            pct: margem.totais?.margemPct ?? null,
+            receita: margem.totais?.receitaTotal ?? 0,
+            semCusto: margem.totais?.semCusto ?? 0,
+            piores: pioresMargens
+        },
+        dreMes: {
+            mes,
+            receitaLiquida: dreMes.receita?.liquida?.total ?? null,
+            despesas: dreMes.despesas?.total?.total ?? null,
+            resultado: dreMes.resultado?.total ?? null,
+            margemPct: dreMes.margem?.total ?? null,
+            temAClassificar: !!dreMes.temAClassificar
+        },
+        conciliacaoPendentes
+    };
+}
+
 module.exports = {
     fluxoCaixa,
     dre,
     saldosPorConta,
     extratoPorConta,
     margemProdutos,
+    agingRecebiveis,
+    dashboardFinanceiro,
     // puras (testáveis offline)
     gerarBuckets,
     agregarFluxo,
     montarDre,
     competenciaConta,
-    montarMargemProdutos
+    montarMargemProdutos,
+    montarAging
 };
