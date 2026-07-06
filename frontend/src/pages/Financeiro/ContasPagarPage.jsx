@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ImportarCaModal from './ImportarCaModal';
+import ComboBusca from '../../components/ComboBusca';
 
 // Filtros salvos por navegador/usuário — ao sair e voltar, continuam aplicados
 const LS_FILTROS = 'contasPagar_filtros';
@@ -636,7 +637,6 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
     const editando = !!conta;
 
     const [fornecedorId, setFornecedorId] = useState(conta?.fornecedor?.id || '');
-    const [buscaForn, setBuscaForn] = useState('');
     const [descricao, setDescricao] = useState(conta?.descricao || '');
     const [categoria, setCategoria] = useState(conta?.categoria || '');
     const [numeroNota, setNumeroNota] = useState(conta?.numeroNota || '');
@@ -659,22 +659,18 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
         return [{ dataVencimento: hojeYMD(), valor: '', paga: false }];
     });
 
-    const fornecedoresFiltrados = useMemo(() => {
-        const q = buscaForn.trim().toLowerCase();
-        if (!q) return fornecedores;
-        return fornecedores.filter(f =>
-            String(f.razaoSocial || '').toLowerCase().includes(q) ||
-            String(f.nomeFantasia || '').toLowerCase().includes(q) ||
-            String(f.cnpjCpf || '').replace(/\D/g, '').includes(q.replace(/\D/g, '') || '§')
-        );
-    }, [fornecedores, buscaForn]);
+    // Opções do combobox de fornecedor (nome + fantasia/CNPJ na linha de baixo, tudo buscável)
+    const opcoesFornecedor = useMemo(() => fornecedores.map(f => ({
+        value: f.id,
+        label: f.razaoSocial || f.nomeFantasia || 'Sem nome',
+        sub: [f.razaoSocial && f.nomeFantasia ? f.nomeFantasia : null, f.cnpjCpf].filter(Boolean).join(' · ')
+    })), [fornecedores]);
 
     // ── Produtos comprados (opcional, só ao criar): dão entrada no estoque e atualizam o custo ──
     const [mostraProdutos, setMostraProdutos] = useState(false);
-    const [itensCompra, setItensCompra] = useState([]); // { vinculo, nome, unidade, sub, quantidade, valorTotal }
+    const [itensCompra, setItensCompra] = useState([]); // { vinculo, nome, unidade, sub, quantidade, valorUnitario, valorTotal }
     const [opcoesProd, setOpcoesProd] = useState(null); // null = ainda não carregado
     const [carregandoProds, setCarregandoProds] = useState(false);
-    const [buscaProd, setBuscaProd] = useState('');
 
     const abrirProdutos = () => {
         setMostraProdutos(true);
@@ -686,15 +682,14 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
             .finally(() => setCarregandoProds(false));
     };
 
-    const opcoesProdFiltradas = useMemo(() => {
-        const lista = opcoesProd || [];
-        const q = buscaProd.trim().toLowerCase();
-        if (!q) return lista;
-        return lista.filter(o =>
-            String(o.nome || '').toLowerCase().includes(q) ||
-            String(o.sub || '').toLowerCase().includes(q)
-        );
-    }, [opcoesProd, buscaProd]);
+    // Opções do combobox de produto (sem os que já estão na lista da despesa)
+    const opcoesProdCombo = useMemo(() => (opcoesProd || [])
+        .filter(o => !itensCompra.some(it => it.vinculo === o.value))
+        .map(o => ({
+            value: o.value,
+            label: `${o.nome}${o.unidade ? ` (${o.unidade})` : ''}`,
+            sub: o.sub
+        })), [opcoesProd, itensCompra]);
 
     const addItemCompra = (value) => {
         const op = (opcoesProd || []).find(o => o.value === value);
@@ -810,27 +805,14 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                     {/* Fornecedor com busca */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor *</label>
-                        <input
-                            value={buscaForn}
-                            onChange={e => setBuscaForn(e.target.value)}
-                            placeholder="Digite para filtrar fornecedores…"
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                        />
-                        <select
+                        <ComboBusca
                             value={fornecedorId}
-                            onChange={e => setFornecedorId(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                        >
-                            <option value="">Selecionar fornecedor…</option>
-                            {fornecedoresFiltrados.map(f => (
-                                <option key={f.id} value={f.id}>
-                                    {f.razaoSocial || f.nomeFantasia || 'Sem nome'}{f.nomeFantasia && f.razaoSocial ? ` (${f.nomeFantasia})` : ''}
-                                </option>
-                            ))}
-                        </select>
-                        {fornecedoresFiltrados.length === 0 && (
-                            <p className="text-xs text-gray-500 mt-1">Nenhum fornecedor encontrado — cadastre na tela Fornecedores.</p>
-                        )}
+                            options={opcoesFornecedor}
+                            onChange={setFornecedorId}
+                            placeholder="Selecionar fornecedor…"
+                            buscaPlaceholder="Digite o nome ou CNPJ…"
+                            vazioTexto="Nenhum fornecedor encontrado — cadastre na tela Fornecedores."
+                        />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -853,17 +835,17 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                                 />
                             ) : (
-                                <select
+                                <ComboBusca
                                     value={categoria}
-                                    onChange={e => setCategoria(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                                >
-                                    <option value="">Selecionar…</option>
-                                    {categorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
-                                    {categoria && !categorias.some(c => c.nome === categoria) && (
-                                        <option value={categoria}>{categoria}</option>
-                                    )}
-                                </select>
+                                    options={[
+                                        ...(categoria && !categorias.some(c => c.nome === categoria) ? [{ value: categoria, label: categoria }] : []),
+                                        ...categorias.map(c => ({ value: c.nome, label: c.nome }))
+                                    ]}
+                                    onChange={setCategoria}
+                                    placeholder="Selecionar…"
+                                    buscaPlaceholder="Digite a categoria…"
+                                    vazioTexto="Nenhuma categoria encontrada."
+                                />
                             )}
                         </div>
                         <div>
@@ -915,27 +897,15 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                                             <Loader2 className="h-4 w-4 animate-spin" /> Carregando produtos…
                                         </div>
                                     ) : (
-                                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
-                                            <input
-                                                value={buscaProd}
-                                                onChange={e => setBuscaProd(e.target.value)}
-                                                placeholder="Digite para filtrar produtos e insumos…"
-                                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                                            />
-                                            <select
-                                                value=""
-                                                onChange={e => { addItemCompra(e.target.value); setBuscaProd(''); }}
-                                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none bg-white"
-                                            >
-                                                <option value="">+ Adicionar produto/insumo…</option>
-                                                {opcoesProdFiltradas.map(o => (
-                                                    <option key={o.value} value={o.value}>{o.nome} ({o.unidade}) — {o.sub}</option>
-                                                ))}
-                                            </select>
-                                            {opcoesProdFiltradas.length === 0 && (
-                                                <p className="text-xs text-gray-500">Nenhum produto encontrado com esse filtro.</p>
-                                            )}
-                                        </div>
+                                        <ComboBusca
+                                            value=""
+                                            options={opcoesProdCombo}
+                                            onChange={(v) => { if (v) addItemCompra(v); }}
+                                            placeholder="+ Adicionar produto…"
+                                            buscaPlaceholder="Digite: espetinho, coxinha, risole…"
+                                            vazioTexto="Nenhum produto encontrado."
+                                            allowClear={false}
+                                        />
                                     )}
 
                                     {itensCompra.map((it, idx) => (

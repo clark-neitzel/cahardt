@@ -130,36 +130,22 @@ router.get('/opcoes-baixa', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
-// ── GET /produtos-opcoes — produtos do catálogo + insumos PCP para lançar compra na despesa manual ──
-// Retorna opções unificadas { value:'PROD:<id>'|'PCP:<id>', nome, unidade, sub }.
+// ── GET /produtos-opcoes — produtos do catálogo para lançar compra na despesa manual ──
+// Só o catálogo de produtos (tabela `produto`) — insumos PCP NÃO entram aqui, igual ao
+// de-para das Notas Recebidas. Retorna { value:'PROD:<id>', nome, unidade, sub }.
 router.get('/produtos-opcoes', verificarAuth, checkAcesso, async (req, res) => {
     try {
-        const [produtos, insumos] = await Promise.all([
-            prisma.produto.findMany({
-                where: { ativo: true },
-                select: { id: true, codigo: true, nome: true, unidade: true, categoria: true },
-                orderBy: { nome: 'asc' }
-            }),
-            prisma.itemPcp.findMany({
-                where: { ativo: true },
-                select: { id: true, codigo: true, nome: true, tipo: true, unidade: true },
-                orderBy: { nome: 'asc' }
-            })
-        ]);
-        res.json([
-            ...produtos.map((p) => ({
-                value: `PROD:${p.id}`,
-                nome: p.nome,
-                unidade: p.unidade,
-                sub: `Produto${p.codigo ? ` · ${p.codigo}` : ''}${p.categoria ? ` · ${p.categoria}` : ''}`
-            })),
-            ...insumos.map((i) => ({
-                value: `PCP:${i.id}`,
-                nome: i.nome,
-                unidade: i.unidade,
-                sub: `Insumo PCP · ${i.codigo}`
-            }))
-        ]);
+        const produtos = await prisma.produto.findMany({
+            where: { ativo: true },
+            select: { id: true, codigo: true, nome: true, unidade: true, categoria: true },
+            orderBy: { nome: 'asc' }
+        });
+        res.json(produtos.map((p) => ({
+            value: `PROD:${p.id}`,
+            nome: p.nome,
+            unidade: p.unidade,
+            sub: `Produto${p.codigo ? ` · ${p.codigo}` : ''}${p.categoria ? ` · ${p.categoria}` : ''}`
+        })));
     } catch (error) {
         console.error('Erro ao listar opções de produto:', error);
         res.status(500).json({ error: 'Erro ao listar produtos.' });
