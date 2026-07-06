@@ -1912,6 +1912,18 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
     const [dataPagamento, setDataPagamento] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }));
     const [observacao, setObservacao] = useState('');
     const [salvando, setSalvando] = useState(false);
+    const [contaFinanceiraCaId, setContaFinanceiraCaId] = useState('');
+    const [contasFinanceiras, setContasFinanceiras] = useState([]);
+
+    useEffect(() => {
+        contasReceberService.contasFinanceiras()
+            .then(cf => {
+                setContasFinanceiras(cf);
+                const padrao = cf.find(c => c.padrao);
+                if (padrao) setContaFinanceiraCaId(padrao.id);
+            })
+            .catch(() => {});
+    }, []);
 
     const parseNum = (v) => parseFloat(String(v).replace(',', '.')) || 0;
     const fmtInput = (n) => n.toFixed(2).replace('.', ',');
@@ -1964,6 +1976,7 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
                 valorDesconto: aplicarDesconto ? descontoReais : 0,
                 motivoDesconto: aplicarDesconto && descontoReais > 0 ? motivoDesconto.trim() : undefined,
                 formaPagamento,
+                contaFinanceiraCaId: contaFinanceiraCaId || undefined,
                 dataPagamento,
                 observacao: observacao || undefined
             });
@@ -2069,6 +2082,15 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
                             <label className="block text-sm font-medium text-gray-700 mb-1">Data do pagamento</label>
                             <input type="date" value={dataPagamento} onChange={e => setDataPagamento(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                         </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Banco / caixa <span className="text-gray-400 font-normal">(em qual conta entrou)</span></label>
+                        <SelectBusca value={contaFinanceiraCaId} onChange={e => setContaFinanceiraCaId(e.target.value)} className="w-full">
+                            <option value="">Não informar</option>
+                            {contasFinanceiras.map(c => <option key={c.id} value={c.id}>{c.nome}{c.padrao ? ' (padrão)' : ''}</option>)}
+                        </SelectBusca>
+                        <p className="text-xs text-gray-400 mt-1">Alimenta o relatório “Saldos por Conta”.</p>
                     </div>
 
                     <div>

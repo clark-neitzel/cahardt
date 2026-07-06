@@ -33,6 +33,17 @@ const checkBaixa = async (req, res, next) => {
     next();
 };
 
+// ── GET /contas-financeiras — bancos/caixas do CA para o seletor da baixa ──
+router.get('/contas-financeiras', verificarAuth, checkBaixa, async (req, res) => {
+    try {
+        const caSync = require('../services/contasPagarCaSyncService');
+        const contasFinanceiras = await caSync.listarContasFinanceirasSeguro();
+        res.json({ contasFinanceiras });
+    } catch (e) {
+        res.json({ contasFinanceiras: [] });
+    }
+});
+
 // Recalcula o status de uma Parcela a partir do total já recebido/descontado (não estornado)
 const calcularStatusParcela = (valor, valorPago, valorDescontoTotal) => {
     const recebidoTotal = Number(valorPago || 0) + Number(valorDescontoTotal || 0);
