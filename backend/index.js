@@ -71,6 +71,10 @@ const authMiddleware = require('./middlewares/authMiddleware'); // Middleware de
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Atrás do proxy do EasyPanel — confia em 1 hop para obter o IP real do cliente
+// (necessário para a trava de força bruta do login enxergar cada usuário).
+app.set('trust proxy', 1);
+
 // Middlewares
 app.use(cors());
 app.use(express.json());
