@@ -25,6 +25,7 @@ import roteirizacaoService from '../../services/roteirizacaoService';
 import api from '../../services/api';
 import MetaCidadeHojeBanner from '../../components/Rota/MetaCidadeHojeBanner';
 import MetaAdminHojeBanner from '../../components/Rota/MetaAdminHojeBanner';
+import SelectBusca from '../../components/SelectBusca';
 
 const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'N/D'];
 
@@ -2227,16 +2228,16 @@ const RotaLeads = () => {
                         </div>
                     </div>
                     {podeEscolherVendedor && (
-                        <select
+                        <SelectBusca
                             value={vendedorFiltro}
                             onChange={handleFiltroVendedor}
-                            className="text-[12px] md:text-[13px] border border-gray-300 rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:ring-blue-500 focus:border-blue-500 outline-none max-w-[130px] md:max-w-[150px] truncate"
+                            className="w-[130px] md:w-[150px]"
                         >
                             <option value="todos">Todos</option>
                             {vendedores.map(v => (
                                 <option key={v.id} value={v.id}>{v.nome.split(' ')[0]}</option>
                             ))}
-                        </select>
+                        </SelectBusca>
                     )}
                 </div>
 
@@ -2426,16 +2427,16 @@ const RotaLeads = () => {
                                             {podeEscolherVendedor && vendedores.length > 0 && (
                                                 <div className="mb-3">
                                                     <label className="text-[10px] font-semibold text-gray-500 uppercase mb-1 block">Motorista</label>
-                                                    <select
+                                                    <SelectBusca
                                                         value={rotaConfig.vendedorIdRota}
                                                         onChange={e => setRotaConfig(c => ({ ...c, vendedorIdRota: e.target.value }))}
-                                                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-[12px] outline-none focus:border-sky-400"
+                                                        className="w-full"
                                                     >
                                                         <option value="">Minha rota</option>
                                                         {vendedores.map(v => (
                                                             <option key={v.id} value={v.id}>{v.nome}</option>
                                                         ))}
-                                                    </select>
+                                                    </SelectBusca>
                                                 </div>
                                             )}
                                             <button
