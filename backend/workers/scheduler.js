@@ -278,6 +278,24 @@ function startSchedulers() {
             console.error('[MensagemAgendada] Erro no scheduler:', e.message);
         }
     }, 60 * 1000); // a cada 1 minuto
+
+    // === 8. ALERTA DE CERTIFICADO A1 VENCENDO ===
+    // 1x/dia (08:00) avisa os admins (com telefone) por WhatsApp nos limiares
+    // 30/15/7/3/1 dias e quando vencido. Isolado: nunca derruba nada.
+    console.log('⏰ Agendando alerta de validade do Certificado A1...');
+    const certificadoService = require('../services/certificadoService');
+    const _runCertAlerta = () => {
+        certificadoService.alertarValidadeCertificado()
+            .catch(err => console.error('⚠️ Alerta Certificado Error:', err.message));
+    };
+    setTimeout(_runCertAlerta, 300000); // 5min após o start
+    const scheduleCertAlerta = () => {
+        const now = new Date();
+        const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
+        if (target <= now) target.setDate(target.getDate() + 1);
+        setTimeout(() => { _runCertAlerta(); scheduleCertAlerta(); }, target.getTime() - now.getTime());
+    };
+    scheduleCertAlerta();
 }
 
 module.exports = { startSchedulers };

@@ -55,6 +55,18 @@ router.get('/ping', (req, res) => {
     });
 });
 
+// GET /api/admin-exec/testar-alerta-certificado — roda o alerta de validade do A1 na hora.
+// Se faltar > 30 dias, só retorna { dias, alertado:false } (não envia WhatsApp) — seguro p/ testar.
+router.get('/testar-alerta-certificado', async (req, res) => {
+    try {
+        const certificadoService = require('../services/certificadoService');
+        const r = await certificadoService.alertarValidadeCertificado();
+        res.json(r);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-parcela-ca?nota=1802  — diagnóstico de edição de vencimento no CA
 router.get('/diag-parcela-ca', async (req, res) => {
     try {

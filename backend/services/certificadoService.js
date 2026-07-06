@@ -186,4 +186,65 @@ function descriptografarCertificado(registro) {
     return { pfx, senha };
 }
 
-module.exports = { lerCertificado, salvarCertificado, descriptografarCertificado };
+/**
+ * Alerta proativo de validade do certificado A1.
+ * Sem isto, só se descobre que venceu quando a captura de NF-e para em silêncio.
+ * Avisa os ADMINS (com telefone) por WhatsApp nos limiares 30/15/7/3/1 dias e quando vencido.
+ * Dedupe por dia via app_config 'cert_alerta_ultimo' (não repete o mesmo aviso no mesmo dia).
+ */
+async function alertarValidadeCertificado() {
+    const prisma = require('../config/database');
+    const webhookService = require('./webhookService');
+
+    const cert = await prisma.certificadoDigital.findFirst({
+        where: { ativo: true },
+        orderBy: { validade: 'desc' }
+    });
+    if (!cert) return { ok: true, motivo: 'sem certificado ativo', alertado: false };
+
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const val = new Date(cert.validade); val.setHours(0, 0, 0, 0);
+    const dias = Math.round((val - hoje) / 86400000);
+
+    const LIMIARES = [30, 15, 7, 3, 1];
+    if (dias > 0 && !LIMIARES.includes(dias)) return { ok: true, dias, alertado: false };
+
+    // Dedupe: não repetir o mesmo aviso (mesmo dia-restante) no mesmo dia
+    const hojeStr = new Date().toISOString().slice(0, 10);
+    const cfg = await prisma.appConfig.findUnique({ where: { key: 'cert_alerta_ultimo' } });
+    const ultimo = cfg?.value || {};
+    if (ultimo.dia === hojeStr && ultimo.dias === dias) return { ok: true, dias, alertado: false, motivo: 'já alertado hoje' };
+
+    const dataFmt = val.toLocaleDateString('pt-BR');
+    const msg = dias <= 0
+        ? `🚨 *Certificado digital A1 VENCIDO* (${dataFmt}).\n\nA captura automática de NF-e/NFS-e está PARADA. Renove o certificado e reenvie em *Configurações → Notas*.`
+        : `⚠️ *Certificado digital A1 vence em ${dias} dia(s)* (${dataFmt}).\n\nRenove antes para não interromper a captura de notas fiscais.`;
+
+    // Destino: admins ativos com telefone
+    const vends = await prisma.vendedor.findMany({
+        where: { ativo: true, telefone: { not: null } },
+        select: { nome: true, telefone: true, permissoes: true }
+    });
+    const admins = vends.filter(v => {
+        const p = typeof v.permissoes === 'string' ? JSON.parse(v.permissoes) : (v.permissoes || {});
+        return p && p.admin === true && v.telefone;
+    });
+
+    let enviados = 0;
+    for (const a of admins) {
+        try {
+            const r = await webhookService.enviarMensagemCustom(a.telefone, a.nome, msg);
+            if (r.ok) enviados++;
+        } catch (e) { console.error('[Cert] falha ao alertar', a.nome, e.message); }
+    }
+
+    await prisma.appConfig.upsert({
+        where: { key: 'cert_alerta_ultimo' },
+        update: { value: { dia: hojeStr, dias } },
+        create: { key: 'cert_alerta_ultimo', value: { dia: hojeStr, dias } }
+    });
+    console.log(`[Cert] Alerta de validade (${dias}d, vence ${dataFmt}) enviado a ${enviados}/${admins.length} admin(s).`);
+    return { ok: true, dias, alertado: true, enviados, admins: admins.length };
+}
+
+module.exports = { lerCertificado, salvarCertificado, descriptografarCertificado, alertarValidadeCertificado };
