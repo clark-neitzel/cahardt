@@ -23,6 +23,7 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 - Ver amostras entregues no dia
 - Ver atendimentos do dia
 - Ver e editar KM inicial do veículo do dia
+- Ver o VALOR A PRESTAR — só aparece quando o dia está "certo"; senão mostra um checklist do que falta (KM final, entregas pendentes, clientes sem atendimento)
 - Acessar ficha completa do veículo
 - Fechar o caixa do dia (muda status para FECHADO)
 - Imprimir relatório do caixa (`/caixa/impressao`)
@@ -74,6 +75,14 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 1. No card de resumo, localize o campo **Adiantamento (R$)**
 2. Digite o valor e clique em **Salvar** (visível para `Pode_Definir_Adiantamento` ou `admin`)
 3. O adiantamento é descontado do total a prestar de contas
+
+### Ver o VALOR A PRESTAR (só aparece com o dia "certo")
+O valor a prestar de contas fica **escondido** enquanto o dia não estiver completo. No lugar do valor aparece um checklist laranja "Falta para fechar o dia" com o que ainda precisa ser feito. O valor volta a aparecer sozinho assim que tudo for resolvido. Escondem o valor (para todos, motorista e escritório):
+- **KM final do veículo não informado** (quando o dia usou veículo/modo presencial) — o KM final é informado no fechamento do ponto/diário
+- **Entregas ainda pendentes** — pedidos do embarque do dia que ainda não foram marcados como entregues/devolvidos
+- **Clientes da rota sem atendimento** — clientes com venda marcada para o dia da semana que não tiveram atendimento, pedido nem entrega
+
+Observação: devoluções e baixas de dinheiro **não** entram nesse checklist (são tratadas na parte financeira/fechar caixa, mais abaixo).
 
 ### Fechar o caixa
 1. Verifique as pendências — se houver, o botão fica desabilitado e as pendências aparecem listadas

@@ -947,7 +947,44 @@ const CaixaDiarioPage = () => {
                         );
                     })()}
 
-                    {/* VALOR A PRESTAR */}
+                    {/* VALOR A PRESTAR — escondido enquanto o dia não estiver "certo" */}
+                    {resumo.finalizacaoDia?.precisaFinalizar ? (
+                        <div className="bg-orange-50 border-2 border-orange-300 rounded-lg p-6">
+                            <div className="flex items-center justify-center gap-2 mb-3">
+                                <AlertTriangle className="h-5 w-5 text-orange-600" />
+                                <p className="text-sm font-bold text-orange-800 uppercase tracking-wide text-center">
+                                    Falta para fechar o dia
+                                </p>
+                            </div>
+                            <p className="text-xs text-orange-700 text-center mb-4">
+                                O valor a prestar aparece assim que o dia estiver certo.
+                            </p>
+                            <ul className="space-y-2 max-w-sm mx-auto">
+                                {resumo.finalizacaoDia.kmFinalFaltando && (
+                                    <li className="flex items-center gap-3 bg-white border border-orange-200 rounded-lg px-4 py-3">
+                                        <Truck className="h-5 w-5 text-orange-500 flex-shrink-0" />
+                                        <span className="text-sm font-medium text-gray-800">Informar o KM final do veículo</span>
+                                    </li>
+                                )}
+                                {resumo.finalizacaoDia.entregasPendentes > 0 && (
+                                    <li className="flex items-center gap-3 bg-white border border-orange-200 rounded-lg px-4 py-3">
+                                        <Package className="h-5 w-5 text-orange-500 flex-shrink-0" />
+                                        <span className="text-sm font-medium text-gray-800">
+                                            {resumo.finalizacaoDia.entregasPendentes} entrega{resumo.finalizacaoDia.entregasPendentes > 1 ? 's' : ''} pendente{resumo.finalizacaoDia.entregasPendentes > 1 ? 's' : ''}
+                                        </span>
+                                    </li>
+                                )}
+                                {resumo.finalizacaoDia.atendimentosPendentes > 0 && (
+                                    <li className="flex items-center gap-3 bg-white border border-orange-200 rounded-lg px-4 py-3">
+                                        <MapPin className="h-5 w-5 text-orange-500 flex-shrink-0" />
+                                        <span className="text-sm font-medium text-gray-800">
+                                            {resumo.finalizacaoDia.atendimentosPendentes} cliente{resumo.finalizacaoDia.atendimentosPendentes > 1 ? 's' : ''} da rota sem atendimento
+                                        </span>
+                                    </li>
+                                )}
+                            </ul>
+                        </div>
+                    ) : (
                     <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-6">
                         <p className="text-sm font-medium text-amber-700 mb-1 text-center">VALOR A PRESTAR</p>
                         <p className="text-4xl font-black text-amber-900 text-center">
@@ -1001,6 +1038,7 @@ const CaixaDiarioPage = () => {
                             )}
                         </div>
                     </div>
+                    )}
 
                     {/* Pendências para fechar */}
                     {isAberto && resumo?.pendencias && !resumo.pendencias.podeFechar && (

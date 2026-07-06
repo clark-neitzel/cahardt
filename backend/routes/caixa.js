@@ -386,6 +386,24 @@ router.get('/resumo', async (req, res) => {
                 diaVenda: c.Dia_de_venda
             }));
 
+        // Pendências para "deixar o dia certo" (escondem o VALOR A PRESTAR até serem resolvidas)
+        // Só o que faz o dia estar incompleto operacionalmente — NÃO inclui financeiro (baixas/devoluções).
+        const entregasPendentesDia = await prisma.pedido.count({
+            where: {
+                statusEntrega: 'PENDENTE',
+                embarque: { responsavelId: targetVendedor, dataSaida: { gte: inicioDia, lte: fimDia } }
+            }
+        });
+        const usouVeiculo = !!(diarioInfo && diarioInfo.modo === 'PRESENCIAL' && diarioInfo.veiculoId);
+        const kmFinalFaltando = usouVeiculo && !diarioInfo.kmFinal;
+        const atendimentosPendentesDia = clientesNaoAtendidos.length;
+        const finalizacaoDia = {
+            kmFinalFaltando,
+            entregasPendentes: entregasPendentesDia,
+            atendimentosPendentes: atendimentosPendentesDia,
+            precisaFinalizar: kmFinalFaltando || entregasPendentesDia > 0 || atendimentosPendentesDia > 0
+        };
+
         // Pendências para fechar caixa
         const devolucoesNaoFeitas = entregasFormatadas.filter(e =>
             ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada
@@ -454,7 +472,8 @@ router.get('/resumo', async (req, res) => {
                 devolucoesNaoFeitas,
                 quitacoesNaoFeitas,
                 podeFechar: devolucoesNaoFeitas === 0 && quitacoesNaoFeitas === 0
-            }
+            },
+            finalizacaoDia
         });
     } catch (error) {
         console.error('Erro ao buscar resumo do caixa:', error);
